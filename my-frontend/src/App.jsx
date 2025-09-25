@@ -1,3 +1,5 @@
+import React from 'react'
+
 export default function App() {
   return (
     <div style={{fontFamily:'Segoe UI, Roboto, system-ui', padding:20}}>
