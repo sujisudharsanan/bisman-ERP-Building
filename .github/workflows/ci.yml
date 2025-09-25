@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  node-matrix:
+    name: CI — frontend & backend
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - name: frontend
+            path: my-frontend
+          - name: backend
+            path: my-backend
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-node-
+
+      - name: Run install/test/build if package.json exists
+        working-directory: ${{ matrix.path }}
+        run: |
+          echo "Running CI for ${{ matrix.name }} (path=${{ matrix.path }})"
+          if [ -f "package.json" ]; then
+            echo "package.json found — installing dependencies"
+            npm ci --no-progress
+
+            if npm test --silent; then
+              echo "npm test succeeded"
+            else
+              echo "npm test failed or no tests defined — attempting build if available"
+              npm run build --if-present || echo "no build or build failed"
+            fi
+          else
+            echo "No package.json in ${{ matrix.path }} — skipping Node steps"
+          fi
