@@ -1,8 +1,7 @@
-export default function HomePage() {
+export default function Home() {
   return (
-    <main className="p-8">
-      <h1 className="text-2xl font-bold">ERP Home</h1>
-      <p className="mt-4">This is the ERP frontend home page.</p>
-    </main>
-  )
+    <div className="flex h-screen items-center justify-center">
+      <h1 className="text-3xl font-bold text-blue-600">ERP Dashboard Starter</h1>
+    </div>
+  );
 }
