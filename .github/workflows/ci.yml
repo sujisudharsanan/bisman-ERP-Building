@@ -27,21 +27,26 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Cache npm
+      - name: Cache npm per project
         uses: actions/cache@v4
         with:
           path: ~/.npm
-          key: ${{ runner.os }}-node-${{ hashFiles('**/package-lock.json') }}
+          key: ${{ runner.os }}-node-${{ matrix.path }}-${{ hashFiles(format('{0}/package-lock.json', matrix.path)) }}
           restore-keys: |
-            ${{ runner.os }}-node-
+            ${{ runner.os }}-node-${{ matrix.path }}-
 
       - name: Run install/test/build if package.json exists
         working-directory: ${{ matrix.path }}
         run: |
           echo "Running CI for ${{ matrix.name }} (path=${{ matrix.path }})"
           if [ -f "package.json" ]; then
-            echo "package.json found — installing dependencies"
-            npm ci --no-progress
+            if [ -f "package-lock.json" ]; then
+              echo "package-lock.json found — using npm ci"
+              npm ci --no-progress
+            else
+              echo "No package-lock.json — falling back to npm install"
+              npm install --no-progress
+            fi
 
             if npm test --silent; then
               echo "npm test succeeded"
