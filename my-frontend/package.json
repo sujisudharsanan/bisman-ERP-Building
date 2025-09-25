@@ -3,21 +3,39 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview",
-  "test": "vitest --run"
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "test": "vitest --run"
   },
   "dependencies": {
+    "@emotion/react": "^11.14.0",
+    "@emotion/styled": "^11.14.1",
+    "@mui/icons-material": "^7.3.2",
+    "@mui/material": "^7.3.2",
+    "@mui/x-data-grid-pro": "^8.11.3",
+    "@tanstack/react-query": "^5.90.2",
+    "autoprefixer": "latest",
+    "axios": "^1.12.2",
+    "next": "latest",
+    "next-i18next": "^15.4.2",
+    "next-safe": "^3.5.0",
+    "postcss": "latest",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-hook-form": "^7.63.0",
+    "tailwindcss": "latest",
+    "zod": "^4.1.11",
+    "zustand": "^5.0.8"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.0.0",
     "@testing-library/react": "^14.0.0",
-    "@vitejs/plugin-react": "^4.0.0",
+    "@types/node": "latest",
+    "@types/react": "latest",
     "jsdom": "^27.0.0",
-    "vite": "^5.0.0",
+    "typescript": "latest",
     "vitest": "^1.0.0"
   }
 }
