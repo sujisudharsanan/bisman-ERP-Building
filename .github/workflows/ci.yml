@@ -27,24 +27,42 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Cache npm per project
+      - name: Cache package manager caches per project
         uses: actions/cache@v4
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-node-${{ matrix.path }}-${{ hashFiles(format('{0}/package-lock.json', matrix.path)) }}
+          # Cache npm, yarn and pnpm caches (only the relevant ones will be used by each job)
+          path: |
+            ~/.npm
+            ~/.cache/yarn
+            ~/.pnpm-store
+          # Use the hash of any lockfile present (package-lock.json, yarn.lock, pnpm-lock.yaml)
+          # hashFiles will ignore patterns that don't exist, so include all candidates.
+          key: ${{ runner.os }}-node-${{ matrix.path }}-${{ hashFiles(format('{0}/package-lock.json', matrix.path), format('{0}/yarn.lock', matrix.path), format('{0}/pnpm-lock.yaml', matrix.path)) }}
           restore-keys: |
             ${{ runner.os }}-node-${{ matrix.path }}-
+            
 
       - name: Run install/test/build if package.json exists
         working-directory: ${{ matrix.path }}
         run: |
           echo "Running CI for ${{ matrix.name }} (path=${{ matrix.path }})"
           if [ -f "package.json" ]; then
+            # Prefer package-lock.json -> npm ci
             if [ -f "package-lock.json" ]; then
               echo "package-lock.json found — using npm ci"
               npm ci --no-progress
+            # If yarn.lock found, use yarn via corepack
+            elif [ -f "yarn.lock" ]; then
+              echo "yarn.lock found — using yarn install (via corepack)"
+              corepack enable
+              yarn install --frozen-lockfile --non-interactive
+            # If pnpm lockfile found, use pnpm via corepack
+            elif [ -f "pnpm-lock.yaml" ]; then
+              echo "pnpm-lock.yaml found — using pnpm install (via corepack)"
+              corepack enable
+              pnpm install --frozen-lockfile
             else
-              echo "No package-lock.json — falling back to npm install"
+              echo "No lockfile found — falling back to npm install"
               npm install --no-progress
             fi
 
