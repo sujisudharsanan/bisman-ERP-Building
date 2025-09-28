@@ -1,6 +1,47 @@
 "use client"
-import React, { createContext, useContext, useState, ReactNode } from 'react'
-import GlobalSnackbar from './Snackbar'
+import React, { createContext, useContext, useState, ReactNode, useEffect } from 'react'
+import Alert from '@mui/material/Alert'
+import Box from '@mui/material/Box'
+
+// GlobalSnackbar implemented with MUI Alerts stacked in the bottom-right corner.
+function GlobalSnackbar({
+  toasts,
+  onClose,
+}: {
+  toasts: { id: string; message: string; severity?: 'info' | 'success' | 'warning' | 'error' }[]
+  onClose: (id: string) => void
+}) {
+  useEffect(() => {
+    // auto-dismiss toasts after 5s
+    const timers = toasts.map((t) =>
+      setTimeout(() => {
+        onClose(t.id)
+      }, 5000)
+    )
+    return () => timers.forEach((id) => clearTimeout(id))
+  }, [toasts, onClose])
+
+  if (!toasts || toasts.length === 0) return null
+
+  return (
+    <Box
+      aria-live="polite"
+      sx={{ position: 'fixed', bottom: 16, right: 16, zIndex: 1400, display: 'flex', flexDirection: 'column', gap: 1 }}
+    >
+      {toasts.map((t) => (
+        <Alert
+          key={t.id}
+          severity={t.severity ?? 'info'}
+          onClose={() => onClose(t.id)}
+          variant="filled"
+          sx={{ minWidth: 240 }}
+        >
+          {t.message}
+        </Alert>
+      ))}
+    </Box>
+  )
+}
 
 type Toast = { id: string; message: string; severity?: 'info' | 'success' | 'warning' | 'error' }
 

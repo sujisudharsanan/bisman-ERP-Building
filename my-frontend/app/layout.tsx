@@ -1,4 +1,4 @@
-import './globals.css'
+import '../src/styles/globals.css'
 import Providers from '@/providers/Providers'
 
 export const metadata = { title: 'ERP Frontend', description: 'ERP frontend scaffold' }

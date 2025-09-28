@@ -27,20 +27,20 @@ jobs:
         with:
           node-version: '18'
 
-      - name: Cache package manager caches per project
-        uses: actions/cache@v4
+      - name: Cache per-project node_modules + package-manager stores
+        uses: actions/cache@v3
         with:
-          # Cache npm, yarn and pnpm caches (only the relevant ones will be used by each job)
+          # cache node_modules and common package-manager caches/stores to speed installs
           path: |
-            ~/.npm
+            ${{ matrix.path }}/node_modules
+            ${{ matrix.path }}/.yarn/cache
             ~/.cache/yarn
             ~/.pnpm-store
-          # Use the hash of any lockfile present (package-lock.json, yarn.lock, pnpm-lock.yaml)
-          # hashFiles will ignore patterns that don't exist, so include all candidates.
-          key: ${{ runner.os }}-node-${{ matrix.path }}-${{ hashFiles(format('{0}/package-lock.json', matrix.path), format('{0}/yarn.lock', matrix.path), format('{0}/pnpm-lock.yaml', matrix.path)) }}
+            ~/.local/share/pnpm
+          key: ${{ runner.os }}-${{ matrix.path }}-${{ hashFiles(format('{0}/package-lock.json', matrix.path), format('{0}/yarn.lock', matrix.path), format('{0}/pnpm-lock.yaml', matrix.path)) }}
           restore-keys: |
-            ${{ runner.os }}-node-${{ matrix.path }}-
-            
+            ${{ runner.os }}-${{ matrix.path }}-
+            ${{ runner.os }}-
 
       - name: Run install/test/build if package.json exists
         working-directory: ${{ matrix.path }}

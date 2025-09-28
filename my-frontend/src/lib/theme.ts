@@ -1,3 +1,2 @@
-import theme from '@/lib/mui/theme'
+export { ThemeRegistry, default as theme } from './theme/index'
 
-export default theme

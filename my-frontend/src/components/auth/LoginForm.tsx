@@ -3,12 +3,13 @@ import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { z } from 'zod'
 import api from '@/lib/api/axios'
+import { useAuth } from '@/hooks/useAuth'
 import TextField from '@mui/material/TextField'
 import PrimaryButton from '@/components/ui/Button'
 import { useNotifications } from '@/providers/notifications/NotificationsProvider'
 import { useRouter } from 'next/navigation'
 
-const schema = z.object({ username: z.string().min(1), password: z.string().min(1) })
+const schema = z.object({ email: z.string().min(1).email(), password: z.string().min(1) })
 type FormData = z.infer<typeof schema>
 
 export default function LoginForm() {
@@ -16,6 +17,8 @@ export default function LoginForm() {
   const [loading, setLoading] = useState(false)
   const { push } = useNotifications()
   const router = useRouter()
+
+  const { login } = useAuth()
 
   async function onSubmit(values: FormData) {
     const parsed = schema.safeParse(values)
@@ -26,11 +29,11 @@ export default function LoginForm() {
 
     setLoading(true)
     try {
-      await api.post('/auth/login', values)
+      await login(values.email, values.password)
       push({ message: 'Signed in', severity: 'success' })
       router.push('/')
     } catch (err: any) {
-      push({ message: err?.response?.data?.message || 'Login failed', severity: 'error' })
+      push({ message: err?.response?.data?.error || 'Login failed', severity: 'error' })
     } finally {
       setLoading(false)
     }
@@ -39,11 +42,11 @@ export default function LoginForm() {
   return (
     <form onSubmit={handleSubmit(onSubmit)} className="max-w-md mx-auto p-4">
       <div className="mb-4">
-        <TextField label="Username" fullWidth {...register('username')} error={!!errors.username} helperText={errors.username ? 'Required' : ''} />
+  <TextField label="Email" fullWidth {...register('email')} error={!!errors.email} helperText={errors.email ? 'Required' : ''} />
       </div>
 
       <div className="mb-4">
-        <TextField label="Password" type="password" fullWidth {...register('password')} error={!!errors.password} helperText={errors.password ? 'Required' : ''} />
+  <TextField label="Password" type="password" fullWidth {...register('password')} error={!!errors.password} helperText={errors.password ? 'Required' : ''} />
       </div>
 
       <PrimaryButton type="submit" variant="contained" color="primary" disabled={loading}>

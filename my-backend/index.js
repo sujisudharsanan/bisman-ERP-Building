@@ -1,3 +1,10 @@
+// Load .env when running locally
+try {
+  require('dotenv').config()
+} catch (e) {
+  // ignore if dotenv isn't installed in other environments
+}
+
 const app = require('./app')
 const port = process.env.PORT || 3000
 

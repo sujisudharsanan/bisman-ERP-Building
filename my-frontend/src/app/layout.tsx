@@ -1,5 +1,10 @@
 import type { Metadata } from 'next'
-import { ReactQueryProvider } from '@/lib/query-provider'
+/* Minimal ReactQueryProvider stub to avoid missing-module error.
+   Replace this with your real provider implementation from '@/lib/query-provider'
+   or restore that file in src/lib/query-provider.tsx when available. */
+function ReactQueryProvider({ children }: { children: React.ReactNode }) {
+  return <>{children}</>
+}
 import { ThemeRegistry } from '@/lib/theme'
 import '../styles/globals.css'
 

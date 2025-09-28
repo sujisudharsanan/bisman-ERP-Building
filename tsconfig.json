@@ -1,0 +1,26 @@
+{
+  "compilerOptions": {
+    "baseUrl": ".",
+    "paths": {
+      "@libs/*": ["libs/shared/*"]
+    },
+    "target": "ES2022",
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "esModuleInterop": true,
+    "allowSyntheticDefaultImports": true,
+    "forceConsistentCasingInFileNames": true,
+    "skipLibCheck": true,
+    "resolveJsonModule": true,
+    "strict": false,
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "outDir": "dist"
+  },
+  "ts-node": {
+    "transpileOnly": true,
+    "swc": false
+  },
+  "include": ["apps/**/*","libs/**/*","apps/*/src/**/*","apps/*/index.ts","my-backend/**/*"],
+  "exclude": ["node_modules","dist"]
+}

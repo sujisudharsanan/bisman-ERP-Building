@@ -1,9 +1,26 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+/* stylelint-disable at-rule-no-unknown */
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
 
 html, body, #__next {
   height: 100%;
 }
 
 body { font-family: Inter, Roboto, sans-serif }
+
+/* Local fallbacks retained */
+.container { max-width: 1200px; margin: 0 auto; padding: 1rem; }
+.flex { display: flex; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.h-screen { height: 100vh; }
+.bg-white { background: #ffffff; }
+.rounded { border-radius: 0.5rem; }
+.p-6 { padding: 1.5rem; }
+.shadow-xl { box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
+.text-red-500 { color: #ef4444; }
+.mb-4 { margin-bottom: 1rem; }
+.w-full { width: 100%; }
+.rounded-xl { border-radius: 1rem; }
+
