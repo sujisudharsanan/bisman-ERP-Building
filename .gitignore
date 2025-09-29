@@ -5,3 +5,7 @@ node_modules/
 *.log
 
 .npm-cache
+
+# Ignore build artifacts
+dist/
+my-frontend/.next/
