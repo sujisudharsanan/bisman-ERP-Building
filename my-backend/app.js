@@ -56,8 +56,12 @@ app.post('/api/login', async (req, res) => {
 
   const roleName = user.role && user.role.name ? user.role.name : null
   const token = jwt.sign({ sub: user.id, email: user.email, role: roleName }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '8h' })
-  // Set HttpOnly cookie
-  res.cookie('token', token, { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: 8 * 60 * 60 * 1000 })
+  // Set HttpOnly cookie; compute secure flag so local dev uses secure=false
+  const isProduction = process.env.NODE_ENV === 'production'
+  const hostHeader = (req && (req.hostname || (req.headers && req.headers.host))) || ''
+  const isLocalHost = String(hostHeader).includes('localhost') || String(hostHeader).includes('127.0.0.1')
+  const cookieSecure = Boolean(isProduction && !isLocalHost)
+  res.cookie('token', token, { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 8 * 60 * 60 * 1000 })
   res.json({ ok: true })
   } catch (err) {
     console.error('Login error', err)
@@ -72,7 +76,7 @@ app.get('/api/me', authenticate, async (req, res) => {
 
 // Logout: clear cookie
 app.post('/api/logout', (req, res) => {
-  res.clearCookie('token')
+  res.clearCookie('token', { path: '/' })
   res.json({ ok: true })
 })
 
