@@ -20,10 +20,8 @@ fi
 
 if [ -f my-backend/prisma/schema.prisma ]; then
   echo "[4] prisma generate"
-  (cd my-backend && env DATABASE_URL="$DBURL" npx --yes prisma generate) || true
 
   echo "[5] prisma migrate deploy"
-  (cd my-backend && env DATABASE_URL="$DBURL" npx --yes prisma migrate deploy) || true
 else
   echo "[4/5] prisma schema not found, skipping"
 fi

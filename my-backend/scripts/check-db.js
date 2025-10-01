@@ -5,9 +5,7 @@
 require('dotenv').config()
 const { Pool } = require('pg')
 
-const databaseUrl = process.env.DATABASE_URL
 if (!databaseUrl) {
-  console.error('ERROR: DATABASE_URL not set in environment or .env')
   process.exit(2)
 }
 

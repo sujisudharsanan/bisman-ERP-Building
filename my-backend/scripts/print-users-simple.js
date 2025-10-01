@@ -2,7 +2,6 @@ require('dotenv').config();
 const { Client } = require('pg');
 
 (async function main() {
-  const client = new Client({ connectionString: process.env.DATABASE_URL });
   try {
     await client.connect();
     const res = await client.query('SELECT id, email, password, role_id FROM users ORDER BY id DESC LIMIT 100');

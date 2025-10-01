@@ -2,13 +2,14 @@
 
 import Sidebar from './Sidebar';
 import { useRouter } from 'next/navigation';
+import api from '../../lib/api/axios';
 
 export default function DashboardLayout({ children }: { children: React.ReactNode }) {
   const router = useRouter();
 
   async function handleLogout() {
     try {
-      await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+      await api.post('/api/logout');
     } catch (e) {
       // ignore errors; still redirect
       console.error('logout failed', e);

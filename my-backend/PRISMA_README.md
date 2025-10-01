@@ -16,5 +16,4 @@ Prisma setup
    node prisma/db-test.js
 
 Notes:
-- Ensure DATABASE_URL in the repo root `.env` points to your running Postgres container.
 - If you want the Prisma CLI as a local script, use `npm run prisma:generate` etc.

@@ -9,14 +9,13 @@ export class DbHealthService {
   constructor() {
     const databaseUrl = process.env.DATABASE_URL || null;
     if (!databaseUrl) {
-      this.logger.warn('DATABASE_URL not set; DB health checks will fail');
       return;
     }
     this.pool = new Pool({ connectionString: databaseUrl });
   }
 
   async check() {
-    if (!this.pool) throw new Error('DATABASE_URL not configured');
+    if (!this.pool) return false;
     const client = await this.pool.connect();
     try {
       const res = await client.query('SELECT 1 as ok');

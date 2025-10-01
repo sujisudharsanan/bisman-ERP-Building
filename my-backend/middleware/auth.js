@@ -17,13 +17,13 @@ async function authenticate(req, res, next) {
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret')
     // Attach user record (optional) to request
-  const user = await prisma.user.findUnique({ where: { id: payload.sub }, include: { role: true } })
+  const user = await prisma.user.findUnique({ where: { id: payload.sub } })
     if (!user) return res.status(401).json({ error: 'invalid token user' })
     // remove sensitive fields
     delete user.password
   // normalize role onto req.user.roleName for simple checks
   req.user = user
-  req.user.roleName = user.role && user.role.name ? user.role.name : null
+  req.user.roleName = user.role || null
     next()
   } catch (err) {
     console.error('JWT auth error', err.message)

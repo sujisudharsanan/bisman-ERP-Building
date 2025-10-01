@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  backend:
+    # Development overrides: mount local source and run dev server only
+    command: sh -c "npm run dev"
+    volumes:
+      - ./my-backend:/usr/src/app:delegated
+      - /usr/src/app/node_modules
+    environment:
+      # Use internal compose network host for Postgres
+      DATABASE_URL: "postgresql://erp_admin:Suji%40123@postgres:5432/erp_main"
+      NODE_ENV: development
+      PORT: 3000
+    depends_on:
+      - postgres

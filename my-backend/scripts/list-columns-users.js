@@ -2,7 +2,6 @@ require('dotenv').config();
 const { Client } = require('pg');
 
 (async function main() {
-  const client = new Client({ connectionString: process.env.DATABASE_URL });
   try {
     await client.connect();
     const res = await client.query("SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name='users' ORDER BY ordinal_position");

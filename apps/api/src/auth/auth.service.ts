@@ -13,8 +13,6 @@ export class AuthService {
     const databaseUrl = process.env.DATABASE_URL || null;
     if (databaseUrl) {
       this.pool = new Pool({ connectionString: databaseUrl });
-    } else {
-      this.logger.warn('DATABASE_URL not set — auth will fall back to dev token behavior');
     }
   }
 

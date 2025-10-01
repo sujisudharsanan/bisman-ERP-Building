@@ -167,13 +167,12 @@ async function bootstrap() {
     }
     try {
       // Lazy-require pg to avoid adding a hard dependency at module load time
-      // when DATABASE_URL is not configured.
       // eslint-disable-next-line @typescript-eslint/no-var-requires
       const { Pool } = require('pg');
       const pool = new Pool({ connectionString: process.env.DATABASE_URL });
       try {
         await pool.query('SELECT 1');
-        res.json({ ok: true });
+        return res.json({ ok: true });
       } finally {
         try { await pool.end(); } catch (_) { /* ignore */ }
       }
@@ -221,10 +220,8 @@ async function bootstrap() {
   // controllers still receive /api requests.
   await app.init();
 
-  // Run an initial DB health check only when DATABASE_URL is provided. In
   // local dev it's common to not have a DB configured and attempting to
   // resolve the provider can throw inside Nest; skip in that case.
-  if (process.env.DATABASE_URL) {
     try {
       // Use require() in a try/catch so TypeScript doesn't fail module resolution
       // at build time for optional runtime-only modules.
@@ -258,9 +255,6 @@ async function bootstrap() {
     } catch (e) {
       console.warn('[DB HEALTH] check failed', e && (e.message || e));
     }
-  } else {
-    console.log('[DB HEALTH] skipping (DATABASE_URL not set)');
-  }
 
   // Start listening on shared port
   const port = Number(process.env.PORT || 3000);

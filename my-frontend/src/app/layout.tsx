@@ -7,6 +7,7 @@ function ReactQueryProvider({ children }: { children: React.ReactNode }) {
 }
 import { ThemeRegistry } from '@/lib/theme'
 import '../styles/globals.css'
+import LogoutButton from '@/components/ui/LogoutButton'
 
 export const metadata: Metadata = {
   title: 'ERP System',
@@ -18,9 +19,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="bg-gray-50 text-gray-900">
         <ReactQueryProvider>
-          <ThemeRegistry>{children}</ThemeRegistry>
+          <ThemeRegistry>
+            {/* Global logout button for all pages */}
+            <LogoutButton position="top-right" variant="danger" />
+            {children}
+          </ThemeRegistry>
         </ReactQueryProvider>
       </body>
     </html>
   )
+}
 }

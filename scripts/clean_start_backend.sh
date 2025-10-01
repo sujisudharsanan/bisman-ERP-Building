@@ -31,7 +31,6 @@ rm -f "$LOG" "$PIDFILE" || true
 
 echo "[CLEAN START] starting backend (logs -> $LOG)"
 # Start using npx ts-node to avoid npm wrapper races
-nohup env DATABASE_URL="$DBURL" PORT="$PORT" npx ts-node -r tsconfig-paths/register apps/api/src/main.ts > "$LOG" 2>&1 &
 echo $! > "$PIDFILE"
 
 sleep 3

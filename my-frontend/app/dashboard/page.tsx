@@ -1,8 +1,12 @@
 import React from 'react'
+import LogoutButton from '@/components/ui/LogoutButton'
 
 export default function DashboardPage(): JSX.Element {
   return (
     <div className="dashboard-root">
+      {/* Global logout button */}
+      <LogoutButton position="top-right" variant="danger" />
+      
       <style>{`
         * {
             margin: 0;
@@ -14,8 +18,14 @@ export default function DashboardPage(): JSX.Element {
         .dashboard-root {
             background: #1e1e1e;
             color: #d8d9da;
-            padding: 20px;
+            padding: 10px;
             min-height: 100vh;
+        }
+        
+        @media (min-width: 768px) {
+            .dashboard-root {
+                padding: 20px;
+            }
         }
         
         .dashboard {
@@ -25,14 +35,21 @@ export default function DashboardPage(): JSX.Element {
         
         .dashboard-header {
             background: #2b2b2b;
-            padding: 20px;
+            padding: 15px;
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border-left: 4px solid #ffa500;
         }
         
+        @media (min-width: 768px) {
+            .dashboard-header {
+                padding: 20px;
+                margin-bottom: 20px;
+            }
+        }
+        
         .dashboard-title {
-            font-size: 24px;
+            font-size: clamp(18px, 4vw, 24px);
             font-weight: 600;
             color: #ffa500;
             margin-bottom: 5px;
@@ -40,22 +57,41 @@ export default function DashboardPage(): JSX.Element {
         
         .dashboard-subtitle {
             color: #888;
-            font-size: 14px;
+            font-size: clamp(12px, 2.5vw, 14px);
         }
         
         .grid {
             display: grid;
-            grid-template-columns: repeat(3, 1fr);
-            gap: 20px;
+            grid-template-columns: 1fr;
+            gap: 15px;
             margin-bottom: 20px;
+        }
+        
+        @media (min-width: 768px) {
+            .grid {
+                grid-template-columns: repeat(2, 1fr);
+                gap: 20px;
+            }
+        }
+        
+        @media (min-width: 1024px) {
+            .grid {
+                grid-template-columns: repeat(3, 1fr);
+            }
         }
         
         .panel {
             background: #2b2b2b;
             border-radius: 8px;
-            padding: 15px;
+            padding: 12px;
             border: 1px solid #444;
             transition: transform 0.2s;
+        }
+        
+        @media (min-width: 768px) {
+            .panel {
+                padding: 15px;
+            }
         }
         
         .panel:hover {
@@ -65,33 +101,55 @@ export default function DashboardPage(): JSX.Element {
         
         .panel-header {
             display: flex;
-            justify-content: between;
+            justify-content: space-between;
             align-items: center;
-            margin-bottom: 15px;
+            margin-bottom: 12px;
             border-bottom: 1px solid #444;
-            padding-bottom: 10px;
+            padding-bottom: 8px;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        @media (min-width: 768px) {
+            .panel-header {
+                margin-bottom: 15px;
+                padding-bottom: 10px;
+                flex-wrap: nowrap;
+            }
         }
         
         .panel-title {
-            font-size: 16px;
+            font-size: clamp(14px, 3vw, 16px);
             font-weight: 600;
             color: #ffa500;
         }
         
         .panel-type {
             background: #444;
-            padding: 2px 8px;
+            padding: 2px 6px;
             border-radius: 4px;
-            font-size: 12px;
+            font-size: clamp(10px, 2vw, 12px);
             color: #ccc;
         }
         
+        @media (min-width: 768px) {
+            .panel-type {
+                padding: 2px 8px;
+            }
+        }
+        
         .panel-content {
-            height: 200px;
+            height: 150px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
+        }
+        
+        @media (min-width: 768px) {
+            .panel-content {
+                height: 200px;
+            }
         }
         
         .graph-placeholder {
@@ -110,14 +168,20 @@ export default function DashboardPage(): JSX.Element {
         }
         
         .stat-value {
-            font-size: 32px;
+            font-size: clamp(24px, 6vw, 32px);
             font-weight: 700;
             color: #4CAF50;
-            margin: 10px 0;
+            margin: 8px 0;
+        }
+        
+        @media (min-width: 768px) {
+            .stat-value {
+                margin: 10px 0;
+            }
         }
         
         .stat-label {
-            font-size: 14px;
+            font-size: clamp(12px, 2.5vw, 14px);
             color: #888;
         }
         
@@ -155,18 +219,6 @@ export default function DashboardPage(): JSX.Element {
             padding: 8px;
             background: #333;
             border-radius: 4px;
-        }
-        
-        @media (max-width: 1200px) {
-            .grid {
-                grid-template-columns: repeat(2, 1fr);
-            }
-        }
-        
-        @media (max-width: 768px) {
-            .grid {
-                grid-template-columns: 1fr;
-            }
         }
       `}</style>
 
