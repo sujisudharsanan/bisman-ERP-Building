@@ -177,4 +177,232 @@ app.get('/api/admin', authenticate, requireRole('ADMIN'), async (req, res) => {
   res.json({ ok: true, msg: 'admin area', user: req.user })
 })
 
+// Hub Incharge API endpoints
+// Hub Incharge Profile
+app.get('/api/hub-incharge/profile', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: req.user.id },
+      select: {
+        username: true,
+        email: true,
+        role: true
+      }
+    })
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' })
+    }
+
+    res.json({
+      name: user.username || 'Hub Incharge',
+      role: 'Hub Incharge',
+      client: 'BISMAN ERP',
+      location: 'Mumbai Hub',
+      contact: user.email,
+      recognition: ['Employee of the Month', 'Safety Champion']
+    })
+  } catch (err) {
+    console.error('Profile fetch error:', err)
+    res.status(500).json({ error: 'Failed to fetch profile' })
+  }
+})
+
+// Hub Incharge Approvals
+app.get('/api/hub-incharge/approvals', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+  try {
+    // Mock approvals data
+    res.json([
+      { id: 1, type: 'Purchase Request', amount: 5000, status: 'pending', date: '2024-10-01' },
+      { id: 2, type: 'Expense Claim', amount: 1200, status: 'approved', date: '2024-10-02' },
+      { id: 3, type: 'Leave Request', amount: 0, status: 'pending', date: '2024-10-01' }
+    ])
+  } catch (error) {
+    console.error('Hub incharge approvals error:', error)
+    res.status(500).json({ message: 'Failed to fetch approvals' })
+  }
+})
+
+app.patch('/api/hub-incharge/approvals/:id', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+  try {
+    const { id } = req.params
+    const { status, remarks } = req.body
+    
+    // TODO: Update in database
+    console.log(`Updating approval ${id} to ${status}:`, remarks)
+    
+    res.json({ success: true, message: `Approval ${status} successfully` })
+  } catch (err) {
+    console.error('Approval update error:', err)
+    res.status(500).json({ error: 'Failed to update approval' })
+  }
+})
+
+// Hub Incharge Purchases
+app.get('/api/hub-incharge/purchases', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+  try {
+    const purchases = [
+      { id: 1, vendor: "Office Supplies Co", amount: 12000, status: "pending", date: "2025-10-01" },
+      { id: 2, vendor: "Tech Solutions", amount: 45000, status: "approved", date: "2025-09-28" }
+    ]
+    res.json(purchases)
+  } catch (err) {
+    console.error('Purchases fetch error:', err)
+    res.status(500).json({ error: 'Failed to fetch purchases' })
+  }
+})
+
+// Hub Incharge Expenses
+app.get('/api/hub-incharge/expenses', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+  try {
+    const expenses = [
+      { id: 1, amount: 3500, category: "Travel", status: "approved", date: "2025-09-25" },
+      { id: 2, amount: 1200, category: "Meals", status: "pending", date: "2025-10-01" }
+    ]
+    res.json(expenses)
+  } catch (err) {
+    console.error('Expenses fetch error:', err)
+    res.status(500).json({ error: 'Failed to fetch expenses' })
+  }
+})
+
+// Submit new expense
+app.post('/api/hub-incharge/expenses', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+  try {
+    const { amount, category, remarks } = req.body
+    
+    // TODO: Save to database
+    console.log('New expense submission:', { amount, category, remarks, userId: req.user.id })
+    
+    res.json({ success: true, message: 'Expense submitted successfully' })
+  } catch (err) {
+    console.error('Expense submission error:', err)
+    res.status(500).json({ error: 'Failed to submit expense' })
+  }
+})
+
+// Hub Incharge Performance
+app.get('/api/hub-incharge/performance', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+  try {
+    const performance = {
+      claims: { approved: 65, pending: 25, rejected: 10 },
+      trends: [
+        { month: "Aug", value: 45 },
+        { month: "Sep", value: 52 },
+        { month: "Oct", value: 38 }
+      ],
+      sla: { avgResponseTime: "2.3 hours", onTimePercentage: 94 }
+    }
+    res.json(performance)
+  } catch (err) {
+    console.error('Performance fetch error:', err)
+    res.status(500).json({ error: 'Failed to fetch performance data' })
+  }
+})
+
+// Hub Incharge Messages
+app.get('/api/hub-incharge/messages', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+  try {
+    const messages = [
+      { id: 1, text: "New policy update available", read: false, date: "2025-10-02" },
+      { id: 2, text: "Monthly report submission deadline", read: true, date: "2025-10-01" }
+    ]
+    res.json(messages)
+  } catch (err) {
+    console.error('Messages fetch error:', err)
+    res.status(500).json({ error: 'Failed to fetch messages' })
+  }
+})
+
+// Acknowledge message
+app.patch('/api/hub-incharge/messages/:id/ack', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+  try {
+    const { id } = req.params
+    
+    // TODO: Update in database
+    console.log(`Acknowledging message ${id}`)
+    
+    res.json({ success: true, message: 'Message acknowledged' })
+  } catch (err) {
+    console.error('Message ack error:', err)
+    res.status(500).json({ error: 'Failed to acknowledge message' })
+  }
+})
+
+// Hub Incharge Tasks
+app.get('/api/hub-incharge/tasks', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+  try {
+    const tasks = [
+      { id: 1, title: "Review expense reports", assignee: "Self", deadline: "2025-10-05", status: "pending" },
+      { id: 2, title: "Approve purchase orders", assignee: "Alice Smith", deadline: "2025-10-03", status: "completed" }
+    ]
+    res.json(tasks)
+  } catch (err) {
+    console.error('Tasks fetch error:', err)
+    res.status(500).json({ error: 'Failed to fetch tasks' })
+  }
+})
+
+// Create new task
+app.post('/api/hub-incharge/tasks', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+  try {
+    const { title, details, deadline, assignedTo } = req.body
+    
+    // TODO: Save to database
+    console.log('New task creation:', { title, details, deadline, assignedTo, createdBy: req.user.id })
+    
+    res.json({ success: true, message: 'Task created successfully' })
+  } catch (err) {
+    console.error('Task creation error:', err)
+    res.status(500).json({ error: 'Failed to create task' })
+  }
+})
+
+// Update task status
+app.patch('/api/hub-incharge/tasks/:id', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+  try {
+    const { id } = req.params
+    const { status } = req.body
+    
+    // TODO: Update in database
+    console.log(`Updating task ${id} to ${status}`)
+    
+    res.json({ success: true, message: 'Task updated successfully' })
+  } catch (err) {
+    console.error('Task update error:', err)
+    res.status(500).json({ error: 'Failed to update task' })
+  }
+})
+
+// Hub Incharge Settings
+app.get('/api/hub-incharge/settings', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+  try {
+    const settings = {
+      language: 'English',
+      theme: 'Light',
+      emailNotifications: true,
+      smsNotifications: true
+    }
+    res.json(settings)
+  } catch (err) {
+    console.error('Settings fetch error:', err)
+    res.status(500).json({ error: 'Failed to fetch settings' })
+  }
+})
+
+// Update settings
+app.patch('/api/hub-incharge/settings', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+  try {
+    const { language, theme, emailNotifications, smsNotifications } = req.body
+    
+    // TODO: Save to database
+    console.log('Settings update:', { language, theme, emailNotifications, smsNotifications, userId: req.user.id })
+    
+    res.json({ success: true, message: 'Settings updated successfully' })
+  } catch (err) {
+    console.error('Settings update error:', err)
+    res.status(500).json({ error: 'Failed to update settings' })
+  }
+})
+
 module.exports = app

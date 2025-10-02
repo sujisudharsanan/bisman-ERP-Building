@@ -1,11 +1,100 @@
-import React from 'react'
+"use client"
+import React, { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import LogoutButton from '@/components/ui/LogoutButton'
+import HubInchargeAccessLink from '@/components/ui/HubInchargeAccessLink'
+import api from '@/lib/api/axios'
 
 export default function DashboardPage(): JSX.Element {
+  const [loading, setLoading] = useState(true)
+  const [user, setUser] = useState<any>(null)
+  const [authError, setAuthError] = useState(false)
+  const router = useRouter()
+
+  useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        console.log('Dashboard: Fetching user profile...')
+        const response = await api.get('/api/me')
+        
+        if (response.data && response.data.user) {
+          const userData = response.data.user
+          console.log('Dashboard: User data received:', userData)
+          
+          // If user is STAFF, redirect to hub-incharge
+          if (userData.roleName === 'STAFF') {
+            console.log('Dashboard: STAFF user detected, redirecting to hub-incharge')
+            router.push('/hub-incharge')
+            return
+          }
+          
+          // For ADMIN/MANAGER users, set user data and show dashboard
+          setUser(userData)
+          setAuthError(false)
+        } else {
+          console.log('Dashboard: No user data in response')
+          setAuthError(true)
+        }
+      } catch (error) {
+        console.error('Dashboard: Authentication error:', error)
+        setAuthError(true)
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchUserProfile()
+  }, [router])
+
+  // Show loading state
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Loading dashboard...</p>
+        </div>
+      </div>
+    )
+  }
+
+  // Show auth error state
+  if (authError || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-gray-100">
+        <div className="text-center">
+          <div className="bg-white p-8 rounded-lg shadow-md">
+            <h2 className="text-xl font-semibold text-red-600 mb-4">Authentication Required</h2>
+            <p className="text-gray-600 mb-4">Please log in to access the dashboard.</p>
+            <button
+              onClick={() => router.push('/login')}
+              className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
+            >
+              Go to Login
+            </button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="dashboard-root">
       {/* Global logout button */}
       <LogoutButton position="top-right" variant="danger" />
+      
+      {/* User welcome message */}
+      <div className="mb-4 p-4 bg-gray-800 rounded-lg">
+        <h1 className="text-xl font-semibold text-white">
+          Welcome, {user?.username || user?.email || 'User'}!
+        </h1>
+        <p className="text-gray-300">
+          Role: {user?.roleName || user?.role || 'Unknown'} | Dashboard Access
+        </p>
+      </div>
+      
+      {/* Hub Incharge Access Link for Admin/Manager */}
+      <HubInchargeAccessLink />
       
       <style>{`
         * {

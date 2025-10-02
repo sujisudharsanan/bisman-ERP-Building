@@ -20,10 +20,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // on mount, if token exists try to fetch current user
     const tryLoad = async () => {
       try {
-  // Cookie-based auth: attempt to fetch current user; server reads cookie
-  const res = await api.get('/api/me')
-  setUser(res.data.user || null)
-      } catch (e) {
+        // Cookie-based auth: attempt to fetch current user; server reads cookie
+        const res = await api.get('/api/me')
+        setUser(res.data.user || null)
+      } catch (e: any) {
+        console.error('Auth check failed:', e.response?.status, e.response?.data || e.message)
         setUser(null)
       }
     }
@@ -31,10 +32,20 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, [])
 
   async function login(email: string, password: string) {
-  // Server will set HttpOnly cookie on successful login
-  await api.post('/api/login', { email, password })
-  const me = await api.get('/api/me')
-  setUser(me.data.user || null)
+    // Server will set HttpOnly cookie on successful login
+    const response = await api.post('/api/login', { email, password })
+    const me = await api.get('/api/me')
+    const user = me.data.user || null
+    setUser(user)
+    
+    // Role-based redirect
+    if (user?.roleName === 'STAFF') {
+      // Staff users go directly to Hub Incharge dashboard
+      window.location.href = '/hub-incharge'
+    } else {
+      // Admin and Manager go to main dashboard
+      window.location.href = '/dashboard'
+    }
   }
 
   async function logout() {
