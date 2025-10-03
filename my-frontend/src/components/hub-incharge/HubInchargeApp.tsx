@@ -158,16 +158,652 @@ const DashboardPage = ({ data }) => {
 const AboutMePage = ({ data }) => {
   if (!data?.profile) return <div className="p-6">Loading profile...</div>;
   
+  // Enhanced employee data structure for the new layout
+  const employees = [
+    {
+      id: 1,
+      name: data.profile.name || "Staff Member",
+      role: data.profile.role || "Hub Incharge",
+      photo: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D&auto=format&fit=crop&w=200&h=200&q=80",
+      about: `Experienced ${data.profile.role || 'Hub Incharge'} at ${data.profile.client || 'BISMAN ERP'} in ${data.profile.location || 'Mumbai Hub'}. Dedicated professional with excellent performance in operations management and team coordination.`,
+      details: [
+        { label: "Employee ID", value: "EMP-00123" },
+        { label: "Designation", value: data.profile.role || "Hub Incharge" },
+        { label: "Joining Date", value: "2020-03-15" },
+        { label: "Date of Birth (DOB)", value: "1990-07-20" },
+        { label: "Official Email", value: data.profile.contact || "staff@business.com" },
+        { label: "Official Phone", value: "+91 9876543210" },
+        { label: "Blood Group", value: "O+" },
+        { label: "Home Phone Number", value: "+91 9876543211" },
+        { label: "Current Address", value: "123 Corporate Lane, Business District" },
+        { label: "State / Pincode", value: "Maharashtra 400001" },
+        { label: "House Location (Geocode)", value: "Lat: 19.0760, Lon: 72.8777" }
+      ],
+      education: {
+        title: "Education Qualification",
+        items: [
+          "Master of Business Administration - Mumbai University (2018)",
+          "Bachelor of Commerce - Mumbai University (2016)"
+        ]
+      },
+      awards: {
+        title: "Achievements and Awards",
+        items: data.profile.recognition?.length > 0 ? 
+          data.profile.recognition.map(award => `Achievement: ${award}`) : 
+          [
+            "Employee of the Month - July 2023",
+            "Safety Champion Award - 2022",
+            "Excellence in Operations - 2021"
+          ]
+      },
+      experience: {
+        title: "Experience History: Designations & Expertise",
+        items: [
+          `<strong>${data.profile.role || 'Hub Incharge'}</strong> - ${data.profile.client || 'BISMAN ERP'} (March 2020 - Present): Leading operations at ${data.profile.location || 'Mumbai Hub'} with focus on efficiency and safety standards.`,
+          "<strong>Assistant Manager</strong> - Previous Company (June 2018 - February 2020): Managed daily operations and coordinated with multiple teams.",
+          "<strong>Executive</strong> - Entry Level Company (August 2016 - May 2018): Started career in operations management with focus on process improvement."
+        ]
+      }
+    },
+    // Sample team members
+    {
+      id: 2,
+      name: "Rajesh Kumar",
+      role: "Assistant Manager",
+      photo: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200&q=80",
+      about: "Dedicated Assistant Manager with 5 years of experience in fuel operations and team management.",
+      details: [
+        { label: "Employee ID", value: "EMP-00124" },
+        { label: "Designation", value: "Assistant Manager" },
+        { label: "Joining Date", value: "2021-06-10" },
+        { label: "Official Email", value: "rajesh.kumar@business.com" },
+        { label: "Official Phone", value: "+91 9876543211" }
+      ]
+    },
+    {
+      id: 3,
+      name: "Priya Sharma",
+      role: "Supervisor",
+      photo: "https://images.unsplash.com/photo-1494790108755-2616b612b786?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200&q=80",
+      about: "Experienced supervisor ensuring quality operations and customer satisfaction.",
+      details: [
+        { label: "Employee ID", value: "EMP-00125" },
+        { label: "Designation", value: "Supervisor" },
+        { label: "Joining Date", value: "2022-01-15" },
+        { label: "Official Email", value: "priya.sharma@business.com" },
+        { label: "Official Phone", value: "+91 9876543212" }
+      ]
+    },
+    {
+      id: 4,
+      name: "Amit Patel",
+      role: "Cashier",
+      photo: "https://images.unsplash.com/photo-1560250097-0b93528c311a?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200&q=80",
+      about: "Detail-oriented cashier with excellent customer service skills and accuracy in transactions.",
+      details: [
+        { label: "Employee ID", value: "EMP-00126" },
+        { label: "Designation", value: "Cashier" },
+        { label: "Joining Date", value: "2022-08-20" },
+        { label: "Official Email", value: "amit.patel@business.com" },
+        { label: "Official Phone", value: "+91 9876543213" }
+      ]
+    },
+    {
+      id: 5,
+      name: "Sunita Reddy",
+      role: "Safety Officer",
+      photo: "https://images.unsplash.com/photo-1580489944761-15a19d654956?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200&q=80",
+      about: "Certified safety officer ensuring compliance with all safety regulations and protocols.",
+      details: [
+        { label: "Employee ID", value: "EMP-00127" },
+        { label: "Designation", value: "Safety Officer" },
+        { label: "Joining Date", value: "2021-11-05" },
+        { label: "Official Email", value: "sunita.reddy@business.com" },
+        { label: "Official Phone", value: "+91 9876543214" }
+      ]
+    }
+  ];
+
+  const [activeEmployee, setActiveEmployee] = React.useState(employees[0]);
+  const [selectedPhoto, setSelectedPhoto] = React.useState(null);
+  const [searchTerm, setSearchTerm] = React.useState("");
+  const [filteredEmployees, setFilteredEmployees] = React.useState(employees);
+  const [uploading, setUploading] = React.useState(false);
+
+  // Filter employees based on search term
+  React.useEffect(() => {
+    const filtered = employees.filter(employee =>
+      employee.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      employee.role.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+    setFilteredEmployees(filtered);
+  }, [searchTerm]);
+
+  // Load user's existing profile picture
+  React.useEffect(() => {
+    const loadProfilePicture = async () => {
+      try {
+        const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+        const response = await fetch(`${baseURL}/api/upload/profile-pic`, {
+          method: 'GET',
+          credentials: 'include'
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.profile_pic_url) {
+            setSelectedPhoto(`${baseURL}${result.profile_pic_url}`);
+          }
+        }
+      } catch (error) {
+        console.log('Could not load profile picture:', error.message);
+      }
+    };
+
+    loadProfilePicture();
+  }, []);
+
+  const handlePhotoUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+    
+    // Validate file type
+    const validTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    if (!validTypes.includes(file.type)) {
+      alert('Please upload a valid image file (JPEG, PNG, GIF, WebP)');
+      return;
+    }
+    
+    // Validate file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('File size must be less than 2MB');
+      return;
+    }
+
+    setUploading(true);
+
+    try {
+      // Create FormData for file upload
+      const formData = new FormData();
+      formData.append('profile_pic', file);
+
+      const baseURL = process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const response = await fetch(`${baseURL}/api/upload/profile-pic`, {
+        method: 'POST',
+        credentials: 'include',
+        body: formData
+      });
+
+      const result = await response.json();
+
+      if (response.ok && result.success) {
+        // Update the photo URL immediately
+        const fullImageUrl = `${baseURL}${result.url}`;
+        setSelectedPhoto(fullImageUrl);
+        
+        alert('Profile picture updated successfully!');
+        
+        // Optionally refresh the profile data
+        if (typeof refetch === 'function') {
+          refetch();
+        }
+      } else {
+        throw new Error(result.message || 'Upload failed');
+      }
+    } catch (error) {
+      console.error('Upload error:', error);
+      alert(`Upload failed: ${error.message}`);
+    } finally {
+      setUploading(false);
+      // Clear the file input
+      event.target.value = '';
+    }
+  };
+
   return (
-    <div className="p-4 sm:p-6">
-      <h2 className="text-xl font-bold mb-4">About Me</h2>
-      <div className="bg-white shadow rounded-2xl p-4 space-y-3">
-        <p><b>Name:</b> {data.profile.name}</p>
-        <p><b>Role:</b> {data.profile.role}</p>
-        <p><b>Client:</b> {data.profile.client}</p>
-        <p><b>Location:</b> {data.profile.location}</p>
-        <p><b>Recognition:</b> {data.profile.recognition?.join(", ") || 'None'}</p>
-        <p><b>Contact:</b> {data.profile.contact}</p>
+    <div style={{
+      fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
+      margin: 0,
+      backgroundColor: '#f4f7f6',
+      color: '#6B7280',
+      lineHeight: 1.6,
+      minHeight: '100vh'
+    }}>
+      <style jsx>{`
+        .profile-container {
+          max-width: 1400px;
+          margin: 30px auto;
+          padding: 0 20px;
+          display: flex;
+          gap: 30px;
+        }
+        
+        .team-sidebar {
+          flex: 0 0 280px;
+          background-color: white;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+          padding: 20px;
+          height: fit-content;
+          position: sticky;
+          top: 20px;
+        }
+
+        .team-sidebar h3 {
+          color: #3B82F6;
+          font-size: 18px;
+          margin-bottom: 15px;
+          text-align: center;
+          border-bottom: 2px solid #E5E7EB;
+          padding-bottom: 10px;
+        }
+
+        .search-box {
+          width: 100%;
+          padding: 10px;
+          border: 1px solid #E5E7EB;
+          border-radius: 6px;
+          margin-bottom: 15px;
+          font-size: 14px;
+          transition: border-color 0.2s;
+        }
+
+        .search-box:focus {
+          outline: none;
+          border-color: #3B82F6;
+          box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.1);
+        }
+
+        .team-members-scroll {
+          max-height: 500px;
+          overflow-y: auto;
+          padding-right: 5px;
+        }
+
+        .team-members-scroll::-webkit-scrollbar {
+          width: 6px;
+        }
+
+        .team-members-scroll::-webkit-scrollbar-track {
+          background: #f1f1f1;
+          border-radius: 3px;
+        }
+
+        .team-members-scroll::-webkit-scrollbar-thumb {
+          background: #3B82F6;
+          border-radius: 3px;
+        }
+
+        .team-member-card {
+          display: flex;
+          align-items: center;
+          padding: 12px;
+          margin-bottom: 8px;
+          border-radius: 6px;
+          cursor: pointer;
+          transition: all 0.2s;
+          border: 1px solid transparent;
+        }
+
+        .team-member-card:hover {
+          background-color: #F8FAFC;
+          border-color: #3B82F6;
+        }
+
+        .team-member-card.active {
+          background-color: #EBF4FF;
+          border-color: #3B82F6;
+        }
+
+        .team-member-photo {
+          width: 40px;
+          height: 40px;
+          border-radius: 50%;
+          object-fit: cover;
+          margin-right: 12px;
+          border: 2px solid #E5E7EB;
+        }
+
+        .team-member-info h4 {
+          font-size: 14px;
+          font-weight: 600;
+          color: #374151;
+          margin: 0 0 2px 0;
+        }
+
+        .team-member-info p {
+          font-size: 12px;
+          color: #6B7280;
+          margin: 0;
+        }
+        
+        .profile-section {
+          flex: 1;
+          display: flex;
+          gap: 20px;
+          margin-bottom: 40px;
+        }
+
+        .profile-left-column {
+          flex: 0 0 320px;
+        }
+        
+        .profile-card {
+          background-color: white;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+          padding: 30px;
+          margin-bottom: 20px;
+        }
+
+        .photo-block {
+          text-align: center;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+        }
+        
+        .photo-block img {
+          width: 180px;
+          height: 180px;
+          border-radius: 50%;
+          object-fit: cover;
+          margin: 0 auto 15px auto;
+          border: 4px solid #3B82F6;
+          display: block;
+        }
+        
+        .photo-block h2 {
+          font-size: 22px;
+          margin-bottom: 5px;
+          color: #374151;
+          text-align: center;
+        }
+        
+        .photo-block p {
+          color: #3B82F6;
+          font-weight: 500;
+          margin-bottom: 20px;
+          text-align: center;
+        }
+        
+        .upload-option {
+          padding: 10px;
+          border: 1px solid #E5E7EB;
+          background-color: #F9FAFB;
+          border-radius: 4px;
+          cursor: pointer;
+          transition: background-color 0.2s;
+          text-align: center;
+          width: 100%;
+          margin: 0 auto;
+        }
+        
+        .upload-option:hover {
+          background-color: #EEEEEE;
+          outline: 2px solid #F59E0B;
+        }
+
+        .about-me-text {
+          text-align: left;
+        }
+
+        .about-me-text h3 {
+          color: #F59E0B;
+          font-size: 20px;
+          margin-top: 0;
+          text-align: left;
+        }
+
+        .profile-right-column {
+          flex: 1;
+        }
+
+        .details-wrapper {
+          background-color: white;
+          border-radius: 8px;
+          box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+          padding: 30px;
+        }
+
+        .details-wrapper h1 {
+          font-size: 28px;
+          color: #3B82F6;
+          margin-bottom: 20px;
+          padding-bottom: 10px;
+          border-bottom: 2px solid #E5E7EB;
+        }
+
+        .profile-detail-group {
+          display: flex;
+          flex-wrap: wrap;
+          gap: 20px 40px;
+        }
+
+        .detail-item {
+          flex: 1 1 40%;
+          min-width: 250px;
+          padding: 5px 0;
+          border-bottom: 1px dotted #E5E7EB;
+        }
+        
+        .detail-item strong {
+          display: block;
+          margin-bottom: 2px;
+          color: #374151;
+          font-size: 14px;
+          font-weight: 700;
+        }
+        
+        .detail-item span {
+          color: #6B7280;
+          font-size: 16px;
+        }
+
+        .experience-container {
+          margin-top: 30px;
+          padding-top: 20px;
+          border-top: 1px solid #E5E7EB;
+        }
+        
+        .experience-container h3 {
+          color: #F59E0B;
+          margin-top: 0;
+          font-size: 20px;
+        }
+        
+        .experience-item {
+          background-color: #FFFBEB;
+          border-left: 5px solid #F59E0B;
+          padding: 15px;
+          margin-bottom: 15px;
+          border-radius: 4px;
+        }
+        
+        .experience-item strong {
+          color: #374151;
+          font-size: 16px;
+          display: block;
+          margin-bottom: 5px;
+        }
+        
+        .experience-item ul {
+          list-style-type: disc;
+          padding-left: 20px;
+          margin: 5px 0 0 0;
+          color: #6B7280;
+        }
+
+        @media (max-width: 1024px) {
+          .profile-container { 
+            flex-direction: column;
+            gap: 20px;
+          }
+          
+          .team-sidebar {
+            flex: 1 1 100%;
+            position: static;
+          }
+
+          .team-members-scroll {
+            max-height: 200px;
+          }
+        }
+
+        @media (max-width: 768px) {
+          .profile-container { 
+            padding: 0 15px; 
+          }
+          
+          .profile-section { 
+            flex-direction: column; 
+          }
+          
+          .profile-left-column, .profile-right-column { 
+            flex: 1 1 100%; 
+          }
+          
+          .profile-card, .details-wrapper { 
+            padding: 20px; 
+          }
+          
+          .profile-detail-group { 
+            gap: 20px; 
+          }
+          
+          .detail-item { 
+            flex: 1 1 100%; 
+            min-width: auto; 
+          }
+        }
+      `}</style>
+
+      <div className="profile-container">
+        {/* Team Members Sidebar */}
+        <aside className="team-sidebar">
+          <h3>Team Members</h3>
+          <input
+            type="text"
+            placeholder="Search employees..."
+            className="search-box"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+          <div className="team-members-scroll">
+            {filteredEmployees.map((employee) => (
+              <div
+                key={employee.id}
+                className={`team-member-card ${activeEmployee.id === employee.id ? 'active' : ''}`}
+                onClick={() => setActiveEmployee(employee)}
+              >
+                <img
+                  src={employee.photo}
+                  alt={employee.name}
+                  className="team-member-photo"
+                />
+                <div className="team-member-info">
+                  <h4>{employee.name}</h4>
+                  <p>{employee.role}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+          {filteredEmployees.length === 0 && (
+            <p style={{textAlign: 'center', color: '#6B7280', fontSize: '14px', marginTop: '20px'}}>
+              No employees found
+            </p>
+          )}
+        </aside>
+
+        <main>
+          <section className="profile-section">
+            <div className="profile-left-column">
+              <div className="profile-card photo-block">
+                <img 
+                  src={selectedPhoto || activeEmployee.photo} 
+                  alt={`Portrait of ${activeEmployee.name}`}
+                  id="employee-photo"
+                  style={{margin: '0 auto 15px auto', display: 'block'}}
+                />
+                <div 
+                  className="upload-option" 
+                  onClick={() => !uploading && document.getElementById('photo-upload-input').click()}
+                  style={{
+                    textAlign: 'center', 
+                    width: '100%',
+                    opacity: uploading ? 0.6 : 1,
+                    cursor: uploading ? 'not-allowed' : 'pointer'
+                  }}
+                >
+                  <span>
+                    {uploading ? 'Uploading...' : 'Click to Upload/Change Photo'}
+                  </span>
+                  <input 
+                    type="file" 
+                    id="photo-upload-input" 
+                    accept="image/*" 
+                    style={{display: 'none'}}
+                    onChange={handlePhotoUpload}
+                    disabled={uploading}
+                  />
+                </div>
+                <h2 style={{textAlign: 'center'}}>{activeEmployee.name}</h2>
+                <p style={{textAlign: 'center'}}>{activeEmployee.role}</p>
+              </div>
+              
+              <div className="profile-card about-me-text">
+                <h3>ABOUT ME</h3>
+                <p>{activeEmployee.about}</p>
+              </div>
+            </div>
+
+            <div className="profile-right-column">
+              <div className="details-wrapper">
+                <h1>Official Profile & Details</h1>
+
+                <div className="profile-detail-group">
+                  {activeEmployee.details.map((detail, index) => (
+                    <div key={index} className="detail-item">
+                      <strong>{detail.label}:</strong>
+                      <span>{detail.value}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <div className="experience-container">
+                  <h3>EDUCATION & PROFESSIONAL HISTORY</h3>
+                  
+                  <div className="experience-item">
+                    <strong>{activeEmployee.education.title}</strong>
+                    <ul>
+                      {activeEmployee.education.items.map((item, index) => (
+                        <li key={index}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+                  
+                  <div className="experience-item">
+                    <strong>{activeEmployee.awards.title}</strong>
+                    <ul>
+                      {activeEmployee.awards.items.map((item, index) => (
+                        <li key={index}>{item}</li>
+                      ))}
+                    </ul>
+                  </div>
+
+                  <div className="experience-item">
+                    <strong>{activeEmployee.experience.title}</strong>
+                    <ul>
+                      {activeEmployee.experience.items.map((item, index) => (
+                        <li key={index} dangerouslySetInnerHTML={{__html: item}} />
+                      ))}
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </section>
+        </main>
       </div>
     </div>
   );

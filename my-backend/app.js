@@ -1,4 +1,5 @@
 const express = require('express')
+const path = require('path')
 const { Pool } = require('pg')
 const { PrismaClient } = require('@prisma/client')
 const bcrypt = require('bcryptjs')
@@ -29,6 +30,13 @@ app.use((req, res, next) => {
 })
 
 app.use(express.json())
+
+// Serve static files for uploads
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
+
+// Upload routes
+const uploadRoutes = require('./routes/upload')
+app.use('/api/upload', uploadRoutes)
 
 const prisma = new PrismaClient()
 
