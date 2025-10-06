@@ -3,47 +3,47 @@
  * Use this template for all new pages to ensure consistency
  */
 
-import React from 'react'
-import { Metadata } from 'next'
-import { Card } from '@/components/ui/Card'
-import { PermissionGate } from '@/components/common/PermissionGate'
-import { ForbiddenPage } from '@/components/common/ForbiddenPage'
-import { LoadingPage } from '@/components/common/LoadingPage'
-import { ErrorBoundary } from '@/components/common/ErrorBoundary'
+import React from 'react';
+import { Metadata } from 'next';
+import { Card } from '@/components/ui/Card';
+import { PermissionGate } from '@/components/common/PermissionGate';
+import { ForbiddenPage } from '@/components/common/ForbiddenPage';
+import { LoadingPage } from '@/components/common/LoadingPage';
+import { ErrorBoundary } from '@/components/common/ErrorBoundary';
 
 // TypeScript interfaces for props and data
 interface PageProps {
-  searchParams?: { [key: string]: string | string[] | undefined }
-  params?: { [key: string]: string }
+  searchParams?: { [key: string]: string | string[] | undefined };
+  params?: { [key: string]: string };
 }
 
 interface PageData {
   // Define your data structure here
-  items: any[]
-  totalCount: number
-  loading: boolean
-  error: string | null
+  items: any[];
+  totalCount: number;
+  loading: boolean;
+  error: string | null;
 }
 
 // Metadata for SEO and page info
 export const metadata: Metadata = {
   title: 'Page Title | BISMAN ERP',
   description: 'Page description for SEO',
-}
+};
 
 // Main page component
 export default function PageTemplate({ searchParams, params }: PageProps) {
   return (
     <ErrorBoundary>
-      <PermissionGate 
-        featureKey="feature-name" 
+      <PermissionGate
+        featureKey="feature-name"
         action="view"
         fallback={<ForbiddenPage />}
       >
         <PageContent searchParams={searchParams} params={params} />
       </PermissionGate>
     </ErrorBoundary>
-  )
+  );
 }
 
 // Separate content component for better organization
@@ -53,49 +53,48 @@ function PageContent({ searchParams, params }: PageProps) {
     items: [],
     totalCount: 0,
     loading: true,
-    error: null
-  })
+    error: null,
+  });
 
   // Fetch data effect
   React.useEffect(() => {
-    loadData()
-  }, [])
+    loadData();
+  }, []);
 
   const loadData = async () => {
     try {
-      setData(prev => ({ ...prev, loading: true, error: null }))
-      
+      setData(prev => ({ ...prev, loading: true, error: null }));
+
       // TODO: Replace with actual API call
       // const response = await api.get('/api/v1/your-endpoint')
-      // setData(prev => ({ 
-      //   ...prev, 
+      // setData(prev => ({
+      //   ...prev,
       //   items: response.data.data,
       //   totalCount: response.data.totalCount,
-      //   loading: false 
+      //   loading: false
       // }))
-      
+
       // Mock data for template
       setTimeout(() => {
         setData({
           items: [],
           totalCount: 0,
           loading: false,
-          error: null
-        })
-      }, 1000)
-      
+          error: null,
+        });
+      }, 1000);
     } catch (error) {
       setData(prev => ({
         ...prev,
         loading: false,
-        error: error instanceof Error ? error.message : 'Failed to load data'
-      }))
+        error: error instanceof Error ? error.message : 'Failed to load data',
+      }));
     }
-  }
+  };
 
   // Loading state
   if (data.loading) {
-    return <LoadingPage />
+    return <LoadingPage />;
   }
 
   // Error state
@@ -107,7 +106,7 @@ function PageContent({ searchParams, params }: PageProps) {
           <Card className="p-6">
             <div className="text-center">
               <div className="text-red-600 text-sm">{data.error}</div>
-              <button 
+              <button
                 onClick={loadData}
                 className="mt-4 px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
               >
@@ -117,13 +116,13 @@ function PageContent({ searchParams, params }: PageProps) {
           </Card>
         </div>
       </div>
-    )
+    );
   }
 
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <PageHeader />
-      
+
       <main className="flex-1 max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           {/* Main Content Card */}
@@ -176,14 +175,14 @@ function PageContent({ searchParams, params }: PageProps) {
                   </table>
                 </div>
               ) : (
-                <EmptyState onAction={() => console.log('Create new item')} />
+                <EmptyState onAction={() => { /* console.log('Create new item') */ }} />
               )}
             </div>
           </Card>
         </div>
       </main>
     </div>
-  )
+  );
 }
 
 // Page header component
@@ -192,10 +191,8 @@ function PageHeader() {
     <header className="bg-white shadow">
       <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
-          <h1 className="text-3xl font-bold text-gray-900">
-            Page Title
-          </h1>
-          
+          <h1 className="text-3xl font-bold text-gray-900">Page Title</h1>
+
           <div className="flex space-x-3">
             <PermissionGate featureKey="feature-name" action="create">
               <button className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700 flex items-center">
@@ -206,16 +203,14 @@ function PageHeader() {
         </div>
       </div>
     </header>
-  )
+  );
 }
 
 // Empty state component
 function EmptyState({ onAction }: { onAction: () => void }) {
   return (
     <div className="text-center py-12">
-      <div className="mx-auto h-12 w-12 text-gray-400">
-        {/* Icon here */}
-      </div>
+      <div className="mx-auto h-12 w-12 text-gray-400">{/* Icon here */}</div>
       <h3 className="mt-2 text-sm font-medium text-gray-900">No items found</h3>
       <p className="mt-1 text-sm text-gray-500">
         Get started by creating your first item.
@@ -231,5 +226,5 @@ function EmptyState({ onAction }: { onAction: () => void }) {
         </PermissionGate>
       </div>
     </div>
-  )
+  );
 }

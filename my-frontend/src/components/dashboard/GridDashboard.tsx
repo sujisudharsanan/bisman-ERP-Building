@@ -1,25 +1,25 @@
-"use client"
-import React, { useState, useEffect } from 'react'
-import { Responsive, WidthProvider, Layout } from 'react-grid-layout'
-import 'react-grid-layout/css/styles.css'
-import 'react-resizable/css/styles.css'
+'use client';
+import React, { useState, useEffect } from 'react';
+import { Responsive, WidthProvider, Layout } from 'react-grid-layout';
+import 'react-grid-layout/css/styles.css';
+import 'react-resizable/css/styles.css';
 
-const ResponsiveGridLayout = WidthProvider(Responsive)
+const ResponsiveGridLayout = WidthProvider(Responsive);
 
 interface DashboardWidget {
-  id: string
-  title: string
-  content: React.ReactNode
-  defaultSize: { w: number; h: number; minW?: number; minH?: number }
+  id: string;
+  title: string;
+  content: React.ReactNode;
+  defaultSize: { w: number; h: number; minW?: number; minH?: number };
 }
 
 interface GridDashboardProps {
-  user: any
+  user: any;
 }
 
 export default function GridDashboard({ user }: GridDashboardProps) {
-  const [isEditMode, setIsEditMode] = useState(false)
-  const [layouts, setLayouts] = useState<{ [key: string]: Layout[] }>({})
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [layouts, setLayouts] = useState<{ [key: string]: Layout[] }>({});
 
   // Define dashboard widgets
   const widgets: DashboardWidget[] = [
@@ -37,7 +37,7 @@ export default function GridDashboard({ user }: GridDashboardProps) {
             </div>
           </div>
         </div>
-      )
+      ),
     },
     {
       id: 'database-health',
@@ -53,7 +53,7 @@ export default function GridDashboard({ user }: GridDashboardProps) {
             </div>
           </div>
         </div>
-      )
+      ),
     },
     {
       id: 'active-users',
@@ -65,18 +65,18 @@ export default function GridDashboard({ user }: GridDashboardProps) {
           <p className="text-gray-600 text-sm">Currently online</p>
           <div className="flex-1 flex items-end space-x-1">
             {[...Array(8)].map((_, i) => (
-              <div 
-                key={i} 
-                className="bg-purple-200 rounded-t" 
-                style={{ 
-                  height: `${Math.random() * 60 + 20}%`, 
-                  width: '10px' 
+              <div
+                key={i}
+                className="bg-purple-200 rounded-t"
+                style={{
+                  height: `${Math.random() * 60 + 20}%`,
+                  width: '10px',
                 }}
               />
             ))}
           </div>
         </div>
-      )
+      ),
     },
     {
       id: 'response-time',
@@ -90,7 +90,7 @@ export default function GridDashboard({ user }: GridDashboardProps) {
             <div className="text-4xl">⚡</div>
           </div>
         </div>
-      )
+      ),
     },
     {
       id: 'error-rate',
@@ -106,7 +106,7 @@ export default function GridDashboard({ user }: GridDashboardProps) {
             </div>
           </div>
         </div>
-      )
+      ),
     },
     {
       id: 'storage-usage',
@@ -122,7 +122,7 @@ export default function GridDashboard({ user }: GridDashboardProps) {
             </div>
           </div>
         </div>
-      )
+      ),
     },
     {
       id: 'recent-activity',
@@ -133,23 +133,31 @@ export default function GridDashboard({ user }: GridDashboardProps) {
           <div className="flex-1 space-y-3 overflow-y-auto">
             <div className="flex items-center space-x-3">
               <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-              <span className="text-sm text-gray-600">User logged in - 2 minutes ago</span>
+              <span className="text-sm text-gray-600">
+                User logged in - 2 minutes ago
+              </span>
             </div>
             <div className="flex items-center space-x-3">
               <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-              <span className="text-sm text-gray-600">Database backup completed - 5 minutes ago</span>
+              <span className="text-sm text-gray-600">
+                Database backup completed - 5 minutes ago
+              </span>
             </div>
             <div className="flex items-center space-x-3">
               <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
-              <span className="text-sm text-gray-600">System maintenance scheduled - 10 minutes ago</span>
+              <span className="text-sm text-gray-600">
+                System maintenance scheduled - 10 minutes ago
+              </span>
             </div>
             <div className="flex items-center space-x-3">
               <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-              <span className="text-sm text-gray-600">New user registered - 15 minutes ago</span>
+              <span className="text-sm text-gray-600">
+                New user registered - 15 minutes ago
+              </span>
             </div>
           </div>
         </div>
-      )
+      ),
     },
     {
       id: 'performance-metrics',
@@ -176,9 +184,9 @@ export default function GridDashboard({ user }: GridDashboardProps) {
             </div>
           </div>
         </div>
-      )
-    }
-  ]
+      ),
+    },
+  ];
 
   // Default layouts for different screen sizes
   const defaultLayouts = {
@@ -190,7 +198,7 @@ export default function GridDashboard({ user }: GridDashboardProps) {
       { i: 'error-rate', x: 4, y: 3, w: 4, h: 3 },
       { i: 'storage-usage', x: 8, y: 3, w: 4, h: 3 },
       { i: 'recent-activity', x: 0, y: 6, w: 8, h: 4 },
-      { i: 'performance-metrics', x: 8, y: 6, w: 4, h: 4 }
+      { i: 'performance-metrics', x: 8, y: 6, w: 4, h: 4 },
     ],
     md: [
       { i: 'api-requests', x: 0, y: 0, w: 6, h: 3 },
@@ -200,7 +208,7 @@ export default function GridDashboard({ user }: GridDashboardProps) {
       { i: 'error-rate', x: 0, y: 6, w: 6, h: 3 },
       { i: 'storage-usage', x: 6, y: 6, w: 6, h: 3 },
       { i: 'recent-activity', x: 0, y: 9, w: 12, h: 4 },
-      { i: 'performance-metrics', x: 0, y: 13, w: 12, h: 4 }
+      { i: 'performance-metrics', x: 0, y: 13, w: 12, h: 4 },
     ],
     sm: [
       { i: 'api-requests', x: 0, y: 0, w: 6, h: 3 },
@@ -210,30 +218,33 @@ export default function GridDashboard({ user }: GridDashboardProps) {
       { i: 'error-rate', x: 0, y: 12, w: 6, h: 3 },
       { i: 'storage-usage', x: 0, y: 15, w: 6, h: 3 },
       { i: 'recent-activity', x: 0, y: 18, w: 6, h: 4 },
-      { i: 'performance-metrics', x: 0, y: 22, w: 6, h: 4 }
-    ]
-  }
+      { i: 'performance-metrics', x: 0, y: 22, w: 6, h: 4 },
+    ],
+  };
 
   useEffect(() => {
     // Load layouts from localStorage or use defaults
-    const savedLayouts = localStorage.getItem('dashboard-layouts')
+    const savedLayouts = localStorage.getItem('dashboard-layouts');
     if (savedLayouts) {
-      setLayouts(JSON.parse(savedLayouts))
+      setLayouts(JSON.parse(savedLayouts));
     } else {
-      setLayouts(defaultLayouts)
+      setLayouts(defaultLayouts);
     }
-  }, [])
+  }, []);
 
-  const handleLayoutChange = (layout: Layout[], layouts: { [key: string]: Layout[] }) => {
-    setLayouts(layouts)
+  const handleLayoutChange = (
+    layout: Layout[],
+    layouts: { [key: string]: Layout[] }
+  ) => {
+    setLayouts(layouts);
     // Save to localStorage
-    localStorage.setItem('dashboard-layouts', JSON.stringify(layouts))
-  }
+    localStorage.setItem('dashboard-layouts', JSON.stringify(layouts));
+  };
 
   const resetLayouts = () => {
-    setLayouts(defaultLayouts)
-    localStorage.setItem('dashboard-layouts', JSON.stringify(defaultLayouts))
-  }
+    setLayouts(defaultLayouts);
+    localStorage.setItem('dashboard-layouts', JSON.stringify(defaultLayouts));
+  };
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -243,14 +254,16 @@ export default function GridDashboard({ user }: GridDashboardProps) {
           <h1 className="text-3xl font-bold text-gray-900">
             Grid Dashboard - {user?.roleName || 'User'}
           </h1>
-          <p className="text-gray-600">Drag and resize widgets to customize your dashboard</p>
+          <p className="text-gray-600">
+            Drag and resize widgets to customize your dashboard
+          </p>
         </div>
         <div className="flex items-center space-x-4">
           <button
             onClick={() => setIsEditMode(!isEditMode)}
             className={`px-4 py-2 rounded-md font-medium ${
-              isEditMode 
-                ? 'bg-blue-600 text-white' 
+              isEditMode
+                ? 'bg-blue-600 text-white'
                 : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
             }`}
           >
@@ -269,7 +282,8 @@ export default function GridDashboard({ user }: GridDashboardProps) {
       {isEditMode && (
         <div className="mb-4 p-3 bg-blue-100 border border-blue-300 rounded-md">
           <p className="text-blue-800 text-sm">
-            <strong>Edit Mode:</strong> Drag widgets to move them, resize from the bottom-right corner
+            <strong>Edit Mode:</strong> Drag widgets to move them, resize from
+            the bottom-right corner
           </p>
         </div>
       )}
@@ -287,9 +301,9 @@ export default function GridDashboard({ user }: GridDashboardProps) {
         compactType="vertical"
         preventCollision={false}
       >
-        {widgets.map((widget) => (
-          <div 
-            key={widget.id} 
+        {widgets.map(widget => (
+          <div
+            key={widget.id}
             className={`bg-white rounded-lg shadow-md p-4 flex flex-col h-full ${
               isEditMode ? 'border-2 border-dashed border-blue-300' : ''
             }`}
@@ -302,9 +316,7 @@ export default function GridDashboard({ user }: GridDashboardProps) {
                 </div>
               )}
             </div>
-            <div className="flex-1 overflow-hidden">
-              {widget.content}
-            </div>
+            <div className="flex-1 overflow-hidden">{widget.content}</div>
           </div>
         ))}
       </ResponsiveGridLayout>
@@ -314,35 +326,36 @@ export default function GridDashboard({ user }: GridDashboardProps) {
         .react-grid-layout {
           position: relative;
         }
-        
+
         .react-grid-item {
           transition: all 200ms ease;
           transition-property: left, top;
         }
-        
+
         .react-grid-item.cssTransforms {
           transition-property: transform;
         }
-        
+
         .react-grid-item > div {
           height: 100%;
           width: 100%;
         }
-        
+
         .react-grid-item > .react-resizable-handle {
           position: absolute;
           width: 20px;
           height: 20px;
           bottom: 0;
           right: 0;
-          background: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNiIgaGVpZ2h0PSI2IiB2aWV3Qm94PSIwIDAgNiA2IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8ZG90cyBmaWxsPSIjOTk5IiBvcGFjaXR5PSIwLjQiLz4KPHN2Zz4K') no-repeat bottom right;
+          background: url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNiIgaGVpZ2h0PSI2IiB2aWV3Qm94PSIwIDAgNiA2IiBmaWxsPSJub25lIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPgo8ZG90cyBmaWxsPSIjOTk5IiBvcGFjaXR5PSIwLjQiLz4KPHN2Zz4K')
+            no-repeat bottom right;
           padding: 0 3px 3px 0;
           background-repeat: no-repeat;
           background-origin: content-box;
           box-sizing: border-box;
           cursor: se-resize;
         }
-        
+
         .react-grid-item.react-grid-placeholder {
           background: #3b82f6;
           opacity: 0.2;
@@ -356,5 +369,5 @@ export default function GridDashboard({ user }: GridDashboardProps) {
         }
       `}</style>
     </div>
-  )
+  );
 }

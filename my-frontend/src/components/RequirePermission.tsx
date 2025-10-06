@@ -1,64 +1,67 @@
-'use client'
+'use client';
 
-import React, { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { AlertTriangle, Shield } from 'lucide-react'
+import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { AlertTriangle, Shield } from 'lucide-react';
 
 interface RequirePermissionProps {
-  permission: string
-  children: React.ReactNode
-  fallback?: React.ReactNode
+  permission: string;
+  children: React.ReactNode;
+  fallback?: React.ReactNode;
 }
 
 export const RequirePermission: React.FC<RequirePermissionProps> = ({
   permission,
   children,
-  fallback
+  fallback,
 }) => {
-  const [hasPermission, setHasPermission] = useState<boolean | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const router = useRouter()
+  const [hasPermission, setHasPermission] = useState<boolean | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
 
   useEffect(() => {
-    checkPermission()
-  }, [permission])
+    checkPermission();
+  }, [permission]);
 
   const checkPermission = async () => {
     try {
-      const token = localStorage.getItem('token')
+      const token = localStorage.getItem('token');
       if (!token) {
-        router.push('/auth/login')
-        return
+        router.push('/auth/login');
+        return;
       }
 
-      const response = await fetch(`http://localhost:3001/api/v1/check-permission?permission=${permission}`, {
-        headers: {
-          'Authorization': `Bearer ${token}`,
-        },
-      })
+      const response = await fetch(
+        `http://localhost:3001/api/v1/check-permission?permission=${permission}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
 
       if (response.status === 401) {
-        localStorage.removeItem('token')
-        router.push('/auth/login')
-        return
+        localStorage.removeItem('token');
+        router.push('/auth/login');
+        return;
       }
 
       if (response.ok) {
-        const data = await response.json()
-        setHasPermission(data.hasPermission)
+        const data = await response.json();
+        setHasPermission(data.hasPermission);
       } else {
-        setHasPermission(false)
-        setError('Failed to check permissions')
+        setHasPermission(false);
+        setError('Failed to check permissions');
       }
     } catch (err) {
-      console.error('Permission check error:', err)
-      setHasPermission(false)
-      setError('Permission check failed')
+      // console.error('Permission check error:', err);
+      setHasPermission(false);
+      setError('Permission check failed');
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   if (loading) {
     return (
@@ -68,21 +71,24 @@ export const RequirePermission: React.FC<RequirePermissionProps> = ({
           <p className="text-gray-600">Checking permissions...</p>
         </div>
       </div>
-    )
+    );
   }
 
   if (error || hasPermission === false) {
     if (fallback) {
-      return <>{fallback}</>
+      return <>{fallback}</>;
     }
 
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-100">
         <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
           <AlertTriangle className="w-16 h-16 text-red-600 mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">Access Denied</h1>
+          <h1 className="text-2xl font-bold text-gray-900 mb-2">
+            Access Denied
+          </h1>
           <p className="text-gray-600 mb-6">
-            {error || `You don't have permission to access this page. Required permission: ${permission}`}
+            {error ||
+              `You don't have permission to access this page. Required permission: ${permission}`}
           </p>
           <div className="space-y-3">
             <button
@@ -100,10 +106,10 @@ export const RequirePermission: React.FC<RequirePermissionProps> = ({
           </div>
         </div>
       </div>
-    )
+    );
   }
 
-  return <>{children}</>
-}
+  return <>{children}</>;
+};
 
-export default RequirePermission
+export default RequirePermission;

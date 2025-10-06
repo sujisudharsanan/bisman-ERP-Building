@@ -1,8 +1,8 @@
-import { create } from 'zustand'
+import { create } from 'zustand';
 
-type State = { sidebarOpen: boolean; toggleSidebar: () => void }
+type State = { sidebarOpen: boolean; toggleSidebar: () => void };
 
-export const useStore = create<State>((set) => ({
+export const useStore = create<State>(set => ({
   sidebarOpen: true,
-  toggleSidebar: () => set((s: State) => ({ sidebarOpen: !s.sidebarOpen }))
-}))
+  toggleSidebar: () => set((s: State) => ({ sidebarOpen: !s.sidebarOpen })),
+}));

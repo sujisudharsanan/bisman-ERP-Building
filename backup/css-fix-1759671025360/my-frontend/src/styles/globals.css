@@ -1,0 +1,82 @@
+/* stylelint-disable at-rule-no-unknown */
+@import "tailwindcss/base";
+@import "tailwindcss/components";
+@import "tailwindcss/utilities";
+
+/* Root responsive setup */
+html {
+  -webkit-text-size-adjust: 100%; /* iOS Safari compatibility */
+  text-size-adjust: 100%;         /* Standard for Chrome, Edge, Firefox */
+  font-size: clamp(14px, 2.5vw, 16px); /* Responsive base font size */
+}
+
+html, body, #__next {
+  height: 100%;
+}
+
+body { 
+  font-family: Inter, Roboto, sans-serif;
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+}
+
+/* Responsive typography */
+h1 { font-size: clamp(1.5rem, 4vw, 2.5rem); }
+h2 { font-size: clamp(1.25rem, 3vw, 2rem); }
+h3 { font-size: clamp(1.125rem, 2.5vw, 1.5rem); }
+h4 { font-size: clamp(1rem, 2vw, 1.25rem); }
+
+/* Responsive containers */
+.container { 
+  max-width: min(1200px, 90vw); 
+  margin: 0 auto; 
+  padding: clamp(0.5rem, 2vw, 1rem);
+}
+
+/* Enhanced responsive utilities */
+.flex { display: flex; }
+.flex-col { flex-direction: column; }
+.flex-wrap { flex-wrap: wrap; }
+.items-center { align-items: center; }
+.justify-center { justify-content: center; }
+.justify-between { justify-content: space-between; }
+.h-screen { height: 100vh; }
+.min-h-screen { min-height: 100vh; }
+.bg-white { background: #ffffff; }
+.rounded { -webkit-border-radius: 0.5rem;
+ -moz-border-radius: 0.5rem;
+ border-radius: 0.5rem; }
+.p-6 { padding: clamp(1rem, 3vw, 1.5rem); }
+.shadow-xl { -webkit-box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+ -moz-box-shadow: 0 10px 15px rgba(0,0,0,0.1);
+ box-shadow: 0 10px 15px rgba(0,0,0,0.1); }
+.text-red-500 { color: #ef4444; }
+.mb-4 { margin-bottom: 1rem; }
+.w-full { width: 100%; }
+.rounded-xl { -webkit-border-radius: 1rem;
+ -moz-border-radius: 1rem;
+ border-radius: 1rem; }
+
+/* Responsive grid system */
+.grid { display: grid; }
+.grid-cols-1 { grid-template-columns: repeat(1, 1fr); }
+.gap-4 { gap: 1rem; }
+
+/* Mobile-first responsive breakpoints */
+@media (min-width: 768px) {
+  .md\:grid-cols-2 { grid-template-columns: repeat(2, 1fr); }
+  .md\:flex-row { flex-direction: row; }
+  .md\:p-8 { padding: 2rem; }
+}
+
+@media (min-width: 1024px) {
+  .lg\:grid-cols-3 { grid-template-columns: repeat(3, 1fr); }
+  .lg\:max-w-4xl { max-width: 56rem; }
+}
+
+@media (min-width: 1440px) {
+  .xl\:grid-cols-4 { grid-template-columns: repeat(4, 1fr); }
+  .xl\:max-w-6xl { max-width: 72rem; }
+}
+

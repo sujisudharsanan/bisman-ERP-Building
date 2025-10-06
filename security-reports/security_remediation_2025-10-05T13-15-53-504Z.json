@@ -1,0 +1,113 @@
+{
+  "score": 74,
+  "totalScore": 74,
+  "maxScore": 100,
+  "riskLevel": "MEDIUM",
+  "categories": {
+    "requestMethodValidation": {
+      "status": "PASS",
+      "score": 20,
+      "details": [
+        "All login requests use secure POST method"
+      ],
+      "fixes": []
+    },
+    "httpsEnforcement": {
+      "status": "FAIL",
+      "score": 12,
+      "details": [
+        "secure cookies",
+        "trust proxy"
+      ],
+      "fixes": []
+    },
+    "passwordHashing": {
+      "status": "PASS",
+      "score": 15,
+      "details": [
+        "Using bcrypt",
+        "8 usage instances"
+      ],
+      "fixes": []
+    },
+    "rateLimiting": {
+      "status": "PASS",
+      "score": 15,
+      "details": [
+        "Using express-rate-limit on auth routes"
+      ],
+      "fixes": []
+    },
+    "logExposure": {
+      "status": "FAIL",
+      "score": 0,
+      "details": [
+        "12 credential exposures found"
+      ],
+      "fixes": []
+    },
+    "sessionSecurity": {
+      "status": "WARN",
+      "score": 12,
+      "details": [
+        "3/5 security controls present"
+      ],
+      "fixes": []
+    }
+  },
+  "backupsCreated": [],
+  "fixesApplied": [],
+  "timestamp": "2025-10-05T13:15:54.838Z",
+  "manualSteps": [
+    {
+      "category": "httpsEnforcement",
+      "priority": "HIGH",
+      "steps": [
+        "secure cookies",
+        "trust proxy"
+      ]
+    },
+    {
+      "category": "logExposure",
+      "priority": "HIGH",
+      "steps": [
+        "12 credential exposures found"
+      ]
+    },
+    {
+      "category": "sessionSecurity",
+      "priority": "MEDIUM",
+      "steps": [
+        "3/5 security controls present"
+      ]
+    }
+  ],
+  "auditVersion": "2.0.0",
+  "application": "BISMAN ERP",
+  "auditor": "GitHub Copilot Security Remediation Engine",
+  "environment": {
+    "node": "v22.19.0",
+    "platform": "darwin",
+    "cwd": "/Users/abhi/Desktop/BISMAN ERP"
+  },
+  "recommendations": [
+    {
+      "priority": "HIGH",
+      "category": "Manual Remediation",
+      "action": "Complete manual security fixes identified in the report",
+      "timeframe": "Within 1 week"
+    },
+    {
+      "priority": "MEDIUM",
+      "category": "Ongoing Security",
+      "action": "Schedule regular security audits (weekly or after major changes)",
+      "timeframe": "Ongoing"
+    },
+    {
+      "priority": "LOW",
+      "category": "Security Monitoring",
+      "action": "Implement continuous security monitoring and alerting",
+      "timeframe": "Within 1 month"
+    }
+  ]
+}

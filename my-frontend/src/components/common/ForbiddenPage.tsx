@@ -3,24 +3,24 @@
  * Full page component for when users don't have access
  */
 
-'use client'
+'use client';
 
-import React from 'react'
-import Link from 'next/link'
-import { Shield, ArrowLeft, Home } from 'lucide-react'
+import React from 'react';
+import Link from 'next/link';
+import { Shield, ArrowLeft, Home } from 'lucide-react';
 
 interface ForbiddenPageProps {
-  title?: string
-  message?: string
-  showBackButton?: boolean
-  backHref?: string
+  title?: string;
+  message?: string;
+  showBackButton?: boolean;
+  backHref?: string;
 }
 
-export function ForbiddenPage({ 
-  title = "Access Denied",
+export function ForbiddenPage({
+  title = 'Access Denied',
   message = "You don't have permission to access this page.",
   showBackButton = true,
-  backHref = "/dashboard"
+  backHref = '/dashboard',
 }: ForbiddenPageProps) {
   return (
     <div className="min-h-screen bg-gray-50 flex flex-col justify-center py-12 sm:px-6 lg:px-8">
@@ -33,14 +33,10 @@ export function ForbiddenPage({
             </div>
 
             {/* Title */}
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              {title}
-            </h2>
+            <h2 className="text-2xl font-bold text-gray-900 mb-4">{title}</h2>
 
             {/* Message */}
-            <p className="text-sm text-gray-600 mb-8">
-              {message}
-            </p>
+            <p className="text-sm text-gray-600 mb-8">{message}</p>
 
             {/* Actions */}
             <div className="space-y-3">
@@ -73,7 +69,7 @@ export function ForbiddenPage({
         </div>
       </div>
     </div>
-  )
+  );
 }
 
-export default ForbiddenPage
+export default ForbiddenPage;

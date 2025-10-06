@@ -4,7 +4,7 @@ interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   className?: string;
 }
 
-const Input: React.FC<InputProps> = ({ 
+const Input: React.FC<InputProps> = ({
   className = '',
   type = 'text',
   ...props

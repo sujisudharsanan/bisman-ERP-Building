@@ -1,65 +1,75 @@
-'use client'
+'use client';
 
-import React from 'react'
-import { useRouter } from 'next/navigation'
+import React from 'react';
+import { useRouter } from 'next/navigation';
 
 interface RoleLayoutProps {
-  children: React.ReactNode
+  children: React.ReactNode;
   currentUser: {
-    name: string
-    email: string
-    role: string
-    photo?: string
-  }
-  showBackButton?: boolean
-  backUrl?: string
+    name: string;
+    email: string;
+    role: string;
+    photo?: string;
+  };
+  showBackButton?: boolean;
+  backUrl?: string;
 }
 
-export default function RoleLayout({ 
-  children, 
+export default function RoleLayout({
+  children,
   currentUser,
   showBackButton = false,
-  backUrl = "/"
+  backUrl = '/',
 }: RoleLayoutProps) {
-  const router = useRouter()
+  const router = useRouter();
 
   const handleLogout = () => {
     // Clear any stored auth data
-    localStorage.removeItem('authToken')
-    localStorage.removeItem('userRole')
-    localStorage.removeItem('userData')
-    
+    localStorage.removeItem('authToken');
+    localStorage.removeItem('userRole');
+    localStorage.removeItem('userData');
+
     // Redirect to login
-    router.push('/auth/login')
-  }
+    router.push('/auth/login');
+  };
 
   const handleBack = () => {
     if (backUrl) {
-      router.push(backUrl)
+      router.push(backUrl);
     } else {
-      router.back()
+      router.back();
     }
-  }
+  };
 
   const getRoleIcon = () => {
     switch (currentUser.role.toLowerCase()) {
-      case 'super admin': return <span className="text-2xl">⚙️</span>
-      case 'admin': return <span className="text-2xl">👥</span>
-      case 'manager': return <span className="text-2xl">📊</span>
-      case 'hub incharge': return <span className="text-2xl">🔧</span>
-      default: return <span className="text-2xl">👤</span>
+      case 'super admin':
+        return <span className="text-2xl">⚙️</span>;
+      case 'admin':
+        return <span className="text-2xl">👥</span>;
+      case 'manager':
+        return <span className="text-2xl">📊</span>;
+      case 'hub incharge':
+        return <span className="text-2xl">🔧</span>;
+      default:
+        return <span className="text-2xl">👤</span>;
     }
-  }
+  };
 
   const getRoleColor = () => {
     switch (currentUser.role.toLowerCase()) {
-      case 'super admin': return 'from-purple-600 to-purple-800'
-      case 'admin': return 'from-blue-600 to-blue-800'
-      case 'manager': return 'from-green-600 to-green-800'
-      case 'hub incharge': return 'from-orange-600 to-orange-800'
-      default: return 'from-gray-600 to-gray-800'
+      case 'super admin':
+        return 'from-purple-600 to-purple-800';
+      case 'admin':
+        return 'from-blue-600 to-blue-800';
+      case 'manager':
+        return 'from-green-600 to-green-800';
+      case 'hub incharge':
+        return 'from-orange-600 to-orange-800';
+      default:
+        return 'from-gray-600 to-gray-800';
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -78,18 +88,14 @@ export default function RoleLayout({
                   <span className="text-xl">←</span>
                 </button>
               )}
-              
+
               <div className="flex items-center space-x-3">
-                <div className="text-white">
-                  {getRoleIcon()}
-                </div>
+                <div className="text-white">{getRoleIcon()}</div>
                 <div>
                   <h1 className="text-xl font-bold text-white">
                     {currentUser.role} Dashboard
                   </h1>
-                  <p className="text-white/80 text-sm">
-                    BISMAN ERP System
-                  </p>
+                  <p className="text-white/80 text-sm">BISMAN ERP System</p>
                 </div>
               </div>
             </div>
@@ -99,13 +105,15 @@ export default function RoleLayout({
               {/* User info */}
               <div className="hidden sm:flex items-center space-x-3">
                 <div className="text-right">
-                  <p className="text-white font-medium text-sm">{currentUser.name}</p>
+                  <p className="text-white font-medium text-sm">
+                    {currentUser.name}
+                  </p>
                   <p className="text-white/80 text-xs">{currentUser.email}</p>
                 </div>
                 <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center overflow-hidden">
                   {currentUser.photo ? (
-                    <img 
-                      src={currentUser.photo} 
+                    <img
+                      src={currentUser.photo}
                       alt={`${currentUser.name} profile`}
                       className="w-full h-full object-cover"
                     />
@@ -148,5 +156,5 @@ export default function RoleLayout({
         </div>
       </footer>
     </div>
-  )
+  );
 }

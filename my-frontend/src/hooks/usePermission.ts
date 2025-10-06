@@ -3,19 +3,19 @@
  * Provides access to user permissions and permission checking functions
  */
 
-'use client'
+'use client';
 
-import { useContext } from 'react'
-import { PermissionContext } from '@/contexts/PermissionContext'
+import { useContext } from 'react';
+import { PermissionContext } from '@/contexts/PermissionContext';
 
 export function usePermission() {
-  const context = useContext(PermissionContext)
-  
+  const context = useContext(PermissionContext);
+
   if (!context) {
-    throw new Error('usePermission must be used within a PermissionProvider')
+    throw new Error('usePermission must be used within a PermissionProvider');
   }
 
-  return context
+  return context;
 }
 
-export default usePermission
+export default usePermission;

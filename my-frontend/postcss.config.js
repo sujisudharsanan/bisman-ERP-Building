@@ -7,14 +7,14 @@ module.exports = {
         'last 2 versions',
         'not dead',
         'iOS >= 10',
-        'Safari >= 10'
-      ]
+        'Safari >= 10',
+      ],
     },
     'postcss-preset-env': {
       stage: 3,
       features: {
-        'custom-properties': false
-      }
-    }
+        'custom-properties': false,
+      },
+    },
   },
-}
+};

@@ -1,11 +1,39 @@
+const rateLimit = require('express-rate-limit')
+const enforce = require('express-sslify')
+const helmet = require('helmet')
 const express = require('express')
 const path = require('path')
 const { Pool } = require('pg')
 const { PrismaClient } = require('@prisma/client')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
+const { logSanitizer } = require('./middleware/logSanitizer')
 
 const app = express()
+
+// Rate limiting for authentication endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: process.env.NODE_ENV === 'production' ? 5 : 50, // 5 for production, 50 for development
+  message: {
+    error: 'Too many authentication attempts, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+
+// Security middleware
+app.use(helmet())
+// Only enforce HTTPS in production
+if (process.env.NODE_ENV === 'production') {
+  app.use(enforce.HTTPS({ trustProtoHeader: true }))
+}
+
+// Log sanitization middleware
+app.use(logSanitizer)
+
+
 
 // CORS middleware for cross-origin requests
 app.use((req, res, next) => {
@@ -37,6 +65,10 @@ app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
 // Upload routes
 const uploadRoutes = require('./routes/upload')
 app.use('/api/upload', uploadRoutes)
+
+// Privilege management routes
+const privilegeRoutes = require('./routes/privilegeRoutes')
+app.use('/api', privilegeRoutes)
 
 const prisma = new PrismaClient()
 
@@ -107,7 +139,13 @@ if (databaseUrl) {
     }
   })
 } else {
-  // No database URL provided in env; keep pool null so DB routes are disabled
+  // No database URL provided in env;
+  // HSTS (HTTP Strict Transport Security)
+  app.use((req, res, next) => {
+    res.setHeader('Strict-Transport-Security', 'max-age=31536000; includeSubDomains');
+    next();
+  });
+  // keep pool null so DB routes are disabled
   pool = null
 }
 
@@ -124,7 +162,15 @@ const devUsers = [
 ]
 
 // Simple login endpoint with fallback for development
+app.use('/api/login', authLimiter)
+app.use('/api/auth', authLimiter)
+
 app.post('/api/login', async (req, res) => {
+  console.log('Incoming /api/login request from', req.ip, 'headers:', {
+    origin: req.headers.origin,
+    host: req.headers.host,
+    'content-type': req.headers['content-type']
+  })
   const { email, password } = req.body || {}
   if (!email || !password) return res.status(400).json({ error: 'email and password required' })
 
@@ -132,16 +178,21 @@ app.post('/api/login', async (req, res) => {
     let user = null
     let roleName = null
 
-    // Try Prisma first if database is available
-    try {
-      user = await prisma.user.findUnique({ where: { email } })
-      if (user) {
-        const match = await bcrypt.compare(password, user.password)
-        if (!match) return res.status(401).json({ error: 'invalid credentials' })
-        roleName = user.role || null
+    // Try Prisma first if DATABASE_URL is configured; otherwise skip DB lookup in dev
+    if (databaseUrl) {
+      try {
+        user = await prisma.user.findUnique({ where: { email } })
+        if (user) {
+          const match = await bcrypt.compare(password, user.password)
+          if (!match) return res.status(401).json({ error: 'invalid credentials' })
+          roleName = user.role || null
+        }
+      } catch (dbError) {
+        console.log('Database lookup failed, falling back to development users')
+        user = null
       }
-    } catch (dbError) {
-      console.log('Database not available, using development users')
+    } else {
+      // No DATABASE_URL - skip DB calls for local development
       user = null
     }
 
@@ -201,6 +252,18 @@ app.post('/api/logout', (req, res) => {
   res.clearCookie('token', { path: '/' })
   res.json({ ok: true })
 })
+
+// Development only: Reset rate limiter
+if (process.env.NODE_ENV !== 'production') {
+  app.post('/api/dev/reset-limiter', (req, res) => {
+    try {
+      authLimiter.resetAll && authLimiter.resetAll()
+      res.json({ ok: true, message: 'Rate limiter reset for development' })
+    } catch (err) {
+      res.json({ ok: true, message: 'Rate limiter reset attempted' })
+    }
+  })
+}
 
 // Admin-only route
 app.get('/api/admin', authenticate, requireRole('ADMIN'), async (req, res) => {
@@ -432,6 +495,137 @@ app.patch('/api/hub-incharge/settings', authenticate, requireRole(['STAFF', 'ADM
   } catch (err) {
     console.error('Settings update error:', err)
     res.status(500).json({ error: 'Failed to update settings' })
+  }
+})
+
+// Get user permissions
+app.get('/api/auth/permissions', authenticate, async (req, res) => {
+  try {
+    const userId = req.user.id
+    
+    // Get user permissions from database
+    const userPermissions = await prisma.$queryRaw`
+      SELECT DISTINCT 
+        CONCAT(rt.path, '.', act.name) as permission_key
+      FROM rbac_user_roles ur
+      JOIN rbac_permissions p ON ur.role_id = p.role_id
+      JOIN rbac_routes rt ON p.route_id = rt.id
+      JOIN rbac_actions act ON p.action_id = act.id
+      WHERE ur.user_id = ${userId}
+        AND COALESCE(ur.is_active, true) = true
+        AND COALESCE(p.is_active, true) = true
+        AND COALESCE(rt.is_active, true) = true
+        AND COALESCE(act.is_active, true) = true
+    `
+    
+    const permissions = userPermissions.map(row => row.permission_key)
+    
+    // Add super admin all-access permission
+    if (req.user.roleName === 'SUPER_ADMIN') {
+      permissions.push('*.*') // All permissions wildcard
+    }
+    
+    res.json({ 
+      permissions,
+      role: req.user.roleName,
+      userId: req.user.id
+    })
+  } catch (err) {
+    console.error('Permissions fetch error:', err)
+    res.status(500).json({ 
+      error: 'Failed to fetch permissions',
+      permissions: [],
+      role: req.user.roleName || null,
+      userId: req.user.id || null
+    })
+  }
+})
+
+// Users management endpoint
+app.get('/api/users', authenticate, requireRole(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+  try {
+    let users = []
+    
+    // Try to fetch from database first
+    try {
+      const dbUsers = await prisma.user.findMany({
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          role: true,
+          createdAt: true,
+          // Add more fields as needed
+        },
+        orderBy: {
+          createdAt: 'desc'
+        }
+      })
+      
+      users = dbUsers.map(user => ({
+        id: user.id,
+        username: user.username || user.email.split('@')[0],
+        email: user.email,
+        roleName: user.role || 'USER',
+        isActive: true, // Default to active
+        createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
+        lastLogin: null // TODO: Add last login tracking
+      }))
+    } catch (dbError) {
+      console.log('Database not available, using mock data')
+      // Fallback to mock data
+      users = [
+        {
+          id: 1,
+          username: 'superadmin',
+          email: 'suji@gmail.com',
+          roleName: 'SUPER_ADMIN',
+          isActive: true,
+          createdAt: '2024-01-01T00:00:00Z',
+          lastLogin: '2025-10-05T10:30:00Z'
+        },
+        {
+          id: 2,
+          username: 'admin',
+          email: 'admin@business.com',
+          roleName: 'ADMIN',
+          isActive: true,
+          createdAt: '2024-01-15T00:00:00Z',
+          lastLogin: '2025-10-04T15:20:00Z'
+        },
+        {
+          id: 3,
+          username: 'manager',
+          email: 'manager@business.com',
+          roleName: 'MANAGER',
+          isActive: true,
+          createdAt: '2024-02-01T00:00:00Z',
+          lastLogin: '2025-10-03T09:15:00Z'
+        },
+        {
+          id: 4,
+          username: 'staff',
+          email: 'staff@business.com',
+          roleName: 'STAFF',
+          isActive: true,
+          createdAt: '2024-03-01T00:00:00Z',
+          lastLogin: '2025-10-05T08:45:00Z'
+        }
+      ]
+    }
+    
+    res.json({ 
+      success: true, 
+      users,
+      total: users.length 
+    })
+  } catch (err) {
+    console.error('Users fetch error:', err)
+    res.status(500).json({ 
+      error: 'Failed to fetch users',
+      users: [],
+      total: 0
+    })
   }
 })
 

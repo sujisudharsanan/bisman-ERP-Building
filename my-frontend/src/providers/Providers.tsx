@@ -1,13 +1,13 @@
-"use client"
-import { ReactNode } from 'react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles'
-import CssBaseline from '@mui/material/CssBaseline'
-import theme from '@/lib/mui/theme'
-import { NotificationsProvider } from './notifications/NotificationsProvider'
-import { AuthProvider } from './AuthProvider'
+'use client';
+import { ReactNode } from 'react';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ThemeProvider as MuiThemeProvider } from '@mui/material/styles';
+import CssBaseline from '@mui/material/CssBaseline';
+import theme from '@/lib/mui/theme';
+import { NotificationsProvider } from './notifications/NotificationsProvider';
+import { AuthProvider } from './AuthProvider';
 
-const queryClient = new QueryClient()
+const queryClient = new QueryClient();
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
@@ -19,5 +19,5 @@ export default function Providers({ children }: { children: ReactNode }) {
         </AuthProvider>
       </MuiThemeProvider>
     </QueryClientProvider>
-  )
+  );
 }

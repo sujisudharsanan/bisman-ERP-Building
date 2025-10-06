@@ -10,8 +10,17 @@ datasource db {
 }
 
 model Role {
-  id    Int    @id @default(autoincrement())
-  name  String @unique
+  id          Int    @id @default(autoincrement())
+  name        String @unique
+  description String?
+  is_active   Boolean @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  
+  // Relations
+  users User[]
+  rolePrivileges RolePrivilege[]
+  userPrivileges UserPrivilege[]
   
   @@map("roles")
   @@index([name])
@@ -23,12 +32,110 @@ model User {
   email           String   @unique
   password        String
   role            String
+  role_id         Int?
+  first_name      String?
+  last_name       String?
   profile_pic_url String?  @map("profile_pic_url")
+  status          String   @default("active")
+  deleted_at      DateTime?
   createdAt       DateTime @default(now()) @map("created_at")
   updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  assignedRole    Role? @relation(fields: [role_id], references: [id])
+  userPrivileges  UserPrivilege[]
+  auditLogs       AuditLog[]
 
   @@map("users")
   @@index([email])
   @@index([role])
   @@index([createdAt])
+}
+
+model Feature {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name        String
+  module      String   @db.VarChar(100)
+  description String?
+  is_active   Boolean  @default(true)
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+
+  // Relations
+  rolePrivileges RolePrivilege[]
+  userPrivileges UserPrivilege[]
+
+  @@unique([name, module], name: "uk_features_name_module")
+  @@map("features")
+  @@index([module])
+  @@index([is_active])
+}
+
+model RolePrivilege {
+  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  role_id    Int
+  feature_id String   @db.Uuid
+  can_view   Boolean  @default(false)
+  can_create Boolean  @default(false)
+  can_edit   Boolean  @default(false)
+  can_delete Boolean  @default(false)
+  can_hide   Boolean  @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
+  // Relations
+  role    Role    @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  feature Feature @relation(fields: [feature_id], references: [id], onDelete: Cascade)
+
+  @@unique([role_id, feature_id], name: "uk_role_privileges_role_feature")
+  @@map("role_privileges")
+  @@index([role_id])
+  @@index([feature_id])
+}
+
+model UserPrivilege {
+  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id        Int
+  role_id        Int
+  feature_id     String   @db.Uuid
+  can_view       Boolean  @default(false)
+  can_create     Boolean  @default(false)
+  can_edit       Boolean  @default(false)
+  can_delete     Boolean  @default(false)
+  can_hide       Boolean  @default(false)
+  overrides_role Boolean  @default(true)
+  created_at     DateTime @default(now())
+  updated_at     DateTime @updatedAt
+
+  // Relations
+  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
+  role    Role    @relation(fields: [role_id], references: [id], onDelete: Cascade)
+  feature Feature @relation(fields: [feature_id], references: [id], onDelete: Cascade)
+
+  @@unique([user_id, feature_id], name: "uk_user_privileges_user_feature")
+  @@map("user_privileges")
+  @@index([user_id])
+  @@index([feature_id])
+  @@index([overrides_role])
+}
+
+model AuditLog {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id     Int?
+  action      String   @db.VarChar(20)
+  entity_type String   @db.VarChar(50)
+  entity_id   String   @db.VarChar(255)
+  old_values  Json?
+  new_values  Json?
+  ip_address  String?
+  user_agent  String?
+  created_at  DateTime @default(now())
+
+  // Relations
+  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
+
+  @@map("audit_logs")
+  @@index([user_id])
+  @@index([entity_type, entity_id])
+  @@index([created_at])
 }

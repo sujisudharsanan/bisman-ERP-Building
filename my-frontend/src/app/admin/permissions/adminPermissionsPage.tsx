@@ -1,11 +1,14 @@
-'use client'
-import React from 'react'
-import AdminDashboard from '../../../components/admin/AdminDashboard'
-import { RequirePermission } from '../../../contexts/PermissionContext'
+'use client';
+import React from 'react';
+import AdminDashboard from '../../../components/admin/AdminDashboard';
+import { RequirePermission } from '../../../contexts/PermissionContext';
 
 export default function AdminPermissionsPage() {
   return (
-    <RequirePermission action="admin.permissions.view" route="/admin/permissions">
+    <RequirePermission
+      action="admin.permissions.view"
+      route="/admin/permissions"
+    >
       <div className="min-h-screen bg-gray-50">
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           {/* Page Header */}
@@ -27,5 +30,5 @@ export default function AdminPermissionsPage() {
         </div>
       </div>
     </RequirePermission>
-  )
+  );
 }

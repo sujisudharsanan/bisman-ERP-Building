@@ -3,8 +3,8 @@ module.exports = {
   theme: {
     extend: {
       colors: { brand: { 50: '#f5fbff', 500: '#0ea5e9' } },
-      fontFamily: { inter: ['Inter', 'ui-sans-serif', 'system-ui'] }
-    }
+      fontFamily: { inter: ['Inter', 'ui-sans-serif', 'system-ui'] },
+    },
   },
-  plugins: []
-}
+  plugins: [],
+};

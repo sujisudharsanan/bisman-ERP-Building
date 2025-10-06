@@ -3,42 +3,42 @@
  * Catches JavaScript errors anywhere in the child component tree
  */
 
-'use client'
+'use client';
 
-import React, { Component, ErrorInfo, ReactNode } from 'react'
-import { AlertTriangle, RefreshCw, Home } from 'lucide-react'
-import Link from 'next/link'
+import React, { Component, ErrorInfo, ReactNode } from 'react';
+import { AlertTriangle, RefreshCw, Home } from 'lucide-react';
+import Link from 'next/link';
 
 interface Props {
-  children: ReactNode
-  fallback?: ReactNode
+  children: ReactNode;
+  fallback?: ReactNode;
 }
 
 interface State {
-  hasError: boolean
-  error?: Error
-  errorInfo?: ErrorInfo
+  hasError: boolean;
+  error?: Error;
+  errorInfo?: ErrorInfo;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
   constructor(props: Props) {
-    super(props)
-    this.state = { hasError: false }
+    super(props);
+    this.state = { hasError: false };
   }
 
   static getDerivedStateFromError(error: Error): State {
-    return { hasError: true, error }
+    return { hasError: true, error };
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
     this.setState({
       error,
-      errorInfo
-    })
+      errorInfo,
+    });
 
     // Log error to monitoring service
-    console.error('ErrorBoundary caught an error:', error, errorInfo)
-    
+    // console.error('ErrorBoundary caught an error:', error, errorInfo);
+
     // TODO: Send to error reporting service
     // errorReportingService.captureException(error, {
     //   extra: errorInfo,
@@ -47,14 +47,14 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   handleReset = () => {
-    this.setState({ hasError: false, error: undefined, errorInfo: undefined })
-  }
+    this.setState({ hasError: false, error: undefined, errorInfo: undefined });
+  };
 
   render() {
     if (this.state.hasError) {
       // Custom fallback UI
       if (this.props.fallback) {
-        return this.props.fallback
+        return this.props.fallback;
       }
 
       // Default error UI
@@ -76,25 +76,27 @@ export class ErrorBoundary extends Component<Props, State> {
                 {/* Error Message */}
                 <div className="mb-6">
                   <p className="text-sm text-gray-600 mb-2">
-                    We're sorry for the inconvenience. Please try refreshing the page.
+                    We&apos;re sorry for the inconvenience. Please try refreshing the
+                    page.
                   </p>
-                  
+
                   {/* Show error details in development */}
-                  {process.env.NODE_ENV === 'development' && this.state.error && (
-                    <details className="mt-4 p-3 bg-gray-100 rounded text-left">
-                      <summary className="cursor-pointer text-sm font-medium text-gray-700">
-                        Error Details (Development Only)
-                      </summary>
-                      <pre className="mt-2 text-xs text-red-600 whitespace-pre-wrap">
-                        {this.state.error.message}
-                      </pre>
-                      {this.state.errorInfo && (
-                        <pre className="mt-2 text-xs text-gray-600 whitespace-pre-wrap">
-                          {this.state.errorInfo.componentStack}
+                  {process.env.NODE_ENV === 'development' &&
+                    this.state.error && (
+                      <details className="mt-4 p-3 bg-gray-100 rounded text-left">
+                        <summary className="cursor-pointer text-sm font-medium text-gray-700">
+                          Error Details (Development Only)
+                        </summary>
+                        <pre className="mt-2 text-xs text-red-600 whitespace-pre-wrap">
+                          {this.state.error.message}
                         </pre>
-                      )}
-                    </details>
-                  )}
+                        {this.state.errorInfo && (
+                          <pre className="mt-2 text-xs text-gray-600 whitespace-pre-wrap">
+                            {this.state.errorInfo.componentStack}
+                          </pre>
+                        )}
+                      </details>
+                    )}
                 </div>
 
                 {/* Actions */}
@@ -126,11 +128,11 @@ export class ErrorBoundary extends Component<Props, State> {
             </div>
           </div>
         </div>
-      )
+      );
     }
 
-    return this.props.children
+    return this.props.children;
   }
 }
 
-export default ErrorBoundary
+export default ErrorBoundary;
