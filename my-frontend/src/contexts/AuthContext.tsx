@@ -14,21 +14,22 @@ import React, {
 } from 'react';
 
 interface User {
-  id: number;
-  username: string;
-  email: string;
-  roleName: string;
+  id?: number;
+  username?: string;
+  email?: string;
+  roleName?: string;
   name?: string;
 }
 
 interface AuthContextType {
   user: User | null;
   loading: boolean;
-  login: (email: string, password: string) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<User | null>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
 }
+
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
@@ -68,7 +69,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     }
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<User | null> => {
     try {
       const baseURL =
         process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
@@ -83,15 +84,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       if (response.ok) {
         const data = await response.json();
-        setUser(data.user);
-        return true;
+        // Normalize different backend response shapes. Some endpoints return { user: {...} }
+        // others return a flat { email, role, ... } shape.
+        const userFromBody = data.user
+          ? data.user
+          : {
+              id: data.id,
+              username: data.username || (data.email ? data.email.split('@')[0] : undefined),
+              email: data.email,
+              roleName: data.role || data.roleName,
+              name: data.name,
+            };
+
+        setUser(userFromBody || null);
+        return userFromBody || null;
       } else {
         // Login failed - error handled by caller
-        return false;
+        return null;
       }
     } catch {
       // Network or other error during login
-      return false;
+      return null;
     }
   };
 

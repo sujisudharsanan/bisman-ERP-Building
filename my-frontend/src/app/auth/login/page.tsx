@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext';
 import { 
   Eye, 
   EyeOff, 
@@ -96,6 +97,8 @@ export default function StandardLoginPage() {
   const [showDemoUsers, setShowDemoUsers] = useState(false);
   const router = useRouter();
 
+  const { login } = useAuth();
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -103,55 +106,29 @@ export default function StandardLoginPage() {
     setSuccess('');
 
     try {
-      const response = await fetch('http://localhost:3001/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: email.trim(),
-          password,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+      const user = await login(email.trim(), password);
+      if (user) {
         setSuccess('Login successful! Redirecting...');
 
-        // Store user data in localStorage for compatibility
-        localStorage.setItem('token', data.token || 'cookie-based');
-        localStorage.setItem(
-          'user',
-          JSON.stringify({
-            email: data.email,
-            role: data.role,
-            name: email.split('@')[0],
-          })
-        );
-
-        // Role-based redirection
-        setTimeout(() => {
-          switch (data.role?.toUpperCase()) {
-            case 'SUPER_ADMIN':
-              router.push('/super-admin');
-              break;
-            case 'ADMIN':
-              router.push('/admin');
-              break;
-            case 'STAFF':
-              router.push('/hub-incharge');
-              break;
-            case 'MANAGER':
-            case 'USER':
-            default:
-              router.push('/dashboard');
-              break;
-          }
-        }, 1000);
+        // Role-based redirection (use full-page navigation to ensure fresh app state)
+        switch (user.roleName?.toUpperCase()) {
+          case 'SUPER_ADMIN':
+            window.location.href = '/super-admin';
+            break;
+          case 'ADMIN':
+            window.location.href = '/admin';
+            break;
+          case 'STAFF':
+            window.location.href = '/hub-incharge';
+            break;
+          case 'MANAGER':
+          case 'USER':
+          default:
+            window.location.href = '/dashboard';
+            break;
+        }
       } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Login failed. Please check your credentials.');
+        setError('Login failed. Please check your credentials.');
       }
     } catch {
       setError('Network error. Please check your connection and try again.');
@@ -175,38 +152,12 @@ export default function StandardLoginPage() {
     setSuccess(`Logging in as ${user.name}...`);
 
     try {
-      const response = await fetch('http://localhost:3001/api/login', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        credentials: 'include',
-        body: JSON.stringify({
-          email: user.email,
-          password: user.password,
-        }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
+      const logged = await login(user.email, user.password);
+      if (logged) {
         setSuccess(`Welcome ${user.name}! Redirecting to your dashboard...`);
-
-        localStorage.setItem('token', data.token || 'cookie-based');
-        localStorage.setItem(
-          'user',
-          JSON.stringify({
-            email: data.email,
-            role: data.role,
-            name: user.name,
-          })
-        );
-
-        setTimeout(() => {
-          router.push(user.redirectPath);
-        }, 1500);
+  window.location.href = user.redirectPath;
       } else {
-        const errorData = await response.json();
-        setError(errorData.error || 'Quick login failed.');
+        setError('Quick login failed.');
       }
     } catch {
       setError('Network error during quick login.');

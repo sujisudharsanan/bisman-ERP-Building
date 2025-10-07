@@ -3,6 +3,7 @@ const enforce = require('express-sslify')
 const helmet = require('helmet')
 const express = require('express')
 const path = require('path')
+const fs = require('fs')
 const { Pool } = require('pg')
 const { PrismaClient } = require('@prisma/client')
 const bcrypt = require('bcryptjs')
@@ -641,5 +642,31 @@ app.get('/api/users', authenticate, requireRole(['ADMIN', 'SUPER_ADMIN']), async
     })
   }
 })
+
+// If DEBUG_ROUTES env var is set, dump registered routes at startup for analyzer use
+if (process.env.DEBUG_ROUTES) {
+  try {
+    const routes = [];
+    app._router && app._router.stack && app._router.stack.forEach(mw => {
+      if (!mw.route && mw.name === 'router') {
+        // router with nested stack
+        mw.handle && mw.handle.stack && mw.handle.stack.forEach(r => {
+          if (r.route && r.route.path) {
+            const methods = Object.keys(r.route.methods || {}).join(',');
+            routes.push({ path: r.route.path, methods, file: r.route.stack && r.route.stack[0] && r.route.stack[0].name || null });
+          }
+        })
+      } else if (mw.route && mw.route.path) {
+        const methods = Object.keys(mw.route.methods || {}).join(',');
+        routes.push({ path: mw.route.path, methods, file: mw.route.stack && mw.route.stack[0] && mw.route.stack[0].name || null });
+      }
+    });
+    const out = path.join(__dirname, 'debug-routes.json');
+    fs.writeFileSync(out, JSON.stringify(routes, null, 2));
+    console.log('Wrote debug routes to', out);
+  } catch (e) {
+    console.error('Failed to dump routes', e);
+  }
+}
 
 module.exports = app

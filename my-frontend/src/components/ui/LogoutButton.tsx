@@ -1,6 +1,7 @@
-'use client';
+"use client";
 
 import { useRouter, usePathname } from 'next/navigation';
+import { useState } from 'react';
 import { useAuthStore } from '@/store/useAuth';
 
 interface LogoutButtonProps {
@@ -20,23 +21,61 @@ export default function LogoutButton({
   const pathname = usePathname();
   const logout = useAuthStore(state => state.logout);
 
-  // Hide on login page if hideOnLogin is true
-  if (hideOnLogin && pathname === '/login') {
-    return null;
+  // Hide on login/register or any auth public routes if hideOnLogin is true
+  if (hideOnLogin) {
+    const publicRoutes = ['/login', '/register', '/auth/login', '/auth/register'];
+    if (publicRoutes.includes(pathname) || pathname.startsWith('/auth/')) {
+      return null;
+    }
   }
 
   // Only show if user is authenticated (optional)
   // if (!user) return null
 
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   const handleLogout = async () => {
     try {
-      await logout();
-      // Clear any local storage flags
-      localStorage.removeItem('justLoggedIn');
-      // Redirect to login page
-      router.push('/login');
-    } catch {
-      // Even if logout fails, redirect to login
+      // Try store logout (axios) which calls backend
+      await Promise.resolve(logout && logout());
+    } catch (e) {
+      // ignore
+    }
+
+    // Best-effort client cleanup
+    try {
+      // Call backend logout endpoint directly (non-blocking)
+      fetch('/api/logout', { method: 'POST', credentials: 'include' }).catch(() => {});
+    } catch (e) {
+      /* ignore */
+    }
+
+    try {
+      // Clear cookies for path=/
+      document.cookie.split(';').forEach(c => {
+        document.cookie = c
+          .replace(/^ +/, '')
+          .replace(/=.*/, '=;expires=' + new Date(0).toUTCString() + ';path=/');
+      });
+    } catch (e) {
+      // SSR guard
+    }
+
+    try {
+      localStorage.clear();
+      sessionStorage.clear();
+    } catch (e) {
+      // ignore
+    }
+
+    // Close mobile menu if open
+    setMobileOpen(false);
+
+    // Redirect via full reload to avoid React hook-order mismatch during client-side navigation
+    try {
+      window.location.href = '/login';
+    } catch (e) {
+      // Fallback to router
       router.push('/login');
     }
   };
@@ -55,7 +94,7 @@ export default function LogoutButton({
   const getPositionStyles = () => {
     switch (position) {
       case 'top-right':
-        return 'fixed top-4 right-4 z-50';
+        return 'fixed top-4 right-4 z-50 md:block';
       case 'top-left':
         return 'fixed top-4 left-4 z-50';
       case 'bottom-right':
@@ -66,13 +105,41 @@ export default function LogoutButton({
   };
 
   return (
-    <button
-      onClick={handleLogout}
-      className={`${getVariantStyles()} ${getPositionStyles()} ${className} transition-colors duration-200`}
-      aria-label="Logout"
-      title="Logout from the application"
-    >
-      {variant === 'minimal' ? 'Logout' : '🚪 Logout'}
-    </button>
+    <>
+      {/* Desktop / md+ button (fixed) */}
+      <button
+        onClick={handleLogout}
+        className={`${getVariantStyles()} ${getPositionStyles()} ${className} hidden md:inline-flex transition-colors duration-200`}
+        aria-label="Logout"
+        title="Logout from the application"
+      >
+        {variant === 'minimal' ? 'Logout' : '🚪 Logout'}
+      </button>
+
+      {/* Mobile: show a small menu button that toggles the logout action */}
+      <div className={`fixed top-4 right-4 z-50 md:hidden ${className}`}> 
+        <button
+          onClick={() => setMobileOpen(v => !v)}
+          className="p-2 bg-white/90 rounded-md shadow-lg"
+          aria-label="Open menu"
+          title="Menu"
+        >
+          <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-gray-700" viewBox="0 0 20 20" fill="currentColor">
+            <path fillRule="evenodd" d="M3 5h14a1 1 0 010 2H3a1 1 0 110-2zm0 4h14a1 1 0 010 2H3a1 1 0 110-2zm0 4h14a1 1 0 010 2H3a1 1 0 110-2z" clipRule="evenodd" />
+          </svg>
+        </button>
+
+        {mobileOpen && (
+          <div className="mt-2 bg-white rounded-md shadow-lg p-2 w-40">
+            <button
+              onClick={handleLogout}
+              className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded"
+            >
+              Logout
+            </button>
+          </div>
+        )}
+      </div>
+    </>
   );
 }
