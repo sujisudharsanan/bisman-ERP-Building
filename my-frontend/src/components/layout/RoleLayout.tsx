@@ -23,15 +23,7 @@ export default function RoleLayout({
 }: RoleLayoutProps) {
   const router = useRouter();
 
-  const handleLogout = () => {
-    // Clear any stored auth data
-    localStorage.removeItem('authToken');
-    localStorage.removeItem('userRole');
-    localStorage.removeItem('userData');
-
-    // Redirect to login
-    router.push('/auth/login');
-  };
+  // Logout handled globally via LogoutButton in RootLayout
 
   const handleBack = () => {
     if (backUrl) {
@@ -123,15 +115,7 @@ export default function RoleLayout({
                 </div>
               </div>
 
-              {/* Logout button */}
-              <button
-                onClick={handleLogout}
-                className="flex items-center space-x-2 bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-lg transition-colors"
-                aria-label="Logout"
-              >
-                <span className="text-lg">🚪</span>
-                <span className="hidden sm:inline">Logout</span>
-              </button>
+              {/* Logout is handled by the global LogoutButton to avoid duplicates */}
             </div>
           </div>
         </div>

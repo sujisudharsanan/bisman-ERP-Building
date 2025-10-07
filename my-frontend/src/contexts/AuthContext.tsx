@@ -109,6 +109,24 @@ export function AuthProvider({ children }: AuthProviderProps) {
     } catch {
       // Logout error - proceed with client cleanup
     } finally {
+      // Clear client-side authentication state
+      try {
+        // Clear all cookies for the current path
+        document.cookie.split(';').forEach(c => {
+          document.cookie = c
+            .replace(/^ +/, '')
+            .replace(/=.*/, '=;expires=' + new Date(0).toUTCString() + ';path=/');
+        });
+      } catch (e) {
+        // document may not be available during SSR
+      }
+      try {
+        localStorage.clear();
+        sessionStorage.clear();
+      } catch (e) {
+        // ignore storage errors
+      }
+
       setUser(null);
     }
   };

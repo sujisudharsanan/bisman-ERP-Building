@@ -5,6 +5,7 @@ const prisma = new PrismaClient()
 
 // Development users for testing
 const devUsers = [
+  { id: 0, email: 'super@bisman.local', password: 'password', role: 'SUPER_ADMIN' },
   { id: 1, email: 'manager@business.com', password: 'password', role: 'MANAGER' },
   { id: 2, email: 'admin@business.com', password: 'admin123', role: 'ADMIN' },
   { id: 3, email: 'staff@business.com', password: 'staff123', role: 'STAFF' }

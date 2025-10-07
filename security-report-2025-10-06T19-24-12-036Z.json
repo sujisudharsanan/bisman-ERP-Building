@@ -1,0 +1,158 @@
+{
+  "score": 79,
+  "totalScore": 79,
+  "maxScore": 100,
+  "categories": {
+    "requestMethodValidation": {
+      "passed": true,
+      "score": 20,
+      "details": [],
+      "fixes": []
+    },
+    "httpsEnforcement": {
+      "passed": false,
+      "score": 13,
+      "details": [
+        "secure cookies"
+      ],
+      "fixes": []
+    },
+    "passwordHashing": {
+      "passed": true,
+      "score": 11,
+      "details": [],
+      "fixes": []
+    },
+    "rateLimiting": {
+      "passed": true,
+      "score": 15,
+      "details": [],
+      "fixes": []
+    },
+    "auditLogs": {
+      "passed": false,
+      "score": 0,
+      "details": [
+        {
+          "file": "my-backend/app.js",
+          "line": 178,
+          "content": "console.log('Extracted email:', email, 'password length:', password ? password.length : 'undefined')",
+          "type": "source_logging"
+        },
+        {
+          "file": "my-backend/app.js",
+          "line": 180,
+          "content": "console.log('Missing email or password')",
+          "type": "source_logging"
+        },
+        {
+          "file": "my-backend/scripts/seed-demo-users.js",
+          "line": 72,
+          "content": "console.log('   Password: Demo@123')",
+          "type": "source_logging"
+        },
+        {
+          "file": "my-backend/scripts/seed-demo-users.js",
+          "line": 76,
+          "content": "console.log('   Password: changeme')",
+          "type": "source_logging"
+        },
+        {
+          "file": "my-backend/scripts/seed-demo-users.js",
+          "line": 80,
+          "content": "console.log('   Password: manager123')",
+          "type": "source_logging"
+        },
+        {
+          "file": "my-backend/scripts/seed-demo-users.js",
+          "line": 84,
+          "content": "console.log('   Password: staff123')",
+          "type": "source_logging"
+        },
+        {
+          "file": "my-backend/scripts/seed-demo-users.js",
+          "line": 88,
+          "content": "console.log('   Password: changeme')",
+          "type": "source_logging"
+        },
+        {
+          "file": "my-frontend/src/archive/components/LoginForm.tsx",
+          "line": 39,
+          "content": "await login(values.email, values.password);",
+          "type": "source_logging"
+        },
+        {
+          "file": "my-frontend/src/contexts/AuthContext.tsx",
+          "line": 27,
+          "content": "login: (email: string, password: string) => Promise<boolean>;",
+          "type": "source_logging"
+        },
+        {
+          "file": "my-frontend/src/contexts/AuthContext.tsx",
+          "line": 71,
+          "content": "const login = async (email: string, password: string): Promise<boolean> => {",
+          "type": "source_logging"
+        },
+        {
+          "file": "my-frontend/src/providers/AuthProvider.tsx",
+          "line": 15,
+          "content": "login: (email: string, password: string) => Promise<void>;",
+          "type": "source_logging"
+        },
+        {
+          "file": "my-frontend/src/providers/AuthProvider.tsx",
+          "line": 39,
+          "content": "async function login(email: string, password: string) {",
+          "type": "source_logging"
+        },
+        {
+          "file": "my-frontend/src/providers/AuthProvider.tsx",
+          "line": 41,
+          "content": "await api.post('/api/login', { email, password });",
+          "type": "source_logging"
+        },
+        {
+          "file": "my-frontend/src/store/useAuth.ts",
+          "line": 6,
+          "content": "login: (email: string, password: string) => Promise<void>;",
+          "type": "source_logging"
+        },
+        {
+          "file": "my-frontend/src/store/useAuth.ts",
+          "line": 13,
+          "content": "login: async (email, password) => {",
+          "type": "source_logging"
+        },
+        {
+          "file": "my-frontend/src/store/useAuth.ts",
+          "line": 15,
+          "content": "const res = await api.post('/api/login', { email, password });",
+          "type": "source_logging"
+        },
+        {
+          "file": "apps/api/src/auth/auth.controller.ts",
+          "line": 9,
+          "content": "// Minimal dev login: set an HttpOnly cookie named 'token' with value 'devtoken'",
+          "type": "source_logging"
+        },
+        {
+          "file": "apps/api/src/auth/auth.service.ts",
+          "line": 81,
+          "content": "this.logger.debug('token verify failed', e && (e as any).message);",
+          "type": "source_logging"
+        }
+      ],
+      "fixes": []
+    },
+    "sessionSecurity": {
+      "passed": true,
+      "score": 20,
+      "details": [],
+      "fixes": []
+    }
+  },
+  "timestamp": "2025-10-06T19:24:11.921Z",
+  "auditVersion": "1.0.0",
+  "application": "BISMAN ERP",
+  "auditor": "GitHub Copilot Security Auditor"
+}

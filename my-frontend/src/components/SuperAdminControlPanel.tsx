@@ -34,6 +34,7 @@ import {
   UserProfile 
 } from '@/components/user-management';
 import { PrivilegeManagement } from '@/components/privilege-management';
+import DatabaseBrowser from '@/components/database-browser/DatabaseBrowser';
 import type { 
   User as UserType, 
   UserRole, 
@@ -793,8 +794,8 @@ const SuperAdminControlPanel: React.FC = () => {
             {activeTab === 'users' && <UsersTab />}
             {activeTab === 'privileges' && <PrivilegeManagement />}
             {activeTab === 'activity' && (
-              <div className="text-center py-12 text-gray-500">
-                Activity Log component coming soon...
+              <div className="h-full">
+                <DatabaseBrowser />
               </div>
             )}
             {activeTab === 'security' && (

@@ -8,9 +8,8 @@ const privilegeService = require('../services/privilegeService');
 const authMiddleware = require('../middleware/auth');
 const rbacMiddleware = require('../middleware/rbac');
 
-// Middleware for privilege management routes
-router.use(authMiddleware.authenticate);
-router.use(rbacMiddleware.requireRole(['Super Admin', 'Admin']));
+// Note: Authentication middleware is applied per route instead of globally
+// to avoid blocking login and health endpoints
 
 // Validation middleware
 const handleValidationErrors = (req, res, next) => {
@@ -30,7 +29,7 @@ const handleValidationErrors = (req, res, next) => {
 };
 
 // GET /api/roles - Fetch all roles with user counts
-router.get('/roles', async (req, res) => {
+router.get('/roles', authMiddleware.authenticate, rbacMiddleware.requireRole(['Super Admin', 'Admin']), async (req, res) => {
   try {
     const roles = await privilegeService.getAllRoles();
     
@@ -53,10 +52,17 @@ router.get('/roles', async (req, res) => {
   }
 });
 
+// GET /api/health/database - Database health check
+
 // GET /api/users?role={roleId} - Fetch users by role
 router.get('/users', [
-  query('role').notEmpty().withMessage('Role ID is required')
-], handleValidationErrors, async (req, res) => {
+  authMiddleware.authenticate,
+  rbacMiddleware.requireRole(['Super Admin', 'Admin']),
+  query('role').optional().isString(),
+  query('page').optional().isInt({ min: 1 }),
+  query('limit').optional().isInt({ min: 1 }),
+  handleValidationErrors
+], async (req, res) => {
   try {
     const { role } = req.query;
     const users = await privilegeService.getUsersByRole(role);
@@ -82,8 +88,11 @@ router.get('/users', [
 
 // GET /api/privileges?role={roleId}&user={userId} - Fetch privileges
 router.get('/privileges', [
-  query('role').notEmpty().withMessage('Role ID is required')
-], handleValidationErrors, async (req, res) => {
+  authMiddleware.authenticate,
+  rbacMiddleware.requireRole(['Super Admin', 'Admin']),
+  query('resource').optional().isString(),
+  handleValidationErrors
+], async (req, res) => {
   try {
     const { role, user } = req.query;
     const privilegeData = await privilegeService.getPrivileges(role, user);
@@ -105,19 +114,13 @@ router.get('/privileges', [
     });
   }
 });
-
 // PUT /api/privileges/update - Update role or user privileges
 router.put('/privileges/update', [
-  body('type').isIn(['ROLE', 'USER']).withMessage('Type must be ROLE or USER'),
-  body('target_id').notEmpty().withMessage('Target ID is required'),
-  body('privileges').isArray().withMessage('Privileges must be an array'),
-  body('privileges.*.feature_id').notEmpty().withMessage('Feature ID is required'),
-  body('privileges.*.can_view').isBoolean().withMessage('can_view must be boolean'),
-  body('privileges.*.can_create').isBoolean().withMessage('can_create must be boolean'),
-  body('privileges.*.can_edit').isBoolean().withMessage('can_edit must be boolean'),
-  body('privileges.*.can_delete').isBoolean().withMessage('can_delete must be boolean'),
-  body('privileges.*.can_hide').isBoolean().withMessage('can_hide must be boolean')
-], handleValidationErrors, async (req, res) => {
+  authMiddleware.authenticate,
+  rbacMiddleware.requireRole(['Super Admin', 'Admin']),
+  body('userId').isInt({ min: 1 }),
+  handleValidationErrors
+], async (req, res) => {
   try {
     const { type, target_id, privileges } = req.body;
     const userId = req.user.id; // From auth middleware
@@ -159,9 +162,8 @@ router.put('/privileges/update', [
     });
   }
 });
-
 // POST /api/privileges/sync-schema - Sync features with database schema
-router.post('/privileges/sync-schema', async (req, res) => {
+router.post('/privileges/sync-schema', authMiddleware.authenticate, rbacMiddleware.requireRole(['Super Admin', 'Admin']), async (req, res) => {
   try {
     const userId = req.user.id;
     const result = await privilegeService.syncSchemaFeatures();
@@ -197,7 +199,7 @@ router.post('/privileges/sync-schema', async (req, res) => {
 });
 
 // GET /api/health/database - Database health check
-router.get('/health/database', async (req, res) => {
+router.get('/health/database', authMiddleware.authenticate, rbacMiddleware.requireRole(['Super Admin', 'Admin']), async (req, res) => {
   try {
     const startTime = Date.now();
     const health = await privilegeService.checkDatabaseHealth();
@@ -214,7 +216,8 @@ router.get('/health/database', async (req, res) => {
     });
   } catch (error) {
     console.error('Database health check failed:', error);
-    res.status(503).json({
+    console.error('Database health check failed:', error);
+    res.status(500).json({
       success: false,
       error: {
         message: 'Database health check failed',
@@ -225,12 +228,15 @@ router.get('/health/database', async (req, res) => {
   }
 });
 
-// GET /api/audit/privileges - Get privilege change audit logs
-router.get('/audit/privileges', [
-  query('limit').optional().isInt({ min: 1, max: 100 }).withMessage('Limit must be between 1 and 100'),
-  query('offset').optional().isInt({ min: 0 }).withMessage('Offset must be non-negative'),
-  query('entity_type').optional().isIn(['ROLE_PRIVILEGE', 'USER_PRIVILEGE', 'ROLE', 'USER', 'FEATURE'])
-], handleValidationErrors, async (req, res) => {
+// GET /api/audit-logs - Fetch audit logs
+router.get('/audit-logs', [
+  authMiddleware.authenticate,
+  rbacMiddleware.requireRole(['Super Admin', 'Admin']),
+  query('limit').optional().isInt({ min: 1, max: 100 }),
+  query('offset').optional().isInt({ min: 0 }),
+  query('entity_type').optional().isString(),
+  handleValidationErrors
+], async (req, res) => {
   try {
     const { limit = 50, offset = 0, entity_type } = req.query;
     const auditLogs = await privilegeService.getAuditLogs({
@@ -259,12 +265,15 @@ router.get('/audit/privileges', [
 
 // POST /api/privileges/export - Export privilege matrix
 router.post('/privileges/export', [
-  body('format').isIn(['CSV', 'PDF']).withMessage('Format must be CSV or PDF'),
+  authMiddleware.authenticate,
+  rbacMiddleware.requireRole(['Super Admin', 'Admin']),
+  body('format').isIn(['JSON', 'CSV', 'PDF']),
   body('include_user_overrides').optional().isBoolean(),
   body('include_inactive_features').optional().isBoolean(),
   body('selected_roles').optional().isArray(),
-  body('selected_users').optional().isArray()
-], handleValidationErrors, async (req, res) => {
+  body('selected_users').optional().isArray(),
+  handleValidationErrors
+], async (req, res) => {
   try {
     const exportOptions = req.body;
     const result = await privilegeService.exportPrivilegeMatrix(exportOptions);

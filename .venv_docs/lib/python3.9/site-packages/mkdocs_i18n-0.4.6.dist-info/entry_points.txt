@@ -1,0 +1,2 @@
+[mkdocs.plugins]
+i18n = mkdocs_i18n:I18n

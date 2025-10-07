@@ -68,7 +68,7 @@ app.use('/api/upload', uploadRoutes)
 
 // Privilege management routes
 const privilegeRoutes = require('./routes/privilegeRoutes')
-app.use('/api', privilegeRoutes)
+app.use('/api/privileges', privilegeRoutes)
 
 const prisma = new PrismaClient()
 
@@ -156,6 +156,7 @@ app.use(cookieParser())
 
 // Development users for testing
 const devUsers = [
+  { id: 0, email: 'super@bisman.local', password: 'password', role: 'SUPER_ADMIN' },
   { id: 1, email: 'manager@business.com', password: 'password', role: 'MANAGER' },
   { id: 2, email: 'admin@business.com', password: 'admin123', role: 'ADMIN' },
   { id: 3, email: 'staff@business.com', password: 'staff123', role: 'STAFF' }
@@ -166,13 +167,19 @@ app.use('/api/login', authLimiter)
 app.use('/api/auth', authLimiter)
 
 app.post('/api/login', async (req, res) => {
+  console.log('=== LOGIN REQUEST RECEIVED ===')
   console.log('Incoming /api/login request from', req.ip, 'headers:', {
     origin: req.headers.origin,
     host: req.headers.host,
     'content-type': req.headers['content-type']
   })
+  console.log('Request body:', req.body)
   const { email, password } = req.body || {}
-  if (!email || !password) return res.status(400).json({ error: 'email and password required' })
+  console.log('Extracted email:', email, 'password length:', password ? password.length : 'undefined')
+  if (!email || !password) {
+    console.log('Missing email or password')
+    return res.status(400).json({ error: 'email and password required' })
+  }
 
   try {
     let user = null
@@ -198,8 +205,14 @@ app.post('/api/login', async (req, res) => {
 
     // Fallback to development users if database fails
     if (!user) {
+      console.log('Checking dev users for email:', email)
+      console.log('Available dev users:', devUsers.map(u => ({ email: u.email, role: u.role })))
       const devUser = devUsers.find(u => u.email === email && u.password === password)
-      if (!devUser) return res.status(401).json({ error: 'invalid credentials' })
+      console.log('Found dev user:', devUser ? { email: devUser.email, role: devUser.role } : 'None')
+      if (!devUser) {
+        console.log('Invalid credentials for:', email)
+        return res.status(401).json({ error: 'invalid credentials' })
+      }
       user = devUser
       roleName = devUser.role
     }

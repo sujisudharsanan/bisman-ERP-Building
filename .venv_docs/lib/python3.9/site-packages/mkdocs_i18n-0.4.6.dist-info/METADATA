@@ -1,0 +1,72 @@
+Metadata-Version: 2.1
+Name: mkdocs-i18n
+Version: 0.4.6
+Summary: MkDocs i18n plugin
+Author-email: Simó Albert i Beltran <sim6@bona.gent>
+License: AGPL-3.0-or-later
+Project-URL: Homepage, https://gitlab.com/mkdocs-i18n/mkdocs-i18n
+Project-URL: Bug Reports, https://gitlab.com/mkdocs-i18n/mkdocs-i18n/-/issues
+Project-URL: Funding, https://liberapay.com/mkdocs-i18n/donate
+Project-URL: Source, https://gitlab.com/mkdocs-i18n/mkdocs-i18n/-/tree/main
+Keywords: mkdocs,plugin,i18n
+Classifier: Development Status :: 5 - Production/Stable
+Classifier: License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)
+Classifier: Programming Language :: Python
+Classifier: Programming Language :: Python :: 3 :: Only
+Classifier: Programming Language :: Python :: 3.7
+Classifier: Programming Language :: Python :: 3.9
+Requires-Python: <4,>=3.7
+Description-Content-Type: text/markdown
+License-File: COPYING
+Requires-Dist: mkdocs-material
+Requires-Dist: mkdocs (>=1.1)
+Provides-Extra: test
+Requires-Dist: bandit ; extra == 'test'
+Requires-Dist: black ; extra == 'test'
+Requires-Dist: bs4 ; extra == 'test'
+Requires-Dist: coverage ; extra == 'test'
+Requires-Dist: expects ; extra == 'test'
+Requires-Dist: flake8 ; extra == 'test'
+Requires-Dist: gitlint ; extra == 'test'
+Requires-Dist: isort ; extra == 'test'
+Requires-Dist: lxml ; extra == 'test'
+Requires-Dist: mamba ; extra == 'test'
+Requires-Dist: pylint ; extra == 'test'
+
+# MkDocs i18n plugin
+
+A plugin to internationalize MkDocs. It adds links to translated pages for each page. It also hides other languages page links of navigation menu if there is a translation for current page language.
+
+Example of mkdocs-i18n usage: <https://mkdocs-i18n.gitlab.io/mkdocs-i18n>
+
+Feel free to write your comments or request adaptations to your requirements at <https://gitlab.com/mkdocs-i18n/mkdocs-i18n/-/issues>.
+
+mkdocs-i18n updates [Site Language of Material for MkDocs](https://squidfunk.github.io/mkdocs-material/setup/changing-the-language/#site-language) if [it is enabled](https://gitlab.com/mkdocs-i18n/mkdocs-i18n/-/blob/main/mkdocs.yml#L7).
+
+mkdocs-i18n updates [Site Language Selector of Material for MkDocs](https://squidfunk.github.io/mkdocs-material/setup/changing-the-language/#site-language-selector) linking each translated page if [it is configured](https://gitlab.com/mkdocs-i18n/mkdocs-i18n/-/blob/main/mkdocs.yml#L57).
+
+## Case Studies
+
+<http://isardvdi.com> (<https://isard.gitlab.io/isardvdi-docs>) is a multilingual community, most members know 2 languages but not the same ones, some understand 3... Each one has its favorite language and has different levels of knowledge about other languages. In addition, community documentation doesn't have a source language and not all documents need to be translated into all languages. Therefore, this plugin shows all available translations for the page shown at the top of the document and also for pages not translated into the language selected in the navigation menu.
+
+## Setup
+
+Install the plugin using pip:
+
+`pip install mkdocs-i18n`
+
+Configure the plugin via [mkdocs.yml](https://gitlab.com/mkdocs-i18n/mkdocs-i18n/-/blob/main/mkdocs.yml)
+
+If you have no `plugins` entry in your configuration file you have `search` plugin enabled. If you create `plugins` entry to enable `i18n` plugin you also need to add `search` plugin if you want to have `search` plugin enabled.
+
+## Donations:
+
+- [Liberapay](https://liberapay.com/mkdocs-i18n/donate)
+- [Bitcoin](bitcoin:15QqofyoWxDSZU9VbXwVZKFxAVdmpkE5uH?message=mkdocs-i18n)
+
+## Other interesting works:
+
+- [MkDocs static i18n plugin](https://github.com/ultrabug/mkdocs-static-i18n): Builds a parallel structure of translated documents with a source language. It does not link to other translations of the current document and does not show pages that have not been translated into the current language or the default language. Therefore, documents translated only into a non-default language are only linked to the navigation menu when visiting a page with the same language.
+- [MkDocs Theme i18n](https://github.com/mkdocs/mkdocs/pull/2299): Work in progress.
+- [Markdown i18n plugin](https://github.com/gisce/markdown-i18n): Provide translation of documents via po files but images cannot be localized.
+- [MkDocs Multilang](https://pypi.org/project/mkdocs-multilang/): Only released for MkDocs < 1.0

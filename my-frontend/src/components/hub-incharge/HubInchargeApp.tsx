@@ -1631,10 +1631,6 @@ export default function HubInchargeApp() {
     return <div>Access denied. Redirecting...</div>;
   }
 
-  const handleLogout = async () => {
-    await logout();
-    router.push('/login');
-  };
 
   const pages: Record<TabName, JSX.Element> = {
     Dashboard: <DashboardPage data={data} />,
@@ -1733,13 +1729,7 @@ export default function HubInchargeApp() {
             <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-semibold">
               {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
             </div>
-            <button
-              onClick={handleLogout}
-              className="p-2 hover:bg-gray-100 rounded"
-              title="Logout"
-            >
-              <LogOut size={16} />
-            </button>
+            {/* Global LogoutButton is provided in RootLayout; local button removed to avoid duplicates */}
           </div>
         </div>
       </header>

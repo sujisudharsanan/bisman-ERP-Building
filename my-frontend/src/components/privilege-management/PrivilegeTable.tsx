@@ -32,14 +32,14 @@ export function PrivilegeTable({
     onPrivilegeChange(featureId, { [permission]: checked });
   };
 
-  const getPermissionValue = (privilege: PrivilegeTableRow, permission: keyof PrivilegeTableRow) => {
+  const getPermissionValue = (privilege: PrivilegeTableRow, permission: 'can_view' | 'can_create' | 'can_edit' | 'can_delete' | 'can_hide') => {
     // User override takes precedence
     if (selectedUser && privilege.user_privilege) {
-      return privilege.user_privilege[permission as keyof typeof privilege.user_privilege];
+      return privilege.user_privilege[permission];
     }
     // Fall back to role privilege
     if (privilege.role_privilege) {
-      return privilege.role_privilege[permission as keyof typeof privilege.role_privilege];
+      return privilege.role_privilege[permission];
     }
     return false;
   };
@@ -200,7 +200,7 @@ export function PrivilegeTable({
                         <label className="inline-flex items-center cursor-pointer">
                           <input
                             type="checkbox"
-                            checked={getPermissionValue(privilege, permission) || false}
+                            checked={!!getPermissionValue(privilege, permission)}
                             onChange={(e) => handleCheckboxChange(privilege.id, permission, e.target.checked)}
                             disabled={readOnly || !privilege.is_active}
                             className={`
