@@ -17,7 +17,7 @@ export default function HubInchargePage() {
       }
 
       // Role-based access control - allow STAFF, ADMIN, MANAGER
-      if (!['STAFF', 'ADMIN', 'MANAGER'].includes(user.roleName)) {
+      if (!user.roleName || !['STAFF', 'ADMIN', 'MANAGER'].includes(user.roleName)) {
         router.push('/dashboard');
         return;
       }
@@ -35,7 +35,7 @@ export default function HubInchargePage() {
     );
   }
 
-  if (!user || !['STAFF', 'ADMIN', 'MANAGER'].includes(user.roleName)) {
+  if (!user || !user.roleName || !['STAFF', 'ADMIN', 'MANAGER'].includes(user.roleName)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">

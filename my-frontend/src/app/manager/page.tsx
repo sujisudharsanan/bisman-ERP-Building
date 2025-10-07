@@ -16,7 +16,7 @@ export default function ManagerPage() {
       }
 
       // Role-based access control - allow MANAGER and ADMIN
-      if (!['MANAGER', 'ADMIN'].includes(user.roleName)) {
+      if (!user.roleName || !['MANAGER', 'ADMIN'].includes(user.roleName)) {
         router.push('/dashboard');
         return;
       }
@@ -34,7 +34,7 @@ export default function ManagerPage() {
     );
   }
 
-  if (!user || !['MANAGER', 'ADMIN'].includes(user.roleName)) {
+  if (!user || !user.roleName || !['MANAGER', 'ADMIN'].includes(user.roleName)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">

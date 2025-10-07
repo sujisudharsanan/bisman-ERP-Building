@@ -22,7 +22,7 @@ export default function LogoutButton({
   const logout = useAuthStore(state => state.logout);
 
   // Hide on login/register or any auth public routes if hideOnLogin is true
-  if (hideOnLogin) {
+  if (hideOnLogin && pathname) {
     const publicRoutes = ['/login', '/register', '/auth/login', '/auth/register'];
     if (publicRoutes.includes(pathname) || pathname.startsWith('/auth/')) {
       return null;

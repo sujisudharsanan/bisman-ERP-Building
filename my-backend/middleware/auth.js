@@ -1,5 +1,6 @@
 const jwt = require('jsonwebtoken')
 const { PrismaClient } = require('@prisma/client')
+const { isJtiRevoked } = require('../lib/tokenStore')
 
 const prisma = new PrismaClient()
 
@@ -25,7 +26,20 @@ async function authenticate(req, res, next) {
     token = parts[1]
   }
   try {
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret')
+    // Enforce algorithm and issuer/audience where possible
+    const verifyOptions = {}
+    if (process.env.JWT_PRIVATE_KEY) {
+      // If using RSA keys, expect RS256
+      verifyOptions.algorithms = ['RS256']
+    } else {
+      verifyOptions.algorithms = ['HS512', 'HS256']
+    }
+    // audience/issuer checks can be added if configured
+    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret', verifyOptions)
+    // reject if jti is revoked
+    if (payload && payload.jti && isJtiRevoked(payload.jti)) {
+      return res.status(401).json({ error: 'revoked token' })
+    }
     let user = null
 
     // Try Prisma first if database is available

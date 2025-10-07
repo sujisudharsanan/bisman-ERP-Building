@@ -17,7 +17,7 @@ export default function AdminPage() {
       }
 
       // Role-based access control - only ADMIN and SUPER_ADMIN can access
-      if (!['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
+      if (!user.roleName || !['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
         router.push('/dashboard');
         return;
       }
@@ -41,7 +41,7 @@ export default function AdminPage() {
     );
   }
 
-  if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
+  if (!user || !user.roleName || !['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
     return null; // Will redirect in useEffect
   }
 

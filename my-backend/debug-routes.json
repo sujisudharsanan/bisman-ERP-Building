@@ -75,6 +75,11 @@
     "file": "<anonymous>"
   },
   {
+    "path": "/api/token/refresh",
+    "methods": "post",
+    "file": "<anonymous>"
+  },
+  {
     "path": "/api/me",
     "methods": "get",
     "file": "authenticate"

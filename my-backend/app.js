@@ -217,32 +217,64 @@ app.post('/api/login', async (req, res) => {
       user = devUser
       roleName = devUser.role
     }
-  const token = jwt.sign({ sub: user.id, email: user.email, role: roleName }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '8h' })
-  // Set HttpOnly cookie; compute secure flag so local dev uses secure=false
+  // Create access token (short-lived) and refresh token (rotating)
+  const jti = require('crypto').randomUUID()
+  const accessToken = jwt.sign({ sub: user.id, role: roleName, jti }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '1h' })
+  const refreshToken = require('crypto').randomUUID()
+
+  // Save refresh token record (store hash) with expiry (7 days)
+  const { saveRefreshToken } = require('./lib/tokenStore')
+  const refreshExpiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000
+  saveRefreshToken(refreshToken, { userId: user.id, jti, expiresAt: refreshExpiresAt })
+
+  // Set HttpOnly cookies for access and refresh tokens
   const isProduction = process.env.NODE_ENV === 'production'
   const hostHeader = (req && (req.hostname || (req.headers && req.headers.host))) || ''
   const isLocalHost = String(hostHeader).includes('localhost') || String(hostHeader).includes('127.0.0.1')
   const cookieSecure = Boolean(isProduction && !isLocalHost)
-  
-  // Set cookie with proper domain for local development
-  const cookieOptions = { 
-    httpOnly: true, 
-    secure: cookieSecure, 
-    sameSite: 'lax', 
-    path: '/', 
-    maxAge: 8 * 60 * 60 * 1000 // 8 hours
-  }
-  
-  // For local development, set domain to allow cross-port access
-  if (!isProduction && isLocalHost) {
-    // Don't set domain for localhost to allow cross-port cookie sharing
-    delete cookieOptions.domain
-  }
-  
-  res.cookie('token', token, cookieOptions)
+
+  const accessCookie = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 1000 }
+  const refreshCookie = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
+  if (!isProduction && isLocalHost) { delete accessCookie.domain; delete refreshCookie.domain }
+
+  res.cookie('access_token', accessToken, accessCookie)
+  res.cookie('refresh_token', refreshToken, refreshCookie)
   res.json({ ok: true, email: user.email, role: roleName })
   } catch (err) {
     console.error('Login error', err)
+    res.status(500).json({ error: 'internal error' })
+  }
+})
+
+// Refresh endpoint to rotate refresh tokens and issue a new access token
+app.post('/api/token/refresh', async (req, res) => {
+  try {
+    const cookieToken = req.cookies && req.cookies['refresh_token']
+    if (!cookieToken) return res.status(401).json({ error: 'missing refresh token' })
+    const { verifyAndConsumeRefreshToken, saveRefreshToken, revokeJti } = require('./lib/tokenStore')
+    const rec = verifyAndConsumeRefreshToken(cookieToken)
+    if (!rec) return res.status(401).json({ error: 'invalid or expired refresh token' })
+
+    // Issue new tokens
+    const newJti = require('crypto').randomUUID()
+    const accessToken = jwt.sign({ sub: rec.userId, role: rec.role, jti: newJti }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '1h' })
+    const newRefresh = require('crypto').randomUUID()
+    const refreshExpiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000
+    saveRefreshToken(newRefresh, { userId: rec.userId, jti: newJti, expiresAt: refreshExpiresAt })
+
+    // Revoke previous jti (optional) to prevent reuse
+    revokeJti(rec.jti, Date.now() + 60 * 60 * 1000)
+
+    // Set cookies
+    const isProduction = process.env.NODE_ENV === 'production'
+    const hostHeader = (req && (req.hostname || (req.headers && req.headers.host))) || ''
+    const isLocalHost = String(hostHeader).includes('localhost') || String(hostHeader).includes('127.0.0.1')
+    const cookieSecure = Boolean(isProduction && !isLocalHost)
+    res.cookie('access_token', accessToken, { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 1000 })
+    res.cookie('refresh_token', newRefresh, { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 })
+    res.json({ ok: true })
+  } catch (err) {
+    console.error('Refresh error', err)
     res.status(500).json({ error: 'internal error' })
   }
 })
@@ -263,7 +295,25 @@ app.get('/api/auth-test', authenticate, async (req, res) => {
 
 // Logout: clear cookie
 app.post('/api/logout', (req, res) => {
-  res.clearCookie('token', { path: '/' })
+  // Revoke refresh token and jti if present
+  try {
+    const { revokeRefreshTokenByRaw, revokeJti, revokeAllRefreshTokensForUser } = require('./lib/tokenStore')
+    const refresh = req.cookies && req.cookies['refresh_token']
+    if (refresh) revokeRefreshTokenByRaw(refresh)
+    // If access token cookie present, try to decode to revoke jti
+    const access = req.cookies && req.cookies['access_token']
+    if (access) {
+      try {
+        const payload = jwt.decode(access)
+        if (payload && payload.jti) revokeJti(payload.jti)
+        if (payload && payload.sub) revokeAllRefreshTokensForUser(payload.sub)
+      } catch (e) { /* ignore */ }
+    }
+  } catch (e) { console.error('Logout revoke error', e) }
+
+  // Clear cookies
+  res.clearCookie('access_token', { path: '/' })
+  res.clearCookie('refresh_token', { path: '/' })
   res.json({ ok: true })
 })
 
