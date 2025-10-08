@@ -125,11 +125,15 @@ export function AuthProvider({ children }: AuthProviderProps) {
       // Clear client-side authentication state
       try {
         // Clear all cookies for the current path
-        document.cookie.split(';').forEach(c => {
-          document.cookie = c
-            .replace(/^ +/, '')
-            .replace(/=.*/, '=;expires=' + new Date(0).toUTCString() + ';path=/');
-        });
+        if (typeof document !== 'undefined' && document.cookie) {
+          document.cookie.split(';').forEach(c => {
+            const name = c.split('=')[0].trim();
+            // Expire cookie for root path
+            document.cookie = `${name}=; expires=${new Date(0).toUTCString()}; path=/`;
+            // Also try with SameSite and Secure variants (best-effort)
+            document.cookie = `${name}=; expires=${new Date(0).toUTCString()}; path=/; SameSite=Lax`;
+          });
+        }
       } catch (e) {
         // document may not be available during SSR
       }
@@ -140,7 +144,21 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // ignore storage errors
       }
 
+      // Reset any external auth state (zustand store)
+      try {
+        const { resetAuthStore } = await import('../store/useAuth');
+        try { resetAuthStore && resetAuthStore(); } catch (e) { /* ignore */ }
+      } catch (e) {
+        // ignore if module can't be imported during SSR
+      }
+
+      // Clear local React state
       setUser(null);
+
+      // Force full reload to clear React routing caches and service workers
+      if (typeof window !== 'undefined') {
+        window.location.href = '/auth/login';
+      }
     }
   };
 

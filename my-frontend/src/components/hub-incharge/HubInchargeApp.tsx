@@ -1617,12 +1617,14 @@ export default function HubInchargeApp() {
     | 'Tasks & Requests'
     | 'Settings';
 
+  // All hooks must be called before any conditional returns
   const [activeTab, setActiveTab] = useState<TabName>('Dashboard');
   const { user, logout } = useAuth();
   const router = useRouter();
   const { data, loading, error, refetch } = useHubInchargeData();
 
   // Security check - allow STAFF, ADMIN, and MANAGER
+  // Note: This check is now after all hooks are called
   if (
     !user?.roleName ||
     !['STAFF', 'ADMIN', 'MANAGER'].includes(user.roleName)

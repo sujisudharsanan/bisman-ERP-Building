@@ -235,7 +235,12 @@ app.post('/api/login', async (req, res) => {
 
   const accessCookie = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 1000 }
   const refreshCookie = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
-  if (!isProduction && isLocalHost) { delete accessCookie.domain; delete refreshCookie.domain }
+  
+  // For localhost development, explicitly set domain to allow cross-port cookies (e.g., :3000 accessing :3001)
+  if (!isProduction && isLocalHost) {
+    accessCookie.domain = 'localhost';
+    refreshCookie.domain = 'localhost';
+  }
 
   res.cookie('access_token', accessToken, accessCookie)
   res.cookie('refresh_token', refreshToken, refreshCookie)
@@ -270,8 +275,18 @@ app.post('/api/token/refresh', async (req, res) => {
     const hostHeader = (req && (req.hostname || (req.headers && req.headers.host))) || ''
     const isLocalHost = String(hostHeader).includes('localhost') || String(hostHeader).includes('127.0.0.1')
     const cookieSecure = Boolean(isProduction && !isLocalHost)
-    res.cookie('access_token', accessToken, { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 1000 })
-    res.cookie('refresh_token', newRefresh, { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 })
+    
+    const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 1000 }
+    const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
+    
+    // For localhost development, explicitly set domain to allow cross-port cookies
+    if (!isProduction && isLocalHost) {
+      accessCookieOpts.domain = 'localhost';
+      refreshCookieOpts.domain = 'localhost';
+    }
+    
+    res.cookie('access_token', accessToken, accessCookieOpts)
+    res.cookie('refresh_token', newRefresh, refreshCookieOpts)
     res.json({ ok: true })
   } catch (err) {
     console.error('Refresh error', err)
@@ -311,10 +326,29 @@ app.post('/api/logout', (req, res) => {
     }
   } catch (e) { console.error('Logout revoke error', e) }
 
-  // Clear cookies
-  res.clearCookie('access_token', { path: '/' })
-  res.clearCookie('refresh_token', { path: '/' })
-  res.json({ ok: true })
+  // Clear cookies - CRITICAL: Must use EXACT same options as when setting (including domain if set)
+  // The sameSite and httpOnly need to match what was used in login
+  try {
+    // Try with all the options that may have been used when setting the cookie
+    const cookieOpts = { 
+      path: '/', 
+      httpOnly: true, 
+      sameSite: 'lax',
+      // If you set domain during login, add it here too: domain: '.yourdomain.com'
+    }
+    res.clearCookie('access_token', cookieOpts)
+    res.clearCookie('refresh_token', cookieOpts)
+    
+    // Also try without httpOnly in case client needs to clear it
+    res.clearCookie('access_token', { path: '/', sameSite: 'lax' })
+    res.clearCookie('refresh_token', { path: '/', sameSite: 'lax' })
+  } catch (e) {
+    // best-effort fallback
+    try { res.clearCookie('access_token', { path: '/' }) } catch (e) {}
+    try { res.clearCookie('refresh_token', { path: '/' }) } catch (e) {}
+  }
+
+  return res.status(200).json({ ok: true, message: 'Logged out successfully' })
 })
 
 // Development only: Reset rate limiter

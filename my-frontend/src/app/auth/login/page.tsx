@@ -110,23 +110,30 @@ export default function StandardLoginPage() {
       if (user) {
         setSuccess('Login successful! Redirecting...');
 
-        // Role-based redirection (use full-page navigation to ensure fresh app state)
+        // Small delay to ensure cookies are set before redirect
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Role-based redirection - use location.replace to force hard navigation
+        let targetPath = '/dashboard';
         switch (user.roleName?.toUpperCase()) {
           case 'SUPER_ADMIN':
-            window.location.href = '/super-admin';
+            targetPath = '/super-admin';
             break;
           case 'ADMIN':
-            window.location.href = '/admin';
+            targetPath = '/admin';
             break;
           case 'STAFF':
-            window.location.href = '/hub-incharge';
+            targetPath = '/hub-incharge';
             break;
           case 'MANAGER':
           case 'USER':
           default:
-            window.location.href = '/dashboard';
+            targetPath = '/dashboard';
             break;
         }
+        
+        // Use location.replace for a clean navigation with cookies
+        window.location.replace(targetPath);
       } else {
         setError('Login failed. Please check your credentials.');
       }
@@ -155,7 +162,12 @@ export default function StandardLoginPage() {
       const logged = await login(user.email, user.password);
       if (logged) {
         setSuccess(`Welcome ${user.name}! Redirecting to your dashboard...`);
-  window.location.href = user.redirectPath;
+        
+        // Small delay to ensure cookies are set before redirect
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Use location.replace for a clean navigation with cookies
+        window.location.replace(user.redirectPath);
       } else {
         setError('Quick login failed.');
       }

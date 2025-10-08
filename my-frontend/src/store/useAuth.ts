@@ -5,6 +5,7 @@ interface AuthState {
   user: { email: string } | null;
   login: (email: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  reset?: () => void;
 }
 
 export const useAuthStore = create<AuthState>(set => ({
@@ -34,4 +35,7 @@ export const useAuthStore = create<AuthState>(set => ({
     }
     set({ user: null });
   },
+  reset: () => set({ user: null }),
 }));
+
+export const resetAuthStore = () => useAuthStore.setState({ user: null } as any);

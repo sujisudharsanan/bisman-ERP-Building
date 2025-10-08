@@ -21,7 +21,7 @@ export default function FinancePage() {
   useEffect(() => {
     if (!loading) {
       if (!user) {
-        router.push('/auth/portals');
+        router.push('/auth/login');
         return;
       }
 

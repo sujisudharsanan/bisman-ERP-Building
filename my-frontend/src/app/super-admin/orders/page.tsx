@@ -45,7 +45,7 @@ export default function SuperAdminOrdersPage() {
   useEffect(() => {
     if (!loading) {
       if (!user) {
-        router.push('/auth/portals');
+        router.push('/auth/login');
         return;
       }
 

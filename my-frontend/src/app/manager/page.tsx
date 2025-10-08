@@ -5,13 +5,13 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function ManagerPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
     if (!loading) {
       if (!user) {
-        router.push('/auth/portals');
+        router.push('/auth/login');
         return;
       }
 
@@ -66,9 +66,8 @@ export default function ManagerPage() {
                 Welcome, {user.email}
               </span>
               <button
-                onClick={() => {
-                  localStorage.clear();
-                  router.push('/auth/portals');
+                onClick={async () => {
+                  await logout();
                 }}
                 className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700"
               >

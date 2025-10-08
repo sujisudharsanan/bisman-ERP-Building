@@ -47,8 +47,10 @@
     "INCHARGE",
     "Jtis",
     "Karnataka",
+    "keyspace",
     "labelledby",
     "mkdocs",
+    "networkidle",
     "nextjs",
     "Nextjs",
     "nodemon",
@@ -72,6 +74,7 @@
     "PSQL",
     "Rajesh",
     "rbac",
+    "remediations",
     "remediator",
     "rolname",
     "SAMEORIGIN",
@@ -79,6 +82,7 @@
     "sentry",
     "Shadcn",
     "Sharma",
+    "Sneha",
     "sslify",
     "Suji",
     "Sunita",
@@ -92,6 +96,7 @@
     "VIEWPORTS",
     "virtualenv",
     "vitest",
+    "WCAG",
     "yourrepo"
   ]
 }

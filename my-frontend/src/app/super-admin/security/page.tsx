@@ -12,7 +12,7 @@ export default function SuperAdminSecurityPage() {
   useEffect(() => {
     if (!loading) {
       if (!user) {
-        router.push('/auth/portals');
+        router.push('/auth/login');
         return;
       }
 

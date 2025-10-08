@@ -12,7 +12,7 @@ export default function HubInchargePage() {
   useEffect(() => {
     if (!loading) {
       if (!user) {
-        router.push('/auth/portals');
+        router.push('/auth/login');
         return;
       }
 
