@@ -236,10 +236,11 @@ app.post('/api/login', async (req, res) => {
   const accessCookie = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 1000 }
   const refreshCookie = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
   
-  // For localhost development, explicitly set domain to allow cross-port cookies (e.g., :3000 accessing :3001)
+  // For localhost development, prefer host-only cookies (do not set domain)
   if (!isProduction && isLocalHost) {
-    accessCookie.domain = 'localhost';
-    refreshCookie.domain = 'localhost';
+    // Host-only cookies avoid domain matching quirks in some browsers on localhost
+    delete accessCookie.domain;
+    delete refreshCookie.domain;
   }
 
   res.cookie('access_token', accessToken, accessCookie)
@@ -279,10 +280,11 @@ app.post('/api/token/refresh', async (req, res) => {
     const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 1000 }
     const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
     
-    // For localhost development, explicitly set domain to allow cross-port cookies
+    // For localhost development, prefer host-only cookies (do not set domain)
     if (!isProduction && isLocalHost) {
-      accessCookieOpts.domain = 'localhost';
-      refreshCookieOpts.domain = 'localhost';
+      // Ensure we don't set a domain attribute for localhost to keep cookies host-only
+      delete accessCookieOpts.domain;
+      delete refreshCookieOpts.domain;
     }
     
     res.cookie('access_token', accessToken, accessCookieOpts)
