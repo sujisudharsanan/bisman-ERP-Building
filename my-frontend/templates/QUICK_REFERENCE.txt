@@ -1,0 +1,203 @@
+┌─────────────────────────────────────────────────────────────────────────┐
+│                  NEW PAGE CREATION - QUICK REFERENCE                    │
+└─────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════
+  STEP-BY-STEP PROCESS
+═══════════════════════════════════════════════════════════════════════════
+
+1. COPY TEMPLATES
+   ├─ Page: cp templates/page-template.tsx src/app/YOUR_ROUTE/page.tsx
+   └─ Component: cp templates/component-with-tabs-template.tsx 
+                 src/components/YourComponent.tsx
+
+2. UPDATE PAGE FILE (src/app/YOUR_ROUTE/page.tsx)
+   ├─ Import component: import YourComponent from '@/components/YourComponent'
+   ├─ Rename function: YourPage → ActualPageName
+   ├─ Set roles: ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF']
+   └─ Render: <YourComponent />
+
+3. UPDATE COMPONENT FILE (src/components/YourComponent.tsx)
+   ├─ Define tabs: type TabName = 'tab1' | 'tab2' | 'tab3'
+   ├─ Set roles: ['SUPER_ADMIN', 'ADMIN']
+   ├─ Add tab buttons in navigation
+   └─ Implement tab content
+
+4. TEST
+   ├─ Login with correct role
+   ├─ Navigate to page
+   ├─ Switch tabs
+   ├─ Press F5/Cmd+R (should stay on same tab)
+   └─ Test with unauthorized role
+
+═══════════════════════════════════════════════════════════════════════════
+  CRITICAL CODE PATTERNS
+═══════════════════════════════════════════════════════════════════════════
+
+✅ CORRECT LOADING PATTERN:
+┌─────────────────────────────────────────────────────────────────────────┐
+│ if (loading) {                    // Check loading FIRST              │
+│   return <LoadingSpinner />;                                           │
+│ }                                                                       │
+│ if (!user) {                      // Then check auth                  │
+│   router.push('/auth/login');                                          │
+│ }                                                                       │
+└─────────────────────────────────────────────────────────────────────────┘
+
+❌ WRONG PATTERN (causes redirect on refresh):
+┌─────────────────────────────────────────────────────────────────────────┐
+│ if (!loading) {                   // DON'T DO THIS!                   │
+│   if (!user) {                                                          │
+│     router.push('/auth/login');                                         │
+│   }                                                                      │
+│ }                                                                        │
+└─────────────────────────────────────────────────────────────────────────┘
+
+═══════════════════════════════════════════════════════════════════════════
+  TAB PERSISTENCE ESSENTIALS
+═══════════════════════════════════════════════════════════════════════════
+
+IMPORTS:
+  import { useRouter, useSearchParams } from 'next/navigation';
+
+INITIALIZE STATE FROM URL:
+  const [activeTab, setActiveTab] = useState<TabName>(
+    (searchParams.get('tab') as TabName) || 'defaultTab'
+  );
+
+UPDATE URL ON TAB CHANGE:
+  const handleTabChange = (tab: TabName) => {
+    setActiveTab(tab);
+    router.replace(`?tab=${tab}`, { scroll: false });
+  };
+
+SYNC ON BROWSER BACK/FORWARD:
+  useEffect(() => {
+    const urlTab = searchParams.get('tab') as TabName;
+    if (urlTab && urlTab !== activeTab) {
+      setActiveTab(urlTab);
+    }
+  }, [searchParams]);
+
+═══════════════════════════════════════════════════════════════════════════
+  ROLE DEFINITIONS
+═══════════════════════════════════════════════════════════════════════════
+
+Common role combinations:
+  • SUPER_ADMIN only:           ['SUPER_ADMIN']
+  • Admin + Super Admin:        ['ADMIN', 'SUPER_ADMIN']
+  • Staff/Hub Incharge:         ['STAFF', 'ADMIN', 'MANAGER']
+  • Manager + Admin:            ['MANAGER', 'ADMIN']
+  • All authenticated users:    (just check if (!user))
+
+═══════════════════════════════════════════════════════════════════════════
+  TESTING CHECKLIST
+═══════════════════════════════════════════════════════════════════════════
+
+Authentication:
+  □ Login redirects to correct page
+  □ Logout redirects to login
+  □ Unauthorized users redirected away
+  □ Loading spinner shows during auth check
+
+Tab Persistence:
+  □ Tabs switch correctly
+  □ F5/Cmd+R keeps same tab
+  □ Browser back button works
+  □ Direct URL with ?tab=X works
+  □ Bookmarked tab URLs work
+
+Security:
+  □ No flash of wrong content
+  □ Loading check prevents premature redirects
+  □ Role checks work correctly
+  □ Session expiry redirects to login
+
+═══════════════════════════════════════════════════════════════════════════
+  COMMON MISTAKES TO AVOID
+═══════════════════════════════════════════════════════════════════════════
+
+❌ Checking auth before loading completes
+❌ Forgetting to destructure 'loading' from useAuth
+❌ Not updating URL when tabs change
+❌ Using 'scroll: true' (causes page to jump to top)
+❌ Not handling browser back/forward buttons
+❌ Security checks without loading guards
+❌ Hardcoding tab names instead of using constants
+
+═══════════════════════════════════════════════════════════════════════════
+  FOLDER STRUCTURE
+═══════════════════════════════════════════════════════════════════════════
+
+my-frontend/
+├── src/
+│   ├── app/
+│   │   ├── your-route/
+│   │   │   └── page.tsx          ← Page component (auth + routing)
+│   │   └── ...
+│   ├── components/
+│   │   ├── YourComponent.tsx     ← Main component (tabs + content)
+│   │   └── ...
+│   └── hooks/
+│       └── useAuth.ts             ← Auth hook
+├── templates/
+│   ├── page-template.tsx          ← Copy from here
+│   ├── component-with-tabs-template.tsx
+│   ├── simple-component-template.tsx
+│   ├── QUICK_START.md
+│   └── README.md
+└── PAGE_TEMPLATE_GUIDE.md         ← Full documentation
+
+═══════════════════════════════════════════════════════════════════════════
+  WORKING EXAMPLES IN CODEBASE
+═══════════════════════════════════════════════════════════════════════════
+
+Reference these files:
+  • Super Admin:    /app/super-admin/page.tsx
+                    /components/SuperAdminControlPanel.tsx
+                    
+  • Hub Incharge:   /app/hub-incharge/page.tsx
+                    /components/hub-incharge/HubInchargeApp.tsx
+                    
+  • Admin:          /app/admin/page.tsx
+                    /components/admin/AdminDashboard.tsx
+
+═══════════════════════════════════════════════════════════════════════════
+  QUICK COMMANDS
+═══════════════════════════════════════════════════════════════════════════
+
+Start dev server:       cd my-frontend && npm run dev
+Check for errors:       npm run lint
+Build for production:   npm run build
+Test production build:  npm run start
+
+Clear browser cache:    Application tab → Storage → Clear site data
+View cookies:           Application tab → Cookies → localhost:3000
+
+═══════════════════════════════════════════════════════════════════════════
+  TROUBLESHOOTING
+═══════════════════════════════════════════════════════════════════════════
+
+Problem: Page redirects on refresh
+Solution: Make sure 'if (loading) return;' comes BEFORE any auth checks
+
+Problem: Tabs don't persist
+Solution: Verify router.replace() is called with ?tab=${tab}
+
+Problem: Loading never stops
+Solution: Check that backend /api/me endpoint is working
+
+Problem: Unauthorized see content briefly
+Solution: Add loading guard and return null for unauthorized
+
+═══════════════════════════════════════════════════════════════════════════
+  DOCUMENTATION LINKS
+═══════════════════════════════════════════════════════════════════════════
+
+Quick Start:        templates/QUICK_START.md
+Template Guide:     PAGE_TEMPLATE_GUIDE.md
+Templates README:   templates/README.md
+
+═══════════════════════════════════════════════════════════════════════════
+
+Last Updated: October 9, 2025 | Version 1.0

@@ -13,17 +13,23 @@ const devUsers = [
 ]
 
 async function authenticate(req, res, next) {
+  console.log('[authenticate] Checking authentication...')
+  console.log('[authenticate] Cookies:', req.cookies)
+  console.log('[authenticate] Authorization header:', req.headers.authorization)
+  
   const auth = req.headers.authorization || ''
   const parts = auth.split(' ')
   let token
   if (parts.length !== 2 || parts[0] !== 'Bearer') {
-    // Fallback: check cookie
-    const cookieToken = req.cookies && req.cookies.token
+    // Fallback: check cookie - try access_token first, then token for backwards compatibility
+    const cookieToken = (req.cookies && req.cookies.access_token) || (req.cookies && req.cookies.token)
+    console.log('[authenticate] Cookie token found:', cookieToken ? 'YES' : 'NO')
     if (!cookieToken) return res.status(401).json({ error: 'missing or malformed token' })
     token = cookieToken
   } else {
     // if header provided, use it
     token = parts[1]
+    console.log('[authenticate] Bearer token found')
   }
   try {
     // Enforce algorithm and issuer/audience where possible
@@ -35,9 +41,13 @@ async function authenticate(req, res, next) {
       verifyOptions.algorithms = ['HS512', 'HS256']
     }
     // audience/issuer checks can be added if configured
+    console.log('[authenticate] Verifying JWT token...')
     const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret', verifyOptions)
+    console.log('[authenticate] JWT payload:', payload)
+    
     // reject if jti is revoked
-    if (payload && payload.jti && isJtiRevoked(payload.jti)) {
+    if (payload && payload.jti && await isJtiRevoked(payload.jti)) {
+      console.log('[authenticate] Token JTI is revoked:', payload.jti)
       return res.status(401).json({ error: 'revoked token' })
     }
     let user = null
@@ -57,16 +67,22 @@ async function authenticate(req, res, next) {
 
     // Fallback to development users if database fails
     if (!user) {
+      console.log('[authenticate] Using dev user lookup for sub:', payload.sub)
       const devUser = devUsers.find(u => u.id === payload.sub)
-      if (!devUser) return res.status(401).json({ error: 'invalid token user' })
+      if (!devUser) {
+        console.log('[authenticate] Dev user not found for sub:', payload.sub)
+        return res.status(401).json({ error: 'invalid token user' })
+      }
+      console.log('[authenticate] Dev user found:', devUser.email)
       req.user = { ...devUser }
       delete req.user.password
       req.user.roleName = devUser.role
     }
 
+    console.log('[authenticate] Authentication successful, user:', req.user.email || req.user.username)
     next()
   } catch (err) {
-    console.error('JWT auth error', err.message)
+    console.error('[authenticate] JWT auth error:', err.message)
     return res.status(401).json({ error: 'invalid or expired token' })
   }
 }

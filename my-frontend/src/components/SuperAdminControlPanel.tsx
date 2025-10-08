@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Shield,
   Users,
@@ -35,6 +36,7 @@ import {
 } from '@/components/user-management';
 import { PrivilegeManagement } from '@/components/privilege-management';
 import DatabaseBrowser from '@/components/database-browser/DatabaseBrowser';
+import ActivityLogViewer from '@/components/activity-log/ActivityLogViewer';
 import type { 
   User as UserType, 
   UserRole, 
@@ -75,9 +77,22 @@ interface LegacyUser {
 }
 
 const SuperAdminControlPanel: React.FC = () => {
-  const [activeTab, setActiveTab] = useState('dashboard');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Get initial tab from URL or default to 'dashboard'
+  const initialTab = (searchParams?.get('tab')) || 'dashboard';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Update URL when tab changes
+  const handleTabChange = useCallback((tabId: string) => {
+    setActiveTab(tabId);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tabId);
+    router.replace(url.pathname + url.search, { scroll: false });
+  }, [router]);
 
   // Dashboard Data
   const [stats, setStats] = useState<SuperAdminStats | null>(null);
@@ -437,7 +452,7 @@ const SuperAdminControlPanel: React.FC = () => {
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
               >
                 <tab.icon className="w-4 h-4" />
                 <span>{tab.label}</span>
@@ -699,7 +714,8 @@ const SuperAdminControlPanel: React.FC = () => {
     { id: 'users', label: 'User Management', icon: Users },
     { id: 'privileges', label: 'Privilege Management', icon: Shield },
     { id: 'activity', label: 'Activity Log', icon: Activity },
-    { id: 'security', label: 'Security Monitor', icon: Database },
+    { id: 'database', label: 'Database Browser', icon: Database },
+    { id: 'security', label: 'Security Monitor', icon: Server },
     { id: 'settings', label: 'System Settings', icon: Settings },
   ];
 
@@ -736,7 +752,7 @@ const SuperAdminControlPanel: React.FC = () => {
             {tabs.map(tab => (
               <button
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
+                onClick={() => handleTabChange(tab.id)}
                 className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
                   activeTab === tab.id
                     ? 'border-red-500 text-red-600'
@@ -794,6 +810,11 @@ const SuperAdminControlPanel: React.FC = () => {
             {activeTab === 'users' && <UsersTab />}
             {activeTab === 'privileges' && <PrivilegeManagement />}
             {activeTab === 'activity' && (
+              <div className="h-full">
+                <ActivityLogViewer />
+              </div>
+            )}
+            {activeTab === 'database' && (
               <div className="h-full">
                 <DatabaseBrowser />
               </div>

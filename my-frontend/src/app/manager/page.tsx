@@ -9,17 +9,20 @@ export default function ManagerPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.push('/auth/login');
-        return;
-      }
+    // Wait for auth to complete before checking
+    if (loading) {
+      return;
+    }
 
-      // Role-based access control - allow MANAGER and ADMIN
-      if (!user.roleName || !['MANAGER', 'ADMIN'].includes(user.roleName)) {
-        router.push('/dashboard');
-        return;
-      }
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+
+    // Role-based access control - allow MANAGER and ADMIN
+    if (!user.roleName || !['MANAGER', 'ADMIN'].includes(user.roleName)) {
+      router.push('/dashboard');
+      return;
     }
   }, [user, loading, router]);
 

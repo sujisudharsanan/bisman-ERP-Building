@@ -1,5 +1,10 @@
 import { test, expect } from '@playwright/test';
 
+interface ApiCall {
+  url: string;
+  status: number;
+}
+
 const TEST_USERS = [
   {
     name: 'Super Admin',
@@ -277,7 +282,7 @@ test.describe('Dashboard Functionality Tests', () => {
     await context.clearCookies();
 
     // Track API calls
-    const apiCalls = [];
+    const apiCalls: ApiCall[] = [];
     page.on('response', response => {
       if (response.url().includes('/api/')) {
         apiCalls.push({

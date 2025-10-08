@@ -9,17 +9,20 @@ export default function DashboardPage() {
   const { user, loading, logout } = useAuth()
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        // Not authenticated, redirect to login
-        router.push('/auth/login')
-      } else if (user.roleName === 'SUPER_ADMIN') {
-        // SUPER_ADMIN users should use super-admin interface
-        router.push('/super-admin')
-      } else if (user.roleName === 'STAFF') {
-        // STAFF users should use hub-incharge interface
-        router.push('/hub-incharge')
-      }
+    // Wait for auth to complete before checking
+    if (loading) {
+      return
+    }
+
+    if (!user) {
+      // Not authenticated, redirect to login
+      router.push('/auth/login')
+    } else if (user.roleName === 'SUPER_ADMIN') {
+      // SUPER_ADMIN users should use super-admin interface
+      router.push('/super-admin')
+    } else if (user.roleName === 'STAFF') {
+      // STAFF users should use hub-incharge interface
+      router.push('/hub-incharge')
     }
   }, [user, loading, router])
 

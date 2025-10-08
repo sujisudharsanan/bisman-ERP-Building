@@ -10,23 +10,26 @@ export default function AdminPage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.push('/auth/login');
-        return;
-      }
+    // Wait for auth to complete before checking
+    if (loading) {
+      return;
+    }
 
-      // Role-based access control - only ADMIN and SUPER_ADMIN can access
-      if (!user.roleName || !['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
-        router.push('/dashboard');
-        return;
-      }
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
 
-      // If SUPER_ADMIN, redirect to super-admin dashboard
-      if (user.roleName === 'SUPER_ADMIN') {
-        router.push('/super-admin');
-        return;
-      }
+    // Role-based access control - only ADMIN and SUPER_ADMIN can access
+    if (!user.roleName || !['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
+      router.push('/dashboard');
+      return;
+    }
+
+    // If SUPER_ADMIN, redirect to super-admin dashboard
+    if (user.roleName === 'SUPER_ADMIN') {
+      router.push('/super-admin');
+      return;
     }
   }, [user, loading, router]);
 
