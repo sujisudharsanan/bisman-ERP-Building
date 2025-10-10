@@ -18,26 +18,24 @@ export function TopNavDbIndicator({ className = '' }: TopNavDbIndicatorProps) {
 
   const checkDatabaseStatus = async () => {
     try {
-      const response = await fetch('/api/status/db', {
+      const response = await fetch('/api/privileges/health/database', {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
 
       if (response.ok) {
-        const data: DatabaseStatus = await response.json();
+        const json = await response.json();
+        const data = json?.data || {};
         setStatus({
-          ...data,
+          connected: Boolean(data.connected),
+          latency_ms: typeof data.response_time === 'number' ? data.response_time : undefined,
           last_check: new Date().toISOString(),
         });
-        setRetryCount(0); // Reset retry count on success
+        setRetryCount(0);
       } else {
-        setStatus({
-          connected: false,
-          last_check: new Date().toISOString(),
-        });
+        // 401/403 indicate auth/role issues; 500 likely DB error; show disconnected
+        setStatus({ connected: false, last_check: new Date().toISOString() });
         setRetryCount(prev => prev + 1);
       }
     } catch (error) {
@@ -86,6 +84,7 @@ export function TopNavDbIndicator({ className = '' }: TopNavDbIndicatorProps) {
       const latency = status.latency_ms ? ` (${status.latency_ms}ms)` : '';
       return `Database Connected${latency}`;
     }
+    // If DB not configured in backend env, show clearer hint
     return 'Database Disconnected';
   };
 

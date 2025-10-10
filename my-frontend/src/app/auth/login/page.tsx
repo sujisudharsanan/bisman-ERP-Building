@@ -88,6 +88,10 @@ const DEMO_USERS: DemoUser[] = [
 ];
 
 export default function StandardLoginPage() {
+  const brandCandidates = ['/brand/logo.svg', '/bisman_lockup.svg', '/bisman_logo.svg', '/bisman_logo.png'] as const;
+  const [brandIndex, setBrandIndex] = useState(0);
+  const [brandHidden, setBrandHidden] = useState(false);
+  const brandImgSrc = brandCandidates[brandIndex] || brandCandidates[0];
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -184,8 +188,29 @@ export default function StandardLoginPage() {
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden flex">
         {/* Left branding panel */}
         <div className="w-1/2 bg-white p-12 flex flex-col items-start justify-center space-y-6">
-          <div className="w-16 h-16 bg-amber-400 rounded-full flex items-center justify-center shadow-md">
-            <div className="w-8 h-8 bg-amber-500 rounded-full" />
+          {/* Brand: render provided Bisman lockup exactly as-is */}
+          <div className="flex items-center min-h-10">
+            {!brandHidden ? (
+              <img
+                src={brandImgSrc}
+                alt="Bisman ERP Solutions"
+                className="h-10 w-auto object-contain select-none"
+                draggable={false}
+                onError={() => {
+                  // Cycle through candidate sources; finally hide image
+                  if (brandIndex < brandCandidates.length - 1) {
+                    setBrandIndex(brandIndex + 1);
+                  } else {
+                    setBrandHidden(true);
+                  }
+                }}
+              />
+            ) : (
+              <div className="leading-tight">
+                <div className="text-xl font-semibold text-slate-900">Bisman</div>
+                <div className="text-sm text-slate-600 tracking-wide">ERP Solutions</div>
+              </div>
+            )}
           </div>
           <div>
             <h1 className="text-4xl font-bold text-slate-900">Sign in</h1>
@@ -286,7 +311,7 @@ export default function StandardLoginPage() {
                 {DEMO_USERS.map((user) => (
                   <div key={user.id} className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-md p-3">
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-amber-100 rounded flex items-center justify-center text-amber-600">{user.icon}</div>
+                      <div className="w-8 h-8 bg-slate-100 rounded flex items-center justify-center text-amber-600">{user.icon}</div>
                       <div>
                         <div className="text-sm font-medium text-slate-800">{user.name}</div>
                         <div className="text-xs text-slate-500">{user.department}</div>

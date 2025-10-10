@@ -6,6 +6,7 @@ const path = require('path')
 const fs = require('fs')
 const { Pool } = require('pg')
 const { PrismaClient } = require('@prisma/client')
+const cookieParser = require('cookie-parser')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const { logSanitizer } = require('./middleware/logSanitizer')
@@ -59,9 +60,22 @@ app.use((req, res, next) => {
 })
 
 app.use(express.json())
+// Parse cookies early so downstream routers (e.g., /api/privileges) can access auth cookies
+app.use(cookieParser())
 
 // Serve static files for uploads
 app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
+
+// Compat: rewrite legacy underscore paths to hyphenated versions
+// e.g., /api/hub_incharge/* -> /api/hub-incharge/*
+app.use((req, res, next) => {
+  try {
+    if (req.url && req.url.includes('hub_incharge')) {
+      req.url = req.url.replace(/hub_incharge/g, 'hub-incharge')
+    }
+  } catch (e) { /* noop */ }
+  next()
+})
 
 // Upload routes
 const uploadRoutes = require('./routes/upload')
@@ -70,6 +84,28 @@ app.use('/api/upload', uploadRoutes)
 // Privilege management routes
 const privilegeRoutes = require('./routes/privilegeRoutes')
 app.use('/api/privileges', privilegeRoutes)
+
+// Security monitoring routes (versioned)
+try {
+  const securityRoutes = require('./routes/securityRoutes')
+  app.use('/api', securityRoutes)
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Security routes not loaded:', e && e.message)
+  }
+}
+
+// Super Admin routes (protected)
+try {
+  const superAdminRoutes = require('./routes/superAdmin')
+  // Mount under versioned path expected by frontend
+  app.use('/api/v1/super-admin', superAdminRoutes)
+} catch (e) {
+  // Route optional in some builds; log once in dev
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Super Admin routes not loaded:', e && e.message)
+  }
+}
 
 const prisma = new PrismaClient()
 
@@ -150,17 +186,23 @@ if (databaseUrl) {
   pool = null
 }
 
-const cookieParser = require('cookie-parser')
 const { authenticate, requireRole } = require('./middleware/auth')
 
-app.use(cookieParser())
 
-// Development users for testing
+// Development users for testing (support both 'password' and 'changeme' where docs use it)
 const devUsers = [
+  // Super Admin
   { id: 0, email: 'super@bisman.local', password: 'password', role: 'SUPER_ADMIN' },
-  { id: 1, email: 'manager@business.com', password: 'password', role: 'MANAGER' },
+  { id: 100, email: 'super@bisman.local', password: 'changeme', role: 'SUPER_ADMIN' },
+  // Admin
   { id: 2, email: 'admin@business.com', password: 'admin123', role: 'ADMIN' },
-  { id: 3, email: 'staff@business.com', password: 'staff123', role: 'STAFF' }
+  { id: 101, email: 'admin@bisman.local', password: 'changeme', role: 'ADMIN' },
+  // Manager
+  { id: 1, email: 'manager@business.com', password: 'password', role: 'MANAGER' },
+  { id: 102, email: 'manager@bisman.local', password: 'changeme', role: 'MANAGER' },
+  // Staff / Hub Incharge
+  { id: 3, email: 'staff@business.com', password: 'staff123', role: 'STAFF' },
+  { id: 103, email: 'hub@bisman.local', password: 'changeme', role: 'STAFF' }
 ]
 
 // Simple login endpoint with fallback for development
@@ -192,8 +234,16 @@ app.post('/api/login', async (req, res) => {
         user = await prisma.user.findUnique({ where: { email } })
         if (user) {
           const match = await bcrypt.compare(password, user.password)
-          if (!match) return res.status(401).json({ error: 'invalid credentials' })
-          roleName = user.role || null
+          if (!match) {
+            // In non-production, allow falling back to dev users when password mismatches
+            if (process.env.NODE_ENV !== 'production') {
+              user = null
+            } else {
+              return res.status(401).json({ error: 'invalid credentials' })
+            }
+          } else {
+            roleName = user.role || null
+          }
         }
       } catch (dbError) {
         console.log('Database lookup failed, falling back to development users')
@@ -225,7 +275,8 @@ app.post('/api/login', async (req, res) => {
   // Save refresh token record (store hash) with expiry (7 days)
   const { saveRefreshToken } = require('./lib/tokenStore')
   const refreshExpiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000
-  saveRefreshToken(refreshToken, { userId: user.id, jti, expiresAt: refreshExpiresAt })
+  // Store role to avoid DB dependency during refresh in dev/local
+  saveRefreshToken(refreshToken, { userId: user.id, role: roleName, jti, expiresAt: refreshExpiresAt })
 
   // Set HttpOnly cookies for access and refresh tokens
   const isProduction = process.env.NODE_ENV === 'production'
@@ -258,15 +309,16 @@ app.post('/api/token/refresh', async (req, res) => {
     const cookieToken = req.cookies && req.cookies['refresh_token']
     if (!cookieToken) return res.status(401).json({ error: 'missing refresh token' })
     const { verifyAndConsumeRefreshToken, saveRefreshToken, revokeJti } = require('./lib/tokenStore')
-    const rec = verifyAndConsumeRefreshToken(cookieToken)
+  // verifyAndConsumeRefreshToken is async
+  const rec = await verifyAndConsumeRefreshToken(cookieToken)
     if (!rec) return res.status(401).json({ error: 'invalid or expired refresh token' })
 
     // Issue new tokens
     const newJti = require('crypto').randomUUID()
-    const accessToken = jwt.sign({ sub: rec.userId, role: rec.role, jti: newJti }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '1h' })
+  const accessToken = jwt.sign({ sub: rec.userId, role: rec.role, jti: newJti }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '1h' })
     const newRefresh = require('crypto').randomUUID()
     const refreshExpiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000
-    saveRefreshToken(newRefresh, { userId: rec.userId, jti: newJti, expiresAt: refreshExpiresAt })
+  saveRefreshToken(newRefresh, { userId: rec.userId, role: rec.role, jti: newJti, expiresAt: refreshExpiresAt })
 
     // Revoke previous jti (optional) to prevent reuse
     revokeJti(rec.jti, Date.now() + 60 * 60 * 1000)
@@ -372,27 +424,31 @@ app.get('/api/admin', authenticate, requireRole('ADMIN'), async (req, res) => {
 
 // Hub Incharge API endpoints
 // Hub Incharge Profile
-app.get('/api/hub-incharge/profile', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+app.get('/api/hub-incharge/profile', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER', 'SUPER_ADMIN']), async (req, res) => {
   try {
-    const user = await prisma.user.findUnique({
-      where: { id: req.user.id },
-      select: {
-        username: true,
-        email: true,
-        role: true
+    let user = null
+    if (databaseUrl) {
+      try {
+        user = await prisma.user.findUnique({
+          where: { id: req.user.id },
+          select: { username: true, email: true, role: true }
+        })
+      } catch (e) {
+        // DB not available – fall back to mock
+        user = null
       }
-    })
-    
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' })
     }
 
-    res.json({
-      name: user.username || 'Hub Incharge',
+    // Fallback: use req.user details when DB is unavailable or user is missing
+    const name = (user && (user.username || user.email?.split('@')[0])) || req.user.username || (req.user.email ? req.user.email.split('@')[0] : 'Hub Incharge')
+    const email = (user && user.email) || req.user.email || 'hub@bisman.local'
+
+    return res.json({
+      name,
       role: 'Hub Incharge',
       client: 'BISMAN ERP',
       location: 'Mumbai Hub',
-      contact: user.email,
+      contact: email,
       recognition: ['Employee of the Month', 'Safety Champion']
     })
   } catch (err) {
@@ -402,7 +458,7 @@ app.get('/api/hub-incharge/profile', authenticate, requireRole(['STAFF', 'ADMIN'
 })
 
 // Hub Incharge Approvals
-app.get('/api/hub-incharge/approvals', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+app.get('/api/hub-incharge/approvals', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER', 'SUPER_ADMIN']), async (req, res) => {
   try {
     // Mock approvals data
     res.json([
@@ -416,7 +472,7 @@ app.get('/api/hub-incharge/approvals', authenticate, requireRole(['STAFF', 'ADMI
   }
 })
 
-app.patch('/api/hub-incharge/approvals/:id', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+app.patch('/api/hub-incharge/approvals/:id', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER', 'SUPER_ADMIN']), async (req, res) => {
   try {
     const { id } = req.params
     const { status, remarks } = req.body
@@ -432,7 +488,7 @@ app.patch('/api/hub-incharge/approvals/:id', authenticate, requireRole(['STAFF',
 })
 
 // Hub Incharge Purchases
-app.get('/api/hub-incharge/purchases', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+app.get('/api/hub-incharge/purchases', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER', 'SUPER_ADMIN']), async (req, res) => {
   try {
     const purchases = [
       { id: 1, vendor: "Office Supplies Co", amount: 12000, status: "pending", date: "2025-10-01" },
@@ -446,7 +502,7 @@ app.get('/api/hub-incharge/purchases', authenticate, requireRole(['STAFF', 'ADMI
 })
 
 // Hub Incharge Expenses
-app.get('/api/hub-incharge/expenses', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+app.get('/api/hub-incharge/expenses', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER', 'SUPER_ADMIN']), async (req, res) => {
   try {
     const expenses = [
       { id: 1, amount: 3500, category: "Travel", status: "approved", date: "2025-09-25" },
@@ -460,7 +516,7 @@ app.get('/api/hub-incharge/expenses', authenticate, requireRole(['STAFF', 'ADMIN
 })
 
 // Submit new expense
-app.post('/api/hub-incharge/expenses', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+app.post('/api/hub-incharge/expenses', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER', 'SUPER_ADMIN']), async (req, res) => {
   try {
     const { amount, category, remarks } = req.body
     
@@ -475,7 +531,7 @@ app.post('/api/hub-incharge/expenses', authenticate, requireRole(['STAFF', 'ADMI
 })
 
 // Hub Incharge Performance
-app.get('/api/hub-incharge/performance', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+app.get('/api/hub-incharge/performance', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER', 'SUPER_ADMIN']), async (req, res) => {
   try {
     const performance = {
       claims: { approved: 65, pending: 25, rejected: 10 },
@@ -494,7 +550,7 @@ app.get('/api/hub-incharge/performance', authenticate, requireRole(['STAFF', 'AD
 })
 
 // Hub Incharge Messages
-app.get('/api/hub-incharge/messages', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+app.get('/api/hub-incharge/messages', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER', 'SUPER_ADMIN']), async (req, res) => {
   try {
     const messages = [
       { id: 1, text: "New policy update available", read: false, date: "2025-10-02" },
@@ -508,7 +564,7 @@ app.get('/api/hub-incharge/messages', authenticate, requireRole(['STAFF', 'ADMIN
 })
 
 // Acknowledge message
-app.patch('/api/hub-incharge/messages/:id/ack', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+app.patch('/api/hub-incharge/messages/:id/ack', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER', 'SUPER_ADMIN']), async (req, res) => {
   try {
     const { id } = req.params
     
@@ -523,7 +579,7 @@ app.patch('/api/hub-incharge/messages/:id/ack', authenticate, requireRole(['STAF
 })
 
 // Hub Incharge Tasks
-app.get('/api/hub-incharge/tasks', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+app.get('/api/hub-incharge/tasks', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER', 'SUPER_ADMIN']), async (req, res) => {
   try {
     const tasks = [
       { id: 1, title: "Review expense reports", assignee: "Self", deadline: "2025-10-05", status: "pending" },
@@ -537,7 +593,7 @@ app.get('/api/hub-incharge/tasks', authenticate, requireRole(['STAFF', 'ADMIN', 
 })
 
 // Create new task
-app.post('/api/hub-incharge/tasks', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+app.post('/api/hub-incharge/tasks', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER', 'SUPER_ADMIN']), async (req, res) => {
   try {
     const { title, details, deadline, assignedTo } = req.body
     
@@ -552,7 +608,7 @@ app.post('/api/hub-incharge/tasks', authenticate, requireRole(['STAFF', 'ADMIN',
 })
 
 // Update task status
-app.patch('/api/hub-incharge/tasks/:id', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+app.patch('/api/hub-incharge/tasks/:id', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER', 'SUPER_ADMIN']), async (req, res) => {
   try {
     const { id } = req.params
     const { status } = req.body
@@ -568,7 +624,7 @@ app.patch('/api/hub-incharge/tasks/:id', authenticate, requireRole(['STAFF', 'AD
 })
 
 // Hub Incharge Settings
-app.get('/api/hub-incharge/settings', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+app.get('/api/hub-incharge/settings', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER', 'SUPER_ADMIN']), async (req, res) => {
   try {
     const settings = {
       language: 'English',
@@ -584,7 +640,7 @@ app.get('/api/hub-incharge/settings', authenticate, requireRole(['STAFF', 'ADMIN
 })
 
 // Update settings
-app.patch('/api/hub-incharge/settings', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER']), async (req, res) => {
+app.patch('/api/hub-incharge/settings', authenticate, requireRole(['STAFF', 'ADMIN', 'MANAGER', 'SUPER_ADMIN']), async (req, res) => {
   try {
     const { language, theme, emailNotifications, smsNotifications } = req.body
     

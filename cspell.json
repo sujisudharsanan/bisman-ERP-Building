@@ -49,6 +49,7 @@
     "Karnataka",
     "keyspace",
     "labelledby",
+    "mgmt",
     "mkdocs",
     "networkidle",
     "nextjs",
@@ -74,6 +75,7 @@
     "PSQL",
     "Rajesh",
     "rbac",
+    "regclass",
     "remediations",
     "remediator",
     "rolname",
@@ -97,6 +99,7 @@
     "virtualenv",
     "vitest",
     "WCAG",
+    "yourdomain",
     "yourrepo"
   ]
 }

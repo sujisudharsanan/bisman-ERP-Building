@@ -10,8 +10,8 @@ async function authenticateToken(req, res, next) {
   let token
 
   if (parts.length !== 2 || parts[0] !== 'Bearer') {
-    // Fallback: check cookie
-    const cookieToken = req.cookies && req.cookies.token
+    // Fallback: check cookie (prefer access_token, then legacy token)
+    const cookieToken = (req.cookies && (req.cookies.access_token || req.cookies.token))
     if (!cookieToken) {
       return res.status(401).json({ success: false, error: 'Missing or malformed token' })
     }

@@ -90,7 +90,8 @@ router.get('/users', [
 router.get('/privileges', [
   authMiddleware.authenticate,
   rbacMiddleware.requireRole(['Super Admin', 'Admin']),
-  query('resource').optional().isString(),
+  query('role').optional().isString(),
+  query('user').optional().isString(),
   handleValidationErrors
 ], async (req, res) => {
   try {
@@ -118,7 +119,15 @@ router.get('/privileges', [
 router.put('/privileges/update', [
   authMiddleware.authenticate,
   rbacMiddleware.requireRole(['Super Admin', 'Admin']),
-  body('userId').isInt({ min: 1 }),
+  body('type').isIn(['ROLE', 'USER']).withMessage('type must be ROLE or USER'),
+  body('target_id').isString().notEmpty().withMessage('target_id is required'),
+  body('privileges').isArray({ min: 1 }).withMessage('privileges must be a non-empty array'),
+  body('privileges.*.feature_id').isString().notEmpty(),
+  body('privileges.*.can_view').isBoolean(),
+  body('privileges.*.can_create').isBoolean(),
+  body('privileges.*.can_edit').isBoolean(),
+  body('privileges.*.can_delete').isBoolean(),
+  body('privileges.*.can_hide').isBoolean(),
   handleValidationErrors
 ], async (req, res) => {
   try {
@@ -205,7 +214,7 @@ router.get('/health/database', authMiddleware.authenticate, rbacMiddleware.requi
     const health = await privilegeService.checkDatabaseHealth();
     const responseTime = Date.now() - startTime;
     
-    res.json({
+  res.json({
       success: true,
       data: {
         ...health,

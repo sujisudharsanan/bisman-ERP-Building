@@ -2,6 +2,42 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
+import Image from 'next/image';
+
+const HeaderLogo: React.FC = () => {
+  // Use new neutral brand logo; keep fallbacks for resilience
+  const [src, setSrc] = useState<string | null>('/brand/logo.svg');
+  const fallbacks = ['/bisman_logo.svg', '/bisman_logo.png'];
+  const [idx, setIdx] = useState(0);
+
+  if (!src) {
+    return (
+      <div className="mr-3 w-7 h-7 rounded bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+        B
+      </div>
+    );
+  }
+
+  return (
+    <Image
+      src={src}
+  alt="Company logo"
+  title="Company logo"
+      width={80}
+      height={80}
+      className="mr-3 h-10 w-auto object-contain align-middle shrink-0 filter-none invert-0 dark:invert-0"
+      priority
+      onError={() => {
+        if (idx < fallbacks.length) {
+          setSrc(fallbacks[idx]);
+          setIdx(idx + 1);
+        } else {
+          setSrc(null);
+        }
+      }}
+    />
+  );
+};
 import {
   Shield,
   Users,
@@ -24,6 +60,7 @@ import {
   Route,
   BarChart3,
   ShoppingCart,
+  LogOut,
 } from 'lucide-react';
 
 // Import our new user management components
@@ -37,6 +74,7 @@ import {
 import { PrivilegeManagement } from '@/components/privilege-management';
 import DatabaseBrowser from '@/components/database-browser/DatabaseBrowser';
 import ActivityLogViewer from '@/components/activity-log/ActivityLogViewer';
+import SecurityMonitor from '@/components/security/SecurityMonitor';
 import type { 
   User as UserType, 
   UserRole, 
@@ -116,16 +154,24 @@ const SuperAdminControlPanel: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
 
   // API Base URL
-  const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const API_BASE_URL = '/api';
+
+  // Small logout handler
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/logout', { method: 'POST', credentials: 'include' });
+    } catch (e) { /* ignore */ }
+    // Redirect to login
+    try { router.push('/auth/login'); } catch { window.location.href = '/auth/login'; }
+  };
 
   // API Functions
   const apiCall = async (endpoint: string, options: RequestInit = {}) => {
-    const token = localStorage.getItem('token');
     const response = await fetch(
-      `http://localhost:3001/api/v1/super-admin${endpoint}`,
+      `/api/v1/super-admin${endpoint}`,
       {
+        credentials: 'include',
         headers: {
-          Authorization: `Bearer ${token}`,
           'Content-Type': 'application/json',
           ...options.headers,
         },
@@ -145,12 +191,15 @@ const SuperAdminControlPanel: React.FC = () => {
     try {
       setLoading(true);
       const [statsRes, activityRes] = await Promise.all([
-        apiCall('/dashboard/stats'),
-        apiCall('/activity?limit=10'),
+        fetch('/api/v1/super-admin/dashboard/stats', { credentials: 'include' }),
+        fetch('/api/v1/super-admin/activity?limit=10', { credentials: 'include' }),
       ]);
 
-      setStats(statsRes.data);
-      setActivities(activityRes.data);
+  const statsJson = await statsRes.json();
+  const actJson = await activityRes.json();
+  setStats(statsJson.data || statsJson);
+  const acts = (actJson && (actJson.data || actJson)) || [];
+  setActivities(Array.isArray(acts) ? acts : []);
     } catch (_err) {
       setError('Failed to load dashboard data');
       // Error is handled by setting error state
@@ -177,9 +226,28 @@ const SuperAdminControlPanel: React.FC = () => {
   const loadUsers = async () => {
     try {
       setLoading(true);
-      const response = await fetch('/api/users');
-      const data = await response.json();
-      setUsers(data.users || []);
+      // Use super-admin API and include cookies for auth
+  const res = await fetch('/api/v1/super-admin/users', { credentials: 'include' });
+      if (!res.ok) throw new Error('Users fetch failed');
+      const payload = await res.json();
+      const list = (payload && (payload.data?.users || payload.data || payload.users)) || [];
+      // Map backend user shape -> UI UserType
+      const mapped = list.map((u: any) => ({
+        id: String(u.id ?? u.user_id ?? ''),
+        first_name: u.first_name || u.username || '',
+        last_name: u.last_name || '',
+        email: u.email || '',
+        status: (u.status || 'invited') as any,
+        last_login: u.last_login || u.lastLogin || null,
+        roles: Array.isArray(u.roles)
+          ? u.roles
+          : (u.role ? [{ id: u.role_id || u.role, name: u.role }] : []),
+        is_first_login: false,
+        meta: {},
+        created_at: String(u.createdAt || u.created_at || ''),
+        updated_at: String(u.updatedAt || u.updated_at || ''),
+      }));
+      setUsers(mapped);
     } catch (_err) {
       setError('Failed to load users');
     } finally {
@@ -189,9 +257,12 @@ const SuperAdminControlPanel: React.FC = () => {
 
   const loadRoles = async () => {
     try {
-      const response = await fetch('/api/roles');
-      const data = await response.json();
-      setRoles(data.roles || []);
+  const res = await fetch('/api/v1/super-admin/roles?limit=100', { credentials: 'include' });
+      if (!res.ok) throw new Error('Roles fetch failed');
+      const payload = await res.json();
+      const rows = payload?.data?.rows || [];
+      const mapped: any[] = rows.map((r: any) => ({ id: String(r.id || r.role_id), name: r.name || r.code || 'ROLE', permissions: {}, is_system_role: !!r.is_system_role, created_at: String(r.created_at || ''), updated_at: String(r.updated_at || '') }));
+      setRoles(mapped as any);
     } catch (_err) {
       console.error('Failed to load roles');
     }
@@ -199,9 +270,11 @@ const SuperAdminControlPanel: React.FC = () => {
 
   const loadBranches = async () => {
     try {
-      const response = await fetch('/api/branches');
-      const data = await response.json();
-      setBranches(data.branches || []);
+  const res = await fetch('/api/v1/super-admin/tables/branches?limit=200', { credentials: 'include' });
+      const payload = await res.json();
+      const rows = payload?.data?.rows || [];
+      const mapped = rows.map((b: any) => ({ id: String(b.id), name: b.name, code: b.code, is_active: !!b.is_active, created_at: String(b.created_at || ''), updated_at: String(b.updated_at || '') }));
+      setBranches(mapped as any);
     } catch (_err) {
       console.error('Failed to load branches');
     }
@@ -209,9 +282,11 @@ const SuperAdminControlPanel: React.FC = () => {
 
   const loadPendingKyc = async () => {
     try {
-      const response = await fetch('/api/kyc/pending');
-      const data = await response.json();
-      setPendingKyc(data.submissions || []);
+  const res = await fetch('/api/v1/super-admin/tables/kyc_submissions?limit=100&status=awaiting_approval', { credentials: 'include' });
+      const payload = await res.json();
+      const rows = payload?.data?.rows || [];
+      const mapped = rows.map((r: any) => ({ id: String(r.id), user_id: String(r.user_id || ''), first_name: r.first_name, last_name: r.last_name, email: r.email, status: r.status || 'awaiting_approval', submitted_at: String(r.submitted_at || r.created_at || ''), custom_fields: {}, files: {}, qualifications: [], employment_history: [], family_details: [], consent_given: true, created_at: String(r.created_at || ''), updated_at: String(r.updated_at || '') }));
+      setPendingKyc(mapped as any);
     } catch (_err) {
       console.error('Failed to load pending KYC');
     }
@@ -303,7 +378,7 @@ const SuperAdminControlPanel: React.FC = () => {
             Recent Activity
           </h3>
           <div className="space-y-3">
-            {activities.map(activity => (
+            {(Array.isArray(activities) ? activities : []).map(activity => (
               <div
                 key={activity.id}
                 className="flex items-center justify-between py-2 border-b border-gray-100"
@@ -527,14 +602,24 @@ const SuperAdminControlPanel: React.FC = () => {
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex space-x-1">
-                              {user.roles.map(role => (
-                                <span
-                                  key={role.id}
-                                  className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                                >
-                                  {role.name}
-                                </span>
-                              ))}
+                              {(
+                                Array.isArray((user as any).roles)
+                                  ? (user as any).roles
+                                  : (user as any).role
+                                    ? [ (user as any).role ]
+                                    : []
+                              ).map((role: any, idx: number) => {
+                                const key = (role && (role.id || role.code || role.name)) ?? idx
+                                const label = typeof role === 'string' ? role : (role?.name || role?.code || 'Role')
+                                return (
+                                  <span
+                                    key={key}
+                                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
+                                  >
+                                    {label}
+                                  </span>
+                                )
+                              })}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -726,19 +811,30 @@ const SuperAdminControlPanel: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-6">
             <div className="flex items-center">
-              <Shield className="h-8 w-8 text-red-600 mr-3" />
+              <HeaderLogo />
               <h1 className="text-2xl font-bold text-gray-900">
                 Super Admin Control Panel
               </h1>
             </div>
-            <div className="flex items-center space-x-4">
+            <div className="flex items-center space-x-3">
               <TopNavDbIndicator />
               <button
                 onClick={() => window.location.reload()}
-                className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 flex items-center space-x-2"
+                className="bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 flex items-center space-x-2 text-sm"
+                aria-label="Refresh"
+                title="Refresh"
               >
                 <RefreshCw className="w-4 h-4" />
                 <span>Refresh</span>
+              </button>
+              <button
+                onClick={handleLogout}
+                className="bg-gray-700 text-white px-3 py-1.5 rounded-md hover:bg-gray-800 flex items-center space-x-2 text-sm"
+                aria-label="Logout"
+                title="Logout"
+              >
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
               </button>
             </div>
           </div>
@@ -755,7 +851,7 @@ const SuperAdminControlPanel: React.FC = () => {
                 onClick={() => handleTabChange(tab.id)}
                 className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
                   activeTab === tab.id
-                    ? 'border-red-500 text-red-600'
+                    ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                 }`}
               >
@@ -820,23 +916,7 @@ const SuperAdminControlPanel: React.FC = () => {
               </div>
             )}
             {activeTab === 'security' && (
-              <div className="bg-white rounded-lg shadow p-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-lg font-medium text-gray-900">Security Monitoring</h3>
-                  <a
-                    href="/super-admin/security"
-                    className="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-                  >
-                    <Shield className="w-4 h-4 mr-2" />
-                    Open Security Dashboard
-                  </a>
-                </div>
-                <p className="text-gray-600">
-                  Access comprehensive security audit results, real-time monitoring, 
-                  and security metrics. Monitor authentication attempts, detect anomalies, 
-                  and review security compliance status.
-                </p>
-              </div>
+              <SecurityMonitor />
             )}
             {activeTab === 'settings' && (
               <div className="text-center py-12 text-gray-500">

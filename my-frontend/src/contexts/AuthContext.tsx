@@ -83,21 +83,39 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
 
       if (response.ok) {
-        const data = await response.json();
-        // Normalize different backend response shapes. Some endpoints return { user: {...} }
-        // others return a flat { email, role, ... } shape.
-        const userFromBody = data.user
-          ? data.user
-          : {
-              id: data.id,
-              username: data.username || (data.email ? data.email.split('@')[0] : undefined),
-              email: data.email,
-              roleName: data.role || data.roleName,
-              name: data.name,
-            };
-
-        setUser(userFromBody || null);
-        return userFromBody || null;
+        // Ensure cookies are persisted by validating with /api/me.
+        // Try a quick whoami, and if needed, refresh then whoami again.
+        const probeMe = async () => {
+          const me1 = await fetch(`${baseURL}/api/me`, { credentials: 'include' });
+          if (me1.ok) return me1.json();
+          // Attempt refresh once
+          await fetch(`${baseURL}/api/token/refresh`, { method: 'POST', credentials: 'include' }).catch(() => {});
+          const me2 = await fetch(`${baseURL}/api/me`, { credentials: 'include' });
+          if (me2.ok) return me2.json();
+          return null;
+        };
+        const who = await probeMe();
+        if (who && who.user) {
+          setUser(who.user);
+          return who.user;
+        }
+        // Fallback to parsing login body if /api/me probe fails for any reason
+        try {
+          const data = await response.clone().json();
+          const userFromBody = data.user
+            ? data.user
+            : {
+                id: data.id,
+                username: data.username || (data.email ? data.email.split('@')[0] : undefined),
+                email: data.email,
+                roleName: data.role || data.roleName,
+                name: data.name,
+              };
+          setUser(userFromBody || null);
+          return userFromBody || null;
+        } catch {
+          return null;
+        }
       } else {
         // Login failed - error handled by caller
         return null;

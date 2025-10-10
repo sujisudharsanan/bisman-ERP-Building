@@ -4,12 +4,19 @@ const { isJtiRevoked } = require('../lib/tokenStore')
 
 const prisma = new PrismaClient()
 
-// Development users for testing
+// Development users for testing (keep in sync with app.js devUsers)
 const devUsers = [
+  // Original dev credentials
   { id: 0, email: 'super@bisman.local', password: 'password', role: 'SUPER_ADMIN' },
   { id: 1, email: 'manager@business.com', password: 'password', role: 'MANAGER' },
   { id: 2, email: 'admin@business.com', password: 'admin123', role: 'ADMIN' },
-  { id: 3, email: 'staff@business.com', password: 'staff123', role: 'STAFF' }
+  { id: 3, email: 'staff@business.com', password: 'staff123', role: 'STAFF' },
+
+  // Additional dev users to support "changeme" credentials used by the frontend/docs
+  { id: 100, email: 'super@bisman.local', password: 'changeme', role: 'SUPER_ADMIN' },
+  { id: 101, email: 'admin@bisman.local', password: 'changeme', role: 'ADMIN' },
+  { id: 102, email: 'manager@bisman.local', password: 'changeme', role: 'MANAGER' },
+  { id: 103, email: 'hub@bisman.local', password: 'changeme', role: 'STAFF' },
 ]
 
 async function authenticate(req, res, next) {

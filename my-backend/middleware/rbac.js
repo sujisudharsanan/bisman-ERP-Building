@@ -4,6 +4,13 @@
 const rbac = {
   // Require specific roles
   requireRole: (allowedRoles) => {
+    // Normalize a role string to a canonical form e.g., 'Super Admin' -> 'SUPER_ADMIN'
+    const norm = (r) => (r || '')
+      .toString()
+      .replace(/[\s-]+/g, '_')
+      .toUpperCase();
+    const allowed = (Array.isArray(allowedRoles) ? allowedRoles : [allowedRoles]).map(norm);
+
     return (req, res, next) => {
       if (!req.user) {
         return res.status(401).json({
@@ -16,10 +23,11 @@ const rbac = {
         });
       }
 
-      const userRole = req.user.role;
-      
+      const userRoleRaw = req.user.roleName || req.user.role;
+      const userRole = norm(userRoleRaw);
+
       // Check if user's role is in the allowed roles
-      if (!allowedRoles.includes(userRole)) {
+      if (!allowed.includes(userRole)) {
         return res.status(403).json({
           success: false,
           error: {
@@ -27,7 +35,7 @@ const rbac = {
             code: 'INSUFFICIENT_PERMISSIONS',
             details: {
               required: allowedRoles,
-              current: userRole
+              current: userRoleRaw
             }
           },
           timestamp: new Date().toISOString()

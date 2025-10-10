@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title>Company Logo</title>
+  <desc>Stylized monogram with circular accent</desc>
+  <defs>
+    <linearGradient id="brandGradient" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#F2C04B"/>
+      <stop offset="100%" stop-color="#E1A90F"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="2" stdDeviation="2" flood-color="#000" flood-opacity="0.12"/>
+    </filter>
+  </defs>
+  <g filter="url(#shadow)">
+    <!-- Monogram body -->
+    <path fill="url(#brandGradient)" d="M84 48c0-8.837 7.163-16 16-16h40c40.317 0 73 32.683 73 73s-32.683 73-73 73h-40c-8.837 0-16-7.163-16-16V48z"/>
+    <!-- Inner cut to create visual separation -->
+    <path fill="#fff" opacity=".9" d="M76 164c0-33.137 26.863-60 60-60h18c8.837 0 16 7.163 16 16s-7.163 16-16 16h-18c-15.464 0-28 12.536-28 28 0 8.837-7.163 16-16 16s-16-7.163-16-16z"/>
+    <!-- Accent dot -->
+    <circle cx="68" cy="186" r="18" fill="url(#brandGradient)"/>
+  </g>
+</svg>

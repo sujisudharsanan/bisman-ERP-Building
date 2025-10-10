@@ -22,40 +22,30 @@ interface SidebarProps {
   onTableSelect: (table: string) => void;
   isCollapsed: boolean;
   onToggleCollapse: () => void;
+  tables?: string[];
 }
 
-interface TableSchema {
-  name: string;
-  icon: React.ReactNode;
-  rowCount: number;
-  category: string;
-}
+interface TableSchema { name: string; icon: React.ReactNode; rowCount?: number; category: string }
 
-const databaseTables: TableSchema[] = [
-  { name: 'users', icon: <Table2 className="w-4 h-4" />, rowCount: 12345, category: 'Core' },
-  { name: 'products', icon: <Table2 className="w-4 h-4" />, rowCount: 8976, category: 'Inventory' },
-  { name: 'orders', icon: <Table2 className="w-4 h-4" />, rowCount: 45623, category: 'Sales' },
-  { name: 'transactions', icon: <Table2 className="w-4 h-4" />, rowCount: 89234, category: 'Finance' },
-  { name: 'inventory', icon: <Table2 className="w-4 h-4" />, rowCount: 3456, category: 'Inventory' },
-  { name: 'suppliers', icon: <Table2 className="w-4 h-4" />, rowCount: 234, category: 'Suppliers' },
-  { name: 'categories', icon: <Table2 className="w-4 h-4" />, rowCount: 45, category: 'Catalog' },
-  { name: 'audit_logs', icon: <Activity className="w-4 h-4" />, rowCount: 156789, category: 'System' },
-  { name: 'permissions', icon: <Settings className="w-4 h-4" />, rowCount: 89, category: 'Security' },
-  { name: 'roles', icon: <Settings className="w-4 h-4" />, rowCount: 12, category: 'Security' },
-];
+// Sidebar now receives dynamic tables through props in future; placeholder logic stays for UX
 
-export default function Sidebar({ activeTable, onTableSelect, isCollapsed, onToggleCollapse }: SidebarProps) {
+export default function Sidebar({ activeTable, onTableSelect, isCollapsed, onToggleCollapse, tables = [] }: SidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState<string[]>(['Core', 'System']);
 
-  const filteredTables = databaseTables.filter(table =>
-    table.name.toLowerCase().includes(searchQuery.toLowerCase())
+  // Build a simple categorized list from provided tables
+  const all: TableSchema[] = (tables && tables.length
+    ? tables.map((t) => ({ name: t, icon: <Table2 className="w-4 h-4" />, category: 'Public' }))
+    : [
+        { name: 'users', icon: <Table2 className="w-4 h-4" />, category: 'Public' },
+        { name: 'roles', icon: <Settings className="w-4 h-4" />, category: 'Public' },
+        { name: 'audit_logs', icon: <Activity className="w-4 h-4" />, category: 'Public' },
+      ]
   );
 
-  const categorizedTables = filteredTables.reduce((acc, table) => {
-    if (!acc[table.category]) {
-      acc[table.category] = [];
-    }
+  const filteredTables = all.filter((table: TableSchema) => table.name.toLowerCase().includes(searchQuery.toLowerCase()));
+  const categorizedTables = filteredTables.reduce((acc: Record<string, TableSchema[]>, table: TableSchema) => {
+    if (!acc[table.category]) acc[table.category] = [];
     acc[table.category].push(table);
     return acc;
   }, {} as Record<string, TableSchema[]>);
@@ -79,7 +69,7 @@ export default function Sidebar({ activeTable, onTableSelect, isCollapsed, onTog
       )}
 
       {/* Sidebar */}
-      <motion.div
+    <motion.div
         initial={false}
         animate={{ 
           x: isCollapsed ? -280 : 0,
@@ -87,8 +77,8 @@ export default function Sidebar({ activeTable, onTableSelect, isCollapsed, onTog
         }}
         transition={{ duration: 0.3, ease: 'easeInOut' }}
         className={`
-          fixed left-0 top-0 h-full bg-white border-r border-gray-200 z-50 lg:relative lg:z-0
-          ${isCollapsed ? 'w-0 overflow-hidden' : 'w-80'}
+      fixed left-0 top-0 h-full bg-white border-r border-gray-200 z-50 lg:relative lg:z-0
+      ${isCollapsed ? 'w-0 overflow-hidden' : 'w-72'}
         `}
       >
         <div className="flex flex-col h-full">
@@ -179,7 +169,7 @@ export default function Sidebar({ activeTable, onTableSelect, isCollapsed, onTog
                           exit={{ opacity: 0, height: 0 }}
                           className="ml-4 space-y-1"
                         >
-                          {tables.map((table) => (
+                          {tables && categorizedTables[category].map((table: TableSchema) => (
                             <button
                               key={table.name}
                               onClick={() => onTableSelect(table.name)}
@@ -195,9 +185,11 @@ export default function Sidebar({ activeTable, onTableSelect, isCollapsed, onTog
                                 {table.icon}
                                 <span className="ml-2 truncate">{table.name}</span>
                               </div>
-                              <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
-                                {table.rowCount.toLocaleString()}
-                              </span>
+                              {typeof table.rowCount === 'number' && (
+                                <span className="text-xs text-gray-400 ml-2 flex-shrink-0">
+                                  {table.rowCount.toLocaleString()}
+                                </span>
+                              )}
                             </button>
                           ))}
                         </motion.div>

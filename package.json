@@ -15,6 +15,8 @@
     "dev": "concurrently \"npm:dev:backend\" \"npm:dev:frontend\"",
     "dev:worker": "npx ts-node --transpile-only apps/worker/src/worker.ts",
     "dev:my-backend": "cd my-backend && npm run dev",
+  "dev:frontend:3000": "cd my-frontend && npm run dev -- -p 3000",
+  "dev:both": "concurrently -n backend,frontend -c green,cyan \"npm:dev:my-backend\" \"npm:dev:frontend:3000\"",
     "dev:all": "npx concurrently \"npm:dev:api\" \"npm:dev:worker\"",
     "start:dev:watch": "nodemon --watch apps/api --watch libs --exec \"ts-node -r tsconfig-paths/register apps/api/src/main.ts\"",
     "start:dry-run": "node -r ts-node/register apps/api/src/main.ts --dry-run",

@@ -4,6 +4,85 @@
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
 
+// Lightweight DB readiness cache so we don't probe every call
+let _dbReadyCache = { ready: null, checkedAt: 0 };
+const DB_READY_TTL_MS = 30_000; // 30s
+
+// Determine if database is not only configured but also has required tables
+async function isDbReady() {
+  if (!process.env.DATABASE_URL) return false;
+  const now = Date.now();
+  if (_dbReadyCache.ready !== null && now - _dbReadyCache.checkedAt < DB_READY_TTL_MS) {
+    return _dbReadyCache.ready;
+  }
+  try {
+    // Check presence of critical tables used by privilege management
+    const result = await prisma.$queryRawUnsafe(
+      "SELECT to_regclass('public.roles') as roles, to_regclass('public.features') as features, to_regclass('public.role_privileges') as role_privileges, to_regclass('public.user_privileges') as user_privileges, to_regclass('public.users') as users"
+    );
+    const row = Array.isArray(result) ? result[0] : result;
+    const ready = !!(row && row.roles && row.features && row.users);
+    _dbReadyCache = { ready, checkedAt: now };
+    return ready;
+  } catch (e) {
+    // If query fails (e.g., no permissions or bad schema), treat as not ready
+    _dbReadyCache = { ready: false, checkedAt: now };
+    return false;
+  }
+}
+
+// Helpers and fallbacks for dev/no-DB environments
+const isDbConfigured = () => Boolean(process.env.DATABASE_URL);
+
+const nowIso = () => new Date().toISOString();
+
+const DEFAULT_ROLES = [
+  { id: 'SUPER_ADMIN', name: 'Super Admin', description: 'Full system access', is_active: true },
+  { id: 'ADMIN', name: 'Admin', description: 'Administrative access', is_active: true },
+  { id: 'MANAGER', name: 'Manager', description: 'Managerial access', is_active: true },
+  { id: 'STAFF', name: 'Staff', description: 'Standard user access', is_active: true }
+].map(r => ({ ...r, created_at: nowIso(), updated_at: nowIso(), user_count: 0 }));
+
+const DEV_USERS = [
+  { id: '0', username: 'super', email: 'super@bisman.local', first_name: 'Super', last_name: 'Admin', role_id: 'SUPER_ADMIN', is_active: true },
+  { id: '2', username: 'admin', email: 'admin@business.com', first_name: 'Admin', last_name: 'User', role_id: 'ADMIN', is_active: true },
+  { id: '1', username: 'manager', email: 'manager@business.com', first_name: 'Manager', last_name: 'User', role_id: 'MANAGER', is_active: true },
+  { id: '3', username: 'staff', email: 'staff@business.com', first_name: 'Staff', last_name: 'User', role_id: 'STAFF', is_active: true }
+].map(u => ({ ...u, created_at: nowIso(), updated_at: nowIso() }));
+
+const DEFAULT_FEATURES = [
+  // User Management
+  { id: 'feature:user_list', name: 'User List', module: 'User Management', description: 'View user list' },
+  { id: 'feature:user_create', name: 'User Create', module: 'User Management', description: 'Create new users' },
+  { id: 'feature:user_edit', name: 'User Edit', module: 'User Management', description: 'Edit user details' },
+  { id: 'feature:user_delete', name: 'User Delete', module: 'User Management', description: 'Delete users' },
+  { id: 'feature:user_roles', name: 'User Roles', module: 'User Management', description: 'Manage user roles' },
+  // Inventory
+  { id: 'feature:product_list', name: 'Product List', module: 'Inventory', description: 'View product inventory' },
+  { id: 'feature:product_create', name: 'Product Create', module: 'Inventory', description: 'Add new products' },
+  { id: 'feature:product_edit', name: 'Product Edit', module: 'Inventory', description: 'Edit product details' },
+  { id: 'feature:product_delete', name: 'Product Delete', module: 'Inventory', description: 'Remove products' },
+  { id: 'feature:stock_mgmt', name: 'Stock Management', module: 'Inventory', description: 'Manage stock levels' },
+  // Sales
+  { id: 'feature:sales_dashboard', name: 'Sales Dashboard', module: 'Sales', description: 'View sales dashboard' },
+  { id: 'feature:create_orders', name: 'Create Orders', module: 'Sales', description: 'Create sales orders' },
+  { id: 'feature:edit_orders', name: 'Edit Orders', module: 'Sales', description: 'Modify sales orders' },
+  { id: 'feature:delete_orders', name: 'Delete Orders', module: 'Sales', description: 'Cancel sales orders' },
+  { id: 'feature:sales_reports', name: 'Sales Reports', module: 'Sales', description: 'Generate sales reports' },
+  // Finance
+  { id: 'feature:finance_dashboard', name: 'Financial Dashboard', module: 'Finance', description: 'View financial overview' },
+  { id: 'feature:invoice_mgmt', name: 'Invoice Management', module: 'Finance', description: 'Manage invoices' },
+  { id: 'feature:payment_processing', name: 'Payment Processing', module: 'Finance', description: 'Process payments' },
+  { id: 'feature:financial_reports', name: 'Financial Reports', module: 'Finance', description: 'Generate financial reports' },
+  { id: 'feature:tax_mgmt', name: 'Tax Management', module: 'Finance', description: 'Manage tax calculations' },
+  // Admin
+  { id: 'feature:system_settings', name: 'System Settings', module: 'Administration', description: 'Configure system settings' },
+  { id: 'feature:backup_mgmt', name: 'Backup Management', module: 'Administration', description: 'Manage system backups' },
+  { id: 'feature:audit_logs', name: 'Audit Logs', module: 'Administration', description: 'View system audit logs' },
+  { id: 'feature:system_health', name: 'System Health', module: 'Administration', description: 'Monitor system health' },
+  { id: 'feature:db_mgmt', name: 'Database Management', module: 'Administration', description: 'Manage database operations' }
+].map(f => ({ ...f, is_active: true, created_at: nowIso(), updated_at: nowIso() }));
+
 class PrivilegeService {
   constructor() {
     this.prisma = prisma;
@@ -12,6 +91,13 @@ class PrivilegeService {
   // Get all roles with user counts
   async getAllRoles() {
     try {
+      if (!(await isDbReady())) {
+        const withCounts = DEFAULT_ROLES.map(r => ({
+          ...r,
+          user_count: DEV_USERS.filter(u => u.role_id === r.id).length
+        }));
+        return withCounts;
+      }
       const roles = await this.prisma.role.findMany({
         include: {
           _count: {
@@ -32,6 +118,14 @@ class PrivilegeService {
       }));
     } catch (error) {
       console.error('Error in getAllRoles:', error);
+      // Fallback in dev or when DB isn’t ready
+      if (process.env.NODE_ENV !== 'production' || !isDbConfigured() || !(await isDbReady())) {
+        const withCounts = DEFAULT_ROLES.map(r => ({
+          ...r,
+          user_count: DEV_USERS.filter(u => u.role_id === r.id).length
+        }));
+        return withCounts;
+      }
       throw new Error('Failed to fetch roles');
     }
   }
@@ -39,9 +133,19 @@ class PrivilegeService {
   // Get users by role ID
   async getUsersByRole(roleId) {
     try {
+      if (!(await isDbReady())) {
+        // Fallback to dev users by role code
+        const list = DEV_USERS.filter(u => !roleId || u.role_id === roleId).map(u => ({
+          ...u,
+          role: { id: u.role_id, name: DEFAULT_ROLES.find(r => r.id === u.role_id)?.name || u.role_id }
+        }));
+        return list;
+      }
+      // Coerce roleId to number if provided (DB schema uses numeric role IDs)
+      const roleIdNum = roleId != null && !Number.isNaN(Number(roleId)) ? Number(roleId) : undefined;
       const users = await this.prisma.user.findMany({
         where: { 
-          role_id: roleId,
+          ...(roleIdNum ? { role_id: roleIdNum } : {}),
           deleted_at: null 
         },
         include: {
@@ -72,6 +176,13 @@ class PrivilegeService {
       }));
     } catch (error) {
       console.error('Error in getUsersByRole:', error);
+      if (process.env.NODE_ENV !== 'production' || !isDbConfigured() || !(await isDbReady())) {
+        const list = DEV_USERS.filter(u => !roleId || u.role_id === roleId).map(u => ({
+          ...u,
+          role: { id: u.role_id, name: DEFAULT_ROLES.find(r => r.id === u.role_id)?.name || u.role_id }
+        }));
+        return list;
+      }
       throw new Error('Failed to fetch users');
     }
   }
@@ -79,6 +190,9 @@ class PrivilegeService {
   // Get all features from database
   async getAllFeatures() {
     try {
+      if (!(await isDbReady())) {
+        return DEFAULT_FEATURES;
+      }
       const features = await this.prisma.feature.findMany({
         orderBy: [
           { module: 'asc' },
@@ -97,6 +211,9 @@ class PrivilegeService {
       }));
     } catch (error) {
       console.error('Error in getAllFeatures:', error);
+  if (process.env.NODE_ENV !== 'production' || !isDbConfigured() || !(await isDbReady())) {
+        return DEFAULT_FEATURES;
+      }
       throw new Error('Failed to fetch features');
     }
   }
@@ -105,10 +222,21 @@ class PrivilegeService {
   async getPrivileges(roleId, userId = null) {
     try {
       const features = await this.getAllFeatures();
+      if (!(await isDbReady())) {
+        // Build a default privilege table: all permissions false
+        const privilegeRows = features.map(feature => ({
+          ...feature,
+          role_privilege: null,
+          user_privilege: null,
+          has_user_override: false
+        }));
+        return { features, privileges: privilegeRows };
+      }
       
       // Get role privileges
+      const roleIdNum = roleId != null && !Number.isNaN(Number(roleId)) ? Number(roleId) : undefined;
       const rolePrivileges = await this.prisma.rolePrivilege.findMany({
-        where: { role_id: roleId },
+        where: { role_id: roleIdNum },
         include: {
           feature: true
         }
@@ -116,11 +244,11 @@ class PrivilegeService {
 
       // Get user privileges if userId provided
       let userPrivileges = [];
-      if (userId) {
+  if (userId) {
         userPrivileges = await this.prisma.userPrivilege.findMany({
           where: { 
-            user_id: userId,
-            role_id: roleId 
+    user_id: Number(userId),
+    ...(roleIdNum ? { role_id: roleIdNum } : {}),
           },
           include: {
             feature: true
@@ -168,6 +296,17 @@ class PrivilegeService {
       };
     } catch (error) {
       console.error('Error in getPrivileges:', error);
+  if (process.env.NODE_ENV !== 'production' || !isDbConfigured() || !(await isDbReady())) {
+        // Build a default privilege table: all permissions false
+        const features = DEFAULT_FEATURES;
+        const privilegeRows = features.map(feature => ({
+          ...feature,
+          role_privilege: null,
+          user_privilege: null,
+          has_user_override: false
+        }));
+        return { features, privileges: privilegeRows };
+      }
       throw new Error('Failed to fetch privileges');
     }
   }
@@ -268,6 +407,14 @@ class PrivilegeService {
   // Sync features with database schema
   async syncSchemaFeatures() {
     try {
+      // If DB/tables are not ready, don't error out; just no-op so UI stays functional
+      if (!(await isDbReady())) {
+        return {
+          new_features: [],
+          updated_features: [],
+          removed_features: []
+        };
+      }
       // This would typically introspect your database schema
       // For now, we'll define common ERP features
       const schemaFeatures = [
@@ -351,6 +498,14 @@ class PrivilegeService {
       return result;
     } catch (error) {
       console.error('Error in syncSchemaFeatures:', error);
+      // Graceful fallback in dev or when DB not ready
+      if (process.env.NODE_ENV !== 'production' || !(await isDbReady())) {
+        return {
+          new_features: [],
+          updated_features: [],
+          removed_features: []
+        };
+      }
       throw new Error('Failed to sync schema features');
     }
   }
@@ -358,9 +513,21 @@ class PrivilegeService {
   // Check database health
   async checkDatabaseHealth() {
     try {
+      // If no database is configured in this environment, report clearly
+      if (!process.env.DATABASE_URL) {
+        return {
+          connected: false,
+          response_time: 0,
+          active_connections: 0,
+          version: null,
+          reason: 'NOT_CONFIGURED',
+          issues: ['DATABASE_URL is not set']
+        };
+      }
+
       const startTime = Date.now();
-      
-      // Test basic connectivity
+      // Test basic connectivity and also whether key tables exist
+      const ready = await isDbReady();
       await this.prisma.$queryRaw`SELECT 1`;
       
       // Get database info
@@ -376,6 +543,7 @@ class PrivilegeService {
 
       return {
         connected: true,
+        ready,
         response_time: responseTime,
         active_connections: parseInt(connectionInfo.active_connections),
         version: connectionInfo.version,
@@ -387,6 +555,7 @@ class PrivilegeService {
         connected: false,
         response_time: -1,
         active_connections: 0,
+  reason: 'ERROR',
         issues: [error.message]
       };
     }

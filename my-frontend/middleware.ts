@@ -13,7 +13,7 @@ export function middleware(req: NextRequest) {
 
   // Accept either cookie name the client or server might set (access_token or token)
   const token =
-    req.cookies.get('access_token')?.value || req.cookies.get('token')?.value;
+    req.cookies.get('access_token')?.value || req.cookies.get('token')?.value || req.cookies.get('refresh_token')?.value;
 
   // Allow access to debug page for troubleshooting
   if (pathname === '/debug-auth') {

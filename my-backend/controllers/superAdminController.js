@@ -2,6 +2,16 @@
 const superAdminService = require('../services/superAdminService')
 
 class SuperAdminController {
+  // =============== SCHEMA LIST ===============
+  async getTables(req, res) {
+    try {
+      const tables = await superAdminService.listTables()
+      res.json({ success: true, data: tables })
+    } catch (error) {
+      console.error('Error listing tables:', error)
+      res.status(500).json({ success: false, error: error.message })
+    }
+  }
   // =============== ACTIVITY TRACKING ===============
   async getRecentActivity(req, res) {
     try {

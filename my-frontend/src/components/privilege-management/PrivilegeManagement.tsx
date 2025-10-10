@@ -65,8 +65,8 @@ export function PrivilegeManagement({ className = '' }: PrivilegeManagementProps
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // API Base URL
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+  // API Base URL: use relative path to leverage Next.js rewrites/proxy and same-origin cookies
+  const API_BASE = '/api/privileges';
 
   // Generic API call function
   const apiCall = async <T,>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> => {
@@ -77,6 +77,8 @@ export function PrivilegeManagement({ className = '' }: PrivilegeManagementProps
           // Add auth headers if needed
           ...options?.headers,
         },
+        // Ensure auth cookies are sent (access_token via SameSite=Lax)
+        credentials: 'include',
         ...options,
       });
 
