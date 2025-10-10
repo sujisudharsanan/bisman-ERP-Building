@@ -5,6 +5,7 @@ const express = require('express');
 const { body, query, validationResult } = require('express-validator');
 const router = express.Router();
 const privilegeService = require('../services/privilegeService');
+const rbacService = require('../services/rbacService');
 const authMiddleware = require('../middleware/auth');
 const rbacMiddleware = require('../middleware/rbac');
 
@@ -31,8 +32,23 @@ const handleValidationErrors = (req, res, next) => {
 // GET /api/roles - Fetch all roles with user counts
 router.get('/roles', authMiddleware.authenticate, rbacMiddleware.requireRole(['Super Admin', 'Admin']), async (req, res) => {
   try {
-    const roles = await privilegeService.getAllRoles();
-    
+    let roles = [];
+    let used = 'rbac';
+    try {
+      // Prefer RBAC roles to align with dashboard stats (rbac_roles table)
+      roles = await rbacService.getAllRoles();
+    } catch (rbacErr) {
+      console.warn('RBAC roles fetch failed; falling back:', rbacErr?.message || rbacErr);
+      used = 'privilege';
+      roles = await privilegeService.getAllRoles();
+    }
+    // If RBAC is present but has no rows yet, fall back to default roles to avoid empty UI
+    if (used === 'rbac' && Array.isArray(roles) && roles.length === 0) {
+      console.warn('RBAC roles list is empty; falling back to default roles');
+      roles = await privilegeService.getAllRoles();
+      used = 'privilege';
+    }
+
     res.json({
       success: true,
       data: roles,

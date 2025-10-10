@@ -37,17 +37,48 @@ const isDbConfigured = () => Boolean(process.env.DATABASE_URL);
 const nowIso = () => new Date().toISOString();
 
 const DEFAULT_ROLES = [
-  { id: 'SUPER_ADMIN', name: 'Super Admin', description: 'Full system access', is_active: true },
-  { id: 'ADMIN', name: 'Admin', description: 'Administrative access', is_active: true },
-  { id: 'MANAGER', name: 'Manager', description: 'Managerial access', is_active: true },
-  { id: 'STAFF', name: 'Staff', description: 'Standard user access', is_active: true }
+  // Core
+  { id: 'SUPER_ADMIN', name: 'Super Admin', description: 'Full system access', level: 10, is_active: true },
+  { id: 'ADMIN', name: 'Admin', description: 'Administrative access', level: 9, is_active: true },
+  { id: 'IT_ADMIN', name: 'IT Admin', description: 'IT administration and platform operations', level: 8, is_active: true },
+  { id: 'MANAGER', name: 'Manager', description: 'Managerial access', level: 6, is_active: true },
+  { id: 'STAFF', name: 'Staff', description: 'Standard user access', level: 1, is_active: true },
+
+  // Finance hierarchy (international)
+  { id: 'CFO', name: 'CFO', description: 'Chief Financial Officer', level: 9, is_active: true },
+  { id: 'FINANCE_CONTROLLER', name: 'Finance Controller', description: 'Financial control and reporting', level: 8, is_active: true },
+  { id: 'TREASURY', name: 'Treasury', description: 'Cash management and treasury operations', level: 7, is_active: true },
+  { id: 'ACCOUNTS', name: 'Accounts', description: 'General ledger and accounting', level: 5, is_active: true },
+  { id: 'ACCOUNTS_PAYABLE', name: 'Accounts Payable', description: 'Vendor invoices and payments', level: 4, is_active: true },
+  { id: 'BANKER', name: 'Banker', description: 'Banking liaison and reconciliation', level: 5, is_active: true },
+
+  // Procurement & Store
+  { id: 'PROCUREMENT_OFFICER', name: 'Procurement Officer', description: 'Purchase requests and orders', level: 4, is_active: true },
+  { id: 'STORE_INCHARGE', name: 'Store Incharge', description: 'Warehouse and inventory custody', level: 3, is_active: true },
+
+  // Governance
+  { id: 'COMPLIANCE', name: 'Compliance', description: 'Compliance and audit', level: 6, is_active: true },
+  { id: 'LEGAL', name: 'Legal', description: 'Legal and contracts', level: 6, is_active: true },
 ].map(r => ({ ...r, created_at: nowIso(), updated_at: nowIso(), user_count: 0 }));
 
 const DEV_USERS = [
   { id: '0', username: 'super', email: 'super@bisman.local', first_name: 'Super', last_name: 'Admin', role_id: 'SUPER_ADMIN', is_active: true },
   { id: '2', username: 'admin', email: 'admin@business.com', first_name: 'Admin', last_name: 'User', role_id: 'ADMIN', is_active: true },
   { id: '1', username: 'manager', email: 'manager@business.com', first_name: 'Manager', last_name: 'User', role_id: 'MANAGER', is_active: true },
-  { id: '3', username: 'staff', email: 'staff@business.com', first_name: 'Staff', last_name: 'User', role_id: 'STAFF', is_active: true }
+  { id: '3', username: 'staff', email: 'staff@business.com', first_name: 'Staff', last_name: 'User', role_id: 'STAFF', is_active: true },
+
+  // New Finance & Operations demo users (for counts in Role Management)
+  { id: '201', username: 'itadmin', email: 'it@bisman.local', first_name: 'IT', last_name: 'Admin', role_id: 'IT_ADMIN', is_active: true },
+  { id: '202', username: 'cfo', email: 'cfo@bisman.local', first_name: 'CFO', last_name: 'Demo', role_id: 'CFO', is_active: true },
+  { id: '203', username: 'controller', email: 'controller@bisman.local', first_name: 'Finance', last_name: 'Controller', role_id: 'FINANCE_CONTROLLER', is_active: true },
+  { id: '204', username: 'treasury', email: 'treasury@bisman.local', first_name: 'Treasury', last_name: 'User', role_id: 'TREASURY', is_active: true },
+  { id: '205', username: 'accounts', email: 'accounts@bisman.local', first_name: 'Accounts', last_name: 'User', role_id: 'ACCOUNTS', is_active: true },
+  { id: '206', username: 'ap', email: 'ap@bisman.local', first_name: 'AP', last_name: 'User', role_id: 'ACCOUNTS_PAYABLE', is_active: true },
+  { id: '207', username: 'banker', email: 'banker@bisman.local', first_name: 'Bank', last_name: 'Ops', role_id: 'BANKER', is_active: true },
+  { id: '208', username: 'procurement', email: 'procurement@bisman.local', first_name: 'Procurement', last_name: 'Officer', role_id: 'PROCUREMENT_OFFICER', is_active: true },
+  { id: '209', username: 'store', email: 'store@bisman.local', first_name: 'Store', last_name: 'Incharge', role_id: 'STORE_INCHARGE', is_active: true },
+  { id: '210', username: 'compliance', email: 'compliance@bisman.local', first_name: 'Compliance', last_name: 'User', role_id: 'COMPLIANCE', is_active: true },
+  { id: '211', username: 'legal', email: 'legal@bisman.local', first_name: 'Legal', last_name: 'User', role_id: 'LEGAL', is_active: true }
 ].map(u => ({ ...u, created_at: nowIso(), updated_at: nowIso() }));
 
 const DEFAULT_FEATURES = [

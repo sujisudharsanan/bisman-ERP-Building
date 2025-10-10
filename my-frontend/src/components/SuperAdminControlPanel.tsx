@@ -156,6 +156,119 @@ const SuperAdminControlPanel: React.FC = () => {
   // API Base URL
   const API_BASE_URL = '/api';
 
+  // Role table helpers
+  const [totalPermissions, setTotalPermissions] = useState<number>(0);
+  const [rolePermCounts, setRolePermCounts] = useState<Record<string, number>>({});
+  const MAX_PERMISSIONS = 10; // fallback denominator for permission fraction
+  const getPermissionCount = (r: any): number => {
+    // Prefer backend-provided counts; otherwise infer from arrays/objects; fallback to 0
+    if (typeof r?.permission_count === 'number') return r.permission_count;
+    if (Array.isArray(r?.permissions)) return r.permissions.length;
+    if (r?.permissions && typeof r.permissions === 'object') {
+      try { return Object.keys(r.permissions).length; } catch { /* ignore */ }
+    }
+    return 0;
+  };
+
+  const getUserCountForRole = (r: any): number => {
+    // Prefer backend count if available; else compute from loaded users state
+    if (typeof r?.user_count === 'number') return r.user_count;
+    const roleId = String(r?.id || r?.role_id || r?.code || r?.name || '');
+    const roleName = String(r?.name || r?.code || '').toLowerCase();
+    try {
+      return users.filter(u =>
+        Array.isArray(u.roles) && u.roles.some((ur: any) => {
+          const urId = String(ur?.id || ur?.code || ur?.name || '');
+          const urName = String(ur?.name || ur?.code || '').toLowerCase();
+          return (
+            (urId && urId === roleId) ||
+            (urName && urName === roleName)
+          );
+        })
+      ).length;
+    } catch {
+      return 0;
+    }
+  };
+
+  const getApprovalLevel = (r: any): number => {
+    // Use explicit level if provided; else map by known role names; else fallback by order
+    if (typeof r?.level === 'number') return r.level;
+    const code = String(r?.code || r?.id || r?.name || '').toUpperCase();
+    const name = String(r?.name || '').toUpperCase();
+    const key = code || name;
+    const map: Record<string, number> = {
+      'SUPER_ADMIN': 4,
+      'ADMIN': 3,
+      'MANAGER': 2,
+      'STAFF': 1,
+    };
+    if (map[key] != null) return map[key];
+    if (map[name] != null) return map[name];
+    // Fallback: derive from position to keep deterministic but low impact
+    const idx = roles.findIndex(x => String(x.id) === String(r.id));
+    return idx >= 0 ? Math.max(1, roles.length - idx) : 1;
+  };
+
+  // Backend-driven permission totals
+  const fetchTotalPermissions = async (): Promise<number> => {
+    try {
+      // This endpoint returns { features, privileges } where features is the universe of permissions
+      const res = await fetch('/api/privileges/privileges', { credentials: 'include' });
+      if (!res.ok) throw new Error('features fetch failed');
+      const payload = await res.json();
+      const features = (payload?.data?.features || payload?.features || []) as any[];
+      return Array.isArray(features) ? features.length : 0;
+    } catch {
+      return 0;
+    }
+  };
+
+  const fetchRolePermissionCount = async (roleId: string): Promise<number> => {
+    try {
+      const res = await fetch(`/api/privileges/privileges?role=${encodeURIComponent(roleId)}`, { credentials: 'include' });
+      if (!res.ok) throw new Error('role privileges fetch failed');
+      const payload = await res.json();
+      const rows = (payload?.data?.privileges || payload?.privileges || []) as any[];
+      if (!Array.isArray(rows)) return 0;
+      // Count features where any permission flag is true
+      return rows.reduce((acc, row) => {
+        const rp = row?.role_privilege;
+        const anyTrue = !!(rp && (rp.can_view || rp.can_create || rp.can_edit || rp.can_delete || rp.can_hide));
+        return acc + (anyTrue ? 1 : 0);
+      }, 0);
+    } catch {
+      return 0;
+    }
+  };
+
+  const enrichRolePermissionMeta = async (roleList: any[]) => {
+    // If backend already sent counts, use them directly
+    const allHaveCounts = roleList.every(r => typeof r.permission_count === 'number');
+    const anyHasTotal = roleList.some(r => typeof r.total_permissions === 'number' && r.total_permissions > 0);
+    if (allHaveCounts) {
+      const map: Record<string, number> = {};
+      roleList.forEach(r => { map[String(r.id)] = Number(r.permission_count || 0); });
+      setRolePermCounts(map);
+      if (anyHasTotal) {
+        // Use the maximum reported total across roles (should be same)
+        const maxTotal = Math.max(...roleList.map(r => Number(r.total_permissions || 0)));
+        if (maxTotal > 0) setTotalPermissions(maxTotal);
+      } else {
+        const total = await fetchTotalPermissions();
+        if (total > 0) setTotalPermissions(total);
+      }
+      return;
+    }
+    // Otherwise, fetch totals and counts
+    const total = await fetchTotalPermissions();
+    if (total > 0) setTotalPermissions(total);
+    const pairs = await Promise.all(roleList.map(async r => [String(r.id), await fetchRolePermissionCount(String(r.id))] as const));
+    const map: Record<string, number> = {};
+    for (const [rid, cnt] of pairs) map[rid] = cnt;
+    setRolePermCounts(map);
+  };
+
   // Small logout handler
   const handleLogout = async () => {
     try {
@@ -257,12 +370,39 @@ const SuperAdminControlPanel: React.FC = () => {
 
   const loadRoles = async () => {
     try {
-  const res = await fetch('/api/v1/super-admin/roles?limit=100', { credentials: 'include' });
-      if (!res.ok) throw new Error('Roles fetch failed');
+  // Use privilege management roles endpoint; it gracefully falls back when DB isn't ready
+  const res = await fetch('/api/privileges/roles?limit=100', { credentials: 'include' });
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          setError('Authentication required to view roles. Please log in.');
+          setRoles([] as any);
+          return;
+        }
+        throw new Error('Roles fetch failed');
+      }
       const payload = await res.json();
-      const rows = payload?.data?.rows || [];
-      const mapped: any[] = rows.map((r: any) => ({ id: String(r.id || r.role_id), name: r.name || r.code || 'ROLE', permissions: {}, is_system_role: !!r.is_system_role, created_at: String(r.created_at || ''), updated_at: String(r.updated_at || '') }));
+      // Accept multiple shapes: {data:{rows:[]}} | {data:[]} | {rows:[]} | []
+      let rows = (payload && (payload.data?.rows || payload.data || payload.rows || payload)) || [];
+      if (!Array.isArray(rows)) {
+        // Some APIs return {success, data: [...]}; ensure rows is array
+        rows = Array.isArray(payload?.data) ? payload.data : [];
+      }
+      const mapped: any[] = rows.map((r: any) => ({
+        id: String(r.id || r.role_id || r.code || r.name || ''),
+        name: r.name || r.code || r.role || 'ROLE',
+        permissions: {},
+        is_system_role: Boolean(r.is_system_role),
+        created_at: String(r.created_at || r.createdAt || ''),
+        updated_at: String(r.updated_at || r.updatedAt || ''),
+        // RBAC extras when available
+        level: typeof r.level === 'number' ? r.level : undefined,
+        user_count: typeof r.user_count === 'number' ? r.user_count : undefined,
+        permission_count: typeof r.permission_count === 'number' ? r.permission_count : undefined,
+        total_permissions: typeof r.total_permissions === 'number' ? r.total_permissions : undefined,
+      }));
       setRoles(mapped as any);
+  // Enrich with real permission counts in the background
+  enrichRolePermissionMeta(mapped);
     } catch (_err) {
       console.error('Failed to load roles');
     }
@@ -306,8 +446,9 @@ const SuperAdminControlPanel: React.FC = () => {
   useEffect(() => {
     if (activeTab === 'dashboard') {
       loadDashboardStats();
-    } else if (activeTab === 'users') {
-      loadUsers();
+    } else if (activeTab === 'users' || activeTab === 'all-users') {
+      // Load data needed for Role Management view
+      loadUsers(); // still used for KYC/invitations/profile drawers
       loadRoles();
       loadBranches();
       loadPendingKyc();
@@ -416,7 +557,7 @@ const SuperAdminControlPanel: React.FC = () => {
     </div>
   );
 
-  // Users Management Tab - Complete User Management System
+  // Users Management Tab (repurposed as Role Management view)
   const UsersTab = () => (
     <div className="space-y-6">
       {/* Header with Quick Stats */}
@@ -424,11 +565,11 @@ const SuperAdminControlPanel: React.FC = () => {
         <div className="bg-white rounded-lg shadow p-4">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <Users className="h-8 w-8 text-blue-600" />
+              <Shield className="h-8 w-8 text-blue-600" />
             </div>
             <div className="ml-4">
-              <dt className="text-sm font-medium text-gray-500">Total Users</dt>
-              <dd className="text-2xl font-bold text-gray-900">{users.length}</dd>
+              <dt className="text-sm font-medium text-gray-500">Total Roles</dt>
+              <dd className="text-2xl font-bold text-gray-900">{roles.length}</dd>
             </div>
           </div>
         </div>
@@ -477,7 +618,7 @@ const SuperAdminControlPanel: React.FC = () => {
             <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
             <input
               type="text"
-              placeholder="Search users..."
+              placeholder="Search roles..."
               value={userSearch}
               onChange={e => setUserSearch(e.target.value)}
               className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
@@ -515,8 +656,8 @@ const SuperAdminControlPanel: React.FC = () => {
       <div className="bg-white shadow rounded-lg">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8 px-6">
-            {[
-              { id: 'all-users', label: 'All Users', icon: Users },
+            {[ 
+              { id: 'all-users', label: 'All Roles', icon: Shield },
               { id: 'pending-kyc', label: 'Pending KYC', icon: AlertTriangle },
               { id: 'invitations', label: 'Invitations', icon: Activity },
             ].map(tab => (
@@ -559,23 +700,23 @@ const SuperAdminControlPanel: React.FC = () => {
             </div>
           ) : (
             <>
-              {/* All Users Table */}
+              {/* All Roles Table */}
               {(activeTab === 'users' || activeTab === 'all-users') && (
                 <div className="overflow-hidden">
                   <table className="min-w-full divide-y divide-gray-200">
                     <thead className="bg-gray-50">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          User
+                          Role
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Roles
+                          Permission
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Status
+                          Users
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                          Last Login
+                          Level
                         </th>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                           Actions
@@ -583,81 +724,49 @@ const SuperAdminControlPanel: React.FC = () => {
                       </tr>
                     </thead>
                     <tbody className="bg-white divide-y divide-gray-200">
-                      {users.map(user => (
-                        <tr key={user.id} className="hover:bg-gray-50">
+                      {roles.map(role => (
+                        <tr key={role.id} className="hover:bg-gray-50">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div className="flex-shrink-0 h-10 w-10">
-                                <div className="h-10 w-10 rounded-full bg-gray-300 flex items-center justify-center">
-                                  <User className="h-6 w-6 text-gray-600" />
+                                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
+                                  <Shield className="h-6 w-6 text-blue-600" />
                                 </div>
                               </div>
                               <div className="ml-4">
                                 <div className="text-sm font-medium text-gray-900">
-                                  {user.first_name} {user.last_name}
+                                  {role.name}
                                 </div>
-                                <div className="text-sm text-gray-500">{user.email}</div>
+                                <div className="text-xs text-gray-500">ID: {role.id}</div>
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <div className="flex space-x-1">
-                              {(
-                                Array.isArray((user as any).roles)
-                                  ? (user as any).roles
-                                  : (user as any).role
-                                    ? [ (user as any).role ]
-                                    : []
-                              ).map((role: any, idx: number) => {
-                                const key = (role && (role.id || role.code || role.name)) ?? idx
-                                const label = typeof role === 'string' ? role : (role?.name || role?.code || 'Role')
-                                return (
-                                  <span
-                                    key={key}
-                                    className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800"
-                                  >
-                                    {label}
-                                  </span>
-                                )
-                              })}
-                            </div>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            {`${(rolePermCounts[String(role.id)] ?? (role as any).permission_count ?? getPermissionCount(role))}/${(role as any).total_permissions || totalPermissions || MAX_PERMISSIONS}`}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap">
-                            <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                              user.status === 'active' 
-                                ? 'bg-green-100 text-green-800'
-                                : user.status === 'provisionally_active' 
-                                ? 'bg-yellow-100 text-yellow-800'
-                                : user.status === 'invited'
-                                ? 'bg-blue-100 text-blue-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}>
-                              {user.status}
-                            </span>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            {getUserCountForRole(role)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                            {user.last_login
-                              ? new Date(user.last_login).toLocaleDateString()
-                              : 'Never'}
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                            {getApprovalLevel(role)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex space-x-2">
                               <button
-                                onClick={() => setSelectedUserId(user.id)}
                                 className="text-blue-600 hover:text-blue-900"
-                                title="View Profile"
+                                title="View Role"
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
                               <button
                                 className="text-green-600 hover:text-green-900"
-                                title="Edit User"
+                                title="Edit Role"
                               >
                                 <Edit3 className="w-4 h-4" />
                               </button>
                               <button
                                 className="text-red-600 hover:text-red-900"
-                                title="Delete User"
+                                title="Delete Role"
                               >
                                 <Trash2 className="w-4 h-4" />
                               </button>
@@ -668,17 +777,23 @@ const SuperAdminControlPanel: React.FC = () => {
                     </tbody>
                   </table>
                   
-                  {users.length === 0 && (
+                  {roles.length === 0 && (
                     <div className="text-center py-8">
-                      <Users className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No users found</h3>
-                      <p className="text-gray-600 mb-4">Get started by creating your first user.</p>
-                      <button
-                        onClick={() => setShowCreateUserModal(true)}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
-                      >
-                        Create User
-                      </button>
+                      <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 mb-2">No roles found</h3>
+                      <p className="text-gray-600 mb-4">
+                        {error?.toLowerCase().includes('auth')
+                          ? 'You must be logged in to view roles.'
+                          : 'Define roles to manage access across the system.'}
+                      </p>
+                      {error?.toLowerCase().includes('auth') && (
+                        <a
+                          href="/auth/login"
+                          className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                        >
+                          Go to Login
+                        </a>
+                      )}
                     </div>
                   )}
                 </div>
@@ -796,7 +911,7 @@ const SuperAdminControlPanel: React.FC = () => {
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'orders', label: 'Order Management', icon: ShoppingCart },
-    { id: 'users', label: 'User Management', icon: Users },
+    { id: 'users', label: 'Role Management', icon: Users },
     { id: 'privileges', label: 'Privilege Management', icon: Shield },
     { id: 'activity', label: 'Activity Log', icon: Activity },
     { id: 'database', label: 'Database Browser', icon: Database },

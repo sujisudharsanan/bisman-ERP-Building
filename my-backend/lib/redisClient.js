@@ -1,43 +1,15 @@
 const Redis = require('ioredis')
 
-// Create Redis client using REDIS_URL or default localhost
+// Determine mode based on REDIS_URL
 const redisUrl = process.env.REDIS_URL || 'redis://127.0.0.1:6379'
+const forceInMemory = ['inmemory', 'memory', 'mock', 'disabled', 'none'].includes(
+  String(redisUrl || '').trim().toLowerCase()
+)
 
-let redis
-let useInMemory = false
-
-try {
-  // Configure Redis to fail fast and use in-memory fallback if connection fails
-  redis = new Redis(redisUrl, {
-    maxRetriesPerRequest: 1,
-    retryStrategy: () => null, // Don't retry - fail immediately
-    lazyConnect: true, // Don't connect on creation
-    enableOfflineQueue: false,
-  })
-
-  redis.on('error', (err) => {
-    if (!useInMemory) {
-      console.warn('Redis connection failed, using in-memory fallback:', err.message)
-      useInMemory = true
-    }
-  })
-
-  // Try to connect - if it fails, we'll use in-memory
-  redis.connect().catch((err) => {
-    console.warn('Redis not available, using in-memory token store (non-persistent)')
-    useInMemory = true
-  })
-} catch (e) {
-  console.warn('Failed to create Redis client, using in-memory store:', e && e.message)
-  useInMemory = true
-  redis = null
-}
-
-// Minimal in-memory fallback implementing the subset of methods used by tokenStore
-if (!redis || useInMemory) {
-  console.log('✓ Using in-memory token store (development mode - tokens not persisted across restarts)')
+// Minimal in-memory client implementing methods used by tokenStore
+function createInMemoryClient() {
   const store = new Map()
-  const inMemoryClient = {
+  return {
     async get(k) {
       const v = store.get(k)
       if (!v) return null
@@ -60,7 +32,6 @@ if (!redis || useInMemory) {
       return keys.map(k => store.get(k)?.value ?? null)
     },
     scanStream() {
-      // return async iterable of key batches
       const allKeys = Array.from(store.keys())
       let i = 0
       return {
@@ -74,38 +45,64 @@ if (!redis || useInMemory) {
       }
     }
   }
-  
-  // Wrap Redis client methods to check useInMemory flag
-  if (redis && !useInMemory) {
-    const originalGet = redis.get.bind(redis)
-    const originalSet = redis.set.bind(redis)
-    const originalDel = redis.del.bind(redis)
-    const originalMget = redis.mget.bind(redis)
-    const originalScanStream = redis.scanStream.bind(redis)
-    
-    redis.get = async function(...args) {
-      if (useInMemory) return inMemoryClient.get(...args)
-      try { return await originalGet(...args) } catch (e) { useInMemory = true; return inMemoryClient.get(...args) }
+}
+
+let useInMemory = false
+let client
+
+if (forceInMemory) {
+  console.log('✓ Using in-memory token store (forced by REDIS_URL)')
+  client = createInMemoryClient()
+} else {
+  try {
+    const real = new Redis(redisUrl, {
+      maxRetriesPerRequest: 1,
+      retryStrategy: () => null, // fail fast
+      lazyConnect: true,
+      enableOfflineQueue: false,
+    })
+
+    real.on('error', (err) => {
+      if (!useInMemory) {
+        console.warn('Redis connection failed, switching to in-memory:', err && err.message)
+        useInMemory = true
+      }
+    })
+
+    // Try connecting; on failure, switch to memory
+    real.connect().catch(() => {
+      console.warn('Redis not available, using in-memory token store (non-persistent)')
+      useInMemory = true
+    })
+
+    const mem = createInMemoryClient()
+    // Safe wrapper: choose real vs memory at call time; on any error flip to memory
+    client = {
+      async get(...args) {
+        if (useInMemory) return mem.get(...args)
+        try { return await real.get(...args) } catch (e) { useInMemory = true; return mem.get(...args) }
+      },
+      async set(...args) {
+        if (useInMemory) return mem.set(...args)
+        try { return await real.set(...args) } catch (e) { useInMemory = true; return mem.set(...args) }
+      },
+      async del(...args) {
+        if (useInMemory) return mem.del(...args)
+        try { return await real.del(...args) } catch (e) { useInMemory = true; return mem.del(...args) }
+      },
+      async mget(...args) {
+        if (useInMemory) return mem.mget(...args)
+        try { return await real.mget(...args) } catch (e) { useInMemory = true; return mem.mget(...args) }
+      },
+      scanStream(...args) {
+        if (useInMemory) return mem.scanStream(...args)
+        try { return real.scanStream(...args) } catch (e) { useInMemory = true; return mem.scanStream(...args) }
+      }
     }
-    redis.set = async function(...args) {
-      if (useInMemory) return inMemoryClient.set(...args)
-      try { return await originalSet(...args) } catch (e) { useInMemory = true; return inMemoryClient.set(...args) }
-    }
-    redis.del = async function(...args) {
-      if (useInMemory) return inMemoryClient.del(...args)
-      try { return await originalDel(...args) } catch (e) { useInMemory = true; return inMemoryClient.del(...args) }
-    }
-    redis.mget = async function(...args) {
-      if (useInMemory) return inMemoryClient.mget(...args)
-      try { return await originalMget(...args) } catch (e) { useInMemory = true; return inMemoryClient.mget(...args) }
-    }
-    redis.scanStream = function(...args) {
-      if (useInMemory) return inMemoryClient.scanStream(...args)
-      try { return originalScanStream(...args) } catch (e) { useInMemory = true; return inMemoryClient.scanStream(...args) }
-    }
-  } else {
-    redis = inMemoryClient
+  } catch (e) {
+    console.warn('Failed to create Redis client, using in-memory store:', e && e.message)
+    client = createInMemoryClient()
   }
 }
 
-module.exports = redis
+module.exports = client

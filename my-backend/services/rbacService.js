@@ -7,12 +7,21 @@ class RBACService {
   // =============== ROLES ===============
   async getAllRoles() {
     try {
+      // Compute total possible permissions as routes x actions
+      const totalRoutes = await prisma.$queryRaw`SELECT COUNT(*) as count FROM rbac_routes`
+      const totalActions = await prisma.$queryRaw`SELECT COUNT(*) as count FROM rbac_actions`
+      const totalPossible = Number(totalRoutes?.[0]?.count || 0) * Number(totalActions?.[0]?.count || 0)
+
       const result = await prisma.$queryRaw`
-        SELECT id, name, description, level, created_at, updated_at 
-        FROM rbac_roles 
-        ORDER BY level DESC, name
+        SELECT 
+          r.id, r.name, r.description, r.level, r.created_at, r.updated_at,
+          COALESCE((SELECT COUNT(*) FROM rbac_user_roles ur WHERE ur.role_id = r.id), 0) as user_count,
+          COALESCE((SELECT COUNT(*) FROM rbac_permissions p WHERE p.role_id = r.id AND p.granted = true), 0) as permission_count
+        FROM rbac_roles r
+        ORDER BY r.level DESC, r.name
       `
-      return result
+      // Attach total possible to each row for convenience
+      return result.map(r => ({ ...r, total_permissions: totalPossible }))
     } catch (error) {
       console.error('Error fetching roles:', error)
       throw error
