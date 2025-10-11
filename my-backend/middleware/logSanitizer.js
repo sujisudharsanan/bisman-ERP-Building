@@ -11,11 +11,9 @@ function sanitizeLogData(data) {
       .replace(/email=([^&\s]+)/gi, 'email=[REDACTED]');
   }
   
+  // Avoid cloning/logging large or circular objects; leave them as-is
   if (typeof data === 'object' && data !== null) {
-    const sanitized = { ...data };
-    if (sanitized.password) sanitized.password = '[REDACTED]';
-    if (sanitized.token) sanitized.token = '[REDACTED]';
-    return sanitized;
+    return data;
   }
   
   return data;
@@ -24,8 +22,12 @@ function sanitizeLogData(data) {
 // Override console.log for development
 const originalLog = console.log;
 console.log = (...args) => {
-  const sanitizedArgs = args.map(sanitizeLogData);
-  originalLog.apply(console, sanitizedArgs);
+  try {
+    const sanitizedArgs = args.map(arg => typeof arg === 'string' ? sanitizeLogData(arg) : arg);
+    originalLog.apply(console, sanitizedArgs);
+  } catch (e) {
+    originalLog.apply(console, args);
+  }
 };
 
 // Express middleware for log sanitization

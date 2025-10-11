@@ -14,7 +14,17 @@ import {
   User,
   ChevronDown,
   CheckCircle,
-  Briefcase
+  Briefcase,
+  ServerCog,
+  Banknote,
+  FileSpreadsheet,
+  Wallet,
+  ReceiptIndianRupee,
+  Landmark,
+  ShoppingCart,
+  Boxes,
+  ClipboardCheck,
+  Scale
 } from 'lucide-react';
 
 interface DemoUser {
@@ -40,6 +50,127 @@ const DEMO_USERS: DemoUser[] = [
     icon: <Settings className="w-5 h-5" />,
     description: 'Full system access, database management, security controls',
     redirectPath: '/super-admin'
+  },
+  {
+    id: 'it_admin',
+    name: 'IT Administrator',
+    email: 'it@bisman.local',
+    password: 'changeme',
+    role: 'IT_ADMIN',
+    department: 'IT & Platform',
+    icon: <ServerCog className="w-5 h-5" />,
+    description: 'IT operations, platform settings, backups, monitoring',
+    redirectPath: '/admin'
+  },
+  {
+    id: 'cfo',
+    name: 'Chief Financial Officer',
+    email: 'cfo@bisman.local',
+    password: 'changeme',
+    role: 'CFO',
+    department: 'Finance Leadership',
+    icon: <Banknote className="w-5 h-5" />,
+    description: 'Financial oversight, consolidated reporting, approvals',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'finance_controller',
+    name: 'Finance Controller',
+    email: 'controller@bisman.local',
+    password: 'changeme',
+    role: 'FINANCE_CONTROLLER',
+    department: 'Finance',
+    icon: <FileSpreadsheet className="w-5 h-5" />,
+    description: 'Control, closing, compliance with financial policies',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'treasury',
+    name: 'Treasury',
+    email: 'treasury@bisman.local',
+    password: 'changeme',
+    role: 'TREASURY',
+    department: 'Finance - Treasury',
+    icon: <Wallet className="w-5 h-5" />,
+    description: 'Cash flow, bank positions, funding, payments',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'accounts',
+    name: 'Accounts',
+    email: 'accounts@bisman.local',
+    password: 'changeme',
+    role: 'ACCOUNTS',
+    department: 'Finance - Accounts',
+    icon: <FileSpreadsheet className="w-5 h-5" />,
+    description: 'GL, journals, reconciliations, month-end tasks',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'ap',
+    name: 'Accounts Payable',
+    email: 'ap@bisman.local',
+    password: 'changeme',
+    role: 'ACCOUNTS_PAYABLE',
+    department: 'Finance - AP',
+    icon: <ReceiptIndianRupee className="w-5 h-5" />,
+    description: 'Vendor invoices, 3-way match, payment runs',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'banker',
+    name: 'Banker',
+    email: 'banker@bisman.local',
+    password: 'changeme',
+    role: 'BANKER',
+    department: 'Finance - Banking',
+    icon: <Landmark className="w-5 h-5" />,
+    description: 'Bank liaison, statements, reconciliations',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'procurement',
+    name: 'Procurement Officer',
+    email: 'procurement@bisman.local',
+    password: 'changeme',
+    role: 'PROCUREMENT_OFFICER',
+    department: 'Procurement',
+    icon: <ShoppingCart className="w-5 h-5" />,
+    description: 'PR/PO lifecycle, vendor management',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'store_incharge',
+    name: 'Store Incharge',
+    email: 'store@bisman.local',
+    password: 'changeme',
+    role: 'STORE_INCHARGE',
+    department: 'Stores & Warehouse',
+    icon: <Boxes className="w-5 h-5" />,
+    description: 'GRN, inventory custody, stock movements',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'compliance',
+    name: 'Compliance',
+    email: 'compliance@bisman.local',
+    password: 'changeme',
+    role: 'COMPLIANCE',
+    department: 'Governance',
+    icon: <ClipboardCheck className="w-5 h-5" />,
+    description: 'Policy, audit trails, corrective actions',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'legal',
+    name: 'Legal',
+    email: 'legal@bisman.local',
+    password: 'changeme',
+    role: 'LEGAL',
+    department: 'Legal',
+    icon: <Scale className="w-5 h-5" />,
+    description: 'Contracts, disputes, SLA enforcement',
+    redirectPath: '/dashboard'
   },
   {
     id: 'admin',
