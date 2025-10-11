@@ -10,3 +10,7 @@ debug-artifacts/
 # Ignore build artifacts
 dist/
 my-frontend/.next/
+
+# Runtime PID files
+server.pid
+my-backend/server.pid
