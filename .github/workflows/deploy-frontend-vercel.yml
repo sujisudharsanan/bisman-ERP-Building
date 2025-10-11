@@ -1,0 +1,44 @@
+# Deploy Frontend to Vercel on push to diployment
+#
+# This workflow triggers a Vercel Deploy Hook so Vercel picks up the latest
+# changes in the "diployment" branch and builds/deploys your frontend.
+#
+# Prerequisites:
+# 1) Create a Vercel Deploy Hook for your project (Project Settings → Git → Deploy Hooks)
+# 2) Add the hook URL as a GitHub Secret named VERCEL_DEPLOY_HOOK_URL
+
+name: Deploy Frontend to Vercel
+
+on:
+  push:
+    branches: [ diployment ]
+    paths:
+      - 'my-frontend/**'
+      - '.github/workflows/deploy-frontend-vercel.yml'
+      - 'deploy-vercel.sh'
+
+jobs:
+  deploy:
+    name: Trigger Vercel Deploy
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1) Checkout the repo content so the script is available
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2) Log start (friendly output)
+      - name: Announce start
+        run: echo "Starting Vercel deployment via Deploy Hook..."
+
+      # 3) Run the deploy script (uses the secret for security)
+      - name: Run Vercel deploy script
+        env:
+          VERCEL_DEPLOY_HOOK_URL: ${{ secrets.VERCEL_DEPLOY_HOOK_URL }}
+        run: |
+          chmod +x ./deploy-vercel.sh
+          ./deploy-vercel.sh
+
+      # 4) Log completion (friendly output)
+      - name: Announce completion
+        run: echo "Vercel deployment trigger completed. Check Vercel dashboard for build status."
