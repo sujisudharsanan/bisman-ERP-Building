@@ -11,7 +11,8 @@
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:studio": "prisma studio",
     "db:test-prisma": "node prisma/db-test.js",
-    "db:seed-demo": "node scripts/seed-demo-users.js",
+  "db:seed-demo": "node scripts/seed-demo-users.js",
+  "db:seed-rbac": "node scripts/seed-rbac.js",
     "test": "jest --runInBand"
   },
   "dependencies": {
@@ -24,6 +25,7 @@
     "express-sslify": "^1.2.0",
     "express-validator": "^7.2.1",
     "helmet": "^8.1.0",
+    "ioredis": "^5.8.1",
     "jsonwebtoken": "^9.0.0",
     "multer": "^2.0.2",
     "pg": "^8.16.3"

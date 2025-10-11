@@ -10,17 +10,22 @@ export default function HubInchargePage() {
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.push('/auth/portals');
-        return;
-      }
+    // IMPORTANT: Wait for auth check to complete before making routing decisions
+    // This prevents premature redirects during page refresh or initial load
+    if (loading) {
+      return; // Don't do anything while authentication is being checked
+    }
 
-      // Role-based access control - allow STAFF, ADMIN, MANAGER
-      if (!['STAFF', 'ADMIN', 'MANAGER'].includes(user.roleName)) {
-        router.push('/dashboard');
-        return;
-      }
+    // After loading is complete, check authentication
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+
+    // Role-based access control - allow STAFF, ADMIN, MANAGER
+    if (!user.roleName || !['STAFF', 'ADMIN', 'MANAGER'].includes(user.roleName)) {
+      router.push('/dashboard');
+      return;
     }
   }, [user, loading, router]);
 
@@ -35,7 +40,7 @@ export default function HubInchargePage() {
     );
   }
 
-  if (!user || !['STAFF', 'ADMIN', 'MANAGER'].includes(user.roleName)) {
+  if (!user || !user.roleName || !['STAFF', 'ADMIN', 'MANAGER'].includes(user.roleName)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">

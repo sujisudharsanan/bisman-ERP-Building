@@ -35,12 +35,12 @@ export default function UsersPage() {
   useEffect(() => {
     if (!loading) {
       if (!user) {
-        router.push('/auth/portals');
+        router.push('/auth/login');
         return;
       }
 
       // Role-based access control - allow ADMIN, SUPER_ADMIN
-      if (!['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
+      if (!user.roleName || !['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
         router.push('/dashboard');
         return;
       }
@@ -58,7 +58,7 @@ export default function UsersPage() {
     );
   }
 
-  if (!user || !['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
+  if (!user || !user.roleName || !['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">

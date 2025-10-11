@@ -3,6 +3,7 @@
 import { useRouter, usePathname } from 'next/navigation';
 import { useState } from 'react';
 import { useAuthStore } from '@/store/useAuth';
+import { useAuth } from '@/hooks/useAuth';
 
 interface LogoutButtonProps {
   className?: string;
@@ -17,12 +18,25 @@ export default function LogoutButton({
   position = 'inline',
   hideOnLogin = true,
 }: LogoutButtonProps) {
+  // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   const router = useRouter();
   const pathname = usePathname();
-  const logout = useAuthStore(state => state.logout);
+  const logoutStore = useAuthStore(state => state.logout);
+  const [mobileOpen, setMobileOpen] = useState(false);
+  
+  // Call useAuth unconditionally - wrap the entire component logic in error handling if needed
+  let authContext = null;
+  try {
+    authContext = useAuth();
+  } catch (e) {
+    // Context not available in this render tree, but we still called the hook
+    authContext = null;
+  }
+  
+  const logoutCtx = authContext?.logout || null;
 
   // Hide on login/register or any auth public routes if hideOnLogin is true
-  if (hideOnLogin) {
+  if (hideOnLogin && pathname) {
     const publicRoutes = ['/login', '/register', '/auth/login', '/auth/register'];
     if (publicRoutes.includes(pathname) || pathname.startsWith('/auth/')) {
       return null;
@@ -32,12 +46,14 @@ export default function LogoutButton({
   // Only show if user is authenticated (optional)
   // if (!user) return null
 
-  const [mobileOpen, setMobileOpen] = useState(false);
-
   const handleLogout = async () => {
     try {
-      // Try store logout (axios) which calls backend
-      await Promise.resolve(logout && logout());
+      // Try central context logout first, fall back to zustand store logout
+      if (logoutCtx) {
+        try { await logoutCtx(); } catch (e) { /* ignore */ }
+      } else if (logoutStore) {
+        try { await Promise.resolve(logoutStore && logoutStore()); } catch (e) { /* ignore */ }
+      }
     } catch (e) {
       // ignore
     }

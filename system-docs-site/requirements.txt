@@ -1,5 +1,0 @@
-mkdocs==1.5.2
-mkdocs-material==9.1.11
-mkdocs-macros-plugin==1.4.0
-mkdocs-i18n==0.4.6
- # PDF export will be handled via wkhtmltopdf in CI; plugin removed for compatibility

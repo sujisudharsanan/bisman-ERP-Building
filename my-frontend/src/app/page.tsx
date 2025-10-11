@@ -12,7 +12,7 @@ export default function Home() {
     if (!loading) {
       if (!user) {
         // Not logged in, redirect to login
-        router.push('/auth/portals');
+        router.push('/auth/login');
       } else {
         // Logged in, redirect based on role
         if (user.roleName === 'SUPER_ADMIN') {

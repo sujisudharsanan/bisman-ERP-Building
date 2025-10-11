@@ -21,12 +21,12 @@ export default function FinancePage() {
   useEffect(() => {
     if (!loading) {
       if (!user) {
-        router.push('/auth/portals');
+        router.push('/auth/login');
         return;
       }
 
       // Role-based access control - allow ADMIN, MANAGER, SUPER_ADMIN
-      if (!['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.roleName)) {
+      if (!user.roleName || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.roleName)) {
         router.push('/dashboard');
         return;
       }
@@ -44,7 +44,7 @@ export default function FinancePage() {
     );
   }
 
-  if (!user || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.roleName)) {
+  if (!user || !user.roleName || !['ADMIN', 'MANAGER', 'SUPER_ADMIN'].includes(user.roleName)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">

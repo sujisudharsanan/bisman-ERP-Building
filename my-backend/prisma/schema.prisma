@@ -45,6 +45,9 @@ model User {
   assignedRole    Role? @relation(fields: [role_id], references: [id])
   userPrivileges  UserPrivilege[]
   auditLogs       AuditLog[]
+  // Back-relations for Security Monitoring
+  assignedSecurityEvents SecurityEvent[] @relation("SecurityEventAssignee")
+  addedSecurityResolutions SecurityResolution[] @relation("SecurityResolutionUser")
 
   @@map("users")
   @@index([email])
@@ -137,5 +140,55 @@ model AuditLog {
   @@map("audit_logs")
   @@index([user_id])
   @@index([entity_type, entity_id])
+  @@index([created_at])
+}
+
+// Security Monitoring Models
+model SecurityEvent {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  occurred_at     DateTime @default(now())
+  source          String   @db.VarChar(100)
+  event_type      String   @db.VarChar(100)
+  severity        String   @db.VarChar(20) // low, medium, high, critical
+  summary         String   @db.VarChar(255)
+  details         Json?
+  details_encrypted Bytes?
+  status          String   @default("open") @db.VarChar(30) // open, investigating, resolved, verified, closed
+  assignee_id     Int?
+  tags            String[]
+  acknowledged_at DateTime?
+  resolved_at     DateTime?
+  verified_at     DateTime?
+  closed_at       DateTime?
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+
+  // Relations
+  assignee        User?    @relation("SecurityEventAssignee", fields: [assignee_id], references: [id])
+  resolutions     SecurityResolution[]
+
+  @@map("security_events")
+  @@index([occurred_at])
+  @@index([severity])
+  @@index([status])
+  @@index([assignee_id])
+  @@index([event_type])
+}
+
+model SecurityResolution {
+  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  event_id     String   @db.Uuid
+  note         String   @db.Text
+  status_after String   @db.VarChar(30)
+  added_by     Int?
+  attachments  Json?
+  created_at   DateTime @default(now())
+
+  // Relations
+  event   SecurityEvent @relation(fields: [event_id], references: [id], onDelete: Cascade)
+  user    User?         @relation("SecurityResolutionUser", fields: [added_by], references: [id])
+
+  @@map("security_resolutions")
+  @@index([event_id])
   @@index([created_at])
 }

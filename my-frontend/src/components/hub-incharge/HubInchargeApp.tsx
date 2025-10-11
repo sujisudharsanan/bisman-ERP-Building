@@ -1,5 +1,6 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import Image from 'next/image';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Home,
   User,
@@ -15,7 +16,6 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
-import { useRouter } from 'next/navigation';
 
 type Approval = {
   id: string | number;
@@ -1617,12 +1617,38 @@ export default function HubInchargeApp() {
     | 'Tasks & Requests'
     | 'Settings';
 
-  const [activeTab, setActiveTab] = useState<TabName>('Dashboard');
-  const { user, logout } = useAuth();
+  // All hooks must be called before any conditional returns
   const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Get initial tab from URL or default to 'Dashboard'
+  const initialTab = (searchParams?.get('tab') as TabName) || 'Dashboard';
+  const [activeTab, setActiveTab] = useState<TabName>(initialTab);
+  const { user, logout, loading: authLoading } = useAuth();
   const { data, loading, error, refetch } = useHubInchargeData();
 
+  // Update URL when tab changes
+  const handleTabChange = useCallback((tabName: TabName) => {
+    setActiveTab(tabName);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tabName);
+    router.replace(url.pathname + url.search, { scroll: false });
+  }, [router]);
+
+  // Show loading state while authentication is being checked
+  if (authLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
   // Security check - allow STAFF, ADMIN, and MANAGER
+  // Only check after authentication has completed
   if (
     !user?.roleName ||
     !['STAFF', 'ADMIN', 'MANAGER'].includes(user.roleName)
@@ -1743,7 +1769,7 @@ export default function HubInchargeApp() {
           {navItems.map(tab => (
             <button
               key={tab.name}
-              onClick={() => setActiveTab(tab.name)}
+              onClick={() => handleTabChange(tab.name)}
               className={`flex flex-col items-center text-xs px-2 py-1 min-w-max ${
                 activeTab === tab.name
                   ? 'text-blue-600 font-semibold'

@@ -13,22 +13,23 @@ export function middleware(req: NextRequest) {
 
   // Accept either cookie name the client or server might set (access_token or token)
   const token =
-    req.cookies.get('access_token')?.value || req.cookies.get('token')?.value;
+    req.cookies.get('access_token')?.value || req.cookies.get('token')?.value || req.cookies.get('refresh_token')?.value;
 
   // Allow access to debug page for troubleshooting
   if (pathname === '/debug-auth') {
     return NextResponse.next();
   }
 
-  // Temporarily allow dashboard access to test login flow
-  // TODO: Remove this after login is working properly
-  if (pathname.startsWith('/dashboard')) {
+  // Treat any /auth/* routes as public (login pages, callbacks, etc.)
+  if (pathname.startsWith('/auth')) {
     return NextResponse.next();
   }
 
-  if (!token && pathname !== '/login') {
+  // Require an auth token for all other pages (except the allowed public ones above)
+  if (!token) {
     const url = req.nextUrl.clone();
-    url.pathname = '/login';
+    // Redirect to the actual login route used by the app
+    url.pathname = '/auth/login';
     return NextResponse.redirect(url);
   }
   return NextResponse.next();

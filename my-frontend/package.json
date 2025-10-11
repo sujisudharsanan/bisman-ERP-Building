@@ -21,6 +21,7 @@
     "debug:apply": "node tools/debug-analyzer/apply.js"
   },
   "dependencies": {
+  "lottie-react": "^2.4.0",
     "@emotion/react": "^11.14.0",
     "@emotion/styled": "^11.14.1",
     "@hookform/resolvers": "^5.2.2",

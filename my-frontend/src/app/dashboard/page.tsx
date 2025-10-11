@@ -6,20 +6,23 @@ import { useAuth } from '@/hooks/useAuth'
 
 export default function DashboardPage() {
   const router = useRouter()
-  const { user, loading } = useAuth()
+  const { user, loading, logout } = useAuth()
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        // Not authenticated, redirect to login
-        router.push('/auth/portals')
-      } else if (user.roleName === 'SUPER_ADMIN') {
-        // SUPER_ADMIN users should use super-admin interface
-        router.push('/super-admin')
-      } else if (user.roleName === 'STAFF') {
-        // STAFF users should use hub-incharge interface
-        router.push('/hub-incharge')
-      }
+    // Wait for auth to complete before checking
+    if (loading) {
+      return
+    }
+
+    if (!user) {
+      // Not authenticated, redirect to login
+      router.push('/auth/login')
+    } else if (user.roleName === 'SUPER_ADMIN') {
+      // SUPER_ADMIN users should use super-admin interface
+      router.push('/super-admin')
+    } else if (user.roleName === 'STAFF') {
+      // STAFF users should use hub-incharge interface
+      router.push('/hub-incharge')
     }
   }, [user, loading, router])
 
@@ -47,10 +50,8 @@ export default function DashboardPage() {
             <div className="flex items-center space-x-4">
               <span className="text-sm text-gray-600">Welcome, {user.email}</span>
               <button
-                onClick={() => {
-                  // Add logout functionality
-                  localStorage.clear()
-                  router.push('/auth/portals')
+                onClick={async () => {
+                  await logout();
                 }}
                 className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700"
               >

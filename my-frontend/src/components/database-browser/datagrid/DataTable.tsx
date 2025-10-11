@@ -225,7 +225,7 @@ export default function DataTable({
   const endRow = Math.min(currentPage * pageSize, totalRows);
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full min-w-0 overflow-hidden bg-white">
       {/* Search and Filters */}
       <div className="p-4 border-b border-gray-200">
         <div className="flex items-center space-x-4">
@@ -246,7 +246,7 @@ export default function DataTable({
       </div>
 
       {/* Table */}
-      <div className="flex-1 overflow-auto">
+  <div className="flex-1 overflow-auto min-w-0">
         <Table>
           <TableHeader className="sticky top-0 bg-white z-10">
             <TableRow>
@@ -280,11 +280,11 @@ export default function DataTable({
                     {/* Column Filter */}
                     {column.filterable !== false && (
                       <Input
-                        placeholder={`Filter ${column.label.toLowerCase()}...`}
-                        value={columnFilters[column.key] || ''}
+                        placeholder={`Filter ${(column.label || column.key || '').toString().toLowerCase()}...`}
+                        value={columnFilters[column.key || ''] || ''}
                         onChange={(e: React.ChangeEvent<HTMLInputElement>) => setColumnFilters(prev => ({
                           ...prev,
-                          [column.key]: e.target.value
+                          [column.key || '']: e.target.value
                         }))}
                         className="h-7 text-xs"
                         onClick={(e: React.MouseEvent) => e.stopPropagation()}

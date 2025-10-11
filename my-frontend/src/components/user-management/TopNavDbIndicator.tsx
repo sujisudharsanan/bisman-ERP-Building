@@ -8,6 +8,7 @@ interface DatabaseStatus {
   responseTime?: number;
   lastChecked: Date;
   activeConnections?: number;
+  reason?: 'NOT_CONFIGURED' | 'ERROR' | 'FORBIDDEN' | 'UNAUTHORIZED' | 'UNKNOWN';
 }
 
 export function TopNavDbIndicator() {
@@ -20,30 +21,64 @@ export function TopNavDbIndicator() {
   const checkDatabaseStatus = async () => {
     setIsLoading(true);
     const startTime = Date.now();
-    
+
     try {
-      // Mock API call - replace with actual health check endpoint
-      const response = await fetch('/api/health/database', {
+      // Call public DB health route; fall back to Nest variant if not found
+      let response = await fetch('/api/health/database', {
         method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        credentials: 'include', // send auth cookies
+        headers: { 'Content-Type': 'application/json' },
       });
-      
+
+      if (response.status === 404) {
+        response = await fetch('/api/health/db', {
+          method: 'GET',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
       const responseTime = Date.now() - startTime;
-      const data = await response.json();
-      
-      setDbStatus({
-        connected: response.ok && data.status === 'healthy',
-        responseTime,
-        lastChecked: new Date(),
-        activeConnections: data.activeConnections
-      });
+  const json = await response.json().catch(() => ({} as any));
+
+      // The backend returns { success, data: { connected, response_time, active_connections, reason? } }.
+      // If calling Nest /api/health/db, it returns { ok: boolean }.
+      if (response.ok) {
+        const isNest = json && typeof json.ok === 'boolean' && !json.data;
+        const connected = isNest ? Boolean(json.ok) : Boolean(json?.data?.connected);
+        const activeConnections = isNest ? undefined : json?.data?.active_connections;
+        const respTime = typeof (isNest ? undefined : json?.data?.response_time) === 'number' 
+          ? json.data.response_time 
+          : responseTime;
+        const reason = isNest ? undefined : (json?.data?.reason as DatabaseStatus['reason'] | undefined);
+
+        setDbStatus({
+          connected,
+          responseTime: respTime,
+          lastChecked: new Date(),
+          activeConnections,
+          reason: connected ? undefined : reason || 'UNKNOWN',
+        });
+      } else {
+        // Map common auth statuses
+        const reason: DatabaseStatus['reason'] = response.status === 401
+          ? 'UNAUTHORIZED'
+          : response.status === 403
+            ? 'FORBIDDEN'
+            : 'ERROR';
+        setDbStatus({
+          connected: false,
+          responseTime: Date.now() - startTime,
+          lastChecked: new Date(),
+          reason,
+        });
+      }
     } catch (error) {
       setDbStatus({
         connected: false,
         responseTime: Date.now() - startTime,
-        lastChecked: new Date()
+        lastChecked: new Date(),
+        reason: 'ERROR',
       });
     } finally {
       setIsLoading(false);
@@ -62,7 +97,10 @@ export function TopNavDbIndicator() {
 
   const getStatusColor = () => {
     if (isLoading) return 'text-yellow-500';
-    return dbStatus.connected ? 'text-green-500' : 'text-red-500';
+    if (dbStatus.connected) return 'text-green-500';
+    if (dbStatus.reason === 'UNAUTHORIZED' || dbStatus.reason === 'FORBIDDEN') return 'text-amber-600';
+    if (dbStatus.reason === 'NOT_CONFIGURED') return 'text-gray-500';
+    return 'text-red-500';
   };
 
   const getStatusText = () => {
@@ -70,12 +108,23 @@ export function TopNavDbIndicator() {
     if (dbStatus.connected) {
       return `Connected${dbStatus.responseTime ? ` (${dbStatus.responseTime}ms)` : ''}`;
     }
-    return 'Disconnected';
+    switch (dbStatus.reason) {
+      case 'UNAUTHORIZED':
+      case 'FORBIDDEN':
+        return 'No Access';
+      case 'NOT_CONFIGURED':
+        return 'Not configured';
+      case 'ERROR':
+      case 'UNKNOWN':
+      default:
+        return 'Disconnected';
+    }
   };
 
   const StatusIcon = () => {
     if (isLoading) return <Activity className="h-4 w-4 animate-spin" />;
     if (dbStatus.connected) return <Database className="h-4 w-4" />;
+    if (dbStatus.reason === 'UNAUTHORIZED' || dbStatus.reason === 'FORBIDDEN') return <Wifi className="h-4 w-4" />;
     return <WifiOff className="h-4 w-4" />;
   };
 

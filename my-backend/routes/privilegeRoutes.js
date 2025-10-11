@@ -5,6 +5,7 @@ const express = require('express');
 const { body, query, validationResult } = require('express-validator');
 const router = express.Router();
 const privilegeService = require('../services/privilegeService');
+const rbacService = require('../services/rbacService');
 const authMiddleware = require('../middleware/auth');
 const rbacMiddleware = require('../middleware/rbac');
 
@@ -31,8 +32,23 @@ const handleValidationErrors = (req, res, next) => {
 // GET /api/roles - Fetch all roles with user counts
 router.get('/roles', authMiddleware.authenticate, rbacMiddleware.requireRole(['Super Admin', 'Admin']), async (req, res) => {
   try {
-    const roles = await privilegeService.getAllRoles();
-    
+    let roles = [];
+    let used = 'rbac';
+    try {
+      // Prefer RBAC roles to align with dashboard stats (rbac_roles table)
+      roles = await rbacService.getAllRoles();
+    } catch (rbacErr) {
+      console.warn('RBAC roles fetch failed; falling back:', rbacErr?.message || rbacErr);
+      used = 'privilege';
+      roles = await privilegeService.getAllRoles();
+    }
+    // If RBAC is present but has no rows yet, fall back to default roles to avoid empty UI
+    if (used === 'rbac' && Array.isArray(roles) && roles.length === 0) {
+      console.warn('RBAC roles list is empty; falling back to default roles');
+      roles = await privilegeService.getAllRoles();
+      used = 'privilege';
+    }
+
     res.json({
       success: true,
       data: roles,
@@ -51,6 +67,49 @@ router.get('/roles', authMiddleware.authenticate, rbacMiddleware.requireRole(['S
     });
   }
 });
+
+// PATCH /api/privileges/roles/:roleId/status - Enable/disable a role
+router.patch('/roles/:roleId/status', authMiddleware.authenticate, rbacMiddleware.requireRole(['Super Admin', 'Admin']), async (req, res) => {
+  try {
+    const { roleId } = req.params;
+    const { is_active } = req.body || {};
+    if (typeof is_active !== 'boolean') {
+      return res.status(400).json({ success: false, error: { message: 'is_active boolean is required', code: 'VALIDATION_ERROR' }, timestamp: new Date().toISOString() });
+    }
+
+    let used = 'rbac';
+    try {
+      await rbacService.setRoleStatus(Number(roleId), is_active);
+    } catch (e) {
+      used = 'privilege';
+      // Fallback to privilegeService in-memory override or roles table if available
+      try { await privilegeService.setRoleStatus(roleId, is_active); } catch {}
+    }
+
+    // Optionally log audit trail
+    try {
+      await privilegeService.logPrivilegeChange({
+        user_id: req.user.id,
+        action: 'UPDATE',
+        entity_type: 'ROLE',
+        entity_id: roleId,
+        old_values: {},
+        new_values: { is_active },
+        ip_address: req.ip,
+        user_agent: req.get('User-Agent')
+      })
+    } catch {}
+
+    // Return fresh roles list to simplify client sync
+    let roles = []
+    try { roles = await rbacService.getAllRoles(); } catch { roles = await privilegeService.getAllRoles(); }
+
+    return res.json({ success: true, data: { updated: true, source: used, roles }, timestamp: new Date().toISOString() })
+  } catch (error) {
+    console.error('Error updating role status:', error)
+    res.status(500).json({ success: false, error: { message: 'Failed to update role status', code: 'DATABASE_ERROR' }, timestamp: new Date().toISOString() })
+  }
+})
 
 // GET /api/health/database - Database health check
 
@@ -90,7 +149,8 @@ router.get('/users', [
 router.get('/privileges', [
   authMiddleware.authenticate,
   rbacMiddleware.requireRole(['Super Admin', 'Admin']),
-  query('resource').optional().isString(),
+  query('role').optional().isString(),
+  query('user').optional().isString(),
   handleValidationErrors
 ], async (req, res) => {
   try {
@@ -118,7 +178,15 @@ router.get('/privileges', [
 router.put('/privileges/update', [
   authMiddleware.authenticate,
   rbacMiddleware.requireRole(['Super Admin', 'Admin']),
-  body('userId').isInt({ min: 1 }),
+  body('type').isIn(['ROLE', 'USER']).withMessage('type must be ROLE or USER'),
+  body('target_id').isString().notEmpty().withMessage('target_id is required'),
+  body('privileges').isArray({ min: 1 }).withMessage('privileges must be a non-empty array'),
+  body('privileges.*.feature_id').isString().notEmpty(),
+  body('privileges.*.can_view').isBoolean(),
+  body('privileges.*.can_create').isBoolean(),
+  body('privileges.*.can_edit').isBoolean(),
+  body('privileges.*.can_delete').isBoolean(),
+  body('privileges.*.can_hide').isBoolean(),
   handleValidationErrors
 ], async (req, res) => {
   try {
@@ -205,7 +273,7 @@ router.get('/health/database', authMiddleware.authenticate, rbacMiddleware.requi
     const health = await privilegeService.checkDatabaseHealth();
     const responseTime = Date.now() - startTime;
     
-    res.json({
+  res.json({
       success: true,
       data: {
         ...health,

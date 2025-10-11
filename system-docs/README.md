@@ -1,6 +1,7 @@
 # BISMAN Living Documentation
 
-This folder contains the "living docs" source. It is maintained by `system-docs/scripts/generate_docs.py` and a CI pipeline.
+This folder contains the "living docs" source. The repository previously included a Python-based generator (`system-docs/scripts/generate_docs.py`) and a CI pipeline to build/package the site.
+NOTE: The Python docs toolchain has been removed from this branch; the generator scripts and requirements were deleted. If you need to restore the generator, re-add the scripts and `system-docs/requirements.txt`, or revert this change.
 
 How it works:
 
@@ -9,7 +10,7 @@ How it works:
 - The generator can also extract code signatures (`extract_code_js.js`) and DB schema (`extract_schema.py`).
 - `scripts/generate_docs.py --build` runs `mkdocs build` using `mkdocs.yml` at repository root and outputs to `system-docs-site/`.
 
-Prerequisites:
+Prerequisites (if generator is restored):
 
 - Python 3.10+
 - mkdocs, mkdocs-material, and required mkdocs plugins (installed via `system-docs/requirements.txt`)
@@ -17,18 +18,10 @@ Prerequisites:
 
 CI:
 
-The repository includes a GitHub Actions workflow at `.github/workflows/docs.yml` which runs lint, generates the site, creates a PDF using `wkhtmltopdf`, packages the artifacts, and uploads the resulting ZIP.
+The repository used to include a GitHub Actions workflow at `.github/workflows/docs.yml` that ran the Python-based generator; that workflow has been simplified to skip docs generation in CI on this branch.
 
 ## 📘 Living Documentation — Local Commands
 
-Use the Makefile targets below for a reproducible local workflow:
-
-```
-make setup    # create venv and install dependencies
-make build    # generate docs: fill dates, extract code, extract schema, build site
-make lint     # lint markdown files
-make package  # package the site into a versioned zip
-make clean    # remove generated site and artifacts
-```
+Makefile targets that invoked the Python toolchain have been disabled in this branch. If you want to re-enable them, restore the deleted scripts and `system-docs/requirements.txt`.
 
 Artifacts are created under `system-docs/artifacts/` and the HTML site is at `system-docs-site/` after a successful build.

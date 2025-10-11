@@ -1,28 +1,15 @@
 SHELL := /bin/bash
 .PHONY: setup build package lint clean
 
-VENV := .venv_docs
-PY := $(VENV)/bin/python
-PIP := $(VENV)/bin/pip
 
 setup:
-	@echo "🛠️  Setting up docs virtualenv and installing dependencies..."
-	python3 -m venv $(VENV)
-	$(PIP) install --upgrade pip
-	$(PIP) install -r system-docs/requirements.txt
-	@echo "✅ Setup complete. Activate with: source $(VENV)/bin/activate"
+	@echo "⚠️  Docs python toolchain removed — no setup performed."
 
 build:
-	@echo "🔧 Building living documentation (fill dates, extract code/schema, build site)..."
-	$(PY) system-docs/scripts/generate_docs.py --fill-dates --gen-code --gen-schema --build
-	@echo "✅ Build complete. Site available at: system-docs-site/"
+	@echo "⚠️  Docs build disabled: python toolchain removed."
 
 package:
-	@echo "📦 Packaging documentation (zip)..."
-	# Use git tag or commit SHA if available
-	VER=$$(git describe --tags --always 2>/dev/null || echo dev)
-	$(PY) system-docs/scripts/package_docs.py --version $$VER
-	@echo "✅ Package step finished. Artifacts in system-docs/artifacts/"
+	@echo "⚠️  Docs packaging disabled: python toolchain removed."
 
 lint:
 	@echo "🔎 Linting Markdown files with markdownlint..."
@@ -36,10 +23,9 @@ clean:
 	rm -f system-docs/artifacts/latest.pdf || true
 	@echo "✅ Clean complete."
 
+
 pdf:
-	@echo "📄 Generating PDF from built site..."
-	$(PY) system-docs/scripts/generate_pdf.py
-	@echo "✅ PDF generation complete. Output: system-docs/artifacts/latest.pdf"
+	@echo "⚠️  Docs pdf generation disabled: python toolchain removed."
 
 show-pdf:
 	@echo "🔍 Opening PDF (macOS 'open' command is used)..."

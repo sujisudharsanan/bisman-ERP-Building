@@ -5,21 +5,24 @@ import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 
 export default function ManagerPage() {
-  const { user, loading } = useAuth();
+  const { user, loading, logout } = useAuth();
   const router = useRouter();
 
   useEffect(() => {
-    if (!loading) {
-      if (!user) {
-        router.push('/auth/portals');
-        return;
-      }
+    // Wait for auth to complete before checking
+    if (loading) {
+      return;
+    }
 
-      // Role-based access control - allow MANAGER and ADMIN
-      if (!['MANAGER', 'ADMIN'].includes(user.roleName)) {
-        router.push('/dashboard');
-        return;
-      }
+    if (!user) {
+      router.push('/auth/login');
+      return;
+    }
+
+    // Role-based access control - allow MANAGER and ADMIN
+    if (!user.roleName || !['MANAGER', 'ADMIN'].includes(user.roleName)) {
+      router.push('/dashboard');
+      return;
     }
   }, [user, loading, router]);
 
@@ -34,7 +37,7 @@ export default function ManagerPage() {
     );
   }
 
-  if (!user || !['MANAGER', 'ADMIN'].includes(user.roleName)) {
+  if (!user || !user.roleName || !['MANAGER', 'ADMIN'].includes(user.roleName)) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="text-center">
@@ -66,9 +69,8 @@ export default function ManagerPage() {
                 Welcome, {user.email}
               </span>
               <button
-                onClick={() => {
-                  localStorage.clear();
-                  router.push('/auth/portals');
+                onClick={async () => {
+                  await logout();
                 }}
                 className="bg-red-600 text-white px-4 py-2 rounded-md text-sm hover:bg-red-700"
               >

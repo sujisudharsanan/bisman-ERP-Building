@@ -14,7 +14,17 @@ import {
   User,
   ChevronDown,
   CheckCircle,
-  Briefcase
+  Briefcase,
+  ServerCog,
+  Banknote,
+  Wallet,
+  FileSpreadsheet,
+  ReceiptIndianRupee,
+  Landmark,
+  ShoppingCart,
+  Boxes,
+  ClipboardCheck,
+  Scale
 } from 'lucide-react';
 
 interface DemoUser {
@@ -40,6 +50,127 @@ const DEMO_USERS: DemoUser[] = [
     icon: <Settings className="w-5 h-5" />,
     description: 'Full system access, database management, security controls',
     redirectPath: '/super-admin'
+  },
+  {
+    id: 'it_admin',
+    name: 'IT Administrator',
+    email: 'it@bisman.local',
+    password: 'changeme',
+    role: 'IT_ADMIN',
+    department: 'IT & Platform',
+    icon: <ServerCog className="w-5 h-5" />,
+    description: 'IT operations, platform settings, backups, monitoring',
+    redirectPath: '/admin'
+  },
+  {
+    id: 'cfo',
+    name: 'Chief Financial Officer',
+    email: 'cfo@bisman.local',
+    password: 'changeme',
+    role: 'CFO',
+    department: 'Finance Leadership',
+    icon: <Banknote className="w-5 h-5" />,
+    description: 'Financial oversight, consolidated reporting, approvals',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'finance_controller',
+    name: 'Finance Controller',
+    email: 'controller@bisman.local',
+    password: 'changeme',
+    role: 'FINANCE_CONTROLLER',
+    department: 'Finance',
+    icon: <FileSpreadsheet className="w-5 h-5" />,
+    description: 'Control, closing, compliance with financial policies',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'treasury',
+    name: 'Treasury',
+    email: 'treasury@bisman.local',
+    password: 'changeme',
+    role: 'TREASURY',
+    department: 'Finance - Treasury',
+    icon: <Wallet className="w-5 h-5" />,
+    description: 'Cash flow, bank positions, funding, payments',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'accounts',
+    name: 'Accounts',
+    email: 'accounts@bisman.local',
+    password: 'changeme',
+    role: 'ACCOUNTS',
+    department: 'Finance - Accounts',
+    icon: <FileSpreadsheet className="w-5 h-5" />,
+    description: 'GL, journals, reconciliations, month-end tasks',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'ap',
+    name: 'Accounts Payable',
+    email: 'ap@bisman.local',
+    password: 'changeme',
+    role: 'ACCOUNTS_PAYABLE',
+    department: 'Finance - AP',
+    icon: <ReceiptIndianRupee className="w-5 h-5" />,
+    description: 'Vendor invoices, 3-way match, payment runs',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'banker',
+    name: 'Banker',
+    email: 'banker@bisman.local',
+    password: 'changeme',
+    role: 'BANKER',
+    department: 'Finance - Banking',
+    icon: <Landmark className="w-5 h-5" />,
+    description: 'Bank liaison, statements, reconciliations',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'procurement',
+    name: 'Procurement Officer',
+    email: 'procurement@bisman.local',
+    password: 'changeme',
+    role: 'PROCUREMENT_OFFICER',
+    department: 'Procurement',
+    icon: <ShoppingCart className="w-5 h-5" />,
+    description: 'PR/PO lifecycle, vendor management',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'store_incharge',
+    name: 'Store Incharge',
+    email: 'store@bisman.local',
+    password: 'changeme',
+    role: 'STORE_INCHARGE',
+    department: 'Stores & Warehouse',
+    icon: <Boxes className="w-5 h-5" />,
+    description: 'GRN, inventory custody, stock movements',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'compliance',
+    name: 'Compliance',
+    email: 'compliance@bisman.local',
+    password: 'changeme',
+    role: 'COMPLIANCE',
+    department: 'Governance',
+    icon: <ClipboardCheck className="w-5 h-5" />,
+    description: 'Policy, audit trails, corrective actions',
+    redirectPath: '/dashboard'
+  },
+  {
+    id: 'legal',
+    name: 'Legal',
+    email: 'legal@bisman.local',
+    password: 'changeme',
+    role: 'LEGAL',
+    department: 'Legal',
+    icon: <Scale className="w-5 h-5" />,
+    description: 'Contracts, disputes, SLA enforcement',
+    redirectPath: '/dashboard'
   },
   {
     id: 'admin',
@@ -88,6 +219,10 @@ const DEMO_USERS: DemoUser[] = [
 ];
 
 export default function StandardLoginPage() {
+  const brandCandidates = ['/brand/logo.svg', '/bisman_lockup.svg', '/bisman_logo.svg', '/bisman_logo.png'] as const;
+  const [brandIndex, setBrandIndex] = useState(0);
+  const [brandHidden, setBrandHidden] = useState(false);
+  const brandImgSrc = brandCandidates[brandIndex] || brandCandidates[0];
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -110,23 +245,30 @@ export default function StandardLoginPage() {
       if (user) {
         setSuccess('Login successful! Redirecting...');
 
-        // Role-based redirection (use full-page navigation to ensure fresh app state)
+        // Small delay to ensure cookies are set before redirect
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Role-based redirection - use location.replace to force hard navigation
+        let targetPath = '/dashboard';
         switch (user.roleName?.toUpperCase()) {
           case 'SUPER_ADMIN':
-            window.location.href = '/super-admin';
+            targetPath = '/super-admin';
             break;
           case 'ADMIN':
-            window.location.href = '/admin';
+            targetPath = '/admin';
             break;
           case 'STAFF':
-            window.location.href = '/hub-incharge';
+            targetPath = '/hub-incharge';
             break;
           case 'MANAGER':
           case 'USER':
           default:
-            window.location.href = '/dashboard';
+            targetPath = '/dashboard';
             break;
         }
+        
+        // Use location.replace for a clean navigation with cookies
+        window.location.replace(targetPath);
       } else {
         setError('Login failed. Please check your credentials.');
       }
@@ -155,7 +297,12 @@ export default function StandardLoginPage() {
       const logged = await login(user.email, user.password);
       if (logged) {
         setSuccess(`Welcome ${user.name}! Redirecting to your dashboard...`);
-  window.location.href = user.redirectPath;
+        
+        // Small delay to ensure cookies are set before redirect
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        // Use location.replace for a clean navigation with cookies
+        window.location.replace(user.redirectPath);
       } else {
         setError('Quick login failed.');
       }
@@ -172,8 +319,29 @@ export default function StandardLoginPage() {
       <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden flex">
         {/* Left branding panel */}
         <div className="w-1/2 bg-white p-12 flex flex-col items-start justify-center space-y-6">
-          <div className="w-16 h-16 bg-amber-400 rounded-full flex items-center justify-center shadow-md">
-            <div className="w-8 h-8 bg-amber-500 rounded-full" />
+          {/* Brand: render provided Bisman lockup exactly as-is */}
+          <div className="flex items-center min-h-10">
+            {!brandHidden ? (
+              <img
+                src={brandImgSrc}
+                alt="Bisman ERP Solutions"
+                className="h-10 w-auto object-contain select-none"
+                draggable={false}
+                onError={() => {
+                  // Cycle through candidate sources; finally hide image
+                  if (brandIndex < brandCandidates.length - 1) {
+                    setBrandIndex(brandIndex + 1);
+                  } else {
+                    setBrandHidden(true);
+                  }
+                }}
+              />
+            ) : (
+              <div className="leading-tight">
+                <div className="text-xl font-semibold text-slate-900">Bisman</div>
+                <div className="text-sm text-slate-600 tracking-wide">ERP Solutions</div>
+              </div>
+            )}
           </div>
           <div>
             <h1 className="text-4xl font-bold text-slate-900">Sign in</h1>
@@ -274,7 +442,7 @@ export default function StandardLoginPage() {
                 {DEMO_USERS.map((user) => (
                   <div key={user.id} className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-md p-3">
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-amber-100 rounded flex items-center justify-center text-amber-600">{user.icon}</div>
+                      <div className="w-8 h-8 bg-slate-100 rounded flex items-center justify-center text-amber-600">{user.icon}</div>
                       <div>
                         <div className="text-sm font-medium text-slate-800">{user.name}</div>
                         <div className="text-xs text-slate-500">{user.department}</div>

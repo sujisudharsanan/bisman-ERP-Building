@@ -1,6 +1,7 @@
 // Admin Dashboard Component
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Users,
   Shield,
@@ -23,9 +24,22 @@ interface AdminDashboardProps {
 }
 
 export default function AdminDashboard({ user }: AdminDashboardProps) {
-  const [activeTab, setActiveTab] = useState('roles');
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  
+  // Get initial tab from URL or default to 'roles'
+  const initialTab = (searchParams?.get('tab')) || 'roles';
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [searchTerm, setSearchTerm] = useState('');
   const [filterModule, setFilterModule] = useState('');
+
+  // Update URL when tab changes
+  const handleTabChange = useCallback((tabId: string) => {
+    setActiveTab(tabId);
+    const url = new URL(window.location.href);
+    url.searchParams.set('tab', tabId);
+    router.replace(url.pathname + url.search, { scroll: false });
+  }, [router]);
 
   const sidebarItems = [
     { id: 'roles', label: 'Roles', icon: Shield },
@@ -73,7 +87,7 @@ export default function AdminDashboard({ user }: AdminDashboardProps) {
                 return (
                   <button
                     key={item.id}
-                    onClick={() => setActiveTab(item.id)}
+                    onClick={() => handleTabChange(item.id)}
                     className={`w-full flex items-center space-x-3 px-3 py-2 rounded-md text-left transition-colors ${
                       activeTab === item.id
                         ? 'bg-blue-100 text-blue-700 border border-blue-200'

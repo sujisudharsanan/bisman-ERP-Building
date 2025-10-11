@@ -7,14 +7,75 @@ class RBACService {
   // =============== ROLES ===============
   async getAllRoles() {
     try {
-      const result = await prisma.$queryRaw`
-        SELECT id, name, description, level, created_at, updated_at 
-        FROM rbac_roles 
-        ORDER BY level DESC, name
+      // Compute total possible permissions as routes x actions
+      const totalRoutes = await prisma.$queryRaw`SELECT COUNT(*) as count FROM rbac_routes`
+      const totalActions = await prisma.$queryRaw`SELECT COUNT(*) as count FROM rbac_actions`
+      // COUNT(*) can be returned as bigint in some drivers; coerce safely
+      const toNum = (v) => (typeof v === 'bigint' ? Number(v) : Number(v || 0))
+      const totalPossible = toNum(totalRoutes?.[0]?.count) * toNum(totalActions?.[0]?.count)
+
+      // Prefer schemas that have a status TEXT column; if missing, we'll fallback below
+      let result
+      try {
+        result = await prisma.$queryRaw`
+        SELECT 
+          r.id, r.name, r.description, r.level, r.created_at, r.updated_at,
+          r.status,
+          COALESCE((SELECT COUNT(*) FROM rbac_user_roles ur WHERE ur.role_id = r.id), 0) as user_count,
+          COALESCE((SELECT COUNT(*) FROM rbac_permissions p WHERE p.role_id = r.id AND p.granted = true), 0) as permission_count
+        FROM rbac_roles r
+        ORDER BY r.level DESC, r.name
       `
-      return result
+      } catch (e) {
+        // Fallback for older schema with boolean is_active and no status column
+        result = await prisma.$queryRaw`
+        SELECT 
+          r.id, r.name, r.description, r.level, r.created_at, r.updated_at,
+          CASE WHEN r.is_active IS DISTINCT FROM FALSE THEN 'active' ELSE 'inactive' END AS status,
+          COALESCE((SELECT COUNT(*) FROM rbac_user_roles ur WHERE ur.role_id = r.id), 0) as user_count,
+          COALESCE((SELECT COUNT(*) FROM rbac_permissions p WHERE p.role_id = r.id AND p.granted = true), 0) as permission_count
+        FROM rbac_roles r
+        ORDER BY r.level DESC, r.name
+        `
+      }
+      // Normalize any bigint fields to numbers to avoid JSON serialization errors
+      const normalize = (row) => {
+        const out = { ...row }
+        for (const k of Object.keys(out)) {
+          if (typeof out[k] === 'bigint') out[k] = Number(out[k])
+        }
+        // Common numeric fields that might come back as strings in some environments
+        if (out.level != null) out.level = toNum(out.level)
+        if (out.user_count != null) out.user_count = toNum(out.user_count)
+        if (out.permission_count != null) out.permission_count = toNum(out.permission_count)
+        // Map status -> is_active boolean for frontend compatibility
+        out.is_active = String(out.status || 'active').toLowerCase() !== 'inactive'
+        return out
+      }
+      // Attach total possible to each row for convenience
+      return result.map(r => ({ ...normalize(r), total_permissions: totalPossible }))
     } catch (error) {
       console.error('Error fetching roles:', error)
+      throw error
+    }
+  }
+
+  async setRoleStatus(roleId, isActive) {
+    try {
+      const status = isActive ? 'active' : 'inactive'
+      try {
+        await prisma.$executeRaw`
+          UPDATE rbac_roles SET status = ${status}, updated_at = NOW() WHERE id = ${roleId}
+        `
+      } catch (e) {
+        // Fallback for schema without status: use boolean is_active if present
+        await prisma.$executeRaw`
+          UPDATE rbac_roles SET is_active = ${Boolean(isActive)}, updated_at = NOW() WHERE id = ${roleId}
+        `
+      }
+      return { success: true }
+    } catch (error) {
+      console.error('Error updating role status:', error)
       throw error
     }
   }

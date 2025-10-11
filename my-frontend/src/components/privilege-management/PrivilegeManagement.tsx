@@ -15,7 +15,9 @@ import {
   Settings,
   Shield,
   Users,
-  Activity
+  Activity,
+  ToggleLeft,
+  ToggleRight
 } from 'lucide-react';
 import { RoleSelector } from './RoleSelector';
 import { UserSelector } from './UserSelector';
@@ -33,9 +35,11 @@ import type {
 
 interface PrivilegeManagementProps {
   className?: string;
+  // Optional: preselect a role by id when opening the page
+  initialRoleId?: string | number | null;
 }
 
-export function PrivilegeManagement({ className = '' }: PrivilegeManagementProps) {
+export function PrivilegeManagement({ className = '', initialRoleId = null }: PrivilegeManagementProps) {
   // State Management
   const [roles, setRoles] = useState<Role[]>([]);
   const [users, setUsers] = useState<User[]>([]);
@@ -59,14 +63,15 @@ export function PrivilegeManagement({ className = '' }: PrivilegeManagementProps
     privileges: null as string | null,
     general: null as string | null
   });
+  const [updatingRole, setUpdatingRole] = useState(false);
   
   // Database Health
   const [dbHealth, setDbHealth] = useState<DatabaseHealth | null>(null);
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
-  // API Base URL
-  const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api';
+  // API Base URL: use relative path to leverage Next.js rewrites/proxy and same-origin cookies
+  const API_BASE = '/api/privileges';
 
   // Generic API call function
   const apiCall = async <T,>(endpoint: string, options?: RequestInit): Promise<ApiResponse<T>> => {
@@ -77,6 +82,8 @@ export function PrivilegeManagement({ className = '' }: PrivilegeManagementProps
           // Add auth headers if needed
           ...options?.headers,
         },
+        // Ensure auth cookies are sent (access_token via SameSite=Lax)
+        credentials: 'include',
         ...options,
       });
 
@@ -119,6 +126,29 @@ export function PrivilegeManagement({ className = '' }: PrivilegeManagementProps
       setLoading(prev => ({ ...prev, roles: false }));
     }
   }, []);
+
+  // Toggle role active status
+  const toggleRoleStatus = useCallback(async () => {
+    if (!selectedRole) return;
+    const role = roles.find(r => String(r.id) === String(selectedRole));
+    if (!role) return;
+    setUpdatingRole(true);
+    try {
+      const resp = await apiCall(`/roles/${selectedRole}/status`, {
+        method: 'PATCH',
+        body: JSON.stringify({ is_active: !role.is_active })
+      });
+      if (resp.success) {
+        await loadRoles();
+      } else {
+        setErrors(prev => ({ ...prev, general: resp.error.message }));
+      }
+    } catch (e) {
+      setErrors(prev => ({ ...prev, general: 'Failed to update role status' }));
+    } finally {
+      setUpdatingRole(false);
+    }
+  }, [selectedRole, roles, loadRoles]);
 
   // Load Users by Role
   const loadUsers = useCallback(async (roleId: string) => {
@@ -295,6 +325,8 @@ export function PrivilegeManagement({ className = '' }: PrivilegeManagementProps
     setSelectedRole(roleId);
     setSelectedUser(null); // Reset user selection
     setHasUnsavedChanges(false);
+    // Persist last used role for deep-link consistency
+    try { if (roleId) localStorage.setItem('privilegeEditor.lastRoleId', roleId); } catch { /* noop */ }
     
     if (roleId) {
       loadUsers(roleId);
@@ -325,6 +357,22 @@ export function PrivilegeManagement({ className = '' }: PrivilegeManagementProps
     return () => clearInterval(healthInterval);
   }, [loadRoles, checkDatabaseHealth]);
 
+  // Apply initialRoleId (or saved fallback) once roles are loaded
+  useEffect(() => {
+    // Determine candidate role: prefer prop, else localStorage
+    let candidate: string | null = null;
+    if (initialRoleId != null) candidate = String(initialRoleId);
+    if (!candidate) {
+      try { candidate = localStorage.getItem('privilegeEditor.lastRoleId'); } catch { /* noop */ }
+    }
+    if (!selectedRole && candidate && roles && roles.length > 0) {
+      const exists = roles.some((r: any) => String(r.id) === String(candidate));
+      if (exists) {
+        handleRoleChange(String(candidate));
+      }
+    }
+  }, [initialRoleId, roles, selectedRole, handleRoleChange]);
+
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header Section */}
@@ -339,21 +387,41 @@ export function PrivilegeManagement({ className = '' }: PrivilegeManagementProps
               Manage role-based permissions and user-specific overrides
             </p>
           </div>
-          
-          {/* Database Health Indicator */}
-          {dbHealth && (
-            <div className={`flex items-center px-3 py-2 rounded-lg text-sm ${
-              dbHealth.connected 
-                ? 'bg-green-50 text-green-700 border border-green-200' 
-                : 'bg-red-50 text-red-700 border border-red-200'
-            }`}>
-              <Database className="w-4 h-4 mr-2" />
-              {dbHealth.connected ? 'Connected' : 'Disconnected'}
-              <span className="ml-2 text-xs">
-                ({dbHealth.response_time}ms, {dbHealth.active_connections} active)
-              </span>
-            </div>
-          )}
+
+          <div className="flex items-center gap-3">
+            {/* Role enable/disable toggle */}
+            {selectedRole && (
+              <button
+                onClick={toggleRoleStatus}
+                disabled={updatingRole}
+                className={`inline-flex items-center px-3 py-2 rounded-md border text-sm ${
+                  (roles.find(r => String(r.id) === String(selectedRole))?.is_active)
+                    ? 'bg-white border-gray-300 text-gray-700 hover:bg-gray-50'
+                    : 'bg-yellow-600 border-yellow-700 text-white hover:bg-yellow-700'
+                }`}
+                title={(roles.find(r => String(r.id) === String(selectedRole))?.is_active) ? 'Disable role' : 'Enable role'}
+              >
+                {(roles.find(r => String(r.id) === String(selectedRole))?.is_active)
+                  ? (<><ToggleRight className="w-4 h-4 mr-2" /> Disable Role</>)
+                  : (<><ToggleLeft className="w-4 h-4 mr-2" /> Enable Role</>)}
+              </button>
+            )}
+
+            {/* Database Health Indicator */}
+            {dbHealth && (
+              <div className={`flex items-center px-3 py-2 rounded-lg text-sm ${
+                dbHealth.connected 
+                  ? 'bg-green-50 text-green-700 border border-green-200' 
+                  : 'bg-red-50 text-red-700 border border-red-200'
+              }`}>
+                <Database className="w-4 h-4 mr-2" />
+                {dbHealth.connected ? 'Connected' : 'Disconnected'}
+                <span className="ml-2 text-xs">
+                  ({dbHealth.response_time}ms, {dbHealth.active_connections} active)
+                </span>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Controls */}
@@ -379,12 +447,17 @@ export function PrivilegeManagement({ className = '' }: PrivilegeManagementProps
         {/* Action Buttons */}
         <div className="flex items-center justify-between mt-6 pt-6 border-t border-gray-200">
           <div className="flex items-center space-x-3">
+            {selectedRole && roles.find(r => String(r.id) === String(selectedRole))?.is_active === false && (
+              <div className="text-xs px-3 py-2 rounded-md bg-gray-100 text-gray-700 border border-gray-200">
+                This role is inactive. Enable it to edit privileges.
+              </div>
+            )}
             <button
               onClick={savePrivileges}
-              disabled={!hasUnsavedChanges || loading.saving}
+              disabled={!hasUnsavedChanges || loading.saving || (selectedRole ? (roles.find(r => String(r.id) === String(selectedRole))?.is_active === false) : false)}
               className={`
                 flex items-center px-4 py-2 rounded-lg text-sm font-medium
-                ${hasUnsavedChanges && !loading.saving
+                ${hasUnsavedChanges && !loading.saving && (!selectedRole || roles.find(r => String(r.id) === String(selectedRole))?.is_active !== false)
                   ? 'bg-blue-600 text-white hover:bg-blue-700'
                   : 'bg-gray-100 text-gray-400 cursor-not-allowed'
                 }
@@ -450,7 +523,7 @@ export function PrivilegeManagement({ className = '' }: PrivilegeManagementProps
         onPrivilegeChange={handlePrivilegeChange}
         loading={loading.privileges}
         error={errors.privileges}
-        readOnly={false}
+  readOnly={selectedRole ? roles.find(r => String(r.id) === String(selectedRole))?.is_active === false : false}
       />
 
       {/* Statistics Footer */}

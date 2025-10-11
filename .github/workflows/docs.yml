@@ -11,32 +11,13 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
       - name: Install Node
         uses: actions/setup-node@v4
         with:
           node-version: '18'
-      - name: Install system deps
+      - name: Docs generation skipped
         run: |
-          python -m pip install --upgrade pip
-          pip install -r system-docs/requirements.txt
-          npm ci
-      - name: Lint Markdown
-        run: |
-          npx markdownlint "system-docs/**/*.md" --config .markdownlint.json
-      - name: Run generator
-        run: |
-          python system-docs/scripts/generate_docs.py --fill-dates --gen-code --gen-schema --build
-      - name: Generate PDF (wkhtmltopdf)
-        run: |
-          sudo apt-get update && sudo apt-get install -y wkhtmltopdf
-          if [ -f system-docs-site/index.html ]; then wkhtmltopdf system-docs-site/index.html system-docs/artifacts/latest.pdf || true; fi
-      - name: Package Documentation
-        run: |
-          python system-docs/scripts/package_docs.py --version ${{ github.ref_name || github.sha }}
+          echo "Docs python toolchain removed from repository; docs generation is skipped in CI."
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:

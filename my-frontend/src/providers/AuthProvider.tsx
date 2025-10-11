@@ -1,6 +1,6 @@
 'use client';
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import api from '@/lib/api/axios';
+import api, { tryRefresh } from '@/lib/api/axios';
 
 type User = {
   id?: number;
@@ -29,6 +29,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const res = await api.get('/api/me');
         setUser(res.data.user || null);
       } catch {
+        // If 401, attempt refresh once and retry
+        try {
+          const refreshed = await tryRefresh();
+          if (refreshed) {
+            const r2 = await api.get('/api/me');
+            setUser(r2.data.user || null);
+            return;
+          }
+        } catch (e) {
+          // ignore
+        }
         // Auth check failed - reset user state
         setUser(null);
       }
@@ -54,11 +65,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }
 
   async function logout() {
-    try {
-      localStorage.removeItem('token');
-    } catch {}
     setUser(null);
-    // optionally call backend logout endpoint if exists
     try {
       await api.post('/api/logout');
     } catch {}
