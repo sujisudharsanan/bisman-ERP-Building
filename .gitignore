@@ -8,3 +8,6 @@ coverage/
 playwright-report/
 artifacts/
 .DS_Store
+.npm-cache/
+my-frontend/debug-artifacts/
+my-frontend/screenshots/
