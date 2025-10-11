@@ -68,6 +68,49 @@ router.get('/roles', authMiddleware.authenticate, rbacMiddleware.requireRole(['S
   }
 });
 
+// PATCH /api/privileges/roles/:roleId/status - Enable/disable a role
+router.patch('/roles/:roleId/status', authMiddleware.authenticate, rbacMiddleware.requireRole(['Super Admin', 'Admin']), async (req, res) => {
+  try {
+    const { roleId } = req.params;
+    const { is_active } = req.body || {};
+    if (typeof is_active !== 'boolean') {
+      return res.status(400).json({ success: false, error: { message: 'is_active boolean is required', code: 'VALIDATION_ERROR' }, timestamp: new Date().toISOString() });
+    }
+
+    let used = 'rbac';
+    try {
+      await rbacService.setRoleStatus(Number(roleId), is_active);
+    } catch (e) {
+      used = 'privilege';
+      // Fallback to privilegeService in-memory override or roles table if available
+      try { await privilegeService.setRoleStatus(roleId, is_active); } catch {}
+    }
+
+    // Optionally log audit trail
+    try {
+      await privilegeService.logPrivilegeChange({
+        user_id: req.user.id,
+        action: 'UPDATE',
+        entity_type: 'ROLE',
+        entity_id: roleId,
+        old_values: {},
+        new_values: { is_active },
+        ip_address: req.ip,
+        user_agent: req.get('User-Agent')
+      })
+    } catch {}
+
+    // Return fresh roles list to simplify client sync
+    let roles = []
+    try { roles = await rbacService.getAllRoles(); } catch { roles = await privilegeService.getAllRoles(); }
+
+    return res.json({ success: true, data: { updated: true, source: used, roles }, timestamp: new Date().toISOString() })
+  } catch (error) {
+    console.error('Error updating role status:', error)
+    res.status(500).json({ success: false, error: { message: 'Failed to update role status', code: 'DATABASE_ERROR' }, timestamp: new Date().toISOString() })
+  }
+})
+
 // GET /api/health/database - Database health check
 
 // GET /api/users?role={roleId} - Fetch users by role

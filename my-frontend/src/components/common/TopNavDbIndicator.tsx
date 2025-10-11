@@ -18,13 +18,23 @@ export function TopNavDbIndicator({ className = '' }: TopNavDbIndicatorProps) {
 
   const checkDatabaseStatus = async () => {
     try {
-      const response = await fetch('/api/privileges/health/database', {
+      // Prefer public health endpoint; fall back to Nest variant
+      let response = await fetch('/api/health/database', {
         method: 'GET',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
       });
 
-      if (response.ok) {
+      if (response.status === 404) {
+        // Older backend variant
+        response = await fetch('/api/health/db', {
+          method: 'GET',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
+  if (response.ok) {
         const json = await response.json();
         const data = json?.data || {};
         setStatus({

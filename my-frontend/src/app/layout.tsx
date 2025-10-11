@@ -3,7 +3,6 @@ import { Inter } from 'next/font/google';
 import '../styles/globals.css';
 import { AuthProvider } from '../contexts/AuthContext';
 import { PermissionProvider } from '../contexts/PermissionContext';
-import LogoutButton from '@/components/ui/LogoutButton';
 import GlobalRouteLoader from '@/components/loading/GlobalRouteLoader';
 
 const inter = Inter({ subsets: ['latin'] });
@@ -24,8 +23,6 @@ export default function RootLayout({
         <AuthProvider>
           <PermissionProvider>
             {children}
-            {/* Global logout button: fixed at top-right for desktop, hides on /login */}
-            <LogoutButton position="top-right" variant="minimal" hideOnLogin={true} />
             {/* Global route change loader shown on every page */}
             <GlobalRouteLoader />
           </PermissionProvider>

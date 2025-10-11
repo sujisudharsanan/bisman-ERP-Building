@@ -25,9 +25,10 @@ export default function YourComponent() {
   const { user, logout, loading: authLoading } = useAuth();
   
   // Initialize tab from URL or default to first tab
-  const [activeTab, setActiveTab] = useState<TabName>(
-    (searchParams.get('tab') as TabName) || 'dashboard'
-  );
+  const [activeTab, setActiveTab] = useState<TabName>(() => {
+    const initial = searchParams?.get('tab') as TabName | null;
+    return (initial && ['dashboard', 'settings', 'reports'].includes(initial)) ? initial : 'dashboard';
+  });
 
   // CRITICAL: Wait for auth loading before security checks
   if (authLoading) {
@@ -63,11 +64,11 @@ export default function YourComponent() {
 
   // Sync state when URL changes (browser back/forward)
   useEffect(() => {
-    const urlTab = searchParams.get('tab') as TabName;
+    const urlTab = searchParams?.get('tab') as TabName | null;
     if (urlTab && urlTab !== activeTab && ['dashboard', 'settings', 'reports'].includes(urlTab)) {
       setActiveTab(urlTab);
     }
-  }, [searchParams]);
+  }, [searchParams, activeTab]);
 
   return (
     <div className="min-h-screen bg-gray-50">

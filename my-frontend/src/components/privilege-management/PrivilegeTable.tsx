@@ -95,6 +95,7 @@ export function PrivilegeTable({
               {selectedUser ? 'User-specific overrides' : 'Role default privileges'} • {privileges.length} features
             </p>
           </div>
+          {/* Right-side header space kept for status badges if needed */}
           {selectedUser && (
             <div className="flex items-center text-amber-600 bg-amber-50 px-3 py-1 rounded-full text-sm">
               <AlertTriangle className="w-4 h-4 mr-1" />

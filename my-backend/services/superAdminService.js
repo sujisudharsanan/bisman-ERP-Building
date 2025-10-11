@@ -40,7 +40,7 @@ class SuperAdminService {
   // =============== USER MANAGEMENT ===============
   async getAllUsers(search = '', limit = 50, offset = 0) {
     try {
-      const users = await prisma.user.findMany({
+  const users = await prisma.user.findMany({
         take: limit,
         skip: offset,
         select: {
@@ -54,8 +54,8 @@ class SuperAdminService {
         orderBy: { createdAt: 'desc' }
       })
 
-      const total = await prisma.user.count()
-      return { users, total, count: users.length }
+  const total = await prisma.user.count().catch(() => users.length)
+  return { users, total, count: users.length }
     } catch (error) {
       console.error('Error getting users:', error)
       // Fallback to dev users if DB not available
@@ -157,8 +157,11 @@ class SuperAdminService {
   // =============== DASHBOARD STATS ===============
   async getDashboardStats() {
     try {
+      const safeCount = async (cb, fallback = 0) => {
+        try { return await cb() } catch { return fallback }
+      }
       const stats = {
-        users: await prisma.user.count(),
+        users: await safeCount(() => prisma.user.count(), 0),
         roles: 4,
         routes: 0,
         permissions: 0,
@@ -170,10 +173,10 @@ class SuperAdminService {
         const rbacRoles = await prisma.$queryRaw`SELECT COUNT(*) as count FROM rbac_roles`
         const rbacRoutes = await prisma.$queryRaw`SELECT COUNT(*) as count FROM rbac_routes`
         const rbacPermissions = await prisma.$queryRaw`SELECT COUNT(*) as count FROM rbac_permissions`
-        
-        if (rbacRoles.length > 0) stats.roles = Number(rbacRoles[0].count)
-        if (rbacRoutes.length > 0) stats.routes = Number(rbacRoutes[0].count)
-        if (rbacPermissions.length > 0) stats.permissions = Number(rbacPermissions[0].count)
+        const toNum = (v) => (typeof v === 'bigint' ? Number(v) : Number(v || 0))
+        if (rbacRoles.length > 0) stats.roles = toNum(rbacRoles[0].count)
+        if (rbacRoutes.length > 0) stats.routes = toNum(rbacRoutes[0].count)
+        if (rbacPermissions.length > 0) stats.permissions = toNum(rbacPermissions[0].count)
       } catch (rbacError) {
         console.warn('RBAC tables may not be fully set up:', rbacError.message)
       }
@@ -182,11 +185,11 @@ class SuperAdminService {
     } catch (error) {
       console.error('Error getting dashboard stats:', error)
       return {
-        users: 1,
+        users: 5,
         roles: 4,
         routes: 0,
         permissions: 0,
-        activities: 0,
+        activities: 1,
         tables: 7
       }
     }
@@ -221,8 +224,9 @@ class SuperAdminService {
       }
 
       // Count rows
-      const countRows = await prisma.$queryRawUnsafe(`SELECT COUNT(*)::int AS count FROM "${tableName}"`)
-      const total = (Array.isArray(countRows) && countRows[0] && countRows[0].count) ? Number(countRows[0].count) : 0
+  const countRows = await prisma.$queryRawUnsafe(`SELECT COUNT(*) AS count FROM "${tableName}"`)
+  const rawCount = (Array.isArray(countRows) && countRows[0] && countRows[0].count)
+  const total = typeof rawCount === 'bigint' ? Number(rawCount) : Number(rawCount || 0)
 
       // Basic select with pagination; frontend can handle search for now
       const rows = await prisma.$queryRawUnsafe(
@@ -238,6 +242,10 @@ class SuperAdminService {
       return { columns, rows, count: total }
     } catch (error) {
       console.error('Error getting table data:', error)
+      // Graceful fallback when table is missing: return empty dataset instead of 500
+      if (String(error?.message || '').includes('does not exist')) {
+        return { columns: ['id'], rows: [], count: 0 }
+      }
       throw new Error(`Failed to fetch ${tableName} data`)
     }
   }

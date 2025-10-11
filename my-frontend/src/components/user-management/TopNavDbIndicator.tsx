@@ -23,22 +23,34 @@ export function TopNavDbIndicator() {
     const startTime = Date.now();
 
     try {
-      // Call the backend DB health route (mounted under /api/privileges)
-      const response = await fetch('/api/privileges/health/database', {
+      // Call public DB health route; fall back to Nest variant if not found
+      let response = await fetch('/api/health/database', {
         method: 'GET',
         credentials: 'include', // send auth cookies
         headers: { 'Content-Type': 'application/json' },
       });
 
+      if (response.status === 404) {
+        response = await fetch('/api/health/db', {
+          method: 'GET',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+        });
+      }
+
       const responseTime = Date.now() - startTime;
   const json = await response.json().catch(() => ({} as any));
 
-      // The backend returns { success, data: { connected, response_time, active_connections, reason? } }
+      // The backend returns { success, data: { connected, response_time, active_connections, reason? } }.
+      // If calling Nest /api/health/db, it returns { ok: boolean }.
       if (response.ok) {
-        const connected = Boolean(json?.data?.connected);
-        const activeConnections = json?.data?.active_connections;
-        const respTime = typeof json?.data?.response_time === 'number' ? json.data.response_time : responseTime;
-        const reason = json?.data?.reason as DatabaseStatus['reason'] | undefined;
+        const isNest = json && typeof json.ok === 'boolean' && !json.data;
+        const connected = isNest ? Boolean(json.ok) : Boolean(json?.data?.connected);
+        const activeConnections = isNest ? undefined : json?.data?.active_connections;
+        const respTime = typeof (isNest ? undefined : json?.data?.response_time) === 'number' 
+          ? json.data.response_time 
+          : responseTime;
+        const reason = isNest ? undefined : (json?.data?.reason as DatabaseStatus['reason'] | undefined);
 
         setDbStatus({
           connected,

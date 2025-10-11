@@ -8,6 +8,9 @@ const prisma = new PrismaClient();
 let _dbReadyCache = { ready: null, checkedAt: 0 };
 const DB_READY_TTL_MS = 30_000; // 30s
 
+// In-memory overrides for dev/no-DB environments
+const ROLE_STATUS_OVERRIDES = new Map(); // roleId -> boolean
+
 // Determine if database is not only configured but also has required tables
 async function isDbReady() {
   if (!process.env.DATABASE_URL) return false;
@@ -40,9 +43,12 @@ const DEFAULT_ROLES = [
   // Core
   { id: 'SUPER_ADMIN', name: 'Super Admin', description: 'Full system access', level: 10, is_active: true },
   { id: 'ADMIN', name: 'Admin', description: 'Administrative access', level: 9, is_active: true },
+  { id: 'SYSTEM_ADMINISTRATOR', name: 'System Administrator', description: 'System administration and governance', level: 9, is_active: true },
   { id: 'IT_ADMIN', name: 'IT Admin', description: 'IT administration and platform operations', level: 8, is_active: true },
+  { id: 'OPERATIONS_MANAGER', name: 'Operations Manager', description: 'Operations oversight and coordination', level: 7, is_active: true },
   { id: 'MANAGER', name: 'Manager', description: 'Managerial access', level: 6, is_active: true },
   { id: 'STAFF', name: 'Staff', description: 'Standard user access', level: 1, is_active: true },
+  { id: 'DEMO_USER', name: 'Demo User', description: 'Demonstration account', level: 1, is_active: true },
 
   // Finance hierarchy (international)
   { id: 'CFO', name: 'CFO', description: 'Chief Financial Officer', level: 9, is_active: true },
@@ -55,6 +61,7 @@ const DEFAULT_ROLES = [
   // Procurement & Store
   { id: 'PROCUREMENT_OFFICER', name: 'Procurement Officer', description: 'Purchase requests and orders', level: 4, is_active: true },
   { id: 'STORE_INCHARGE', name: 'Store Incharge', description: 'Warehouse and inventory custody', level: 3, is_active: true },
+  { id: 'HUB_INCHARGE', name: 'Hub Incharge', description: 'Hub operations and coordination', level: 3, is_active: true },
 
   // Governance
   { id: 'COMPLIANCE', name: 'Compliance', description: 'Compliance and audit', level: 6, is_active: true },
@@ -125,6 +132,8 @@ class PrivilegeService {
       if (!(await isDbReady())) {
         const withCounts = DEFAULT_ROLES.map(r => ({
           ...r,
+          // Apply in-memory status overrides if any
+          is_active: ROLE_STATUS_OVERRIDES.has(r.id) ? ROLE_STATUS_OVERRIDES.get(r.id) : r.is_active,
           user_count: DEV_USERS.filter(u => u.role_id === r.id).length
         }));
         return withCounts;
@@ -153,11 +162,36 @@ class PrivilegeService {
       if (process.env.NODE_ENV !== 'production' || !isDbConfigured() || !(await isDbReady())) {
         const withCounts = DEFAULT_ROLES.map(r => ({
           ...r,
+          is_active: ROLE_STATUS_OVERRIDES.has(r.id) ? ROLE_STATUS_OVERRIDES.get(r.id) : r.is_active,
           user_count: DEV_USERS.filter(u => u.role_id === r.id).length
         }));
         return withCounts;
       }
       throw new Error('Failed to fetch roles');
+    }
+  }
+
+  // Fallback: set role status in-memory when DB is not ready
+  async setRoleStatus(roleId, isActive) {
+    try {
+      if (!(await isDbReady())) {
+        ROLE_STATUS_OVERRIDES.set(String(roleId), Boolean(isActive));
+        return { success: true, persisted: false };
+      }
+      // If DB is ready and roles table exists (non-RBAC path), attempt to update if schema supports is_active
+      try {
+        const updated = await this.prisma.role.update({
+          where: { id: Number(roleId) },
+          data: { is_active: Boolean(isActive), updated_at: new Date() }
+        });
+        return { success: true, persisted: true, role: updated };
+      } catch (e) {
+        // Schema may not have is_active; ignore
+        return { success: true, persisted: false };
+      }
+    } catch (error) {
+      console.error('Error setting role status (fallback):', error);
+      throw error;
     }
   }
 

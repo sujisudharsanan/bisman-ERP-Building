@@ -48,7 +48,7 @@ import {
   Search,
   Plus,
   Edit3,
-  Trash2,
+  
   Eye,
   RefreshCw,
   AlertTriangle,
@@ -114,6 +114,34 @@ interface LegacyUser {
   last_login?: string;
 }
 
+// Central purpose/description mapping for roles (case-insensitive)
+const ROLE_PURPOSE: Record<string, string> = {
+  'SUPER_ADMIN': 'Full system access with authority to manage all modules, users, roles, and system configurations. Responsible for overall administration and security. Elevated administrative access for overseeing ERP operations and high-level configurations',
+  'ADMIN': 'Administrative role for managing key modules, user permissions, and operational settings in the ERP.',
+  'SYSTEM ADMINISTRATOR': 'Manages the ERP system’s infrastructure, technical settings, and overall system health.',
+  'IT ADMIN': 'Responsible for IT infrastructure, ERP security, and technical support for users.',
+  'OPERATIONS MANAGER': 'Supervises day-to-day operational processes and ensures smooth workflow across departments.',
+  'MANAGER': 'Mid-level manager overseeing departments and assisting in decision-making.',
+  'STAFF': 'General staff role with specific permissions to perform daily operational tasks.',
+  'DEMO USER': 'Temporary account for demonstration or testing purposes with minimal permissions.',
+  'CFO': 'Oversees all financial operations, accounting, and reporting within the ERP.',
+  'FINANCE CONTROLLER': 'Monitors financial processes, budgets, and compliance with accounting standards.',
+  'TREASURY': 'Manages treasury operations, cash flow, and financial transactions.',
+  'ACCOUNTS': 'Maintains accounting records and handles financial transactions in the ERP.',
+  'ACCOUNTS PAYABLE': 'Responsible for managing vendor payments and accounts payable processes.',
+  'BANKER': 'Manages banking operations, reconciliations, and financial liaison activities.',
+  'PROCUREMENT OFFICER': 'Handles purchasing of goods/services and manages supplier relationships.',
+  'STORE INCHARGE': 'Manages inventory, stock movement, and store operations in the ERP.',
+  'HUB INCHARGE': 'Manages hub operations, logistics, or departmental workflows efficiently.',
+  'COMPLIANCE': 'Ensures organizational adherence to legal, regulatory, and internal policies.',
+  'LEGAL': 'Provides legal support and guidance for ERP processes, contracts, and compliance.',
+  'USER': 'Basic ERP user with minimal permissions, able to access only specific modules/features allowed.',
+  // Variants can be mapped by normalizing names to uppercase when looking up
+};
+
+// Extend role for UI-only fields
+type UIRole = UserRole & { is_active?: boolean }
+
 const SuperAdminControlPanel: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -142,7 +170,7 @@ const SuperAdminControlPanel: React.FC = () => {
 
   // New User Management State
   const [users, setUsers] = useState<UserType[]>([]);
-  const [roles, setRoles] = useState<UserRole[]>([]);
+  const [roles, setRoles] = useState<UIRole[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [pendingKyc, setPendingKyc] = useState<KycSubmission[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
@@ -152,6 +180,10 @@ const SuperAdminControlPanel: React.FC = () => {
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
   const [selectedKycSubmission, setSelectedKycSubmission] = useState<KycSubmissionWithRelations | null>(null);
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [showRoleInfo, setShowRoleInfo] = useState(false);
+  const [roleInfoTarget, setRoleInfoTarget] = useState<any | null>(null);
+  // For Privilege Management deep-linking from Role Management "Edit Role"
+  const [privInitialRoleId, setPrivInitialRoleId] = useState<string | number | null>(searchParams?.get('role') || null);
 
   // API Base URL
   const API_BASE_URL = '/api';
@@ -191,6 +223,55 @@ const SuperAdminControlPanel: React.FC = () => {
     }
   };
 
+  // Helper to open Privilege Management focused on a role
+  const openPrivilegeEditorForRole = useCallback((role: any) => {
+    const rid = String(role?.id ?? '');
+    setPrivInitialRoleId(rid);
+    setActiveTab('privileges');
+  // Persist for future opens and refreshes
+  try { localStorage.setItem('privilegeEditor.lastRoleId', rid); } catch { /* noop */ }
+    // Update URL with tab and role params for shareable deep link
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', 'privileges');
+      url.searchParams.set('role', rid);
+      router.replace(url.pathname + url.search, { scroll: false });
+    } catch { /* noop */ }
+  }, [router]);
+
+  // When leaving Privileges tab, clear role param from URL to avoid stale selection
+  useEffect(() => {
+    if (activeTab !== 'privileges') {
+      try {
+        const url = new URL(window.location.href);
+        if (url.searchParams.has('role')) {
+          url.searchParams.delete('role');
+          router.replace(url.pathname + url.search, { scroll: false });
+        }
+        // Do not clear privInitialRoleId here; keep remembered selection
+      } catch { /* noop */ }
+    }
+  }, [activeTab, router]);
+
+  // On mount or when search params change, if there is no role param, restore last used role
+  useEffect(() => {
+    try {
+      const urlRole = searchParams?.get && searchParams.get('role');
+      if (!urlRole && (privInitialRoleId == null || privInitialRoleId === '')) {
+        const saved = typeof window !== 'undefined' ? localStorage.getItem('privilegeEditor.lastRoleId') : null;
+        if (saved) {
+          setPrivInitialRoleId(saved);
+          // If already on privileges tab, add role back to URL for consistency
+          if (activeTab === 'privileges') {
+            const url = new URL(window.location.href);
+            url.searchParams.set('role', saved);
+            router.replace(url.pathname + url.search, { scroll: false });
+          }
+        }
+      }
+    } catch { /* noop */ }
+  }, [searchParams, activeTab, privInitialRoleId, router]);
+
   const getApprovalLevel = (r: any): number => {
     // Use explicit level if provided; else map by known role names; else fallback by order
     if (typeof r?.level === 'number') return r.level;
@@ -208,6 +289,18 @@ const SuperAdminControlPanel: React.FC = () => {
     // Fallback: derive from position to keep deterministic but low impact
     const idx = roles.findIndex(x => String(x.id) === String(r.id));
     return idx >= 0 ? Math.max(1, roles.length - idx) : 1;
+  };
+
+  const normalizeRoleKey = (name: string | undefined | null) => String(name || '').trim().toUpperCase();
+  const getRolePurpose = (name: string | undefined | null) => ROLE_PURPOSE[normalizeRoleKey(name)] || 'No description available for this role.';
+
+  const openRoleInfo = (role: any) => {
+    setRoleInfoTarget(role);
+    setShowRoleInfo(true);
+  };
+  const closeRoleInfo = () => {
+    setShowRoleInfo(false);
+    setRoleInfoTarget(null);
   };
 
   // Backend-driven permission totals
@@ -392,6 +485,7 @@ const SuperAdminControlPanel: React.FC = () => {
         name: r.name || r.code || r.role || 'ROLE',
         permissions: {},
         is_system_role: Boolean(r.is_system_role),
+        is_active: typeof r.is_active === 'boolean' ? r.is_active : (r.status ? String(r.status).toLowerCase() !== 'inactive' : true),
         created_at: String(r.created_at || r.createdAt || ''),
         updated_at: String(r.updated_at || r.updatedAt || ''),
         // RBAC extras when available
@@ -533,7 +627,7 @@ const SuperAdminControlPanel: React.FC = () => {
                       <Edit3 className="w-4 h-4 text-blue-500" />
                     )}
                     {activity.action.includes('delete') && (
-                      <Trash2 className="w-4 h-4 text-red-500" />
+                      <XCircle className="w-4 h-4 text-red-500" />
                     )}
                   </div>
                   <div>
@@ -559,122 +653,122 @@ const SuperAdminControlPanel: React.FC = () => {
 
   // Users Management Tab (repurposed as Role Management view)
   const UsersTab = () => (
-    <div className="space-y-6">
+    <div className="space-y-3">
       {/* Header with Quick Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="bg-white rounded-lg shadow p-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+        <div className="bg-white rounded-lg shadow p-3">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <Shield className="h-8 w-8 text-blue-600" />
+              <Shield className="h-6 w-6 text-blue-600" />
             </div>
-            <div className="ml-4">
-              <dt className="text-sm font-medium text-gray-500">Total Roles</dt>
-              <dd className="text-2xl font-bold text-gray-900">{roles.length}</dd>
+            <div className="ml-3">
+              <dt className="text-xs font-medium text-gray-500">Total Roles</dt>
+              <dd className="text-xl font-bold text-gray-900">{roles.length}</dd>
             </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="bg-white rounded-lg shadow p-3">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <AlertTriangle className="h-8 w-8 text-yellow-600" />
+              <AlertTriangle className="h-6 w-6 text-yellow-600" />
             </div>
-            <div className="ml-4">
-              <dt className="text-sm font-medium text-gray-500">Pending KYC</dt>
-              <dd className="text-2xl font-bold text-gray-900">{pendingKyc.length}</dd>
+            <div className="ml-3">
+              <dt className="text-xs font-medium text-gray-500">Pending KYC</dt>
+              <dd className="text-xl font-bold text-gray-900">{pendingKyc.length}</dd>
             </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="bg-white rounded-lg shadow p-3">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <Shield className="h-8 w-8 text-green-600" />
+              <Shield className="h-6 w-6 text-green-600" />
             </div>
-            <div className="ml-4">
-              <dt className="text-sm font-medium text-gray-500">Active Roles</dt>
-              <dd className="text-2xl font-bold text-gray-900">{roles.length}</dd>
+            <div className="ml-3">
+              <dt className="text-xs font-medium text-gray-500">Active Roles</dt>
+              <dd className="text-xl font-bold text-gray-900">{roles.length}</dd>
             </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow p-4">
+        <div className="bg-white rounded-lg shadow p-3">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <Activity className="h-8 w-8 text-purple-600" />
+              <Activity className="h-6 w-6 text-purple-600" />
             </div>
-            <div className="ml-4">
-              <dt className="text-sm font-medium text-gray-500">Invitations</dt>
-              <dd className="text-2xl font-bold text-gray-900">{invitations.length}</dd>
+            <div className="ml-3">
+              <dt className="text-xs font-medium text-gray-500">Invitations</dt>
+              <dd className="text-xl font-bold text-gray-900">{invitations.length}</dd>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Action Bar */}
-      <div className="flex justify-between items-center">
-        <div className="flex items-center space-x-4">
-          <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-            <input
-              type="text"
-              placeholder="Search roles..."
-              value={userSearch}
-              onChange={e => setUserSearch(e.target.value)}
-              className="pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            />
-          </div>
-          <button
-            onClick={loadUsers}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Refresh</span>
-          </button>
-        </div>
-        
-        <div className="flex space-x-3">
-          <button
-            onClick={() => setShowInviteModal(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Invite User</span>
-          </button>
-          
-          <button
-            onClick={() => setShowCreateUserModal(true)}
-            className="bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Create User</span>
-          </button>
-        </div>
-      </div>
+  {/* Action Controls moved inside the card header on the right of tabs */}
 
-      {/* Main Content Tabs */}
+      {/* Main Content Tabs with actions on the right */}
       <div className="bg-white shadow rounded-lg">
         <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8 px-6">
-            {[ 
-              { id: 'all-users', label: 'All Roles', icon: Shield },
-              { id: 'pending-kyc', label: 'Pending KYC', icon: AlertTriangle },
-              { id: 'invitations', label: 'Invitations', icon: Activity },
-            ].map(tab => (
+          <div className="px-6 py-3 flex items-center justify-between gap-3 flex-wrap">
+            <nav className="-mb-px flex space-x-8">
+              {[ 
+                { id: 'all-users', label: 'All Roles', icon: Shield },
+                { id: 'pending-kyc', label: 'Pending KYC', icon: AlertTriangle },
+                { id: 'invitations', label: 'Invitations', icon: Activity },
+              ].map(tab => (
+                <button
+                  key={tab.id}
+                  className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
+                    activeTab === tab.id
+                      ? 'border-blue-500 text-blue-600'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                  }`}
+                  onClick={() => handleTabChange(tab.id)}
+                >
+                  <tab.icon className="w-4 h-4" />
+                  <span>{tab.label}</span>
+                </button>
+              ))}
+            </nav>
+
+            <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
+              <div className="relative w-full sm:w-80 md:w-72">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <input
+                  type="text"
+                  placeholder="Search roles..."
+                  value={userSearch}
+                  onChange={e => setUserSearch(e.target.value)}
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
               <button
-                key={tab.id}
-                className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-                onClick={() => handleTabChange(tab.id)}
+                onClick={loadUsers}
+                className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
               >
-                <tab.icon className="w-4 h-4" />
-                <span>{tab.label}</span>
+                <RefreshCw className="w-4 h-4" />
+                <span className="hidden sm:inline">Refresh</span>
               </button>
-            ))}
-          </nav>
+
+              <button
+                onClick={() => setShowInviteModal(true)}
+                className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Invite User</span>
+              </button>
+
+              <button
+                onClick={() => setShowCreateUserModal(true)}
+                className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
+              >
+                <Plus className="w-4 h-4" />
+                <span className="hidden sm:inline">Create User</span>
+              </button>
+            </div>
+          </div>
         </div>
 
         <div className="p-6">
@@ -751,25 +845,37 @@ const SuperAdminControlPanel: React.FC = () => {
                             {getApprovalLevel(role)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                            <div className="flex space-x-2">
+                            <div className="flex items-center space-x-2">
+                              <span className={`px-2 py-0.5 rounded-full text-xs ${(role as any).is_active === false ? 'bg-gray-100 text-gray-700' : 'bg-green-100 text-green-800'}`} title="Role status">
+                                {(role as any).is_active === false ? 'Inactive' : 'Active'}
+                              </span>
                               <button
                                 className="text-blue-600 hover:text-blue-900"
                                 title="View Role"
+                                onClick={() => openRoleInfo(role)}
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
                               <button
                                 className="text-green-600 hover:text-green-900"
                                 title="Edit Role"
+                                onClick={() => openPrivilegeEditorForRole(role)}
                               >
                                 <Edit3 className="w-4 h-4" />
                               </button>
                               <button
-                                className="text-red-600 hover:text-red-900"
-                                title="Delete Role"
+                                className="text-gray-600 hover:text-gray-900"
+                                title={(role as any).is_active === false ? 'Enable Role' : 'Disable Role'}
+                                onClick={async () => {
+                                  try {
+                  await fetch(`/api/privileges/roles/${role.id}/status`, { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ is_active: (role as any).is_active === false ? true : false }) });
+                                    loadRoles();
+                                  } catch {}
+                                }}
                               >
-                                <Trash2 className="w-4 h-4" />
+                {(role as any).is_active === false ? 'Enable' : 'Disable'}
                               </button>
+                              {/* Delete Role action removed per requirement */}
                             </div>
                           </td>
                         </tr>
@@ -901,6 +1007,82 @@ const SuperAdminControlPanel: React.FC = () => {
                   )}
                 </div>
               )}
+
+              {/* Role Info Modal */}
+              {showRoleInfo && roleInfoTarget && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black/30" onClick={closeRoleInfo} />
+                  <div className="relative bg-white rounded-lg shadow-lg w-full max-w-lg mx-4 p-6">
+                    <div className="flex items-start justify-between mb-3">
+                      <div className="flex items-center space-x-3">
+                        <div className="p-2 bg-blue-100 rounded-lg"><Shield className="h-6 w-6 text-blue-600" /></div>
+                        <div>
+                          <h3 className="text-lg font-semibold text-gray-900">{roleInfoTarget.name}</h3>
+                          <p className="text-xs text-gray-500">Role ID: {String(roleInfoTarget.id)}</p>
+                        </div>
+                      </div>
+                      <button onClick={closeRoleInfo} className="text-gray-400 hover:text-gray-600">✕</button>
+                    </div>
+
+                    <div className="space-y-4">
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-1">Purpose</h4>
+                        <p className="text-sm text-gray-700">{getRolePurpose(roleInfoTarget.name)}</p>
+                      </div>
+                      <div className="grid grid-cols-2 gap-4">
+                        {(() => {
+                          const granted = (rolePermCounts[String(roleInfoTarget.id)] ?? roleInfoTarget.permission_count ?? getPermissionCount(roleInfoTarget)) as number;
+                          const total = (roleInfoTarget.total_permissions || totalPermissions || MAX_PERMISSIONS) as number;
+                          const pct = total > 0 ? Math.round((granted / total) * 100) : 0;
+                          return (
+                            <div className="col-span-2 bg-gray-50 rounded-md p-3 border border-gray-100">
+                              <div className="flex items-center justify-between mb-1">
+                                <div className="text-xs text-gray-500">Permission space used</div>
+                                <div className="text-xs text-gray-700 font-medium">{pct}%</div>
+                              </div>
+                              <div className="w-full h-2 bg-gray-200 rounded">
+                                <div className="h-2 bg-blue-600 rounded" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+                              </div>
+                            </div>
+                          );
+                        })()}
+                        <div className="bg-gray-50 rounded-md p-3 border border-gray-100">
+                          <div className="text-xs text-gray-500">Total Permissions (granted)</div>
+                          <div className="text-xl font-semibold text-gray-900">
+                            {(rolePermCounts[String(roleInfoTarget.id)] ?? roleInfoTarget.permission_count ?? getPermissionCount(roleInfoTarget))}
+                            <span className="text-sm text-gray-500"> / {(roleInfoTarget.total_permissions || totalPermissions || MAX_PERMISSIONS)}</span>
+                          </div>
+                        </div>
+                        <div className="bg-gray-50 rounded-md p-3 border border-gray-100">
+                          <div className="text-xs text-gray-500">Total Users under this role</div>
+                          <div className="text-xl font-semibold text-gray-900">{getUserCountForRole(roleInfoTarget)}</div>
+                        </div>
+                        <div className="bg-gray-50 rounded-md p-3 border border-gray-100">
+                          <div className="text-xs text-gray-500">Approval Level</div>
+                          <div className="text-xl font-semibold text-gray-900">{getApprovalLevel(roleInfoTarget)}</div>
+                        </div>
+                        <div className="bg-gray-50 rounded-md p-3 border border-gray-100">
+                          <div className="text-xs text-gray-500">Created / Updated</div>
+                          <div className="text-sm text-gray-900">
+                            {roleInfoTarget.created_at ? new Date(roleInfoTarget.created_at).toLocaleString() : '-'}
+                            <span className="text-gray-400"> • </span>
+                            {roleInfoTarget.updated_at ? new Date(roleInfoTarget.updated_at).toLocaleString() : '-'}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div>
+                        <h4 className="text-sm font-medium text-gray-700 mb-1">Notes</h4>
+                        <p className="text-xs text-gray-500">Levels indicate seniority; permissions reflect explicit grants. Totals may grow as routes/actions increase.</p>
+                      </div>
+                    </div>
+
+                    <div className="mt-5 flex justify-end space-x-2">
+                      <button onClick={closeRoleInfo} className="px-4 py-2 text-sm rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700">Close</button>
+                    </div>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </div>
@@ -912,7 +1094,6 @@ const SuperAdminControlPanel: React.FC = () => {
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'orders', label: 'Order Management', icon: ShoppingCart },
     { id: 'users', label: 'Role Management', icon: Users },
-    { id: 'privileges', label: 'Privilege Management', icon: Shield },
     { id: 'activity', label: 'Activity Log', icon: Activity },
     { id: 'database', label: 'Database Browser', icon: Database },
     { id: 'security', label: 'Security Monitor', icon: Server },
@@ -921,13 +1102,15 @@ const SuperAdminControlPanel: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-gray-100">
-      {/* Header */}
-      <div className="bg-white shadow">
+    {/* Header */}
+    <div className="bg-white shadow">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center py-6">
+      {/* Reduce vertical padding by ~25% to shrink top banner height */}
+      <div className="flex justify-between items-center py-[18px]">
             <div className="flex items-center">
               <HeaderLogo />
-              <h1 className="text-2xl font-bold text-gray-900">
+        {/* Slightly smaller title to further reduce perceived banner size */}
+        <h1 className="text-xl font-bold text-gray-900">
                 Super Admin Control Panel
               </h1>
             </div>
@@ -956,7 +1139,7 @@ const SuperAdminControlPanel: React.FC = () => {
         </div>
       </div>
 
-      {/* Navigation Tabs */}
+  {/* Navigation Tabs */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="border-b border-gray-200">
           <nav className="-mb-px flex space-x-8">
@@ -964,7 +1147,7 @@ const SuperAdminControlPanel: React.FC = () => {
               <button
                 key={tab.id}
                 onClick={() => handleTabChange(tab.id)}
-                className={`py-2 px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
+        className={`py-[6px] px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
                   activeTab === tab.id
                     ? 'border-blue-500 text-blue-600'
                     : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
@@ -978,8 +1161,8 @@ const SuperAdminControlPanel: React.FC = () => {
         </div>
       </div>
 
-      {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+  {/* Content */}
+  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
         {error && (
           <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
             <div className="flex">
@@ -1019,7 +1202,9 @@ const SuperAdminControlPanel: React.FC = () => {
               </div>
             )}
             {activeTab === 'users' && <UsersTab />}
-            {activeTab === 'privileges' && <PrivilegeManagement />}
+            {activeTab === 'privileges' && (
+              <PrivilegeManagement initialRoleId={privInitialRoleId} />
+            )}
             {activeTab === 'activity' && (
               <div className="h-full">
                 <ActivityLogViewer />

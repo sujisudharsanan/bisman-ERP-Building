@@ -39,7 +39,26 @@ export default function SuperAdminPage() {
   }
 
   if (!user || user.roleName !== 'SUPER_ADMIN') {
-    return null;
+    // Fallback UI for environments where router push may be blocked (e.g., embedded Simple Browser)
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        try {
+          window.location.href = '/auth/login';
+        } catch (e) {
+          // ignore
+        }
+      }, 0);
+    }
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center text-gray-700">
+          <p>Redirecting to login…</p>
+          <p className="text-sm text-gray-500 mt-2">
+            If nothing happens, click <a href="/auth/login" className="text-blue-600 underline">here</a>.
+          </p>
+        </div>
+      </div>
+    );
   }
 
   return <SuperAdminControlPanel />;

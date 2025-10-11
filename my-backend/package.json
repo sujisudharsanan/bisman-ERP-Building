@@ -11,7 +11,8 @@
     "prisma:migrate": "prisma migrate dev --name init",
     "prisma:studio": "prisma studio",
     "db:test-prisma": "node prisma/db-test.js",
-    "db:seed-demo": "node scripts/seed-demo-users.js",
+  "db:seed-demo": "node scripts/seed-demo-users.js",
+  "db:seed-rbac": "node scripts/seed-rbac.js",
     "test": "jest --runInBand"
   },
   "dependencies": {

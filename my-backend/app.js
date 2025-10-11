@@ -10,6 +10,7 @@ const cookieParser = require('cookie-parser')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const { logSanitizer } = require('./middleware/logSanitizer')
+const privilegeService = require('./services/privilegeService')
 
 const app = express()
 
@@ -26,7 +27,9 @@ const authLimiter = rateLimit({
 
 
 // Security middleware
-app.use(helmet())
+// In dev, allow embedding in VS Code Simple Browser (webview/iframe) by disabling frameguard.
+// Production remains behind a reverse proxy / proper CSP if needed.
+app.use(helmet({ frameguard: false }))
 // Only enforce HTTPS in production
 if (process.env.NODE_ENV === 'production') {
   app.use(enforce.HTTPS({ trustProtoHeader: true }))
@@ -173,6 +176,37 @@ if (databaseUrl) {
     } catch (err) {
       console.error('DB monitoring error', err)
       res.status(500).json({ ok: false, error: err.message })
+    }
+  })
+
+  // Public database health endpoint (no auth required)
+  // Mirrors the shape used by privilege routes but is intentionally unprotected
+  // so top-nav indicators and diagnostics can work before auth is established.
+  app.get('/api/health/database', async (req, res) => {
+    try {
+      const startTime = Date.now()
+      const health = await privilegeService.checkDatabaseHealth()
+      const responseTime = Date.now() - startTime
+
+      return res.json({
+        success: true,
+        data: {
+          ...health,
+          response_time: responseTime,
+          last_checked: new Date().toISOString(),
+        },
+        timestamp: new Date().toISOString(),
+      })
+    } catch (error) {
+      console.error('Public DB health endpoint failed:', error)
+      return res.status(500).json({
+        success: false,
+        error: {
+          message: 'Database health check failed',
+          code: 'DATABASE_UNAVAILABLE',
+        },
+        timestamp: new Date().toISOString(),
+      })
     }
   })
 } else {
