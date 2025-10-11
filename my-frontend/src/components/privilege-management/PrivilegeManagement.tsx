@@ -454,7 +454,7 @@ export function PrivilegeManagement({ className = '', initialRoleId = null }: Pr
             )}
             <button
               onClick={savePrivileges}
-              disabled={!!(!hasUnsavedChanges || loading.saving || ((selectedRole ? roles.find(r => String(r.id) === String(selectedRole))?.is_active === false : false)))}
+              disabled={!hasUnsavedChanges || loading.saving || (selectedRole ? (roles.find(r => String(r.id) === String(selectedRole))?.is_active === false) : false)}
               className={`
                 flex items-center px-4 py-2 rounded-lg text-sm font-medium
                 ${hasUnsavedChanges && !loading.saving && (!selectedRole || roles.find(r => String(r.id) === String(selectedRole))?.is_active !== false)
