@@ -1,0 +1,62 @@
+"use strict";
+var __decorate = (this && this.__decorate) || function (decorators, target, key, desc) {
+    var c = arguments.length, r = c < 3 ? target : desc === null ? desc = Object.getOwnPropertyDescriptor(target, key) : desc, d;
+    if (typeof Reflect === "object" && typeof Reflect.decorate === "function") r = Reflect.decorate(decorators, target, key, desc);
+    else for (var i = decorators.length - 1; i >= 0; i--) if (d = decorators[i]) r = (c < 3 ? d(r) : c > 3 ? d(target, key, r) : d(target, key)) || r;
+    return c > 3 && r && Object.defineProperty(target, key, r), r;
+};
+var __metadata = (this && this.__metadata) || function (k, v) {
+    if (typeof Reflect === "object" && typeof Reflect.metadata === "function") return Reflect.metadata(k, v);
+};
+var __param = (this && this.__param) || function (paramIndex, decorator) {
+    return function (target, key) { decorator(target, key, paramIndex); }
+};
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.HealthController = void 0;
+const common_1 = require("@nestjs/common");
+const db_health_service_1 = require("./db-health.service");
+let HealthController = class HealthController {
+    dbHealth;
+    constructor(dbHealth) {
+        this.dbHealth = dbHealth;
+    }
+    health(req, res) {
+        const isDry = Boolean(req && req.app && req.app.locals?.isDryRun);
+        if (isDry) {
+            return res.status(503).json({ status: 'dry-run', ok: false, message: 'Running in dry-run mode, not production healthy' });
+        }
+        return res.status(200).json({ status: 'ok', ok: true });
+    }
+    async db(_req, res) {
+        try {
+            const ok = await this.dbHealth.check();
+            if (ok)
+                return res.status(200).json({ status: 'ok', ok: true });
+            return res.status(503).json({ status: 'error', ok: false });
+        }
+        catch (err) {
+            return res.status(503).json({ status: 'error', ok: false, message: String(err && err.message) });
+        }
+    }
+};
+exports.HealthController = HealthController;
+__decorate([
+    (0, common_1.Get)('health'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", void 0)
+], HealthController.prototype, "health", null);
+__decorate([
+    (0, common_1.Get)('api/health/db'),
+    __param(0, (0, common_1.Req)()),
+    __param(1, (0, common_1.Res)()),
+    __metadata("design:type", Function),
+    __metadata("design:paramtypes", [Object, Object]),
+    __metadata("design:returntype", Promise)
+], HealthController.prototype, "db", null);
+exports.HealthController = HealthController = __decorate([
+    (0, common_1.Controller)(),
+    __metadata("design:paramtypes", [db_health_service_1.DbHealthService])
+], HealthController);

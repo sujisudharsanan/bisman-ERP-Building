@@ -1,12 +1,10 @@
-.DS_Store
 node_modules/
-.env
-.vscode/
+logs/
+temp/
+.env*
+coverage/
 *.log
-debug-artifacts/
-
-.npm-cache
-
-# Ignore build artifacts
-dist/
-my-frontend/.next/
+.next/
+playwright-report/
+artifacts/
+.DS_Store

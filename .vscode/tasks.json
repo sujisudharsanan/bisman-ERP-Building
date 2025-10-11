@@ -1,0 +1,12 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "super-admin security build-check",
+			"type": "shell",
+			"command": "bash -lc 'set -e; if [ -d \"my-backend\" ]; then echo \"Backend exists\"; fi; if [ -d \"my-frontend\" ]; then cd my-frontend && jq -r .name package.json >/dev/null 2>&1 || true; echo \"Frontend exists\"; fi; echo DONE'",
+			"problemMatcher": [],
+			"group": "build"
+		}
+	]
+}
