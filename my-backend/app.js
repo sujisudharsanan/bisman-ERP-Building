@@ -64,11 +64,15 @@ app.use((req, res, next) => {
   const dynamic = [envFront, ...envFronts.split(',')]
     .map(s => s && s.trim())
     .filter(Boolean)
-  const allowedOrigins = Array.from(new Set([
+  const isProd = process.env.NODE_ENV === 'production'
+  const localDefaults = [
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://localhost:3001',
     'http://127.0.0.1:3001',
+  ]
+  const allowedOrigins = Array.from(new Set([
+    ...(isProd ? [] : localDefaults),
     ...dynamic,
   ]))
   const origin = req.headers.origin
