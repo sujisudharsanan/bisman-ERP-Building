@@ -2,6 +2,7 @@ const rateLimit = require('express-rate-limit')
 const enforce = require('express-sslify')
 const helmet = require('helmet')
 const express = require('express')
+const cors = require('cors')
 const path = require('path')
 const fs = require('fs')
 const { Pool } = require('pg')
@@ -56,56 +57,55 @@ app.use(logSanitizer)
 
 
 
-// CORS middleware for cross-origin requests
-app.use((req, res, next) => {
-  // Compose allowed origins from env and sensible defaults
-  const envFront = process.env.FRONTEND_URL || ''
-  const envFronts = process.env.FRONTEND_URLS || ''
-  const dynamic = [envFront, ...envFronts.split(',')]
-    .map(s => s && s.trim())
-    .filter(Boolean)
-  const isProd = process.env.NODE_ENV === 'production'
-  const localDefaults = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:3001',
-    'http://127.0.0.1:3001',
-  ]
-  const allowedOrigins = Array.from(new Set([
-    ...(isProd ? [] : localDefaults),
-    ...dynamic,
-  ]))
-  // Build regex patterns from any wildcard or regex entries in FRONTEND_URL(S)
-  const wildcardToRegex = (pattern) => {
-    // escape regex special chars except '*'
-    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')
-    return new RegExp('^' + escaped + '$')
-  }
-  const toRegex = (p) => {
-    if (!p) return null
-    if (p.startsWith('regex:')) {
-      try { return new RegExp(p.slice(6)) } catch { return null }
+// CORS middleware for cross-origin requests (explicit allowlist + env)
+const envFront = process.env.FRONTEND_URL || ''
+const envFronts = process.env.FRONTEND_URLS || ''
+const dynamic = [envFront, ...envFronts.split(',')]
+  .map(s => s && s.trim())
+  .filter(Boolean)
+const providedOrigins = [
+  'https://bisman-erp-building-nnul-mdzo2vwfm-sujis-projects-dfb64252.vercel.app',
+  'https://bisman-erp-rr6f.onrender.com',
+]
+const isProd = process.env.NODE_ENV === 'production'
+const localDefaults = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3001',
+]
+const allowlist = Array.from(new Set([
+  ...(isProd ? [] : localDefaults),
+  ...providedOrigins,
+  ...dynamic,
+]))
+
+const corsOptions = {
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true)
+    // wildcard/regex support via FRONTEND_URLS entries
+    const wildcardToRegex = (pattern) => {
+      const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')
+      return new RegExp('^' + escaped + '$')
     }
-    if (p.includes('*')) return wildcardToRegex(p)
-    return null
-  }
-  const allowedRegexes = dynamic.map(toRegex).filter(Boolean)
-  const origin = req.headers.origin
-  // Ensure caches vary by Origin
-  res.setHeader('Vary', 'Origin')
-  const originAllowed = origin && (allowedOrigins.includes(origin) || allowedRegexes.some(rx => rx.test(origin)))
-  if (originAllowed) {
-    res.setHeader('Access-Control-Allow-Origin', origin)
-  }
-  res.setHeader('Access-Control-Allow-Credentials', 'true')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
-  res.setHeader('Access-Control-Allow-Headers', 'Accept, Origin, Content-Type, Authorization, Cookie, X-Requested-With')
-  
-  if (req.method === 'OPTIONS') {
-    return res.status(204).end()
-  }
-  next()
-})
+    const toRegex = (p) => {
+      if (!p) return null
+      if (p.startsWith('regex:')) { try { return new RegExp(p.slice(6)) } catch { return null } }
+      if (p.includes('*')) return wildcardToRegex(p)
+      return null
+    }
+    const allowedRegexes = dynamic.map(toRegex).filter(Boolean)
+    const ok = allowlist.includes(origin) || allowedRegexes.some(rx => rx.test(origin))
+    callback(ok ? null : new Error('CORS: Origin not allowed'), ok)
+  },
+  credentials: true,
+  methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
+  allowedHeaders: ['Accept','Origin','Content-Type','Authorization','Cookie','X-Requested-With'],
+  optionsSuccessStatus: 204,
+}
+
+app.use(cors(corsOptions))
+app.options('*', cors(corsOptions))
 
 app.use(express.json())
 // Parse cookies early so downstream routers (e.g., /api/privileges) can access auth cookies
@@ -403,6 +403,8 @@ app.post('/api/login', async (req, res) => {
   const sameSiteOpt = isProduction ? 'none' : 'lax'
   const accessCookie = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
   const refreshCookie = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
+  // Compatibility cookie name expected by some clients
+  const compatCookie = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
   
   // For localhost development, prefer host-only cookies (do not set domain)
   if (!isProduction && isLocalHost) {
@@ -413,6 +415,8 @@ app.post('/api/login', async (req, res) => {
 
   res.cookie('access_token', accessToken, accessCookie)
   res.cookie('refresh_token', refreshToken, refreshCookie)
+  // also set 'token' cookie for compatibility with clients expecting this name
+  res.cookie('token', accessToken, compatCookie)
   res.json({ ok: true, email: user.email, role: roleName })
   } catch (err) {
     console.error('Login error', err)
@@ -449,6 +453,7 @@ app.post('/api/token/refresh', async (req, res) => {
   const sameSiteOpt = isProduction ? 'none' : 'lax'
   const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
   const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
+  const compatCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
     
     // For localhost development, prefer host-only cookies (do not set domain)
     if (!isProduction && isLocalHost) {
@@ -459,6 +464,7 @@ app.post('/api/token/refresh', async (req, res) => {
     
     res.cookie('access_token', accessToken, accessCookieOpts)
     res.cookie('refresh_token', newRefresh, refreshCookieOpts)
+  res.cookie('token', accessToken, compatCookieOpts)
     res.json({ ok: true })
   } catch (err) {
     console.error('Refresh error', err)
@@ -506,12 +512,14 @@ app.post('/api/logout', (req, res) => {
       httpOnly: true, 
       sameSite: isProduction ? 'none' : 'lax',
     }
-    res.clearCookie('access_token', cookieOpts)
-    res.clearCookie('refresh_token', cookieOpts)
+  res.clearCookie('access_token', cookieOpts)
+  res.clearCookie('refresh_token', cookieOpts)
+  res.clearCookie('token', cookieOpts)
     
     // Also try without httpOnly in case client needs to clear it
-    res.clearCookie('access_token', { path: '/', sameSite: isProduction ? 'none' : 'lax' })
-    res.clearCookie('refresh_token', { path: '/', sameSite: isProduction ? 'none' : 'lax' })
+  res.clearCookie('access_token', { path: '/', sameSite: isProduction ? 'none' : 'lax' })
+  res.clearCookie('refresh_token', { path: '/', sameSite: isProduction ? 'none' : 'lax' })
+  res.clearCookie('token', { path: '/', sameSite: isProduction ? 'none' : 'lax' })
   } catch (e) {
     // best-effort fallback
     try { res.clearCookie('access_token', { path: '/' }) } catch (e) {}
