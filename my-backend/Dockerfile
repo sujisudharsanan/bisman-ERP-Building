@@ -13,22 +13,8 @@ COPY . .
 RUN if [ -d "prisma" ]; then npx prisma generate || true; fi
 
 ENV NODE_ENV=production
+# Render provides PORT; default fallback 3001
 ENV PORT=3001
 EXPOSE 3001
 
 CMD ["node", "index.js"]
-FROM node:18
-
-# Create app directory
-WORKDIR /usr/src/app
-
-# Install app dependencies
-COPY package*.json ./
-RUN npm install --no-audit --no-fund
-
-# Bundle app source
-COPY . .
-
-EXPOSE 3000
-
-CMD ["npm", "run", "dev"]
