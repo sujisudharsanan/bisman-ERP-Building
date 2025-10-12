@@ -76,15 +76,17 @@ app.use((req, res, next) => {
     ...dynamic,
   ]))
   const origin = req.headers.origin
+  // Ensure caches vary by Origin
+  res.setHeader('Vary', 'Origin')
   if (origin && allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin)
   }
   res.setHeader('Access-Control-Allow-Credentials', 'true')
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie')
+  res.setHeader('Access-Control-Allow-Headers', 'Accept, Origin, Content-Type, Authorization, Cookie, X-Requested-With')
   
   if (req.method === 'OPTIONS') {
-    return res.status(200).end()
+    return res.status(204).end()
   }
   next()
 })
@@ -380,8 +382,11 @@ app.post('/api/login', async (req, res) => {
   const isLocalHost = String(hostHeader).includes('localhost') || String(hostHeader).includes('127.0.0.1')
   const cookieSecure = Boolean(isProduction && !isLocalHost)
 
-  const accessCookie = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 1000 }
-  const refreshCookie = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
+  // In production, frontend and backend are cross-site (Vercel -> Render).
+  // Cross-site cookies require SameSite=None and Secure=true.
+  const sameSiteOpt = isProduction ? 'none' : 'lax'
+  const accessCookie = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
+  const refreshCookie = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
   
   // For localhost development, prefer host-only cookies (do not set domain)
   if (!isProduction && isLocalHost) {
@@ -425,8 +430,9 @@ app.post('/api/token/refresh', async (req, res) => {
     const isLocalHost = String(hostHeader).includes('localhost') || String(hostHeader).includes('127.0.0.1')
     const cookieSecure = Boolean(isProduction && !isLocalHost)
     
-    const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 1000 }
-    const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
+  const sameSiteOpt = isProduction ? 'none' : 'lax'
+  const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
+  const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
     
     // For localhost development, prefer host-only cookies (do not set domain)
     if (!isProduction && isLocalHost) {
@@ -478,19 +484,18 @@ app.post('/api/logout', (req, res) => {
   // Clear cookies - CRITICAL: Must use EXACT same options as when setting (including domain if set)
   // The sameSite and httpOnly need to match what was used in login
   try {
-    // Try with all the options that may have been used when setting the cookie
+    const isProduction = process.env.NODE_ENV === 'production'
     const cookieOpts = { 
       path: '/', 
       httpOnly: true, 
-      sameSite: 'lax',
-      // If you set domain during login, add it here too: domain: '.yourdomain.com'
+      sameSite: isProduction ? 'none' : 'lax',
     }
     res.clearCookie('access_token', cookieOpts)
     res.clearCookie('refresh_token', cookieOpts)
     
     // Also try without httpOnly in case client needs to clear it
-    res.clearCookie('access_token', { path: '/', sameSite: 'lax' })
-    res.clearCookie('refresh_token', { path: '/', sameSite: 'lax' })
+    res.clearCookie('access_token', { path: '/', sameSite: isProduction ? 'none' : 'lax' })
+    res.clearCookie('refresh_token', { path: '/', sameSite: isProduction ? 'none' : 'lax' })
   } catch (e) {
     // best-effort fallback
     try { res.clearCookie('access_token', { path: '/' }) } catch (e) {}
