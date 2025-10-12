@@ -75,10 +75,26 @@ app.use((req, res, next) => {
     ...(isProd ? [] : localDefaults),
     ...dynamic,
   ]))
+  // Build regex patterns from any wildcard or regex entries in FRONTEND_URL(S)
+  const wildcardToRegex = (pattern) => {
+    // escape regex special chars except '*'
+    const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')
+    return new RegExp('^' + escaped + '$')
+  }
+  const toRegex = (p) => {
+    if (!p) return null
+    if (p.startsWith('regex:')) {
+      try { return new RegExp(p.slice(6)) } catch { return null }
+    }
+    if (p.includes('*')) return wildcardToRegex(p)
+    return null
+  }
+  const allowedRegexes = dynamic.map(toRegex).filter(Boolean)
   const origin = req.headers.origin
   // Ensure caches vary by Origin
   res.setHeader('Vary', 'Origin')
-  if (origin && allowedOrigins.includes(origin)) {
+  const originAllowed = origin && (allowedOrigins.includes(origin) || allowedRegexes.some(rx => rx.test(origin)))
+  if (originAllowed) {
     res.setHeader('Access-Control-Allow-Origin', origin)
   }
   res.setHeader('Access-Control-Allow-Credentials', 'true')
