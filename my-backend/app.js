@@ -13,7 +13,22 @@ const { logSanitizer } = require('./middleware/logSanitizer')
 const privilegeService = require('./services/privilegeService')
 
 const app = express()
+const { PrismaClient } = require('@prisma/client');
+const prisma = new PrismaClient();
 
+app.get('/api/db-check', async (req, res) => {
+  try {
+    const result = await prisma.$queryRaw`SELECT NOW() as now`;
+    res.json({
+      success: true,
+      database: 'connected',
+      time: result?.[0]?.now || null
+    });
+  } catch (error) {
+    console.error('DB check failed:', error);
+    res.status(500).json({ success: false, error: 'Database connection failed' });
+  }
+});
 // Rate limiting for authentication endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
