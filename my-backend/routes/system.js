@@ -43,4 +43,20 @@ router.get('/memory-usage', (req, res) => {
   }
 });
 
+// Optional: CPU usage info
+router.get('/cpu-usage', (req, res) => {
+  try {
+    const cpus = os.cpus();
+    const loadAvg = os.loadavg ? os.loadavg() : [];
+    res.json({
+      status: 'ok',
+      cpus,
+      loadAvg,
+      timestamp: new Date().toISOString(),
+    });
+  } catch (e) {
+    res.status(500).json({ status: 'error', message: e.message });
+  }
+});
+
 module.exports = router;
