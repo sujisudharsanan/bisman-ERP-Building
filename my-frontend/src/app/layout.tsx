@@ -4,12 +4,18 @@ import '../styles/globals.css';
 import { AuthProvider } from '../contexts/AuthContext';
 import { PermissionProvider } from '../contexts/PermissionContext';
 import GlobalRouteLoader from '@/components/loading/GlobalRouteLoader';
+import FloatingBottomNav from '@/components/ui/FloatingBottomNav';
 
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
   title: 'BISMAN ERP - Super Admin Dashboard',
   description: 'Comprehensive ERP system with RBAC support',
+};
+
+export const viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function RootLayout({
@@ -19,12 +25,16 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={inter.className}>
+      <body className={`${inter.className} bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-300`}>
         <AuthProvider>
           <PermissionProvider>
-            {children}
+            <div className="min-h-screen pb-20 md:pb-0">
+              {children}
+            </div>
             {/* Global route change loader shown on every page */}
             <GlobalRouteLoader />
+            {/* Auth-only floating bottom navigation */}
+            <FloatingBottomNav />
           </PermissionProvider>
         </AuthProvider>
       </body>

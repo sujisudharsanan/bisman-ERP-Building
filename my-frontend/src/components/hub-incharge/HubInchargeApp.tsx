@@ -1756,8 +1756,8 @@ export default function HubInchargeApp() {
       {/* Active Page */}
       <main className="flex-1 overflow-y-auto">{pages[activeTab]}</main>
 
-      {/* Bottom Navigation */}
-      <nav className="bg-white shadow-inner border-t">
+      {/* Bottom Navigation (hidden on small screens to avoid overlap with FloatingBottomNav) */}
+      <nav className="bg-white dark:bg-gray-900 shadow-inner border-t border-gray-100 dark:border-gray-800 hidden md:block">
         <div className="flex justify-around py-2 overflow-x-auto">
           {navItems.map(tab => (
             <button
@@ -1765,8 +1765,8 @@ export default function HubInchargeApp() {
               onClick={() => handleTabChange(tab.name)}
               className={`flex flex-col items-center text-xs px-2 py-1 min-w-max ${
                 activeTab === tab.name
-                  ? 'text-blue-600 font-semibold'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'text-blue-600 dark:text-blue-400 font-semibold'
+                  : 'text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200'
               }`}
             >
               {tab.icon}
