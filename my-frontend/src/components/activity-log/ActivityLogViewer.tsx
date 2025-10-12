@@ -17,6 +17,7 @@ import {
   Plus,
   Eye
 } from 'lucide-react';
+import { API_BASE } from '@/config/api';
 
 interface ActivityLog {
   id: string;
@@ -44,7 +45,7 @@ export default function ActivityLogViewer() {
       setLoading(true);
       setError(null);
       
-      const response = await fetch(`http://localhost:3001/api/super-admin/activity?limit=${limit}`, {
+      const response = await fetch(`${API_BASE}/api/super-admin/activity?limit=${limit}`, {
         method: 'GET',
         credentials: 'include',
         headers: {

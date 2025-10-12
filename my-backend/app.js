@@ -6,6 +6,8 @@ const path = require('path')
 const fs = require('fs')
 const { Pool } = require('pg')
 const { PrismaClient } = require('@prisma/client')   // ✅ only once
+// Load .env early for local/dev
+try { require('dotenv').config() } catch (e) {}
 const prisma = new PrismaClient()
 const cookieParser = require('cookie-parser')
 const bcrypt = require('bcryptjs')
@@ -56,18 +58,25 @@ app.use(logSanitizer)
 
 // CORS middleware for cross-origin requests
 app.use((req, res, next) => {
-  const allowedOrigins = [
+  // Compose allowed origins from env and sensible defaults
+  const envFront = process.env.FRONTEND_URL || ''
+  const envFronts = process.env.FRONTEND_URLS || ''
+  const dynamic = [envFront, ...envFronts.split(',')]
+    .map(s => s && s.trim())
+    .filter(Boolean)
+  const allowedOrigins = Array.from(new Set([
     'http://localhost:3000',
     'http://127.0.0.1:3000',
     'http://localhost:3001',
-    'http://127.0.0.1:3001'
-  ]
+    'http://127.0.0.1:3001',
+    ...dynamic,
+  ]))
   const origin = req.headers.origin
-  if (allowedOrigins.includes(origin)) {
+  if (origin && allowedOrigins.includes(origin)) {
     res.setHeader('Access-Control-Allow-Origin', origin)
   }
   res.setHeader('Access-Control-Allow-Credentials', 'true')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS, PATCH')
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie')
   
   if (req.method === 'OPTIONS') {

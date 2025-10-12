@@ -16,6 +16,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { API_BASE } from '@/config/api';
 
 type Approval = {
   id: string | number;
@@ -96,8 +97,7 @@ function useHubInchargeData() {
 
     try {
       // Fetch all data in parallel using the correct backend URL
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       const [
         profileRes,
         approvalsRes,
@@ -434,8 +434,7 @@ const AboutMePage = ({
   React.useEffect(() => {
     const loadProfilePicture = async () => {
       try {
-        const baseURL =
-          process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+        const baseURL = API_BASE;
         const response = await fetch(`${baseURL}/api/upload/profile-pic`, {
           method: 'GET',
           credentials: 'include',
@@ -481,8 +480,7 @@ const AboutMePage = ({
       const formData = new FormData();
       formData.append('profile_pic', file);
 
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       const response = await fetch(`${baseURL}/api/upload/profile-pic`, {
         method: 'POST',
         credentials: 'include',
@@ -1031,8 +1029,7 @@ const ApprovalsPage = ({
   const handleApproval = async (id: string | number, status: string) => {
     setProcessing(id);
     try {
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       const response = await fetch(
         `${baseURL}/api/hub-incharge/approvals/${id}`,
         {
@@ -1153,8 +1150,7 @@ const ExpensesPage = ({
 
     setSubmitting(true);
     try {
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       const response = await fetch(`${baseURL}/api/hub-incharge/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1338,8 +1334,7 @@ const MessagesPage = ({
   const handleAcknowledge = async (id: string | number) => {
     setProcessing(id);
     try {
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       const response = await fetch(
         `${baseURL}/api/hub-incharge/messages/${id}/ack`,
         {
@@ -1407,8 +1402,7 @@ const CreateTaskPage = ({ refetch }: { refetch: () => Promise<void> }) => {
 
     setSubmitting(true);
     try {
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       const response = await fetch(`${baseURL}/api/hub-incharge/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1497,8 +1491,7 @@ const TasksPage = ({
   const handleStatusUpdate = async (id: string | number, status: string) => {
     setProcessing(id);
     try {
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       const response = await fetch(`${baseURL}/api/hub-incharge/tasks/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
