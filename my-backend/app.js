@@ -117,6 +117,16 @@ try {
   }
 }
 
+// System route (memory usage)
+try {
+  const systemRoutes = require('./routes/system')
+  app.use('/api', systemRoutes)
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('System routes not loaded:', e && e.message)
+  }
+}
+
 // Privilege management routes
 const privilegeRoutes = require('./routes/privilegeRoutes')
 app.use('/api/privileges', privilegeRoutes)

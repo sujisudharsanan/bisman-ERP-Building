@@ -18,6 +18,9 @@ import {
   Eye
 } from 'lucide-react';
 import { API_BASE } from '@/config/api';
+import { motion } from 'framer-motion';
+import { PieChart, Pie, Cell, Tooltip as ReTooltip, BarChart, Bar, XAxis, YAxis, ResponsiveContainer } from 'recharts';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ActivityLog {
   id: string;
@@ -33,6 +36,7 @@ interface ActivityLog {
 }
 
 export default function ActivityLogViewer() {
+  const { user } = useAuth();
   const [activities, setActivities] = useState<ActivityLog[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -40,30 +44,83 @@ export default function ActivityLogViewer() {
   const [filterAction, setFilterAction] = useState('all');
   const [limit, setLimit] = useState(50);
 
+  // --- System Dashboard State ---
+  type Status = {
+    backend?: any;
+    db?: any;
+    cors?: any;
+    memory?: Array<{ name: string; used: number }>;
+  };
+  const [status, setStatus] = useState<Status>({ backend: null, db: null, cors: null, memory: [] });
+  const COLORS = { ok: '#4ade80', error: '#f87171' } as const;
+  const cardVariants = { hidden: { opacity: 0, y: 20 }, visible: { opacity: 1, y: 0, transition: { duration: 0.4 } } };
+
+  const renderPie = (stat?: any) => {
+    const ok = stat && (stat.status === 'ok' || stat.success === true)
+    const data = [
+      { name: 'OK', value: ok ? 1 : 0 },
+      { name: 'Error', value: ok ? 0 : 1 },
+    ];
+    return (
+      <PieChart width={90} height={90}>
+        <Pie data={data} dataKey="value" innerRadius={24} outerRadius={42}>
+          {data.map((entry, i) => (
+            <Cell key={i} fill={entry.name === 'OK' ? COLORS.ok : COLORS.error} />
+          ))}
+        </Pie>
+        <ReTooltip />
+      </PieChart>
+    );
+  };
+
+  // Fetch System Status (every 10s)
+  useEffect(() => {
+    let timer: any;
+    const fetchStatus = async () => {
+      try {
+        const [backendRes, dbRes, corsRes, memRes] = await Promise.all([
+          fetch(`${API_BASE}/api/health`, { credentials: 'include' }).then(r => r.json()).catch(() => ({ status: 'error' })),
+          fetch(`${API_BASE}/api/db-check`, { credentials: 'include' }).then(r => r.json()).catch(() => ({ status: 'error' })),
+          fetch(`${API_BASE}/api/test-cors`, { credentials: 'include' }).then(r => r.json()).catch(() => ({ status: 'error' })),
+          fetch(`${API_BASE}/api/memory-usage`, { credentials: 'include' }).then(r => r.json()).catch(() => ({ status: 'error' })),
+        ]);
+
+        const memData: Array<{ name: string; used: number }> = [];
+        if (memRes && memRes.status === 'ok' && memRes.process?.heapUsedMB) {
+          memData.push({ name: 'Heap Used (MB)', used: memRes.process.heapUsedMB });
+          if (typeof memRes.process.heapTotalMB === 'number') {
+            // Represent used, not total, per requirement
+          }
+          if (typeof memRes.process.rssMB === 'number') {
+            memData.push({ name: 'RSS (MB)', used: memRes.process.rssMB });
+          }
+        }
+
+        setStatus({ backend: backendRes, db: dbRes, cors: corsRes, memory: memData });
+      } catch (e) {
+        // ignore intermittent errors
+      }
+    };
+
+    fetchStatus();
+    timer = setInterval(fetchStatus, 10000);
+    return () => clearInterval(timer);
+  }, []);
+
+  // Existing Activity Log loader
   const loadActivities = async () => {
     try {
       setLoading(true);
       setError(null);
-      
       const response = await fetch(`${API_BASE}/api/super-admin/activity?limit=${limit}`, {
         method: 'GET',
         credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
+        headers: { 'Content-Type': 'application/json' },
       });
-
-      if (!response.ok) {
-        throw new Error(`Failed to fetch activities: ${response.status}`);
-      }
-
+      if (!response.ok) throw new Error(`Failed to fetch activities: ${response.status}`);
       const result = await response.json();
-      
-      if (result.success && Array.isArray(result.data)) {
-        setActivities(result.data);
-      } else {
-        setActivities([]);
-      }
+      if (result.success && Array.isArray(result.data)) setActivities(result.data);
+      else setActivities([]);
     } catch (err) {
       console.error('Error loading activities:', err);
       setError(err instanceof Error ? err.message : 'Failed to load activity logs');
@@ -73,9 +130,10 @@ export default function ActivityLogViewer() {
     }
   };
 
-  useEffect(() => {
-    loadActivities();
-  }, [limit]);
+  useEffect(() => { loadActivities(); }, [limit]);
+
+  // Guard: Only Super Admin sees the dashboard (activity log still renders inside Super Admin area)
+  const showDashboard = user?.roleName === 'SUPER_ADMIN';
 
   const getActionIcon = (action: string) => {
     const lowerAction = action.toLowerCase();
@@ -164,6 +222,53 @@ export default function ActivityLogViewer() {
 
   return (
     <div className="bg-white rounded-lg shadow-sm h-full flex flex-col">
+      {showDashboard && (
+        <div className="border-b border-gray-200 px-6 py-5">
+          <h1 className="text-2xl font-bold text-gray-900 mb-4">SuperAdmin System Dashboard</h1>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            {[
+              { title: 'Backend', data: status.backend },
+              { title: 'Database', data: status.db },
+              { title: 'CORS', data: status.cors },
+            ].map((item, idx) => (
+              <motion.div
+                key={idx}
+                className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col items-center"
+                initial="hidden"
+                animate="visible"
+                variants={cardVariants}
+              >
+                <h2 className="text-lg font-semibold mb-2">{item.title}</h2>
+                {renderPie(item.data)}
+                <pre className="mt-2 text-[11px] leading-snug text-gray-500 w-full overflow-auto max-h-28">
+                  {JSON.stringify(item.data, null, 2)}
+                </pre>
+              </motion.div>
+            ))}
+
+            <motion.div
+              className="bg-white border border-gray-200 rounded-xl p-4 flex flex-col"
+              initial="hidden"
+              animate="visible"
+              variants={cardVariants}
+            >
+              <h2 className="text-lg font-semibold mb-2">Memory Usage</h2>
+              <div className="h-40">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={status.memory || []}>
+                    <XAxis dataKey="name" hide={false} tick={{ fontSize: 12 }} />
+                    <YAxis tick={{ fontSize: 12 }} />
+                    <ReTooltip />
+                    <Bar dataKey="used" fill="#4ade80" radius={[4,4,0,0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </motion.div>
+          </div>
+        </div>
+      )}
+
+      {/* Existing content below (Activity Log UI) */}
       {/* Header */}
       <div className="border-b border-gray-200 px-6 py-4">
         <div className="flex items-center justify-between mb-4">
