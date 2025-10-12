@@ -1748,7 +1748,7 @@ export default function HubInchargeApp() {
             <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-semibold">
               {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
             </div>
-            {/* Global LogoutButton is provided in RootLayout; local button removed to avoid duplicates */}
+            {/* No logout here; visible only on Hub Incharge login page */}
           </div>
         </div>
       </header>
