@@ -5,7 +5,8 @@ const express = require('express')
 const path = require('path')
 const fs = require('fs')
 const { Pool } = require('pg')
-const { PrismaClient } = require('@prisma/client')
+const { PrismaClient } = require('@prisma/client')   // ✅ only once
+const prisma = new PrismaClient()
 const cookieParser = require('cookie-parser')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
@@ -13,8 +14,6 @@ const { logSanitizer } = require('./middleware/logSanitizer')
 const privilegeService = require('./services/privilegeService')
 
 const app = express()
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
 
 app.get('/api/db-check', async (req, res) => {
   try {
@@ -125,26 +124,13 @@ try {
   }
 }
 
-const prisma = new PrismaClient()
+// prisma initialized above
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' })
 })
 
-// Lightweight DB connectivity check via Prisma
-app.get('/api/db-check', async (req, res) => {
-  try {
-    const now = await prisma.$queryRaw`SELECT NOW() as now`
-    res.json({
-      success: true,
-      database: 'connected',
-      now: (now && now[0] && (now[0].now || now[0].NOW)) || null
-    })
-  } catch (err) {
-    console.error('DB check failed:', err)
-    res.status(500).json({ success: false, error: 'Database connection failed' })
-  }
-})
+// ...existing routes...
 
 app.get('/', (req, res) => {
   res.send('My Backend (Express)')
@@ -429,13 +415,7 @@ app.post('/api/token/refresh', async (req, res) => {
 app.get('/api/me', authenticate, async (req, res) => {
   res.json({ user: req.user })
 })
-bash -lc 'set -e; cd "/Users/abhi/Desktop/BISMAN 
-ERP/my-backend"; echo "Node: $(node -v)"; echo "Prisma: 
-$(npx prisma -v || true)"; echo 
-"DATABASE_URL=${DATABASE_URL:-<not-set>}"; npx prisma 
-migrate deploy || true'
- // Simple test endpoint to verify 
-authentication
+// Simple test endpoint to verify authentication
 app.get('/api/auth-test', authenticate, async (req, res) => {
   res.json({ 
     authenticated: true, 
