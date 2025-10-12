@@ -107,6 +107,16 @@ app.use((req, res, next) => {
 const uploadRoutes = require('./routes/upload')
 app.use('/api/upload', uploadRoutes)
 
+// Test CORS route
+try {
+  const testCorsRoutes = require('./routes/testCors')
+  app.use('/api', testCorsRoutes)
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Test CORS route not loaded:', e && e.message)
+  }
+}
+
 // Privilege management routes
 const privilegeRoutes = require('./routes/privilegeRoutes')
 app.use('/api/privileges', privilegeRoutes)
