@@ -116,6 +116,21 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' })
 })
 
+// Lightweight DB connectivity check via Prisma
+app.get('/api/db-check', async (req, res) => {
+  try {
+    const now = await prisma.$queryRaw`SELECT NOW() as now`
+    res.json({
+      success: true,
+      database: 'connected',
+      now: (now && now[0] && (now[0].now || now[0].NOW)) || null
+    })
+  } catch (err) {
+    console.error('DB check failed:', err)
+    res.status(500).json({ success: false, error: 'Database connection failed' })
+  }
+})
+
 app.get('/', (req, res) => {
   res.send('My Backend (Express)')
 })
@@ -399,8 +414,13 @@ app.post('/api/token/refresh', async (req, res) => {
 app.get('/api/me', authenticate, async (req, res) => {
   res.json({ user: req.user })
 })
-
-// Simple test endpoint to verify authentication
+bash -lc 'set -e; cd "/Users/abhi/Desktop/BISMAN 
+ERP/my-backend"; echo "Node: $(node -v)"; echo "Prisma: 
+$(npx prisma -v || true)"; echo 
+"DATABASE_URL=${DATABASE_URL:-<not-set>}"; npx prisma 
+migrate deploy || true'
+ // Simple test endpoint to verify 
+authentication
 app.get('/api/auth-test', authenticate, async (req, res) => {
   res.json({ 
     authenticated: true, 
