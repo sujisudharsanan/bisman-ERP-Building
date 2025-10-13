@@ -1748,7 +1748,16 @@ export default function HubInchargeApp() {
             <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-semibold">
               {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
             </div>
-            {/* No logout here; visible only on Hub Incharge login page */}
+            <button
+              onClick={async () => {
+                try { await logout(); } catch {}
+              }}
+              className="ml-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-900 text-white rounded text-sm inline-flex items-center gap-1"
+              title="Logout"
+            >
+              <LogOut size={14} />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
           </div>
         </div>
       </header>

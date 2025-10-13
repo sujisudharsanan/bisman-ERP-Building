@@ -34,23 +34,11 @@ function useTheme() {
 }
 
 export default function FloatingBottomNav() {
+  // All hooks MUST be called before any conditional returns
   const { isAuthenticated } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const { theme, toggle } = useTheme();
-
-  // Hide on auth pages
-  if (!isAuthenticated) return null;
-  if (pathname?.startsWith('/auth')) return null;
-
-  const items: NavItem[] = [
-    { key: 'home', label: 'Home', href: '/', icon: <Home size={20} /> },
-    { key: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
-    { key: 'profile', label: 'Profile', href: '/profile', icon: <User size={20} /> },
-    { key: 'notifications', label: 'Alerts', href: '/notifications', icon: <Bell size={20} /> },
-    { key: 'settings', label: 'Settings', href: '/settings', icon: <Settings size={20} /> },
-  ];
-
   const [hidden, setHidden] = useState(false);
   const lastY = useRef(0);
 
@@ -65,6 +53,18 @@ export default function FloatingBottomNav() {
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // Now safe to early-return
+  if (!isAuthenticated) return null;
+  if (pathname?.startsWith('/auth')) return null;
+
+  const items: NavItem[] = [
+    { key: 'home', label: 'Home', href: '/', icon: <Home size={20} /> },
+    { key: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: <LayoutDashboard size={20} /> },
+    { key: 'profile', label: 'Profile', href: '/profile', icon: <User size={20} /> },
+    { key: 'notifications', label: 'Alerts', href: '/notifications', icon: <Bell size={20} /> },
+    { key: 'settings', label: 'Settings', href: '/settings', icon: <Settings size={20} /> },
+  ];
+
   const isActive = (href: string) => {
     if (!pathname) return false;
     if (href === '/') return pathname === '/';
@@ -73,7 +73,7 @@ export default function FloatingBottomNav() {
 
   return (
     <div
-      className={`fixed bottom-0 left-0 right-0 z-40 transition-transform duration-300 ${
+      className={`fixed bottom-0 left-0 right-0 z-40 transition-transform duration-300 md:hidden ${
         hidden ? 'translate-y-full' : 'translate-y-0'
       }`}
     >
