@@ -2,12 +2,13 @@ services:
   # Backend API Service
   - type: web
     name: bisman-erp-backend
-    runtime: docker
+    runtime: node
     region: oregon
     plan: free
     branch: diployment
-    dockerfilePath: ./Dockerfile
-    dockerContext: .
+    rootDir: my-backend
+    buildCommand: npm install && npx prisma generate
+    startCommand: node index.js
     healthCheckPath: /health
     envVars:
       - key: NODE_ENV
