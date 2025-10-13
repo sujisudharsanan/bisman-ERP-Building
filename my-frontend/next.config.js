@@ -1,4 +1,9 @@
 /** @type {import('next').NextConfig} */
+const API_URL = process.env.NEXT_PUBLIC_API_URL 
+  || process.env.NEXT_PUBLIC_API_BASE 
+  || process.env.NEXT_PUBLIC_API_BASE_URL 
+  || 'http://localhost:3001';
+
 const nextConfig = {
   reactStrictMode: true,
   // swcMinify was removed in Next 13+; removing to avoid warnings
@@ -7,7 +12,7 @@ const nextConfig = {
     return [
       {
         source: '/api/:path*',
-        destination: 'http://localhost:3001/api/:path*',
+        destination: `${API_URL}/api/:path*`,
       },
     ];
   },

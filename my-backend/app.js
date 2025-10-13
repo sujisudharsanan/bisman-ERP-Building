@@ -2,10 +2,14 @@ const rateLimit = require('express-rate-limit')
 const enforce = require('express-sslify')
 const helmet = require('helmet')
 const express = require('express')
+const cors = require('cors')
 const path = require('path')
 const fs = require('fs')
 const { Pool } = require('pg')
-const { PrismaClient } = require('@prisma/client')
+const { PrismaClient } = require('@prisma/client')   // ✅ only once
+// Load .env early for local/dev
+try { require('dotenv').config() } catch (e) {}
+const prisma = new PrismaClient()
 const cookieParser = require('cookie-parser')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
@@ -14,6 +18,19 @@ const privilegeService = require('./services/privilegeService')
 
 const app = express()
 
+app.get('/api/db-check', async (req, res) => {
+  try {
+    const result = await prisma.$queryRaw`SELECT NOW() as now`;
+    res.json({
+      success: true,
+      database: 'connected',
+      time: result?.[0]?.now || null
+    });
+  } catch (error) {
+    console.error('DB check failed:', error);
+    res.status(500).json({ success: false, error: 'Database connection failed' });
+  }
+});
 // Rate limiting for authentication endpoints
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -40,27 +57,55 @@ app.use(logSanitizer)
 
 
 
-// CORS middleware for cross-origin requests
-app.use((req, res, next) => {
-  const allowedOrigins = [
-    'http://localhost:3000',
-    'http://127.0.0.1:3000',
-    'http://localhost:3001',
-    'http://127.0.0.1:3001'
-  ]
-  const origin = req.headers.origin
-  if (allowedOrigins.includes(origin)) {
-    res.setHeader('Access-Control-Allow-Origin', origin)
-  }
-  res.setHeader('Access-Control-Allow-Credentials', 'true')
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS')
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, Cookie')
-  
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end()
-  }
-  next()
-})
+// CORS middleware for cross-origin requests (explicit allowlist + env)
+const envFront = process.env.FRONTEND_URL || ''
+const envFronts = process.env.FRONTEND_URLS || ''
+const dynamic = [envFront, ...envFronts.split(',')]
+  .map(s => s && s.trim())
+  .filter(Boolean)
+const providedOrigins = [
+  'https://bisman-erp-building-nnul-mdzo2vwfm-sujis-projects-dfb64252.vercel.app',
+  'https://bisman-erp-rr6f.onrender.com',
+]
+const isProd = process.env.NODE_ENV === 'production'
+const localDefaults = [
+  'http://localhost:3000',
+  'http://127.0.0.1:3000',
+  'http://localhost:3001',
+  'http://127.0.0.1:3001',
+]
+const allowlist = Array.from(new Set([
+  ...(isProd ? [] : localDefaults),
+  ...providedOrigins,
+  ...dynamic,
+]))
+
+const corsOptions = {
+  origin: function(origin, callback) {
+    if (!origin) return callback(null, true)
+    // wildcard/regex support via FRONTEND_URLS entries
+    const wildcardToRegex = (pattern) => {
+      const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')
+      return new RegExp('^' + escaped + '$')
+    }
+    const toRegex = (p) => {
+      if (!p) return null
+      if (p.startsWith('regex:')) { try { return new RegExp(p.slice(6)) } catch { return null } }
+      if (p.includes('*')) return wildcardToRegex(p)
+      return null
+    }
+    const allowedRegexes = dynamic.map(toRegex).filter(Boolean)
+    const ok = allowlist.includes(origin) || allowedRegexes.some(rx => rx.test(origin))
+    callback(ok ? null : new Error('CORS: Origin not allowed'), ok)
+  },
+  credentials: true,
+  methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
+  allowedHeaders: ['Accept','Origin','Content-Type','Authorization','Cookie','X-Requested-With'],
+  optionsSuccessStatus: 204,
+}
+
+app.use(cors(corsOptions))
+app.options('*', cors(corsOptions))
 
 app.use(express.json())
 // Parse cookies early so downstream routers (e.g., /api/privileges) can access auth cookies
@@ -83,6 +128,26 @@ app.use((req, res, next) => {
 // Upload routes
 const uploadRoutes = require('./routes/upload')
 app.use('/api/upload', uploadRoutes)
+
+// Test CORS route
+try {
+  const testCorsRoutes = require('./routes/testCors')
+  app.use('/api', testCorsRoutes)
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Test CORS route not loaded:', e && e.message)
+  }
+}
+
+// System route (memory usage)
+try {
+  const systemRoutes = require('./routes/system')
+  app.use('/api', systemRoutes)
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('System routes not loaded:', e && e.message)
+  }
+}
 
 // Privilege management routes
 const privilegeRoutes = require('./routes/privilegeRoutes')
@@ -110,11 +175,13 @@ try {
   }
 }
 
-const prisma = new PrismaClient()
+// prisma initialized above
 
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' })
 })
+
+// ...existing routes...
 
 app.get('/', (req, res) => {
   res.send('My Backend (Express)')
@@ -331,8 +398,13 @@ app.post('/api/login', async (req, res) => {
   const isLocalHost = String(hostHeader).includes('localhost') || String(hostHeader).includes('127.0.0.1')
   const cookieSecure = Boolean(isProduction && !isLocalHost)
 
-  const accessCookie = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 1000 }
-  const refreshCookie = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
+  // In production, frontend and backend are cross-site (Vercel -> Render).
+  // Cross-site cookies require SameSite=None and Secure=true.
+  const sameSiteOpt = isProduction ? 'none' : 'lax'
+  const accessCookie = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
+  const refreshCookie = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
+  // Compatibility cookie name expected by some clients
+  const compatCookie = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
   
   // For localhost development, prefer host-only cookies (do not set domain)
   if (!isProduction && isLocalHost) {
@@ -343,6 +415,8 @@ app.post('/api/login', async (req, res) => {
 
   res.cookie('access_token', accessToken, accessCookie)
   res.cookie('refresh_token', refreshToken, refreshCookie)
+  // also set 'token' cookie for compatibility with clients expecting this name
+  res.cookie('token', accessToken, compatCookie)
   res.json({ ok: true, email: user.email, role: roleName })
   } catch (err) {
     console.error('Login error', err)
@@ -376,8 +450,10 @@ app.post('/api/token/refresh', async (req, res) => {
     const isLocalHost = String(hostHeader).includes('localhost') || String(hostHeader).includes('127.0.0.1')
     const cookieSecure = Boolean(isProduction && !isLocalHost)
     
-    const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 60 * 60 * 1000 }
-    const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: 'lax', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
+  const sameSiteOpt = isProduction ? 'none' : 'lax'
+  const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
+  const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
+  const compatCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
     
     // For localhost development, prefer host-only cookies (do not set domain)
     if (!isProduction && isLocalHost) {
@@ -388,6 +464,7 @@ app.post('/api/token/refresh', async (req, res) => {
     
     res.cookie('access_token', accessToken, accessCookieOpts)
     res.cookie('refresh_token', newRefresh, refreshCookieOpts)
+  res.cookie('token', accessToken, compatCookieOpts)
     res.json({ ok: true })
   } catch (err) {
     console.error('Refresh error', err)
@@ -399,7 +476,6 @@ app.post('/api/token/refresh', async (req, res) => {
 app.get('/api/me', authenticate, async (req, res) => {
   res.json({ user: req.user })
 })
-
 // Simple test endpoint to verify authentication
 app.get('/api/auth-test', authenticate, async (req, res) => {
   res.json({ 
@@ -430,19 +506,20 @@ app.post('/api/logout', (req, res) => {
   // Clear cookies - CRITICAL: Must use EXACT same options as when setting (including domain if set)
   // The sameSite and httpOnly need to match what was used in login
   try {
-    // Try with all the options that may have been used when setting the cookie
+    const isProduction = process.env.NODE_ENV === 'production'
     const cookieOpts = { 
       path: '/', 
       httpOnly: true, 
-      sameSite: 'lax',
-      // If you set domain during login, add it here too: domain: '.yourdomain.com'
+      sameSite: isProduction ? 'none' : 'lax',
     }
-    res.clearCookie('access_token', cookieOpts)
-    res.clearCookie('refresh_token', cookieOpts)
+  res.clearCookie('access_token', cookieOpts)
+  res.clearCookie('refresh_token', cookieOpts)
+  res.clearCookie('token', cookieOpts)
     
     // Also try without httpOnly in case client needs to clear it
-    res.clearCookie('access_token', { path: '/', sameSite: 'lax' })
-    res.clearCookie('refresh_token', { path: '/', sameSite: 'lax' })
+  res.clearCookie('access_token', { path: '/', sameSite: isProduction ? 'none' : 'lax' })
+  res.clearCookie('refresh_token', { path: '/', sameSite: isProduction ? 'none' : 'lax' })
+  res.clearCookie('token', { path: '/', sameSite: isProduction ? 'none' : 'lax' })
   } catch (e) {
     // best-effort fallback
     try { res.clearCookie('access_token', { path: '/' }) } catch (e) {}

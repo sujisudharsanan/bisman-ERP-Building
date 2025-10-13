@@ -1,0 +1,60 @@
+{
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Start Frontend (dev)",
+      "type": "shell",
+      "command": "npm run dev -- --port 3000",
+      "isBackground": true,
+      "problemMatcher": [
+        {
+          "owner": "nextjs",
+          "pattern": {
+            "regexp": "^(.*)$",
+            "message": 1
+          },
+          "background": {
+            "beginsPattern": "Starting",
+            "endsPattern": "Ready in"
+          }
+        }
+      ],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}"
+      }
+    },
+    {
+      "label": "Start Backend (dev)",
+      "type": "shell",
+      "command": "npm run debug",
+      "isBackground": true,
+      "problemMatcher": [],
+      "presentation": {
+        "reveal": "always",
+        "panel": "dedicated"
+      },
+      "options": {
+        "cwd": "${workspaceFolder}/../my-backend"
+      }
+    },
+    {
+      "label": "Start All (dev)",
+      "type": "shell",
+      "command": "bash",
+      "args": [
+        "-lc",
+        "for i in $(seq 1 30); do if curl -sSf http://localhost:3000 >/dev/null 2>&1; then echo 'Frontend is up, opening browser...'; open http://localhost:3000; exit 0; fi; sleep 1; done; echo 'Timed out waiting for frontend on http://localhost:3000' >&2; exit 1"
+      ],
+      "dependsOn": ["Start Backend (dev)", "Start Frontend (dev)"],
+      "dependsOrder": "sequence",
+      "problemMatcher": []
+    }
+  ],
+  "runOptions": {
+    "runOn": "folderOpen"
+  }
+}

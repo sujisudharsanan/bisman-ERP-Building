@@ -8,6 +8,7 @@ try {
 const app = require('./app')
 const port = process.env.PORT || 3001
 
-app.listen(port, () => {
-  console.log(`Server listening on port ${port}`)
+// Bind to 0.0.0.0 so Render/containers can detect the open port
+app.listen(port, '0.0.0.0', () => {
+  console.log(`Server listening on http://0.0.0.0:${port}`)
 })

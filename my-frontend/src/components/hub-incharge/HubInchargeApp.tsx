@@ -16,6 +16,7 @@ import {
   LogOut,
 } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { API_BASE } from '@/config/api';
 
 type Approval = {
   id: string | number;
@@ -96,8 +97,7 @@ function useHubInchargeData() {
 
     try {
       // Fetch all data in parallel using the correct backend URL
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       const [
         profileRes,
         approvalsRes,
@@ -434,8 +434,7 @@ const AboutMePage = ({
   React.useEffect(() => {
     const loadProfilePicture = async () => {
       try {
-        const baseURL =
-          process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+        const baseURL = API_BASE;
         const response = await fetch(`${baseURL}/api/upload/profile-pic`, {
           method: 'GET',
           credentials: 'include',
@@ -481,8 +480,7 @@ const AboutMePage = ({
       const formData = new FormData();
       formData.append('profile_pic', file);
 
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       const response = await fetch(`${baseURL}/api/upload/profile-pic`, {
         method: 'POST',
         credentials: 'include',
@@ -1031,8 +1029,7 @@ const ApprovalsPage = ({
   const handleApproval = async (id: string | number, status: string) => {
     setProcessing(id);
     try {
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       const response = await fetch(
         `${baseURL}/api/hub-incharge/approvals/${id}`,
         {
@@ -1153,8 +1150,7 @@ const ExpensesPage = ({
 
     setSubmitting(true);
     try {
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       const response = await fetch(`${baseURL}/api/hub-incharge/expenses`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1338,8 +1334,7 @@ const MessagesPage = ({
   const handleAcknowledge = async (id: string | number) => {
     setProcessing(id);
     try {
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       const response = await fetch(
         `${baseURL}/api/hub-incharge/messages/${id}/ack`,
         {
@@ -1407,8 +1402,7 @@ const CreateTaskPage = ({ refetch }: { refetch: () => Promise<void> }) => {
 
     setSubmitting(true);
     try {
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       const response = await fetch(`${baseURL}/api/hub-incharge/tasks`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1497,8 +1491,7 @@ const TasksPage = ({
   const handleStatusUpdate = async (id: string | number, status: string) => {
     setProcessing(id);
     try {
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       const response = await fetch(`${baseURL}/api/hub-incharge/tasks/${id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
@@ -1755,7 +1748,16 @@ export default function HubInchargeApp() {
             <div className="w-8 h-8 rounded-full bg-blue-500 text-white flex items-center justify-center text-sm font-semibold">
               {user.name ? user.name.charAt(0).toUpperCase() : 'U'}
             </div>
-            {/* Global LogoutButton is provided in RootLayout; local button removed to avoid duplicates */}
+            <button
+              onClick={async () => {
+                try { await logout(); } catch {}
+              }}
+              className="ml-2 px-3 py-1.5 bg-gray-800 hover:bg-gray-900 text-white rounded text-sm inline-flex items-center gap-1"
+              title="Logout"
+            >
+              <LogOut size={14} />
+              <span className="hidden sm:inline">Logout</span>
+            </button>
           </div>
         </div>
       </header>
@@ -1763,8 +1765,8 @@ export default function HubInchargeApp() {
       {/* Active Page */}
       <main className="flex-1 overflow-y-auto">{pages[activeTab]}</main>
 
-      {/* Bottom Navigation */}
-      <nav className="bg-white shadow-inner border-t">
+      {/* Bottom Navigation (hidden on small screens to avoid overlap with FloatingBottomNav) */}
+      <nav className="bg-white dark:bg-gray-900 shadow-inner border-t border-gray-100 dark:border-gray-800 hidden md:block">
         <div className="flex justify-around py-2 overflow-x-auto">
           {navItems.map(tab => (
             <button
@@ -1772,8 +1774,8 @@ export default function HubInchargeApp() {
               onClick={() => handleTabChange(tab.name)}
               className={`flex flex-col items-center text-xs px-2 py-1 min-w-max ${
                 activeTab === tab.name
-                  ? 'text-blue-600 font-semibold'
-                  : 'text-gray-500 hover:text-gray-700'
+                  ? 'text-blue-600 dark:text-blue-400 font-semibold'
+                  : 'text-gray-500 dark:text-gray-300 hover:text-gray-700 dark:hover:text-gray-200'
               }`}
             >
               {tab.icon}

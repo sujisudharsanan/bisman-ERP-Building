@@ -70,6 +70,12 @@ export function PrivilegeManagement({ className = '', initialRoleId = null }: Pr
   const [lastSaved, setLastSaved] = useState<Date | null>(null);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
 
+  // Filters & Search
+  const [searchTerm, setSearchTerm] = useState('');
+  const [onlyActive, setOnlyActive] = useState(false);
+  const [onlyOverrides, setOnlyOverrides] = useState(false);
+  const [moduleFilter, setModuleFilter] = useState<string | 'ALL'>('ALL');
+
   // API Base URL: use relative path to leverage Next.js rewrites/proxy and same-origin cookies
   const API_BASE = '/api/privileges';
 
@@ -204,12 +210,15 @@ export function PrivilegeManagement({ className = '', initialRoleId = null }: Pr
         // Initialize form data
         const newFormData: PrivilegeFormData = {};
         response.data.privileges.forEach(privilege => {
+          const source = (selectedUser && privilege.user_privilege)
+            ? privilege.user_privilege
+            : privilege.role_privilege;
           newFormData[privilege.id] = {
-            can_view: privilege.role_privilege?.can_view || false,
-            can_create: privilege.role_privilege?.can_create || false,
-            can_edit: privilege.role_privilege?.can_edit || false,
-            can_delete: privilege.role_privilege?.can_delete || false,
-            can_hide: privilege.role_privilege?.can_hide || false,
+            can_view: source?.can_view || false,
+            can_create: source?.can_create || false,
+            can_edit: source?.can_edit || false,
+            can_delete: source?.can_delete || false,
+            can_hide: source?.can_hide || false,
           };
         });
         setFormData(newFormData);
@@ -373,6 +382,75 @@ export function PrivilegeManagement({ className = '', initialRoleId = null }: Pr
     }
   }, [initialRoleId, roles, selectedRole, handleRoleChange]);
 
+  // Derived: modules list and filtered privileges
+  const modules = Array.from(new Set(privileges.map(p => p.module)));
+  const displayedPrivileges = privileges.filter(p => {
+    if (onlyActive && !p.is_active) return false;
+    if (onlyOverrides && !p.has_user_override) return false;
+    if (moduleFilter !== 'ALL' && p.module !== moduleFilter) return false;
+    if (searchTerm) {
+      const q = searchTerm.toLowerCase();
+      const hay = `${p.name} ${p.module} ${p.description || ''}`.toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+
+  // Export helpers
+  const downloadBlob = (data: BlobPart, mime: string, filename: string) => {
+    try {
+      const blob = new Blob([data], { type: mime });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    } catch (e) {
+      console.error('Download failed', e);
+    }
+  };
+
+  const exportPrivileges = useCallback(async (format: 'CSV' | 'JSON') => {
+    try {
+      const payload = {
+        format,
+        include_user_overrides: true,
+        include_inactive_features: !onlyActive,
+        selected_roles: selectedRole ? [selectedRole] : [],
+        selected_users: selectedUser ? [selectedUser] : []
+      };
+
+      const res = await fetch(`${API_BASE}/privileges/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error(`Export failed (${res.status})`);
+
+      if (format === 'CSV') {
+        const blob = await res.blob();
+        downloadBlob(blob, 'text/csv;charset=utf-8', `privilege_matrix_${new Date().toISOString().slice(0,10)}.csv`);
+      } else {
+        const contentType = res.headers.get('content-type') || '';
+        if (contentType.includes('application/json')) {
+          const json = await res.json();
+          downloadBlob(JSON.stringify(json, null, 2), 'application/json', `privilege_matrix_${new Date().toISOString().slice(0,10)}.json`);
+        } else {
+          const text = await res.text();
+          downloadBlob(text, 'application/json', `privilege_matrix_${new Date().toISOString().slice(0,10)}.json`);
+        }
+      }
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Export failed';
+      setErrors(prev => ({ ...prev, general: msg }));
+    }
+  }, [API_BASE, onlyActive, selectedRole, selectedUser]);
+
   return (
     <div className={`space-y-6 ${className}`}>
       {/* Header Section */}
@@ -515,15 +593,74 @@ export function PrivilegeManagement({ className = '', initialRoleId = null }: Pr
         )}
       </div>
 
+      {/* Filters & Tools */}
+      <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3">
+          <div className="flex flex-1 items-center gap-2">
+            <div className="relative w-full md:w-96">
+              <Search className="w-4 h-4 text-gray-400 absolute left-3 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                placeholder="Search features or modules..."
+                className="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-md text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              />
+            </div>
+            <div className="flex items-center gap-4">
+              <label className="inline-flex items-center text-sm text-gray-700">
+                <input type="checkbox" className="mr-2" checked={onlyActive} onChange={(e) => setOnlyActive(e.target.checked)} />
+                Active only
+              </label>
+              <label className="inline-flex items-center text-sm text-gray-700">
+                <input type="checkbox" className="mr-2" checked={onlyOverrides} onChange={(e) => setOnlyOverrides(e.target.checked)} disabled={!selectedUser} />
+                Overrides only
+              </label>
+              <div className="relative">
+                <select
+                  value={moduleFilter}
+                  onChange={(e) => setModuleFilter(e.target.value as any)}
+                  className="pl-3 pr-8 py-2 text-sm border border-gray-300 rounded-md bg-white"
+                >
+                  <option value="ALL">All Modules</option>
+                  {modules.map(m => (
+                    <option key={m} value={m}>{m}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => exportPrivileges('CSV')}
+              disabled={!selectedRole}
+              className="inline-flex items-center px-3 py-2 rounded-md border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
+              title="Export CSV"
+            >
+              <Download className="w-4 h-4 mr-2" /> CSV
+            </button>
+            <button
+              onClick={() => exportPrivileges('JSON')}
+              disabled={!selectedRole}
+              className="inline-flex items-center px-3 py-2 rounded-md border border-gray-300 text-sm text-gray-700 hover:bg-gray-50"
+              title="Export JSON"
+            >
+              <Download className="w-4 h-4 mr-2" /> JSON
+            </button>
+          </div>
+        </div>
+      </div>
+
       {/* Privilege Table */}
       <PrivilegeTable
-        privileges={privileges}
+        privileges={displayedPrivileges}
         selectedRole={selectedRole}
         selectedUser={selectedUser}
         onPrivilegeChange={handlePrivilegeChange}
         loading={loading.privileges}
         error={errors.privileges}
-  readOnly={selectedRole ? roles.find(r => String(r.id) === String(selectedRole))?.is_active === false : false}
+        readOnly={selectedRole ? roles.find(r => String(r.id) === String(selectedRole))?.is_active === false : false}
+        formData={formData}
       />
 
       {/* Statistics Footer */}

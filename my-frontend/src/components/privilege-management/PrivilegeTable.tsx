@@ -11,7 +11,8 @@ export function PrivilegeTable({
   onPrivilegeChange, 
   loading = false, 
   error = null,
-  readOnly = false
+  readOnly = false,
+  formData
 }: PrivilegeTableProps) {
   
   const groupedPrivileges = privileges.reduce((acc, privilege) => {
@@ -33,6 +34,10 @@ export function PrivilegeTable({
   };
 
   const getPermissionValue = (privilege: PrivilegeTableRow, permission: 'can_view' | 'can_create' | 'can_edit' | 'can_delete' | 'can_hide') => {
+    // Overlay unsaved changes from formData if present
+    if (formData && formData[privilege.id] && typeof formData[privilege.id][permission] === 'boolean') {
+      return !!formData[privilege.id][permission];
+    }
     // User override takes precedence
     if (selectedUser && privilege.user_privilege) {
       return privilege.user_privilege[permission];

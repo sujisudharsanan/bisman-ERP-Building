@@ -1,10 +1,7 @@
 import axios from 'axios';
+import { API_BASE } from '@/config/api';
 
-// Use localhost for consistent domain with frontend to allow cookie sharing
-const base =
-  (process.env.NEXT_PUBLIC_API_BASE_URL as string) || 'http://localhost:3001';
-
-const api = axios.create({ baseURL: base, withCredentials: true });
+const api = axios.create({ baseURL: API_BASE, withCredentials: true });
 
 // Helper to call refresh endpoint
 export async function tryRefresh() {

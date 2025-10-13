@@ -12,6 +12,7 @@ import React, {
   useEffect,
   useCallback,
 } from 'react';
+import { API_BASE } from '@/config/api';
 
 interface User {
   id?: number;
@@ -45,8 +46,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const checkAuth = useCallback(async () => {
     try {
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       const response = await fetch(`${baseURL}/api/me`, {
         method: 'GET',
         credentials: 'include',
@@ -71,8 +71,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const login = async (email: string, password: string): Promise<User | null> => {
     try {
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       const response = await fetch(`${baseURL}/api/login`, {
         method: 'POST',
         credentials: 'include',
@@ -128,8 +127,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = async (): Promise<void> => {
     try {
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       await fetch(`${baseURL}/api/logout`, {
         method: 'POST',
         credentials: 'include',

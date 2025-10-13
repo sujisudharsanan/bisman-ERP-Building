@@ -1,15 +1,20 @@
-FROM node:18
+FROM node:18-alpine
 
-# Create app directory
-WORKDIR /usr/src/app
+WORKDIR /app
 
-# Install app dependencies
+# Install dependencies first (better layer caching)
 COPY package*.json ./
-RUN npm install --no-audit --no-fund
+RUN npm ci --only=production && npm cache clean --force
 
-# Bundle app source
+# Copy source
 COPY . .
 
-EXPOSE 3000
+# Generate Prisma client if schema exists (non-fatal if missing)
+RUN if [ -d "prisma" ]; then npx prisma generate || true; fi
 
-CMD ["npm", "run", "dev"]
+ENV NODE_ENV=production
+# Render provides PORT; default fallback 3001
+ENV PORT=3001
+EXPOSE 3001
+
+CMD ["node", "index.js"]

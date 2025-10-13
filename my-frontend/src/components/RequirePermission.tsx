@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, Shield } from 'lucide-react';
+import { API_BASE } from '@/config/api';
 
 interface RequirePermissionProps {
   permission: string;
@@ -33,7 +34,7 @@ export const RequirePermission: React.FC<RequirePermissionProps> = ({
       }
 
       const response = await fetch(
-        `http://localhost:3001/api/v1/check-permission?permission=${permission}`,
+        `${API_BASE}/api/v1/check-permission?permission=${permission}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,

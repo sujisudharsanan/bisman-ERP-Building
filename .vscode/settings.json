@@ -1,0 +1,89 @@
+{
+  "css.validate": false,
+  "scss.validate": false,
+  "less.validate": false,
+
+  // Use ESLint to validate JS/TS files and auto-fix on save where possible
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+  "eslint.validate": [
+    "javascript",
+    "javascriptreact",
+    "typescript",
+    "typescriptreact"
+  ],
+
+  // Stylelint integration
+  "stylelint.enable": true,
+  "stylelint.validate": [
+    "css",
+    "scss",
+    "less",
+    "postcss"
+  ],
+
+  // cSpell: workspace dictionary / common project words
+  "cSpell.enabled": true,
+  "cSpell.words": [
+    "bisman",
+    "bisman-erp",
+    "ERP",
+    "Nextjs",
+    "NextJS",
+    "nextjs",
+    "Prisma",
+    "nodemon",
+    "postcss",
+    "PostCSS",
+    "tailwind",
+    "Tailwind",
+    "SuperAdmin",
+    "HubIncharge",
+    "hub-incharge",
+    "AuthProvider",
+    "SuperAdminControlPanel",
+    "cSpell",
+    "tsconfig",
+    "pm2",
+    "prometheus",
+    "otel",
+    "sentry",
+    "rbac"
+  ],
+  "cSpell.language": "en",
+  "cSpell.userWords": [],
+  "cSpell.diagnosticLevel": "Hint",
+  "cSpell.ignorePaths": [
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/uploads/**",
+    "**/logs/**"
+  ],
+
+  // Reduce noise for built/generated folders
+  "files.exclude": {
+    "**/.next": true,
+    "**/node_modules": true,
+    "**/dist": true,
+    "**/build": true
+  }
+
+  ,
+  "files.associations": {
+    "*.pcss": "css",
+    "*.postcss": "css",
+    "tailwind.config.js": "javascript",
+    "*.css": "css"
+  },
+  "eslint.workingDirectories": [
+    { "mode": "auto" }
+  ],
+  "tailwindCSS.includeLanguages": {
+    "plaintext": "html",
+    "typescriptreact": "html",
+    "javascriptreact": "html"
+  }
+}

@@ -15,6 +15,7 @@ import React, {
 import { useAuth } from '@/hooks/useAuth';
 import { LoadingPage } from '@/components/common/LoadingPage';
 import { ForbiddenPage } from '@/components/common/ForbiddenPage';
+import { API_BASE } from '@/config/api';
 
 interface PermissionContextType {
   hasPermission: (featureKey: string, action: string) => boolean;
@@ -43,8 +44,7 @@ export function PermissionProvider({ children }: PermissionProviderProps) {
 
     try {
       setLoading(true);
-      const baseURL =
-        process.env.NEXT_PUBLIC_API_BASE_URL || 'http://localhost:3001';
+      const baseURL = API_BASE;
       const response = await fetch(`${baseURL}/api/auth/permissions`, {
         method: 'GET',
         credentials: 'include',
@@ -114,7 +114,8 @@ export function RequirePermission({ children, action, route }: { children: React
   const ctx = usePermission();
   // Simplified: if loading, show loading; if no permission, show Forbidden
   if (ctx.loading) return <LoadingPage />;
-  const allowed = ctx.hasPermission(action, 'view');
+  const featureKey = route || action; // if route provided, use it; otherwise assume action belongs to provided feature
+  const allowed = ctx.hasPermission(featureKey, 'view');
   if (!allowed) return <ForbiddenPage />;
   return <>{children}</>;
 }

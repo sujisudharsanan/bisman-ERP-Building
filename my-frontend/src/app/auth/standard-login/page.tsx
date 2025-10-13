@@ -15,6 +15,7 @@ import {
   CheckCircle,
   Briefcase
 } from 'lucide-react';
+import { API_BASE } from '@/config/api';
 
 interface DemoUser {
   id: string;
@@ -103,7 +104,7 @@ export default function StandardLoginPage() {
     setSuccess('');
 
     try {
-      const response = await fetch('http://localhost:3001/api/login', {
+      const response = await fetch(`${API_BASE}/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -175,7 +176,7 @@ export default function StandardLoginPage() {
     setSuccess(`Logging in as ${user.name}...`);
 
     try {
-      const response = await fetch('http://localhost:3001/api/login', {
+      const response = await fetch(`${API_BASE}/api/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

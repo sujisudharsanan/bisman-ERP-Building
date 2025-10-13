@@ -315,10 +315,10 @@ export default function StandardLoginPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-100 flex items-center justify-center p-8">
-      <div className="w-full max-w-4xl bg-white rounded-2xl shadow-2xl overflow-hidden flex">
+    <div className="min-h-screen w-full overflow-x-hidden bg-gray-100 dark:bg-gray-950 flex items-center justify-center p-4 sm:p-6">
+      <div className="w-full max-w-4xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
         {/* Left branding panel */}
-        <div className="w-1/2 bg-white p-12 flex flex-col items-start justify-center space-y-6">
+  <div className="w-full md:w-1/2 bg-white dark:bg-gray-900 p-6 md:p-12 flex flex-col items-start justify-center space-y-6">
           {/* Brand: render provided Bisman lockup exactly as-is */}
           <div className="flex items-center min-h-10">
             {!brandHidden ? (
@@ -338,38 +338,38 @@ export default function StandardLoginPage() {
               />
             ) : (
               <div className="leading-tight">
-                <div className="text-xl font-semibold text-slate-900">Bisman</div>
-                <div className="text-sm text-slate-600 tracking-wide">ERP Solutions</div>
+                <div className="text-xl font-semibold text-slate-900 dark:text-slate-100">Bisman</div>
+                <div className="text-sm text-slate-600 dark:text-slate-400 tracking-wide">ERP Solutions</div>
               </div>
             )}
           </div>
           <div>
-            <h1 className="text-4xl font-bold text-slate-900">Sign in</h1>
-            <p className="text-slate-500 mt-1">Use your account</p>
+            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100">Sign in</h1>
+            <p className="text-slate-500 dark:text-slate-400 mt-1">Use your account</p>
           </div>
         </div>
 
         {/* Divider */}
-        <div className="w-px bg-slate-200" />
+  <div className="hidden md:block w-px bg-slate-200 dark:bg-slate-800" />
 
         {/* Right form panel */}
-        <div className="w-1/2 bg-white p-10">
+  <div className="w-full md:w-1/2 bg-white dark:bg-gray-900 p-6 md:p-10">
           {success && (
-            <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-lg text-green-700 text-sm flex items-center">
+            <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300 text-sm flex items-center">
               <CheckCircle className="w-4 h-4 mr-2" />
               {success}
             </div>
           )}
 
           {error && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm">
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
               {error}
             </div>
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-600 mb-2">
+              <label htmlFor="email" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                 Email or phone
               </label>
               <input
@@ -377,16 +377,16 @@ export default function StandardLoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className={`w-full px-4 py-3 bg-slate-50 border ${error ? 'border-red-400' : 'border-slate-200'} rounded-md text-slate-700 placeholder-slate-400 focus:outline-none`}
+                className={`w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border ${error ? 'border-red-400 dark:border-red-600' : 'border-slate-200 dark:border-slate-700'} rounded-md text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none`}
                 placeholder="Email or phone"
                 required
                 autoComplete="email"
               />
-              {error && <p className="text-red-500 text-sm mt-2">Enter an email or phone number</p>}
+              {error && <p className="text-red-500 dark:text-red-400 text-sm mt-2">Enter an email or phone number</p>}
             </div>
 
             <div>
-              <label htmlFor="password" className="block text-sm font-medium text-slate-600 mb-2">
+              <label htmlFor="password" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                 Password
               </label>
               <div className="relative">
@@ -395,7 +395,7 @@ export default function StandardLoginPage() {
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-md text-slate-700 placeholder-slate-400 focus:outline-none pr-12"
+                  className="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-200 placeholder-slate-400 dark:placeholder-slate-500 focus:outline-none pr-12"
                   placeholder="Password"
                   required
                   autoComplete="current-password"
@@ -403,7 +403,7 @@ export default function StandardLoginPage() {
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 dark:text-slate-400 hover:text-slate-700 dark:hover:text-slate-200"
                 >
                   {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
                 </button>
@@ -440,16 +440,16 @@ export default function StandardLoginPage() {
             {showDemoUsers && (
               <div className="mt-3 space-y-3">
                 {DEMO_USERS.map((user) => (
-                  <div key={user.id} className="flex items-center justify-between bg-slate-50 border border-slate-100 rounded-md p-3">
+                  <div key={user.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-md p-3">
                     <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-slate-100 rounded flex items-center justify-center text-amber-600">{user.icon}</div>
+                      <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded flex items-center justify-center text-amber-600">{user.icon}</div>
                       <div>
-                        <div className="text-sm font-medium text-slate-800">{user.name}</div>
-                        <div className="text-xs text-slate-500">{user.department}</div>
+                        <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{user.name}</div>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">{user.department}</div>
                       </div>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <button onClick={() => fillDemoCredentials(user)} className="text-xs px-3 py-1 bg-white text-slate-700 border rounded">Fill</button>
+                      <button onClick={() => fillDemoCredentials(user)} className="text-xs px-3 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-100 border rounded">Fill</button>
                       <button onClick={() => handleQuickLogin(user)} disabled={loading} className="text-xs px-3 py-1 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded">Login</button>
                     </div>
                   </div>
@@ -458,7 +458,7 @@ export default function StandardLoginPage() {
             )}
           </div>
 
-          <div className="mt-6 text-xs text-slate-400">Not your computer? Use Private Browsing windows to sign in. Learn more about using Guest mode</div>
+          <div className="mt-6 text-xs text-slate-400 dark:text-slate-500">Not your computer? Use Private Browsing windows to sign in. Learn more about using Guest mode</div>
         </div>
       </div>
     </div>

@@ -1,0 +1,23 @@
+name: Deploy Backend to Render
+
+on:
+  push:
+    branches: [ diployment ]
+    paths:
+      - 'my-backend/**'
+      - '.github/workflows/deploy-backend-render.yml'
+      - 'deploy-render.sh'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Trigger Render Deploy Hook
+        env:
+          RENDER_DEPLOY_HOOK_URL: ${{ secrets.RENDER_DEPLOY_HOOK_URL }}
+        run: |
+          chmod +x ./deploy-render.sh
+          ./deploy-render.sh

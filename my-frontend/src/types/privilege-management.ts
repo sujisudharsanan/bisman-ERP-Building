@@ -145,7 +145,7 @@ export interface PrivilegeFormData {
 }
 
 export interface ExportOptions {
-  format: 'CSV' | 'PDF';
+  format: 'JSON' | 'CSV' | 'PDF';
   include_user_overrides: boolean;
   include_inactive_features: boolean;
   selected_roles?: string[];
@@ -224,4 +224,6 @@ export interface PrivilegeTableProps {
   loading?: boolean;
   error?: string | null;
   readOnly?: boolean;
+  // Optional overlay of pending changes so the UI reflects unsaved edits immediately
+  formData?: PrivilegeFormData;
 }
