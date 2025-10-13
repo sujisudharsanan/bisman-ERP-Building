@@ -1,0 +1,18 @@
+{
+  "common": {
+    "header": {
+      "role_dashboard": "{{role}} - Dashboard",
+      "profile_alt": "User profile photo",
+      "go_to_profile": "Go to profile"
+    },
+    "roles": {
+      "SUPER_ADMIN": "Super Admin",
+      "ADMIN": "Admin",
+      "MANAGER": "Manager",
+      "STAFF": "Staff",
+      "USER": "User",
+      "HUB_INCHARGE": "Hub Incharge",
+      "STORE_INCHARGE": "Store Incharge"
+    }
+  }
+}
