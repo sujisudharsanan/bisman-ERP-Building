@@ -1,0 +1,36 @@
+services:
+  # Backend API Service
+  - type: web
+    name: bisman-erp-backend
+    runtime: node
+    region: oregon
+    plan: free
+    branch: main
+    rootDir: my-backend
+    buildCommand: npm install && npx prisma generate
+    startCommand: npm start
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: DATABASE_URL
+        fromDatabase:
+          name: bisman-erp-db
+          property: connectionString
+      - key: JWT_SECRET
+        generateValue: true
+      - key: FRONTEND_URL
+        sync: false
+      - key: FRONTEND_URLS
+        sync: false
+
+# Database
+databases:
+  - name: bisman-erp-db
+    databaseName: bisman_erp
+    user: bisman_user
+    region: oregon
+    plan: free
+    postgresMajorVersion: 15
