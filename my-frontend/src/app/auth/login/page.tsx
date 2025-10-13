@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import DarkModeToggle from '@/components/ui/DarkModeToggle';
 import { 
   Eye, 
   EyeOff, 
@@ -219,10 +220,11 @@ const DEMO_USERS: DemoUser[] = [
 ];
 
 export default function StandardLoginPage() {
-  const brandCandidates = ['/brand/logo.svg', '/bisman_lockup.svg', '/bisman_logo.svg', '/bisman_logo.png'] as const;
+  const brandCandidates = ['/brand/bisman-logo.svg', '/brand/logo.svg', '/bisman_lockup.svg', '/bisman_logo.svg', '/bisman_logo.png'] as const;
   const [brandIndex, setBrandIndex] = useState(0);
   const [brandHidden, setBrandHidden] = useState(false);
-  const brandImgSrc = brandCandidates[brandIndex] || brandCandidates[0];
+  // Add timestamp to force cache refresh
+  const brandImgSrc = `${brandCandidates[brandIndex] || brandCandidates[0]}?v=${Date.now()}`;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -318,14 +320,14 @@ export default function StandardLoginPage() {
     <div className="min-h-screen w-full overflow-x-hidden bg-gray-100 dark:bg-gray-950 flex items-center justify-center p-4 sm:p-6">
       <div className="w-full max-w-4xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
         {/* Left branding panel */}
-  <div className="w-full md:w-1/2 bg-white dark:bg-gray-900 p-6 md:p-12 flex flex-col items-start justify-center space-y-6">
+  <div className="w-full md:w-1/2 bg-white dark:bg-gray-900 p-6 md:p-12 flex flex-col justify-center">
           {/* Brand: render provided Bisman lockup exactly as-is */}
-          <div className="flex items-center min-h-10">
+          <div className="mb-8">
             {!brandHidden ? (
               <img
                 src={brandImgSrc}
                 alt="Bisman ERP Solutions"
-                className="h-10 w-auto object-contain select-none"
+                className="h-12 md:h-14 w-auto object-contain select-none"
                 draggable={false}
                 onError={() => {
                   // Cycle through candidate sources; finally hide image
@@ -344,8 +346,8 @@ export default function StandardLoginPage() {
             )}
           </div>
           <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100">Sign in</h1>
-            <p className="text-slate-500 dark:text-slate-400 mt-1">Use your account</p>
+            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100 mb-2">Sign in</h1>
+            <p className="text-slate-500 dark:text-slate-400">Use your account</p>
           </div>
         </div>
 

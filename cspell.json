@@ -29,6 +29,7 @@
     "datagrid",
     "datname",
     "dbgenerated",
+    "dbname",
     "DBPASSWORD",
     "DBUSER",
     "devtoken",

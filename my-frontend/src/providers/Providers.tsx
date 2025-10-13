@@ -6,18 +6,21 @@ import CssBaseline from '@mui/material/CssBaseline';
 import theme from '@/lib/mui/theme';
 import { NotificationsProvider } from './notifications/NotificationsProvider';
 import { AuthProvider } from './AuthProvider';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 
 const queryClient = new QueryClient();
 
 export default function Providers({ children }: { children: ReactNode }) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <MuiThemeProvider theme={theme}>
-        <CssBaseline />
-        <AuthProvider>
-          <NotificationsProvider>{children}</NotificationsProvider>
-        </AuthProvider>
-      </MuiThemeProvider>
-    </QueryClientProvider>
+    <ThemeProvider>
+      <QueryClientProvider client={queryClient}>
+        <MuiThemeProvider theme={theme}>
+          <CssBaseline />
+          <AuthProvider>
+            <NotificationsProvider>{children}</NotificationsProvider>
+          </AuthProvider>
+        </MuiThemeProvider>
+      </QueryClientProvider>
+    </ThemeProvider>
   );
 }
