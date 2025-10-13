@@ -2,16 +2,13 @@ services:
   # Backend API Service
   - type: web
     name: bisman-erp-backend
-    runtime: node
+    runtime: docker
     region: oregon
     plan: free
-    branch: main
-    rootDir: my-backend
-    buildCommand: npm install && npx prisma generate
-    startCommand: npm start
+    branch: diployment
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
     healthCheckPath: /health
-    # Explicitly disable Docker build
-    dockerfilePath: null
     envVars:
       - key: NODE_ENV
         value: production

@@ -1,22 +1,8 @@
 "use client";
 
 import React from 'react';
-import BismanLoader from '@/components/loading/BismanLoader';
+import LogoMaskLoader from '@/components/loading/LogoMaskLoader';
 
 export default function RootLoading() {
-  return (
-    <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        display: 'grid',
-        placeItems: 'center',
-        background: 'transparent',
-        zIndex: 9999,
-      }}
-      aria-hidden
-    >
-      <BismanLoader size={128} />
-    </div>
-  );
+  return <LogoMaskLoader fillDuration={3000} fadeDuration={800} />;
 }
