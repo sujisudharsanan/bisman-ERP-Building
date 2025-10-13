@@ -1,7 +1,6 @@
 node_modules/
 logs/
 temp/
-.env*
 coverage/
 *.log
 .next/
@@ -9,5 +8,24 @@ playwright-report/
 artifacts/
 .DS_Store
 .npm-cache/
+.vscode/
+debug-artifacts/
 my-frontend/debug-artifacts/
 my-frontend/screenshots/
+
+# Ignore build artifacts
+dist/
+my-frontend/.next/
+
+# Runtime PID files
+server.pid
+my-backend/server.pid
+
+# Deployment secrets (NEVER commit these!)
+deployment-secrets.txt
+*-secrets.txt
+
+# Environment files (keep examples only)
+*.env
+.env*
+!.env.example
