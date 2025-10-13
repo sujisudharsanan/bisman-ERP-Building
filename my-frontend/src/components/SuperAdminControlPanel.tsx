@@ -5,12 +5,9 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 
 const HeaderLogo: React.FC = () => {
-  // Use new neutral brand logo; keep fallbacks for resilience
-  const [src, setSrc] = useState<string | null>('/brand/logo.svg');
-  const fallbacks = ['/bisman_logo.svg', '/bisman_logo.png'];
-  const [idx, setIdx] = useState(0);
+  const [logoError, setLogoError] = useState(false);
 
-  if (!src) {
+  if (logoError) {
     return (
       <div className="mr-3 w-7 h-7 rounded bg-gray-200 flex items-center justify-center text-xs text-gray-500">
         B
@@ -20,21 +17,14 @@ const HeaderLogo: React.FC = () => {
 
   return (
     <Image
-      src={src}
-  alt="Company logo"
-  title="Company logo"
+      src="/brand/logo.svg"
+      alt="Company logo"
+      title="Company logo"
       width={80}
       height={80}
       className="mr-3 h-10 w-auto object-contain align-middle shrink-0 filter-none invert-0 dark:invert-0"
       priority
-      onError={() => {
-        if (idx < fallbacks.length) {
-          setSrc(fallbacks[idx]);
-          setIdx(idx + 1);
-        } else {
-          setSrc(null);
-        }
-      }}
+      onError={() => setLogoError(true)}
     />
   );
 };

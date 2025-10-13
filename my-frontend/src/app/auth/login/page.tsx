@@ -220,11 +220,16 @@ const DEMO_USERS: DemoUser[] = [
 ];
 
 export default function StandardLoginPage() {
+<<<<<<< Updated upstream
   const brandCandidates = ['/brand/bisman-logo.svg', '/brand/logo.svg', '/bisman_lockup.svg', '/bisman_logo.svg', '/bisman_logo.png'] as const;
   const [brandIndex, setBrandIndex] = useState(0);
   const [brandHidden, setBrandHidden] = useState(false);
   // Add timestamp to force cache refresh
   const brandImgSrc = `${brandCandidates[brandIndex] || brandCandidates[0]}?v=${Date.now()}`;
+=======
+  const brandImgSrc = '/brand/logo.svg';
+  const [brandHidden, setBrandHidden] = useState(false);
+>>>>>>> Stashed changes
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -330,12 +335,8 @@ export default function StandardLoginPage() {
                 className="h-12 md:h-14 w-auto object-contain select-none"
                 draggable={false}
                 onError={() => {
-                  // Cycle through candidate sources; finally hide image
-                  if (brandIndex < brandCandidates.length - 1) {
-                    setBrandIndex(brandIndex + 1);
-                  } else {
-                    setBrandHidden(true);
-                  }
+                  // Fallback: hide brand image if it fails to load
+                  setBrandHidden(true);
                 }}
               />
             ) : (
