@@ -13,3 +13,10 @@ my-frontend/.next/
 # Runtime PID files
 server.pid
 my-backend/server.pid
+
+# Deployment secrets (NEVER commit these!)
+deployment-secrets.txt
+*-secrets.txt
+*.env
+.env*
+!.env.example
