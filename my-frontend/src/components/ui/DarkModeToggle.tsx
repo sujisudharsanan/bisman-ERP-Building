@@ -28,15 +28,32 @@ export default function DarkModeToggle({ floating = false }: DarkModeToggleProps
     } else {
       document.documentElement.classList.remove('dark');
     }
+
+    // Listen for system changes if user hasn't explicitly chosen
+    const media = window.matchMedia('(prefers-color-scheme: dark)');
+    const handleSystemChange = (e: MediaQueryListEvent) => {
+      const explicit = localStorage.getItem('theme');
+      if (!explicit) {
+        if (e.matches) {
+          document.documentElement.classList.add('dark');
+          setIsDark(true);
+        } else {
+          document.documentElement.classList.remove('dark');
+          setIsDark(false);
+        }
+      }
+    };
+    media.addEventListener('change', handleSystemChange);
+    return () => media.removeEventListener('change', handleSystemChange);
   }, []);
 
   // Ensure only one toggle renders globally (singleton)
   useEffect(() => {
     if (!mounted) return;
-    // Collect all existing toggles (excluding this one until ref assigned)
     const existing = Array.from(document.querySelectorAll('[data-theme-toggle="true"]')) as HTMLElement[];
-    // If another toggle already exists, hide this instance
-    if (existing.length > 0 && existing.some(el => el !== btnRef.current)) {
+    if (existing.length > 0 && existing[0] !== btnRef.current) {
+      // Keep first toggle (likely navbar) and hide later duplicates
+      if (existing.some(el => el === btnRef.current)) return;
       setHidden(true);
     }
   }, [mounted]);
@@ -54,6 +71,9 @@ export default function DarkModeToggle({ floating = false }: DarkModeToggleProps
     } else {
       document.documentElement.classList.remove('dark');
     }
+
+  // Also set a data attribute for potential CSS hooks
+  document.documentElement.setAttribute('data-theme', newTheme ? 'dark' : 'light');
   };
 
   // Don't render until mounted to avoid hydration mismatch
