@@ -20,11 +20,11 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks }) => {
   };
 
   return (
-    <div className="flex-1 min-w-[280px] p-4 bg-gray-800/20 backdrop-blur-sm rounded-2xl border border-gray-700/30">
+    <div className="flex-shrink-0 w-full sm:w-72 md:w-80 p-4 bg-gray-800/20 backdrop-blur-sm rounded-2xl border border-gray-700/30">
       <h2 className={`font-bold text-sm uppercase tracking-wider mb-4 ${getTitleColor(title)}`}>
         {title}
       </h2>
-      <div className="space-y-4 overflow-y-auto h-[calc(100vh-240px)] pr-2 custom-scrollbar">
+      <div className="space-y-4 overflow-y-auto max-h-[calc(100vh-240px)] pr-2 custom-scrollbar">
         {tasks.map(task => (
           <TaskCard 
             key={task.id}

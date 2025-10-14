@@ -42,10 +42,10 @@ const TaskManagementDashboard: React.FC = () => {
 
   return (
     <DashboardLayout role={user.roleName || 'USER'}>
-      <div className="flex flex-col lg:flex-row gap-6 h-full">
+      <div className="flex flex-col lg:flex-row gap-4 md:gap-6 h-full max-w-full">
         {/* Kanban Board - Left Side */}
-        <div className="flex-1 overflow-x-auto">
-          <div className="flex gap-6 min-w-max lg:min-w-0">
+        <div className="flex-1 min-w-0 overflow-x-auto">
+          <div className="flex gap-4 md:gap-6 pb-4">
             <KanbanColumn title="DRAFT" tasks={dashboardData.DRAFT} />
             <KanbanColumn title="IN PROGRESS" tasks={dashboardData.IN_PROGRESS} />
             <KanbanColumn title="EDITING" tasks={dashboardData.EDITING} />
@@ -54,7 +54,9 @@ const TaskManagementDashboard: React.FC = () => {
         </div>
         
         {/* Right Panel - Analytics */}
-        <RightPanel />
+        <div className="lg:w-96 w-full flex-shrink-0">
+          <RightPanel />
+        </div>
       </div>
     </DashboardLayout>
   );
