@@ -81,6 +81,7 @@ class LayoutAuditor {
       this.checkAccessibilityProps(content),
       this.checkDuplicateComponents(content),
       this.checkHardcodedStyles(content),
+  this.checkDuplicateDarkMode(content),
     ];
 
     const passed = checks.filter((c) => c.passed).length;
@@ -251,6 +252,21 @@ class LayoutAuditor {
       passed: !hasHardcodedStyles,
       severity: hasHardcodedStyles ? 'warning' : 'info',
       suggestion: hasHardcodedStyles ? 'Use Tailwind classes instead of inline styles' : null,
+    };
+  }
+
+  /**
+   * Check for multiple dark mode toggles which can confuse users
+   */
+  checkDuplicateDarkMode(content) {
+    const toggles = (content.match(/DarkModeToggle/g) || []).length;
+    const hasDuplicate = toggles > 1;
+    return {
+      id: 'duplicate-darkmode',
+      message: hasDuplicate ? `⚠️ ${toggles} DarkModeToggle instances found` : '✅ Single dark mode toggle',
+      passed: !hasDuplicate,
+      severity: hasDuplicate ? 'warning' : 'info',
+      suggestion: hasDuplicate ? 'Remove extra <DarkModeToggle/> instances or pass a prop to hide duplicates.' : null,
     };
   }
 

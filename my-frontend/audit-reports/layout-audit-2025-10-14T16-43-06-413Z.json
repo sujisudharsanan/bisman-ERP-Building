@@ -1,0 +1,1567 @@
+{
+  "timestamp": "2025-10-14T16:43:06.415Z",
+  "totalPages": 20,
+  "avgScore": 67,
+  "results": [
+    {
+      "page": "/src/app/(dashboard)/finance/page.tsx",
+      "score": 70,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "✅ Authentication check present",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "responsive-classes",
+          "message": "✅ Responsive classes found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "accessibility",
+          "message": "⚠️ No accessibility props",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add ARIA labels, roles, and alt text for accessibility"
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 1
+    },
+    {
+      "page": "/src/app/(dashboard)/users/page.tsx",
+      "score": 70,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "✅ Authentication check present",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "responsive-classes",
+          "message": "✅ Responsive classes found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "accessibility",
+          "message": "⚠️ No accessibility props",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add ARIA labels, roles, and alt text for accessibility"
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 1
+    },
+    {
+      "page": "/src/app/admin/page.tsx",
+      "score": 80,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "✅ Authentication check present",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "responsive-classes",
+          "message": "✅ Responsive classes found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "accessibility",
+          "message": "✅ Accessibility props found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 0
+    },
+    {
+      "page": "/src/app/admin/permissions/page.tsx",
+      "score": 50,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "⚠️ No authentication check",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add authentication check with useAuth() hook"
+        },
+        {
+          "id": "responsive-classes",
+          "message": "⚠️ No responsive classes",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add responsive Tailwind classes (sm:, md:, lg:)"
+        },
+        {
+          "id": "accessibility",
+          "message": "⚠️ No accessibility props",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add ARIA labels, roles, and alt text for accessibility"
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 3
+    },
+    {
+      "page": "/src/app/auth/admin-login/page.tsx",
+      "score": 50,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "⚠️ No authentication check",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add authentication check with useAuth() hook"
+        },
+        {
+          "id": "responsive-classes",
+          "message": "⚠️ No responsive classes",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add responsive Tailwind classes (sm:, md:, lg:)"
+        },
+        {
+          "id": "accessibility",
+          "message": "⚠️ No accessibility props",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add ARIA labels, roles, and alt text for accessibility"
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 3
+    },
+    {
+      "page": "/src/app/auth/hub-incharge-login/page.tsx",
+      "score": 50,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "⚠️ No authentication check",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add authentication check with useAuth() hook"
+        },
+        {
+          "id": "responsive-classes",
+          "message": "⚠️ No responsive classes",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add responsive Tailwind classes (sm:, md:, lg:)"
+        },
+        {
+          "id": "accessibility",
+          "message": "⚠️ No accessibility props",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add ARIA labels, roles, and alt text for accessibility"
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 3
+    },
+    {
+      "page": "/src/app/auth/login/page.tsx",
+      "score": 80,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "✅ Authentication check present",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "responsive-classes",
+          "message": "✅ Responsive classes found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "accessibility",
+          "message": "✅ Accessibility props found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 0
+    },
+    {
+      "page": "/src/app/auth/manager-login/page.tsx",
+      "score": 50,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "⚠️ No authentication check",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add authentication check with useAuth() hook"
+        },
+        {
+          "id": "responsive-classes",
+          "message": "⚠️ No responsive classes",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add responsive Tailwind classes (sm:, md:, lg:)"
+        },
+        {
+          "id": "accessibility",
+          "message": "⚠️ No accessibility props",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add ARIA labels, roles, and alt text for accessibility"
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 3
+    },
+    {
+      "page": "/src/app/auth/portals/page.tsx",
+      "score": 60,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "⚠️ No authentication check",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add authentication check with useAuth() hook"
+        },
+        {
+          "id": "responsive-classes",
+          "message": "✅ Responsive classes found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "accessibility",
+          "message": "⚠️ No accessibility props",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add ARIA labels, roles, and alt text for accessibility"
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 2
+    },
+    {
+      "page": "/src/app/auth/standard-login/page.tsx",
+      "score": 50,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "⚠️ No authentication check",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add authentication check with useAuth() hook"
+        },
+        {
+          "id": "responsive-classes",
+          "message": "⚠️ No responsive classes",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add responsive Tailwind classes (sm:, md:, lg:)"
+        },
+        {
+          "id": "accessibility",
+          "message": "⚠️ No accessibility props",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add ARIA labels, roles, and alt text for accessibility"
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 3
+    },
+    {
+      "page": "/src/app/dashboard/page.tsx",
+      "score": 80,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "✅ Authentication check present",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "responsive-classes",
+          "message": "✅ Responsive classes found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "accessibility",
+          "message": "✅ Accessibility props found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 0
+    },
+    {
+      "page": "/src/app/example/page.tsx",
+      "score": 80,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "✅ BaseLayout imported",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "✅ Content wrapped in BaseLayout",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "⚠️ No authentication check",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add authentication check with useAuth() hook"
+        },
+        {
+          "id": "responsive-classes",
+          "message": "✅ Responsive classes found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "accessibility",
+          "message": "⚠️ No accessibility props",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add ARIA labels, roles, and alt text for accessibility"
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 0,
+      "warnings": 2
+    },
+    {
+      "page": "/src/app/hub-incharge/page.tsx",
+      "score": 80,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "✅ Authentication check present",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "responsive-classes",
+          "message": "✅ Responsive classes found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "accessibility",
+          "message": "✅ Accessibility props found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 0
+    },
+    {
+      "page": "/src/app/manager/page.tsx",
+      "score": 80,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "✅ Authentication check present",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "responsive-classes",
+          "message": "✅ Responsive classes found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "accessibility",
+          "message": "✅ Accessibility props found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 0
+    },
+    {
+      "page": "/src/app/page.tsx",
+      "score": 60,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "✅ Authentication check present",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "responsive-classes",
+          "message": "⚠️ No responsive classes",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add responsive Tailwind classes (sm:, md:, lg:)"
+        },
+        {
+          "id": "accessibility",
+          "message": "⚠️ No accessibility props",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add ARIA labels, roles, and alt text for accessibility"
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 2
+    },
+    {
+      "page": "/src/app/super-admin/orders/page.tsx",
+      "score": 70,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "✅ Authentication check present",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "responsive-classes",
+          "message": "✅ Responsive classes found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "accessibility",
+          "message": "⚠️ No accessibility props",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add ARIA labels, roles, and alt text for accessibility"
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 1
+    },
+    {
+      "page": "/src/app/super-admin/page.tsx",
+      "score": 60,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "✅ Authentication check present",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "responsive-classes",
+          "message": "⚠️ No responsive classes",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add responsive Tailwind classes (sm:, md:, lg:)"
+        },
+        {
+          "id": "accessibility",
+          "message": "⚠️ No accessibility props",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add ARIA labels, roles, and alt text for accessibility"
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 2
+    },
+    {
+      "page": "/src/app/super-admin/security/page.tsx",
+      "score": 60,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "✅ Authentication check present",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "responsive-classes",
+          "message": "⚠️ No responsive classes",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add responsive Tailwind classes (sm:, md:, lg:)"
+        },
+        {
+          "id": "accessibility",
+          "message": "⚠️ No accessibility props",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add ARIA labels, roles, and alt text for accessibility"
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 2
+    },
+    {
+      "page": "/src/app/super-admin/system/page.tsx",
+      "score": 70,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "✅ Authentication check present",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "responsive-classes",
+          "message": "✅ Responsive classes found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "accessibility",
+          "message": "⚠️ No accessibility props",
+          "passed": false,
+          "severity": "warning",
+          "suggestion": "Add ARIA labels, roles, and alt text for accessibility"
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 1
+    },
+    {
+      "page": "/src/app/task-dashboard/page.tsx",
+      "score": 80,
+      "checks": [
+        {
+          "id": "base-layout-import",
+          "message": "❌ BaseLayout not imported",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Add: import BaseLayout from \"@/components/layout/BaseLayout\""
+        },
+        {
+          "id": "base-layout-wrapper",
+          "message": "⚠️ Content not wrapped in BaseLayout",
+          "passed": false,
+          "severity": "error",
+          "suggestion": "Wrap your page content in <BaseLayout>...</BaseLayout>"
+        },
+        {
+          "id": "header-component",
+          "message": "✅ No standalone header",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "sidebar-component",
+          "message": "✅ No standalone sidebar",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "footer-component",
+          "message": "✅ No standalone footer",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "auth-check",
+          "message": "✅ Authentication check present",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "responsive-classes",
+          "message": "✅ Responsive classes found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "accessibility",
+          "message": "✅ Accessibility props found",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "duplicate-components",
+          "message": "✅ No duplicate layout components",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        },
+        {
+          "id": "hardcoded-styles",
+          "message": "✅ No hardcoded styles",
+          "passed": true,
+          "severity": "info",
+          "suggestion": null
+        }
+      ],
+      "errors": 2,
+      "warnings": 0
+    }
+  ]
+}
