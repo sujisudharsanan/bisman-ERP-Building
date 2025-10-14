@@ -99,7 +99,7 @@ class LayoutAuditor {
    * Check if BaseLayout is imported
    */
   checkBaseLayoutImport(content) {
-    const hasImport = /import\s+.*BaseLayout.*from\s+['"]@\/components\/layout\/BaseLayout['"]/.test(content);
+  const hasImport = /import\s+.*(BaseLayout|DashboardLayout).*from\s+['"].*components\/layout\/(BaseLayout|DashboardLayout)['"]/.test(content);
 
     return {
       id: 'base-layout-import',
@@ -114,7 +114,7 @@ class LayoutAuditor {
    * Check if content is wrapped in BaseLayout
    */
   checkBaseLayoutWrapper(content) {
-    const hasWrapper = /<BaseLayout/.test(content);
+  const hasWrapper = /<BaseLayout|<DashboardLayout/.test(content);
 
     return {
       id: 'base-layout-wrapper',
@@ -338,7 +338,8 @@ if (require.main === module) {
   const specificPage = pageArg ? pageArg.split('=')[1] : null;
 
   const auditor = new LayoutAuditor();
-  auditor.auditAllPages(specificPage);
+  // Correct method name is auditPages
+  auditor.auditPages(specificPage);
 
   // Generate visual summary if requested
   if (visualArg) {

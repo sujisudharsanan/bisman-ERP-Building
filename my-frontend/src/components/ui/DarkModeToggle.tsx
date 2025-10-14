@@ -1,11 +1,13 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Moon, Sun } from 'lucide-react';
 
 export default function DarkModeToggle() {
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [hidden, setHidden] = useState(false);
+  const btnRef = useRef<HTMLButtonElement | null>(null);
 
   // Avoid hydration mismatch
   useEffect(() => {
@@ -23,6 +25,17 @@ export default function DarkModeToggle() {
       document.documentElement.classList.remove('dark');
     }
   }, []);
+
+  // Ensure only one toggle renders globally (singleton)
+  useEffect(() => {
+    if (!mounted) return;
+    // Collect all existing toggles (excluding this one until ref assigned)
+    const existing = Array.from(document.querySelectorAll('[data-theme-toggle="true"]')) as HTMLElement[];
+    // If another toggle already exists, hide this instance
+    if (existing.length > 0 && existing.some(el => el !== btnRef.current)) {
+      setHidden(true);
+    }
+  }, [mounted]);
 
   const toggleTheme = () => {
     const newTheme = !isDark;
@@ -48,8 +61,12 @@ export default function DarkModeToggle() {
     );
   }
 
+  if (hidden) return null;
+
   return (
     <button
+      ref={btnRef}
+      data-theme-toggle="true"
       onClick={toggleTheme}
       className="p-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white transition-all duration-200"
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
