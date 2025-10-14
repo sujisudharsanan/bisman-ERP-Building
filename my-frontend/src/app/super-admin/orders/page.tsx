@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
+import BaseLayout from '@/components/layout/BaseLayout';
 import { 
   ShoppingCart, 
   Package, 
@@ -185,9 +186,9 @@ export default function SuperAdminOrdersPage() {
       style: 'currency',
       currency: 'INR'
     }).format(amount);
-  };
-
   return (
+    <BaseLayout pageId="super-admin-orders" showSidebar showHeader showFooter>
+      <div className="max-w-7xl mx-auto">
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
@@ -391,6 +392,8 @@ export default function SuperAdminOrdersPage() {
               <p className="text-3xl font-bold text-orange-600">8</p>
               <p className="text-sm text-gray-500">Orders require attention</p>
             </div>
+      </div>
+    </BaseLayout>
           </div>
         </div>
       </div>
