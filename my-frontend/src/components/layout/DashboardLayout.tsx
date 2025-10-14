@@ -14,7 +14,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
     <div className="bg-slate-900 text-white min-h-screen flex overflow-hidden">
       <DashboardSidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <TopNavbar />
+  <TopNavbar floatingThemeToggle />
   <main className="py-px flex-1 overflow-auto">
           {children}
         </main>
