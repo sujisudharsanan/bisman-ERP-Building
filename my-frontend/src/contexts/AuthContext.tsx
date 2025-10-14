@@ -43,6 +43,7 @@ interface AuthProviderProps {
 export function AuthProvider({ children }: AuthProviderProps) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mounted, setMounted] = useState(false);
 
   const checkAuth = useCallback(async () => {
     try {
@@ -70,6 +71,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const login = async (email: string, password: string): Promise<User | null> => {
+    setLoading(true);
     try {
       const baseURL = API_BASE;
       const response = await fetch(`${baseURL}/api/login`, {
@@ -96,6 +98,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const who = await probeMe();
         if (who && who.user) {
           setUser(who.user);
+          setLoading(false);
           return who.user;
         }
         // Fallback to parsing login body if /api/me probe fails for any reason
@@ -111,16 +114,20 @@ export function AuthProvider({ children }: AuthProviderProps) {
                 name: data.name,
               };
           setUser(userFromBody || null);
+          setLoading(false);
           return userFromBody || null;
         } catch {
+          setLoading(false);
           return null;
         }
       } else {
         // Login failed - error handled by caller
+        setLoading(false);
         return null;
       }
     } catch {
       // Network or other error during login
+      setLoading(false);
       return null;
     }
   };
@@ -182,9 +189,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
     await checkAuth();
   };
 
+  // Set mounted state first
   useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
+    setMounted(true);
+  }, []);
+
+  // Then check auth after mounted
+  useEffect(() => {
+    if (!mounted) return;
+    let cancelled = false;
+    // Fire and also set a safety timeout to prevent infinite loading when API is unreachable
+    const timeout = setTimeout(() => {
+      if (!cancelled) setLoading(false);
+    }, 4000);
+    checkAuth().finally(() => {
+      clearTimeout(timeout);
+    });
+    return () => {
+      cancelled = true;
+      clearTimeout(timeout);
+    };
+  }, [checkAuth, mounted]);
 
   const value: AuthContextType = {
     user,

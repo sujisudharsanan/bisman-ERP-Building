@@ -382,15 +382,20 @@ app.post('/api/login', async (req, res) => {
       roleName = devUser.role
     }
   // Create access token (short-lived) and refresh token (rotating)
-  const jti = require('crypto').randomUUID()
+  const { safeRandomId } = require('./lib/id')
+  const jti = safeRandomId()
   const accessToken = jwt.sign({ sub: user.id, role: roleName, jti }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '1h' })
-  const refreshToken = require('crypto').randomUUID()
+  const refreshToken = safeRandomId()
 
   // Save refresh token record (store hash) with expiry (7 days)
   const { saveRefreshToken } = require('./lib/tokenStore')
   const refreshExpiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000
   // Store role to avoid DB dependency during refresh in dev/local
-  saveRefreshToken(refreshToken, { userId: user.id, role: roleName, jti, expiresAt: refreshExpiresAt })
+  try {
+    await saveRefreshToken(refreshToken, { userId: user.id, role: roleName, jti, expiresAt: refreshExpiresAt })
+  } catch (e) {
+    console.warn('Warning: failed to persist refresh token; proceeding with stateless login in dev:', e && e.message)
+  }
 
   // Set HttpOnly cookies for access and refresh tokens
   const isProduction = process.env.NODE_ENV === 'production'
@@ -419,8 +424,16 @@ app.post('/api/login', async (req, res) => {
   res.cookie('token', accessToken, compatCookie)
   res.json({ ok: true, email: user.email, role: roleName })
   } catch (err) {
-    console.error('Login error', err)
-    res.status(500).json({ error: 'internal error' })
+    // Log full error with stack and request context
+    try {
+      console.error('Login error:', err && err.message ? err.message : err)
+      if (err && err.stack) console.error(err.stack)
+    } catch (e) {
+      // no-op
+    }
+    // Always return JSON with explicit content-type
+    res.setHeader('Content-Type', 'application/json; charset=utf-8')
+    res.status(500).send(JSON.stringify({ error: 'internal error', code: 'LOGIN_500' }))
   }
 })
 
@@ -431,18 +444,29 @@ app.post('/api/token/refresh', async (req, res) => {
     if (!cookieToken) return res.status(401).json({ error: 'missing refresh token' })
     const { verifyAndConsumeRefreshToken, saveRefreshToken, revokeJti } = require('./lib/tokenStore')
   // verifyAndConsumeRefreshToken is async
-  const rec = await verifyAndConsumeRefreshToken(cookieToken)
+  let rec = null
+  try {
+    rec = await verifyAndConsumeRefreshToken(cookieToken)
+  } catch (e) {
+    console.error('verifyAndConsumeRefreshToken failed:', e && e.message)
+    rec = null
+  }
     if (!rec) return res.status(401).json({ error: 'invalid or expired refresh token' })
 
     // Issue new tokens
-    const newJti = require('crypto').randomUUID()
+  const { safeRandomId } = require('./lib/id')
+  const newJti = safeRandomId()
   const accessToken = jwt.sign({ sub: rec.userId, role: rec.role, jti: newJti }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '1h' })
-    const newRefresh = require('crypto').randomUUID()
+  const newRefresh = safeRandomId()
     const refreshExpiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000
-  saveRefreshToken(newRefresh, { userId: rec.userId, role: rec.role, jti: newJti, expiresAt: refreshExpiresAt })
+    try {
+      await saveRefreshToken(newRefresh, { userId: rec.userId, role: rec.role, jti: newJti, expiresAt: refreshExpiresAt })
+    } catch (e) {
+      console.warn('Warning: failed to persist new refresh token:', e && e.message)
+    }
 
     // Revoke previous jti (optional) to prevent reuse
-    revokeJti(rec.jti, Date.now() + 60 * 60 * 1000)
+  try { await revokeJti(rec.jti, Date.now() + 60 * 60 * 1000) } catch (e) { /* non-fatal */ }
 
     // Set cookies
     const isProduction = process.env.NODE_ENV === 'production'

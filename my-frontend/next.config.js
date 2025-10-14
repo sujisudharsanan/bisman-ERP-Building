@@ -5,9 +5,16 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL
   || 'http://localhost:3001';
 
 const nextConfig = {
-  reactStrictMode: true,
+  reactStrictMode: false, // Temporarily disabled to debug webpack errors
   // swcMinify was removed in Next 13+; removing to avoid warnings
   images: { domains: [] },
+  webpack: (config, { dev, isServer }) => {
+    // Suppress webpack warnings in development
+    if (dev && !isServer) {
+      config.stats = 'errors-warnings';
+    }
+    return config;
+  },
   async rewrites() {
     return [
       {

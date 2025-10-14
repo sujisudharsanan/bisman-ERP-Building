@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import DarkModeToggle from '@/components/ui/DarkModeToggle';
@@ -220,16 +220,17 @@ const DEMO_USERS: DemoUser[] = [
 ];
 
 export default function StandardLoginPage() {
-<<<<<<< Updated upstream
   const brandCandidates = ['/brand/bisman-logo.svg', '/brand/logo.svg', '/bisman_lockup.svg', '/bisman_logo.svg', '/bisman_logo.png'] as const;
   const [brandIndex, setBrandIndex] = useState(0);
   const [brandHidden, setBrandHidden] = useState(false);
-  // Add timestamp to force cache refresh
-  const brandImgSrc = `${brandCandidates[brandIndex] || brandCandidates[0]}?v=${Date.now()}`;
-=======
-  const brandImgSrc = '/brand/logo.svg';
-  const [brandHidden, setBrandHidden] = useState(false);
->>>>>>> Stashed changes
+  const [cacheBuster, setCacheBuster] = useState('');
+  
+  // Set cache buster only on client to avoid hydration mismatch
+  useEffect(() => {
+    setCacheBuster(Date.now().toString());
+  }, []);
+  
+  const brandImgSrc = `${brandCandidates[brandIndex] || brandCandidates[0]}${cacheBuster ? `?v=${cacheBuster}` : ''}`;
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
