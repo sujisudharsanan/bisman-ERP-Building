@@ -103,42 +103,42 @@ const RightPanel: React.FC = () => {
   ];
 
   return (
-    <aside className="w-full lg:w-96 p-6 bg-gray-900/30 backdrop-blur-sm border-l border-gray-800/50 space-y-8 overflow-y-auto">
+    <aside className="w-full lg:w-48 bg-gray-900/30 backdrop-blur-sm border-l border-gray-800/50 space-y-4 overflow-y-auto p-1">
       {/* User Profile Section */}
       <div className="flex items-center justify-between">
         <div>
-          <h3 className="text-lg font-bold text-white">Name Surname</h3>
-          <p className="text-sm text-gray-400">Adipiscing elit sed do eiusmod</p>
+          <h3 className="text-base font-bold text-white">Name Surname</h3>
+          <p className="text-xs text-gray-400">Adipiscing elit sed do eiusmod</p>
         </div>
-        <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-          <span className="text-white font-bold">NS</span>
+        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+          <span className="text-white font-bold text-sm">NS</span>
         </div>
       </div>
 
       {/* Completed Tasks Chart */}
       <div>
-        <h2 className="font-bold text-white mb-4 uppercase text-sm tracking-wider">Completed Tasks</h2>
-        <div className="h-48 bg-gray-800/30 rounded-xl p-4 border border-gray-700/30">
+        <h2 className="font-bold text-white mb-2 uppercase text-xs tracking-wider">Completed Tasks</h2>
+        <div className="h-24 bg-gray-800/30 rounded-xl p-2 border border-gray-700/30">
           <Bar data={completedTasksData} options={barOptions} />
         </div>
       </div>
 
       {/* Efficiency Section */}
       <div>
-        <h2 className="font-bold text-white mb-4 uppercase text-sm tracking-wider">Efficiency</h2>
-        <div className="grid grid-cols-4 gap-4">
+        <h2 className="font-bold text-white mb-2 uppercase text-xs tracking-wider">Efficiency</h2>
+        <div className="grid grid-cols-4 gap-2">
           {efficiencyData.map((item, index) => (
             <div key={index} className="text-center">
-              <div className="relative w-16 h-16 mx-auto mb-2">
+              <div className="relative w-8 h-8 mx-auto mb-1">
                 <Doughnut 
                   data={createDoughnutData(item.value, item.color)} 
                   options={doughnutOptions} 
                 />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">{item.value}</span>
+                  <span className="text-white font-bold text-[10px]">{item.value}</span>
                 </div>
               </div>
-              <p className="text-xs text-gray-400">{item.author}</p>
+              <p className="text-[10px] text-gray-400">{item.author}</p>
             </div>
           ))}
         </div>
@@ -146,17 +146,17 @@ const RightPanel: React.FC = () => {
 
       {/* Plan/Schedule Section */}
       <div>
-        <h2 className="font-bold text-white mb-4 uppercase text-sm tracking-wider">Plan</h2>
-        <div className="space-y-3">
+        <h2 className="font-bold text-white mb-2 uppercase text-xs tracking-wider">Plan</h2>
+        <div className="space-y-1.5">
           {scheduleItems.map((item, index) => (
             <div 
               key={index} 
-              className={`p-3 bg-gray-800/50 rounded-lg border-l-4 ${item.color} hover:bg-gray-800/70 transition-colors`}
+              className={`p-1.5 bg-gray-800/50 rounded-lg border-l-2 ${item.color} hover:bg-gray-800/70 transition-colors`}
             >
               <div className="flex justify-between items-start">
                 <div className="flex-1">
-                  <p className="text-white font-medium text-sm">{item.time}</p>
-                  <p className="text-gray-400 text-xs mt-1">{item.task}</p>
+                  <p className="text-white font-medium text-xs">{item.time}</p>
+                  <p className="text-gray-400 text-[10px] mt-0.5">{item.task}</p>
                 </div>
               </div>
             </div>
