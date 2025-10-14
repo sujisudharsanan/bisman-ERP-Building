@@ -6,7 +6,6 @@
 import React from 'react';
 import { render, screen } from '@testing-library/react';
 import { describe, it, expect, vi } from 'vitest';
-import '@testing-library/jest-dom';
 import Header from './Header';
 
 // Mock the useUser hook
@@ -21,7 +20,7 @@ vi.mock('next/link', () => ({
   ),
 }));
 
-import { useUser } from '../../hooks/useUser';
+import { useUser } from '@/hooks/useUser';
 
 describe('Header Component', () => {
   it('should render loading state when user data is loading', () => {

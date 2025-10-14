@@ -1,37 +1,65 @@
 'use client';
 
-import { useTheme } from '@/contexts/ThemeContext';
+import React, { useState, useEffect } from 'react';
 import { Moon, Sun } from 'lucide-react';
 
 export default function DarkModeToggle() {
-  const { theme, toggleTheme } = useTheme();
-  const isDark = theme === 'dark';
+  const [isDark, setIsDark] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  // Avoid hydration mismatch
+  useEffect(() => {
+    setMounted(true);
+    // Check localStorage and system preference
+    const stored = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const shouldBeDark = stored === 'dark' || (!stored && prefersDark);
+    setIsDark(shouldBeDark);
+    
+    // Apply theme to document
+    if (shouldBeDark) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = !isDark;
+    setIsDark(newTheme);
+    
+    // Update localStorage
+    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
+    
+    // Update document class
+    if (newTheme) {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  };
+
+  // Don't render until mounted to avoid hydration mismatch
+  if (!mounted) {
+    return (
+      <button className="p-2 rounded-lg bg-gray-800/50 text-gray-400">
+        <div className="w-5 h-5" />
+      </button>
+    );
+  }
 
   return (
     <button
       onClick={toggleTheme}
-      className="relative inline-flex items-center h-6 w-11 rounded-full transition-colors duration-300 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 dark:focus:ring-offset-gray-900"
-      style={{
-        backgroundColor: isDark ? '#e5e7eb' : '#374151'  // Light bg in dark mode, dark bg in light mode
-      }}
-      aria-label="Toggle dark mode"
-      title={`Switch to ${isDark ? 'light' : 'dark'} mode`}
+      className="p-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white transition-all duration-200"
+      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
-      {/* Sliding circle */}
-      <span
-        className="inline-block h-5 w-5 transform rounded-full shadow-lg transition-transform duration-300 flex items-center justify-center"
-        style={{
-          transform: isDark ? 'translateX(22px)' : 'translateX(2px)',
-          backgroundColor: isDark ? '#1f2937' : '#f9fafb'  // Dark circle in dark mode, light circle in light mode
-        }}
-      >
-        {/* Icon inside the circle */}
-        {isDark ? (
-          <Moon className="h-3 w-3 text-gray-400" />
-        ) : (
-          <Sun className="h-3 w-3 text-yellow-600" />
-        )}
-      </span>
+      {isDark ? (
+        <Sun size={20} className="text-yellow-400" />
+      ) : (
+        <Moon size={20} className="text-indigo-400" />
+      )}
     </button>
   );
 }

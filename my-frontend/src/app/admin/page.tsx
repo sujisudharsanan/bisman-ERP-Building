@@ -1,52 +1,79 @@
 'use client';
 
-import { useEffect } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import KanbanColumn from '@/components/dashboard/KanbanColumn';
+import RightPanel from '@/components/dashboard/RightPanel';
 import { useAuth } from '@/hooks/useAuth';
-import AdminDashboard from '@/components/admin/AdminDashboard';
+import { useDashboardData } from '@/hooks/useDashboardData';
 
 export default function AdminPage() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  
+  const { dashboardData, loading: dataLoading } = useDashboardData(user?.roleName || 'ADMIN');
 
-  useEffect(() => {
-    // Wait for auth to complete before checking
-    if (loading) {
-      return;
+  // Redirect if user is not authenticated or doesn't have ADMIN access
+  React.useEffect(() => {
+    if (!authLoading) {
+      if (!user) {
+        router.push('/auth/login');
+      } else if (user.roleName === 'SUPER_ADMIN') {
+        router.push('/super-admin');
+      } else if (user.roleName === 'MANAGER') {
+        router.push('/manager');
+      } else if (user.roleName === 'STAFF') {
+        router.push('/hub-incharge');
+      } else if (user.roleName && !['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
+        router.push('/auth/login');
+      }
     }
+  }, [user, authLoading, router]);
 
-    if (!user) {
-      router.push('/auth/login');
-      return;
-    }
-
-    // Role-based access control - only ADMIN and SUPER_ADMIN can access
-    if (!user.roleName || !['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
-      router.push('/dashboard');
-      return;
-    }
-
-    // If SUPER_ADMIN, redirect to super-admin dashboard
-    if (user.roleName === 'SUPER_ADMIN') {
-      router.push('/super-admin');
-      return;
-    }
-  }, [user, loading, router]);
-
-  if (loading) {
+  if (authLoading || dataLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Loading admin dashboard...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-500 mx-auto mb-4"></div>
+          <p className="text-white text-lg">Loading Admin Dashboard...</p>
         </div>
       </div>
     );
   }
 
-  if (!user || !user.roleName || !['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
-    return null; // Will redirect in useEffect
+  if (!user || !user.roleName || (user.roleName === 'SUPER_ADMIN') || !['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
+    return null;
   }
 
-  return <AdminDashboard user={user} />;
+  return (
+    <DashboardLayout role={user.roleName || 'ADMIN'}>
+      <div className="flex flex-col lg:flex-row gap-4 md:gap-6 h-full max-w-full">
+        {/* Kanban Board - Left Side */}
+        <div className="flex-1 min-w-0 overflow-x-auto">
+          <div className="flex gap-4 md:gap-6 pb-4">
+            <KanbanColumn
+              title="DRAFT"
+              tasks={dashboardData.DRAFT}
+            />
+            <KanbanColumn
+              title="IN PROGRESS"
+              tasks={dashboardData.IN_PROGRESS}
+            />
+            <KanbanColumn
+              title="EDITING"
+              tasks={dashboardData.EDITING}
+            />
+            <KanbanColumn
+              title="DONE"
+              tasks={dashboardData.DONE}
+            />
+          </div>
+        </div>
+
+        {/* Analytics Panel - Right Side */}
+        <RightPanel />
+      </div>
+    </DashboardLayout>
+  );
 }

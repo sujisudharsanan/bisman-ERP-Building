@@ -1,0 +1,65 @@
+'use client';
+
+import React from 'react';
+import { useRouter } from 'next/navigation';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import KanbanColumn from '@/components/dashboard/KanbanColumn';
+import RightPanel from '@/components/dashboard/RightPanel';
+import { useAuth } from '@/hooks/useAuth';
+import { useDashboardData } from '@/hooks/useDashboardData';
+
+const TaskManagementDashboard: React.FC = () => {
+  const { user, loading: authLoading } = useAuth();
+  const router = useRouter();
+  
+  const { dashboardData, loading: dataLoading } = useDashboardData(user?.roleName || 'USER');
+
+  // Redirect if user is not authenticated or is SUPER_ADMIN
+  React.useEffect(() => {
+    if (!authLoading) {
+      if (!user) {
+        router.push('/auth/login');
+      } else if (user.roleName === 'SUPER_ADMIN') {
+        router.push('/super-admin');
+      }
+    }
+  }, [user, authLoading, router]);
+
+  if (authLoading || dataLoading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-500 mx-auto mb-4"></div>
+          <p className="text-white text-lg">Loading Task Management...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user || user.roleName === 'SUPER_ADMIN') {
+    return null;
+  }
+
+  return (
+    <DashboardLayout role={user.roleName || 'USER'}>
+      <div className="flex flex-col lg:flex-row gap-4 md:gap-6 h-full max-w-full">
+        {/* Kanban Board - Left Side */}
+        <div className="flex-1 min-w-0 overflow-x-auto">
+          <div className="flex gap-4 md:gap-6 pb-4">
+            <KanbanColumn title="DRAFT" tasks={dashboardData.DRAFT} />
+            <KanbanColumn title="IN PROGRESS" tasks={dashboardData.IN_PROGRESS} />
+            <KanbanColumn title="EDITING" tasks={dashboardData.EDITING} />
+            <KanbanColumn title="DONE" tasks={dashboardData.DONE} />
+          </div>
+        </div>
+        
+        {/* Right Panel - Analytics */}
+        <div className="lg:w-96 w-full flex-shrink-0">
+          <RightPanel />
+        </div>
+      </div>
+    </DashboardLayout>
+  );
+};
+
+export default TaskManagementDashboard;

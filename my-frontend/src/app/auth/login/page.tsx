@@ -72,7 +72,7 @@ const DEMO_USERS: DemoUser[] = [
     department: 'Finance Leadership',
     icon: <Banknote className="w-5 h-5" />,
     description: 'Financial oversight, consolidated reporting, approvals',
-    redirectPath: '/dashboard'
+    redirectPath: '/manager'
   },
   {
     id: 'finance_controller',
@@ -83,7 +83,7 @@ const DEMO_USERS: DemoUser[] = [
     department: 'Finance',
     icon: <FileSpreadsheet className="w-5 h-5" />,
     description: 'Control, closing, compliance with financial policies',
-    redirectPath: '/dashboard'
+    redirectPath: '/manager'
   },
   {
     id: 'treasury',
@@ -94,7 +94,7 @@ const DEMO_USERS: DemoUser[] = [
     department: 'Finance - Treasury',
     icon: <Wallet className="w-5 h-5" />,
     description: 'Cash flow, bank positions, funding, payments',
-    redirectPath: '/dashboard'
+    redirectPath: '/manager'
   },
   {
     id: 'accounts',
@@ -105,7 +105,7 @@ const DEMO_USERS: DemoUser[] = [
     department: 'Finance - Accounts',
     icon: <FileSpreadsheet className="w-5 h-5" />,
     description: 'GL, journals, reconciliations, month-end tasks',
-    redirectPath: '/dashboard'
+    redirectPath: '/manager'
   },
   {
     id: 'ap',
@@ -116,7 +116,7 @@ const DEMO_USERS: DemoUser[] = [
     department: 'Finance - AP',
     icon: <ReceiptIndianRupee className="w-5 h-5" />,
     description: 'Vendor invoices, 3-way match, payment runs',
-    redirectPath: '/dashboard'
+    redirectPath: '/manager'
   },
   {
     id: 'banker',
@@ -127,7 +127,7 @@ const DEMO_USERS: DemoUser[] = [
     department: 'Finance - Banking',
     icon: <Landmark className="w-5 h-5" />,
     description: 'Bank liaison, statements, reconciliations',
-    redirectPath: '/dashboard'
+    redirectPath: '/manager'
   },
   {
     id: 'procurement',
@@ -138,7 +138,7 @@ const DEMO_USERS: DemoUser[] = [
     department: 'Procurement',
     icon: <ShoppingCart className="w-5 h-5" />,
     description: 'PR/PO lifecycle, vendor management',
-    redirectPath: '/dashboard'
+    redirectPath: '/manager'
   },
   {
     id: 'store_incharge',
@@ -149,7 +149,7 @@ const DEMO_USERS: DemoUser[] = [
     department: 'Stores & Warehouse',
     icon: <Boxes className="w-5 h-5" />,
     description: 'GRN, inventory custody, stock movements',
-    redirectPath: '/dashboard'
+    redirectPath: '/manager'
   },
   {
     id: 'compliance',
@@ -160,7 +160,7 @@ const DEMO_USERS: DemoUser[] = [
     department: 'Governance',
     icon: <ClipboardCheck className="w-5 h-5" />,
     description: 'Policy, audit trails, corrective actions',
-    redirectPath: '/dashboard'
+    redirectPath: '/manager'
   },
   {
     id: 'legal',
@@ -171,7 +171,7 @@ const DEMO_USERS: DemoUser[] = [
     department: 'Legal',
     icon: <Scale className="w-5 h-5" />,
     description: 'Contracts, disputes, SLA enforcement',
-    redirectPath: '/dashboard'
+    redirectPath: '/manager'
   },
   {
     id: 'admin',
@@ -193,7 +193,7 @@ const DEMO_USERS: DemoUser[] = [
     department: 'Operations',
     icon: <Briefcase className="w-5 h-5" />,
     description: 'Management dashboard, reports, staff oversight, hub operations',
-    redirectPath: '/dashboard'
+    redirectPath: '/manager'
   },
   {
     id: 'hub_incharge',
@@ -215,7 +215,7 @@ const DEMO_USERS: DemoUser[] = [
     department: 'General',
     icon: <User className="w-5 h-5" />,
     description: 'Basic dashboard access, profile management, standard features',
-    redirectPath: '/dashboard'
+    redirectPath: '/manager'
   }
 ];
 
@@ -257,7 +257,7 @@ export default function StandardLoginPage() {
         await new Promise(resolve => setTimeout(resolve, 300));
 
         // Role-based redirection - use location.replace to force hard navigation
-        let targetPath = '/dashboard';
+        let targetPath = '/manager'; // Default to manager dashboard for most roles
         switch (user.roleName?.toUpperCase()) {
           case 'SUPER_ADMIN':
             targetPath = '/super-admin';
@@ -265,13 +265,26 @@ export default function StandardLoginPage() {
           case 'ADMIN':
             targetPath = '/admin';
             break;
+          case 'MANAGER':
+          case 'CFO':
+          case 'FINANCE_CONTROLLER':
+          case 'TREASURY':
+          case 'ACCOUNTS':
+          case 'ACCOUNTS_PAYABLE':
+          case 'BANKER':
+          case 'PROCUREMENT_OFFICER':
+          case 'STORE_INCHARGE':
+          case 'COMPLIANCE':
+          case 'LEGAL':
+          case 'IT_ADMIN':
+            targetPath = '/manager';
+            break;
           case 'STAFF':
             targetPath = '/hub-incharge';
             break;
-          case 'MANAGER':
-          case 'USER':
           default:
-            targetPath = '/dashboard';
+            // For any other role, default to manager dashboard
+            targetPath = '/manager';
             break;
         }
         
