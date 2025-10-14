@@ -26,40 +26,40 @@ const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments
   };
 
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-4 mb-4 shadow-lg shadow-indigo-500/10 hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/20 transition-all duration-300 border border-gray-700/50">
-      <h3 className="font-bold mb-3 text-white">{title}</h3>
+    <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-2.5 mb-2.5 shadow-lg shadow-indigo-500/10 hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/20 transition-all duration-300 border border-gray-700/50">
+      <h3 className="font-bold mb-1.5 text-white text-[0.9rem]">{title}</h3>
       <div className="space-y-2">
         {subItems.map(item => (
           <div 
             key={item.id} 
-            className={`p-3 rounded-lg bg-gradient-to-r ${colorClasses[color] || colorClasses.blue} text-white text-sm font-medium shadow-sm`}
+            className={`p-2 rounded-lg bg-gradient-to-r ${colorClasses[color] || colorClasses.blue} text-white text-[12px] font-medium shadow-sm`}
           >
             {item.text}
           </div>
         ))}
       </div>
       {progress !== undefined && (
-        <div className="mt-4">
-          <div className="flex justify-between text-xs text-gray-400 mb-1">
+  <div className="mt-2.5">
+          <div className="flex justify-between text-[11px] text-gray-400 mb-1">
             <span>Progress</span>
             <span>{progress}%</span>
           </div>
-          <div className="w-full bg-gray-700 rounded-full h-2">
+      <div className="w-full bg-gray-700 rounded-full h-1">
             <div 
-              className="bg-gradient-to-r from-green-400 to-green-500 h-2 rounded-full transition-all duration-500" 
+        className="bg-gradient-to-r from-green-400 to-green-500 h-1 rounded-full transition-all duration-500" 
               style={{ width: `${progress}%` }}
             ></div>
           </div>
         </div>
       )}
-      <div className="flex justify-between items-center mt-4 text-gray-400 text-xs">
+    <div className="flex justify-between items-center mt-2.5 text-gray-400 text-[11px]">
         <div className="flex items-center space-x-3">
           <div className="flex items-center space-x-1">
-            <MessageSquare size={14} />
+            <MessageSquare size={12} />
             <span>{comments}</span>
           </div>
           <div className="flex items-center space-x-1">
-            <Paperclip size={14} />
+            <Paperclip size={12} />
             <span>{attachments}</span>
           </div>
         </div>

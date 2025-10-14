@@ -17,7 +17,7 @@ const DashboardSidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-[50px] bg-gray-900/50 backdrop-blur-sm border-r border-gray-800/50 flex flex-col items-center py-5 space-y-3">
+    <aside className="w-[50px] bg-gray-900/50 backdrop-blur-sm border-r border-gray-800/50 flex flex-col items-center pt-12 pb-5 space-y-3">
       {menuItems.map(({ id, icon: Icon, label }) => (
         <button
           key={id}

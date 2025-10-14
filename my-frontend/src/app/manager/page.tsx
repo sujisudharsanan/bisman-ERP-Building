@@ -47,31 +47,31 @@ export default function ManagerPage() {
 
   return (
     <DashboardLayout role={user.roleName || 'MANAGER'}>
-      <div className="flex flex-col lg:flex-row gap-4 md:gap-6 h-full max-w-full">
-        {/* Kanban Board - Left Side */}
-        <div className="flex-1 min-w-0 overflow-x-auto">
-          <div className="flex gap-4 md:gap-6 pb-4">
-            <KanbanColumn
-              title="DRAFT"
-              tasks={dashboardData.DRAFT}
-            />
-            <KanbanColumn
-              title="IN PROGRESS"
-              tasks={dashboardData.IN_PROGRESS}
-            />
-            <KanbanColumn
-              title="EDITING"
-              tasks={dashboardData.EDITING}
-            />
-            <KanbanColumn
-              title="DONE"
-              tasks={dashboardData.DONE}
-            />
+      <div className="h-full max-w-full min-h-0">
+  <div className="w-full">
+          <div className="flex justify-between gap-3 md:gap-5 pb-6 ml-3 md:ml-4">
+            <div className="flex-1 min-w-0 overflow-x-auto">
+              <div className="flex gap-3 md:gap-5 flex-nowrap">
+                <div className="flex-none">
+                  <KanbanColumn title="DRAFT" tasks={dashboardData.DRAFT} />
+                </div>
+                <div className="flex-none">
+                  <KanbanColumn title="IN PROGRESS" tasks={dashboardData.IN_PROGRESS} />
+                </div>
+                <div className="flex-none">
+                  <KanbanColumn title="EDITING" tasks={dashboardData.EDITING} />
+                </div>
+                <div className="flex-none">
+                  <KanbanColumn title="DONE" tasks={dashboardData.DONE} />
+                </div>
+              </div>
+            </div>
+            <div className="flex-none hidden lg:block">
+              <RightPanel mode="dock" />
+            </div>
           </div>
+          {/* No inline grid when using dock */}
         </div>
-
-        {/* Analytics Panel - Right Side */}
-        <RightPanel />
       </div>
     </DashboardLayout>
   );

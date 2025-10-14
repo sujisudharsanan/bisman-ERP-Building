@@ -2,14 +2,18 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import DashboardLayout from '@/components/layout/DashboardLayout';
-import KanbanColumn from '@/components/dashboard/KanbanColumn';
-import RightPanel from '@/components/dashboard/RightPanel';
-import { useAuth } from '@/hooks/useAuth';
-import { useDashboardData } from '@/hooks/useDashboardData';
+// Ensure the path below matches your actual file structure.
+// For example, if the file is at src/components/layout/DashboardLayout.tsx:
+import DashboardLayout from '../../components/layout/DashboardLayout';
+import KanbanColumn from '../../components/dashboard/KanbanColumn';
+import RightPanel from '../../components/dashboard/RightPanel';
+import { useAuth } from '../../hooks/useAuth';
+import { useDashboardData } from '../../hooks/useDashboardData';
 
-const TaskManagementDashboard: React.FC = () => {
-  const { user, loading: authLoading } = useAuth();
+export default function DashboardPage() {
+  const auth = useAuth();
+  const user = typeof auth === 'object' && auth !== null && 'user' in auth ? (auth as { user?: any }).user : undefined;
+  const authLoading = typeof auth === 'object' && auth !== null && 'loading' in auth ? (auth as { loading?: boolean }).loading : false;
   const router = useRouter();
   
   const { dashboardData, loading: dataLoading } = useDashboardData(user?.roleName || 'USER');
@@ -21,6 +25,8 @@ const TaskManagementDashboard: React.FC = () => {
         router.push('/auth/login');
       } else if (user.roleName === 'SUPER_ADMIN') {
         router.push('/super-admin');
+      } else if (user.roleName === 'STAFF') {
+        router.push('/hub-incharge');
       }
     }
   }, [user, authLoading, router]);
@@ -36,7 +42,7 @@ const TaskManagementDashboard: React.FC = () => {
     );
   }
 
-  if (!user || user.roleName === 'SUPER_ADMIN') {
+  if (!user || user.roleName === 'SUPER_ADMIN' || user.roleName === 'STAFF') {
     return null;
   }
 
@@ -65,12 +71,9 @@ const TaskManagementDashboard: React.FC = () => {
               <RightPanel mode="dock" />
             </div>
           </div>
-          {/* Inline widgets centered below the board in four rows */}
-          {/* Inline grid is not used on this page when dock is present */}
+          {/* No inline grid when using dock */}
         </div>
       </div>
     </DashboardLayout>
   );
-};
-
-export default TaskManagementDashboard;
+}

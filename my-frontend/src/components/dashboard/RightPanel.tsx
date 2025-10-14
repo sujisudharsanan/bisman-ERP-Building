@@ -1,6 +1,8 @@
 'use client';
 
 import React from 'react';
+import ConnectedCard from './ConnectedCard';
+import { dashboardConnections } from '@/config/dashboardConnections';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { 
   Chart as ChartJS, 
@@ -15,7 +17,11 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
-const RightPanel: React.FC = () => {
+type RightPanelProps = {
+  mode?: 'sidebar' | 'inline' | 'dock';
+};
+
+const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar' }) => {
   const completedTasksData = {
     labels: ['Author A', 'Author B', 'Author C', 'Author D'],
     datasets: [
@@ -102,68 +108,88 @@ const RightPanel: React.FC = () => {
     { time: '15:00 - 16:00', task: 'Excepteur sint occaecat cupidatat', color: 'border-yellow-500' },
   ];
 
+  const isInline = mode === 'inline';
+  const isDock = mode === 'dock';
+  const containerClass = isInline
+    ? 'w-full bg-transparent border-0 backdrop-blur-0 overflow-visible h-auto'
+    : isDock
+      ? 'w-60 sm:w-64 md:w-72 lg:w-72 xl:w-72 bg-transparent border-0 backdrop-blur-0 overflow-visible h-auto'
+      : 'w-full lg:w-64 xl:w-72 2xl:w-80 bg-gray-900/30 backdrop-blur-sm border-l border-gray-800/50 overflow-y-auto flex flex-col h-full';
+  const wrapperClass = isInline
+    ? 'grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 max-w-[960px] xl:max-w-[1000px]'
+    : isDock
+      ? 'flex flex-col gap-3'
+      : 'flex flex-col';
+  const cardGap = isInline || isDock ? '' : 'mb-5';
+
   return (
-    <aside className="w-full lg:w-48 bg-gray-900/30 backdrop-blur-sm border-l border-gray-800/50 space-y-4 overflow-y-auto p-1">
-      {/* User Profile Section */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h3 className="text-base font-bold text-white">Name Surname</h3>
-          <p className="text-xs text-gray-400">Adipiscing elit sed do eiusmod</p>
+    <aside className={containerClass}>
+  <div className={isInline ? 'w-full flex justify-end' : ''}>
+      <div className={wrapperClass}>
+    {/* User Profile Section */}
+  <ConnectedCard type="profile" className={`p-2 sm:p-2.5 ${cardGap} order-1 xl:col-span-1 xl:col-start-1`}>
+  <div className="flex items-center justify-between pr-0 flex-shrink-0">
+        <div className="flex-1 min-w-0">
+          <h3 className="text-base sm:text-lg font-bold text-white truncate">Name Surname</h3>
+          <p className="text-xs sm:text-sm text-gray-400 truncate">Adipiscing elit sed do eiusmod</p>
         </div>
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
-          <span className="text-white font-bold text-sm">NS</span>
+        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 ml-2">
+          <span className="text-white font-bold text-sm sm:text-base">NS</span>
         </div>
       </div>
+    </ConnectedCard>
 
       {/* Completed Tasks Chart */}
-      <div>
-        <h2 className="font-bold text-white mb-2 uppercase text-xs tracking-wider">Completed Tasks</h2>
-        <div className="h-24 bg-gray-800/30 rounded-xl p-2 border border-gray-700/30">
+  <ConnectedCard type="completedTasks" className={`p-2 sm:p-2.5 ${cardGap} order-3 xl:col-span-1 xl:col-start-2`}>
+        <h2 className="font-bold text-white mb-2 sm:mb-3 uppercase text-xs sm:text-sm tracking-wider">{dashboardConnections.completedTasks.description}</h2>
+  <div className="w-full h-20 sm:h-24 md:h-28 lg:h-32 bg-gray-800/30 rounded-xl p-2 sm:p-2 border border-gray-700/30">
           <Bar data={completedTasksData} options={barOptions} />
         </div>
-      </div>
+      </ConnectedCard>
 
       {/* Efficiency Section */}
-      <div>
-        <h2 className="font-bold text-white mb-2 uppercase text-xs tracking-wider">Efficiency</h2>
-        <div className="grid grid-cols-4 gap-2">
+  <ConnectedCard type="efficiency" className={`p-2 sm:p-2.5 ${cardGap} order-2 xl:col-span-1 xl:col-start-3`}>
+        <h2 className="font-bold text-white mb-2 sm:mb-3 uppercase text-xs sm:text-sm tracking-wider">{dashboardConnections.efficiency.description}</h2>
+        <div className="grid grid-cols-4 gap-2 sm:gap-3">
           {efficiencyData.map((item, index) => (
             <div key={index} className="text-center">
-              <div className="relative w-8 h-8 mx-auto mb-1">
+              <div className="relative w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 mx-auto mb-1 sm:mb-2">
                 <Doughnut 
                   data={createDoughnutData(item.value, item.color)} 
                   options={doughnutOptions} 
                 />
                 <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-white font-bold text-[10px]">{item.value}</span>
+                  <span className="text-white font-bold text-[10px] sm:text-xs">{item.value}</span>
                 </div>
               </div>
-              <p className="text-[10px] text-gray-400">{item.author}</p>
+              <p className="text-[10px] sm:text-xs text-gray-400 truncate">{item.author}</p>
             </div>
           ))}
         </div>
-      </div>
+      </ConnectedCard>
 
       {/* Plan/Schedule Section */}
-      <div>
-        <h2 className="font-bold text-white mb-2 uppercase text-xs tracking-wider">Plan</h2>
-        <div className="space-y-1.5">
+  <ConnectedCard type="plan" className={`p-2 sm:p-2.5 order-4 ${isInline ? 'lg:col-span-2 xl:col-span-2 xl:col-start-2' : ''}` }>
+        <h2 className="font-bold text-white mb-2 sm:mb-3 uppercase text-xs sm:text-sm tracking-wider">{dashboardConnections.plan.description}</h2>
+  <div className="space-y-2.5 max-h-32 md:max-h-36 overflow-auto">
           {scheduleItems.map((item, index) => (
             <div 
               key={index} 
-              className={`p-1.5 bg-gray-800/50 rounded-lg border-l-2 ${item.color} hover:bg-gray-800/70 transition-colors`}
+              className={`w-full p-1.5 sm:p-2 bg-gray-800/50 rounded-lg border-l-2 sm:border-l-3 ${item.color} hover:bg-gray-800/70 transition-colors`}
             >
               <div className="flex justify-between items-start">
-                <div className="flex-1">
-                  <p className="text-white font-medium text-xs">{item.time}</p>
-                  <p className="text-gray-400 text-[10px] mt-0.5">{item.task}</p>
+                <div className="flex-1 min-w-0">
+                  <p className="text-white font-medium text-[10px] sm:text-xs truncate">{item.time}</p>
+                  <p className="text-gray-400 text-[9px] sm:text-[10px] mt-0.5 sm:mt-1 line-clamp-2">{item.task}</p>
                 </div>
               </div>
             </div>
           ))}
         </div>
-      </div>
-    </aside>
+  </ConnectedCard>
+  </div>
+  </div>
+  </aside>
   );
 };
 
