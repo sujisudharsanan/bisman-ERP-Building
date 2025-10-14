@@ -1,65 +1,79 @@
 'use client';
 
-import { useEffect } from 'react';
+import React from 'react';
 import { useRouter } from 'next/navigation';
+import DashboardLayout from '@/components/layout/DashboardLayout';
+import KanbanColumn from '@/components/dashboard/KanbanColumn';
+import RightPanel from '@/components/dashboard/RightPanel';
 import { useAuth } from '@/hooks/useAuth';
-import HubInchargeApp from '@/components/hub-incharge/HubInchargeApp';
+import { useDashboardData } from '@/hooks/useDashboardData';
 
 export default function HubInchargePage() {
-  const { user, loading } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  
+  const { dashboardData, loading: dataLoading } = useDashboardData(user?.roleName || 'STAFF');
 
-  useEffect(() => {
-    // IMPORTANT: Wait for auth check to complete before making routing decisions
-    // This prevents premature redirects during page refresh or initial load
-    if (loading) {
-      return; // Don't do anything while authentication is being checked
+  // Redirect if user is not authenticated or doesn't have STAFF access
+  React.useEffect(() => {
+    if (!authLoading) {
+      if (!user) {
+        router.push('/auth/login');
+      } else if (user.roleName === 'SUPER_ADMIN') {
+        router.push('/super-admin');
+      } else if (user.roleName === 'ADMIN') {
+        router.push('/admin');
+      } else if (user.roleName === 'MANAGER') {
+        router.push('/manager');
+      } else if (user.roleName && !['STAFF', 'ADMIN', 'MANAGER'].includes(user.roleName)) {
+        router.push('/auth/login');
+      }
     }
+  }, [user, authLoading, router]);
 
-    // After loading is complete, check authentication
-    if (!user) {
-      router.push('/auth/login');
-      return;
-    }
-
-    // Role-based access control - allow STAFF, ADMIN, MANAGER
-    if (!user.roleName || !['STAFF', 'ADMIN', 'MANAGER'].includes(user.roleName)) {
-      router.push('/dashboard');
-      return;
-    }
-  }, [user, loading, router]);
-
-  if (loading) {
+  if (authLoading || dataLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-          <p>Loading hub interface...</p>
+          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-500 mx-auto mb-4"></div>
+          <p className="text-white text-lg">Loading Hub Incharge Dashboard...</p>
         </div>
       </div>
     );
   }
 
   if (!user || !user.roleName || !['STAFF', 'ADMIN', 'MANAGER'].includes(user.roleName)) {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <h2 className="text-xl font-semibold text-red-600 mb-4">
-            Access Denied
-          </h2>
-          <p className="text-gray-600 mb-4">
-            You don&apos;t have permission to access the hub interface.
-          </p>
-          <button
-            onClick={() => router.push('/dashboard')}
-            className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
-          >
-            Go to Dashboard
-          </button>
-        </div>
-      </div>
-    );
+    return null;
   }
 
-  return <HubInchargeApp />;
+  return (
+    <DashboardLayout role={user.roleName || 'STAFF'}>
+      <div className="flex flex-col lg:flex-row gap-6 h-full">
+        {/* Kanban Board - Left Side */}
+        <div className="flex-1 overflow-x-auto">
+          <div className="flex gap-6 min-w-max lg:min-w-0">
+            <KanbanColumn
+              title="DRAFT"
+              tasks={dashboardData.DRAFT}
+            />
+            <KanbanColumn
+              title="IN PROGRESS"
+              tasks={dashboardData.IN_PROGRESS}
+            />
+            <KanbanColumn
+              title="EDITING"
+              tasks={dashboardData.EDITING}
+            />
+            <KanbanColumn
+              title="DONE"
+              tasks={dashboardData.DONE}
+            />
+          </div>
+        </div>
+
+        {/* Analytics Panel - Right Side */}
+        <RightPanel />
+      </div>
+    </DashboardLayout>
+  );
 }

@@ -17,10 +17,13 @@ export default function Home() {
         // Logged in, redirect based on role
         if (user.roleName === 'SUPER_ADMIN') {
           router.push('/super-admin');
+        } else if (user.roleName === 'ADMIN') {
+          router.push('/admin');
         } else if (user.roleName === 'STAFF') {
           router.push('/hub-incharge');
         } else {
-          router.push('/dashboard');
+          // Default for any other role (MANAGER, CFO, IT_ADMIN, etc.)
+          router.push('/manager');
         }
       }
     }

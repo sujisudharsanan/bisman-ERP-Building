@@ -41,7 +41,7 @@ export default function UsersPage() {
 
       // Role-based access control - allow ADMIN, SUPER_ADMIN
       if (!user.roleName || !['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
-        router.push('/dashboard');
+        router.push('/auth/login');
         return;
       }
     }
@@ -69,7 +69,7 @@ export default function UsersPage() {
             You don&apos;t have permission to access user management.
           </p>
           <button
-            onClick={() => router.push('/dashboard')}
+            onClick={() => router.push('/auth/login')}
             className="bg-blue-600 text-white px-6 py-2 rounded-md hover:bg-blue-700"
           >
             Return to Dashboard

@@ -1,0 +1,48 @@
+# Backend directories (not needed for frontend deployment)
+my-backend/
+apps/
+libs/
+dist/
+
+# System documentation
+system-docs/
+docs/
+
+# Test files
+**/*.test.ts
+**/*.test.tsx
+**/*.spec.ts
+**/*.spec.tsx
+__tests__/
+
+# Development files
+.git/
+.github/
+node_modules/
+.env.local
+.env.development
+.env.test
+
+# Docker files
+docker-compose*.yml
+Dockerfile*
+.dockerignore
+
+# Scripts
+scripts/
+
+# Logs and temp files
+*.log
+*.tmp
+.DS_Store
+
+# PM2 and other process managers
+ecosystem.config.js
+
+# Root config files (use my-frontend configs instead)
+.eslintrc.json
+tsconfig.json
+
+# Markdown documentation
+*.md
+!my-frontend/README.md

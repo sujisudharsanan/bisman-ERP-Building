@@ -8,25 +8,19 @@ import RightPanel from '@/components/dashboard/RightPanel';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboardData } from '@/hooks/useDashboardData';
 
-export default function AdminPage() {
+const TaskManagementDashboard: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   
-  const { dashboardData, loading: dataLoading } = useDashboardData(user?.roleName || 'ADMIN');
+  const { dashboardData, loading: dataLoading } = useDashboardData(user?.roleName || 'USER');
 
-  // Redirect if user is not authenticated or doesn't have ADMIN access
+  // Redirect if user is not authenticated or is SUPER_ADMIN
   React.useEffect(() => {
     if (!authLoading) {
       if (!user) {
         router.push('/auth/login');
       } else if (user.roleName === 'SUPER_ADMIN') {
         router.push('/super-admin');
-      } else if (user.roleName === 'MANAGER') {
-        router.push('/manager');
-      } else if (user.roleName === 'STAFF') {
-        router.push('/hub-incharge');
-      } else if (user.roleName && !['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
-        router.push('/auth/login');
       }
     }
   }, [user, authLoading, router]);
@@ -36,44 +30,34 @@ export default function AdminPage() {
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-500 mx-auto mb-4"></div>
-          <p className="text-white text-lg">Loading Admin Dashboard...</p>
+          <p className="text-white text-lg">Loading Task Management...</p>
         </div>
       </div>
     );
   }
 
-  if (!user || !user.roleName || (user.roleName === 'SUPER_ADMIN') || !['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
+  if (!user || user.roleName === 'SUPER_ADMIN') {
     return null;
   }
 
   return (
-    <DashboardLayout role={user.roleName || 'ADMIN'}>
+    <DashboardLayout role={user.roleName || 'USER'}>
       <div className="flex flex-col lg:flex-row gap-6 h-full">
         {/* Kanban Board - Left Side */}
         <div className="flex-1 overflow-x-auto">
           <div className="flex gap-6 min-w-max lg:min-w-0">
-            <KanbanColumn
-              title="DRAFT"
-              tasks={dashboardData.DRAFT}
-            />
-            <KanbanColumn
-              title="IN PROGRESS"
-              tasks={dashboardData.IN_PROGRESS}
-            />
-            <KanbanColumn
-              title="EDITING"
-              tasks={dashboardData.EDITING}
-            />
-            <KanbanColumn
-              title="DONE"
-              tasks={dashboardData.DONE}
-            />
+            <KanbanColumn title="DRAFT" tasks={dashboardData.DRAFT} />
+            <KanbanColumn title="IN PROGRESS" tasks={dashboardData.IN_PROGRESS} />
+            <KanbanColumn title="EDITING" tasks={dashboardData.EDITING} />
+            <KanbanColumn title="DONE" tasks={dashboardData.DONE} />
           </div>
         </div>
-
-        {/* Analytics Panel - Right Side */}
+        
+        {/* Right Panel - Analytics */}
         <RightPanel />
       </div>
     </DashboardLayout>
   );
-}
+};
+
+export default TaskManagementDashboard;
