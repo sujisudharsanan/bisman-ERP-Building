@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { LogOut } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuth';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -129,7 +130,14 @@ export default function LogoutButton({
         aria-label="Logout"
         title="Logout from the application"
       >
-        {variant === 'minimal' ? 'Logout' : '🚪 Logout'}
+        {variant === 'minimal' ? (
+          'Logout'
+        ) : (
+          <span className="flex items-center gap-2">
+            <LogOut className="w-4 h-4" />
+            <span>Logout</span>
+          </span>
+        )}
       </button>
 
       {/* Mobile: show a small menu button that toggles the logout action */}
@@ -151,7 +159,10 @@ export default function LogoutButton({
               onClick={handleLogout}
               className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded"
             >
-              Logout
+              <span className="flex items-center gap-2">
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </span>
             </button>
           </div>
         )}

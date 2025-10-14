@@ -3,7 +3,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Moon, Sun } from 'lucide-react';
 
-export default function DarkModeToggle() {
+interface DarkModeToggleProps {
+  floating?: boolean; // if true, position center-right of viewport
+}
+
+export default function DarkModeToggle({ floating = false }: DarkModeToggleProps) {
   const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [hidden, setHidden] = useState(false);
@@ -63,12 +67,14 @@ export default function DarkModeToggle() {
 
   if (hidden) return null;
 
+  const baseClasses = "p-2 rounded-lg bg-gray-800/70 hover:bg-gray-700/70 text-gray-300 hover:text-white shadow-lg backdrop-blur-sm border border-gray-700/40 transition-all duration-200";
+  const floatClasses = floating ? "fixed top-1/2 -translate-y-1/2 right-4 z-40" : "";
   return (
     <button
       ref={btnRef}
       data-theme-toggle="true"
       onClick={toggleTheme}
-      className="p-2 rounded-lg bg-gray-800/50 hover:bg-gray-700/50 text-gray-300 hover:text-white transition-all duration-200"
+      className={`${baseClasses} ${floatClasses}`.trim()}
       aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
       title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >

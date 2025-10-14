@@ -50,7 +50,7 @@ export default function AdminPage() {
     <DashboardLayout role={user.roleName || 'ADMIN'}>
       <div className="h-full max-w-full min-h-0">
   <div className="w-full">
-          <div className="flex justify-between gap-3 md:gap-5 pb-6 ml-3 md:ml-4">
+          <div className="flex justify-between gap-3 md:gap-5 pb-6 ml-3 md:ml-4 mr-3 md:mr-4">
             <div className="flex-1 min-w-0 overflow-x-auto">
               <div className="flex gap-3 md:gap-5 flex-nowrap">
                 <div className="flex-none">
