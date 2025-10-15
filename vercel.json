@@ -4,7 +4,7 @@
   "buildCommand": "cd my-frontend && CI=true VERCEL=1 node ./node_modules/.bin/next build",
   "outputDirectory": ".next",
   "devCommand": "npm run dev",
-  "installCommand": "npm ci --ignore-scripts",
+  "installCommand": "cd my-frontend && npm ci --ignore-scripts",
   "framework": "nextjs",
   "ignoreCommand": "bash -lc 'if git rev-parse --verify HEAD^ >/dev/null 2>&1; then git diff --quiet HEAD^ HEAD -- my-frontend && exit 0 || exit 1; else exit 1; fi'",
   "rewrites": [
