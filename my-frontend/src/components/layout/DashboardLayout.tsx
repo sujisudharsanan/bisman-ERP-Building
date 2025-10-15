@@ -11,7 +11,7 @@ interface DashboardLayoutProps {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => {
   return (
-    <div className="bg-slate-900 text-white min-h-screen flex overflow-hidden">
+    <div className="bg-theme text-theme min-h-screen flex overflow-hidden theme-transition">
       <DashboardSidebar />
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
   <TopNavbar showThemeToggle />

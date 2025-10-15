@@ -51,17 +51,17 @@ export default function ManagerPage() {
   <div className="w-full">
           <div className="flex justify-between gap-3 md:gap-5 pb-6 ml-3 md:ml-4 mr-3 md:mr-4">
             <div className="flex-1 min-w-0 overflow-x-auto">
-              <div className="flex gap-3 md:gap-5 flex-nowrap">
-                <div className="flex-none">
+              <div className="grid gap-3 md:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 auto-rows-fr">
+                <div>
                   <KanbanColumn title="DRAFT" tasks={dashboardData.DRAFT} />
                 </div>
-                <div className="flex-none">
+                <div>
                   <KanbanColumn title="IN PROGRESS" tasks={dashboardData.IN_PROGRESS} />
                 </div>
-                <div className="flex-none">
+                <div>
                   <KanbanColumn title="EDITING" tasks={dashboardData.EDITING} />
                 </div>
-                <div className="flex-none">
+                <div>
                   <KanbanColumn title="DONE" tasks={dashboardData.DONE} />
                 </div>
               </div>

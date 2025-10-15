@@ -1,6 +1,7 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Moon, Sun } from 'lucide-react';
 
 interface DarkModeToggleProps {
@@ -8,43 +9,15 @@ interface DarkModeToggleProps {
 }
 
 export default function DarkModeToggle({ floating = false }: DarkModeToggleProps) {
-  const [isDark, setIsDark] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const { theme, toggleTheme } = useTheme();
+  const isDark = theme === 'dark';
   const btnRef = useRef<HTMLButtonElement | null>(null);
 
-  // Avoid hydration mismatch
+  // Avoid hydration mismatch — ThemeProvider manages the real theme
   useEffect(() => {
     setMounted(true);
-    // Check localStorage and system preference
-    const stored = localStorage.getItem('theme');
-    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    const shouldBeDark = stored === 'dark' || (!stored && prefersDark);
-    setIsDark(shouldBeDark);
-    
-    // Apply theme to document
-    if (shouldBeDark) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-
-    // Listen for system changes if user hasn't explicitly chosen
-    const media = window.matchMedia('(prefers-color-scheme: dark)');
-    const handleSystemChange = (e: MediaQueryListEvent) => {
-      const explicit = localStorage.getItem('theme');
-      if (!explicit) {
-        if (e.matches) {
-          document.documentElement.classList.add('dark');
-          setIsDark(true);
-        } else {
-          document.documentElement.classList.remove('dark');
-          setIsDark(false);
-        }
-      }
-    };
-    media.addEventListener('change', handleSystemChange);
-    return () => media.removeEventListener('change', handleSystemChange);
   }, []);
 
   // Ensure only one toggle renders globally (singleton)
@@ -58,28 +31,14 @@ export default function DarkModeToggle({ floating = false }: DarkModeToggleProps
     }
   }, [mounted]);
 
-  const toggleTheme = () => {
-    const newTheme = !isDark;
-    setIsDark(newTheme);
-    
-    // Update localStorage
-    localStorage.setItem('theme', newTheme ? 'dark' : 'light');
-    
-    // Update document class
-    if (newTheme) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-
-  // Also set a data attribute for potential CSS hooks
-  document.documentElement.setAttribute('data-theme', newTheme ? 'dark' : 'light');
+  const toggleThemeHandler = () => {
+    try { toggleTheme(); } catch (err) { console.error('Toggle theme failed', err); }
   };
 
   // Don't render until mounted to avoid hydration mismatch
   if (!mounted) {
     return (
-      <button className="p-2 rounded-lg bg-gray-800/50 text-gray-400">
+      <button className="p-2 rounded-lg bg-panel text-theme">
         <div className="w-5 h-5" />
       </button>
     );
@@ -87,22 +46,18 @@ export default function DarkModeToggle({ floating = false }: DarkModeToggleProps
 
   if (hidden) return null;
 
-  const baseClasses = "p-2 rounded-lg bg-gray-800/70 hover:bg-gray-700/70 text-gray-300 hover:text-white shadow-lg backdrop-blur-sm border border-gray-700/40 transition-all duration-200";
+  const baseClasses = "p-2 rounded-lg bg-panel text-theme hover:opacity-90 shadow-lg backdrop-blur-sm border border-theme theme-transition";
   const floatClasses = floating ? "fixed top-1/2 -translate-y-1/2 right-4 z-40" : "";
   return (
     <button
       ref={btnRef}
       data-theme-toggle="true"
-      onClick={toggleTheme}
+  onClick={toggleThemeHandler}
       className={`${baseClasses} ${floatClasses}`.trim()}
-      aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-      title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+  aria-label={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
+  title={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
     >
-      {isDark ? (
-        <Sun size={20} className="text-yellow-400" />
-      ) : (
-        <Moon size={20} className="text-indigo-400" />
-      )}
+  {isDark ? <Sun size={20} className="text-yellow-400" /> : <Moon size={20} className="text-indigo-400" />}
     </button>
   );
 }

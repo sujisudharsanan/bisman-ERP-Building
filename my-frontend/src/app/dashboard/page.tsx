@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation';
 // Ensure the path below matches your actual file structure.
 // For example, if the file is at src/components/layout/DashboardLayout.tsx:
 import DashboardLayout from '../../components/layout/DashboardLayout';
+import HubInchargeTabs from '@/components/hub-incharge/HubInchargeTabs';
 import KanbanColumn from '../../components/dashboard/KanbanColumn';
 import RightPanel from '../../components/dashboard/RightPanel';
 import { useAuth } from '../../hooks/useAuth';
@@ -52,17 +53,17 @@ export default function DashboardPage() {
   <div className="w-full">
           <div className="flex justify-between gap-3 md:gap-5 pb-6 ml-3 md:ml-4 mr-3 md:mr-4">
             <div className="flex-1 min-w-0 overflow-x-auto">
-              <div className="flex gap-3 md:gap-5 flex-nowrap">
-                <div className="flex-none">
+              <div className="grid gap-3 md:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 auto-rows-fr">
+                <div>
                   <KanbanColumn title="DRAFT" tasks={dashboardData.DRAFT} />
                 </div>
-                <div className="flex-none">
+                <div>
                   <KanbanColumn title="IN PROGRESS" tasks={dashboardData.IN_PROGRESS} />
                 </div>
-                <div className="flex-none">
+                <div>
                   <KanbanColumn title="EDITING" tasks={dashboardData.EDITING} />
                 </div>
-                <div className="flex-none">
+                <div>
                   <KanbanColumn title="DONE" tasks={dashboardData.DONE} />
                 </div>
               </div>
@@ -74,6 +75,13 @@ export default function DashboardPage() {
           {/* No inline grid when using dock */}
         </div>
       </div>
+      {/* Hub Incharge Tabs (if present) */}
+      <HubInchargeTabs />
+
+      {/* Split: content below Daily Plan and Schedule card */}
+      <section aria-label="Extended Dashboard Section" className="mt-6 border-t border-gray-800 pt-6">
+        <div className="text-gray-400 text-sm">Extended dashboard area (add analytics, reports, etc.).</div>
+      </section>
     </DashboardLayout>
   );
 }
