@@ -25,6 +25,7 @@ import {
 
 import { LucideIcon } from 'lucide-react';
 import BaseLayout from '@/components/layout/BaseLayout';
+import PageDirectory from '@/components/settings/PageDirectory';
 
 interface SystemMetric {
   name: string;
@@ -267,6 +268,12 @@ export default function SuperAdminSystemPage() {
               </button>
             </div>
           </div>
+        </div>
+
+        {/* Page Directory for System Settings */}
+        <div className="mb-8">
+          <h3 className="text-xl font-semibold mb-3">Page Directory</h3>
+          <PageDirectory />
         </div>
 
         {/* System Information */}

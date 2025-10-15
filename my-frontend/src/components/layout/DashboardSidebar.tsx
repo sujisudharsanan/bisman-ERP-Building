@@ -1,10 +1,16 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Home, MessageSquare, CheckSquare, Calendar, BarChart2, Globe, Settings } from 'lucide-react';
+import { Home, MessageSquare, CheckSquare, Calendar, BarChart2, Globe, Settings, File } from 'lucide-react';
+import useRolePages from '@/hooks/useRolePages';
+import { useAuth } from '@/hooks/useAuth';
 
 const DashboardSidebar: React.FC = () => {
   const [activeIcon, setActiveIcon] = useState('dashboard');
+
+  const auth = useAuth() as any;
+  const roleDir = (auth?.user?.roleName === 'STAFF' ? 'hub-incharge' : undefined);
+  const { pages, loading } = useRolePages(roleDir || '');
 
   const menuItems = [
     { id: 'dashboard', icon: Home, label: 'Dashboard' },
@@ -17,7 +23,7 @@ const DashboardSidebar: React.FC = () => {
   ];
 
   return (
-    <aside className="w-[50px] bg-gray-900/50 backdrop-blur-sm border-r border-gray-800/50 flex flex-col items-center pt-12 pb-5 space-y-3">
+  <aside className="w-[50px] bg-panel/60 backdrop-blur-sm border-r border-theme flex flex-col items-center pt-12 pb-5 space-y-3">
       {menuItems.map(({ id, icon: Icon, label }) => (
         <button
           key={id}
@@ -35,6 +41,21 @@ const DashboardSidebar: React.FC = () => {
           <Icon size={20} />
         </button>
       ))}
+      {roleDir && (
+        <div className="mt-6 w-full flex flex-col items-center space-y-2">
+          {loading && <div className="w-4 h-4 border-2 border-indigo-500/40 border-t-indigo-400 rounded-full animate-spin" aria-label="Loading pages" />}
+          {!loading && pages.slice(0,10).map(p => (
+            <a
+              key={p.href}
+              href={p.href}
+              title={p.label}
+              className="p-1.5 rounded-xl text-muted hover:text-theme hover:bg-panel/60 transition-colors"
+            >
+              <File size={18} />
+            </a>
+          ))}
+        </div>
+      )}
     </aside>
   );
 };

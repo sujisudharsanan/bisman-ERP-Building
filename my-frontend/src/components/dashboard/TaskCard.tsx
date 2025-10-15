@@ -26,8 +26,8 @@ const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments
   };
 
   return (
-    <div className="bg-gray-800/50 backdrop-blur-sm rounded-2xl p-2.5 mb-2.5 shadow-lg shadow-indigo-500/10 hover:-translate-y-1 hover:shadow-2xl hover:shadow-indigo-500/20 transition-all duration-300 border border-gray-700/50">
-      <h3 className="font-bold mb-1.5 text-white text-[0.9rem]">{title}</h3>
+    <div className="bg-panel/60 backdrop-blur-sm rounded-2xl p-2.5 mb-2.5 shadow-lg hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 border border-theme">
+      <h3 className="font-bold mb-1.5 text-theme text-[0.9rem]">{title}</h3>
       <div className="space-y-2">
         {subItems.map(item => (
           <div 

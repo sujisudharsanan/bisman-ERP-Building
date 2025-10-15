@@ -3,6 +3,51 @@
 @import 'tailwindcss/components';
 @import 'tailwindcss/utilities';
 
+/* Theme tokens ------------------------------------------------------------ */
+:root {
+  --bg: #f8fafc; /* page background - light */
+  --panel: #ffffff; /* cards / panels */
+  --card: #ffffff;
+  --text: #0f172a; /* primary text */
+  --muted: #6b7280; /* secondary text */
+  --subtle: #94a3b8; /* subtle separators */
+  --accent: #6366f1; /* primary accent (indigo-500/600 family) */
+  --accent-2: #4f46e5;
+  --badge: #f59e0b; /* notification / badge */
+  --border: #e6e9ef;
+}
+
+[data-theme="dark"] {
+  --bg: #0f172a; /* slate-900 */
+  --panel: rgba(17, 24, 39, 0.6); /* translucent panels */
+  --card: rgba(17, 24, 39, 0.6);
+  --text: #e6eef8; /* near-white for text */
+  --muted: #9ca3af;
+  --subtle: #94a3b8;
+  --accent: #6366f1;
+  --accent-2: #4f46e5;
+  --badge: #f59e0b;
+  --border: rgba(255,255,255,0.06);
+}
+
+/* Base theme-aware elements */
+body {
+  background: var(--bg);
+  color: var(--text);
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+/* Small utilities to use theme tokens from CSS when needed */
+.bg-theme { background: var(--bg) !important; }
+.bg-panel { background: var(--panel) !important; }
+.bg-card { background: var(--card) !important; }
+.text-theme { color: var(--text) !important; }
+.text-muted { color: var(--muted) !important; }
+.border-theme { border-color: var(--border) !important; }
+.accent { color: var(--accent) !important; }
+.badge-theme { background: var(--badge) !important; color: white !important; }
+.theme-transition { transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease; }
+
 /* Root responsive setup */
 html {
   -webkit-text-size-adjust: 100%; /* iOS Safari compatibility */

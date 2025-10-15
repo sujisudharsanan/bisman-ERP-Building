@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { Home, LayoutDashboard, User, Bell, Settings, Moon, Sun } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 
 type NavItem = {
   key: string;
@@ -12,26 +13,7 @@ type NavItem = {
   icon: JSX.Element;
 };
 
-function useTheme() {
-  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
-    if (typeof window === 'undefined') return 'light';
-    const stored = localStorage.getItem('theme');
-    if (stored === 'dark' || stored === 'light') return stored;
-    const prefersDark = window.matchMedia?.('(prefers-color-scheme: dark)').matches;
-    return prefersDark ? 'dark' : 'light';
-  });
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    const root = document.documentElement;
-    if (theme === 'dark') root.classList.add('dark');
-    else root.classList.remove('dark');
-    try { localStorage.setItem('theme', theme); } catch {}
-  }, [theme]);
-
-  const toggle = () => setTheme(t => (t === 'dark' ? 'light' : 'dark'));
-  return { theme, toggle };
-}
+// useTheme is now provided by ThemeContext (centralized)
 
 export default function FloatingBottomNav() {
   // All hooks MUST be called before any conditional returns

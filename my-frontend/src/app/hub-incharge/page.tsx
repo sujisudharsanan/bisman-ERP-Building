@@ -48,29 +48,36 @@ export default function HubInchargePage() {
 
   return (
     <DashboardLayout role={user.roleName || 'STAFF'}>
-      <div className="h-full max-w-full min-h-0">
-  <div className="w-full">
-          <div className="flex justify-between gap-3 md:gap-5 pb-6 ml-3 md:ml-4">
-            <div className="flex-1 min-w-0 overflow-x-auto">
-              <div className="flex gap-3 md:gap-5 flex-nowrap">
-                <div className="flex-none">
-                  <KanbanColumn title="DRAFT" tasks={dashboardData.DRAFT} />
-                </div>
-                <div className="flex-none">
-                  <KanbanColumn title="IN PROGRESS" tasks={dashboardData.IN_PROGRESS} />
-                </div>
-                <div className="flex-none">
-                  <KanbanColumn title="EDITING" tasks={dashboardData.EDITING} />
-                </div>
-                <div className="flex-none">
-                  <KanbanColumn title="DONE" tasks={dashboardData.DONE} />
+    <div className="h-full max-w-full min-h-0">
+  <div className="w-full min-h-0">
+            {/* main content area; grid will scroll and split stays at bottom */}
+      <main className="flex-1 flex flex-col overflow-hidden min-h-0">
+              <div className="w-full flex-1 overflow-hidden">
+                <div className="flex justify-between gap-3 md:gap-5 mb-1 ml-3 md:ml-4 mr-3 md:mr-4 h-full">
+                  <div className="flex-1 min-w-0 overflow-hidden">
+                    <div className="grid gap-3 md:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 auto-rows-fr h-full overflow-y-auto pr-1 pb-0 mb-0 custom-scrollbar min-h-0">
+                      <div>
+                        <KanbanColumn title="DRAFT" tasks={dashboardData.DRAFT} showCreate onCreate={() => { window.location.href = '/tasks/create'; }} />
+                      </div>
+                      <div>
+                        <KanbanColumn title="IN PROGRESS" tasks={dashboardData.IN_PROGRESS} />
+                      </div>
+                      <div>
+                        <KanbanColumn title="EDITING" tasks={dashboardData.EDITING} />
+                      </div>
+                      <div>
+                        <KanbanColumn title="DONE" tasks={dashboardData.DONE} />
+                      </div>
+                    </div>
+                  </div>
+                  <div className="flex-none hidden lg:block h-full">
+                    <RightPanel mode="dock" />
+                  </div>
                 </div>
               </div>
-            </div>
-            <div className="flex-none hidden lg:block">
-              <RightPanel mode="dock" />
-            </div>
-          </div>
+
+              {/* Extended section removed as requested */}
+            </main>
           {/* No inline grid when using dock */}
         </div>
       </div>
