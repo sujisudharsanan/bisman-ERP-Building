@@ -1,6 +1,11 @@
 import fs from 'fs';
 import path from 'path';
 
+// Ensure this route is always handled dynamically at runtime (required for fs.watch)
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+export const revalidate = 0;
+
 export async function GET() {
   const projectRoot = process.cwd();
   const appDir = path.join(projectRoot, 'src', 'app');

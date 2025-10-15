@@ -1,10 +1,10 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
-  "buildCommand": "npm ci && npm run build",
+  "buildCommand": "npm run build",
   "outputDirectory": ".next",
   "devCommand": "npm run dev",
-  "installCommand": "npm ci",
+  "installCommand": "npm ci --ignore-scripts",
   "framework": "nextjs",
   "ignoreCommand": "bash -lc 'if git rev-parse --verify HEAD^ >/dev/null 2>&1; then git diff --quiet HEAD^ HEAD -- my-frontend && exit 0 || exit 1; else exit 1; fi'",
   "rewrites": [

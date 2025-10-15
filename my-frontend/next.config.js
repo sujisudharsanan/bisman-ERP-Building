@@ -13,6 +13,10 @@ const nextConfig = {
     if (dev && !isServer) {
       config.stats = 'errors-warnings';
     }
+    // Avoid disk pressure in CI
+    if (process.env.CI === 'true') {
+      config.cache = false;
+    }
     return config;
   },
   async rewrites() {

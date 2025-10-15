@@ -6,6 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
+  "prepare": "if [ \"$CI\" = \"true\" ]; then echo 'skip husky on CI'; else husky; fi",
   "prebuild": "if [ \"$CI\" != \"true\" ]; then eslint . --ext .js,.jsx,.ts,.tsx --no-error-on-unmatched-pattern && tsc --noEmit; else echo 'skip lint/type-check in CI'; fi",
   "verify:clean": "grep -R 'loader-demo' -n || echo 'No loader-demo references'",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --max-warnings=0",

@@ -186,6 +186,8 @@ export default function SuperAdminOrdersPage() {
       style: 'currency',
       currency: 'INR'
     }).format(amount);
+  };
+
   return (
     <BaseLayout pageId="super-admin-orders" showSidebar showHeader showFooter>
       <div className="max-w-7xl mx-auto">
@@ -387,16 +389,16 @@ export default function SuperAdminOrdersPage() {
               <p className="text-3xl font-bold text-green-600">₹45,600</p>
               <p className="text-sm text-gray-500">Total sales today</p>
             </div>
-            <div className="text-center">
+        <div className="text-center">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Pending Actions</h3>
               <p className="text-3xl font-bold text-orange-600">8</p>
               <p className="text-sm text-gray-500">Orders require attention</p>
             </div>
-      </div>
-    </BaseLayout>
           </div>
         </div>
       </div>
     </div>
+  </div>
+    </BaseLayout>
   );
 }
