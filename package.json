@@ -35,7 +35,7 @@
     "test:api": "jest --config jest.api.config.cjs --runInBand",
     "css:prefix": "postcss src/**/*.css --replace",
     "css:watch": "postcss src/**/*.css --replace --watch",
-    "vercel-build": "cd my-frontend && npm ci && npm run build"
+    "vercel-build": "cd my-frontend && npm ci --ignore-scripts && CI=true VERCEL=1 npx next build"
   },
   "devDependencies": {
     "@nestjs/platform-express": "^9.4.3",
