@@ -51,18 +51,18 @@ function DashboardBox({ module, onClick, isLoading }: { module: DashboardModule;
       tabIndex={0}
       aria-label={module.name}
       onClick={onClick}
-      className={`group relative bg-gradient-to-br from-gray-800 to-gray-900 rounded-2xl shadow-lg p-5 flex flex-col justify-between min-h-[140px] transition-all duration-300 cursor-pointer outline-none focus:ring-2 focus:ring-blue-500 hover:-translate-y-1 hover:shadow-2xl hover:ring-2 hover:ring-blue-400 ${isLoading ? 'animate-pulse bg-gray-700' : ''}`}
-      style={{ border: `2px solid ${module.color || '#6366f1'}` }}
+      className={`group relative bg-panel/70 rounded-2xl shadow-lg p-4 flex flex-col justify-between min-h-[140px] transition-all duration-300 cursor-pointer outline-none focus:ring-2 focus:ring-blue-500 hover:-translate-y-1 hover:shadow-2xl ${isLoading ? 'animate-pulse bg-panel/60' : ''}`}
+      style={{ border: `2px solid ${module.color || 'var(--accent)'}` }}
     >
   <div className="flex items-center gap-3 mb-2">
-  <span className={`text-2xl ${module.color ? `text-${module.color}-400` : 'text-blue-400'}`}>{React.createElement(iconMap[module.icon] || FaBox)}</span>
-        <span className="font-bold text-lg text-white">{module.name}</span>
-        {module.badge && <span className="ml-2 px-2 py-0.5 rounded bg-yellow-500 text-xs text-black font-semibold">{module.badge}</span>}
+  <span style={{ color: module.color || 'var(--accent)' }} className="text-2xl">{React.createElement(iconMap[module.icon] || FaBox)}</span>
+        <span className="font-bold text-lg text-theme">{module.name}</span>
+        {module.badge && <span className="ml-2 px-2 py-0.5 rounded bg-badge text-xs text-white font-semibold">{module.badge}</span>}
       </div>
       <div className="text-sm text-gray-300 mb-2">{module.description}</div>
       <div className="flex items-center justify-between mt-auto">
-        <span className="text-2xl font-bold text-white">{module.value}</span>
-        <a href={module.link} className="ml-2 px-3 py-1 rounded bg-blue-600 text-white text-xs font-semibold shadow hover:bg-blue-700 transition">Go to Page</a>
+        <span className="text-2xl font-bold text-theme">{module.value}</span>
+        <a href={module.link} className="ml-2 px-3 py-1 rounded bg-theme text-white text-xs font-semibold shadow hover:opacity-90 transition">Go to Page</a>
       </div>
     </div>
   );
@@ -75,7 +75,7 @@ export default function ERP_DashboardLayout({ role }: ERPDashboardLayoutProps) {
   if (loading || !data) {
     // Skeleton loaders
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 p-8">
+      <div className="min-h-screen bg-theme p-8 theme-transition">
         <div className="max-w-7xl mx-auto">
           <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="h-8 w-1/3 bg-gray-700 rounded animate-pulse" />
@@ -93,8 +93,8 @@ export default function ERP_DashboardLayout({ role }: ERPDashboardLayoutProps) {
 
   // Summary metrics row
   const summaryTiles = Object.entries(data.summary).map(([key, value]) => (
-    <div key={key} className="flex flex-col items-center justify-center bg-gray-800 rounded-xl p-4 shadow text-white min-w-[100px]">
-      <span className="text-xs uppercase text-gray-400">{key}</span>
+    <div key={key} className="flex flex-col items-center justify-center bg-panel rounded-xl p-4 shadow text-theme min-w-[100px]">
+      <span className="text-xs uppercase text-muted">{key}</span>
       <span className="text-2xl font-bold">{value}</span>
     </div>
   ));
@@ -103,13 +103,13 @@ export default function ERP_DashboardLayout({ role }: ERPDashboardLayoutProps) {
   const alert = data.alerts && data.alerts[0];
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-gray-900 to-gray-800 p-8">
+    <div className="min-h-screen bg-theme p-8 theme-transition">
       <div className="max-w-7xl mx-auto">
         {/* Greeting and quick actions */}
         <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
-            <h1 className="text-3xl font-bold text-white mb-2">{role} Dashboard</h1>
-            <p className="text-gray-300">Welcome, <span className="font-semibold">{role}</span>! {data.summary.completed} tasks completed.</p>
+            <h1 className="text-3xl font-bold text-theme mb-2">{role} Dashboard</h1>
+            <p className="text-muted">Welcome, <span className="font-semibold">{role}</span>! {data.summary.completed} tasks completed.</p>
           </div>
           <div className="flex gap-2">
             {data.quickActions?.map(action => (

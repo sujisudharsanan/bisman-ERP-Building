@@ -1617,6 +1617,21 @@ export default function HubInchargeApp() {
   // Get initial tab from URL or default to 'Dashboard'
   const initialTab = (searchParams?.get('tab') as TabName) || 'Dashboard';
   const [activeTab, setActiveTab] = useState<TabName>(initialTab);
+  // Listen for external tab-change events so embedded instances can be controlled
+  React.useEffect(() => {
+    const handler = (e: Event) => {
+      try {
+        const detail = (e as CustomEvent)?.detail;
+        if (detail && typeof detail === 'string') {
+          setActiveTab(detail as TabName);
+        }
+      } catch (err) {
+        // ignore
+      }
+    };
+    window.addEventListener('hub-tab-change', handler as EventListener);
+    return () => window.removeEventListener('hub-tab-change', handler as EventListener);
+  }, []);
   const { user, logout, loading: authLoading } = useAuth();
   const { data, loading, error, refetch } = useHubInchargeData();
 

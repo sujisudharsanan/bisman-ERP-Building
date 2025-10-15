@@ -2,6 +2,7 @@
 
 import { useRouter, usePathname } from 'next/navigation';
 import { useState } from 'react';
+import { LogOut } from 'lucide-react';
 import { useAuthStore } from '@/store/useAuth';
 import { useAuth } from '@/hooks/useAuth';
 
@@ -10,6 +11,7 @@ interface LogoutButtonProps {
   variant?: 'default' | 'minimal' | 'danger';
   position?: 'top-right' | 'top-left' | 'bottom-right' | 'inline';
   hideOnLogin?: boolean;
+  compact?: boolean; // reduces size ~10%
 }
 
 export default function LogoutButton({
@@ -17,6 +19,7 @@ export default function LogoutButton({
   variant = 'default',
   position = 'inline',
   hideOnLogin = true,
+  compact = false,
 }: LogoutButtonProps) {
   // ALL HOOKS MUST BE CALLED BEFORE ANY CONDITIONAL RETURNS
   const router = useRouter();
@@ -101,7 +104,7 @@ export default function LogoutButton({
       case 'minimal':
         return 'text-gray-600 hover:text-gray-800 text-sm underline';
       case 'danger':
-        return 'bg-red-500 hover:bg-red-600 text-white px-4 py-2 rounded-md font-medium text-sm';
+        return 'bg-red-600 hover:bg-red-700 text-white px-3.5 py-1.5 rounded-md font-medium text-sm border border-red-500/40 shadow-sm';
       default:
         return 'bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-md font-medium text-sm';
     }
@@ -125,11 +128,18 @@ export default function LogoutButton({
       {/* Desktop / md+ button (fixed) */}
       <button
         onClick={handleLogout}
-        className={`${getVariantStyles()} ${getPositionStyles()} ${className} hidden md:inline-flex transition-colors duration-200`}
+  className={`${getVariantStyles()} ${getPositionStyles()} ${className} hidden md:inline-flex transition-colors duration-200 ${compact ? 'scale-[0.90]' : ''}`}
         aria-label="Logout"
         title="Logout from the application"
       >
-        {variant === 'minimal' ? 'Logout' : '🚪 Logout'}
+        {variant === 'minimal' ? (
+          'Logout'
+        ) : (
+          <span className="flex items-center gap-2">
+            <LogOut className="w-4 h-4" />
+            <span>Logout</span>
+          </span>
+        )}
       </button>
 
       {/* Mobile: show a small menu button that toggles the logout action */}
@@ -151,7 +161,10 @@ export default function LogoutButton({
               onClick={handleLogout}
               className="w-full text-left px-3 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded"
             >
-              Logout
+              <span className="flex items-center gap-2">
+                <LogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </span>
             </button>
           </div>
         )}

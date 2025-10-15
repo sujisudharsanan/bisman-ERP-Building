@@ -29,7 +29,7 @@ const ConnectedCard: React.FC<ConnectedCardProps> = ({ type, className = '', chi
       aria-label={cfg?.description || type}
       onClick={handleNavigate}
       onKeyDown={(e) => (e.key === 'Enter' || e.key === ' ') && handleNavigate()}
-      className={`cursor-pointer bg-gray-800/40 rounded-xl border border-gray-700/30 shadow-sm hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${className}`}
+      className={`cursor-pointer bg-panel/60 rounded-xl border border-theme shadow-sm hover:shadow-md transition-shadow focus:outline-none focus:ring-2 focus:ring-indigo-500/50 ${className}`}
     >
       {children}
     </div>

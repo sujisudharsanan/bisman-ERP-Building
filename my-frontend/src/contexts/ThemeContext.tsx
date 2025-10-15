@@ -7,6 +7,8 @@ type Theme = 'light' | 'dark';
 interface ThemeContextType {
   theme: Theme;
   toggleTheme: () => void;
+  // Backwards-compatible alias used by some components
+  toggle: () => void;
   setTheme: (theme: Theme) => void;
 }
 
@@ -33,9 +35,11 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     
     const root = document.documentElement;
     if (theme === 'dark') {
-      root.classList.add('dark');
+  root.classList.add('dark');
+  root.setAttribute('data-theme', 'dark');
     } else {
-      root.classList.remove('dark');
+  root.classList.remove('dark');
+  root.setAttribute('data-theme', 'light');
     }
     
     try {
@@ -54,7 +58,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <ThemeContext.Provider value={{ theme, toggleTheme, setTheme }}>
+  <ThemeContext.Provider value={{ theme, toggleTheme, toggle: toggleTheme, setTheme }}>
       {children}
     </ThemeContext.Provider>
   );
