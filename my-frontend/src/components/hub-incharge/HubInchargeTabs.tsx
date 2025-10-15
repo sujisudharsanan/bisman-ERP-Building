@@ -58,9 +58,15 @@ export default function HubInchargeTabs() {
       const url = new URL(window.location.href);
       url.searchParams.set('tab', tabName);
       router.replace(url.pathname + url.search);
+  // ensure browser URL is updated (also use history API to trigger search param change)
+  try { window.history.replaceState(null, '', url.pathname + url.search); } catch {};
+  // notify embedded hub app
+  window.dispatchEvent(new CustomEvent('hub-tab-change', { detail: tabName }));
     } catch {
       // fallback: push to same path with search param
       router.replace(`?tab=${encodeURIComponent(tabName)}`);
+  try { window.history.replaceState(null, '', `?tab=${encodeURIComponent(tabName)}`); } catch {};
+  window.dispatchEvent(new CustomEvent('hub-tab-change', { detail: tabName }));
     }
   };
 
@@ -99,3 +105,71 @@ const EmbeddedHubIncharge = dynamic(
   () => import('@/components/hub-incharge/HubInchargeApp').then(mod => mod.default),
   { ssr: false, loading: () => <div className="py-6 text-sm text-muted">Loading hub content...</div> }
 );
+
+// Static bottom bar to mimic Excel-like sheet tabs
+export function HubInchargeBottomBar() {
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const initialTab = (searchParams?.get('tab') as any) || 'Dashboard';
+  const [activeTab, setActiveTab] = React.useState(initialTab);
+
+  React.useEffect(() => {
+    setActiveTab(initialTab);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams?.toString()]);
+
+  const navItems: { name: string; icon: JSX.Element }[] = [
+    { name: 'Dashboard', icon: <Home size={16} /> },
+    { name: 'About Me', icon: <User size={16} /> },
+    { name: 'Approvals', icon: <CheckCircle size={16} /> },
+    { name: 'Purchase', icon: <ShoppingCart size={16} /> },
+    { name: 'Expenses', icon: <DollarSign size={16} /> },
+    { name: 'Performance', icon: <BarChart3 size={16} /> },
+    { name: 'Messages', icon: <MessageCircle size={16} /> },
+    { name: 'Create Task', icon: <PlusCircle size={16} /> },
+    { name: 'Tasks & Requests', icon: <ClipboardList size={16} /> },
+    { name: 'Settings', icon: <Settings size={16} /> },
+  ];
+
+  const handleTabChange = (tabName: string) => {
+    setActiveTab(tabName as any);
+    try {
+      const url = new URL(window.location.href);
+      url.searchParams.set('tab', tabName);
+      router.replace(url.pathname + url.search);
+  window.dispatchEvent(new CustomEvent('hub-tab-change', { detail: tabName }));
+    } catch {
+      router.replace(`?tab=${encodeURIComponent(tabName)}`);
+  window.dispatchEvent(new CustomEvent('hub-tab-change', { detail: tabName }));
+    }
+  };
+
+  return (
+    <>
+      {/* spacer to prevent content overlap with fixed bar */}
+      <div className="h-16" aria-hidden />
+      <div className="fixed bottom-0 left-0 right-0 z-40">
+        <div className="max-w-[1200px] mx-auto px-3">
+          <div className="bg-panel/80 backdrop-blur border-t border-theme rounded-t-xl overflow-x-auto">
+            <div className="flex gap-2 items-center py-2 px-2">
+              {navItems.map(item => (
+                <button
+                  key={item.name}
+                  onClick={() => handleTabChange(item.name)}
+                  className={`flex items-center gap-2 px-3 py-1 rounded-md text-sm whitespace-nowrap ${
+                    activeTab === item.name
+                      ? 'bg-theme text-white font-semibold'
+                      : 'text-muted hover:bg-gray-100 dark:hover:bg-gray-800'
+                  }`}
+                >
+                  {item.icon}
+                  <span className="hidden sm:inline">{item.name}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </>
+  );
+}

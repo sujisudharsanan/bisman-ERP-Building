@@ -1597,7 +1597,7 @@ const SettingsPage = () => (
 );
 
 // --- Main Hub Incharge App ---
-export default function HubInchargeApp({ embedded }: { embedded?: boolean } = {}) {
+export default function HubInchargeApp() {
   type TabName =
     | 'Dashboard'
     | 'About Me'
@@ -1617,6 +1617,21 @@ export default function HubInchargeApp({ embedded }: { embedded?: boolean } = {}
   // Get initial tab from URL or default to 'Dashboard'
   const initialTab = (searchParams?.get('tab') as TabName) || 'Dashboard';
   const [activeTab, setActiveTab] = useState<TabName>(initialTab);
+  // Listen for external tab-change events so embedded instances can be controlled
+  React.useEffect(() => {
+    const handler = (e: Event) => {
+      try {
+        const detail = (e as CustomEvent)?.detail;
+        if (detail && typeof detail === 'string') {
+          setActiveTab(detail as TabName);
+        }
+      } catch (err) {
+        // ignore
+      }
+    };
+    window.addEventListener('hub-tab-change', handler as EventListener);
+    return () => window.removeEventListener('hub-tab-change', handler as EventListener);
+  }, []);
   const { user, logout, loading: authLoading } = useAuth();
   const { data, loading, error, refetch } = useHubInchargeData();
 
@@ -1731,8 +1746,7 @@ export default function HubInchargeApp({ embedded }: { embedded?: boolean } = {}
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       {/* Header */}
-      {!embedded && (
-        <header className="flex justify-between items-center bg-white shadow px-4 sm:px-6 py-3">
+      <header className="flex justify-between items-center bg-white shadow px-4 sm:px-6 py-3">
         <h1 className="text-lg sm:text-xl font-semibold text-gray-800">
           Hub Incharge Dashboard
         </h1>
@@ -1761,15 +1775,13 @@ export default function HubInchargeApp({ embedded }: { embedded?: boolean } = {}
             </button>
           </div>
         </div>
-        </header>
-      )}
+      </header>
 
       {/* Active Page */}
       <main className="flex-1 overflow-y-auto">{pages[activeTab]}</main>
 
       {/* Bottom Navigation (hidden on small screens to avoid overlap with FloatingBottomNav) */}
-      {!embedded && (
-        <nav className="bg-white dark:bg-gray-900 shadow-inner border-t border-gray-100 dark:border-gray-800 hidden md:block">
+      <nav className="bg-white dark:bg-gray-900 shadow-inner border-t border-gray-100 dark:border-gray-800 hidden md:block">
         <div className="flex justify-around py-2 overflow-x-auto">
           {navItems.map(tab => (
             <button
@@ -1786,8 +1798,7 @@ export default function HubInchargeApp({ embedded }: { embedded?: boolean } = {}
             </button>
           ))}
         </div>
-        </nav>
-      )}
+      </nav>
     </div>
   );
 }

@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 // Ensure the path below matches your actual file structure.
 // For example, if the file is at src/components/layout/DashboardLayout.tsx:
 import DashboardLayout from '../../components/layout/DashboardLayout';
-import HubInchargeTabs from '@/components/hub-incharge/HubInchargeTabs';
+import HubInchargeTabs, { HubInchargeBottomBar } from '@/components/hub-incharge/HubInchargeTabs';
 import KanbanColumn from '../../components/dashboard/KanbanColumn';
 import RightPanel from '../../components/dashboard/RightPanel';
 import { useAuth } from '../../hooks/useAuth';
@@ -76,7 +76,7 @@ export default function DashboardPage() {
         </div>
       </div>
       {/* Hub Incharge Tabs (if present) */}
-      <HubInchargeTabs />
+  <HubInchargeTabs />
 
       {/* Split: content below Daily Plan and Schedule card */}
       <section aria-label="Extended Dashboard Section" className="mt-6 border-t border-gray-800 pt-6">

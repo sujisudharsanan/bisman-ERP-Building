@@ -76,13 +76,7 @@ export default function HubInchargePage() {
                 </div>
               </div>
 
-              {/* sticky split section pinned to bottom */}
-              <section aria-label="Extended Hub Incharge Section" className="ml-3 md:ml-4 mr-3 md:mr-4 border-t border-gray-800 pt-0 sticky bottom-0 bg-transparent z-10">
-                <div className="w-full rounded-xl border border-gray-800 bg-gray-900/40 p-3 md:p-4">
-                  <h2 className="text-sm font-semibold tracking-wide text-gray-300 uppercase mb-2">Extended Section</h2>
-                  <p className="text-gray-400 text-xs md:text-sm">Full-width area below Daily Plan & Schedule card. Add KPIs, logs, analytics, or widgets here.</p>
-                </div>
-              </section>
+              {/* Extended section removed as requested */}
             </main>
           {/* No inline grid when using dock */}
         </div>

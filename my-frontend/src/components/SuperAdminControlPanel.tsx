@@ -65,6 +65,8 @@ import { PrivilegeManagement } from '@/components/privilege-management';
 import DatabaseBrowser from '@/components/database-browser/DatabaseBrowser';
 import ActivityLogViewer from '@/components/activity-log/ActivityLogViewer';
 import SecurityMonitor from '@/components/security/SecurityMonitor';
+import dynamic from 'next/dynamic';
+const LazyPageDirectory = dynamic(() => import('@/components/settings/PageDirectory'), { ssr: false });
 import type { 
   User as UserType, 
   UserRole, 
@@ -1209,8 +1211,12 @@ const SuperAdminControlPanel: React.FC = () => {
               <SecurityMonitor />
             )}
             {activeTab === 'settings' && (
-              <div className="text-center py-12 text-gray-500">
-                System Settings component coming soon...
+              <div className="h-full">
+                {/* System Settings: Page Directory */}
+                {/* PageDirectory loaded client-side to scan server */}
+                <div id="system-settings-root">
+                  <LazyPageDirectory />
+                </div>
               </div>
             )}
           </>
