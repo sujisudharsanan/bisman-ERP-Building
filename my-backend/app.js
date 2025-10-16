@@ -327,17 +327,30 @@ app.use('/api/login', authLimiter)
 app.use('/api/auth', authLimiter)
 
 app.post('/api/login', async (req, res) => {
-  console.log('=== LOGIN REQUEST RECEIVED ===')
-  console.log('Incoming /api/login request from', req.ip, 'headers:', {
-    origin: req.headers.origin,
-    host: req.headers.host,
-    'content-type': req.headers['content-type']
-  })
-  console.log('Request body:', req.body)
+  const timestamp = new Date().toISOString()
+  console.log(`\n${'='.repeat(80)}`)
+  console.log(`[${timestamp}] LOGIN REQUEST RECEIVED`)
+  console.log(`${'='.repeat(80)}`)
+  console.log('🌐 Request Details:')
+  console.log('  - Method:', req.method)
+  console.log('  - URL:', req.url)
+  console.log('  - IP:', req.ip)
+  console.log('  - Real IP:', req.headers['x-real-ip'] || 'N/A')
+  console.log('  - Forwarded For:', req.headers['x-forwarded-for'] || 'N/A')
+  console.log('\n📧 Headers:')
+  console.log('  - Origin:', req.headers.origin || 'N/A')
+  console.log('  - Host:', req.headers.host || 'N/A')
+  console.log('  - Referer:', req.headers.referer || 'N/A')
+  console.log('  - User-Agent:', req.headers['user-agent']?.substring(0, 80) || 'N/A')
+  console.log('  - Content-Type:', req.headers['content-type'] || 'N/A')
+  console.log('  - Cookie:', req.headers.cookie ? `${req.headers.cookie.substring(0, 50)}...` : 'N/A')
+  console.log('\n📦 Body:', JSON.stringify(req.body, null, 2))
+  console.log(`${'='.repeat(80)}\n`)
+  
   const { email, password } = req.body || {}
   console.log('Extracted email:', email, 'password length:', password ? password.length : 'undefined')
   if (!email || !password) {
-    console.log('Missing email or password')
+    console.log('❌ Missing email or password')
     return res.status(400).json({ error: 'email and password required' })
   }
 
