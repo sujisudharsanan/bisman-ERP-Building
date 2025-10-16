@@ -350,7 +350,8 @@ app.post('/api/login', async (req, res) => {
           const match = await bcrypt.compare(password, user.password)
           if (!match) {
             // In non-production, allow falling back to dev users when password mismatches
-            if (process.env.NODE_ENV !== 'production') {
+            // In production, you can temporarily allow dev users with ALLOW_DEV_USERS=true
+            if (process.env.NODE_ENV !== 'production' || String(process.env.ALLOW_DEV_USERS).toLowerCase() === 'true') {
               user = null
             } else {
               return res.status(401).json({ error: 'invalid credentials' })
