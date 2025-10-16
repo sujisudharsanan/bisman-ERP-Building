@@ -421,22 +421,53 @@ app.post('/api/login', async (req, res) => {
   const isProduction = process.env.NODE_ENV === 'production'
   const hostHeader = (req && (req.hostname || (req.headers && req.headers.host))) || ''
   const isLocalHost = String(hostHeader).includes('localhost') || String(hostHeader).includes('127.0.0.1')
-  const cookieSecure = Boolean(isProduction && !isLocalHost)
+  
+  // CRITICAL FIX: In production, cookies MUST be secure for SameSite=None to work
+  // Force secure=true in production even if not HTTPS (Render uses HTTPS proxy)
+  const cookieSecure = isProduction ? true : false
 
   // In production, frontend and backend are cross-site (Vercel -> Render).
   // Cross-site cookies require SameSite=None and Secure=true.
+  // IMPORTANT: SameSite=None REQUIRES secure=true or cookies will be blocked
   const sameSiteOpt = isProduction ? 'none' : 'lax'
-  const accessCookie = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
-  const refreshCookie = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
-  // Compatibility cookie name expected by some clients
-  const compatCookie = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
   
-  // For localhost development, prefer host-only cookies (do not set domain)
-  if (!isProduction && isLocalHost) {
-    // Host-only cookies avoid domain matching quirks in some browsers on localhost
-    delete accessCookie.domain;
-    delete refreshCookie.domain;
+  const accessCookie = { 
+    httpOnly: true, 
+    secure: cookieSecure, 
+    sameSite: sameSiteOpt, 
+    path: '/', 
+    maxAge: 60 * 60 * 1000 
   }
+  const refreshCookie = { 
+    httpOnly: true, 
+    secure: cookieSecure, 
+    sameSite: sameSiteOpt, 
+    path: '/', 
+    maxAge: 7 * 24 * 60 * 60 * 1000 
+  }
+  // Compatibility cookie name expected by some clients
+  const compatCookie = { 
+    httpOnly: true, 
+    secure: cookieSecure, 
+    sameSite: sameSiteOpt, 
+    path: '/', 
+    maxAge: 60 * 60 * 1000 
+  }
+  
+  // For localhost development, set domain to 'localhost' for cross-port support
+  if (!isProduction && isLocalHost) {
+    accessCookie.domain = 'localhost';
+    refreshCookie.domain = 'localhost';
+    compatCookie.domain = 'localhost';
+  }
+
+  // Log cookie settings for debugging
+  console.log('[Login] Cookie settings:', {
+    isProduction,
+    cookieSecure,
+    sameSiteOpt,
+    domain: accessCookie.domain || 'none (host-only)'
+  })
 
   res.cookie('access_token', accessToken, accessCookie)
   res.cookie('refresh_token', refreshToken, refreshCookie)
