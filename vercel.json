@@ -4,7 +4,7 @@
   "framework": "nextjs",
   "buildCommand": "npm run vercel-build",
   "installCommand": "npm install --production=false",
-  "outputDirectory": "my-frontend/.next",
+  "outputDirectory": ".next",
   "rewrites": [
     {
       "source": "/api/:path*",
