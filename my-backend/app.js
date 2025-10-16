@@ -64,6 +64,7 @@ const dynamic = [envFront, ...envFronts.split(',')]
   .map(s => s && s.trim())
   .filter(Boolean)
 const providedOrigins = [
+  'https://bisman-erp-building-git-diployment-sujis-projects-dfb64252.vercel.app',
   'https://bisman-erp-building-nnul-mdzo2vwfm-sujis-projects-dfb64252.vercel.app',
   'https://bisman-erp-rr6f.onrender.com',
   'https://bisman-erp-xr6f.onrender.com',
@@ -955,8 +956,7 @@ app.get('/api/users', authenticate, requireRole(['ADMIN', 'SUPER_ADMIN']), async
           roleName: 'MANAGER',
           isActive: true,
           createdAt: '2024-02-01T00:00:00Z',
-          lastLogin: '2025-10-03T09:15:00Z'
-        },
+          lastLogin: '2025-10
         {
           id: 4,
           username: 'staff',
