@@ -1,38 +1,14 @@
 // Centralized API base URL for frontend
-// PRODUCTION FIX: Always use direct backend URL to avoid cookie issues with rewrites
-// Cross-origin cookies work with SameSite=None and Secure=true (backend configured)
-const isBrowser = typeof window !== 'undefined';
-
-// In production on Vercel, always use direct backend URL for cookies to work
-const isProduction = process.env.NODE_ENV === 'production';
 
 /**
  * Determines the API base URL based on the environment.
+ * When deployed on Vercel, it uses a relative path to leverage Vercel's rewrites,
+ * which proxies /api/* to the backend. This solves cross-domain cookie issues.
+ * For local development, it uses the absolute URL to the local backend.
  */
-
-// Default to localhost for local development
-let apiBase = 'http://localhost:3001';
-
-// Vercel environment variables
-const vercelEnv = process.env.NEXT_PUBLIC_VERCEL_ENV;
-const vercelUrl = process.env.NEXT_PUBLIC_VERCEL_URL;
-
-// Render backend URL
-const renderBackendUrl = 'https://bisman-erp-rr6f.onrender.com';
-
-if (vercelEnv === 'production' || vercelEnv === 'preview') {
-  // For production and preview deployments on Vercel, use the Render backend
-  apiBase = renderBackendUrl;
-} else if (vercelUrl) {
-  // For development deployments on Vercel, it's tricky.
-  // We'll default to the production backend but log a warning.
-  // For a better setup, consider a staging backend.
-  apiBase = renderBackendUrl;
-  console.warn(
-    'Vercel development deployment is using the production backend. ' +
-    'For a dedicated staging environment, configure a separate backend and URL.'
-  );
-}
+const apiBase = process.env.NEXT_PUBLIC_VERCEL_URL
+  ? '' // Use relative path on Vercel
+  : 'http://localhost:3001'; // Use absolute path for local dev
 
 export const API_BASE = apiBase;
 
