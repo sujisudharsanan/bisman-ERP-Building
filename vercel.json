@@ -2,6 +2,7 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "framework": "nextjs",
+  "ignoreCommand": "if [ \"$VERCEL_GIT_COMMIT_REF\" != \"diployment\" ]; then echo Skipping $VERCEL_GIT_COMMIT_REF; exit 0; else exit 1; fi",
   "buildCommand": "npm run vercel-build",
   "installCommand": "npm install --production=false",
   "outputDirectory": ".next",
