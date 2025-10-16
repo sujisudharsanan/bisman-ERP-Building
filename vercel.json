@@ -2,6 +2,9 @@
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "version": 2,
   "framework": "nextjs",
+  "buildCommand": "npm run vercel-build",
+  "installCommand": "npm install --production=false",
+  "outputDirectory": "my-frontend/.next",
   "rewrites": [
     {
       "source": "/api/:path*",
