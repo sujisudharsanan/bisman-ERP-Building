@@ -956,7 +956,8 @@ app.get('/api/users', authenticate, requireRole(['ADMIN', 'SUPER_ADMIN']), async
           roleName: 'MANAGER',
           isActive: true,
           createdAt: '2024-02-01T00:00:00Z',
-          lastLogin: '2025-10
+          lastLogin: '2025-10-05T09:15:00Z'
+        },
         {
           id: 4,
           username: 'staff',
