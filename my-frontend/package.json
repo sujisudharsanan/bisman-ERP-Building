@@ -8,6 +8,7 @@
     "start": "next start",
   "prepare": "if [ \"$CI\" = \"true\" ]; then echo 'skip husky on CI'; else husky; fi",
   "prebuild": "if [ \"$CI\" = \"true\" ] || [ \"$VERCEL\" = \"1\" ]; then echo 'skip lint/type-check in CI/Vercel'; else if [ -f .eslintrc.json ] || [ -f .eslintrc.js ] || [ -f .eslintrc.cjs ] || [ -f .eslintrc.yml ] || [ -f .eslintrc.yaml ] || grep -q \"\\\"eslintConfig\\\"\" package.json 2>/dev/null; then eslint . --ext .js,.jsx,.ts,.tsx --no-error-on-unmatched-pattern; else echo 'skip eslint (no config)'; fi; tsc --noEmit; fi",
+  "vercel-build": "CI=true VERCEL=1 npx next build",
   "verify:clean": "grep -R 'loader-demo' -n || echo 'No loader-demo references'",
     "lint": "eslint . --ext .js,.jsx,.ts,.tsx --max-warnings=0",
     "lint:fix": "eslint . --ext .js,.jsx,.ts,.tsx --fix",
