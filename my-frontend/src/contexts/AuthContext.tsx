@@ -84,14 +84,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
       });
 
       if (response.ok) {
+        // Small delay to ensure cookies are set by the browser
+        await new Promise(resolve => setTimeout(resolve, 100));
+        
         // Ensure cookies are persisted by validating with /api/me.
         // Try a quick whoami, and if needed, refresh then whoami again.
         const probeMe = async () => {
-          const me1 = await fetch(`${baseURL}/api/me`, { credentials: 'include' });
+          const me1 = await fetch(`${baseURL}/api/me`, { 
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
           if (me1.ok) return me1.json();
           // Attempt refresh once
-          await fetch(`${baseURL}/api/token/refresh`, { method: 'POST', credentials: 'include' }).catch(() => {});
-          const me2 = await fetch(`${baseURL}/api/me`, { credentials: 'include' });
+          await fetch(`${baseURL}/api/token/refresh`, { 
+            method: 'POST', 
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          }).catch(() => {});
+          const me2 = await fetch(`${baseURL}/api/me`, { 
+            credentials: 'include',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+          });
           if (me2.ok) return me2.json();
           return null;
         };
