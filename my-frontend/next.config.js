@@ -1,8 +1,15 @@
 /** @type {import('next').NextConfig} */
-const API_URL = process.env.NEXT_PUBLIC_API_URL 
-  || process.env.NEXT_PUBLIC_API_BASE 
-  || process.env.NEXT_PUBLIC_API_BASE_URL 
-  || 'http://localhost:3001';
+// Determine API base for proxy rewrites.
+// Priority: explicit env vars → sensible defaults per environment.
+// In Vercel, falling back to localhost breaks because there is no service on :3001.
+// So, when VERCEL=1 and no API env is provided, default to the Render backend URL.
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_API_BASE ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  (process.env.VERCEL === '1'
+    ? (process.env.RENDER_BACKEND_URL || 'https://bisman-erp-rr6f.onrender.com')
+    : 'http://localhost:3001');
 
 const nextConfig = {
   reactStrictMode: false, // Temporarily disabled to debug webpack errors

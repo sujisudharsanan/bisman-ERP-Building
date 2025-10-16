@@ -97,7 +97,10 @@ const corsOptions = {
       if (p.includes('*')) return wildcardToRegex(p)
       return null
     }
-    const allowedRegexes = dynamic.map(toRegex).filter(Boolean)
+    // Build regexes from ALL allowlist entries (provided + dynamic), not just dynamic
+    const allowedRegexes = Array.from(new Set([...allowlist]))
+      .map(toRegex)
+      .filter(Boolean)
     const ok = allowlist.includes(origin) || allowedRegexes.some(rx => rx.test(origin))
     callback(ok ? null : new Error('CORS: Origin not allowed'), ok)
   },
