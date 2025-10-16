@@ -331,278 +331,156 @@ app.use('/api/login', authLimiter)
 app.use('/api/auth', authLimiter)
 
 app.post('/api/login', async (req, res) => {
-  const timestamp = new Date().toISOString()
-  console.log(`\n${'='.repeat(80)}`)
-  console.log(`[${timestamp}] LOGIN REQUEST RECEIVED`)
-  console.log(`${'='.repeat(80)}`)
-  console.log('🌐 Request Details:')
-  console.log('  - Method:', req.method)
-  console.log('  - URL:', req.url)
-  console.log('  - IP:', req.ip)
-  console.log('  - Real IP:', req.headers['x-real-ip'] || 'N/A')
-  console.log('  - Forwarded For:', req.headers['x-forwarded-for'] || 'N/A')
-  console.log('\n📧 Headers:')
-  console.log('  - Origin:', req.headers.origin || 'N/A')
-  console.log('  - Host:', req.headers.host || 'N/A')
-  console.log('  - Referer:', req.headers.referer || 'N/A')
-  console.log('  - User-Agent:', req.headers['user-agent']?.substring(0, 80) || 'N/A')
-  console.log('  - Content-Type:', req.headers['content-type'] || 'N/A')
-  console.log('  - Cookie:', req.headers.cookie ? `${req.headers.cookie.substring(0, 50)}...` : 'N/A')
-  console.log('\n📦 Body:', JSON.stringify(req.body, null, 2))
-  console.log(`${'='.repeat(80)}\n`)
-  
-  const { email, password } = req.body || {}
-  console.log('Extracted email:', email, 'password length:', password ? password.length : 'undefined')
-  if (!email || !password) {
-    console.log('❌ Missing email or password')
-    return res.status(400).json({ error: 'email and password required' })
+  const { username, password } = req.body
+
+  // CRITICAL: Ensure this logic is absolutely secure and robust
+  // In a real app, use a secure database and proper password hashing (e.g., bcrypt)
+  const user = await User.findOne({ where: { username } })
+
+  if (!user || !bcrypt.compareSync(password, user.password)) {
+    return res.status(401).json({ message: 'Invalid credentials' })
   }
 
-  try {
-    let user = null
-    let roleName = null
+  // Generate tokens
+  const accessToken = generateAccessToken({
+    id: user.id,
+    username: user.username,
+    role: user.role,
+  })
+  const refreshToken = generateRefreshToken({
+    id: user.id,
+    username: user.username,
+    role: user.role,
+  })
 
-    // Try Prisma first if DATABASE_URL is configured; otherwise skip DB lookup in dev
-    if (databaseUrl) {
-      try {
-        user = await prisma.user.findUnique({ where: { email } })
-        if (user) {
-          const match = await bcrypt.compare(password, user.password)
-          if (!match) {
-            // In non-production, allow falling back to dev users when password mismatches
-            // In production, you can temporarily allow dev users with ALLOW_DEV_USERS=true
-            if (process.env.NODE_ENV !== 'production' || String(process.env.ALLOW_DEV_USERS).toLowerCase() === 'true') {
-              user = null
-            } else {
-              return res.status(401).json({ error: 'invalid credentials' })
-            }
-          } else {
-            roleName = user.role || null
-          }
-        }
-      } catch (dbError) {
-        console.log('Database lookup failed, falling back to development users')
-        user = null
-      }
-    } else {
-      // No DATABASE_URL - skip DB calls for local development
-      user = null
-    }
-
-    // Fallback to development users if database fails
-    if (!user) {
-      console.log('Checking dev users for email:', email)
-      console.log('Available dev users:', devUsers.map(u => ({ email: u.email, role: u.role })))
-      const devUser = devUsers.find(u => u.email === email && u.password === password)
-      console.log('Found dev user:', devUser ? { email: devUser.email, role: devUser.role } : 'None')
-      if (!devUser) {
-        console.log('Invalid credentials for:', email)
-        return res.status(401).json({ error: 'invalid credentials' })
-      }
-      user = devUser
-      roleName = devUser.role
-    }
-  // Create access token (short-lived) and refresh token (rotating)
-  const { safeRandomId } = require('./lib/id')
-  const jti = safeRandomId()
-  const accessToken = jwt.sign({ sub: user.id, role: roleName, jti }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '1h' })
-  const refreshToken = safeRandomId()
-
-  // Save refresh token record (store hash) with expiry (7 days)
-  const { saveRefreshToken } = require('./lib/tokenStore')
-  const refreshExpiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000
-  // Store role to avoid DB dependency during refresh in dev/local
-  try {
-    await saveRefreshToken(refreshToken, { userId: user.id, role: roleName, jti, expiresAt: refreshExpiresAt })
-  } catch (e) {
-    console.warn('Warning: failed to persist refresh token; proceeding with stateless login in dev:', e && e.message)
-  }
+  // Store refresh token in the database
+  await RefreshToken.create({
+    token: refreshToken,
+    userId: user.id,
+    expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
+  })
 
   // Set HttpOnly cookies for access and refresh tokens
   const isProduction = process.env.NODE_ENV === 'production'
-  const hostHeader = (req && (req.hostname || (req.headers && req.headers.host))) || ''
-  const isLocalHost = String(hostHeader).includes('localhost') || String(hostHeader).includes('127.0.0.1')
   
   // CRITICAL FIX: In production, cookies MUST be secure for SameSite=None to work
-  // Force secure=true in production even if not HTTPS (Render uses HTTPS proxy)
-  const cookieSecure = isProduction ? true : false
+  // Force secure=true in production.
+  const cookieSecure = isProduction
 
   // In production, frontend and backend are cross-site (Vercel -> Render).
   // Cross-site cookies require SameSite=None and Secure=true.
-  // IMPORTANT: SameSite=None REQUIRES secure=true or cookies will be blocked
   const sameSiteOpt = isProduction ? 'none' : 'lax'
-  
-  const accessCookie = { 
-    httpOnly: true, 
-    secure: cookieSecure, 
-    sameSite: sameSiteOpt, 
-    path: '/', 
-    maxAge: 60 * 60 * 1000 
-  }
-  const refreshCookie = { 
-    httpOnly: true, 
-    secure: cookieSecure, 
-    sameSite: sameSiteOpt, 
-    path: '/', 
-    maxAge: 7 * 24 * 60 * 60 * 1000 
-  }
-  // Compatibility cookie name expected by some clients
-  const compatCookie = { 
-    httpOnly: true, 
-    secure: cookieSecure, 
-    sameSite: sameSiteOpt, 
-    path: '/', 
-    maxAge: 60 * 60 * 1000 
-  }
-  
-  // For localhost development, set domain to 'localhost' for cross-port support
-  if (!isProduction && isLocalHost) {
-    accessCookie.domain = 'localhost';
-    refreshCookie.domain = 'localhost';
-    compatCookie.domain = 'localhost';
+
+  const accessCookieOpts = {
+    httpOnly: true,
+    secure: cookieSecure,
+    sameSite: sameSiteOpt,
+    path: '/',
+    maxAge: 60 * 60 * 1000, // 1 hour
   }
 
-  // Log cookie settings for debugging
-  console.log('[Login] Cookie settings:', {
-    isProduction,
-    cookieSecure,
-    sameSiteOpt,
-    domain: accessCookie.domain || 'none (host-only)'
+  const refreshCookieOpts = {
+    httpOnly: true,
+    secure: cookieSecure,
+    sameSite: sameSiteOpt,
+    path: '/',
+    maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+  }
+
+  res.cookie('access_token', accessToken, accessCookieOpts)
+  res.cookie('refresh_token', refreshToken, refreshCookieOpts)
+
+  res.json({
+    message: 'Login successful',
+    user: {
+      id: user.id,
+      username: user.username,
+      role: user.role,
+    },
   })
-
-  res.cookie('access_token', accessToken, accessCookie)
-  res.cookie('refresh_token', refreshToken, refreshCookie)
-  // also set 'token' cookie for compatibility with clients expecting this name
-  res.cookie('token', accessToken, compatCookie)
-  res.json({ ok: true, email: user.email, role: roleName })
-  } catch (err) {
-    // Log full error with stack and request context
-    try {
-      console.error('Login error:', err && err.message ? err.message : err)
-      if (err && err.stack) console.error(err.stack)
-    } catch (e) {
-      // no-op
-    }
-    // Always return JSON with explicit content-type
-    res.setHeader('Content-Type', 'application/json; charset=utf-8')
-    res.status(500).send(JSON.stringify({ error: 'internal error', code: 'LOGIN_500' }))
-  }
 })
 
-// Refresh endpoint to rotate refresh tokens and issue a new access token
 app.post('/api/token/refresh', async (req, res) => {
   try {
-    const cookieToken = req.cookies && req.cookies['refresh_token']
-    if (!cookieToken) return res.status(401).json({ error: 'missing refresh token' })
-    const { verifyAndConsumeRefreshToken, saveRefreshToken, revokeJti } = require('./lib/tokenStore')
-  // verifyAndConsumeRefreshToken is async
-  let rec = null
-  try {
-    rec = await verifyAndConsumeRefreshToken(cookieToken)
-  } catch (e) {
-    console.error('verifyAndConsumeRefreshToken failed:', e && e.message)
-    rec = null
-  }
-    if (!rec) return res.status(401).json({ error: 'invalid or expired refresh token' })
+    const { refresh_token: refreshToken } = req.cookies
 
-    // Issue new tokens
-  const { safeRandomId } = require('./lib/id')
-  const newJti = safeRandomId()
-  const accessToken = jwt.sign({ sub: rec.userId, role: rec.role, jti: newJti }, process.env.JWT_SECRET || 'dev-secret', { expiresIn: '1h' })
-  const newRefresh = safeRandomId()
-    const refreshExpiresAt = Date.now() + 7 * 24 * 60 * 60 * 1000
-    try {
-      await saveRefreshToken(newRefresh, { userId: rec.userId, role: rec.role, jti: newJti, expiresAt: refreshExpiresAt })
-    } catch (e) {
-      console.warn('Warning: failed to persist new refresh token:', e && e.message)
+    if (!refreshToken) {
+      return res.status(401).json({ message: 'Refresh token not found' })
     }
 
-    // Revoke previous jti (optional) to prevent reuse
-  try { await revokeJti(rec.jti, Date.now() + 60 * 60 * 1000) } catch (e) { /* non-fatal */ }
+    // Verify refresh token
+    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET)
+
+    // Check if token exists in the database and is not expired
+    const storedToken = await RefreshToken.findOne({
+      where: {
+        token: refreshToken,
+        userId: decoded.id,
+        expiresAt: { [Op.gt]: new Date() },
+      },
+    })
+
+    if (!storedToken) {
+      return res.status(403).json({ message: 'Invalid or expired refresh token' })
+    }
+
+    // Generate new access token
+    const newAccessToken = generateAccessToken({
+      id: decoded.id,
+      username: decoded.username,
+      role: decoded.role,
+    })
 
     // Set cookies
     const isProduction = process.env.NODE_ENV === 'production'
-    const hostHeader = (req && (req.hostname || (req.headers && req.headers.host))) || ''
-    const isLocalHost = String(hostHeader).includes('localhost') || String(hostHeader).includes('127.0.0.1')
-    const cookieSecure = Boolean(isProduction && !isLocalHost)
+    const cookieSecure = isProduction
     
   const sameSiteOpt = isProduction ? 'none' : 'lax'
   const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
-  const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
-  const compatCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
-    
-    // For localhost development, prefer host-only cookies (do not set domain)
-    if (!isProduction && isLocalHost) {
-      // Ensure we don't set a domain attribute for localhost to keep cookies host-only
-      delete accessCookieOpts.domain;
-      delete refreshCookieOpts.domain;
-    }
-    
-    res.cookie('access_token', accessToken, accessCookieOpts)
-    res.cookie('refresh_token', newRefresh, refreshCookieOpts)
-  res.cookie('token', accessToken, compatCookieOpts)
-    res.json({ ok: true })
-  } catch (err) {
-    console.error('Refresh error', err)
-    res.status(500).json({ error: 'internal error' })
+
+    res.cookie('access_token', newAccessToken, accessCookieOpts)
+
+    res.json({ message: 'Token refreshed successfully' })
+  } catch (error) {
+    console.error('Refresh token error:', error)
+    return res.status(403).json({ message: 'Invalid refresh token' })
   }
 })
 
-// Protected route example
-app.get('/api/me', authenticate, async (req, res) => {
-  res.json({ user: req.user })
-})
-// Simple test endpoint to verify authentication
-app.get('/api/auth-test', authenticate, async (req, res) => {
-  res.json({ 
-    authenticated: true, 
-    user: req.user,
-    message: 'You are authenticated!' 
-  })
-})
+app.post('/api/logout', async (req, res) => {
+  const { refresh_token: refreshToken } = req.cookies
 
-// Logout: clear cookie
-app.post('/api/logout', (req, res) => {
-  // Revoke refresh token and jti if present
-  try {
-    const { revokeRefreshTokenByRaw, revokeJti, revokeAllRefreshTokensForUser } = require('./lib/tokenStore')
-    const refresh = req.cookies && req.cookies['refresh_token']
-    if (refresh) revokeRefreshTokenByRaw(refresh)
-    // If access token cookie present, try to decode to revoke jti
-    const access = req.cookies && req.cookies['access_token']
-    if (access) {
-      try {
-        const payload = jwt.decode(access)
-        if (payload && payload.jti) revokeJti(payload.jti)
-        if (payload && payload.sub) revokeAllRefreshTokensForUser(payload.sub)
-      } catch (e) { /* ignore */ }
-    }
-  } catch (e) { console.error('Logout revoke error', e) }
+  if (refreshToken) {
+    // Remove the refresh token from the database
+    await RefreshToken.destroy({ where: { token: refreshToken } })
+  }
 
-  // Clear cookies - CRITICAL: Must use EXACT same options as when setting (including domain if set)
+  // Clear cookies on the client side
   // The sameSite and httpOnly need to match what was used in login
   try {
     const isProduction = process.env.NODE_ENV === 'production'
     const cookieOpts = { 
       path: '/', 
       httpOnly: true, 
+      secure: isProduction,
       sameSite: isProduction ? 'none' : 'lax',
     }
   res.clearCookie('access_token', cookieOpts)
   res.clearCookie('refresh_token', cookieOpts)
-  res.clearCookie('token', cookieOpts)
     
     // Also try without httpOnly in case client needs to clear it
-  res.clearCookie('access_token', { path: '/', sameSite: isProduction ? 'none' : 'lax' })
-  res.clearCookie('refresh_token', { path: '/', sameSite: isProduction ? 'none' : 'lax' })
-  res.clearCookie('token', { path: '/', sameSite: isProduction ? 'none' : 'lax' })
+  res.clearCookie('access_token', { path: '/', secure: isProduction, sameSite: isProduction ? 'none' : 'lax' })
+  res.clearCookie('refresh_token', { path: '/', secure: isProduction, sameSite: isProduction ? 'none' : 'lax' })
+  res.clearCookie('token', { path: '/', secure: isProduction, sameSite: isProduction ? 'none' : 'lax' })
   } catch (e) {
     // best-effort fallback
     try { res.clearCookie('access_token', { path: '/' }) } catch (e) {}
     try { res.clearCookie('refresh_token', { path: '/' }) } catch (e) {}
+    try { res.clearCookie('token', { path: '/' }) } catch (e) {}
   }
 
-  return res.status(200).json({ ok: true, message: 'Logged out successfully' })
+
+  res.status(200).json({ message: 'Logout successful' })
 })
 
 // Development only: Reset rate limiter
