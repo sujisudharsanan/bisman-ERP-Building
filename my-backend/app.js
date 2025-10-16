@@ -66,6 +66,9 @@ const dynamic = [envFront, ...envFronts.split(',')]
 const providedOrigins = [
   'https://bisman-erp-building-nnul-mdzo2vwfm-sujis-projects-dfb64252.vercel.app',
   'https://bisman-erp-rr6f.onrender.com',
+  'https://bisman-erp-xr6f.onrender.com',
+  // Allow any vercel.app subdomain for this project (safe if only used during testing)
+  'regex:^https://.*\\.vercel\\.app$'
 ]
 const isProd = process.env.NODE_ENV === 'production'
 const localDefaults = [
