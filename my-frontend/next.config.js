@@ -26,14 +26,6 @@ const nextConfig = {
     }
     return config;
   },
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${API_URL}/api/:path*`,
-      },
-    ];
-  },
   async headers() {
     return [
       {
