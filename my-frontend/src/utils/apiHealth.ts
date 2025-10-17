@@ -9,29 +9,54 @@ function safeLog(...args: any[]) {
 }
 
 async function checkApiConnection() {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_API_BASE || process.env.NEXT_PUBLIC_API_BASE_URL || '';
-  safeLog('%c🔍 API Health Check', 'font-weight:bold');
+  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const hostname = typeof window !== 'undefined' ? window.location.hostname : 'server';
+  
+  safeLog('%c🔍 API Health Check', 'font-weight:bold; color: #4CAF50; font-size: 14px;');
+  safeLog(`📍 Frontend running on: ${hostname}`);
+  safeLog(`🌐 API Base URL: ${baseUrl}`);
 
-  if (!baseUrl) {
-    safeLog('❌ Missing NEXT_PUBLIC_API_URL. Using relative /api via rewrites.');
-    safeLog('➡️ On Vercel, either rely on rewrites or set NEXT_PUBLIC_API_URL to your Render URL.');
-  } else {
-    safeLog(`🌐 Using API base URL: ${baseUrl}`);
+  // Test critical health endpoint first
+  const healthUrl = `${baseUrl}/api/health`;
+  try {
+    safeLog(`🧪 Testing connection to ${healthUrl}`);
+    const res = await fetch(healthUrl, { 
+      credentials: 'include',
+      mode: 'cors',
+      headers: {
+        'Accept': 'application/json'
+      }
+    });
+    
+    if (res.ok) {
+      const data = await res.json().catch(() => ({}));
+      safeLog(`✅ Backend is reachable! Status: ${res.status}`, data);
+    } else {
+      safeLog(`⚠️  Backend responded with status ${res.status}`);
+    }
+  } catch (err: any) {
+    safeLog('%c❌ BACKEND IS UNREACHABLE', 'font-weight:bold; color: #f44336; font-size: 14px;');
+    safeLog(`🚫 Error: ${err?.message || err}`);
+    safeLog('💡 Troubleshooting:');
+    safeLog('   1. Check if backend is running on', baseUrl);
+    safeLog('   2. Verify CORS is configured to allow', hostname);
+    safeLog('   3. Check network/firewall settings');
+    return;
   }
 
+  // Test auth endpoints
   const endpoints = ['/api/me', '/api/login'];
   for (const path of endpoints) {
-    const url = path.startsWith('/api') && !baseUrl ? path : `${baseUrl}${path.replace(/^\/api/, '')}`;
+    const url = `${baseUrl}${path}`;
     try {
-      safeLog(`🧪 Testing ${url}`);
-      const res = await fetch(url, { credentials: 'include' });
-      if (!res.ok) {
-        safeLog(`❌ ${path} returned status ${res.status}`);
-      } else {
-        safeLog(`✅ ${path} OK (${res.status})`);
-      }
+      const res = await fetch(url, { 
+        credentials: 'include',
+        mode: 'cors',
+        method: path === '/api/login' ? 'OPTIONS' : 'GET'
+      });
+      safeLog(`${res.ok ? '✅' : '⚠️'} ${path}: ${res.status}`);
     } catch (err: any) {
-      safeLog(`🚫 Error reaching ${url}:`, err?.message || err);
+      safeLog(`❌ ${path}: ${err?.message || 'Failed'}`);
     }
   }
 }

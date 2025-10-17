@@ -7,6 +7,7 @@ import { ThemeProvider } from '../contexts/ThemeContext';
 import GlobalRouteLoader from '@/components/loading/GlobalRouteLoader';
 import FloatingBottomNav from '@/components/ui/FloatingBottomNav';
 import HealthBoot from '@/components/dev/HealthBoot';
+import RenderLogger from '@/components/debug/RenderLogger';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -31,6 +32,7 @@ export default function RootLayout({
         <ThemeProvider>
           <AuthProvider>
             <PermissionProvider>
+              <RenderLogger />
               <div className="min-h-screen pb-20 md:pb-0">
                 {children}
               </div>

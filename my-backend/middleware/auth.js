@@ -61,19 +61,23 @@ async function authenticate(req, res, next) {
     }
     // audience/issuer checks can be added if configured
     console.log('[authenticate] Verifying JWT token...')
-    const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret', verifyOptions)
-    console.log('[authenticate] JWT payload:', payload)
+  const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret', verifyOptions)
+  console.log('[authenticate] JWT payload:', payload)
+  // Normalize subject/id across token issuers
+  const subjectId = payload.sub || payload.id || payload.userId || payload.uid
     
     // reject if jti is revoked
     if (payload && payload.jti && await isJtiRevoked(payload.jti)) {
       console.log('[authenticate] Token JTI is revoked:', payload.jti)
       return res.status(401).json({ error: 'revoked token' })
     }
-    let user = null
+  let user = null
 
     // Try Prisma first if database is available
     try {
-      user = await prisma.user.findUnique({ where: { id: payload.sub } })
+      if (subjectId != null) {
+        user = await prisma.user.findUnique({ where: { id: subjectId } })
+      }
       if (user) {
         delete user.password
         req.user = user
@@ -86,10 +90,10 @@ async function authenticate(req, res, next) {
 
     // Fallback to development users if database fails
     if (!user) {
-      console.log('[authenticate] Using dev user lookup for sub:', payload.sub)
-      const devUser = devUsers.find(u => u.id === payload.sub)
+      console.log('[authenticate] Using dev user lookup for subjectId:', subjectId)
+      const devUser = devUsers.find(u => u.id === subjectId || (payload.email && u.email === payload.email))
       if (!devUser) {
-        console.log('[authenticate] Dev user not found for sub:', payload.sub)
+        console.log('[authenticate] Dev user not found for id/email:', subjectId, payload.email)
         return res.status(401).json({ error: 'invalid token user' })
       }
       console.log('[authenticate] Dev user found:', devUser.email)

@@ -108,15 +108,19 @@ const EmbeddedHubIncharge = dynamic(
 
 // Static bottom bar to mimic Excel-like sheet tabs
 export function HubInchargeBottomBar() {
-  const searchParams = useSearchParams();
   const router = useRouter();
-  const initialTab = (searchParams?.get('tab') as any) || 'Dashboard';
-  const [activeTab, setActiveTab] = React.useState(initialTab);
+  const [activeTab, setActiveTab] = React.useState('Dashboard');
+  const [mounted, setMounted] = React.useState(false);
 
   React.useEffect(() => {
-    setActiveTab(initialTab);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams?.toString()]);
+    setMounted(true);
+    // Read tab from URL after mount to avoid hydration issues
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get('tab') || 'Dashboard';
+      setActiveTab(tab);
+    }
+  }, []);
 
   const navItems: { name: string; icon: JSX.Element }[] = [
     { name: 'Dashboard', icon: <Home size={16} /> },
@@ -143,6 +147,11 @@ export function HubInchargeBottomBar() {
   window.dispatchEvent(new CustomEvent('hub-tab-change', { detail: tabName }));
     }
   };
+
+  // Don't render until mounted to avoid hydration mismatch
+  if (!mounted) {
+    return null;
+  }
 
   return (
     <>

@@ -19,6 +19,7 @@ interface User {
   username?: string;
   email?: string;
   roleName?: string;
+  role?: string; // Added for compatibility
   name?: string;
 }
 
@@ -58,12 +59,28 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
       if (response.ok) {
         const data = await response.json();
-        setUser(data.user);
+        const userData = data.user;
+        
+        // Ensure role/roleName exists, provide fallback
+        if (!userData.role && !userData.roleName) {
+          console.warn('⚠️ Role missing from /api/me response — assigning fallback role: MANAGER');
+          userData.role = 'MANAGER';
+          userData.roleName = 'MANAGER';
+        } else if (!userData.roleName) {
+          userData.roleName = userData.role;
+        } else if (!userData.role) {
+          userData.role = userData.roleName;
+        }
+        
+        console.log('✅ User authenticated with role:', userData.roleName || userData.role);
+        setUser(userData);
       } else {
+        console.log('⚠️ /api/me failed with status:', response.status);
         setUser(null);
       }
-    } catch {
+    } catch (err) {
       // Auth check failed - reset user state
+      console.error('❌ Auth check error:', err);
       setUser(null);
     } finally {
       setLoading(false);
@@ -116,9 +133,23 @@ export function AuthProvider({ children }: AuthProviderProps) {
         };
         const who = await probeMe();
         if (who && who.user) {
-          setUser(who.user);
+          const userData = who.user;
+          
+          // Ensure role/roleName exists, provide fallback
+          if (!userData.role && !userData.roleName) {
+            console.warn('⚠️ Role missing after login — assigning fallback role: MANAGER');
+            userData.role = 'MANAGER';
+            userData.roleName = 'MANAGER';
+          } else if (!userData.roleName) {
+            userData.roleName = userData.role;
+          } else if (!userData.role) {
+            userData.role = userData.roleName;
+          }
+          
+          console.log('✅ Login successful - User authenticated with role:', userData.roleName || userData.role);
+          setUser(userData);
           setLoading(false);
-          return who.user;
+          return userData;
         }
         // Fallback to parsing login body if /api/me probe fails for any reason
         try {

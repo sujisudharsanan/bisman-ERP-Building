@@ -76,6 +76,9 @@ const providedOrigins = [
 ]
 const isProd = process.env.NODE_ENV === 'production'
 const localDefaults = [
+  // Common local dev origins (with and without explicit ports)
+  'http://localhost',
+  'http://127.0.0.1',
   'http://localhost:3000',
   'http://127.0.0.1:3000',
   'http://localhost:3001',
@@ -117,6 +120,9 @@ const corsOptions = {
 
 app.use(cors(corsOptions))
 app.options('*', cors(corsOptions))
+// Explicit preflight support for common alias paths
+app.options('/login', cors(corsOptions))
+app.options('/me', cors(corsOptions))
 
 if (process.env.DEBUG_CORS === '1') {
   try {
@@ -241,23 +247,45 @@ app.get('/health', async (req, res) => {
 app.get('/api/me', (req, res) => {
   try {
     const token = req.cookies?.access_token || req.cookies?.token || ''
-    if (!token) return res.status(401).json({ error: 'Not authenticated' })
+    if (!token) {
+      console.log('⚠️ /api/me: No token found in cookies');
+      return res.status(401).json({ error: 'Not authenticated' })
+    }
 
     const secret = process.env.ACCESS_TOKEN_SECRET || process.env.JWT_SECRET || process.env.SECRET
     if (!secret) return res.status(500).json({ error: 'Server misconfigured: missing token secret' })
 
     const payload = jwt.verify(token, secret)
+    console.log('🔍 /api/me JWT payload:', { id: payload.id, email: payload.email, role: payload.role });
+    
     // Shape a minimal user object; adapt as needed
+    const roleValue = payload.role || payload.roleName || 'MANAGER'
+    
+    if (!payload.role && !payload.roleName) {
+      console.warn('⚠️ Role missing in JWT payload — assigning fallback role: MANAGER');
+    }
+    
     const user = {
       id: payload.id || payload.userId || payload.sub || null,
       email: payload.email || payload.username || null,
-      role: payload.role || payload.roleName || null,
-      username: payload.username || null,
+      role: roleValue,
+      roleName: roleValue, // Frontend expects roleName
+      username: payload.username || payload.email?.split('@')[0] || null,
     }
+    
+    console.log('✅ /api/me returning user:', { email: user.email, role: user.role, roleName: user.roleName });
     return res.json({ ok: true, user })
   } catch (e) {
+    console.error('❌ /api/me error:', e.message);
     return res.status(401).json({ error: 'Invalid or expired token' })
   }
+})
+
+// Lightweight aliases for legacy/non-prefixed callers
+app.get('/me', (req, res) => {
+  // Delegate to /api/me handler by reusing logic via internal redirect
+  req.url = '/api' + req.url
+  app._router.handle(req, res, () => res.status(404).end())
 })
 
 // ...existing routes...
@@ -369,33 +397,36 @@ if (databaseUrl) {
 const { authenticate, requireRole } = require('./middleware/auth')
 
 
+// In-memory session store for dev users (when DB is unavailable)
+const devUserSessions = Object.create(null)
+
 // Development users for testing (support both 'password' and 'changeme' where docs use it)
 const devUsers = [
   // Super Admin
-  { id: 0, email: 'super@bisman.local', password: 'password', role: 'SUPER_ADMIN' },
-  { id: 100, email: 'super@bisman.local', password: 'changeme', role: 'SUPER_ADMIN' },
+  { id: 0, email: 'super@bisman.local', password: 'password', role: 'SUPER_ADMIN', isDev: true },
+  { id: 100, email: 'super@bisman.local', password: 'changeme', role: 'SUPER_ADMIN', isDev: true },
   // Admin
-  { id: 2, email: 'admin@business.com', password: 'admin123', role: 'ADMIN' },
-  { id: 101, email: 'admin@bisman.local', password: 'changeme', role: 'ADMIN' },
+  { id: 2, email: 'admin@business.com', password: 'admin123', role: 'ADMIN', isDev: true },
+  { id: 101, email: 'admin@bisman.local', password: 'changeme', role: 'ADMIN', isDev: true },
   // Manager
-  { id: 1, email: 'manager@business.com', password: 'password', role: 'MANAGER' },
-  { id: 102, email: 'manager@bisman.local', password: 'changeme', role: 'MANAGER' },
+  { id: 1, email: 'manager@business.com', password: 'password', role: 'MANAGER', isDev: true },
+  { id: 102, email: 'manager@bisman.local', password: 'changeme', role: 'MANAGER', isDev: true },
   // Staff / Hub Incharge
-  { id: 3, email: 'staff@business.com', password: 'staff123', role: 'STAFF' },
-  { id: 103, email: 'hub@bisman.local', password: 'changeme', role: 'STAFF' },
+  { id: 3, email: 'staff@business.com', password: 'staff123', role: 'STAFF', isDev: true },
+  { id: 103, email: 'hub@bisman.local', password: 'changeme', role: 'STAFF', isDev: true },
 
   // New Finance & Operations demo users
-  { id: 201, email: 'it@bisman.local', password: 'changeme', role: 'IT_ADMIN' },
-  { id: 202, email: 'cfo@bisman.local', password: 'changeme', role: 'CFO' },
-  { id: 203, email: 'controller@bisman.local', password: 'changeme', role: 'FINANCE_CONTROLLER' },
-  { id: 204, email: 'treasury@bisman.local', password: 'changeme', role: 'TREASURY' },
-  { id: 205, email: 'accounts@bisman.local', password: 'changeme', role: 'ACCOUNTS' },
-  { id: 206, email: 'ap@bisman.local', password: 'changeme', role: 'ACCOUNTS_PAYABLE' },
-  { id: 207, email: 'banker@bisman.local', password: 'changeme', role: 'BANKER' },
-  { id: 208, email: 'procurement@bisman.local', password: 'changeme', role: 'PROCUREMENT_OFFICER' },
-  { id: 209, email: 'store@bisman.local', password: 'changeme', role: 'STORE_INCHARGE' },
-  { id: 210, email: 'compliance@bisman.local', password: 'changeme', role: 'COMPLIANCE' },
-  { id: 211, email: 'legal@bisman.local', password: 'changeme', role: 'LEGAL' }
+  { id: 201, email: 'it@bisman.local', password: 'changeme', role: 'IT_ADMIN', isDev: true },
+  { id: 202, email: 'cfo@bisman.local', password: 'changeme', role: 'CFO', isDev: true },
+  { id: 203, email: 'controller@bisman.local', password: 'changeme', role: 'FINANCE_CONTROLLER', isDev: true },
+  { id: 204, email: 'treasury@bisman.local', password: 'changeme', role: 'TREASURY', isDev: true },
+  { id: 205, email: 'accounts@bisman.local', password: 'changeme', role: 'ACCOUNTS', isDev: true },
+  { id: 206, email: 'ap@bisman.local', password: 'changeme', role: 'ACCOUNTS_PAYABLE', isDev: true },
+  { id: 207, email: 'banker@bisman.local', password: 'changeme', role: 'BANKER', isDev: true },
+  { id: 208, email: 'procurement@bisman.local', password: 'changeme', role: 'PROCUREMENT_OFFICER', isDev: true },
+  { id: 209, email: 'store@bisman.local', password: 'changeme', role: 'STORE_INCHARGE', isDev: true },
+  { id: 210, email: 'compliance@bisman.local', password: 'changeme', role: 'COMPLIANCE', isDev: true },
+  { id: 211, email: 'legal@bisman.local', password: 'changeme', role: 'LEGAL', isDev: true }
 ]
 
 // Simple login endpoint with fallback for development
@@ -411,7 +442,7 @@ app.post('/api/login', async (req, res) => {
   }
 
   try {
-    const user = await prisma.user.findUnique({
+    let user = await prisma.user.findUnique({
       where: { email },
     });
 
@@ -422,44 +453,73 @@ app.post('/api/login', async (req, res) => {
       if (!devUser) {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
-      console.log('Login: Successfully authenticated via dev user fallback.');
+      console.log('✅ Login: Successfully authenticated via dev user fallback.');
+      console.log('✅ User authenticated with role:', devUser.role);
       user = devUser; // Assign devUser to user object
     }
 
-    // Generate and send tokens
-    const accessToken = generateAccessToken({ id: user.id, email: user.email });
-    const refreshToken = generateRefreshToken({ id: user.id });
+    // Normalize role field (could be role or roleName from DB)
+    const userRole = user.role || user.roleName || 'MANAGER';
+    const userEmail = user.email || user.username || loginCredential;
+    const userId = user.id || user.userId || 0;
 
-    try {
-      // Persist refresh token to DB
-      const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
-      const expiryDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+    // Generate and send tokens WITH role
+    const accessToken = generateAccessToken({ 
+      id: userId, 
+      email: userEmail, 
+      role: userRole,
+      username: user.username || userEmail.split('@')[0]
+    });
+    const refreshToken = generateRefreshToken({ 
+      id: userId, 
+      email: userEmail,
+      role: userRole
+    });
 
-      await prisma.refreshToken.create({
-        data: {
-          token: hashedToken,
-          userId: user.id,
-          expiresAt: expiryDate,
-        },
-      });
-       console.log('Successfully persisted refresh token to DB.');
-    } catch (dbError) {
-      console.error('Refresh token persist failed due to DB error:', dbError);
-      // For dev users, store refresh token in-memory as a fallback
-      if (user.isDev) {
-        devUserSessions[refreshToken] = { userId: user.id, email: user.email };
-        console.log('Persisted refresh token to in-memory session for dev user.');
-      } else {
+    // If this is a dev user (not present in DB), skip DB persistence and use in-memory session
+    if (user.isDev) {
+      devUserSessions[refreshToken] = { userId: user.id, email: user.email }
+    } else {
+      try {
+        // Persist refresh token to DB
+        const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
+        const expiryDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+        await prisma.user_sessions.create({
+          data: {
+            session_token: hashedToken,
+            user_id: user.id,
+            expires_at: expiryDate,
+            created_at: new Date(),
+            is_active: true,
+          },
+        });
+        console.log('Successfully persisted refresh token to DB.');
+      } catch (dbError) {
+        console.error('Refresh token persist failed due to DB error:', dbError);
         // If it's a real user, this is a critical error.
-        // For now, we'll log it and still send tokens, but this indicates a problem.
-         return res.status(500).json({ message: 'Could not persist session. Please try again.' });
+        return res.status(500).json({ message: 'Could not persist session. Please try again.' });
       }
     }
 
-    res.cookie('access_token', accessToken, { httpOnly: true, secure: true, sameSite: 'none', path: '/', maxAge: 60 * 60 * 1000 })
-    res.cookie('refresh_token', refreshToken, { httpOnly: true, secure: true, sameSite: 'none', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 })
+  // Use secure cookies only in production to support http://localhost during dev
+  const isProduction = process.env.NODE_ENV === 'production'
+  const cookieSecure = isProduction
+  const sameSiteOpt = isProduction ? 'none' : 'lax'
+  res.cookie('access_token', accessToken, { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 })
+  res.cookie('refresh_token', refreshToken, { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 })
 
-    res.json({ message: 'Login successful', user: { id: user.id, email: user.email } })
+    console.log('✅ Login successful - Tokens generated with role:', userRole);
+    res.json({ 
+      message: 'Login successful', 
+      user: { 
+        id: userId, 
+        email: userEmail,
+        role: userRole,
+        roleName: userRole,
+        username: user.username || userEmail.split('@')[0]
+      } 
+    })
   } catch (error) {
     console.error('Login Error:', error); // Enhanced logging
     // Fallback for DB connection error
@@ -480,11 +540,14 @@ app.post('/api/login', async (req, res) => {
 
     // Try to persist refresh token; if it fails, continue for demo use
     try {
-      await prisma.refreshToken.create({
+      const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex')
+      await prisma.user_sessions.create({
         data: {
-          token: refreshToken,
-          userId: uid,
-          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          session_token: hashedToken,
+          user_id: uid,
+          expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          created_at: new Date(),
+          is_active: true,
         },
       })
     } catch (persistErr) {
@@ -506,6 +569,12 @@ app.post('/api/login', async (req, res) => {
   }
 })
 
+// Alias for clients that POST to /login instead of /api/login
+app.post('/login', (req, res) => {
+  req.url = '/api/login'
+  app._router.handle(req, res, () => res.status(404).end())
+})
+
 app.post('/api/token/refresh', async (req, res) => {
   const { refresh_token: refreshToken } = req.cookies;
 
@@ -515,12 +584,15 @@ app.post('/api/token/refresh', async (req, res) => {
 
   try {
     const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
-    const existingToken = await prisma.refreshToken.findUnique({
-      where: { token: hashedToken },
-      include: { user: true },
+    const existingSession = await prisma.user_sessions.findFirst({
+      where: {
+        session_token: hashedToken,
+        is_active: true,
+        expires_at: { gt: new Date() },
+      },
     });
 
-    if (!existingToken || new Date() > new Date(existingToken.expiresAt)) {
+    if (!existingSession) {
       console.log('Refresh token not found in DB or expired, falling back to in-memory session.');
       // Fallback to "in-memory" session check for dev user
       const devSession = devUserSessions[refreshToken];
@@ -530,8 +602,21 @@ app.post('/api/token/refresh', async (req, res) => {
       // ... existing dev user logic
     } else {
         console.log('Refresh token validated against database.');
+        // Validate token signature and get user id from token
+        let decoded;
+        try {
+          decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+        } catch (e) {
+          return res.status(401).json({ message: 'Invalid refresh token' });
+        }
+
+        // Load user to build claims
+        const userRecord = await prisma.user.findUnique({ where: { id: existingSession.user_id } })
+        if (!userRecord) {
+          return res.status(401).json({ message: 'User not found' });
+        }
         // Issue new access token
-        const newAccessToken = generateAccessToken({ id: decoded.id, username: decoded.username, role: decoded.role })
+        const newAccessToken = generateAccessToken({ id: userRecord.id, email: userRecord.email })
 
         const isProduction = process.env.NODE_ENV === 'production'
         const cookieSecure = isProduction
@@ -564,7 +649,10 @@ app.post('/api/logout', async (req, res) => {
 
   if (refreshToken) {
     // Remove the refresh token from the database
-    await prisma.refreshToken.deleteMany({ where: { token: refreshToken } });
+    try {
+      const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex')
+      await prisma.user_sessions.deleteMany({ where: { session_token: hashedToken } });
+    } catch {}
   }
 
   // Clear cookies on the client side
