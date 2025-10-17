@@ -8,6 +8,7 @@
 function getApiBaseUrl(): string {
   // 1. Check for explicit environment variable (highest priority)
   if (process.env.NEXT_PUBLIC_API_URL) {
+    console.log('🔧 Using NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
     return process.env.NEXT_PUBLIC_API_URL;
   }
 
@@ -17,18 +18,23 @@ function getApiBaseUrl(): string {
     
     // If running on Vercel production domain, use production backend
     if (hostname.includes('vercel.app')) {
-      // Fallback to Render backend URL if not set
-      return 'https://bisman-erp-xr6f.onrender.com';
+      // CRITICAL: Use the correct Render backend URL (xr6f, not rr6f)
+      const backendUrl = 'https://bisman-erp-xr6f.onrender.com';
+      console.log('🌐 Vercel deployment detected, using backend:', backendUrl);
+      return backendUrl;
     }
     
     // If on localhost, use local backend
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
+      console.log('🏠 Localhost detected, using local backend');
       return 'http://localhost:3001';
     }
   }
 
   // 3. Server-side default (SSR/SSG)
-  return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  const defaultUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  console.log('🔄 SSR/SSG fallback, using:', defaultUrl);
+  return defaultUrl;
 }
 
 const apiBase = getApiBaseUrl();
@@ -37,10 +43,28 @@ const apiBase = getApiBaseUrl();
 if (typeof window !== 'undefined') {
   const isProd = window.location.hostname.includes('vercel.app');
   if (isProd && !process.env.NEXT_PUBLIC_API_URL) {
-    console.warn('⚠️  NEXT_PUBLIC_API_URL not set in production. Using fallback:', apiBase);
+    console.warn('⚠️  NEXT_PUBLIC_API_URL not set in Vercel dashboard!');
+    console.warn('⚠️  Using hardcoded fallback:', apiBase);
+    console.warn('⚠️  Add NEXT_PUBLIC_API_URL=https://bisman-erp-xr6f.onrender.com in Vercel settings');
   } else {
     console.log('✅ API Base URL:', apiBase);
   }
+  
+  // Test backend connectivity
+  fetch(`${apiBase}/api/health`, {
+    method: 'GET',
+    credentials: 'include',
+  })
+    .then(r => {
+      if (r.ok) {
+        console.log('✅ Backend reachable:', apiBase);
+      } else {
+        console.error('❌ Backend returned status:', r.status, apiBase);
+      }
+    })
+    .catch(err => {
+      console.error('❌ Backend unreachable:', apiBase, err.message);
+    });
 }
 
 export const API_BASE = apiBase;

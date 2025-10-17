@@ -124,6 +124,15 @@ app.options('*', cors(corsOptions))
 app.options('/login', cors(corsOptions))
 app.options('/me', cors(corsOptions))
 
+// Always log CORS configuration on startup
+console.log('🔒 CORS Configuration:')
+console.log('   - Credentials:', corsOptions.credentials)
+console.log('   - Allowed Origins:', allowlist.length, 'entries')
+console.log('   - Production Mode:', isProd)
+if (process.env.DEBUG_CORS === '1') {
+  console.log('   - Full Allowlist:', allowlist)
+}
+
 if (process.env.DEBUG_CORS === '1') {
   try {
     console.log('[CORS] Allowlist:', allowlist)
