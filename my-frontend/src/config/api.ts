@@ -18,8 +18,8 @@ function getApiBaseUrl(): string {
     
     // If running on Vercel production domain, use production backend
     if (hostname.includes('vercel.app')) {
-      // CRITICAL: Use the correct Render backend URL (xr6f, not rr6f)
-      const backendUrl = 'https://bisman-erp-xr6f.onrender.com';
+      // CRITICAL: Use the correct Render backend URL (rr6f for production)
+      const backendUrl = 'https://bisman-erp-rr6f.onrender.com';
       console.log('🌐 Vercel deployment detected, using backend:', backendUrl);
       return backendUrl;
     }
@@ -45,7 +45,7 @@ if (typeof window !== 'undefined') {
   if (isProd && !process.env.NEXT_PUBLIC_API_URL) {
     console.warn('⚠️  NEXT_PUBLIC_API_URL not set in Vercel dashboard!');
     console.warn('⚠️  Using hardcoded fallback:', apiBase);
-    console.warn('⚠️  Add NEXT_PUBLIC_API_URL=https://bisman-erp-xr6f.onrender.com in Vercel settings');
+    console.warn('⚠️  Add NEXT_PUBLIC_API_URL=https://bisman-erp-rr6f.onrender.com in Vercel settings');
   } else {
     console.log('✅ API Base URL:', apiBase);
   }

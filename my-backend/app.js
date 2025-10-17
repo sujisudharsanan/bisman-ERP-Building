@@ -66,13 +66,15 @@ const dynamic = [envFront, ...envFronts.split(',')]
   .filter(Boolean)
 const providedOrigins = [
   // Exact Vercel deployment URL(s)
+  'https://bisman-erp-building.vercel.app',
   'https://bisman-erp-building-git-diployment-sujis-projects-dfb64252.vercel.app',
   'https://bisman-erp-building-nnul-mdzo2vwfm-sujis-projects-dfb64252.vercel.app',
   // Render hosted backend URL(s)
   'https://bisman-erp-rr6f.onrender.com',
   'https://bisman-erp-xr6f.onrender.com',
   // Allow any vercel.app subdomain for this project (useful during testing)
-  'regex:^https://.*\\.vercel\\.app$'
+  'regex:^https://bisman-erp-building.*\\.vercel\\.app$',
+  'regex:^https://.*-sujis-projects-dfb64252\\.vercel\\.app$'
 ]
 const isProd = process.env.NODE_ENV === 'production'
 const localDefaults = [
@@ -646,6 +648,12 @@ app.post('/api/token/refresh', async (req, res) => {
     // ... existing dev user logic
   }
 });
+
+// Alias route for /api/refresh (redirects to /api/token/refresh)
+app.post('/api/refresh', (req, res) => {
+  req.url = '/api/token/refresh'
+  app._router.handle(req, res, () => res.status(404).end())
+})
 
 // This should be at the end of all other middleware and routes
 app.use((err, req, res, next) => {
