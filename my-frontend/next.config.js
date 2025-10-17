@@ -77,12 +77,20 @@ const nextConfig = {
     ];
   },
   async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${API_URL}/api/:path*`,
-      },
-    ];
+    const backend = API_URL;
+    return {
+      beforeFiles: [],
+      afterFiles: [],
+      // Use fallback so if Next.js doesn't have a matching API route,
+      // proxy it to the backend on Render. Keep internal API routes intact.
+      fallback: [
+        {
+          // exclude Next internal API routes like /api/settings/* and /api/role-pages/*
+          source: '/api/:path((?!settings/|role-pages/).*)',
+          destination: `${backend}/api/:path`,
+        },
+      ],
+    };
   },
 };
 
