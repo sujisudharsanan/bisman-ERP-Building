@@ -18,25 +18,9 @@ const privilegeService = require('./services/privilegeService')
 
 const app = express()
 
-// Define allowed origins for CORS
-const allowedOrigins = [
-  'http://localhost:3000', // Local frontend
-  'https://bisman-erp-building-git-diployment-sujis-projects-dfb64252.vercel.app' // Vercel frontend
-];
-
-// More robust CORS setup for production
-app.use(cors({
-  origin: function (origin, callback) {
-    // allow requests with no origin (like mobile apps or curl requests)
-    if (!origin) return callback(null, true);
-    if (allowedOrigins.indexOf(origin) === -1) {
-      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
-      return callback(new Error(msg), false);
-    }
-    return callback(null, true);
-  },
-  credentials: true, // Important for cookies
-}));
+// --- CORS configuration (single, unified) ---
+// Keep this block BEFORE any routes
+// Allows exact Vercel deployment domain(s), Render domain(s), and localhost
 
 // Trust the first proxy hop (e.g., from Render's load balancer)
 // This is crucial for express-rate-limit to work correctly.
@@ -67,11 +51,13 @@ const dynamic = [envFront, ...envFronts.split(',')]
   .map(s => s && s.trim())
   .filter(Boolean)
 const providedOrigins = [
+  // Exact Vercel deployment URL(s)
   'https://bisman-erp-building-git-diployment-sujis-projects-dfb64252.vercel.app',
   'https://bisman-erp-building-nnul-mdzo2vwfm-sujis-projects-dfb64252.vercel.app',
+  // Render hosted backend URL(s)
   'https://bisman-erp-rr6f.onrender.com',
   'https://bisman-erp-xr6f.onrender.com',
-  // Allow any vercel.app subdomain for this project (safe if only used during testing)
+  // Allow any vercel.app subdomain for this project (useful during testing)
   'regex:^https://.*\\.vercel\\.app$'
 ]
 const isProd = process.env.NODE_ENV === 'production'
@@ -111,11 +97,18 @@ const corsOptions = {
   credentials: true,
   methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
   allowedHeaders: ['Accept','Origin','Content-Type','Authorization','Cookie','X-Requested-With'],
-  optionsSuccessStatus: 204,
+  // Use 200 for Safari compatibility on preflight
+  optionsSuccessStatus: 200,
 }
 
 app.use(cors(corsOptions))
 app.options('*', cors(corsOptions))
+
+if (process.env.DEBUG_CORS === '1') {
+  try {
+    console.log('[CORS] Allowlist:', allowlist)
+  } catch (_) {}
+}
 
 app.use(express.json())
 // Parse cookies early so downstream routers (e.g., /api/privileges) can access auth cookies
