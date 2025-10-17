@@ -422,77 +422,43 @@ app.post('/api/login', async (req, res) => {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
       console.log('Login: Successfully authenticated via dev user fallback.');
-      // Normalize user shape
-      const uid = devUser.id || devUser.userId || 0
-      const uname = devUser.username || devUser.email || devUser.email?.split('@')[0] || username
-      const role = devUser.role || devUser.roleName || 'USER'
-
-      // Generate tokens
-      const accessToken = generateAccessToken({ id: uid, username: uname, role })
-      const refreshToken = generateRefreshToken({ id: uid, username: uname, role })
-
-      // Try to persist refresh token; if it fails, continue for demo use
-      try {
-        await prisma.refreshToken.create({
-          data: {
-            token: refreshToken,
-            userId: uid,
-            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-          },
-        })
-      } catch (persistErr) {
-        console.warn('Refresh token persist skipped due to DB error:', persistErr && persistErr.code)
-      }
-
-      // Set HttpOnly cookies for access and refresh tokens
-      const isProduction = process.env.NODE_ENV === 'production'
-      const cookieSecure = isProduction
-      const sameSiteOpt = isProduction ? 'none' : 'lax'
-
-      const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
-      const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
-
-      res.cookie('access_token', accessToken, accessCookieOpts)
-      res.cookie('refresh_token', refreshToken, refreshCookieOpts)
-
-      return res.json({ message: 'Login successful', user: { id: uid, username: uname, role } })
-    } else {
-        console.log('Login: Successfully authenticated via database.');
-        // Normalize user shape
-        const uid = user.id || user.userId || 0
-        const uname = user.username || user.email || user.email?.split('@')[0] || username
-        const role = user.role || user.roleName || 'USER'
-
-        // Generate tokens
-        const accessToken = generateAccessToken({ id: uid, username: uname, role })
-        const refreshToken = generateRefreshToken({ id: uid, username: uname, role })
-
-        // Try to persist refresh token; if it fails, continue for demo use
-        try {
-          await prisma.refreshToken.create({
-            data: {
-              token: refreshToken,
-              userId: uid,
-              expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
-            },
-          })
-        } catch (persistErr) {
-          console.warn('Refresh token persist skipped due to DB error:', persistErr && persistErr.code)
-        }
-
-        // Set HttpOnly cookies for access and refresh tokens
-        const isProduction = process.env.NODE_ENV === 'production'
-        const cookieSecure = isProduction
-        const sameSiteOpt = isProduction ? 'none' : 'lax'
-
-        const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
-        const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
-
-        res.cookie('access_token', accessToken, accessCookieOpts)
-        res.cookie('refresh_token', refreshToken, refreshCookieOpts)
-
-        return res.json({ message: 'Login successful', user: { id: uid, username: uname, role } })
+      user = devUser; // Assign devUser to user object
     }
+
+    // Generate and send tokens
+    const accessToken = generateAccessToken({ id: user.id, email: user.email });
+    const refreshToken = generateRefreshToken({ id: user.id });
+
+    try {
+      // Persist refresh token to DB
+      const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
+      const expiryDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+
+      await prisma.refreshToken.create({
+        data: {
+          token: hashedToken,
+          userId: user.id,
+          expiresAt: expiryDate,
+        },
+      });
+       console.log('Successfully persisted refresh token to DB.');
+    } catch (dbError) {
+      console.error('Refresh token persist failed due to DB error:', dbError);
+      // For dev users, store refresh token in-memory as a fallback
+      if (user.isDev) {
+        devUserSessions[refreshToken] = { userId: user.id, email: user.email };
+        console.log('Persisted refresh token to in-memory session for dev user.');
+      } else {
+        // If it's a real user, this is a critical error.
+        // For now, we'll log it and still send tokens, but this indicates a problem.
+         return res.status(500).json({ message: 'Could not persist session. Please try again.' });
+      }
+    }
+
+    res.cookie('access_token', accessToken, { httpOnly: true, secure: true, sameSite: 'none', path: '/', maxAge: 60 * 60 * 1000 })
+    res.cookie('refresh_token', refreshToken, { httpOnly: true, secure: true, sameSite: 'none', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 })
+
+    res.json({ message: 'Login successful', user: { id: user.id, email: user.email } })
   } catch (error) {
     console.error('Login Error:', error); // Enhanced logging
     // Fallback for DB connection error
