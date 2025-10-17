@@ -13,6 +13,7 @@ const prisma = new PrismaClient()
 const cookieParser = require('cookie-parser')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
+const crypto = require('crypto')
 const { logSanitizer } = require('./middleware/logSanitizer')
 const privilegeService = require('./services/privilegeService')
 
