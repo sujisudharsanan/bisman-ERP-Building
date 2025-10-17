@@ -226,6 +226,16 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok' })
 })
 
+// Optional detailed DB health
+app.get('/health', async (req, res) => {
+  try {
+    const count = await prisma.user.count()
+    res.json({ status: 'ok', users: count })
+  } catch (e) {
+    res.status(500).json({ error: e && e.message ? e.message : 'db error' })
+  }
+})
+
 // Return the current authenticated user by verifying the access token cookie
 app.get('/api/me', (req, res) => {
   try {
@@ -392,13 +402,14 @@ app.use('/api/login', authLimiter)
 app.use('/api/auth', authLimiter)
 
 app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body || {};
+  const { password } = req.body || {}
+  const username = (req.body && (req.body.username || req.body.email || req.body.emailOrPhone || req.body.login || req.body.contact)) || undefined
 
   try {
     let user = null
     try {
-      // use findFirst for non-unique username field
-      user = await prisma.user.findFirst({ where: { username } })
+      // look up by username OR email
+      user = await prisma.user.findFirst({ where: { OR: [ { username }, { email: username } ] } })
     } catch (dbErr) {
       // Prisma schema mismatch or DB down; fall through to dev users
       console.warn('Prisma lookup failed; falling back to dev users:', dbErr && dbErr.code)
@@ -425,7 +436,7 @@ app.post('/api/login', async (req, res) => {
 
     // Normalize user shape
     const uid = user.id || user.userId || 0
-    const uname = user.username || user.email?.split('@')[0] || username
+  const uname = user.username || user.email || user.email?.split('@')[0] || username
     const role = user.role || user.roleName || 'USER'
 
     // Generate tokens
