@@ -1,194 +1,196 @@
 generator client {
-  provider = "prisma-client-js"
+  provider      = "prisma-client-js"
   binaryTargets = ["native", "linux-musl"]
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
 model Role {
-  id          Int    @id @default(autoincrement())
-  name        String @unique
-  description String?
-  is_active   Boolean @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  
-  // Relations
-  users User[]
-  rolePrivileges RolePrivilege[]
-  userPrivileges UserPrivilege[]
-  
+  id   Int     @id @default(autoincrement())
+  name String? @unique
+
   @@map("roles")
-  @@index([name])
 }
 
 model User {
-  id              Int      @id @default(autoincrement())
-  username        String   @map("username")
-  email           String   @unique
-  password        String
-  role            String
-  role_id         Int?
-  first_name      String?
-  last_name       String?
-  profile_pic_url String?  @map("profile_pic_url")
-  status          String   @default("active")
-  deleted_at      DateTime?
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  assignedRole    Role? @relation(fields: [role_id], references: [id])
-  userPrivileges  UserPrivilege[]
+  id              Int             @id @default(autoincrement())
+  username        String          @map("username") @db.VarChar(100)
+  email           String          @unique @db.VarChar(150)
+  password        String          @db.VarChar(255)
+  role            String?         @db.VarChar(50)
+  createdAt       DateTime?       @default(now()) @map("created_at") @db.Timestamp(6)
+  profile_pic_url String?         @map("profile_pic_url")
+  updatedAt       DateTime?       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
   auditLogs       AuditLog[]
-  // Back-relations for Security Monitoring
-  assignedSecurityEvents SecurityEvent[] @relation("SecurityEventAssignee")
-  addedSecurityResolutions SecurityResolution[] @relation("SecurityResolutionUser")
+  user_sessions   user_sessions[]
 
   @@map("users")
-  @@index([email])
-  @@index([role])
-  @@index([createdAt])
-}
-
-model Feature {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name        String
-  module      String   @db.VarChar(100)
-  description String?
-  is_active   Boolean  @default(true)
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-
-  // Relations
-  rolePrivileges RolePrivilege[]
-  userPrivileges UserPrivilege[]
-
-  @@unique([name, module], name: "uk_features_name_module")
-  @@map("features")
-  @@index([module])
-  @@index([is_active])
-}
-
-model RolePrivilege {
-  id         String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  role_id    Int
-  feature_id String   @db.Uuid
-  can_view   Boolean  @default(false)
-  can_create Boolean  @default(false)
-  can_edit   Boolean  @default(false)
-  can_delete Boolean  @default(false)
-  can_hide   Boolean  @default(false)
-  created_at DateTime @default(now())
-  updated_at DateTime @updatedAt
-
-  // Relations
-  role    Role    @relation(fields: [role_id], references: [id], onDelete: Cascade)
-  feature Feature @relation(fields: [feature_id], references: [id], onDelete: Cascade)
-
-  @@unique([role_id, feature_id], name: "uk_role_privileges_role_feature")
-  @@map("role_privileges")
-  @@index([role_id])
-  @@index([feature_id])
-}
-
-model UserPrivilege {
-  id             String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id        Int
-  role_id        Int
-  feature_id     String   @db.Uuid
-  can_view       Boolean  @default(false)
-  can_create     Boolean  @default(false)
-  can_edit       Boolean  @default(false)
-  can_delete     Boolean  @default(false)
-  can_hide       Boolean  @default(false)
-  overrides_role Boolean  @default(true)
-  created_at     DateTime @default(now())
-  updated_at     DateTime @updatedAt
-
-  // Relations
-  user    User    @relation(fields: [user_id], references: [id], onDelete: Cascade)
-  role    Role    @relation(fields: [role_id], references: [id], onDelete: Cascade)
-  feature Feature @relation(fields: [feature_id], references: [id], onDelete: Cascade)
-
-  @@unique([user_id, feature_id], name: "uk_user_privileges_user_feature")
-  @@map("user_privileges")
-  @@index([user_id])
-  @@index([feature_id])
-  @@index([overrides_role])
 }
 
 model AuditLog {
-  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  user_id     Int?
-  action      String   @db.VarChar(20)
-  entity_type String   @db.VarChar(50)
-  entity_id   String   @db.VarChar(255)
-  old_values  Json?
-  new_values  Json?
-  ip_address  String?
-  user_agent  String?
-  created_at  DateTime @default(now())
+  id            Int            @id @default(autoincrement())
+  user_id       Int?
+  action        String         @db.VarChar(50)
+  table_name    String?        @db.VarChar(100)
+  record_id     Int?
+  old_values    Json?
+  new_values    Json?
+  ip_address    String?        @db.Inet
+  user_agent    String?
+  session_id    Int?
+  created_at    DateTime?      @default(now()) @db.Timestamp(6)
+  user_sessions user_sessions? @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  user          User?          @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  // Relations
-  user User? @relation(fields: [user_id], references: [id], onDelete: SetNull)
-
+  @@index([action], map: "idx_audit_logs_action")
+  @@index([user_id], map: "idx_audit_logs_user")
   @@map("audit_logs")
-  @@index([user_id])
-  @@index([entity_type, entity_id])
-  @@index([created_at])
 }
 
-// Security Monitoring Models
-model SecurityEvent {
-  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  occurred_at     DateTime @default(now())
-  source          String   @db.VarChar(100)
-  event_type      String   @db.VarChar(100)
-  severity        String   @db.VarChar(20) // low, medium, high, critical
-  summary         String   @db.VarChar(255)
-  details         Json?
-  details_encrypted Bytes?
-  status          String   @default("open") @db.VarChar(30) // open, investigating, resolved, verified, closed
-  assignee_id     Int?
-  tags            String[]
-  acknowledged_at DateTime?
-  resolved_at     DateTime?
-  verified_at     DateTime?
-  closed_at       DateTime?
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
-
-  // Relations
-  assignee        User?    @relation("SecurityEventAssignee", fields: [assignee_id], references: [id])
-  resolutions     SecurityResolution[]
-
-  @@map("security_events")
-  @@index([occurred_at])
-  @@index([severity])
-  @@index([status])
-  @@index([assignee_id])
-  @@index([event_type])
+model actions {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique @db.VarChar(100)
+  description String?
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
 }
 
-model SecurityResolution {
-  id           String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  event_id     String   @db.Uuid
-  note         String   @db.Text
-  status_after String   @db.VarChar(30)
-  added_by     Int?
-  attachments  Json?
-  created_at   DateTime @default(now())
+model migration_history {
+  id             Int       @id @default(autoincrement())
+  migration_name String    @unique @db.VarChar(255)
+  applied_at     DateTime? @default(now()) @db.Timestamptz(6)
+  applied_by     String?   @default(dbgenerated("CURRENT_USER")) @db.VarChar(100)
+  backup_file    String?
+  checksum       String?
+}
 
-  // Relations
-  event   SecurityEvent @relation(fields: [event_id], references: [id], onDelete: Cascade)
-  user    User?         @relation("SecurityResolutionUser", fields: [added_by], references: [id])
+model rbac_actions {
+  id               Int                @id @default(autoincrement())
+  name             String             @unique @db.VarChar(100)
+  description      String?
+  created_at       DateTime?          @default(now()) @db.Timestamp(6)
+  display_name     String?            @db.VarChar(100)
+  is_active        Boolean?           @default(true)
+  rbac_permissions rbac_permissions[]
+}
 
-  @@map("security_resolutions")
-  @@index([event_id])
-  @@index([created_at])
+model rbac_permissions {
+  id           Int           @id @default(autoincrement())
+  role_id      Int?
+  action_id    Int?
+  route_id     Int?
+  granted      Boolean?      @default(false)
+  created_at   DateTime?     @default(now()) @db.Timestamp(6)
+  updated_at   DateTime?     @default(now()) @db.Timestamp(6)
+  name         String?       @db.VarChar(200)
+  display_name String?       @db.VarChar(250)
+  is_active    Boolean?      @default(true)
+  rbac_actions rbac_actions? @relation(fields: [action_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  rbac_roles   rbac_roles?   @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  rbac_routes  rbac_routes?  @relation(fields: [route_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([role_id, action_id, route_id])
+  @@index([action_id], map: "idx_rbac_permissions_action_id")
+  @@index([is_active], map: "idx_rbac_permissions_active")
+  @@index([name], map: "idx_rbac_permissions_name")
+  @@index([role_id], map: "idx_rbac_permissions_role_id")
+  @@index([route_id], map: "idx_rbac_permissions_route_id")
+}
+
+model rbac_roles {
+  id               Int                @id @default(autoincrement())
+  name             String             @unique @db.VarChar(50)
+  description      String?
+  level            Int?               @default(1)
+  created_at       DateTime?          @default(now()) @db.Timestamp(6)
+  updated_at       DateTime?          @default(now()) @db.Timestamp(6)
+  display_name     String?            @db.VarChar(150)
+  status           String?            @default("active") @db.VarChar(20)
+  rbac_permissions rbac_permissions[]
+  rbac_user_roles  rbac_user_roles[]
+}
+
+model rbac_routes {
+  id               Int                @id @default(autoincrement())
+  path             String             @db.VarChar(255)
+  name             String             @db.VarChar(100)
+  description      String?
+  method           String?            @default("GET") @db.VarChar(10)
+  module           String?            @db.VarChar(50)
+  is_protected     Boolean?           @default(true)
+  created_at       DateTime?          @default(now()) @db.Timestamp(6)
+  display_name     String?            @db.VarChar(200)
+  is_active        Boolean?           @default(true)
+  is_menu_item     Boolean?           @default(true)
+  icon             String?            @db.VarChar(100)
+  sort_order       Int?               @default(0)
+  rbac_permissions rbac_permissions[]
+
+  @@unique([path, method])
+  @@index([is_active], map: "idx_rbac_routes_active")
+  @@index([is_menu_item], map: "idx_rbac_routes_menu")
+}
+
+model rbac_user_roles {
+  id          Int         @id @default(autoincrement())
+  user_id     Int
+  role_id     Int?
+  assigned_at DateTime?   @default(now()) @db.Timestamp(6)
+  assigned_by Int?
+  is_active   Boolean?    @default(true)
+  expires_at  DateTime?   @db.Timestamp(6)
+  rbac_roles  rbac_roles? @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([user_id, role_id])
+  @@index([is_active], map: "idx_rbac_user_roles_active")
+  @@index([role_id], map: "idx_rbac_user_roles_role_id")
+  @@index([user_id], map: "idx_rbac_user_roles_user_id")
+}
+
+model recent_activity {
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id    Int?
+  username   String?   @db.VarChar(255)
+  action     String
+  entity     String
+  entity_id  String?
+  details    Json?
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([created_at(sort: Desc)], map: "idx_recent_activity_created_at")
+  @@index([entity], map: "idx_recent_activity_entity")
+  @@index([user_id], map: "idx_recent_activity_user_id")
+}
+
+model routes {
+  id           Int       @id @default(autoincrement())
+  path         String    @db.VarChar(255)
+  name         String    @db.VarChar(100)
+  description  String?
+  method       String?   @default("GET") @db.VarChar(10)
+  module       String?   @db.VarChar(50)
+  is_protected Boolean?  @default(true)
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+
+  @@unique([path, method])
+}
+
+model user_sessions {
+  id               Int        @id @default(autoincrement())
+  user_id          Int
+  session_token    String     @unique @db.VarChar(255)
+  ip_address       String?    @db.Inet
+  user_agent       String?
+  created_at       DateTime?  @default(now()) @db.Timestamp(6)
+  expires_at       DateTime   @db.Timestamp(6)
+  last_activity_at DateTime?  @default(now()) @db.Timestamp(6)
+  is_active        Boolean?   @default(true)
+  audit_logs       AuditLog[]
+  users            User       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([session_token], map: "idx_user_sessions_token")
+  @@index([user_id], map: "idx_user_sessions_user")
 }
