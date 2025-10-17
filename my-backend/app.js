@@ -59,6 +59,7 @@ app.use(logSanitizer)
 
 
 // CORS middleware for cross-origin requests (explicit allowlist + env)
+const isProd = process.env.NODE_ENV === 'production';
 const allowlist = [
   'https://bisman-erp-building.vercel.app',
   'https://bisman-erp-building-git-diployment-sujis-projects-dfb64252.vercel.app',
@@ -94,10 +95,11 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // Enable pre-flight for all routes
 
 // Always log CORS configuration on startup
-console.log('🔒 CORS Configuration:')
-console.log('   - Credentials:', corsOptions.credentials)
-console.log('   - Allowed Origins:', allowlist.length, 'entries')
-console.log('   - Production Mode:', isProd)
+console.log('🔒 CORS Configuration:');
+console.log('   - Credentials:', corsOptions.credentials);
+console.log('   - Allowed Origins:', allowlist);
+console.log('   - Production Mode:', isProd);
+
 if (process.env.DEBUG_CORS === '1') {
   console.log('   - Full Allowlist:', allowlist)
 }
