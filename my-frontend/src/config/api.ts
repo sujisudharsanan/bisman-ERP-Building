@@ -2,13 +2,15 @@
 
 /**
  * Determines the API base URL based on the environment.
- * When deployed on Vercel, it uses a relative path to leverage Vercel's rewrites,
- * which proxies /api/* to the backend. This solves cross-domain cookie issues.
- * For local development, it uses the absolute URL to the local backend.
+ * It relies on the NEXT_PUBLIC_API_URL environment variable.
+ * In local development, it can fall back to a default.
  */
-const apiBase = process.env.NEXT_PUBLIC_VERCEL_URL
-  ? '' // Use relative path on Vercel
-  : 'http://localhost:3001'; // Use absolute path for local dev
+const apiBase = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+
+// Runtime check to ensure the variable is not missed in production.
+if (process.env.NODE_ENV === 'production' && !process.env.NEXT_PUBLIC_API_URL) {
+  console.error('FATAL: NEXT_PUBLIC_API_URL is not defined in production environment.');
+}
 
 export const API_BASE = apiBase;
 

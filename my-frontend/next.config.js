@@ -76,14 +76,6 @@ const nextConfig = {
       },
     ];
   },
-  async rewrites() {
-    return [
-      {
-        source: '/api/:path*',
-        destination: 'https://bisman-erp-rr6f.onrender.com/api/:path*',
-      },
-    ];
-  },
 };
 
 module.exports = nextConfig;
