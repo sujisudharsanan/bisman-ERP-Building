@@ -59,72 +59,39 @@ app.use(logSanitizer)
 
 
 // CORS middleware for cross-origin requests (explicit allowlist + env)
-const envFront = process.env.FRONTEND_URL || ''
-const envFronts = process.env.FRONTEND_URLS || ''
-const dynamic = [envFront, ...envFronts.split(',')]
-  .map(s => s && s.trim())
-  .filter(Boolean)
-const providedOrigins = [
-  // Exact Vercel deployment URL(s)
+const allowlist = [
   'https://bisman-erp-building.vercel.app',
   'https://bisman-erp-building-git-diployment-sujis-projects-dfb64252.vercel.app',
-  'https://bisman-erp-building-nnul-mdzo2vwfm-sujis-projects-dfb64252.vercel.app',
-  // Render hosted backend URL(s)
   'https://bisman-erp-rr6f.onrender.com',
-  'https://bisman-erp-xr6f.onrender.com',
-  // Allow any vercel.app subdomain for this project (useful during testing)
-  'regex:^https://bisman-erp-building.*\\.vercel\\.app$',
-  'regex:^https://.*-sujis-projects-dfb64252\\.vercel\\.app$'
-]
-const isProd = process.env.NODE_ENV === 'production'
-const localDefaults = [
-  // Common local dev origins (with and without explicit ports)
-  'http://localhost',
-  'http://127.0.0.1',
   'http://localhost:3000',
-  'http://127.0.0.1:3000',
   'http://localhost:3001',
-  'http://127.0.0.1:3001',
-]
-const allowlist = Array.from(new Set([
-  ...(isProd ? [] : localDefaults),
-  ...providedOrigins,
-  ...dynamic,
-]))
+];
 
-const corsOptions = {
-  origin: function(origin, callback) {
-    if (!origin) return callback(null, true)
-    // wildcard/regex support via FRONTEND_URLS entries
-    const wildcardToRegex = (pattern) => {
-      const escaped = pattern.replace(/[.+?^${}()|[\]\\]/g, '\\$&').replace(/\*/g, '.*')
-      return new RegExp('^' + escaped + '$')
-    }
-    const toRegex = (p) => {
-      if (!p) return null
-      if (p.startsWith('regex:')) { try { return new RegExp(p.slice(6)) } catch { return null } }
-      if (p.includes('*')) return wildcardToRegex(p)
-      return null
-    }
-    // Build regexes from ALL allowlist entries (provided + dynamic), not just dynamic
-    const allowedRegexes = Array.from(new Set([...allowlist]))
-      .map(toRegex)
-      .filter(Boolean)
-    const ok = allowlist.includes(origin) || allowedRegexes.some(rx => rx.test(origin))
-    callback(ok ? null : new Error('CORS: Origin not allowed'), ok)
-  },
-  credentials: true,
-  methods: ['GET','POST','PUT','DELETE','PATCH','OPTIONS'],
-  allowedHeaders: ['Accept','Origin','Content-Type','Authorization','Cookie','X-Requested-With'],
-  // Use 200 for Safari compatibility on preflight
-  optionsSuccessStatus: 200,
+if (process.env.FRONTEND_URL) {
+  allowlist.push(process.env.FRONTEND_URL);
 }
 
-app.use(cors(corsOptions))
-app.options('*', cors(corsOptions))
-// Explicit preflight support for common alias paths
-app.options('/login', cors(corsOptions))
-app.options('/me', cors(corsOptions))
+const corsOptions = {
+  origin: (origin, callback) => {
+    // Log the origin for debugging purposes
+    console.log(`[CORS] Request from origin: ${origin}`);
+    
+    if (allowlist.indexOf(origin) !== -1 || !origin) {
+      console.log(`[CORS] Origin ${origin} is allowed.`);
+      callback(null, true);
+    } else {
+      console.error(`[CORS] Origin ${origin} is not allowed.`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With', 'Cookie'],
+  optionsSuccessStatus: 200,
+};
+
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Enable pre-flight for all routes
 
 // Always log CORS configuration on startup
 console.log('🔒 CORS Configuration:')
@@ -517,8 +484,8 @@ app.post('/api/login', async (req, res) => {
   const isProduction = process.env.NODE_ENV === 'production'
   const cookieSecure = isProduction
   const sameSiteOpt = isProduction ? 'none' : 'lax'
-  res.cookie('access_token', accessToken, { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 })
-  res.cookie('refresh_token', refreshToken, { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 })
+  res.cookie('access_token', accessToken, { httpOnly: true, secure: cookieSecure, sameSite: 'none', path: '/', maxAge: 60 * 60 * 1000 })
+  res.cookie('refresh_token', refreshToken, { httpOnly: true, secure: cookieSecure, sameSite: 'none', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 })
 
     console.log('✅ Login successful - Tokens generated with role:', userRole);
     res.json({ 
@@ -570,8 +537,8 @@ app.post('/api/login', async (req, res) => {
     const cookieSecure = isProduction
     const sameSiteOpt = isProduction ? 'none' : 'lax'
 
-    const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
-    const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
+    const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: 'none', path: '/', maxAge: 60 * 60 * 1000 }
+    const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: 'none', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
 
     res.cookie('access_token', accessToken, accessCookieOpts)
     res.cookie('refresh_token', refreshToken, refreshCookieOpts)
@@ -632,7 +599,7 @@ app.post('/api/token/refresh', async (req, res) => {
         const isProduction = process.env.NODE_ENV === 'production'
         const cookieSecure = isProduction
         const sameSiteOpt = isProduction ? 'none' : 'lax'
-        const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
+        const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: 'none', path: '/', maxAge: 60 * 60 * 1000 }
 
         res.cookie('access_token', newAccessToken, accessCookieOpts)
         res.json({ message: 'Token refreshed successfully' })
@@ -679,20 +646,20 @@ app.post('/api/logout', async (req, res) => {
       path: '/',
       httpOnly: true,
       secure: isProduction,
-      sameSite: isProduction ? 'none' : 'lax',
+      sameSite: 'none',
     };
     res.clearCookie('access_token', cookieOpts);
     res.clearCookie('refresh_token', cookieOpts);
 
     // Also try without httpOnly in case client needs to clear it
-    res.clearCookie('access_token', { path: '/', secure: isProduction, sameSite: isProduction ? 'none' : 'lax' });
-    res.clearCookie('refresh_token', { path: '/', secure: isProduction, sameSite: isProduction ? 'none' : 'lax' });
-    res.clearCookie('token', { path: '/', secure: isProduction, sameSite: isProduction ? 'none' : 'lax' });
+    res.clearCookie('access_token', { path: '/', secure: isProduction, sameSite: 'none' });
+    res.clearCookie('refresh_token', { path: '/', secure: isProduction, sameSite: 'none' });
+    res.clearCookie('token', { path: '/', secure: isProduction, sameSite: 'none' });
   } catch (e) {
     // best-effort fallback
-    try { res.clearCookie('access_token', { path: '/' }); } catch (e) {}
-    try { res.clearCookie('refresh_token', { path: '/' }); } catch (e) {}
-    try { res.clearCookie('token', { path: '/' }); } catch (e) {}
+    try { res.clearCookie('access_token', { path: '/', sameSite: 'none' }); } catch (e) {}
+    try { res.clearCookie('refresh_token', { path: '/', sameSite: 'none' }); } catch (e) {}
+    try { res.clearCookie('token', { path: '/', sameSite: 'none' }); } catch (e) {}
   }
 
   res.status(200).json({ message: 'Logout successful' })
