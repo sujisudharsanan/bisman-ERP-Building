@@ -402,8 +402,12 @@ app.use('/api/login', authLimiter)
 app.use('/api/auth', authLimiter)
 
 app.post('/api/login', async (req, res) => {
-  const { password } = req.body || {}
-  const username = (req.body && (req.body.username || req.body.email || req.body.emailOrPhone || req.body.login || req.body.contact)) || undefined
+  const { email, password, username } = req.body;
+  const loginCredential = email || username;
+
+  if (!loginCredential || !password) {
+    return res.status(400).json({ message: 'Email/Username and password are required' });
+  }
 
   try {
     const user = await prisma.user.findUnique({
@@ -413,7 +417,7 @@ app.post('/api/login', async (req, res) => {
     if (!user || !bcrypt.compareSync(password, user.password)) {
       // Fallback to dev users
       console.log('Login: DB user not found or password mismatch, falling back to dev users.');
-      const devUser = devUsers.find(u => u.email === email && u.password === password);
+      const devUser = devUsers.find(u => (u.email === email || u.username === username) && u.password === password);
       if (!devUser) {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
@@ -493,7 +497,7 @@ app.post('/api/login', async (req, res) => {
     console.error('Login Error:', error); // Enhanced logging
     // Fallback for DB connection error
     console.log('Login: DB operation failed, falling back to dev users.');
-    const devUser = devUsers.find(u => u.email === email && u.password === password);
+    const devUser = devUsers.find(u => (u.email === email || u.username === username) && u.password === password);
     if (!devUser) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -536,64 +540,56 @@ app.post('/api/login', async (req, res) => {
 })
 
 app.post('/api/token/refresh', async (req, res) => {
+  const { refresh_token: refreshToken } = req.cookies;
+
+  if (!refreshToken) {
+    return res.status(401).json({ message: 'Refresh token not found' });
+  }
+
   try {
-    const { refresh_token: refreshToken } = req.cookies || {}
+    const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
+    const existingToken = await prisma.refreshToken.findUnique({
+      where: { token: hashedToken },
+      include: { user: true },
+    });
 
-    if (!refreshToken) {
-      return res.status(401).json({ message: 'Refresh token not found' })
-    }
-
-    // Verify refresh token JWT first
-    let decoded
-    try {
-      decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET)
-    } catch (e) {
-      return res.status(403).json({ message: 'Invalid refresh token' })
-    }
-
-    // If DB is available, try to validate existence/expiry; if it fails, proceed (best effort)
-    try {
-      const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
-      const existingToken = await prisma.refreshToken.findUnique({
-        where: { token: hashedToken },
-        include: { user: true },
-      });
-
-      if (!existingToken || new Date() > new Date(existingToken.expiresAt)) {
-        console.log('Refresh token not found in DB or expired, falling back to in-memory session.');
-        // Fallback to "in-memory" session check for dev user
-        const devSession = devUserSessions[refreshToken];
-        if (!devSession) {
-          return res.status(401).json({ message: 'Invalid refresh token' });
-        }
-        // ... existing dev user logic
-      } else {
-          console.log('Refresh token validated against database.');
-          // Issue new access token
-          const newAccessToken = generateAccessToken({ id: decoded.id, username: decoded.username, role: decoded.role })
-
-          const isProduction = process.env.NODE_ENV === 'production'
-          const cookieSecure = isProduction
-          const sameSiteOpt = isProduction ? 'none' : 'lax'
-          const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
-
-          res.cookie('access_token', newAccessToken, accessCookieOpts)
-          res.json({ message: 'Token refreshed successfully' })
-      }
-    } catch (error) {
-      console.error('Refresh Token DB Error:', error); // Enhanced logging
-      console.log('Refresh Token: DB operation failed, falling back to in-memory session.');
-      // Fallback for DB connection error
+    if (!existingToken || new Date() > new Date(existingToken.expiresAt)) {
+      console.log('Refresh token not found in DB or expired, falling back to in-memory session.');
+      // Fallback to "in-memory" session check for dev user
       const devSession = devUserSessions[refreshToken];
       if (!devSession) {
         return res.status(401).json({ message: 'Invalid refresh token' });
       }
       // ... existing dev user logic
+    } else {
+        console.log('Refresh token validated against database.');
+        // Issue new access token
+        const newAccessToken = generateAccessToken({ id: decoded.id, username: decoded.username, role: decoded.role })
+
+        const isProduction = process.env.NODE_ENV === 'production'
+        const cookieSecure = isProduction
+        const sameSiteOpt = isProduction ? 'none' : 'lax'
+        const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
+
+        res.cookie('access_token', newAccessToken, accessCookieOpts)
+        res.json({ message: 'Token refreshed successfully' })
     }
   } catch (error) {
-    console.error('Refresh token error:', error)
-    return res.status(403).json({ message: 'Invalid refresh token' })
+    console.error('Refresh Token DB Error:', error); // Enhanced logging
+    console.log('Refresh Token: DB operation failed, falling back to in-memory session.');
+    // Fallback for DB connection error
+    const devSession = devUserSessions[refreshToken];
+    if (!devSession) {
+      return res.status(401).json({ message: 'Invalid refresh token' });
+    }
+    // ... existing dev user logic
   }
+});
+
+// This should be at the end of all other middleware and routes
+app.use((err, req, res, next) => {
+  console.error('Global error handler:', err)
+  res.status(500).json({ error: 'Internal server error' })
 })
 
 app.post('/api/logout', async (req, res) => {
