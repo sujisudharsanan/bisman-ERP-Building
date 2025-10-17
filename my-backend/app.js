@@ -340,7 +340,8 @@ app.post('/api/login', async (req, res) => {
   const { username, password } = req.body;
 
   try {
-    const user = await prisma.user.findUnique({ where: { username } });
+    // FIX: Use findFirst instead of findUnique for non-unique fields like 'username'
+    const user = await prisma.user.findFirst({ where: { username } });
 
     if (!user || !bcrypt.compareSync(password, user.password)) {
       return res.status(401).json({ message: 'Invalid credentials' });
