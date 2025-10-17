@@ -121,6 +121,16 @@ if (process.env.DEBUG_CORS === '1') {
   try {
     console.log('[CORS] Allowlist:', allowlist)
   } catch (_) {}
+  // Log every request's origin and method for troubleshooting
+  app.use((req, _res, next) => {
+    try {
+      const o = req.headers.origin || null
+      const m = req.method
+      const u = req.originalUrl || req.url
+      console.log(`[CORS DEBUG] ${m} ${u} origin=${o}`)
+    } catch (_) {}
+    next()
+  })
 }
 
 app.use(express.json())
@@ -153,6 +163,25 @@ try {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Test CORS route not loaded:', e && e.message)
   }
+}
+
+// Optional JSON endpoint to inspect current CORS config at runtime
+if (process.env.DEBUG_CORS === '1') {
+  app.get('/api/_debug/cors', (req, res) => {
+    res.json({
+      ok: true,
+      origin: req.headers.origin || null,
+      referer: req.headers.referer || null,
+      allowlist,
+      cors: {
+        methods: corsOptions.methods,
+        credentials: !!corsOptions.credentials,
+        allowedHeaders: corsOptions.allowedHeaders,
+        optionsSuccessStatus: corsOptions.optionsSuccessStatus,
+      },
+      time: new Date().toISOString(),
+    })
+  })
 }
 
 // System route (memory usage)
