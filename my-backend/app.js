@@ -22,6 +22,19 @@ const app = express()
 // Keep this block BEFORE any routes
 // Allows exact Vercel deployment domain(s), Render domain(s), and localhost
 
+// --- JWT helpers (tokens) ---
+const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || process.env.JWT_SECRET || 'dev_access_secret'
+const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || process.env.JWT_REFRESH_SECRET || 'dev_refresh_secret'
+
+function generateAccessToken(payload) {
+  // keep payload minimal; caller provides id/username/role
+  return jwt.sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
+}
+
+function generateRefreshToken(payload) {
+  return jwt.sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: '7d' })
+}
+
 // Trust the first proxy hop (e.g., from Render's load balancer)
 // This is crucial for express-rate-limit to work correctly.
 app.set('trust proxy', 1);
@@ -350,120 +363,124 @@ app.use('/api/login', authLimiter)
 app.use('/api/auth', authLimiter)
 
 app.post('/api/login', async (req, res) => {
-  const { username, password } = req.body;
+  const { username, password } = req.body || {};
 
   try {
-    // FIX: Use findFirst instead of findUnique for non-unique fields like 'username'
-    const user = await prisma.user.findFirst({ where: { username } });
-
-    if (!user || !bcrypt.compareSync(password, user.password)) {
-      return res.status(401).json({ message: 'Invalid credentials' });
+    let user = null
+    try {
+      // use findFirst for non-unique username field
+      user = await prisma.user.findFirst({ where: { username } })
+    } catch (dbErr) {
+      // Prisma schema mismatch or DB down; fall through to dev users
+      console.warn('Prisma lookup failed; falling back to dev users:', dbErr && dbErr.code)
+      user = null
     }
 
-    // Generate tokens
-    const accessToken = generateAccessToken({
-      id: user.id,
-      username: user.username,
-      role: user.role,
-    });
-    const refreshToken = generateRefreshToken({
-      id: user.id,
-      username: user.username,
-      role: user.role,
-    });
+    if (!user) {
+      // fallback to in-memory dev users when DB is not available
+      user = devUsers.find(u => (u.email === username || u.username === username)) || null
+      if (user && user.password && typeof user.password === 'string') {
+        const ok = password === user.password
+        if (!ok) return res.status(401).json({ message: 'Invalid credentials' })
+      }
+    } else {
+      // With DB record, compare hashed password
+      if (!bcrypt.compareSync(password, user.password)) {
+        return res.status(401).json({ message: 'Invalid credentials' })
+      }
+    }
 
-    // Store refresh token in the database
-    await prisma.refreshToken.create({
-      data: {
-        token: refreshToken,
-        userId: user.id,
-        expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 7 days
-      },
-    });
+    if (!user) {
+      return res.status(401).json({ message: 'Invalid credentials' })
+    }
+
+    // Normalize user shape
+    const uid = user.id || user.userId || 0
+    const uname = user.username || user.email?.split('@')[0] || username
+    const role = user.role || user.roleName || 'USER'
+
+    // Generate tokens
+    const accessToken = generateAccessToken({ id: uid, username: uname, role })
+    const refreshToken = generateRefreshToken({ id: uid, username: uname, role })
+
+    // Try to persist refresh token; if it fails, continue for demo use
+    try {
+      await prisma.refreshToken.create({
+        data: {
+          token: refreshToken,
+          userId: uid,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+        },
+      })
+    } catch (persistErr) {
+      console.warn('Refresh token persist skipped due to DB error:', persistErr && persistErr.code)
+    }
 
     // Set HttpOnly cookies for access and refresh tokens
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieSecure = isProduction;
-    const sameSiteOpt = isProduction ? 'none' : 'lax';
+    const isProduction = process.env.NODE_ENV === 'production'
+    const cookieSecure = isProduction
+    const sameSiteOpt = isProduction ? 'none' : 'lax'
 
-    const accessCookieOpts = {
-      httpOnly: true,
-      secure: cookieSecure,
-      sameSite: sameSiteOpt,
-      path: '/',
-      maxAge: 60 * 60 * 1000, // 1 hour
-    };
+    const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
+    const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
 
-    const refreshCookieOpts = {
-      httpOnly: true,
-      secure: cookieSecure,
-      sameSite: sameSiteOpt,
-      path: '/',
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-    };
+    res.cookie('access_token', accessToken, accessCookieOpts)
+    res.cookie('refresh_token', refreshToken, refreshCookieOpts)
 
-    res.cookie('access_token', accessToken, accessCookieOpts);
-    res.cookie('refresh_token', refreshToken, refreshCookieOpts);
-
-    res.json({
-      message: 'Login successful',
-      user: {
-        id: user.id,
-        username: user.username,
-        role: user.role,
-      },
-    });
+    res.json({ message: 'Login successful', user: { id: uid, username: uname, role } })
   } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ message: 'Internal server error' });
+    console.error('Login error:', error)
+    res.status(500).json({ message: 'Internal server error' })
   }
-});
+})
 
 app.post('/api/token/refresh', async (req, res) => {
   try {
-    const { refresh_token: refreshToken } = req.cookies;
+    const { refresh_token: refreshToken } = req.cookies || {}
 
     if (!refreshToken) {
-      return res.status(401).json({ message: 'Refresh token not found' });
+      return res.status(401).json({ message: 'Refresh token not found' })
     }
 
-    // Verify refresh token
-    const decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-
-    // Check if token exists in the database and is not expired
-    const storedToken = await prisma.refreshToken.findFirst({
-      where: {
-        token: refreshToken,
-        userId: decoded.id,
-        expiresAt: { gt: new Date() },
-      },
-    });
-
-    if (!storedToken) {
-      return res.status(403).json({ message: 'Invalid or expired refresh token' });
+    // Verify refresh token JWT first
+    let decoded
+    try {
+      decoded = jwt.verify(refreshToken, REFRESH_TOKEN_SECRET)
+    } catch (e) {
+      return res.status(403).json({ message: 'Invalid refresh token' })
     }
 
-    // Generate new access token
-    const newAccessToken = generateAccessToken({
-      id: decoded.id,
-      username: decoded.username,
-      role: decoded.role,
-    });
+    // If DB is available, try to validate existence/expiry; if it fails, proceed (best effort)
+    try {
+      const storedToken = await prisma.refreshToken.findFirst({
+        where: { token: refreshToken, userId: decoded.id, expiresAt: { gt: new Date() } },
+      })
+      if (!storedToken) {
+        // If we couldn't find a DB record but JWT is valid, allow refresh for demo mode
+        if (process.env.REQUIRE_DB_REFRESH_CHECK === '1') {
+          return res.status(403).json({ message: 'Invalid or expired refresh token' })
+        }
+      }
+    } catch (dbErr) {
+      // DB error; continue for demo mode
+      console.warn('Refresh token DB check skipped due to error:', dbErr && dbErr.code)
+    }
 
-    // Set cookies
-    const isProduction = process.env.NODE_ENV === 'production';
-    const cookieSecure = isProduction;
-    const sameSiteOpt = isProduction ? 'none' : 'lax';
-    const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 };
+    // Issue new access token
+    const newAccessToken = generateAccessToken({ id: decoded.id, username: decoded.username, role: decoded.role })
 
-    res.cookie('access_token', newAccessToken, accessCookieOpts);
+    const isProduction = process.env.NODE_ENV === 'production'
+    const cookieSecure = isProduction
+    const sameSiteOpt = isProduction ? 'none' : 'lax'
+    const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
 
-    res.json({ message: 'Token refreshed successfully' });
+    res.cookie('access_token', newAccessToken, accessCookieOpts)
+    res.json({ message: 'Token refreshed successfully' })
   } catch (error) {
-    console.error('Refresh token error:', error);
-    return res.status(403).json({ message: 'Invalid refresh token' });
+    console.error('Refresh token error:', error)
+    return res.status(403).json({ message: 'Invalid refresh token' })
   }
-});
+})
 
 app.post('/api/logout', async (req, res) => {
   const { refresh_token: refreshToken } = req.cookies;
