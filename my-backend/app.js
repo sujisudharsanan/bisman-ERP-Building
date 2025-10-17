@@ -18,6 +18,26 @@ const privilegeService = require('./services/privilegeService')
 
 const app = express()
 
+// Define allowed origins for CORS
+const allowedOrigins = [
+  'http://localhost:3000', // Local frontend
+  'https://bisman-erp-building-git-diployment-sujis-projects-dfb64252.vercel.app' // Vercel frontend
+];
+
+// More robust CORS setup for production
+app.use(cors({
+  origin: function (origin, callback) {
+    // allow requests with no origin (like mobile apps or curl requests)
+    if (!origin) return callback(null, true);
+    if (allowedOrigins.indexOf(origin) === -1) {
+      const msg = 'The CORS policy for this site does not allow access from the specified Origin.';
+      return callback(new Error(msg), false);
+    }
+    return callback(null, true);
+  },
+  credentials: true, // Important for cookies
+}));
+
 // Trust the first proxy hop (e.g., from Render's load balancer)
 // This is crucial for express-rate-limit to work correctly.
 app.set('trust proxy', 1);
