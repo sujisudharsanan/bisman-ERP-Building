@@ -6,6 +6,8 @@ import { PermissionProvider } from '../contexts/PermissionContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import GlobalRouteLoader from '@/components/loading/GlobalRouteLoader';
 import FloatingBottomNav from '@/components/ui/FloatingBottomNav';
+import { useEffect } from 'react';
+import { runApiHealthCheckOnce } from '@/utils/apiHealth';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -18,6 +20,15 @@ export const viewport = {
   width: 'device-width',
   initialScale: 1,
 };
+
+function HealthBoot() {
+  useEffect(() => {
+    if (process.env.NEXT_PUBLIC_API_HEALTH === '1' || process.env.NODE_ENV !== 'production') {
+      runApiHealthCheckOnce();
+    }
+  }, []);
+  return null;
+}
 
 export default function RootLayout({
   children,
@@ -37,6 +48,8 @@ export default function RootLayout({
               <GlobalRouteLoader />
               {/* Auth-only floating bottom navigation */}
               <FloatingBottomNav />
+              {/* Health check bootstraper */}
+              <HealthBoot />
             </PermissionProvider>
           </AuthProvider>
         </ThemeProvider>
