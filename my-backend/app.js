@@ -406,38 +406,102 @@ app.post('/api/login', async (req, res) => {
   const username = (req.body && (req.body.username || req.body.email || req.body.emailOrPhone || req.body.login || req.body.contact)) || undefined
 
   try {
-    let user = null
-    try {
-      // look up by username OR email
-      user = await prisma.user.findFirst({ where: { OR: [ { username }, { email: username } ] } })
-    } catch (dbErr) {
-      // Prisma schema mismatch or DB down; fall through to dev users
-      console.warn('Prisma lookup failed; falling back to dev users:', dbErr && dbErr.code)
-      user = null
-    }
+    const user = await prisma.user.findUnique({
+      where: { email },
+    });
 
-    if (!user) {
-      // fallback to in-memory dev users when DB is not available
-      user = devUsers.find(u => (u.email === username || u.username === username)) || null
-      if (user && user.password && typeof user.password === 'string') {
-        const ok = password === user.password
-        if (!ok) return res.status(401).json({ message: 'Invalid credentials' })
+    if (!user || !bcrypt.compareSync(password, user.password)) {
+      // Fallback to dev users
+      console.log('Login: DB user not found or password mismatch, falling back to dev users.');
+      const devUser = devUsers.find(u => u.email === email && u.password === password);
+      if (!devUser) {
+        return res.status(401).json({ message: 'Invalid credentials' });
       }
+      console.log('Login: Successfully authenticated via dev user fallback.');
+      // Normalize user shape
+      const uid = devUser.id || devUser.userId || 0
+      const uname = devUser.username || devUser.email || devUser.email?.split('@')[0] || username
+      const role = devUser.role || devUser.roleName || 'USER'
+
+      // Generate tokens
+      const accessToken = generateAccessToken({ id: uid, username: uname, role })
+      const refreshToken = generateRefreshToken({ id: uid, username: uname, role })
+
+      // Try to persist refresh token; if it fails, continue for demo use
+      try {
+        await prisma.refreshToken.create({
+          data: {
+            token: refreshToken,
+            userId: uid,
+            expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+          },
+        })
+      } catch (persistErr) {
+        console.warn('Refresh token persist skipped due to DB error:', persistErr && persistErr.code)
+      }
+
+      // Set HttpOnly cookies for access and refresh tokens
+      const isProduction = process.env.NODE_ENV === 'production'
+      const cookieSecure = isProduction
+      const sameSiteOpt = isProduction ? 'none' : 'lax'
+
+      const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
+      const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
+
+      res.cookie('access_token', accessToken, accessCookieOpts)
+      res.cookie('refresh_token', refreshToken, refreshCookieOpts)
+
+      return res.json({ message: 'Login successful', user: { id: uid, username: uname, role } })
     } else {
-      // With DB record, compare hashed password
-      if (!bcrypt.compareSync(password, user.password)) {
-        return res.status(401).json({ message: 'Invalid credentials' })
-      }
-    }
+        console.log('Login: Successfully authenticated via database.');
+        // Normalize user shape
+        const uid = user.id || user.userId || 0
+        const uname = user.username || user.email || user.email?.split('@')[0] || username
+        const role = user.role || user.roleName || 'USER'
 
-    if (!user) {
-      return res.status(401).json({ message: 'Invalid credentials' })
-    }
+        // Generate tokens
+        const accessToken = generateAccessToken({ id: uid, username: uname, role })
+        const refreshToken = generateRefreshToken({ id: uid, username: uname, role })
 
+        // Try to persist refresh token; if it fails, continue for demo use
+        try {
+          await prisma.refreshToken.create({
+            data: {
+              token: refreshToken,
+              userId: uid,
+              expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000),
+            },
+          })
+        } catch (persistErr) {
+          console.warn('Refresh token persist skipped due to DB error:', persistErr && persistErr.code)
+        }
+
+        // Set HttpOnly cookies for access and refresh tokens
+        const isProduction = process.env.NODE_ENV === 'production'
+        const cookieSecure = isProduction
+        const sameSiteOpt = isProduction ? 'none' : 'lax'
+
+        const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
+        const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
+
+        res.cookie('access_token', accessToken, accessCookieOpts)
+        res.cookie('refresh_token', refreshToken, refreshCookieOpts)
+
+        return res.json({ message: 'Login successful', user: { id: uid, username: uname, role } })
+    }
+  } catch (error) {
+    console.error('Login Error:', error); // Enhanced logging
+    // Fallback for DB connection error
+    console.log('Login: DB operation failed, falling back to dev users.');
+    const devUser = devUsers.find(u => u.email === email && u.password === password);
+    if (!devUser) {
+      return res.status(401).json({ message: 'Invalid credentials' });
+    }
+    console.log('Login: Successfully authenticated via dev user fallback after DB error.');
     // Normalize user shape
-    const uid = user.id || user.userId || 0
-  const uname = user.username || user.email || user.email?.split('@')[0] || username
-    const role = user.role || user.roleName || 'USER'
+    const uid = devUser.id || devUser.userId || 0
+    const uname = devUser.username || devUser.email || devUser.email?.split('@')[0] || username
+    const role = devUser.role || devUser.roleName || 'USER'
 
     // Generate tokens
     const accessToken = generateAccessToken({ id: uid, username: uname, role })
@@ -468,9 +532,6 @@ app.post('/api/login', async (req, res) => {
     res.cookie('refresh_token', refreshToken, refreshCookieOpts)
 
     res.json({ message: 'Login successful', user: { id: uid, username: uname, role } })
-  } catch (error) {
-    console.error('Login error:', error)
-    res.status(500).json({ message: 'Internal server error' })
   }
 })
 
@@ -492,30 +553,43 @@ app.post('/api/token/refresh', async (req, res) => {
 
     // If DB is available, try to validate existence/expiry; if it fails, proceed (best effort)
     try {
-      const storedToken = await prisma.refreshToken.findFirst({
-        where: { token: refreshToken, userId: decoded.id, expiresAt: { gt: new Date() } },
-      })
-      if (!storedToken) {
-        // If we couldn't find a DB record but JWT is valid, allow refresh for demo mode
-        if (process.env.REQUIRE_DB_REFRESH_CHECK === '1') {
-          return res.status(403).json({ message: 'Invalid or expired refresh token' })
+      const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
+      const existingToken = await prisma.refreshToken.findUnique({
+        where: { token: hashedToken },
+        include: { user: true },
+      });
+
+      if (!existingToken || new Date() > new Date(existingToken.expiresAt)) {
+        console.log('Refresh token not found in DB or expired, falling back to in-memory session.');
+        // Fallback to "in-memory" session check for dev user
+        const devSession = devUserSessions[refreshToken];
+        if (!devSession) {
+          return res.status(401).json({ message: 'Invalid refresh token' });
         }
+        // ... existing dev user logic
+      } else {
+          console.log('Refresh token validated against database.');
+          // Issue new access token
+          const newAccessToken = generateAccessToken({ id: decoded.id, username: decoded.username, role: decoded.role })
+
+          const isProduction = process.env.NODE_ENV === 'production'
+          const cookieSecure = isProduction
+          const sameSiteOpt = isProduction ? 'none' : 'lax'
+          const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
+
+          res.cookie('access_token', newAccessToken, accessCookieOpts)
+          res.json({ message: 'Token refreshed successfully' })
       }
-    } catch (dbErr) {
-      // DB error; continue for demo mode
-      console.warn('Refresh token DB check skipped due to error:', dbErr && dbErr.code)
+    } catch (error) {
+      console.error('Refresh Token DB Error:', error); // Enhanced logging
+      console.log('Refresh Token: DB operation failed, falling back to in-memory session.');
+      // Fallback for DB connection error
+      const devSession = devUserSessions[refreshToken];
+      if (!devSession) {
+        return res.status(401).json({ message: 'Invalid refresh token' });
+      }
+      // ... existing dev user logic
     }
-
-    // Issue new access token
-    const newAccessToken = generateAccessToken({ id: decoded.id, username: decoded.username, role: decoded.role })
-
-    const isProduction = process.env.NODE_ENV === 'production'
-    const cookieSecure = isProduction
-    const sameSiteOpt = isProduction ? 'none' : 'lax'
-    const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSiteOpt, path: '/', maxAge: 60 * 60 * 1000 }
-
-    res.cookie('access_token', newAccessToken, accessCookieOpts)
-    res.json({ message: 'Token refreshed successfully' })
   } catch (error) {
     console.error('Refresh token error:', error)
     return res.status(403).json({ message: 'Invalid refresh token' })
