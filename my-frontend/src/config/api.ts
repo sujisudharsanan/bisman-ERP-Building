@@ -16,12 +16,11 @@ function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     
-    // If running on Vercel production domain, use production backend
-    if (hostname.includes('vercel.app')) {
-      // CRITICAL: Use the correct Render backend URL (rr6f for production)
-      const backendUrl = 'https://bisman-erp-rr6f.onrender.com';
-      console.log('🌐 Vercel deployment detected, using backend:', backendUrl);
-      return backendUrl;
+    // If running on managed hosting domains (Railway/Vercel), prefer same-origin API
+    if (hostname.includes('vercel.app') || hostname.includes('railway.app')) {
+      const sameOrigin = `${window.location.protocol}//${window.location.host}`;
+      console.log('🌐 Managed hosting detected, using same-origin API base:', sameOrigin);
+      return sameOrigin;
     }
     
     // If on localhost, use local backend
@@ -31,8 +30,9 @@ function getApiBaseUrl(): string {
     }
   }
 
-  // 3. Server-side default (SSR/SSG)
-  const defaultUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  // 3. Server-side default (SSR/SSG): prefer same-process via 127.0.0.1:PORT
+  const defaultUrl = process.env.NEXT_PUBLIC_API_URL 
+    || (process.env.PORT ? `http://127.0.0.1:${process.env.PORT}` : 'http://localhost:3001');
   console.log('🔄 SSR/SSG fallback, using:', defaultUrl);
   return defaultUrl;
 }

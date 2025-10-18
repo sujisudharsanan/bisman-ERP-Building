@@ -7,9 +7,7 @@ const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
-  (process.env.VERCEL === '1'
-    ? (process.env.RENDER_BACKEND_URL || 'https://bisman-erp-rr6f.onrender.com')
-    : 'http://localhost:3001');
+  null; // When null, we use same-origin and let Express/Next handle /api/*
 
 const isCI = process.env.CI === 'true' || process.env.VERCEL === '1' || process.env.RAILWAY === '1';
 
@@ -34,18 +32,14 @@ const nextConfig = {
     return config;
   },
   async rewrites() {
-    // Use simple array form for broad Next.js version compatibility.
-    // Next.js will serve app/api routes first; these rewrites apply to unmatched ones.
-    return [
-      {
-        source: '/api/:path*',
-        destination: `${API_URL}/api/:path*`,
-      },
-      {
-        source: '/uploads/:path*',
-        destination: `${API_URL}/uploads/:path*`,
-      },
-    ];
+    // Prefer same-origin to avoid CORS; only rewrite if explicit external API_URL is provided.
+    if (API_URL) {
+      return [
+        { source: '/api/:path*', destination: `${API_URL}/api/:path*` },
+        { source: '/uploads/:path*', destination: `${API_URL}/uploads/:path*` },
+      ];
+    }
+    return [];
   },
   async headers() {
     return [

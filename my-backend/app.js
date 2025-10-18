@@ -41,7 +41,12 @@ function generateRefreshToken(payload) {
 app.set('trust proxy', 1);
 
 // Basic security middleware
-app.use(helmet())
+// Note: Disable CSP here because Next.js injects inline/runtime scripts that a strict CSP would block.
+// We can re-enable a tuned CSP later once the app is fully stable.
+app.use(helmet({
+  contentSecurityPolicy: false,
+  crossOriginEmbedderPolicy: false,
+}))
 
 // Rate limiting for authentication endpoints
 const authLimiter = rateLimit({
@@ -66,6 +71,8 @@ const allowlist = [
   'https://bisman-erp-rr6f.onrender.com',
   'http://localhost:3000',
   'http://localhost:3001',
+  // Railway production domain (same app serves API + UI)
+  'https://bisman-erp-backend-production.up.railway.app',
 ];
 
 if (process.env.FRONTEND_URL) {
@@ -77,7 +84,16 @@ const corsOptions = {
     // Log the origin for debugging purposes
     console.log(`[CORS] Request from origin: ${origin}`);
     
-    if (allowlist.indexOf(origin) !== -1 || !origin) {
+    // Allow if:
+    //  - Explicitly in allowlist
+    //  - No Origin header (e.g., same-origin or curl)
+    //  - Matches common Railway/Vercel preview domains
+    const isWildcardAllowed = !!origin && (
+      origin.endsWith('.railway.app') ||
+      origin.endsWith('.vercel.app')
+    );
+
+    if (allowlist.indexOf(origin) !== -1 || !origin || isWildcardAllowed) {
       console.log(`[CORS] Origin ${origin} is allowed.`);
       callback(null, true);
     } else {
