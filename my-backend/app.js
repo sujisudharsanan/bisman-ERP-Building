@@ -64,11 +64,22 @@ app.use(helmet({
 }))
 
 // Rate limiting for authentication endpoints
-const authLimiter = rateLimit({
+const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 5 : 50, // 5 for production, 50 for development
+  max: process.env.NODE_ENV === 'production' ? 10 : 100, // 10 login attempts per 15 mins in prod
   message: {
-    error: 'Too many authentication attempts, please try again later.'
+    error: 'Too many login attempts, please try again later.'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// A more lenient rate limiter for general authenticated API traffic
+const apiLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, // 5 minutes
+  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // 100 requests per 5 mins in prod
+  message: {
+    error: 'Too many requests, please try again later.'
   },
   standardHeaders: true,
   legacyHeaders: false,
@@ -498,15 +509,14 @@ const devUsers = [
 ]
 
 // Simple login endpoint with fallback for development
-app.use('/api/login', authLimiter)
-app.use('/api/auth', authLimiter)
+app.use('/api/login', loginLimiter)
+app.use('/api/auth', apiLimiter)
 
 app.post('/api/login', async (req, res) => {
-  const { email, password, username } = req.body;
-  const loginCredential = email || username;
+  const { email, password } = req.body
 
-  if (!loginCredential || !password) {
-    return res.status(400).json({ message: 'Email/Username and password are required' });
+  if (!email || !password) {
+    return res.status(400).json({ message: 'Email and password are required' });
   }
 
   try {
@@ -517,7 +527,7 @@ app.post('/api/login', async (req, res) => {
     if (!user || !bcrypt.compareSync(password, user.password)) {
       // Fallback to dev users
       console.log('Login: DB user not found or password mismatch, falling back to dev users.');
-      const devUser = devUsers.find(u => (u.email === email || u.username === username) && u.password === password);
+      const devUser = devUsers.find(u => u.email === email && u.password === password);
       if (!devUser) {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
@@ -528,7 +538,7 @@ app.post('/api/login', async (req, res) => {
 
     // Normalize role field (could be role or roleName from DB)
     const userRole = user.role || user.roleName || 'MANAGER';
-    const userEmail = user.email || user.username || loginCredential;
+    const userEmail = user.email || user.username || email;
     const userId = user.id || user.userId || 0;
 
     // Generate and send tokens WITH role
@@ -622,7 +632,7 @@ app.post('/api/login', async (req, res) => {
     }
     // Fallback for DB connection error
     console.log('Login: DB operation failed, falling back to dev users.');
-    const devUser = devUsers.find(u => (u.email === email || u.username === username) && u.password === password);
+    const devUser = devUsers.find(u => u.email === email && u.password === password);
     if (!devUser) {
       return res.status(401).json({ message: 'Invalid credentials' });
     }
@@ -1049,6 +1059,11 @@ app.patch('/api/hub-incharge/settings', authenticate, requireRole(['STAFF', 'ADM
 
 // Get user permissions
 app.get('/api/auth/permissions', authenticate, async (req, res) => {
+  if (!req.user || !req.user.role) {
+    // This case should ideally be caught by `authenticate` middleware, but as a safeguard:
+    return res.status(401).json({ error: 'Authentication required.' });
+  }
+
   try {
     const userId = req.user.id
     
@@ -1203,5 +1218,23 @@ if (process.env.DEBUG_ROUTES) {
     console.error('Failed to dump routes', e);
   }
 }
+
+// Special endpoint to clear rate limits (for testing/dev only)
+if (process.env.NODE_ENV !== 'production') {
+  app.post('/api/dev/clear-rate-limits', (req, res) => {
+    try {
+      loginLimiter.resetAll && loginLimiter.resetAll()
+      apiLimiter.resetAll && apiLimiter.resetAll()
+      console.log('[DEV] All rate limits have been reset.')
+      res.status(200).send('All rate limits cleared.')
+    } catch (error) {
+      console.error('Error clearing rate limits:', error)
+      res.status(500).send('Failed to clear rate limits.')
+    }
+  })
+}
+
+// --- Serve React App (must be after API routes ---
+app.use(express.static(path.join(__dirname, '../my-frontend/build')))
 
 module.exports = app
