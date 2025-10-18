@@ -83,6 +83,7 @@ const isProd = process.env.NODE_ENV === 'production';
 const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
+  'https://bisman-erp-frontend.vercel.app',
   'https://bisman-erp-frontend-production.up.railway.app',
   'https://bisman-erp-backend-production.up.railway.app',
 ];
@@ -569,12 +570,11 @@ app.post('/api/login', async (req, res) => {
       }
     }
 
-  // Cookie configuration for Railway same-origin deployment
-  // Since frontend and backend are served from the same Railway domain, use 'lax'
-  // If you later separate them, switch to 'none' and ensure both use HTTPS
-  const isProduction = process.env.NODE_ENV === 'production'
-  const cookieSecure = isProduction  // true in production (HTTPS required)
-  const sameSitePolicy = 'lax'  // same-origin on Railway, no cross-site issues
+  // Cookie configuration for cross-domain deployment (e.g., Vercel frontend + Railway backend)
+  // Use SameSite=None and Secure=true in production to allow cross-site cookies over HTTPS
+  const isProduction = process.env.NODE_ENV === 'production';
+  const cookieSecure = isProduction;  // true in production (HTTPS required)
+  const sameSitePolicy = 'none';  // allow cross-site cookies
   
   const cookieOptions = {
     httpOnly: true,
@@ -651,9 +651,9 @@ app.post('/api/login', async (req, res) => {
     }
 
     // Set HttpOnly cookies for access and refresh tokens
-    const isProduction = process.env.NODE_ENV === 'production'
-    const cookieSecure = isProduction
-    const sameSitePolicy = 'lax'  // same-origin on Railway
+  const isProduction = process.env.NODE_ENV === 'production'
+  const cookieSecure = isProduction
+  const sameSitePolicy = 'none'  // allow cross-site cookies
 
     const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSitePolicy, path: '/', maxAge: 60 * 60 * 1000 }
     const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSitePolicy, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
@@ -711,12 +711,17 @@ app.post('/api/token/refresh', async (req, res) => {
         if (!userRecord) {
           return res.status(401).json({ message: 'User not found' });
         }
-        // Issue new access token
-        const newAccessToken = generateAccessToken({ id: userRecord.id, email: userRecord.email })
+        // Issue new access token (include role/username so /api/me has all fields)
+        const newAccessToken = generateAccessToken({
+          id: userRecord.id,
+          email: userRecord.email,
+          role: userRecord.role || userRecord.roleName || 'MANAGER',
+          username: userRecord.username || (userRecord.email ? userRecord.email.split('@')[0] : undefined)
+        })
 
-        const isProduction = process.env.NODE_ENV === 'production'
-        const cookieSecure = isProduction
-        const sameSitePolicy = 'lax'  // same-origin on Railway
+  const isProduction = process.env.NODE_ENV === 'production'
+  const cookieSecure = isProduction
+  const sameSitePolicy = 'none'  // allow cross-site cookies
         const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSitePolicy, path: '/', maxAge: 60 * 60 * 1000 }
 
         res.cookie('access_token', newAccessToken, accessCookieOpts)
@@ -760,15 +765,17 @@ app.post('/api/logout', async (req, res) => {
   // Clear cookies on the client side
   try {
     const isProduction = process.env.NODE_ENV === 'production';
-    const sameSitePolicy = 'lax';  // same-origin on Railway
+    const sameSitePolicy = 'none'; // cross-domain cookies
     const cookieOpts = {
       path: '/',
       httpOnly: true,
       secure: isProduction,
       sameSite: sameSitePolicy,
     };
+    // Clear httpOnly cookies first
     res.clearCookie('access_token', cookieOpts);
     res.clearCookie('refresh_token', cookieOpts);
+    res.clearCookie('token', cookieOpts);
 
     // Also try without httpOnly in case client needs to clear it
     res.clearCookie('access_token', { path: '/', secure: isProduction, sameSite: sameSitePolicy });
@@ -776,9 +783,9 @@ app.post('/api/logout', async (req, res) => {
     res.clearCookie('token', { path: '/', secure: isProduction, sameSite: sameSitePolicy });
   } catch (e) {
     // best-effort fallback
-    try { res.clearCookie('access_token', { path: '/', sameSite: 'lax' }); } catch (e) {}
-    try { res.clearCookie('refresh_token', { path: '/', sameSite: 'lax' }); } catch (e) {}
-    try { res.clearCookie('token', { path: '/', sameSite: 'lax' }); } catch (e) {}
+    try { res.clearCookie('access_token', { path: '/', sameSite: 'none' }); } catch (e) {}
+    try { res.clearCookie('refresh_token', { path: '/', sameSite: 'none' }); } catch (e) {}
+    try { res.clearCookie('token', { path: '/', sameSite: 'none' }); } catch (e) {}
   }
 
   res.status(200).json({ message: 'Logout successful' })

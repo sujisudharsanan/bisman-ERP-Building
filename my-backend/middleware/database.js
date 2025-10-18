@@ -109,16 +109,43 @@ const queryMonitor = new QueryMonitor()
 
 // Secure database configuration
 const createSecurePool = (databaseUrl) => {
+  const useSsl = (process.env.NODE_ENV === 'production') || (process.env.PGSSLMODE === 'require')
   const pool = new Pool({
     connectionString: databaseUrl,
-    max: 20,
-    idleTimeoutMillis: 30000,
-    connectionTimeoutMillis: 2000,
+    // Keep connection usage modest to avoid exhausting Railway free-tier limits
+    max: 5,                    // limit concurrent connections
+    idleTimeoutMillis: 10000,  // close idle clients after 10s
+    connectionTimeoutMillis: 5000, // fail fast if cannot connect
     statement_timeout: 30000,
     query_timeout: 30000,
-    ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false,
+    ssl: useSsl ? { rejectUnauthorized: false } : false,
     application_name: 'bisman-erp'
   })
+
+  // Basic pool-level monitoring
+  pool.on('error', (err) => {
+    console.error('🧨 PG Pool error (unexpected idle client error):', err.message)
+  })
+
+  // Graceful shutdown: close pool on process termination
+  if (!pool._shutdownRegistered) {
+    pool._shutdownRegistered = true
+    let closed = false
+    const shutdown = async (signal) => {
+      if (closed) return
+      closed = true
+      try {
+        await pool.end()
+        console.log(`[db] Connection pool closed (${signal})`)
+      } catch (e) {
+        console.error('[db] Error closing pool:', e && e.message)
+      } finally {
+        if (signal === 'SIGINT' || signal === 'SIGTERM') process.exit(0)
+      }
+    }
+    process.on('SIGINT', () => shutdown('SIGINT'))
+    process.on('SIGTERM', () => shutdown('SIGTERM'))
+  }
 
   // Override pool.query to add monitoring
   const originalQuery = pool.query.bind(pool)

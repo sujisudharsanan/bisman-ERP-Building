@@ -7,6 +7,14 @@
 			"command": "bash -lc 'set -e; if [ -d \"my-backend\" ]; then echo \"Backend exists\"; fi; if [ -d \"my-frontend\" ]; then cd my-frontend && jq -r .name package.json >/dev/null 2>&1 || true; echo \"Frontend exists\"; fi; echo DONE'",
 			"problemMatcher": [],
 			"group": "build"
+		},
+		{
+			"label": "temp-build-and-push-precheck",
+			"type": "shell",
+			"command": "bash -lc 'set -e; echo \"Node: $(node -v 2>/dev/null || echo missing)\"; echo \"NPM: $(npm -v 2>/dev/null || echo missing)\"; git rev-parse --is-inside-work-tree >/dev/null 2>&1 && echo \"Git repo: yes\" || echo \"Git repo: no\"; echo DONE'",
+			"isBackground": false,
+			"problemMatcher": [],
+			"group": "build"
 		}
 	]
 }
