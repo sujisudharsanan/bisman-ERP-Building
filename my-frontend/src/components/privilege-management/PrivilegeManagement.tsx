@@ -238,13 +238,37 @@ export function PrivilegeManagement({ className = '', initialRoleId = null }: Pr
   // Check Database Health
   const checkDatabaseHealth = useCallback(async () => {
     try {
-      const response = await apiCall<DatabaseHealth>('/health/database');
+      // Call the health endpoint directly (not through /api/privileges)
+      const response = await fetch('/api/health/database', {
+        credentials: 'include',
+      });
       
-      if (response.success) {
-        setDbHealth(response.data);
+      const data = await response.json();
+      
+      if (data.success && data.data) {
+        setDbHealth(data.data);
+      } else {
+        // Set a default disconnected state
+        setDbHealth({
+          connected: false,
+          ready: false,
+          response_time: 0,
+          active_connections: 0,
+          version: null,
+          issues: ['Failed to fetch database health']
+        });
       }
     } catch (error) {
       console.error('Failed to check database health:', error);
+      // Set a default disconnected state on error
+      setDbHealth({
+        connected: false,
+        ready: false,
+        response_time: 0,
+        active_connections: 0,
+        version: null,
+        issues: ['Network error or API unavailable']
+      });
     }
   }, []);
 

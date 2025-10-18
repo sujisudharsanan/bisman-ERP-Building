@@ -142,6 +142,41 @@ app.use((req, res, next) => {
 const uploadRoutes = require('./routes/upload')
 app.use('/api/upload', uploadRoutes)
 
+// Public database health endpoint (no auth required)
+// Exposed early and unconditionally so UI can detect DB status in all environments
+app.get('/api/health/database', async (req, res) => {
+  try {
+    const startTime = Date.now()
+    const health = await privilegeService.checkDatabaseHealth()
+    const responseTime = Date.now() - startTime
+
+    return res.json({
+      success: true,
+      data: {
+        ...health,
+        response_time: responseTime,
+        last_checked: new Date().toISOString(),
+      },
+      timestamp: new Date().toISOString(),
+    })
+  } catch (error) {
+    console.error('Public DB health endpoint failed:', error)
+    return res.status(500).json({
+      success: false,
+      error: {
+        message: 'Database health check failed',
+        code: 'DATABASE_UNAVAILABLE',
+      },
+      timestamp: new Date().toISOString(),
+    })
+  }
+})
+// Short alias used by some legacy UI code
+app.get('/api/health/db', (req, res) => {
+  req.url = '/api/health/database'
+  app._router.handle(req, res, () => res.status(404).end())
+})
+
 // Test CORS route
 try {
   const testCorsRoutes = require('./routes/testCors')
@@ -333,36 +368,7 @@ if (databaseUrl) {
     }
   })
 
-  // Public database health endpoint (no auth required)
-  // Mirrors the shape used by privilege routes but is intentionally unprotected
-  // so top-nav indicators and diagnostics can work before auth is established.
-  app.get('/api/health/database', async (req, res) => {
-    try {
-      const startTime = Date.now()
-      const health = await privilegeService.checkDatabaseHealth()
-      const responseTime = Date.now() - startTime
-
-      return res.json({
-        success: true,
-        data: {
-          ...health,
-          response_time: responseTime,
-          last_checked: new Date().toISOString(),
-        },
-        timestamp: new Date().toISOString(),
-      })
-    } catch (error) {
-      console.error('Public DB health endpoint failed:', error)
-      return res.status(500).json({
-        success: false,
-        error: {
-          message: 'Database health check failed',
-          code: 'DATABASE_UNAVAILABLE',
-        },
-        timestamp: new Date().toISOString(),
-      })
-    }
-  })
+  // DB health endpoint is moved below to be always available
 } else {
   // No database URL provided in env;
   // HSTS (HTTP Strict Transport Security)

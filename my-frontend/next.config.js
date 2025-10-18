@@ -26,6 +26,20 @@ const nextConfig = {
     }
     return config;
   },
+  async rewrites() {
+    // Use simple array form for broad Next.js version compatibility.
+    // Next.js will serve app/api routes first; these rewrites apply to unmatched ones.
+    return [
+      {
+        source: '/api/:path*',
+        destination: `${API_URL}/api/:path*`,
+      },
+      {
+        source: '/uploads/:path*',
+        destination: `${API_URL}/uploads/:path*`,
+      },
+    ];
+  },
   async headers() {
     return [
       {

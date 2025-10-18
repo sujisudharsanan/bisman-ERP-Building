@@ -1,40 +1,30 @@
-# Dockerfile for BISMAN ERP Backend
+## Root Dockerfile for Railway (backend service)
 FROM node:18-alpine
 
-# Install system dependencies including wget for health checks
-RUN apk add --no-cache dumb-init postgresql-client wget
+# Minimal utilities for production containers
+RUN apk add --no-cache dumb-init postgresql-client wget openssl libc6-compat
 
-# Set working directory
 WORKDIR /app
 
-# Copy backend package files
+# 1) Copy only package manifests for caching
 COPY my-backend/package*.json ./
 
-# Install dependencies
-RUN npm ci --only=production && npm cache clean --force
+# 2) Copy Prisma schema BEFORE installing deps, so scripts can find it if needed
+COPY my-backend/prisma ./prisma/
 
-# Copy backend application code
+# 3) Install all deps, skipping lifecycle scripts so prisma CLI (devDependency) is available
+RUN npm ci --ignore-scripts && npm cache clean --force
+
+# 4) Copy the remainder of the backend source
 COPY my-backend/ ./
 
-# Generate Prisma Client
-RUN npx prisma generate
+# 5) Generate Prisma Client explicitly
+RUN npx prisma generate && npm prune --omit=dev
 
-# Create non-root user for security
-RUN addgroup -g 1001 -S nodejs && \
-    adduser -S backenduser -u 1001 && \
-    chown -R backenduser:nodejs /app
+ENV NODE_ENV=production
+ENV PORT=8080
+EXPOSE 8080
 
-# Switch to non-root user
-USER backenduser
-
-# Expose port (Render will set PORT env var)
-EXPOSE 10000
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:${PORT:-10000}/health || exit 1
-
-# Start the application with dumb-init for proper signal handling
+# Use server.js wrapper (already present in my-backend/) and dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "index.js"]
-CMD ["node", "index.js"]
+CMD ["node", "server.js"]

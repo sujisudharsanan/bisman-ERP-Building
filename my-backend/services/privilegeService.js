@@ -618,6 +618,7 @@ class PrivilegeService {
       console.error('Database health check failed:', error);
       return {
         connected: false,
+        ready: false,
         response_time: -1,
         active_connections: 0,
   reason: 'ERROR',

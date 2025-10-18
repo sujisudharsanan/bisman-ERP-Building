@@ -1,36 +1,36 @@
-# Backend Dockerfile for Render (Docker runtime)
-# Uses Debian slim to avoid OpenSSL issues with Prisma on Alpine
-FROM node:18-bullseye-slim
+## Backend Dockerfile (Railway compatible)
+# Use lightweight Alpine and install minimal tools
+FROM node:18-alpine
 
-# Set workdir
+# Install runtime tools (dumb-init for signal handling, psql client for debug, wget for health/debug)
+RUN apk add --no-cache dumb-init postgresql-client wget openssl libc6-compat
+
+# Workdir inside the container
 WORKDIR /app
 
-# Install system deps (optional: ca-certificates, openssl for Prisma engines)
-RUN apt-get update \
-  && apt-get install -y --no-install-recommends \
-    ca-certificates openssl \
-  && rm -rf /var/lib/apt/lists/*
-
-# Install dependencies first (better layer caching)
+# 1) Copy only package manifests for better caching
 COPY package*.json ./
-# Install all deps but skip lifecycle scripts (postinstall runs prisma generate which needs schema)
-RUN npm ci --ignore-scripts
 
-# Copy Prisma schema now and generate client explicitly
-COPY prisma ./prisma
-RUN npx prisma generate
+# 2) Copy Prisma schema BEFORE installing deps so postinstall (if enabled) can find it
+COPY prisma ./prisma/
 
-# Copy the rest of the source code
+# 3) Install all deps but skip lifecycle scripts so postinstall doesn't run yet
+#    This ensures `prisma` CLI (a devDependency) is available for generate
+RUN npm ci --ignore-scripts && npm cache clean --force
+
+# 4) Copy the rest of the backend source
 COPY . .
 
-# Remove devDependencies to slim the image
+# 5) Generate Prisma Client explicitly (schema is already in /app/prisma)
+RUN npx prisma generate
+
+# 6) Prune devDependencies to slim the final image
 RUN npm prune --omit=dev
 
-# Environment
+# 7) Environment and port
 ENV NODE_ENV=production
-# Render sets PORT; default fallback
-ENV PORT=10000
-EXPOSE 10000
+ENV PORT=8080
+EXPOSE 8080
 
-# Start the server
-CMD ["node", "index.js"]
+# 8) Start the server via dumb-init
+CMD ["dumb-init", "node", "server.js"]
