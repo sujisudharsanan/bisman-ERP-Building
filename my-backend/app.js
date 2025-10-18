@@ -203,6 +203,61 @@ app.get('/api/health/database', async (req, res) => {
     })
   }
 })
+// RBAC tables health checker: verifies presence and row counts
+app.get('/api/health/rbac', async (req, res) => {
+  const now = new Date().toISOString()
+  try {
+    if (!databaseUrl) {
+      return res.status(503).json({ ok: false, error: 'DATABASE_URL not configured', timestamp: now })
+    }
+    // Check table existence using to_regclass and counts when present
+    const checkTable = async (table) => {
+      try {
+        const existsRows = await prisma.$queryRaw`SELECT to_regclass(${`public.${table}`}) AS regclass`;
+        const exists = Array.isArray(existsRows) && existsRows[0] && existsRows[0].regclass !== null
+        let count = null
+        if (exists) {
+          switch (table) {
+            case 'rbac_roles': count = await prisma.rbac_roles.count(); break
+            case 'rbac_actions': count = await prisma.rbac_actions.count(); break
+            case 'rbac_routes': count = await prisma.rbac_routes.count(); break
+            case 'rbac_permissions': count = await prisma.rbac_permissions.count(); break
+            case 'rbac_user_roles': count = await prisma.rbac_user_roles.count(); break
+            default: count = null
+          }
+        }
+        return { exists, count }
+      } catch (e) {
+        return { exists: false, count: null, error: e && e.message }
+      }
+    }
+
+    const [roles, actions, routes, permissions, userRoles] = await Promise.all([
+      checkTable('rbac_roles'),
+      checkTable('rbac_actions'),
+      checkTable('rbac_routes'),
+      checkTable('rbac_permissions'),
+      checkTable('rbac_user_roles'),
+    ])
+
+    const allExist = roles.exists && actions.exists && routes.exists && permissions.exists && userRoles.exists
+
+    return res.json({
+      ok: allExist,
+      tables: {
+        rbac_roles: roles,
+        rbac_actions: actions,
+        rbac_routes: routes,
+        rbac_permissions: permissions,
+        rbac_user_roles: userRoles,
+      },
+      timestamp: now,
+    })
+  } catch (error) {
+    console.error('RBAC health endpoint failed:', error)
+    return res.status(500).json({ ok: false, error: 'RBAC health check failed', timestamp: now })
+  }
+})
 // Short alias used by some legacy UI code
 app.get('/api/health/db', (req, res) => {
   req.url = '/api/health/database'
