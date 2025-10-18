@@ -36,7 +36,8 @@ COPY --from=deps /app /app
 # Copy package.json first to install production deps
 COPY --from=build-frontend /app/frontend/package*.json /app/frontend/
 # Install ONLY production dependencies for Next runtime
-RUN npm install --prefix frontend --production --no-audit --no-fund
+# Set CI=true to skip prepare scripts (husky, etc.) and --ignore-scripts as safety
+RUN CI=true npm install --prefix frontend --production --ignore-scripts --no-audit --no-fund
 # Copy Next.js build output, public assets, and config
 COPY --from=build-frontend /app/frontend/.next /app/frontend/.next
 COPY --from=build-frontend /app/frontend/public /app/frontend/public
