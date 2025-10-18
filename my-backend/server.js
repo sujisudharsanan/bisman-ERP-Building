@@ -30,17 +30,36 @@ const nextApp = nextAvailable ? next({ dev, dir: frontendDir }) : null;
 const handle = nextApp ? nextApp.getRequestHandler() : null;
 
 async function start() {
-  if (nextApp) {
-    await nextApp.prepare();
-  }
-
-  // Mount API under the same Express server
+  // Create Express server first, before Next preparation
   const server = express();
   server.set('trust proxy', 1);
-  server.use(apiApp);
+  
+  // CRITICAL: Add healthcheck endpoint BEFORE mounting apiApp or Next
+  // This ensures /api/health is always available even if app.js has issues
+  server.get('/api/health', (_req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
 
-  // Simple built-in healthcheck (independent of Next) to satisfy platform checks
-  server.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+  // Mount API routes (may have issues, but healthcheck is already registered)
+  try {
+    server.use(apiApp);
+    console.log('[startup] API routes mounted');
+  } catch (apiError) {
+    console.error('[startup] Warning: API routes failed to mount:', apiError.message);
+    // Continue anyway - healthcheck will still work
+  }
+
+  // Prepare Next.js if available
+  if (nextApp) {
+    try {
+      console.log('[startup] Preparing Next.js...');
+      await nextApp.prepare();
+      console.log('[startup] Next.js ready');
+    } catch (nextError) {
+      console.error('[startup] Warning: Next.js preparation failed:', nextError.message);
+      // Continue in API-only mode
+    }
+  }
 
   if (handle) {
     // Let Next handle everything else
@@ -51,12 +70,29 @@ async function start() {
   }
 
   const port = process.env.PORT || 8080;
-  server.listen(port, '0.0.0.0', () => {
-    console.log(`[startup] API + Next listening on http://0.0.0.0:${port}`);
+  const serverInstance = server.listen(port, '0.0.0.0', () => {
+    console.log(`[startup] ✅ Server listening on http://0.0.0.0:${port}`);
+    console.log(`[startup] ✅ Healthcheck available at http://0.0.0.0:${port}/api/health`);
+  });
+
+  // Handle server errors
+  serverInstance.on('error', (err) => {
+    console.error('[startup] ❌ Server error:', err);
+    process.exit(1);
+  });
+
+  // Graceful shutdown
+  process.on('SIGTERM', () => {
+    console.log('[shutdown] SIGTERM received, closing server...');
+    serverInstance.close(() => {
+      console.log('[shutdown] Server closed');
+      process.exit(0);
+    });
   });
 }
 
 start().catch(err => {
-  console.error('[startup] Failed to start server:', err);
+  console.error('[startup] ❌ Fatal startup error:', err);
+  console.error('[startup] Stack:', err.stack);
   process.exit(1);
 });

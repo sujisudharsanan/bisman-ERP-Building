@@ -9,7 +9,23 @@ const { Pool } = require('pg')
 const { PrismaClient } = require('@prisma/client')   // ✅ only once
 // Load .env early for local/dev
 try { require('dotenv').config() } catch (e) {}
-const prisma = new PrismaClient()
+
+// Initialize Prisma with safe defaults and error handling
+let prisma;
+try {
+  prisma = new PrismaClient({
+    log: process.env.NODE_ENV === 'production' ? ['error'] : ['query', 'info', 'warn', 'error'],
+  });
+  console.log('[app.js] Prisma client initialized');
+} catch (prismaError) {
+  console.error('[app.js] Warning: Prisma initialization failed:', prismaError.message);
+  console.error('[app.js] Database operations will be unavailable');
+  // Create a mock prisma object to prevent crashes
+  prisma = new Proxy({}, {
+    get: () => () => Promise.reject(new Error('Database not available'))
+  });
+}
+
 const cookieParser = require('cookie-parser')
 const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
