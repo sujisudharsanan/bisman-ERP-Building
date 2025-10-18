@@ -9,7 +9,13 @@ run_db_push() {
   # Add sslmode=require if not present (helps with Railway public proxy)
   case "$DATABASE_URL" in
     *sslmode=*) ;; # already present
-    postgresql://*) export DATABASE_URL="${DATABASE_URL}?sslmode=require" ;;
+    postgresql://*) 
+      if echo "$DATABASE_URL" | grep -q '\?'; then
+        export DATABASE_URL="${DATABASE_URL}&sslmode=require"
+      else
+        export DATABASE_URL="${DATABASE_URL}?sslmode=require"
+      fi
+      ;;
   esac
   npx prisma db push --accept-data-loss && echo "✅ Schema pushed successfully" || echo "⚠️  prisma db push failed"
 }

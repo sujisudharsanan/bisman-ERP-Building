@@ -341,6 +341,21 @@ app.get('/me', (req, res) => {
 
 // read DATABASE_URL from environment (was using undefined `databaseUrl`)
 const databaseUrl = process.env.DATABASE_URL || null
+// Early validation to catch common mistakes like appending 'postgresql' to db name
+if (databaseUrl) {
+  try {
+    const urlObj = new URL(databaseUrl)
+    const dbName = (urlObj.pathname || '').replace(/^\//, '').split('?')[0]
+    if (dbName && /postgresql$/i.test(dbName)) {
+      console.warn(`⚠️  DATABASE_URL suspicious database name detected: "${dbName}". Expected something like 'railway'. Please fix the DATABASE_URL in your environment.`)
+    }
+    if (urlObj.protocol !== 'postgresql:') {
+      console.warn(`ℹ️  DATABASE_URL protocol is "${urlObj.protocol}"; Prisma expects "postgresql:"`) 
+    }
+  } catch (e) {
+    console.warn('⚠️  DATABASE_URL is not a valid URL string:', e.message)
+  }
+}
 const { createSecurePool, queryMonitor } = require('./middleware/database')
 
 let pool
