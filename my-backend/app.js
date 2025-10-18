@@ -35,13 +35,14 @@ const privilegeService = require('./services/privilegeService')
 
 const app = express()
 
-// --- CORS configuration (single, unified) ---
+// --- CORS configuration (Railway only + localhost dev) ---
 // Keep this block BEFORE any routes
-// Allows exact Vercel deployment domain(s), Render domain(s), and localhost
 
 // --- JWT helpers (tokens) ---
 const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || process.env.JWT_SECRET || 'dev_access_secret'
 const REFRESH_TOKEN_SECRET = process.env.REFRESH_TOKEN_SECRET || process.env.JWT_REFRESH_SECRET || 'dev_refresh_secret'
+// Allow dev user fallback only when explicitly enabled and not in production
+const allowDevFallback = (process.env.ALLOW_DEV_FALLBACK === '1') && process.env.NODE_ENV !== 'production'
 
 function generateAccessToken(payload) {
   // keep payload minimal; caller provides id/username/role
@@ -82,13 +83,9 @@ app.use(logSanitizer)
 // CORS middleware for cross-origin requests (explicit allowlist + env)
 const isProd = process.env.NODE_ENV === 'production';
 const allowlist = [
-  'https://bisman-erp-building.vercel.app',
-  'https://bisman-erp-building-git-diployment-sujis-projects-dfb64252.vercel.app',
-  'https://bisman-erp-rr6f.onrender.com',
   'http://localhost:3000',
   'http://localhost:3001',
-  // Railway production domain (same app serves API + UI)
-  'https://bisman-erp-backend-production.up.railway.app',
+  // Railway production domain (same app serves API + UI) - set via env FRONTEND_URL
 ];
 
 if (process.env.FRONTEND_URL) {
@@ -103,11 +100,8 @@ const corsOptions = {
     // Allow if:
     //  - Explicitly in allowlist
     //  - No Origin header (e.g., same-origin or curl)
-    //  - Matches common Railway/Vercel preview domains
-    const isWildcardAllowed = !!origin && (
-      origin.endsWith('.railway.app') ||
-      origin.endsWith('.vercel.app')
-    );
+  //  - Matches common Railway preview domains
+  const isWildcardAllowed = !!origin && origin.endsWith('.railway.app');
 
     if (allowlist.indexOf(origin) !== -1 || !origin || isWildcardAllowed) {
       console.log(`[CORS] Origin ${origin} is allowed.`);
@@ -533,15 +527,19 @@ app.post('/api/login', async (req, res) => {
     });
 
     if (!user || !bcrypt.compareSync(password, user.password)) {
-      // Fallback to dev users
-      console.log('Login: DB user not found or password mismatch, falling back to dev users.');
-      const devUser = devUsers.find(u => (u.email === email || u.username === username) && u.password === password);
-      if (!devUser) {
+      if (allowDevFallback) {
+        // Fallback to dev users (dev/test only)
+        console.log('Login: DB user not found or password mismatch, falling back to dev users.');
+        const devUser = devUsers.find(u => (u.email === email || u.username === username) && u.password === password);
+        if (!devUser) {
+          return res.status(401).json({ message: 'Invalid credentials' });
+        }
+        console.log('✅ Login: Successfully authenticated via dev user fallback.');
+        console.log('✅ User authenticated with role:', devUser.role);
+        user = devUser; // Assign devUser to user object
+      } else {
         return res.status(401).json({ message: 'Invalid credentials' });
       }
-      console.log('✅ Login: Successfully authenticated via dev user fallback.');
-      console.log('✅ User authenticated with role:', devUser.role);
-      user = devUser; // Assign devUser to user object
     }
 
     // Normalize role field (could be role or roleName from DB)
@@ -626,7 +624,7 @@ app.post('/api/login', async (req, res) => {
     })
   } catch (error) {
     // Enhanced Prisma error logging
-    console.error('Login Error:', error.message);
+  console.error('Login Error:', error.message);
     if (error.code) {
       console.error('Prisma Error Code:', error.code);
       if (error.code === 'P2021') {
@@ -638,6 +636,9 @@ app.post('/api/login', async (req, res) => {
       }
     }
     // Fallback for DB connection error
+    if (!allowDevFallback) {
+      return res.status(503).json({ message: 'Service temporarily unavailable. Please try again.' })
+    }
     console.log('Login: DB operation failed, falling back to dev users.');
     const devUser = devUsers.find(u => (u.email === email || u.username === username) && u.password === password);
     if (!devUser) {

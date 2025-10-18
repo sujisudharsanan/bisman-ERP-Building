@@ -19,7 +19,6 @@ RUN npm install --prefix frontend
 COPY my-frontend/ ./frontend
 # In CI, skip lint/type-check prebuild and Next telemetry; build Next app
 ENV CI=true
-ENV VERCEL=1
 ENV RAILWAY=1
 ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build --prefix frontend

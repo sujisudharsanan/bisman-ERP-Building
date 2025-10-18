@@ -1,23 +1,16 @@
-/** @type {imconst nextConfig = {
-  reactStrictMode: false, // Temporarily disabled to debug webpack errors
-  // swcMinify was removed in Next 13+; removing to avoid warnings
-  images: { domains: [], unoptimized: true },
-  // Don't use standalone output - we'll use regular build with custom server
-  // output: 'standalone',
-  // In CI builds (Railway/Vercel), don't fail on lint or TS; we already run these in prebuild locally
-  eslint: { ignoreDuringBuilds: isCI },
-  typescript: { ignoreBuildErrors: isCI },t').NextConfig} */
+/**
+ * Next.js config (Railway only)
+ * - Favors same-origin API calls; uses NEXT_PUBLIC_API_URL only if explicitly set.
+ */
 // Determine API base for proxy rewrites.
-// Priority: explicit env vars → sensible defaults per environment.
-// In Vercel, falling back to localhost breaks because there is no service on :3001.
-// So, when VERCEL=1 and no API env is provided, default to the Render backend URL.
+// Priority: explicit env vars → otherwise same-origin (no external provider defaults).
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ||
   process.env.NEXT_PUBLIC_API_BASE ||
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   null; // When null, we use same-origin and let Express/Next handle /api/*
 
-const isCI = process.env.CI === 'true' || process.env.VERCEL === '1' || process.env.RAILWAY === '1';
+const isCI = process.env.CI === 'true' || process.env.RAILWAY === '1';
 
 const nextConfig = {
   reactStrictMode: false, // Temporarily disabled to debug webpack errors
@@ -25,7 +18,7 @@ const nextConfig = {
   images: { domains: [], unoptimized: true },
   // Use Node server output; disable static export due to dynamic routes
   output: 'standalone',
-  // In CI builds (Railway/Vercel), don’t fail on lint or TS; we already run these in prebuild locally
+  // In CI builds (Railway), don’t fail on lint or TS; we already run these in prebuild locally
   eslint: { ignoreDuringBuilds: isCI },
   typescript: { ignoreBuildErrors: isCI },
   webpack: (config, { dev, isServer }) => {

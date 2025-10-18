@@ -2,7 +2,7 @@
 
 /**
  * Automatically detects if running on localhost or production.
- * - Production (Vercel): Uses NEXT_PUBLIC_API_URL (e.g., https://bisman-erp-xr6f.onrender.com)
+ * - Production (Railway/Managed): Prefer same-origin API or NEXT_PUBLIC_API_URL if provided
  * - Development: Defaults to http://localhost:3001
  */
 function getApiBaseUrl(): string {
@@ -16,8 +16,8 @@ function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     
-    // If running on managed hosting domains (Railway/Vercel), prefer same-origin API
-    if (hostname.includes('vercel.app') || hostname.includes('railway.app')) {
+  // If running on managed hosting domains (Railway), prefer same-origin API
+  if (hostname.includes('railway.app')) {
       const sameOrigin = `${window.location.protocol}//${window.location.host}`;
       console.log('🌐 Managed hosting detected, using same-origin API base:', sameOrigin);
       return sameOrigin;
@@ -41,14 +41,7 @@ const apiBase = getApiBaseUrl();
 
 // Runtime validation and logging
 if (typeof window !== 'undefined') {
-  const isProd = window.location.hostname.includes('vercel.app');
-  if (isProd && !process.env.NEXT_PUBLIC_API_URL) {
-    console.warn('⚠️  NEXT_PUBLIC_API_URL not set in Vercel dashboard!');
-    console.warn('⚠️  Using hardcoded fallback:', apiBase);
-    console.warn('⚠️  Add NEXT_PUBLIC_API_URL=https://bisman-erp-rr6f.onrender.com in Vercel settings');
-  } else {
-    console.log('✅ API Base URL:', apiBase);
-  }
+  console.log('✅ API Base URL:', apiBase);
   
   // Test backend connectivity
   fetch(`${apiBase}/api/health`, {
