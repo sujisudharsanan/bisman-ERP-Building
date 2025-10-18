@@ -305,9 +305,7 @@ app.get('/me', (req, res) => {
 
 // ...existing routes...
 
-app.get('/', (req, res) => {
-  res.send('My Backend (Express)')
-})
+// Do not handle '/' here—let Next.js render the frontend in server.js
 
 // read DATABASE_URL from environment (was using undefined `databaseUrl`)
 const databaseUrl = process.env.DATABASE_URL || null
