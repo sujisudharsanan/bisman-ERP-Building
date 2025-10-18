@@ -1,30 +1,26 @@
 ## Root Dockerfile for Railway (backend service)
-FROM node:18-alpine
+## Multi-stage Dockerfile (root) to build my-backend efficiently
 
-# Minimal utilities for production containers
-RUN apk add --no-cache dumb-init postgresql-client wget openssl libc6-compat
-
+# ---- deps: install with dev deps for prisma CLI and generate client ----
+FROM node:18-alpine AS deps
 WORKDIR /app
-
-# 1) Copy only package manifests for caching
+RUN apk add --no-cache postgresql-client openssl libc6-compat
 COPY my-backend/package*.json ./
-
-# 2) Copy Prisma schema BEFORE installing deps, so scripts can find it if needed
 COPY my-backend/prisma ./prisma/
-
-# 3) Install all deps, skipping lifecycle scripts so prisma CLI (devDependency) is available
 RUN npm ci --ignore-scripts && npm cache clean --force
-
-# 4) Copy the remainder of the backend source
 COPY my-backend/ ./
-
-# 5) Generate Prisma Client explicitly
 RUN npx prisma generate && npm prune --omit=dev
+
+# ---- runner: tiny runtime image with only what we need ----
+FROM node:18-alpine AS runner
+RUN apk add --no-cache dumb-init
+WORKDIR /app
+# Copy full app (already pruned) from deps stage
+COPY --from=deps /app /app
 
 ENV NODE_ENV=production
 ENV PORT=8080
 EXPOSE 8080
 
-# Use server.js wrapper (already present in my-backend/) and dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init", "--"]
 CMD ["node", "server.js"]
