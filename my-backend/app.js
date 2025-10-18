@@ -518,14 +518,32 @@ app.post('/api/login', async (req, res) => {
       }
     }
 
-  // Use secure cookies only in production to support http://localhost during dev
+  // Cookie configuration for Railway same-origin deployment
+  // Since frontend and backend are served from the same Railway domain, use 'lax'
+  // If you later separate them, switch to 'none' and ensure both use HTTPS
   const isProduction = process.env.NODE_ENV === 'production'
-  const cookieSecure = isProduction
-  const sameSiteOpt = isProduction ? 'none' : 'lax'
-  res.cookie('access_token', accessToken, { httpOnly: true, secure: cookieSecure, sameSite: 'none', path: '/', maxAge: 60 * 60 * 1000 })
-  res.cookie('refresh_token', refreshToken, { httpOnly: true, secure: cookieSecure, sameSite: 'none', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 })
+  const cookieSecure = isProduction  // true in production (HTTPS required)
+  const sameSitePolicy = 'lax'  // same-origin on Railway, no cross-site issues
+  
+  const cookieOptions = {
+    httpOnly: true,
+    secure: cookieSecure,
+    sameSite: sameSitePolicy,
+    path: '/',
+  };
 
-    console.log('✅ Login successful - Tokens generated with role:', userRole);
+  res.cookie('access_token', accessToken, { 
+    ...cookieOptions, 
+    maxAge: 60 * 60 * 1000  // 1 hour
+  });
+  
+  res.cookie('refresh_token', refreshToken, { 
+    ...cookieOptions, 
+    maxAge: 7 * 24 * 60 * 60 * 1000  // 7 days
+  });
+
+  console.log('✅ Login successful - Tokens generated with role:', userRole);
+  console.log('✅ Cookies set with:', { httpOnly: true, secure: cookieSecure, sameSite: sameSitePolicy });
     res.json({ 
       message: 'Login successful', 
       user: { 
@@ -573,10 +591,10 @@ app.post('/api/login', async (req, res) => {
     // Set HttpOnly cookies for access and refresh tokens
     const isProduction = process.env.NODE_ENV === 'production'
     const cookieSecure = isProduction
-    const sameSiteOpt = isProduction ? 'none' : 'lax'
+    const sameSitePolicy = 'lax'  // same-origin on Railway
 
-    const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: 'none', path: '/', maxAge: 60 * 60 * 1000 }
-    const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: 'none', path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
+    const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSitePolicy, path: '/', maxAge: 60 * 60 * 1000 }
+    const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSitePolicy, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
 
     res.cookie('access_token', accessToken, accessCookieOpts)
     res.cookie('refresh_token', refreshToken, refreshCookieOpts)
@@ -636,8 +654,8 @@ app.post('/api/token/refresh', async (req, res) => {
 
         const isProduction = process.env.NODE_ENV === 'production'
         const cookieSecure = isProduction
-        const sameSiteOpt = isProduction ? 'none' : 'lax'
-        const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: 'none', path: '/', maxAge: 60 * 60 * 1000 }
+        const sameSitePolicy = 'lax'  // same-origin on Railway
+        const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSitePolicy, path: '/', maxAge: 60 * 60 * 1000 }
 
         res.cookie('access_token', newAccessToken, accessCookieOpts)
         res.json({ message: 'Token refreshed successfully' })
@@ -680,24 +698,25 @@ app.post('/api/logout', async (req, res) => {
   // Clear cookies on the client side
   try {
     const isProduction = process.env.NODE_ENV === 'production';
+    const sameSitePolicy = 'lax';  // same-origin on Railway
     const cookieOpts = {
       path: '/',
       httpOnly: true,
       secure: isProduction,
-      sameSite: 'none',
+      sameSite: sameSitePolicy,
     };
     res.clearCookie('access_token', cookieOpts);
     res.clearCookie('refresh_token', cookieOpts);
 
     // Also try without httpOnly in case client needs to clear it
-    res.clearCookie('access_token', { path: '/', secure: isProduction, sameSite: 'none' });
-    res.clearCookie('refresh_token', { path: '/', secure: isProduction, sameSite: 'none' });
-    res.clearCookie('token', { path: '/', secure: isProduction, sameSite: 'none' });
+    res.clearCookie('access_token', { path: '/', secure: isProduction, sameSite: sameSitePolicy });
+    res.clearCookie('refresh_token', { path: '/', secure: isProduction, sameSite: sameSitePolicy });
+    res.clearCookie('token', { path: '/', secure: isProduction, sameSite: sameSitePolicy });
   } catch (e) {
     // best-effort fallback
-    try { res.clearCookie('access_token', { path: '/', sameSite: 'none' }); } catch (e) {}
-    try { res.clearCookie('refresh_token', { path: '/', sameSite: 'none' }); } catch (e) {}
-    try { res.clearCookie('token', { path: '/', sameSite: 'none' }); } catch (e) {}
+    try { res.clearCookie('access_token', { path: '/', sameSite: 'lax' }); } catch (e) {}
+    try { res.clearCookie('refresh_token', { path: '/', sameSite: 'lax' }); } catch (e) {}
+    try { res.clearCookie('token', { path: '/', sameSite: 'lax' }); } catch (e) {}
   }
 
   res.status(200).json({ message: 'Logout successful' })
