@@ -36,8 +36,8 @@ COPY --from=deps /app /app
 # Copy Next.js runtime and build artifacts (prefer standalone output)
 # 1) Copy minimal standalone server (includes required node_modules subset)
 COPY --from=build-frontend /app/frontend/.next/standalone /app/frontend/.next/standalone
-# 2) Copy static assets and .next required files
-COPY --from=build-frontend /app/frontend/.next/static /app/frontend/.next/static
+# 2) Copy full .next (server + static) and public assets
+COPY --from=build-frontend /app/frontend/.next /app/frontend/.next
 COPY --from=build-frontend /app/frontend/public /app/frontend/public
 COPY --from=build-frontend /app/frontend/next.config.js /app/frontend/
 

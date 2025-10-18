@@ -26,6 +26,7 @@ async function start() {
 
   // Mount API under the same Express server
   const server = express();
+  server.set('trust proxy', 1);
   server.use(apiApp);
 
   // Let Next handle everything else
