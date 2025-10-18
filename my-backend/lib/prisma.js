@@ -1,18 +1,22 @@
-// Lazy Prisma loader that safely returns a shared singleton and connects once
-let prismaInstance = null;
+// Prisma global singleton (prevents multiple clients across reloads)
+let prismaInstance = globalThis.prisma || null;
 let connecting = null;
 
 function getPrisma() {
   if (prismaInstance) return prismaInstance;
   try {
     const { PrismaClient } = require('@prisma/client');
-    prismaInstance = new PrismaClient({
+    const client = new PrismaClient({
       log: process.env.NODE_ENV === 'production' ? ['error'] : ['warn', 'error'],
     });
     // Connect once; ignore errors here, callers handle availability
     if (!connecting) {
-      connecting = prismaInstance.$connect().catch(() => {});
+      connecting = client.$connect().catch(() => {});
     }
+    prismaInstance = client;
+    // Expose globally to avoid duplicate clients in dev/HMR
+    globalThis.prisma = prismaInstance;
+
     // Ensure graceful shutdown
     if (!process.listenerCount('beforeExit')) {
       process.on('beforeExit', () => {
