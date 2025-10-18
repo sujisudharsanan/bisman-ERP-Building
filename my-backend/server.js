@@ -3,14 +3,21 @@ try { require('dotenv').config(); } catch (_) {}
 
 const path = require('path');
 const express = require('express');
-// Prefer Next from standalone runtime (smaller), fallback to full node_modules
+// Try to load Next from standalone runtime (preferred). If unavailable, attempt full node_modules.
 let next;
+let nextAvailable = false;
 try {
   next = require(path.resolve(__dirname, 'frontend', '.next', 'standalone', 'node_modules', 'next'));
+  nextAvailable = true;
   console.log('[startup] Using Next from standalone runtime');
-} catch (e) {
-  next = require(path.resolve(__dirname, 'frontend', 'node_modules', 'next'));
-  console.log('[startup] Using Next from full node_modules');
+} catch (e1) {
+  try {
+    next = require(path.resolve(__dirname, 'frontend', 'node_modules', 'next'));
+    nextAvailable = true;
+    console.log('[startup] Using Next from full node_modules');
+  } catch (e2) {
+    console.warn('[startup] Next not available; proceeding with API-only server.');
+  }
 }
 
 const apiApp = require('./app');
@@ -18,19 +25,30 @@ const apiApp = require('./app');
 // Next.js setup
 const dev = process.env.NODE_ENV !== 'production';
 // In the container, frontend lives at /app/frontend
-const nextApp = next({ dev, dir: path.resolve(__dirname, 'frontend') });
-const handle = nextApp.getRequestHandler();
+const frontendDir = path.resolve(__dirname, 'frontend');
+const nextApp = nextAvailable ? next({ dev, dir: frontendDir }) : null;
+const handle = nextApp ? nextApp.getRequestHandler() : null;
 
 async function start() {
-  await nextApp.prepare();
+  if (nextApp) {
+    await nextApp.prepare();
+  }
 
   // Mount API under the same Express server
   const server = express();
   server.set('trust proxy', 1);
   server.use(apiApp);
 
-  // Let Next handle everything else
-  server.all('*', (req, res) => handle(req, res));
+  // Simple built-in healthcheck (independent of Next) to satisfy platform checks
+  server.get('/api/health', (_req, res) => res.json({ status: 'ok' }));
+
+  if (handle) {
+    // Let Next handle everything else
+    server.all('*', (req, res) => handle(req, res));
+  } else {
+    // Fallback: minimal root route for API-only mode
+    server.get('/', (_req, res) => res.status(200).send('BISMAN ERP API')); 
+  }
 
   const port = process.env.PORT || 8080;
   server.listen(port, '0.0.0.0', () => {
