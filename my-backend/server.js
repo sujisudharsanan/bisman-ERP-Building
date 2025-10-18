@@ -2,30 +2,34 @@
 try { require('dotenv').config(); } catch (_) {}
 
 const path = require('path');
-const fs = require('fs');
 const express = require('express');
-const app = require('./app');
+const next = require(path.resolve(__dirname, 'frontend', 'node_modules', 'next'));
 
-// Serve static frontend if present (built by Next.js export)
-// Expected path inside container: /app/frontend/out
-const staticDir = path.resolve(__dirname, 'frontend', 'out');
-if (fs.existsSync(staticDir)) {
-  app.use(express.static(staticDir, {
-    extensions: ['html'],
-    maxAge: '1h',
-    index: 'index.html',
-  }));
+const apiApp = require('./app');
 
-  // Catch-all for client-side routing; keep AFTER API routes defined in app.js
-  app.get('*', (req, res) => {
-    res.sendFile(path.join(staticDir, 'index.html'));
+// Next.js setup
+const dev = process.env.NODE_ENV !== 'production';
+// In the container, frontend lives at /app/frontend
+const nextApp = next({ dev, dir: path.resolve(__dirname, 'frontend') });
+const handle = nextApp.getRequestHandler();
+
+async function start() {
+  await nextApp.prepare();
+
+  // Mount API under the same Express server
+  const server = express();
+  server.use(apiApp);
+
+  // Let Next handle everything else
+  server.all('*', (req, res) => handle(req, res));
+
+  const port = process.env.PORT || 8080;
+  server.listen(port, '0.0.0.0', () => {
+    console.log(`[startup] API + Next listening on http://0.0.0.0:${port}`);
   });
-} else {
-  console.warn(`[startup] Frontend static directory not found: ${staticDir}`);
 }
 
-// Railway provides PORT; default to 8080 inside container
-const port = process.env.PORT || 8080;
-app.listen(port, '0.0.0.0', () => {
-  console.log(`[startup] API + UI listening on http://0.0.0.0:${port}`);
+start().catch(err => {
+  console.error('[startup] Failed to start server:', err);
+  process.exit(1);
 });

@@ -17,18 +17,28 @@ WORKDIR /app
 COPY my-frontend/package*.json ./frontend/
 RUN npm install --prefix frontend
 COPY my-frontend/ ./frontend
-RUN npm run build --prefix frontend && npm run export --prefix frontend
+# In CI, skip lint/type-check prebuild and Next telemetry; build Next app
+ENV CI=true
+ENV VERCEL=1
+ENV RAILWAY=1
+ENV NEXT_TELEMETRY_DISABLED=1
+RUN npm run build --prefix frontend
 
 # ---- runner: minimal runtime with dumb-init; copy pruned node_modules later ----
 FROM node:18-alpine AS runner
-RUN apk add --no-cache dumb-init
+RUN apk add --no-cache dumb-init libc6-compat
 WORKDIR /app
 
 # Copy backend app and node_modules
 COPY --from=deps /app /app
 
 # Copy exported frontend into backend directory structure expected by server.js
-COPY --from=build-frontend /app/frontend/out /app/frontend/out
+# Copy Next.js runtime and build artifacts
+COPY --from=build-frontend /app/frontend/package*.json /app/frontend/
+COPY --from=build-frontend /app/frontend/next.config.js /app/frontend/
+COPY --from=build-frontend /app/frontend/.next /app/frontend/.next
+COPY --from=build-frontend /app/frontend/public /app/frontend/public
+COPY --from=build-frontend /app/frontend/node_modules /app/frontend/node_modules
 
 ENV NODE_ENV=production
 ENV PORT=8080

@@ -33,6 +33,7 @@ logs
 .env*
 
 # Frontend heavies still excluded even though directory is included
+# Keep frontend node_modules out of context; we install inside image
 my-frontend/node_modules
 my-frontend/.next
 my-frontend/out
