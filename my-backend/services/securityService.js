@@ -1,8 +1,8 @@
 // Security Monitoring Service
 // Production-ready service for recording, querying, and resolving security events.
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+const { getPrisma } = require('../lib/prisma');
+const prisma = getPrisma();
 
 // Cached readiness check for security tables
 let securityReadyCache = { ready: null, ts: 0 };

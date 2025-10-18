@@ -6,37 +6,24 @@ const cors = require('cors')
 const path = require('path')
 const fs = require('fs')
 const { Pool } = require('pg')
-const { PrismaClient } = require('@prisma/client')   // ✅ only once
+const { getPrisma } = require('./lib/prisma')   // ✅ shared singleton
 // Load .env early for local/dev
 try { require('dotenv').config() } catch (e) {}
 
 // Initialize Prisma with safe defaults and error handling
 let prisma;
 try {
-  prisma = new PrismaClient({
-    log: process.env.NODE_ENV === 'production' ? ['error'] : ['query', 'info', 'warn', 'error'],
-  });
-  console.log('[app.js] Prisma client initialized');
-  
-  // Test database connection on startup
-  prisma.$connect()
-    .then(() => {
-      console.log('[app.js] ✅ Database connection successful');
-    })
-    .catch((err) => {
-      console.error('[app.js] ⚠️  Database connection failed:', err.message);
-      if (err.code === 'P1001') {
-        console.error('[app.js] ⚠️  Cannot reach database server. Check DATABASE_URL');
-      }
-      console.log('[app.js] Will fall back to dev users for authentication');
-    });
+  prisma = getPrisma();
+  console.log('[app.js] Prisma client loaded via singleton');
 } catch (prismaError) {
   console.error('[app.js] Warning: Prisma initialization failed:', prismaError.message);
   console.error('[app.js] Database operations will be unavailable');
-  // Create a mock prisma object to prevent crashes
-  prisma = new Proxy({}, {
-    get: () => () => Promise.reject(new Error('Database not available'))
-  });
+  prisma = new Proxy({}, { get: () => () => Promise.reject(new Error('Database not available')) });
+}
+// Fallback if getPrisma() returned null (client not generated/installed)
+if (!prisma) {
+  console.warn('[app.js] Prisma client not available; using no-op proxy')
+  prisma = new Proxy({}, { get: () => () => Promise.reject(new Error('Database not available')) });
 }
 
 const cookieParser = require('cookie-parser')

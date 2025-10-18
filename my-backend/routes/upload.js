@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const upload = require('../middleware/upload');
-const { PrismaClient } = require('@prisma/client');
+const { getPrisma } = require('../lib/prisma');
 const { authenticate } = require('../middleware/auth');
 const path = require('path');
 const fs = require('fs');
 
-const prisma = new PrismaClient();
+const prisma = getPrisma();
 
 // POST /api/upload/profile-pic
 router.post('/profile-pic', authenticate, (req, res) => {

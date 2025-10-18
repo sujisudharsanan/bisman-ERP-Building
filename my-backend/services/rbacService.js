@@ -1,7 +1,7 @@
 // RBAC Service - Role-Based Access Control using standalone RBAC tables
-const { PrismaClient } = require('@prisma/client')
+const { getPrisma } = require('../lib/prisma')
 
-const prisma = new PrismaClient()
+const prisma = getPrisma()
 
 class RBACService {
   // =============== ROLES ===============

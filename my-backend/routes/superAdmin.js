@@ -27,8 +27,8 @@ router.delete('/roles/:roleId', requireSuperAdmin, superAdminController.deleteRo
 // List roles (fallback to distinct roles from users if RBAC table absent)
 router.get('/roles', requireSuperAdmin, async (req, res) => {
 	try {
-		const { PrismaClient } = require('@prisma/client')
-		const prisma = new PrismaClient()
+		const { getPrisma } = require('../lib/prisma')
+		const prisma = getPrisma()
 		try {
 			const r = await prisma.$queryRaw`SELECT id, name, created_at, updated_at FROM roles ORDER BY name ASC LIMIT 200`
 			return res.json({ success: true, data: r })

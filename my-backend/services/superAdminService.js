@@ -1,8 +1,8 @@
 // Super Admin Service - Database control operations
-const { PrismaClient } = require('@prisma/client')
+const { getPrisma } = require('../lib/prisma')
 const bcrypt = require('bcryptjs')
 
-const prisma = new PrismaClient()
+const prisma = getPrisma()
 
 class SuperAdminService {
   // =============== ACTIVITY LOGGING ===============

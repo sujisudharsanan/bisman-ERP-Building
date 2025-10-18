@@ -238,35 +238,37 @@ export function PrivilegeManagement({ className = '', initialRoleId = null }: Pr
   // Check Database Health
   const checkDatabaseHealth = useCallback(async () => {
     try {
-      // Call the health endpoint directly (not through /api/privileges)
+      const controller = new AbortController();
+      const timeout = setTimeout(() => controller.abort(), 8000);
       const response = await fetch('/api/health/database', {
         credentials: 'include',
+        signal: controller.signal,
+        cache: 'no-store',
       });
-      
+      clearTimeout(timeout);
+
       const data = await response.json();
-      
       if (data.success && data.data) {
         setDbHealth(data.data);
       } else {
-        // Set a default disconnected state
         setDbHealth({
           connected: false,
-          ready: false,
           response_time: 0,
           active_connections: 0,
-          version: null,
+          last_checked: new Date().toISOString(),
+          version: undefined,
           issues: ['Failed to fetch database health']
         });
       }
-    } catch (error) {
-      console.error('Failed to check database health:', error);
-      // Set a default disconnected state on error
+    } catch (error: any) {
+      // Ignore deliberate aborts (navigation/visibility timeout)
+      if (error?.name === 'AbortError') return;
       setDbHealth({
         connected: false,
-        ready: false,
         response_time: 0,
         active_connections: 0,
-        version: null,
+        last_checked: new Date().toISOString(),
+        version: undefined,
         issues: ['Network error or API unavailable']
       });
     }
@@ -384,10 +386,25 @@ export function PrivilegeManagement({ className = '', initialRoleId = null }: Pr
   useEffect(() => {
     loadRoles();
     checkDatabaseHealth();
-    
-    // Set up periodic health checks
-    const healthInterval = setInterval(checkDatabaseHealth, 30000);
-    return () => clearInterval(healthInterval);
+
+    // Periodic health checks; pause when tab is hidden to avoid aborted requests
+    let intervalId: ReturnType<typeof setInterval> | null = null;
+    const start = () => {
+      if (intervalId) return;
+      intervalId = setInterval(() => {
+        if (!document.hidden) checkDatabaseHealth();
+      }, 30000);
+    };
+    const stop = () => { if (intervalId) { clearInterval(intervalId); intervalId = null; } };
+
+    if (!document.hidden) start();
+    const onVisibility = () => { document.hidden ? stop() : start(); };
+    document.addEventListener('visibilitychange', onVisibility);
+
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility);
+      stop();
+    };
   }, [loadRoles, checkDatabaseHealth]);
 
   // Apply initialRoleId (or saved fallback) once roles are loaded

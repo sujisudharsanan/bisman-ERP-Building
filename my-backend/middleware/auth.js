@@ -2,7 +2,8 @@ const jwt = require('jsonwebtoken')
 const { PrismaClient } = require('@prisma/client')
 const { isJtiRevoked } = require('../lib/tokenStore')
 
-const prisma = new PrismaClient()
+const { getPrisma } = require('../lib/prisma')
+const prisma = getPrisma()
 
 // Development users for testing (keep in sync with app.js devUsers)
 const devUsers = [

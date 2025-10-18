@@ -1,8 +1,9 @@
 // Privilege Management Service
 // Production-ready service layer with comprehensive database operations
 
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+// Use shared Prisma singleton to avoid multiple pools
+const { getPrisma } = require('../lib/prisma');
+const prisma = getPrisma();
 
 // Lightweight DB readiness cache so we don't probe every call
 let _dbReadyCache = { ready: null, checkedAt: 0 };
