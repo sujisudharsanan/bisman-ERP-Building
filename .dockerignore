@@ -1,0 +1,38 @@
+# Keep Docker context tiny to avoid timeouts in Railway
+# Include only backend for the root Dockerfile
+
+# Default: ignore everything
+**
+
+# Allow root Dockerfile and backend directory
+!Dockerfile
+!my-backend/**
+
+# Exclude heavy/unnecessary items even under my-backend
+my-backend/node_modules
+my-backend/logs
+my-backend/**/*.log
+my-backend/**/*.dump
+my-backend/**/*.sqlite
+my-backend/*.sqlite*
+my-backend/.env*
+my-backend/coverage
+my-backend/__tests__
+
+# Root noise and large dirs
+!.dockerignore
+!.gitignore
+.git
+node_modules
+my-frontend
+.next
+coverage
+logs
+**/*.log
+**/*.dump
+.env*
+
+# OS/editor
+.DS_Store
+.vscode
+.idea
