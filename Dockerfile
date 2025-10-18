@@ -47,5 +47,9 @@ ENV NODE_ENV=production
 ENV PORT=8080
 EXPOSE 8080
 
+# Copy startup script that runs migrations
+COPY start-railway.sh /app/start-railway.sh
+RUN chmod +x /app/start-railway.sh
+
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "server.js"]
+CMD ["/app/start-railway.sh"]

@@ -17,6 +17,19 @@ try {
     log: process.env.NODE_ENV === 'production' ? ['error'] : ['query', 'info', 'warn', 'error'],
   });
   console.log('[app.js] Prisma client initialized');
+  
+  // Test database connection on startup
+  prisma.$connect()
+    .then(() => {
+      console.log('[app.js] ✅ Database connection successful');
+    })
+    .catch((err) => {
+      console.error('[app.js] ⚠️  Database connection failed:', err.message);
+      if (err.code === 'P1001') {
+        console.error('[app.js] ⚠️  Cannot reach database server. Check DATABASE_URL');
+      }
+      console.log('[app.js] Will fall back to dev users for authentication');
+    });
 } catch (prismaError) {
   console.error('[app.js] Warning: Prisma initialization failed:', prismaError.message);
   console.error('[app.js] Database operations will be unavailable');
@@ -555,7 +568,18 @@ app.post('/api/login', async (req, res) => {
       } 
     })
   } catch (error) {
-    console.error('Login Error:', error); // Enhanced logging
+    // Enhanced Prisma error logging
+    console.error('Login Error:', error.message);
+    if (error.code) {
+      console.error('Prisma Error Code:', error.code);
+      if (error.code === 'P2021') {
+        console.error('⚠️  DATABASE MIGRATION REQUIRED: Table does not exist. Run: npx prisma migrate deploy');
+      } else if (error.code === 'P2002') {
+        console.error('⚠️  Unique constraint violation');
+      } else if (error.code === 'P1001') {
+        console.error('⚠️  Database connection failed. Check DATABASE_URL');
+      }
+    }
     // Fallback for DB connection error
     console.log('Login: DB operation failed, falling back to dev users.');
     const devUser = devUsers.find(u => (u.email === email || u.username === username) && u.password === password);
