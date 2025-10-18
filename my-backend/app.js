@@ -78,36 +78,25 @@ const authLimiter = rateLimit({
 app.use(logSanitizer)
 
 
-// CORS middleware for cross-origin requests (explicit allowlist + env)
+// CORS middleware for cross-origin requests (explicit allowed origins)
 const isProd = process.env.NODE_ENV === 'production';
-const allowlist = [
+const allowedOrigins = [
   'http://localhost:3000',
   'http://localhost:3001',
-  // Railway production domain (same app serves API + UI) - set via env FRONTEND_URL
+  'https://bisman-erp-frontend-production.up.railway.app',
+  'https://bisman-erp-backend-production.up.railway.app',
 ];
-
-if (process.env.FRONTEND_URL) {
-  allowlist.push(process.env.FRONTEND_URL);
-}
 
 const corsOptions = {
   origin: (origin, callback) => {
-    // Log the origin for debugging purposes
-    console.log(`[CORS] Request from origin: ${origin}`);
-    
-  // Allow if:
-  //  - Explicitly in allowlist
-  //  - No Origin header (e.g., same-origin or curl)
-  //  - Matches common Railway preview domains
-  const isWildcardAllowed = !!origin && origin.endsWith('.railway.app');
-
-    if (allowlist.indexOf(origin) !== -1 || !origin || isWildcardAllowed) {
-      console.log(`[CORS] Origin ${origin} is allowed.`);
-      callback(null, true);
-    } else {
-      console.error(`[CORS] Origin ${origin} is not allowed.`);
-      callback(new Error('Not allowed by CORS'));
+    // Only log per-request origin when explicitly debugging
+    if (process.env.DEBUG_CORS === '1') {
+      console.log(`[CORS] Request from origin: ${origin}`);
     }
+    if (!origin) return callback(null, true); // internal/server requests and same-origin
+    if (allowedOrigins.includes(origin)) return callback(null, true);
+    console.warn('❌ CORS blocked:', origin);
+    return callback(new Error('CORS blocked'), false);
   },
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'OPTIONS'],
@@ -121,16 +110,16 @@ app.options('*', cors(corsOptions)); // Enable pre-flight for all routes
 // Always log CORS configuration on startup
 console.log('🔒 CORS Configuration:');
 console.log('   - Credentials:', corsOptions.credentials);
-console.log('   - Allowed Origins:', allowlist);
+console.log('   - Allowed Origins:', allowedOrigins);
 console.log('   - Production Mode:', isProd);
 
 if (process.env.DEBUG_CORS === '1') {
-  console.log('   - Full Allowlist:', allowlist)
+  console.log('   - Full Allowlist:', allowedOrigins)
 }
 
 if (process.env.DEBUG_CORS === '1') {
   try {
-    console.log('[CORS] Allowlist:', allowlist)
+    console.log('[CORS] Allowlist:', allowedOrigins)
   } catch (_) {}
   // Log every request's origin and method for troubleshooting
   app.use((req, _res, next) => {
@@ -205,7 +194,7 @@ app.get('/api/health/rbac', async (req, res) => {
     // Check table existence using to_regclass and counts when present
     const checkTable = async (table) => {
       try {
-        const existsRows = await prisma.$queryRaw`SELECT to_regclass(${`public.${table}`}) AS regclass`;
+  const existsRows = await prisma.$queryRaw`SELECT to_regclass(${`public.${table}`})::text AS regclass`;
         const exists = Array.isArray(existsRows) && existsRows[0] && existsRows[0].regclass !== null
         let count = null
         if (exists) {
@@ -273,7 +262,7 @@ if (process.env.DEBUG_CORS === '1') {
       ok: true,
       origin: req.headers.origin || null,
       referer: req.headers.referer || null,
-      allowlist,
+  allowlist: allowedOrigins,
       cors: {
         methods: corsOptions.methods,
         credentials: !!corsOptions.credentials,

@@ -33,12 +33,13 @@ export const RequirePermission: React.FC<RequirePermissionProps> = ({
         return;
       }
 
-      const response = await fetch(
+    const response = await fetch(
         `${API_BASE}/api/v1/check-permission?permission=${permission}`,
         {
           headers: {
             Authorization: `Bearer ${token}`,
           },
+      credentials: 'include',
         }
       );
 

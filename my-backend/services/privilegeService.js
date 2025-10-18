@@ -22,7 +22,7 @@ async function isDbReady() {
   try {
     // Check presence of critical tables used by privilege management
     const result = await prisma.$queryRawUnsafe(
-      "SELECT to_regclass('public.roles') as roles, to_regclass('public.features') as features, to_regclass('public.role_privileges') as role_privileges, to_regclass('public.user_privileges') as user_privileges, to_regclass('public.users') as users"
+      "SELECT to_regclass('public.roles')::text as roles, to_regclass('public.features')::text as features, to_regclass('public.role_privileges')::text as role_privileges, to_regclass('public.user_privileges')::text as user_privileges, to_regclass('public.users')::text as users"
     );
     const row = Array.isArray(result) ? result[0] : result;
     const ready = !!(row && row.roles && row.features && row.users);

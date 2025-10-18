@@ -18,7 +18,7 @@ async function isSecurityTablesReady() {
       return false;
     }
     const rows = await prisma.$queryRawUnsafe(
-      "SELECT to_regclass('public.security_events') as se, to_regclass('public.security_resolutions') as sr"
+      "SELECT to_regclass('public.security_events')::text as se, to_regclass('public.security_resolutions')::text as sr"
     );
     const r = Array.isArray(rows) ? rows[0] : rows;
     const ready = !!(r && r.se && r.sr);
