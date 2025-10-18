@@ -33,12 +33,13 @@ WORKDIR /app
 COPY --from=deps /app /app
 
 # Copy exported frontend into backend directory structure expected by server.js
-# Copy Next.js runtime and build artifacts
-COPY --from=build-frontend /app/frontend/package*.json /app/frontend/
-COPY --from=build-frontend /app/frontend/next.config.js /app/frontend/
-COPY --from=build-frontend /app/frontend/.next /app/frontend/.next
+# Copy Next.js runtime and build artifacts (prefer standalone output)
+# 1) Copy minimal standalone server (includes required node_modules subset)
+COPY --from=build-frontend /app/frontend/.next/standalone /app/frontend/.next/standalone
+# 2) Copy static assets and .next required files
+COPY --from=build-frontend /app/frontend/.next/static /app/frontend/.next/static
 COPY --from=build-frontend /app/frontend/public /app/frontend/public
-COPY --from=build-frontend /app/frontend/node_modules /app/frontend/node_modules
+COPY --from=build-frontend /app/frontend/next.config.js /app/frontend/
 
 ENV NODE_ENV=production
 ENV PORT=8080

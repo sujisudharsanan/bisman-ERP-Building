@@ -3,7 +3,15 @@ try { require('dotenv').config(); } catch (_) {}
 
 const path = require('path');
 const express = require('express');
-const next = require(path.resolve(__dirname, 'frontend', 'node_modules', 'next'));
+// Prefer Next from standalone runtime (smaller), fallback to full node_modules
+let next;
+try {
+  next = require(path.resolve(__dirname, 'frontend', '.next', 'standalone', 'node_modules', 'next'));
+  console.log('[startup] Using Next from standalone runtime');
+} catch (e) {
+  next = require(path.resolve(__dirname, 'frontend', 'node_modules', 'next'));
+  console.log('[startup] Using Next from full node_modules');
+}
 
 const apiApp = require('./app');
 
