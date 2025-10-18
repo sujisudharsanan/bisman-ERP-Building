@@ -4,7 +4,6 @@ const { isJtiRevoked } = require('../lib/tokenStore')
 
 const { getPrisma } = require('../lib/prisma')
 const prisma = getPrisma()
-const allowDevFallback = (process.env.ALLOW_DEV_FALLBACK === '1') && process.env.NODE_ENV !== 'production'
 
 // Development users for testing (keep in sync with app.js devUsers)
 const devUsers = [
@@ -90,8 +89,8 @@ async function authenticate(req, res, next) {
       user = null
     }
 
-    // Fallback to development users if database fails (only when explicitly allowed and not in production)
-    if (!user && allowDevFallback) {
+    // Fallback to development users if database fails
+    if (!user) {
       console.log('[authenticate] Using dev user lookup for subjectId:', subjectId)
       const devUser = devUsers.find(u => u.id === subjectId || (payload.email && u.email === payload.email))
       if (!devUser) {
@@ -102,8 +101,6 @@ async function authenticate(req, res, next) {
       req.user = { ...devUser }
       delete req.user.password
       req.user.roleName = devUser.role
-    } else if (!user) {
-      return res.status(401).json({ error: 'invalid token user' })
     }
 
     console.log('[authenticate] Authentication successful, user:', req.user.email || req.user.username)

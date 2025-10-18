@@ -2,7 +2,7 @@
 
 /**
  * Automatically detects if running on localhost or production.
- * - Production (Railway/Managed): Prefer same-origin API or NEXT_PUBLIC_API_URL if provided
+ * - Production (Railway): Prefer same-origin API
  * - Development: Defaults to http://localhost:3001
  */
 function getApiBaseUrl(): string {
@@ -16,8 +16,8 @@ function getApiBaseUrl(): string {
   if (typeof window !== 'undefined') {
     const hostname = window.location.hostname;
     
-  // If running on managed hosting domains (Railway), prefer same-origin API
-  if (hostname.includes('railway.app')) {
+    // If running on managed hosting domain (Railway), prefer same-origin API
+    if (hostname.includes('railway.app')) {
       const sameOrigin = `${window.location.protocol}//${window.location.host}`;
       console.log('🌐 Managed hosting detected, using same-origin API base:', sameOrigin);
       return sameOrigin;
