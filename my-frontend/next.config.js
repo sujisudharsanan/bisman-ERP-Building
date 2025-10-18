@@ -1,4 +1,12 @@
-/** @type {import('next').NextConfig} */
+/** @type {imconst nextConfig = {
+  reactStrictMode: false, // Temporarily disabled to debug webpack errors
+  // swcMinify was removed in Next 13+; removing to avoid warnings
+  images: { domains: [], unoptimized: true },
+  // Don't use standalone output - we'll use regular build with custom server
+  // output: 'standalone',
+  // In CI builds (Railway/Vercel), don't fail on lint or TS; we already run these in prebuild locally
+  eslint: { ignoreDuringBuilds: isCI },
+  typescript: { ignoreBuildErrors: isCI },t').NextConfig} */
 // Determine API base for proxy rewrites.
 // Priority: explicit env vars → sensible defaults per environment.
 // In Vercel, falling back to localhost breaks because there is no service on :3001.

@@ -32,11 +32,12 @@ WORKDIR /app
 # Copy backend app and node_modules
 COPY --from=deps /app /app
 
-# Copy exported frontend into backend directory structure expected by server.js
-# Copy Next.js runtime and build artifacts (prefer standalone output)
-# 1) Copy minimal standalone server (includes required node_modules subset)
-COPY --from=build-frontend /app/frontend/.next/standalone /app/frontend/.next/standalone
-# 2) Copy full .next (server + static) and public assets
+# Copy frontend build artifacts and runtime deps
+# Copy package.json first to install production deps
+COPY --from=build-frontend /app/frontend/package*.json /app/frontend/
+# Install ONLY production dependencies for Next runtime
+RUN npm install --prefix frontend --production --no-audit --no-fund
+# Copy Next.js build output, public assets, and config
 COPY --from=build-frontend /app/frontend/.next /app/frontend/.next
 COPY --from=build-frontend /app/frontend/public /app/frontend/public
 COPY --from=build-frontend /app/frontend/next.config.js /app/frontend/

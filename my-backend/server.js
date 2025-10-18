@@ -3,29 +3,26 @@ try { require('dotenv').config(); } catch (_) {}
 
 const path = require('path');
 const express = require('express');
-// Try to load Next from standalone runtime (preferred). If unavailable, attempt full node_modules.
+
+// Load Next.js from production node_modules (not standalone)
+const frontendDir = path.resolve(__dirname, 'frontend');
 let next;
 let nextAvailable = false;
+
 try {
-  next = require(path.resolve(__dirname, 'frontend', '.next', 'standalone', 'node_modules', 'next'));
+  // Use the Next.js installed in frontend/node_modules
+  next = require(path.join(frontendDir, 'node_modules', 'next'));
   nextAvailable = true;
-  console.log('[startup] Using Next from standalone runtime');
+  console.log('[startup] Next.js loaded from frontend/node_modules');
 } catch (e1) {
-  try {
-    next = require(path.resolve(__dirname, 'frontend', 'node_modules', 'next'));
-    nextAvailable = true;
-    console.log('[startup] Using Next from full node_modules');
-  } catch (e2) {
-    console.warn('[startup] Next not available; proceeding with API-only server.');
-  }
+  console.warn('[startup] Next.js not available:', e1.message);
+  console.warn('[startup] Proceeding with API-only server.');
 }
 
 const apiApp = require('./app');
 
 // Next.js setup
 const dev = process.env.NODE_ENV !== 'production';
-// In the container, frontend lives at /app/frontend
-const frontendDir = path.resolve(__dirname, 'frontend');
 const nextApp = nextAvailable ? next({ dev, dir: frontendDir }) : null;
 const handle = nextApp ? nextApp.getRequestHandler() : null;
 
