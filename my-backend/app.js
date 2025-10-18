@@ -576,11 +576,13 @@ app.post('/api/login', async (req, res) => {
   const cookieSecure = isProduction;  // true in production (HTTPS required)
   const sameSitePolicy = 'none';  // allow cross-site cookies
   
+  const cookieDomain = process.env.COOKIE_DOMAIN || undefined
   const cookieOptions = {
     httpOnly: true,
     secure: cookieSecure,
     sameSite: sameSitePolicy,
     path: '/',
+    ...(cookieDomain ? { domain: cookieDomain } : {}),
   };
 
   res.cookie('access_token', accessToken, { 
@@ -655,8 +657,10 @@ app.post('/api/login', async (req, res) => {
   const cookieSecure = isProduction
   const sameSitePolicy = 'none'  // allow cross-site cookies
 
-    const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSitePolicy, path: '/', maxAge: 60 * 60 * 1000 }
-    const refreshCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSitePolicy, path: '/', maxAge: 7 * 24 * 60 * 60 * 1000 }
+  const cookieDomain = process.env.COOKIE_DOMAIN || undefined
+  const baseCookie = { httpOnly: true, secure: cookieSecure, sameSite: sameSitePolicy, path: '/', ...(cookieDomain ? { domain: cookieDomain } : {}) }
+  const accessCookieOpts = { ...baseCookie, maxAge: 60 * 60 * 1000 }
+  const refreshCookieOpts = { ...baseCookie, maxAge: 7 * 24 * 60 * 60 * 1000 }
 
     res.cookie('access_token', accessToken, accessCookieOpts)
     res.cookie('refresh_token', refreshToken, refreshCookieOpts)
@@ -722,7 +726,8 @@ app.post('/api/token/refresh', async (req, res) => {
   const isProduction = process.env.NODE_ENV === 'production'
   const cookieSecure = isProduction
   const sameSitePolicy = 'none'  // allow cross-site cookies
-        const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSitePolicy, path: '/', maxAge: 60 * 60 * 1000 }
+        const cookieDomain = process.env.COOKIE_DOMAIN || undefined
+        const accessCookieOpts = { httpOnly: true, secure: cookieSecure, sameSite: sameSitePolicy, path: '/', ...(cookieDomain ? { domain: cookieDomain } : {}), maxAge: 60 * 60 * 1000 }
 
         res.cookie('access_token', newAccessToken, accessCookieOpts)
         res.json({ message: 'Token refreshed successfully' })
@@ -766,11 +771,13 @@ app.post('/api/logout', async (req, res) => {
   try {
     const isProduction = process.env.NODE_ENV === 'production';
     const sameSitePolicy = 'none'; // cross-domain cookies
+    const cookieDomain = process.env.COOKIE_DOMAIN || undefined
     const cookieOpts = {
       path: '/',
       httpOnly: true,
       secure: isProduction,
       sameSite: sameSitePolicy,
+      ...(cookieDomain ? { domain: cookieDomain } : {}),
     };
     // Clear httpOnly cookies first
     res.clearCookie('access_token', cookieOpts);
@@ -778,9 +785,9 @@ app.post('/api/logout', async (req, res) => {
     res.clearCookie('token', cookieOpts);
 
     // Also try without httpOnly in case client needs to clear it
-    res.clearCookie('access_token', { path: '/', secure: isProduction, sameSite: sameSitePolicy });
-    res.clearCookie('refresh_token', { path: '/', secure: isProduction, sameSite: sameSitePolicy });
-    res.clearCookie('token', { path: '/', secure: isProduction, sameSite: sameSitePolicy });
+    res.clearCookie('access_token', { path: '/', secure: isProduction, sameSite: sameSitePolicy, ...(cookieDomain ? { domain: cookieDomain } : {}) });
+    res.clearCookie('refresh_token', { path: '/', secure: isProduction, sameSite: sameSitePolicy, ...(cookieDomain ? { domain: cookieDomain } : {}) });
+    res.clearCookie('token', { path: '/', secure: isProduction, sameSite: sameSitePolicy, ...(cookieDomain ? { domain: cookieDomain } : {}) });
   } catch (e) {
     // best-effort fallback
     try { res.clearCookie('access_token', { path: '/', sameSite: 'none' }); } catch (e) {}
