@@ -172,19 +172,19 @@ export function InviteUserModal({ isOpen, onClose, roles, onSuccess }: InviteUse
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden">
+      <div className="bg-panel rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-hidden border border-theme">
         {/* Header */}
-        <div className="bg-blue-50 px-6 py-4 border-b border-blue-100">
+        <div className="bg-panel/60 px-6 py-4 border-b border-theme">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-3">
               <div className="w-10 h-10 bg-blue-500 rounded-lg flex items-center justify-center">
                 <Mail className="w-5 h-5 text-white" />
               </div>
               <div>
-                <h2 className="text-xl font-semibold text-gray-900">
+                <h2 className="text-xl font-semibold text-theme">
                   {inviteResult ? 'Invitation Sent' : 'Invite New User'}
                 </h2>
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-muted">
                   {inviteResult 
                     ? 'Share the invitation link with the user' 
                     : 'Send an invitation for KYC completion and account setup'
@@ -194,7 +194,7 @@ export function InviteUserModal({ isOpen, onClose, roles, onSuccess }: InviteUse
             </div>
             <button
               onClick={handleClose}
-              className="text-gray-400 hover:text-gray-600 p-1"
+              className="text-muted hover:text-theme p-1"
             >
               <X className="w-5 h-5" />
             </button>
@@ -205,14 +205,14 @@ export function InviteUserModal({ isOpen, onClose, roles, onSuccess }: InviteUse
           {inviteResult ? (
             /* Success State */
             <div className="space-y-6">
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4">
+              <div className="bg-panel rounded-lg p-4 border border-theme">
                 <div className="flex items-center space-x-2">
-                  <Check className="w-5 h-5 text-green-600" />
-                  <span className="text-green-800 font-medium">
+                  <Check className="w-5 h-5 text-green-400" />
+                  <span className="text-theme font-medium">
                     Invitation created successfully!
                   </span>
                 </div>
-                <p className="text-green-700 text-sm mt-1">
+                <p className="text-muted text-sm mt-1">
                   The invitation expires in {inviteResult.expires_in_hours} hours.
                 </p>
               </div>
@@ -227,7 +227,7 @@ export function InviteUserModal({ isOpen, onClose, roles, onSuccess }: InviteUse
                       type="text"
                       value={inviteResult.invite_url}
                       readOnly
-                      className="flex-1 px-3 py-2 border border-gray-300 rounded-md bg-gray-50 text-sm"
+                      className="flex-1 px-3 py-2 border border-theme rounded-md bg-panel text-sm text-theme"
                     />
                     <button
                       onClick={handleCopyLink}

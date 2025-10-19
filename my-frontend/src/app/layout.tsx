@@ -8,6 +8,7 @@ import GlobalRouteLoader from '@/components/loading/GlobalRouteLoader';
 import FloatingBottomNav from '@/components/ui/FloatingBottomNav';
 import HealthBoot from '@/components/dev/HealthBoot';
 import RenderLogger from '@/components/debug/RenderLogger';
+import DarkModeToggle from '@/components/ui/DarkModeToggle';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -33,6 +34,10 @@ export default function RootLayout({
           <AuthProvider>
             <PermissionProvider>
               <RenderLogger />
+              {/* Global theme toggle fixed at top-right */}
+              <div className="fixed top-4 right-4 z-50">
+                <DarkModeToggle />
+              </div>
               <div className="min-h-screen pb-20 md:pb-0">
                 {children}
               </div>

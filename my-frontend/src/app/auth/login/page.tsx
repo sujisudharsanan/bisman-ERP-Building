@@ -337,28 +337,62 @@ export default function StandardLoginPage() {
 
   return (
     <div className="min-h-screen w-full overflow-x-hidden bg-gray-100 dark:bg-gray-950 flex items-center justify-center p-4 sm:p-6">
+      {/* Theme toggle fixed at the top-right of the viewport */}
+      <div className="fixed top-4 right-4 z-50">
+        <DarkModeToggle />
+      </div>
       <div className="w-full max-w-4xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
         {/* Left branding panel */}
-  <div className="w-full md:w-1/2 bg-white dark:bg-gray-900 p-6 md:p-12 flex flex-col justify-center">
-          {/* Brand: render provided Bisman lockup exactly as-is */}
+  <div className="w-full md:w-1/2 bg-white dark:bg-gray-900 p-6 md:p-12 flex flex-col justify-center relative">
           <div className="mb-8">
-            {!brandHidden ? (
-              <img
-                src={brandImgSrc}
-                alt="Bisman ERP Solutions"
-                className="h-12 md:h-14 w-auto object-contain select-none"
-                draggable={false}
-                onError={() => {
-                  // Fallback: hide brand image if it fails to load
-                  setBrandHidden(true);
-                }}
-              />
-            ) : (
-              <div className="leading-tight">
-                <div className="text-xl font-semibold text-slate-900 dark:text-slate-100">Bisman</div>
-                <div className="text-sm text-slate-600 dark:text-slate-400 tracking-wide">ERP Solutions</div>
-              </div>
-            )}
+            <div className="flex-1">
+             {!brandHidden ? (
+                 <div className="flex items-center space-x-3">
+                   <img
+                     src={brandImgSrc}
+                     alt="Bisman ERP Solutions"
+                     className="h-9 md:h-11 w-auto object-contain select-none"
+                     draggable={false}
+                     onError={() => setBrandHidden(true)}
+                   />
+
+                  <div className="leading-tight" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                    <div style={{
+                      fontFamily: "'Montserrat', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
+                      fontWeight: 900,
+                      fontSize: '29px',
+                      lineHeight: 1,
+                      marginBottom: 0
+                    }} className="text-[#0F386E] dark:text-white">Bisman</div>
+                    <div style={{
+                      fontFamily: "'Open Sans', Arial, sans-serif",
+                      fontWeight: 400,
+                      fontSize: '11px',
+                      textTransform: 'uppercase',
+                      letterSpacing: '0.12em',
+                      marginTop: '4px'
+                    }} className="text-[#0F386E] dark:text-white">ERP SOLUTIONS</div>
+                  </div>
+                 </div>
+               ) : (
+                <div className="leading-tight">
+                  <div style={{
+                    fontFamily: "'Montserrat', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
+                    fontWeight: 900,
+                    fontSize: '29px',
+                    lineHeight: 1
+                  }} className="text-[#0F386E] dark:text-white">Bisman</div>
+                  <div style={{
+                    fontFamily: "'Open Sans', Arial, sans-serif",
+                    fontWeight: 400,
+                    fontSize: '11px',
+                    textTransform: 'uppercase',
+                    letterSpacing: '0.12em',
+                    marginTop: '4px'
+                  }} className="text-[#0F386E] dark:text-white">ERP SOLUTIONS</div>
+                </div>
+               )}
+             </div>
           </div>
           <div>
             <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100 mb-2">Sign in</h1>

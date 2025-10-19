@@ -68,7 +68,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
 
   return (
     <header 
-      className="bg-white shadow-sm border-b border-gray-200"
+      className="bg-panel shadow-sm border-b border-theme"
       role="banner"
       aria-label="Main header"
     >
@@ -115,7 +115,7 @@ export default function Header({ onMenuToggle }: HeaderProps) {
             ) : user ? (
               <Link 
                 href="/profile"
-                className="flex items-center space-x-3 hover:bg-gray-50 rounded-lg p-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex items-center space-x-3 hover:bg-panel/80 rounded-lg p-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label={t('header.go_to_profile')}
               >
                 {/* User Avatar - Circular, clickable */}
@@ -137,11 +137,11 @@ export default function Header({ onMenuToggle }: HeaderProps) {
 
                 {/* User Name and Role */}
                 <div className="flex flex-col items-start">
-                  <span className="text-sm font-semibold text-gray-900">
+                  <span className="text-sm font-semibold text-theme">
                     {user.name}
                   </span>
                   <span 
-                    className="text-xs text-gray-500"
+                    className="text-xs text-muted"
                     aria-label={`Role: ${getRoleDisplayName(user.role || 'USER')}`}
                   >
                     {t('header.role_dashboard', { 

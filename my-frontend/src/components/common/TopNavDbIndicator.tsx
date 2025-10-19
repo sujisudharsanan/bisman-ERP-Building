@@ -75,18 +75,21 @@ export function TopNavDbIndicator({ className = '' }: TopNavDbIndicatorProps) {
     return () => clearInterval(interval);
   }, [status.connected, retryCount]);
 
+  // For theme-awareness: use panel background and theme text, render a small colored status dot
   const getStatusColor = () => {
-    if (status.connected) {
-      return 'text-green-600 bg-green-100';
-    }
-    return 'text-red-600 bg-red-100';
+    return 'bg-panel border border-theme text-theme';
+  };
+
+  const getStatusDotStyle = () => {
+    if (status.connected) return { background: '#10B981' }; // green-500
+    return { background: '#EF4444' }; // red-500
   };
 
   const getStatusIcon = () => {
     if (status.connected) {
-      return <CheckCircle className="w-3 h-3" />;
+      return <CheckCircle className="w-3 h-3 text-theme" />;
     }
-    return <AlertCircle className="w-3 h-3" />;
+    return <AlertCircle className="w-3 h-3 text-theme" />;
   };
 
   const getTooltipText = () => {
@@ -120,22 +123,22 @@ export function TopNavDbIndicator({ className = '' }: TopNavDbIndicatorProps) {
       onMouseLeave={() => setIsHovered(false)}
     >
       {/* Database indicator */}
-      <div className={`flex items-center space-x-1 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor()}`}>
-        <Database className="w-3 h-3" />
-        {getStatusIcon()}
+      <div className={`flex items-center space-x-2 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor()}`}>
+        <Database className="w-3 h-3 text-theme" />
+        <span className="w-2 h-2 rounded-full" style={getStatusDotStyle()} aria-hidden />
         <span className="hidden sm:inline">DB</span>
       </div>
 
       {/* Tooltip */}
       {isHovered && (
-        <div className="absolute top-full right-0 mt-2 px-3 py-2 bg-gray-900 text-white text-xs rounded-lg shadow-lg z-50 whitespace-nowrap">
+        <div className="absolute top-full right-0 mt-2 px-3 py-2 bg-panel text-theme text-xs rounded-lg shadow-lg z-50 whitespace-nowrap border border-theme">
           <div className="font-medium">{getTooltipText()}</div>
-          <div className="text-gray-300">Last check: {formatLastCheck()}</div>
+          <div className="text-muted">Last check: {formatLastCheck()}</div>
           {!status.connected && retryCount > 0 && (
             <div className="text-red-300">Retrying... ({retryCount})</div>
           )}
           {/* Tooltip arrow */}
-          <div className="absolute bottom-full right-3 w-2 h-2 bg-gray-900 transform rotate-45"></div>
+          <div className="absolute bottom-full right-3 w-2 h-2 bg-panel transform rotate-45 border-t border-l border-theme" />
         </div>
       )}
     </div>

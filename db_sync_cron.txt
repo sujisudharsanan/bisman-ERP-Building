@@ -1,0 +1,2 @@
+# Cron job to sync local DB to Railway every hour
+0 * * * * /Users/abhi/Desktop/BISMAN\ ERP/sync_local_to_railway.sh >> /Users/abhi/Desktop/BISMAN\ ERP/sync_log.txt 2>&1

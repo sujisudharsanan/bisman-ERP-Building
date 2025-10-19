@@ -1082,6 +1082,7 @@ const SuperAdminControlPanel: React.FC = () => {
     </div>
   );
 
+      
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
     { id: 'orders', label: 'Order Management', icon: ShoppingCart },
@@ -1093,14 +1094,14 @@ const SuperAdminControlPanel: React.FC = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gray-100">
-    {/* Header */}
-    <div className="bg-white shadow">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* Reduce vertical padding by ~25% to shrink top banner height */}
-      <div className="flex justify-between items-center py-[18px]">
-            <div className="flex items-center">
-              <HeaderLogo />
+    <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-950 overflow-x-hidden">
+      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
+        {/* Prevent horizontal overflow on small screens by allowing inner scroll for wide content */}
+        <div className="overflow-x-auto">
+         <div className="pt-6 pb-8">
+           <div className="flex items-center justify-between">
+             <div className="flex items-center">
+               <HeaderLogo />
         {/* Slightly smaller title to further reduce perceived banner size */}
         <h1 className="text-xl font-bold text-gray-900">
                 Super Admin Control Panel
@@ -1303,6 +1304,7 @@ const SuperAdminControlPanel: React.FC = () => {
         </div>
       )}
     </div>
+  </div>
   );
 };
 

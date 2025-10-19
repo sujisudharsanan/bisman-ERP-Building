@@ -207,19 +207,19 @@ export function KycReviewDrawer({
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={onClose} />
       
-      <div className="fixed right-0 top-0 h-full w-full max-w-4xl bg-white shadow-xl z-50 overflow-y-auto">
+      <div className="fixed right-0 top-0 h-full w-full max-w-4xl bg-panel shadow-xl z-50 overflow-y-auto border-l border-theme">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+        <div className="sticky top-0 bg-panel border-b border-theme px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">KYC Review</h2>
-              <p className="text-sm text-gray-500">
+              <h2 className="text-xl font-semibold text-theme">KYC Review</h2>
+              <p className="text-sm text-muted">
                 Submitted by {submission.user.first_name} {submission.user.last_name}
               </p>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-muted hover:text-theme transition-colors"
             >
               <X className="w-6 h-6" />
             </button>
@@ -228,13 +228,13 @@ export function KycReviewDrawer({
           {/* Status and Actions */}
           <div className="flex items-center justify-between mt-4">
             <div className="flex items-center space-x-3">
-              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(submission.status)}`}>
-                {submission.status.replace('_', ' ').toUpperCase()}
-              </span>
-              <span className="text-sm text-gray-500">
-                Submitted {formatDate(submission.created_at)}
-              </span>
-            </div>
+                <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(submission.status)}`}>
+                  {submission.status.replace('_', ' ').toUpperCase()}
+                </span>
+                <span className="text-sm text-muted">
+                  Submitted {formatDate(submission.created_at)}
+                </span>
+              </div>
 
             {submission.status === 'awaiting_approval' && (
               <div className="flex space-x-3">
@@ -257,7 +257,7 @@ export function KycReviewDrawer({
 
         <div className="p-6 space-y-6">
           {/* Personal Information */}
-          <div className="bg-white border border-gray-200 rounded-lg">
+          <div className="bg-panel border border-theme rounded-lg">
             <button
               onClick={() => toggleSection('personal')}
               className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50"

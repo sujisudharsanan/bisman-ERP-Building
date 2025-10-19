@@ -48,6 +48,39 @@ body {
 .badge-theme { background: var(--badge) !important; color: white !important; }
 .theme-transition { transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease; }
 
+/* Utility overrides for dark theme to ensure consistent colors */
+[data-theme="dark"] .text-gray-900,
+[data-theme="dark"] .text-gray-800,
+[data-theme="dark"] .text-slate-900,
+[data-theme="dark"] .text-slate-800,
+[data-theme="dark"] .text-gray-700,
+[data-theme="dark"] .text-gray-600,
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] .text-gray-400,
+[data-theme="dark"] .text-gray-300,
+[data-theme="dark"] .text-slate-100,
+[data-theme="dark"] .text-slate-200,
+[data-theme="dark"] .text-white {
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] .text-muted {
+  color: var(--muted) !important;
+}
+
+/* Border color overrides */
+[data-theme="dark"] .border-gray-200,
+[data-theme="dark"] .border-gray-100,
+[data-theme="dark"] .border-white,
+[data-theme="dark"] .border {
+  border-color: var(--border) !important;
+}
+
+/* Ensure card backgrounds follow panel token */
+[data-theme="dark"] .bg-card {
+  background: var(--card) !important;
+}
+
 /* Root responsive setup */
 html {
   -webkit-text-size-adjust: 100%; /* iOS Safari compatibility */
@@ -59,6 +92,11 @@ html,
 body,
 #__next {
   height: 100%;
+}
+
+/* Ensure the full viewport background uses the theme token so the outer frame follows dark mode */
+html, body, #__next {
+  background: var(--bg) !important;
 }
 
 body {
@@ -115,7 +153,8 @@ h4 {
   min-height: 100vh;
 }
 .bg-white {
-  background: #ffffff;
+  /* Use theme-aware panel token so components using bg-white follow dark/light themes */
+  background: var(--panel) !important;
 }
 .rounded {
   -webkit-border-radius: 0.5rem;

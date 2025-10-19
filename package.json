@@ -34,8 +34,7 @@
     "start:api": "npm run start:backend",
     "test:api": "jest --config jest.api.config.cjs --runInBand",
     "css:prefix": "postcss src/**/*.css --replace",
-    "css:watch": "postcss src/**/*.css --replace --watch",
-    
+    "css:watch": "postcss src/**/*.css --replace --watch"
   },
   "devDependencies": {
     "@nestjs/platform-express": "^9.4.3",
