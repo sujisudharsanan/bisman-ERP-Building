@@ -4,6 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import SuperAdminControlPanel from '@/components/SuperAdminControlPanel';
+import PermissionGuard from '@/common/components/PermissionGuard';
 
 export default function SuperAdminPage() {
   const { user, loading } = useAuth();
@@ -61,5 +62,9 @@ export default function SuperAdminPage() {
     );
   }
 
-  return <SuperAdminControlPanel />;
+  return (
+    <PermissionGuard requirePermissions={true}>
+      <SuperAdminControlPanel />
+    </PermissionGuard>
+  );
 }

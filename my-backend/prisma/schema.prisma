@@ -151,6 +151,17 @@ model rbac_user_roles {
   @@index([user_id], map: "idx_rbac_user_roles_user_id")
 }
 
+model rbac_user_permissions {
+  id         Int      @id @default(autoincrement())
+  user_id    Int
+  page_key   String   @db.VarChar(255)
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @db.Timestamp(6)
+
+  @@unique([user_id, page_key])
+  @@index([user_id], map: "idx_user_permissions_user_id")
+}
+
 model recent_activity {
   id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
   user_id    Int?

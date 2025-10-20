@@ -29,13 +29,30 @@ export async function POST(req: NextRequest) {
     });
 
     const headers = new Headers();
-    // Forward Set-Cookie headers back to the browser
+    
+    // Forward Set-Cookie headers back to the browser with enhanced security
     const setCookies = (res.headers as any).getSetCookie?.() || res.headers.get('set-cookie');
     if (Array.isArray(setCookies)) {
-      for (const c of setCookies) headers.append('set-cookie', c);
+      for (const c of setCookies) {
+        // Ensure cookies have security flags
+        let secureCookie = c;
+        if (!secureCookie.includes('HttpOnly')) secureCookie += '; HttpOnly';
+        if (!secureCookie.includes('Secure') && process.env.NODE_ENV === 'production') {
+          secureCookie += '; Secure';
+        }
+        if (!secureCookie.includes('SameSite')) secureCookie += '; SameSite=Lax';
+        headers.append('set-cookie', secureCookie);
+      }
     } else if (typeof setCookies === 'string') {
-      headers.set('set-cookie', setCookies);
+      let secureCookie = setCookies;
+      if (!secureCookie.includes('HttpOnly')) secureCookie += '; HttpOnly';
+      if (!secureCookie.includes('Secure') && process.env.NODE_ENV === 'production') {
+        secureCookie += '; Secure';
+      }
+      if (!secureCookie.includes('SameSite')) secureCookie += '; SameSite=Lax';
+      headers.set('set-cookie', secureCookie);
     }
+    
     headers.set('content-type', res.headers.get('content-type') || 'application/json');
 
     const text = await res.text();

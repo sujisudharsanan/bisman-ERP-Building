@@ -15,7 +15,7 @@ export default async function SuperAdminLayout({ children }: SuperAdminLayoutPro
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
       {/* Super Admin Layout Container */}
       <div className="w-full">
         {/* Page content */}

@@ -167,6 +167,14 @@ app.use((req, res, next) => {
 const uploadRoutes = require('./routes/upload')
 app.use('/api/upload', uploadRoutes)
 
+// Users report routes
+try {
+  const userReportRoutes = require('./routes/userReport');
+  app.use('/api', userReportRoutes);
+} catch (e) {
+  console.warn('[app.js] userReport routes not loaded:', e?.message || e);
+}
+
 // Public database health endpoint (no auth required)
 // Exposed early and unconditionally so UI can detect DB status in all environments
 app.get('/api/health/database', async (req, res) => {
@@ -299,6 +307,14 @@ try {
 // Privilege management routes
 const privilegeRoutes = require('./routes/privilegeRoutes')
 app.use('/api/privileges', privilegeRoutes)
+
+// Pages routes for permission management
+const pagesRoutes = require('./routes/pagesRoutes')
+app.use('/api/pages', pagesRoutes)
+
+// Permissions routes for managing user page access
+const permissionsRoutes = require('./routes/permissionsRoutes')
+app.use('/api/permissions', permissionsRoutes)
 
 // Security monitoring routes (versioned)
 try {

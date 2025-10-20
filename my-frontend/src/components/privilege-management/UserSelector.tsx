@@ -77,6 +77,13 @@ export function UserSelector({
           <p>Showing role default privileges for <strong>{users.length}</strong> users</p>
         </div>
       )}
+      
+      {!loading && !disabled && !error && users.length === 0 && (
+        <div className="text-xs text-amber-600 mt-1 p-2 bg-amber-50 rounded border border-amber-200 flex items-center">
+          <AlertCircle className="w-3 h-3 mr-1 flex-shrink-0" />
+          <p>No users found with this role. Users may not be assigned to this role yet.</p>
+        </div>
+      )}
     </div>
   );
 }

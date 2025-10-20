@@ -53,7 +53,7 @@ export default function ResponsiveDashboardLayout({
   return (
     <div className="flex flex-col min-h-screen">
       {/* Fixed Top Tabs - Desktop Only */}
-      <div className="fixed top-12 left-0 right-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800">
+  <div className="fixed top-12 left-0 right-0 z-30 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-transparent">
         <DashboardTopTabs 
           tabs={tabs} 
           activeTab={activeTab} 

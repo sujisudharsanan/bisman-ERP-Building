@@ -67,7 +67,7 @@ export const RequirePermission: React.FC<RequirePermissionProps> = ({
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+  <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-slate-900">
         <div className="bg-white p-8 rounded-lg shadow-md text-center">
           <Shield className="w-12 h-12 text-blue-600 mx-auto mb-4 animate-pulse" />
           <p className="text-gray-600">Checking permissions...</p>
@@ -82,7 +82,7 @@ export const RequirePermission: React.FC<RequirePermissionProps> = ({
     }
 
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+  <div className="min-h-screen flex items-center justify-center bg-gray-100 dark:bg-slate-900">
         <div className="bg-white p-8 rounded-lg shadow-md text-center max-w-md">
           <AlertTriangle className="w-16 h-16 text-red-600 mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-gray-900 mb-2">

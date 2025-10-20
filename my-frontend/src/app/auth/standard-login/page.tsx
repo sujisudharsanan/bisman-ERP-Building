@@ -73,17 +73,6 @@ const DEMO_USERS: DemoUser[] = [
     icon: <Building className="w-5 h-5" />,
     description: 'Hub management, inventory, sales, approvals, task management',
     redirectPath: '/hub-incharge'
-  },
-  {
-    id: 'demo_user',
-    name: 'Demo User',
-    email: 'demo@bisman.local',
-    password: 'Demo@123',
-    role: 'USER',
-    department: 'General',
-    icon: <User className="w-5 h-5" />,
-    description: 'Basic dashboard access, profile management, standard features',
-    redirectPath: '/dashboard'
   }
 ];
 

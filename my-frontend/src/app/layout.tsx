@@ -8,6 +8,7 @@ import GlobalRouteLoader from '@/components/loading/GlobalRouteLoader';
 import FloatingBottomNav from '@/components/ui/FloatingBottomNav';
 import HealthBoot from '@/components/dev/HealthBoot';
 import RenderLogger from '@/components/debug/RenderLogger';
+import { ToastProvider } from '@/components/ui/toast';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -28,10 +29,11 @@ export default function RootLayout({
 }) {
   return (
     <html lang="en">
-      <body className={`${inter.className} bg-white dark:bg-gray-950 text-gray-900 dark:text-gray-100 transition-colors duration-300`}>
+  <body className={`${inter.className} bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 transition-colors duration-300`}>
         <ThemeProvider>
           <AuthProvider>
             <PermissionProvider>
+      <ToastProvider>
               <RenderLogger />
               <div className="min-h-screen pb-20 md:pb-0">
                 {children}
@@ -42,6 +44,7 @@ export default function RootLayout({
               <FloatingBottomNav />
               {/* Health check bootstraper (client-only) */}
               <HealthBoot />
+      </ToastProvider>
             </PermissionProvider>
           </AuthProvider>
         </ThemeProvider>

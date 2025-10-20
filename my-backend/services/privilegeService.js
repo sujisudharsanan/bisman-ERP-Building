@@ -20,12 +20,13 @@ async function isDbReady() {
     return _dbReadyCache.ready;
   }
   try {
-    // Check presence of critical tables used by privilege management
+    // Check presence of ONLY the essential tables (users and optionally roles)
+    // Don't require features, role_privileges, user_privileges tables
     const result = await prisma.$queryRawUnsafe(
-      "SELECT to_regclass('public.roles')::text as roles, to_regclass('public.features')::text as features, to_regclass('public.role_privileges')::text as role_privileges, to_regclass('public.user_privileges')::text as user_privileges, to_regclass('public.users')::text as users"
+      "SELECT to_regclass('public.users')::text as users"
     );
     const row = Array.isArray(result) ? result[0] : result;
-    const ready = !!(row && row.roles && row.features && row.users);
+    const ready = !!(row && row.users);
     _dbReadyCache = { ready, checkedAt: now };
     return ready;
   } catch (e) {
@@ -140,23 +141,45 @@ class PrivilegeService {
         return withCounts;
       }
       const roles = await this.prisma.role.findMany({
-        include: {
-          _count: {
-            select: { users: true }
-          }
-        },
         orderBy: { name: 'asc' }
       });
 
-      return roles.map(role => ({
-        id: role.id,
-        name: role.name,
-        description: role.description,
-        is_active: role.is_active,
-        created_at: role.created_at.toISOString(),
-        updated_at: role.updated_at.toISOString(),
-        user_count: role._count.users
-      }));
+      // Manually count users for each role since there's no FK relation
+      const rolesWithCounts = await Promise.all(
+        roles.map(async (role) => {
+          // Build role name variations to match against users.role field
+          const normalized = role.name.toUpperCase().replace(/[\s-]+/g, '_');
+          const roleVariations = [
+            normalized,                                    // SUPER_ADMIN
+            normalized.toLowerCase(),                      // super_admin
+            normalized.replace(/_/g, ' '),                 // SUPER ADMIN
+            normalized.replace(/_/g, ' ').toLowerCase(),   // super admin
+            normalized.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '), // Super Admin
+            normalized.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('_'),  // Super_Admin
+            role.name  // Also try original role name as-is
+          ];
+          // Remove duplicates
+          const uniqueVariations = [...new Set(roleVariations)];
+          
+          const userCount = await this.prisma.user.count({
+            where: { role: { in: uniqueVariations } }
+          });
+          
+          console.log(`[getAllRoles] Role "${role.name}" (ID ${role.id}): ${userCount} user(s)`);
+          
+          return {
+            id: role.id,
+            name: role.name,
+            description: role.description || '',
+            is_active: role.is_active ?? true,
+            created_at: role.created_at?.toISOString() || new Date().toISOString(),
+            updated_at: role.updated_at?.toISOString() || new Date().toISOString(),
+            user_count: userCount
+          };
+        })
+      );
+
+      return rolesWithCounts;
     } catch (error) {
       console.error('Error in getAllRoles:', error);
       // Fallback in dev or when DB isn’t ready
@@ -196,7 +219,7 @@ class PrivilegeService {
     }
   }
 
-  // Get users by role ID
+  // Get users by role (string role field in users table, not numeric ID)
   async getUsersByRole(roleId) {
     try {
       if (!(await isDbReady())) {
@@ -205,40 +228,87 @@ class PrivilegeService {
           ...u,
           role: { id: u.role_id, name: DEFAULT_ROLES.find(r => r.id === u.role_id)?.name || u.role_id }
         }));
+        console.log(`[getUsersByRole] DB not ready, returning ${list.length} dev users for role: ${roleId || 'ALL'}`);
         return list;
       }
-      // Coerce roleId to number if provided (DB schema uses numeric role IDs)
-      const roleIdNum = roleId != null && !Number.isNaN(Number(roleId)) ? Number(roleId) : undefined;
-      const users = await this.prisma.user.findMany({
-        where: { 
-          ...(roleIdNum ? { role_id: roleIdNum } : {}),
-          deleted_at: null 
-        },
-        include: {
-          role: {
-            select: {
-              id: true,
-              name: true
+      
+      // Your DB schema has users.role as a string field (e.g., "ADMIN", "MANAGER", "STAFF", "SUPER_ADMIN", "USER")
+      // Handle various role name formats: numeric ID from roles table, or role string
+      let roleFilter = undefined;
+      let roleIdForLogging = roleId;
+      
+      if (roleId != null && String(roleId).trim()) {
+        const trimmed = String(roleId).trim();
+        
+        // Check if it's a numeric ID referring to roles table
+        if (!Number.isNaN(Number(trimmed))) {
+          // Look up role name from roles table
+          try {
+            const roleRecord = await this.prisma.role.findUnique({
+              where: { id: Number(trimmed) }
+            });
+            if (roleRecord && roleRecord.name) {
+              // The role name might be "Super Admin", "Admin", etc. We need to convert to the user.role format
+              // which is typically "SUPER_ADMIN", "ADMIN", etc. (uppercase with underscores)
+              roleFilter = roleRecord.name.toUpperCase().replace(/[\s-]+/g, '_');
+              console.log(`[getUsersByRole] Converted role ID ${trimmed} to role name: ${roleRecord.name} -> ${roleFilter}`);
+            } else {
+              console.warn(`[getUsersByRole] No role found with ID ${trimmed}`);
             }
+          } catch (e) {
+            console.error(`[getUsersByRole] Error looking up role ID ${trimmed}:`, e.message);
           }
-        },
+        }
+        
+        // If still no match, use the provided string as-is (it's likely a role name already)
+        if (!roleFilter) {
+          roleFilter = trimmed;
+          console.log(`[getUsersByRole] Using role name directly: ${roleFilter}`);
+        }
+      }
+      
+      console.log(`[getUsersByRole] Querying users with role filter: ${roleFilter || 'ALL USERS'}`);
+      
+      // Build a list of possible role name variations to match against
+      // users.role field (which can be "SUPER_ADMIN", "Super Admin", "super_admin", etc.)
+      let roleVariations = [];
+      if (roleFilter) {
+        const normalized = roleFilter.toUpperCase().replace(/[\s-]+/g, '_');
+        roleVariations.push(
+          normalized,                                    // SUPER_ADMIN
+          normalized.toLowerCase(),                      // super_admin
+          normalized.replace(/_/g, ' '),                 // SUPER ADMIN
+          normalized.replace(/_/g, ' ').toLowerCase(),   // super admin
+          normalized.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '), // Super Admin
+          normalized.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('_')  // Super_Admin
+        );
+        // Remove duplicates
+        roleVariations = [...new Set(roleVariations)];
+        console.log(`[getUsersByRole] Trying role variations:`, roleVariations);
+      }
+      
+      const users = await this.prisma.user.findMany({
+        where: roleVariations.length > 0 ? { 
+          role: { in: roleVariations }
+        } : {},
         orderBy: [
-          { first_name: 'asc' },
-          { last_name: 'asc' }
+          { username: 'asc' }
         ]
       });
+      
+      console.log(`[getUsersByRole] Found ${users.length} users for role: ${roleFilter || 'ALL'}`);
 
       return users.map(user => ({
-        id: user.id,
+        id: String(user.id),
         username: user.username,
         email: user.email,
-        first_name: user.first_name,
-        last_name: user.last_name,
-        role_id: user.role_id,
-        is_active: user.status === 'active',
-        created_at: user.created_at.toISOString(),
-        updated_at: user.updated_at.toISOString(),
-        role: user.role
+        first_name: user.username, // Your schema doesn't have first_name/last_name
+        last_name: '',
+        role_id: user.role,
+        is_active: true, // No status field in your schema
+        created_at: user.createdAt?.toISOString() || new Date().toISOString(),
+        updated_at: user.updatedAt?.toISOString() || new Date().toISOString(),
+        role: { id: user.role, name: user.role }
       }));
     } catch (error) {
       console.error('Error in getUsersByRole:', error);

@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
 import ResponsiveDashboardLayout from '@/components/layouts/ResponsiveDashboardLayout';
 import DarkModeToggle from '@/components/ui/DarkModeToggle';
+import DynamicSidebar from '@/common/components/DynamicSidebar';
 
 const HeaderLogo: React.FC = () => {
   const [logoError, setLogoError] = useState(false);
@@ -118,7 +119,6 @@ const ROLE_PURPOSE: Record<string, string> = {
   'OPERATIONS MANAGER': 'Supervises day-to-day operational processes and ensures smooth workflow across departments.',
   'MANAGER': 'Mid-level manager overseeing departments and assisting in decision-making.',
   'STAFF': 'General staff role with specific permissions to perform daily operational tasks.',
-  'DEMO USER': 'Temporary account for demonstration or testing purposes with minimal permissions.',
   'CFO': 'Oversees all financial operations, accounting, and reporting within the ERP.',
   'FINANCE CONTROLLER': 'Monitors financial processes, budgets, and compliance with accounting standards.',
   'TREASURY': 'Manages treasury operations, cash flow, and financial transactions.',
@@ -177,6 +177,7 @@ const SuperAdminControlPanel: React.FC = () => {
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [showRoleInfo, setShowRoleInfo] = useState(false);
   const [roleInfoTarget, setRoleInfoTarget] = useState<any | null>(null);
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   // For Privilege Management deep-linking from Role Management "Edit Role"
   const [privInitialRoleId, setPrivInitialRoleId] = useState<string | number | null>(searchParams?.get('role') || null);
 
@@ -549,7 +550,7 @@ const SuperAdminControlPanel: React.FC = () => {
   const DashboardTab = () => (
     <div className="space-y-6">
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6">
         {stats &&
           [
             {
@@ -579,7 +580,7 @@ const SuperAdminControlPanel: React.FC = () => {
           ].map((stat, idx) => (
             <div
               key={idx}
-              className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900/50 p-6 border-l-4 border-l-blue-500 dark:border-l-blue-400"
+              className="bg-white dark:bg-slate-800 rounded-lg shadow dark:shadow-slate-900/50 p-6 border-l-4 border-l-blue-500 dark:border-l-slate-700"
             >
               <div className="flex items-center">
                 <div className="flex-shrink-0">
@@ -601,7 +602,7 @@ const SuperAdminControlPanel: React.FC = () => {
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/50 rounded-lg">
+      <div className="bg-white dark:bg-slate-800 shadow dark:shadow-slate-900/50 rounded-lg">
         <div className="px-4 py-5 sm:p-6">
           <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">
             <Activity className="inline w-5 h-5 mr-2" />
@@ -611,7 +612,7 @@ const SuperAdminControlPanel: React.FC = () => {
             {(Array.isArray(activities) ? activities : []).map(activity => (
               <div
                 key={activity.id}
-                className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700"
+                className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-slate-800"
               >
                 <div className="flex items-center space-x-3">
                   <div className="flex-shrink-0">
@@ -703,8 +704,8 @@ const SuperAdminControlPanel: React.FC = () => {
   {/* Action Controls moved inside the card header on the right of tabs */}
 
       {/* Main Content Tabs with actions on the right */}
-      <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/50 rounded-lg">
-        <div className="border-b border-gray-200 dark:border-gray-700">
+      <div className="bg-white dark:bg-slate-800 shadow dark:shadow-slate-900/50 rounded-lg">
+  <div className="border-b border-gray-200 dark:border-slate-800">
           <div className="px-6 py-3 flex items-center justify-between gap-3 flex-wrap">
             <nav className="-mb-px flex space-x-8">
               {[ 
@@ -716,8 +717,8 @@ const SuperAdminControlPanel: React.FC = () => {
                   key={tab.id}
                   className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
                     activeTab === tab.id
-                      ? 'border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400'
-                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
+                      ? 'border-blue-500 dark:border-slate-400 text-blue-600 dark:text-blue-400'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-slate-700'
                   }`}
                   onClick={() => handleTabChange(tab.id)}
                 >
@@ -735,7 +736,7 @@ const SuperAdminControlPanel: React.FC = () => {
                   placeholder="Search roles..."
                   value={userSearch}
                   onChange={e => setUserSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-700 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent"
                 />
               </div>
 
@@ -768,7 +769,7 @@ const SuperAdminControlPanel: React.FC = () => {
 
         <div className="p-6">
           {error && (
-            <div className="mb-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
+            <div className="mb-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-slate-800 rounded-lg p-4">
               <div className="flex items-center">
                 <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 mr-2" />
                 <p className="text-red-700 dark:text-red-300">{error}</p>
@@ -792,7 +793,7 @@ const SuperAdminControlPanel: React.FC = () => {
               {/* All Roles Table */}
               {(activeTab === 'users' || activeTab === 'all-users') && (
                 <div className="overflow-hidden">
-                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-800">
                     <thead className="bg-gray-50 dark:bg-gray-700">
                       <tr>
                         <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
@@ -812,7 +813,7 @@ const SuperAdminControlPanel: React.FC = () => {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-slate-800">
                       {roles.map(role => (
                         <tr key={role.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                           <td className="px-6 py-4 whitespace-nowrap">
@@ -906,7 +907,7 @@ const SuperAdminControlPanel: React.FC = () => {
                   {pendingKyc.map(submission => (
                     <div
                       key={submission.id}
-                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
+                      className="border border-gray-200 dark:border-slate-800 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-slate-700 cursor-pointer"
                       onClick={() => setSelectedKycSubmission({
                         ...submission,
                         user: users.find(u => u.id === submission.user_id) || {} as UserType,
@@ -950,7 +951,7 @@ const SuperAdminControlPanel: React.FC = () => {
                   {invitations.map(invitation => (
                     <div
                       key={invitation.id}
-                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
+                      className="border border-gray-200 dark:border-slate-800 rounded-lg p-4"
                     >
                       <div className="flex items-center justify-between">
                         <div>
@@ -1030,7 +1031,7 @@ const SuperAdminControlPanel: React.FC = () => {
                           const total = (roleInfoTarget.total_permissions || totalPermissions || MAX_PERMISSIONS) as number;
                           const pct = total > 0 ? Math.round((granted / total) * 100) : 0;
                           return (
-                            <div className="col-span-2 bg-gray-50 dark:bg-gray-700 rounded-md p-3 border border-gray-100 dark:border-gray-600">
+                            <div className="col-span-2 bg-gray-50 dark:bg-slate-700 rounded-md p-3 border border-gray-100 dark:border-slate-800">
                               <div className="flex items-center justify-between mb-1">
                                 <div className="text-xs text-gray-500 dark:text-gray-400">Permission space used</div>
                                 <div className="text-xs text-gray-700 dark:text-gray-300 font-medium">{pct}%</div>
@@ -1041,22 +1042,22 @@ const SuperAdminControlPanel: React.FC = () => {
                             </div>
                           );
                         })()}
-                        <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-3 border border-gray-100 dark:border-gray-600">
+                        <div className="bg-gray-50 dark:bg-slate-700 rounded-md p-3 border border-gray-100 dark:border-slate-800">
                           <div className="text-xs text-gray-500 dark:text-gray-400">Total Permissions (granted)</div>
                           <div className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                             {(rolePermCounts[String(roleInfoTarget.id)] ?? roleInfoTarget.permission_count ?? getPermissionCount(roleInfoTarget))}
                             <span className="text-sm text-gray-500 dark:text-gray-400"> / {(roleInfoTarget.total_permissions || totalPermissions || MAX_PERMISSIONS)}</span>
                           </div>
                         </div>
-                        <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-3 border border-gray-100 dark:border-gray-600">
+                        <div className="bg-gray-50 dark:bg-slate-700 rounded-md p-3 border border-gray-100 dark:border-slate-800">
                           <div className="text-xs text-gray-500 dark:text-gray-400">Total Users under this role</div>
                           <div className="text-xl font-semibold text-gray-900 dark:text-gray-100">{getUserCountForRole(roleInfoTarget)}</div>
                         </div>
-                        <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-3 border border-gray-100 dark:border-gray-600">
+                        <div className="bg-gray-50 dark:bg-slate-700 rounded-md p-3 border border-gray-100 dark:border-slate-800">
                           <div className="text-xs text-gray-500 dark:text-gray-400">Approval Level</div>
                           <div className="text-xl font-semibold text-gray-900 dark:text-gray-100">{getApprovalLevel(roleInfoTarget)}</div>
                         </div>
-                        <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-3 border border-gray-100 dark:border-gray-600">
+                        <div className="bg-gray-50 dark:bg-slate-700 rounded-md p-3 border border-gray-100 dark:border-slate-800">
                           <div className="text-xs text-gray-500 dark:text-gray-400">Created / Updated</div>
                           <div className="text-sm text-gray-900 dark:text-gray-100">
                             {roleInfoTarget.created_at ? new Date(roleInfoTarget.created_at).toLocaleString() : '-'}
@@ -1085,23 +1086,22 @@ const SuperAdminControlPanel: React.FC = () => {
     </div>
   );
 
-      
-  // Navigation tabs configuration for responsive layout
-  const navigationTabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '' },
-    { id: 'orders', label: 'Order Management', icon: ShoppingCart, path: '' },
-    { id: 'users', label: 'Role Management', icon: Users, path: '' },
-    { id: 'activity', label: 'Activity Log', icon: Activity, path: '' },
-    { id: 'database', label: 'Database Browser', icon: Database, path: '' },
-  ];
-
   return (
-    <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-950">
-      {/* Fixed Top Bar - Reduced Size */}
-      <div className="fixed top-0 left-0 right-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-40 shadow-sm">
+    <div className="min-h-screen w-full bg-gray-50 dark:bg-slate-900">
+      {/* Fixed Top Bar */}
+  <div className="fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-transparent z-50 shadow-sm">
         <div className="max-w-screen-2xl mx-auto px-3 sm:px-4 lg:px-6">
-          <div className="flex items-center justify-between h-12">
-            <div className="flex items-center gap-2">
+          <div className="flex items-center justify-between h-14">
+            <div className="flex items-center gap-3">
+              {/* Mobile menu button */}
+              <button
+                onClick={() => setSidebarOpen(!sidebarOpen)}
+                className="lg:hidden p-2 rounded-md text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+              >
+                <svg className="w-6 h-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                </svg>
+              </button>
               <HeaderLogo />
               <h1 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
                 Super Admin Control Panel
@@ -1111,20 +1111,20 @@ const SuperAdminControlPanel: React.FC = () => {
               <TopNavDbIndicator />
               <button
                 onClick={() => window.location.reload()}
-                className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 flex items-center gap-1 text-xs"
+                className="bg-blue-600 dark:bg-blue-500 text-white px-2 sm:px-3 py-1.5 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center gap-1.5 text-xs font-medium shadow-sm"
                 aria-label="Refresh"
                 title="Refresh"
               >
-                <RefreshCw className="w-3 h-3" />
+                <RefreshCw className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Refresh</span>
               </button>
               <button
                 onClick={handleLogout}
-                className="bg-gray-700 text-white px-2 py-1 rounded hover:bg-gray-800 flex items-center gap-1 text-xs"
+                className="bg-gray-700 dark:bg-gray-600 text-white px-2 sm:px-3 py-1.5 rounded-md hover:bg-gray-800 dark:hover:bg-gray-700 transition-colors flex items-center gap-1.5 text-xs font-medium shadow-sm"
                 aria-label="Logout"
                 title="Logout"
               >
-                <LogOut className="w-3 h-3" />
+                <LogOut className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Logout</span>
               </button>
               <DarkModeToggle />
@@ -1133,17 +1133,28 @@ const SuperAdminControlPanel: React.FC = () => {
         </div>
       </div>
 
-      {/* Responsive Navigation with Content */}
-      <ResponsiveDashboardLayout 
-        tabs={navigationTabs} 
-        currentTab={activeTab} 
-        onTabChange={handleTabChange}
+      {/* Mobile Sidebar Overlay */}
+      {sidebarOpen && (
+        <div
+          className="fixed inset-0 bg-black/50 dark:bg-black/70 z-40 lg:hidden backdrop-blur-sm"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside
+        className={`fixed top-14 left-0 bottom-0 w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-transparent overflow-y-auto z-40 transform transition-transform duration-200 ease-in-out ${
+          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
+        } lg:translate-x-0`}
       >
-        {/* Content - Offset for fixed header */}
-        <div className="pt-12">
-          <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4">
+        <DynamicSidebar className="h-full" />
+      </aside>
+
+      {/* Main Content */}
+      <div className="pt-14 lg:pl-64 min-h-screen">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {error && (
-          <div className="mb-6 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
+          <div className="mb-6 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-slate-800 rounded-lg p-4">
             <div className="flex">
               <AlertTriangle className="h-5 w-5 text-red-400 dark:text-red-500" />
               <div className="ml-3">
@@ -1209,9 +1220,10 @@ const SuperAdminControlPanel: React.FC = () => {
           </>
         )}
         </div>
+      </div>
       
-        {/* User Management Modals and Components */}
-        {showInviteModal && (
+      {/* User Management Modals and Components */}
+      {showInviteModal && (
         <InviteUserModal
           isOpen={showInviteModal}
           onClose={() => setShowInviteModal(false)}
@@ -1289,8 +1301,6 @@ const SuperAdminControlPanel: React.FC = () => {
           </button>
         </div>
       )}
-        </div>
-      </ResponsiveDashboardLayout>
     </div>
   );
 };

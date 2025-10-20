@@ -1,62 +1,86 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Home, MessageSquare, CheckSquare, Calendar, BarChart2, Globe, Settings, File } from 'lucide-react';
-import useRolePages from '@/hooks/useRolePages';
-import { useAuth } from '@/hooks/useAuth';
+import { Menu, X } from 'lucide-react';
+import DynamicSidebar from '@/common/components/DynamicSidebar';
+import { useAuth } from '@/common/hooks/useAuth';
 
+/**
+ * Main Dashboard Sidebar - Uses DynamicSidebar for role-based navigation
+ * Now fully dynamic and responsive with mobile support
+ */
 const DashboardSidebar: React.FC = () => {
-  const [activeIcon, setActiveIcon] = useState('dashboard');
+  const [isOpen, setIsOpen] = useState(false);
+  const { user } = useAuth();
 
-  const auth = useAuth() as any;
-  const roleDir = (auth?.user?.roleName === 'STAFF' ? 'hub-incharge' : undefined);
-  const { pages, loading } = useRolePages(roleDir || '');
-
-  const menuItems = [
-    { id: 'dashboard', icon: Home, label: 'Dashboard' },
-    { id: 'messages', icon: MessageSquare, label: 'Messages' },
-    { id: 'tasks', icon: CheckSquare, label: 'Tasks' },
-    { id: 'calendar', icon: Calendar, label: 'Calendar' },
-    { id: 'reports', icon: BarChart2, label: 'Reports' },
-    { id: 'globe', icon: Globe, label: 'Globe' },
-    { id: 'settings', icon: Settings, label: 'Settings' },
-  ];
+  // Mobile sidebar toggle
+  const toggleSidebar = () => setIsOpen(!isOpen);
 
   return (
-  <aside className="w-[50px] bg-panel/60 backdrop-blur-sm border-r border-theme flex flex-col items-center pt-12 pb-5 space-y-3">
-      {menuItems.map(({ id, icon: Icon, label }) => (
-        <button
-          key={id}
-          onClick={() => setActiveIcon(id)}
-          className={`
-            p-1.5 rounded-xl transition-all duration-300
-            ${activeIcon === id 
-              ? 'bg-indigo-500/20 border border-indigo-500/50 shadow-lg shadow-indigo-500/30 text-white' 
-              : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-            }
-          `}
-          aria-label={label}
-          title={label}
-        >
-          <Icon size={20} />
-        </button>
-      ))}
-      {roleDir && (
-        <div className="mt-6 w-full flex flex-col items-center space-y-2">
-          {loading && <div className="w-4 h-4 border-2 border-indigo-500/40 border-t-indigo-400 rounded-full animate-spin" aria-label="Loading pages" />}
-          {!loading && pages.slice(0,10).map(p => (
-            <a
-              key={p.href}
-              href={p.href}
-              title={p.label}
-              className="p-1.5 rounded-xl text-muted hover:text-theme hover:bg-panel/60 transition-colors"
-            >
-              <File size={18} />
-            </a>
-          ))}
-        </div>
+    <>
+      {/* Mobile Menu Toggle Button */}
+      <button
+        onClick={toggleSidebar}
+        className="lg:hidden fixed top-4 left-4 z-50 p-2 rounded-lg bg-gray-800 text-white shadow-lg"
+        aria-label="Toggle Menu"
+      >
+        {isOpen ? <X size={24} /> : <Menu size={24} />}
+      </button>
+
+      {/* Overlay for mobile */}
+      {isOpen && (
+        <div
+          className="lg:hidden fixed inset-0 bg-black/50 z-40"
+          onClick={toggleSidebar}
+          aria-hidden="true"
+        />
       )}
-    </aside>
+
+      {/* Sidebar */}
+      <aside
+        className={`
+          fixed lg:static inset-y-0 left-0 z-40
+          w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-transparent
+          transform transition-transform duration-300 ease-in-out
+          ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
+          flex flex-col overflow-hidden
+        `}
+      >
+        {/* Sidebar Header */}
+  <div className="p-4 border-b border-gray-200 dark:border-transparent">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-bold text-gray-900 dark:text-white">
+                BISMAN ERP
+              </h2>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                {user?.roleName || 'Dashboard'}
+              </p>
+            </div>
+            {/* Close button for mobile */}
+            <button
+              onClick={toggleSidebar}
+              className="lg:hidden p-1 rounded text-gray-500 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-200"
+              aria-label="Close Menu"
+            >
+              <X size={20} />
+            </button>
+          </div>
+        </div>
+
+        {/* Dynamic Sidebar Navigation */}
+        <div className="flex-1 overflow-y-auto">
+          <DynamicSidebar />
+        </div>
+
+        {/* Sidebar Footer */}
+  <div className="p-4 border-t border-gray-200 dark:border-transparent">
+          <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+            v1.0.0 • {new Date().getFullYear()}
+          </div>
+        </div>
+      </aside>
+    </>
   );
 };
 

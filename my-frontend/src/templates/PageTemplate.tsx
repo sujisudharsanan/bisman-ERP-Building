@@ -100,7 +100,7 @@ function PageContent({ searchParams, params }: PageProps) {
   // Error state
   if (data.error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+  <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
         <PageHeader />
         <div className="flex-1 max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
           <Card className="p-6">
@@ -120,7 +120,7 @@ function PageContent({ searchParams, params }: PageProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+  <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
       <PageHeader />
 
       <main className="flex-1 max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">

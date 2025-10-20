@@ -1,12 +1,5 @@
-/** @type {imconst nextConfig = {
-  reactStrictMode: false, // Temporarily disabled to debug webpack errors
-  // swcMinify was removed in Next 13+; removing to avoid warnings
-  images: { domains: [], unoptimized: true },
-  // Don't use standalone output - we'll use regular build with custom server
-  // output: 'standalone',
-  // In CI builds (Railway/Vercel), don't fail on lint or TS; we already run these in prebuild locally
-  eslint: { ignoreDuringBuilds: isCI },
-  typescript: { ignoreBuildErrors: isCI },t').NextConfig} */
+/** @type {import('next').NextConfig} */
+
 // Determine API base for proxy rewrites.
 // Priority: explicit env vars → sensible defaults per environment.
 // In Vercel, falling back to localhost breaks because there is no service on :3001.
@@ -60,11 +53,37 @@ const nextConfig = {
           },
           {
             key: 'X-Frame-Options',
-            value: 'SAMEORIGIN',
+            value: 'DENY',
           },
           {
             key: 'X-XSS-Protection',
             value: '1; mode=block',
+          },
+          {
+            key: 'Strict-Transport-Security',
+            value: 'max-age=31536000; includeSubDomains; preload',
+          },
+          {
+            key: 'Content-Security-Policy',
+            value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: https: blob:",
+              "font-src 'self' data:",
+              "connect-src 'self' http://localhost:* https: wss: ws://localhost:*",
+              "frame-ancestors 'none'",
+              "base-uri 'self'",
+              "form-action 'self'"
+            ].join('; ')
+          },
+          {
+            key: 'Referrer-Policy',
+            value: 'strict-origin-when-cross-origin',
+          },
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(), microphone=(), geolocation=()',
           },
         ],
       },

@@ -60,7 +60,7 @@ export default function FloatingBottomNav() {
       }`}
     >
       <div className="mx-auto max-w-screen-sm px-3 pb-[env(safe-area-inset-bottom)]">
-        <div className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur shadow-md py-2 rounded-t-2xl border-t border-gray-100 dark:border-gray-800">
+  <div className="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-gray-900/95 backdrop-blur shadow-md py-2 rounded-t-2xl border-t border-gray-100 dark:border-slate-800">
           <div className="flex justify-around items-center">
             {items.map(item => (
               <button
@@ -79,12 +79,12 @@ export default function FloatingBottomNav() {
             ))}
 
             {/* Divider */}
-            <div className="w-px h-6 bg-gray-200 dark:bg-gray-700" />
+            <div className="w-px h-6 bg-gray-200 dark:bg-slate-800" />
 
             {/* Dark mode toggle */}
             <button
               onClick={toggle}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-gray-800"
+              className="flex items-center gap-2 px-3 py-1.5 rounded-md text-gray-700 dark:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-800"
               aria-label="Toggle dark mode"
               title="Toggle dark mode"
             >

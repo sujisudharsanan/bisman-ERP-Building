@@ -49,10 +49,19 @@ router.get('/roles', authMiddleware.authenticate, rbacMiddleware.requireRole(['S
       used = 'privilege';
     }
 
+    // Filter out Super Admin roles from the list
+    const filteredRoles = roles.filter(role => {
+      const roleName = (role.name || '').toLowerCase();
+      return !roleName.includes('super') && 
+             !roleName.includes('super_admin') && 
+             !roleName.includes('superadmin') &&
+             roleName !== 'super admin';
+    });
+
     res.json({
       success: true,
-      data: roles,
-      total: roles.length,
+      data: filteredRoles,
+      total: filteredRoles.length,
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -123,13 +132,79 @@ router.get('/users', [
   handleValidationErrors
 ], async (req, res) => {
   try {
-    const { role } = req.query;
-    const users = await privilegeService.getUsersByRole(role);
+    let { role } = req.query;
+    let users = [];
+    
+    // Try RBAC system first (rbac_user_roles table) for numeric role IDs
+    if (role && !Number.isNaN(Number(role))) {
+      const roleId = Number(role);
+      console.log(`[API /users] Trying RBAC system for role ID: ${roleId}`);
+      
+      try {
+        const { getPrisma } = require('../lib/prisma');
+        const prisma = getPrisma();
+        
+        const rbacUsers = await prisma.$queryRaw`
+          SELECT DISTINCT u.id, u.username, u.email, u.role, u.created_at as "createdAt", u.updated_at as "updatedAt"
+          FROM users u
+          INNER JOIN rbac_user_roles ur ON u.id = ur.user_id
+          WHERE ur.role_id = ${roleId}
+          ORDER BY u.username
+        `;
+        
+        if (rbacUsers && rbacUsers.length > 0) {
+          console.log(`[API /users] Found ${rbacUsers.length} users in RBAC system for role ${roleId}`);
+          users = rbacUsers.map(u => ({
+            id: String(u.id),
+            username: u.username,
+            email: u.email,
+            first_name: u.username,
+            last_name: '',
+            role_id: u.role,
+            is_active: true,
+            created_at: u.createdAt?.toISOString() || new Date().toISOString(),
+            updated_at: u.updatedAt?.toISOString() || new Date().toISOString(),
+            role: { id: u.role, name: u.role }
+          }));
+          
+          return res.json({
+            success: true,
+            data: users,
+            total: users.length,
+            source: 'rbac',
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        console.log(`[API /users] No users found in RBAC system for role ${roleId}, falling back to simple role system`);
+      } catch (rbacError) {
+        console.warn(`[API /users] RBAC query failed:`, rbacError.message);
+      }
+    }
+    
+    // Fall back to simple role system (users.role field)
+    console.log(`[API /users] Using simple role system for role: ${role}`);
+    
+    // Normalize role so it can be provided as name ("Admin", "Super Admin") or code ("ADMIN", "SUPER_ADMIN")
+    if (typeof role === 'string' && role.length > 0) {
+      const trimmed = role.trim();
+      const isNumeric = !Number.isNaN(Number(trimmed));
+      if (!isNumeric) {
+        // Convert to canonical code: uppercased with spaces/dashes -> underscores
+        role = trimmed.replace(/[\s-]+/g, '_').toUpperCase();
+      } else {
+        // Keep numeric as-is for DB role_id
+        role = trimmed;
+      }
+    }
+    
+    users = await privilegeService.getUsersByRole(role);
     
     res.json({
       success: true,
       data: users,
       total: users.length,
+      source: 'simple',
       timestamp: new Date().toISOString()
     });
   } catch (error) {
@@ -368,5 +443,159 @@ router.post('/privileges/export', [
     });
   }
 });
+
+// POST /api/privileges/assign-user - Assign a user to an RBAC role
+router.post('/assign-user',
+  authMiddleware.authenticate,
+  rbacMiddleware.requireRole(['Super Admin', 'Admin']),
+  [
+    body('userId').isInt({ min: 1 }).withMessage('Valid user ID is required'),
+    body('roleId').isInt({ min: 1 }).withMessage('Valid role ID is required')
+  ],
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { userId, roleId } = req.body;
+      
+      // Check if user exists
+      const user = await req.prisma.users.findUnique({
+        where: { id: userId }
+      });
+      
+      if (!user) {
+        return res.status(404).json({
+          success: false,
+          error: { message: 'User not found', code: 'USER_NOT_FOUND' },
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      // Check if role exists
+      const role = await req.prisma.rbac_roles.findUnique({
+        where: { id: roleId }
+      });
+      
+      if (!role) {
+        return res.status(404).json({
+          success: false,
+          error: { message: 'Role not found', code: 'ROLE_NOT_FOUND' },
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      // Check if assignment already exists
+      const existing = await req.prisma.rbac_user_roles.findFirst({
+        where: { user_id: userId, role_id: roleId }
+      });
+      
+      if (existing) {
+        return res.status(409).json({
+          success: false,
+          error: { message: 'User already assigned to this role', code: 'ALREADY_ASSIGNED' },
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      // Create assignment
+      await req.prisma.rbac_user_roles.create({
+        data: {
+          user_id: userId,
+          role_id: roleId
+        }
+      });
+      
+      res.json({
+        success: true,
+        message: `User ${user.username} assigned to role ${role.name}`,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('Error assigning user to role:', error);
+      res.status(500).json({
+        success: false,
+        error: { message: 'Failed to assign user', code: 'ASSIGNMENT_ERROR' },
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+);
+
+// DELETE /api/privileges/unassign-user - Remove a user from an RBAC role
+router.delete('/unassign-user',
+  authMiddleware.authenticate,
+  rbacMiddleware.requireRole(['Super Admin', 'Admin']),
+  [
+    query('userId').isInt({ min: 1 }).withMessage('Valid user ID is required'),
+    query('roleId').isInt({ min: 1 }).withMessage('Valid role ID is required')
+  ],
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const userId = parseInt(req.query.userId);
+      const roleId = parseInt(req.query.roleId);
+      
+      // Delete assignment
+      const result = await req.prisma.rbac_user_roles.deleteMany({
+        where: { user_id: userId, role_id: roleId }
+      });
+      
+      if (result.count === 0) {
+        return res.status(404).json({
+          success: false,
+          error: { message: 'Assignment not found', code: 'NOT_FOUND' },
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      res.json({
+        success: true,
+        message: 'User removed from role',
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('Error removing user from role:', error);
+      res.status(500).json({
+        success: false,
+        error: { message: 'Failed to remove user', code: 'REMOVAL_ERROR' },
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+);
+
+// GET /api/privileges/available-users - Get all users for assignment dropdown
+router.get('/available-users',
+  authMiddleware.authenticate,
+  rbacMiddleware.requireRole(['Super Admin', 'Admin']),
+  async (req, res) => {
+    try {
+      const users = await req.prisma.users.findMany({
+        select: {
+          id: true,
+          username: true,
+          email: true,
+          role: true
+        },
+        orderBy: { username: 'asc' }
+      });
+      
+      res.json({
+        success: true,
+        users,
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      res.status(500).json({
+        success: false,
+        error: { message: 'Failed to fetch users', code: 'FETCH_ERROR' },
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+);
 
 module.exports = router;
