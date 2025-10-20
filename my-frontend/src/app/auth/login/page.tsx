@@ -341,85 +341,115 @@ export default function StandardLoginPage() {
       <div className="fixed top-4 right-4 z-50">
         <DarkModeToggle />
       </div>
-      <div className="w-full max-w-4xl bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
-        {/* Left branding panel */}
-  <div className="w-full md:w-1/2 bg-white dark:bg-gray-900 p-6 md:p-12 flex flex-col justify-center relative">
-          <div className="mb-8">
-            <div className="flex-1">
-             {!brandHidden ? (
-                 <div className="flex items-center space-x-3">
-                   <img
-                     src={brandImgSrc}
-                     alt="Bisman ERP Solutions"
-                     className="h-9 md:h-11 w-auto object-contain select-none"
-                     draggable={false}
-                     onError={() => setBrandHidden(true)}
-                   />
-
-                  <div className="leading-tight" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
-                    <div style={{
-                      fontFamily: "'Montserrat', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
-                      fontWeight: 900,
-                      fontSize: '29px',
-                      lineHeight: 1,
-                      marginBottom: 0
-                    }} className="text-[#0F386E] dark:text-white">Bisman</div>
-                    <div style={{
-                      fontFamily: "'Open Sans', Arial, sans-serif",
-                      fontWeight: 400,
-                      fontSize: '11px',
-                      textTransform: 'uppercase',
-                      letterSpacing: '0.12em',
-                      marginTop: '4px'
-                    }} className="text-[#0F386E] dark:text-white">ERP SOLUTIONS</div>
-                  </div>
-                 </div>
-               ) : (
-                <div className="leading-tight">
-                  <div style={{
-                    fontFamily: "'Montserrat', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
-                    fontWeight: 900,
-                    fontSize: '29px',
-                    lineHeight: 1
-                  }} className="text-[#0F386E] dark:text-white">Bisman</div>
-                  <div style={{
-                    fontFamily: "'Open Sans', Arial, sans-serif",
-                    fontWeight: 400,
-                    fontSize: '11px',
-                    textTransform: 'uppercase',
-                    letterSpacing: '0.12em',
-                    marginTop: '4px'
-                  }} className="text-[#0F386E] dark:text-white">ERP SOLUTIONS</div>
-                </div>
-               )}
-             </div>
+      
+      <div className="w-full max-w-md md:max-w-4xl mx-auto flex flex-col items-center">
+        {/* Success message above box on small screens */}
+        {success && (
+          <div className="md:hidden w-full mb-4 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300 text-sm flex items-center">
+            <CheckCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+            <span className="break-words">{success}</span>
           </div>
-          <div>
-            <h1 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-slate-100 mb-2">Sign in</h1>
-            <p className="text-slate-500 dark:text-slate-400">Use your account</p>
+        )}
+        
+        {/* Login box - single column on small, two columns on large */}
+        <div className="w-full bg-white dark:bg-gray-900 rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row">
+          {/* Left branding panel - hidden on small, visible on md+ */}
+          <div className="hidden md:flex md:w-1/2 bg-white dark:bg-gray-900 p-8 flex-col justify-center relative">
+            {/* Logo */}
+            <div className="absolute top-6 left-6 flex flex-row items-center space-x-3 z-10">
+              <img
+                src={brandImgSrc}
+                alt="Bisman ERP Solutions"
+                className="h-11 w-auto object-contain select-none"
+                draggable={false}
+                onError={() => setBrandHidden(true)}
+              />
+              <div className="leading-tight" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{
+                  fontFamily: "'Montserrat', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
+                  fontWeight: 900,
+                  fontSize: '29px',
+                  lineHeight: 1,
+                  marginBottom: 0
+                }} className="text-[#0F386E] dark:text-white">Bisman</div>
+                <div style={{
+                  fontFamily: "'Open Sans', Arial, sans-serif",
+                  fontWeight: 400,
+                  fontSize: '11px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.12em',
+                  marginTop: '4px'
+                }} className="text-[#0F386E] dark:text-white">ERP SOLUTIONS</div>
+              </div>
+            </div>
+            
+            {/* Large welcome text */}
+            <div className="flex flex-1 items-center justify-center">
+              <h1 className="text-4xl sm:text-5xl font-normal text-left text-[#0F386E] dark:text-white leading-tight">
+                <span className="font-normal">Hello,</span><br />
+                <span className="font-bold">welcome!</span>
+              </h1>
+            </div>
           </div>
-        </div>
 
-        {/* Divider */}
-  <div className="hidden md:block w-px bg-slate-200 dark:bg-slate-800" />
+          {/* Divider */}
+          <div className="hidden md:block w-px bg-slate-200 dark:bg-slate-800" />
 
-        {/* Right form panel */}
-  <div className="w-full md:w-1/2 bg-white dark:bg-gray-900 p-6 md:p-10">
-          {success && (
-            <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300 text-sm flex items-center">
-              <CheckCircle className="w-4 h-4 mr-2" />
-              {success}
+          {/* Right form panel */}
+          <div className="w-full md:w-1/2 bg-white dark:bg-gray-900 p-6 md:p-10">
+            {/* Logo for mobile only */}
+            <div className="md:hidden flex flex-row items-center space-x-3 mb-6">
+              <img
+                src={brandImgSrc}
+                alt="Bisman ERP Solutions"
+                className="h-9 w-auto object-contain select-none"
+                draggable={false}
+                onError={() => setBrandHidden(true)}
+              />
+              <div className="leading-tight" style={{ display: 'flex', flexDirection: 'column', justifyContent: 'center' }}>
+                <div style={{
+                  fontFamily: "'Montserrat', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', Arial",
+                  fontWeight: 900,
+                  fontSize: '29px',
+                  lineHeight: 1,
+                  marginBottom: 0
+                }} className="text-[#0F386E] dark:text-white">Bisman</div>
+                <div style={{
+                  fontFamily: "'Open Sans', Arial, sans-serif",
+                  fontWeight: 400,
+                  fontSize: '11px',
+                  textTransform: 'uppercase',
+                  letterSpacing: '0.12em',
+                  marginTop: '4px'
+                }} className="text-[#0F386E] dark:text-white">ERP SOLUTIONS</div>
+              </div>
             </div>
-          )}
-
-          {error && (
-            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm">
-              {error}
+            
+            {/* Welcome message for mobile */}
+            <div className="md:hidden mb-4">
+              <span className="text-[1.375rem] font-normal text-[#0F386E] dark:text-white">
+                Hello, <span className="font-bold">welcome!</span>
+              </span>
             </div>
-          )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div>
+            {/* Success message for desktop */}
+            {success && (
+              <div className="hidden md:flex mb-4 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300 text-sm items-center">
+                <CheckCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+                <span className="break-words">{success}</span>
+              </div>
+            )}
+
+            {/* Error message */}
+            {error && (
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm break-words">
+                {error}
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-4">
+              <div>
+                <h2 className="text-[1.375rem] font-bold text-slate-800 dark:text-slate-100 mb-2">Sign in</h2>
               <label htmlFor="email" className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-2">
                 Email or phone
               </label>
@@ -509,7 +539,8 @@ export default function StandardLoginPage() {
             )}
           </div>
 
-          <div className="mt-6 text-xs text-slate-400 dark:text-slate-500">Not your computer? Use Private Browsing windows to sign in. Learn more about using Guest mode</div>
+          <div className="mt-6 text-xs text-slate-400 dark:text-slate-500 break-words">Not your computer? Use Private Browsing windows to sign in. Learn more about using Guest mode</div>
+          </div>
         </div>
       </div>
     </div>
