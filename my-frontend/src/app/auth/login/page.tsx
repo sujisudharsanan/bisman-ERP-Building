@@ -336,17 +336,18 @@ export default function StandardLoginPage() {
   };
 
   return (
-    <div className="min-h-screen w-full overflow-x-hidden bg-gray-100 dark:bg-gray-950 flex items-center justify-center p-4 sm:p-6">
-      {/* Theme toggle fixed at the top-right of the viewport */}
-      <div className="fixed top-4 right-4 z-50">
-        <DarkModeToggle />
-      </div>
-      
-      <div className="w-full max-w-md md:max-w-4xl mx-auto flex flex-col items-center">
-        {/* Success message above box on small screens */}
-        {success && (
-          <div className="md:hidden w-full mb-4 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300 text-sm flex items-center">
-            <CheckCircle className="w-4 h-4 mr-2 flex-shrink-0" />
+    <div className="min-h-screen bg-gray-100 dark:bg-gray-950">
+      <div className="min-h-screen w-full overflow-x-hidden flex items-center justify-center p-4 sm:p-6">
+        {/* Theme toggle fixed at the top-right of the viewport */}
+        <div className="fixed top-4 right-4 z-50">
+          <DarkModeToggle />
+        </div>
+        
+        <div className="w-full max-w-md md:max-w-4xl mx-auto flex flex-col items-center">
+          {/* Success message above box on small screens */}
+          {success && (
+            <div className="md:hidden w-full mb-4 p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg text-green-700 dark:text-green-300 text-sm flex items-center">
+              <CheckCircle className="w-4 h-4 mr-2 flex-shrink-0" />
             <span className="break-words">{success}</span>
           </div>
         )}
@@ -542,6 +543,7 @@ export default function StandardLoginPage() {
           <div className="mt-6 text-xs text-slate-400 dark:text-slate-500 break-words">Not your computer? Use Private Browsing windows to sign in. Learn more about using Guest mode</div>
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

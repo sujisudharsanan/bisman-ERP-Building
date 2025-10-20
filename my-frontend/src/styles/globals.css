@@ -48,6 +48,15 @@ body {
 .badge-theme { background: var(--badge) !important; color: white !important; }
 .theme-transition { transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease; }
 
+/* Safe area support for iOS devices */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
 /* Utility overrides for dark theme to ensure consistent colors */
 [data-theme="dark"] .text-gray-900,
 [data-theme="dark"] .text-gray-800,

@@ -3,13 +3,15 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Image from 'next/image';
+import ResponsiveDashboardLayout from '@/components/layouts/ResponsiveDashboardLayout';
+import DarkModeToggle from '@/components/ui/DarkModeToggle';
 
 const HeaderLogo: React.FC = () => {
   const [logoError, setLogoError] = useState(false);
 
   if (logoError) {
     return (
-      <div className="mr-3 w-7 h-7 rounded bg-gray-200 flex items-center justify-center text-xs text-gray-500">
+      <div className="mr-3 w-7 h-7 rounded bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-xs text-gray-500 dark:text-gray-400">
         B
       </div>
     );
@@ -51,6 +53,7 @@ import {
   BarChart3,
   ShoppingCart,
   LogOut,
+  LayoutDashboard,
 } from 'lucide-react';
 
 // Import our new user management components
@@ -576,18 +579,18 @@ const SuperAdminControlPanel: React.FC = () => {
           ].map((stat, idx) => (
             <div
               key={idx}
-              className="bg-white rounded-lg shadow p-6 border-l-4 border-l-blue-500"
+              className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900/50 p-6 border-l-4 border-l-blue-500 dark:border-l-blue-400"
             >
               <div className="flex items-center">
                 <div className="flex-shrink-0">
-                  <stat.icon className={`h-8 w-8 text-${stat.color}-600`} />
+                  <stat.icon className={`h-8 w-8 text-${stat.color}-600 dark:text-${stat.color}-400`} />
                 </div>
                 <div className="ml-5 w-0 flex-1">
                   <dl>
-                    <dt className="text-sm font-medium text-gray-500 truncate">
+                    <dt className="text-sm font-medium text-gray-500 dark:text-gray-400 truncate">
                       {stat.label}
                     </dt>
-                    <dd className="text-lg font-medium text-gray-900">
+                    <dd className="text-lg font-medium text-gray-900 dark:text-gray-100">
                       {stat.value}
                     </dd>
                   </dl>
@@ -598,9 +601,9 @@ const SuperAdminControlPanel: React.FC = () => {
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-white shadow rounded-lg">
+      <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/50 rounded-lg">
         <div className="px-4 py-5 sm:p-6">
-          <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
+          <h3 className="text-lg leading-6 font-medium text-gray-900 dark:text-gray-100 mb-4">
             <Activity className="inline w-5 h-5 mr-2" />
             Recent Activity
           </h3>
@@ -608,30 +611,30 @@ const SuperAdminControlPanel: React.FC = () => {
             {(Array.isArray(activities) ? activities : []).map(activity => (
               <div
                 key={activity.id}
-                className="flex items-center justify-between py-2 border-b border-gray-100"
+                className="flex items-center justify-between py-2 border-b border-gray-100 dark:border-gray-700"
               >
                 <div className="flex items-center space-x-3">
                   <div className="flex-shrink-0">
                     {activity.action.includes('create') && (
-                      <Plus className="w-4 h-4 text-green-500" />
+                      <Plus className="w-4 h-4 text-green-500 dark:text-green-400" />
                     )}
                     {activity.action.includes('update') && (
-                      <Edit3 className="w-4 h-4 text-blue-500" />
+                      <Edit3 className="w-4 h-4 text-blue-500 dark:text-blue-400" />
                     )}
                     {activity.action.includes('delete') && (
-                      <XCircle className="w-4 h-4 text-red-500" />
+                      <XCircle className="w-4 h-4 text-red-500 dark:text-red-400" />
                     )}
                   </div>
                   <div>
-                    <p className="text-sm font-medium text-gray-900">
+                    <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                       {activity.username || 'System'} {activity.action}
                     </p>
-                    <p className="text-xs text-gray-500">
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
                       {activity.entity_type} {activity.entity_id}
                     </p>
                   </div>
                 </div>
-                <div className="flex items-center text-xs text-gray-500">
+                <div className="flex items-center text-xs text-gray-500 dark:text-gray-400">
                   <Clock className="w-3 h-3 mr-1" />
                   {new Date(activity.created_at).toLocaleString()}
                 </div>
@@ -648,50 +651,50 @@ const SuperAdminControlPanel: React.FC = () => {
     <div className="space-y-3">
       {/* Header with Quick Stats */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-        <div className="bg-white rounded-lg shadow p-3">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900/50 p-3">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <Shield className="h-6 w-6 text-blue-600" />
+              <Shield className="h-6 w-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div className="ml-3">
-              <dt className="text-xs font-medium text-gray-500">Total Roles</dt>
-              <dd className="text-xl font-bold text-gray-900">{roles.length}</dd>
+              <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">Total Roles</dt>
+              <dd className="text-xl font-bold text-gray-900 dark:text-gray-100">{roles.length}</dd>
             </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow p-3">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900/50 p-3">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <AlertTriangle className="h-6 w-6 text-yellow-600" />
+              <AlertTriangle className="h-6 w-6 text-yellow-600 dark:text-yellow-400" />
             </div>
             <div className="ml-3">
-              <dt className="text-xs font-medium text-gray-500">Pending KYC</dt>
-              <dd className="text-xl font-bold text-gray-900">{pendingKyc.length}</dd>
+              <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">Pending KYC</dt>
+              <dd className="text-xl font-bold text-gray-900 dark:text-gray-100">{pendingKyc.length}</dd>
             </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow p-3">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900/50 p-3">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <Shield className="h-6 w-6 text-green-600" />
+              <Shield className="h-6 w-6 text-green-600 dark:text-green-400" />
             </div>
             <div className="ml-3">
-              <dt className="text-xs font-medium text-gray-500">Active Roles</dt>
-              <dd className="text-xl font-bold text-gray-900">{roles.length}</dd>
+              <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">Active Roles</dt>
+              <dd className="text-xl font-bold text-gray-900 dark:text-gray-100">{roles.length}</dd>
             </div>
           </div>
         </div>
         
-        <div className="bg-white rounded-lg shadow p-3">
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow dark:shadow-gray-900/50 p-3">
           <div className="flex items-center">
             <div className="flex-shrink-0">
-              <Activity className="h-6 w-6 text-purple-600" />
+              <Activity className="h-6 w-6 text-purple-600 dark:text-purple-400" />
             </div>
             <div className="ml-3">
-              <dt className="text-xs font-medium text-gray-500">Invitations</dt>
-              <dd className="text-xl font-bold text-gray-900">{invitations.length}</dd>
+              <dt className="text-xs font-medium text-gray-500 dark:text-gray-400">Invitations</dt>
+              <dd className="text-xl font-bold text-gray-900 dark:text-gray-100">{invitations.length}</dd>
             </div>
           </div>
         </div>
@@ -700,8 +703,8 @@ const SuperAdminControlPanel: React.FC = () => {
   {/* Action Controls moved inside the card header on the right of tabs */}
 
       {/* Main Content Tabs with actions on the right */}
-      <div className="bg-white shadow rounded-lg">
-        <div className="border-b border-gray-200">
+      <div className="bg-white dark:bg-gray-800 shadow dark:shadow-gray-900/50 rounded-lg">
+        <div className="border-b border-gray-200 dark:border-gray-700">
           <div className="px-6 py-3 flex items-center justify-between gap-3 flex-wrap">
             <nav className="-mb-px flex space-x-8">
               {[ 
@@ -713,8 +716,8 @@ const SuperAdminControlPanel: React.FC = () => {
                   key={tab.id}
                   className={`flex items-center space-x-2 py-4 px-1 border-b-2 font-medium text-sm ${
                     activeTab === tab.id
-                      ? 'border-blue-500 text-blue-600'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                      ? 'border-blue-500 dark:border-blue-400 text-blue-600 dark:text-blue-400'
+                      : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300 hover:border-gray-300 dark:hover:border-gray-600'
                   }`}
                   onClick={() => handleTabChange(tab.id)}
                 >
@@ -726,19 +729,19 @@ const SuperAdminControlPanel: React.FC = () => {
 
             <div className="flex items-center gap-2 sm:gap-3 w-full sm:w-auto">
               <div className="relative w-full sm:w-80 md:w-72">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 dark:text-gray-500 w-4 h-4" />
                 <input
                   type="text"
                   placeholder="Search roles..."
                   value={userSearch}
                   onChange={e => setUserSearch(e.target.value)}
-                  className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 placeholder-gray-400 dark:placeholder-gray-500 rounded-lg focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 focus:border-transparent"
                 />
               </div>
 
               <button
                 onClick={loadUsers}
-                className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+                className="bg-blue-600 dark:bg-blue-500 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 flex items-center space-x-2"
               >
                 <RefreshCw className="w-4 h-4" />
                 <span className="hidden sm:inline">Refresh</span>
@@ -746,7 +749,7 @@ const SuperAdminControlPanel: React.FC = () => {
 
               <button
                 onClick={() => setShowInviteModal(true)}
-                className="bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center space-x-2"
+                className="bg-blue-600 dark:bg-blue-500 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 flex items-center space-x-2"
               >
                 <Plus className="w-4 h-4" />
                 <span className="hidden sm:inline">Invite User</span>
@@ -754,7 +757,7 @@ const SuperAdminControlPanel: React.FC = () => {
 
               <button
                 onClick={() => setShowCreateUserModal(true)}
-                className="bg-green-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 flex items-center space-x-2"
+                className="bg-green-600 dark:bg-green-500 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-green-700 dark:hover:bg-green-600 flex items-center space-x-2"
               >
                 <Plus className="w-4 h-4" />
                 <span className="hidden sm:inline">Create User</span>
@@ -765,13 +768,13 @@ const SuperAdminControlPanel: React.FC = () => {
 
         <div className="p-6">
           {error && (
-            <div className="mb-4 bg-red-50 border border-red-200 rounded-lg p-4">
+            <div className="mb-4 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
               <div className="flex items-center">
-                <AlertTriangle className="w-5 h-5 text-red-600 mr-2" />
-                <p className="text-red-700">{error}</p>
+                <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 mr-2" />
+                <p className="text-red-700 dark:text-red-300">{error}</p>
                 <button
                   onClick={() => setError(null)}
-                  className="ml-auto text-red-600 hover:text-red-800"
+                  className="ml-auto text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
                 >
                   <XCircle className="w-4 h-4" />
                 </button>
@@ -781,82 +784,82 @@ const SuperAdminControlPanel: React.FC = () => {
 
           {loading ? (
             <div className="flex items-center justify-center py-8">
-              <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
-              <span className="ml-2 text-gray-600">Loading...</span>
+              <RefreshCw className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
+              <span className="ml-2 text-gray-600 dark:text-gray-400">Loading...</span>
             </div>
           ) : (
             <>
               {/* All Roles Table */}
               {(activeTab === 'users' || activeTab === 'all-users') && (
                 <div className="overflow-hidden">
-                  <table className="min-w-full divide-y divide-gray-200">
-                    <thead className="bg-gray-50">
+                  <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                    <thead className="bg-gray-50 dark:bg-gray-700">
                       <tr>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Role
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Permission
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Users
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Level
                         </th>
-                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-300 uppercase tracking-wider">
                           Actions
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-gray-800 divide-y divide-gray-200 dark:divide-gray-700">
                       {roles.map(role => (
-                        <tr key={role.id} className="hover:bg-gray-50">
+                        <tr key={role.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               <div className="flex-shrink-0 h-10 w-10">
-                                <div className="h-10 w-10 rounded-full bg-blue-100 flex items-center justify-center">
-                                  <Shield className="h-6 w-6 text-blue-600" />
+                                <div className="h-10 w-10 rounded-full bg-blue-100 dark:bg-blue-900/50 flex items-center justify-center">
+                                  <Shield className="h-6 w-6 text-blue-600 dark:text-blue-400" />
                                 </div>
                               </div>
                               <div className="ml-4">
-                                <div className="text-sm font-medium text-gray-900">
+                                <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
                                   {role.name}
                                 </div>
-                                <div className="text-xs text-gray-500">ID: {role.id}</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">ID: {role.id}</div>
                               </div>
                             </div>
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                             {`${(rolePermCounts[String(role.id)] ?? (role as any).permission_count ?? getPermissionCount(role))}/${(role as any).total_permissions || totalPermissions || MAX_PERMISSIONS}`}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                             {getUserCountForRole(role)}
                           </td>
-                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-700 dark:text-gray-300">
                             {getApprovalLevel(role)}
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap text-sm font-medium">
                             <div className="flex items-center space-x-2">
-                              <span className={`px-2 py-0.5 rounded-full text-xs ${(role as any).is_active === false ? 'bg-gray-100 text-gray-700' : 'bg-green-100 text-green-800'}`} title="Role status">
+                              <span className={`px-2 py-0.5 rounded-full text-xs ${(role as any).is_active === false ? 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300' : 'bg-green-100 dark:bg-green-900/50 text-green-800 dark:text-green-300'}`} title="Role status">
                                 {(role as any).is_active === false ? 'Inactive' : 'Active'}
                               </span>
                               <button
-                                className="text-blue-600 hover:text-blue-900"
+                                className="text-blue-600 dark:text-blue-400 hover:text-blue-900 dark:hover:text-blue-300"
                                 title="View Role"
                                 onClick={() => openRoleInfo(role)}
                               >
                                 <Eye className="w-4 h-4" />
                               </button>
                               <button
-                                className="text-green-600 hover:text-green-900"
+                                className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300"
                                 title="Edit Role"
                                 onClick={() => openPrivilegeEditorForRole(role)}
                               >
                                 <Edit3 className="w-4 h-4" />
                               </button>
                               <button
-                                className="text-gray-600 hover:text-gray-900"
+                                className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200"
                                 title={(role as any).is_active === false ? 'Enable Role' : 'Disable Role'}
                                 onClick={async () => {
                                   try {
@@ -877,9 +880,9 @@ const SuperAdminControlPanel: React.FC = () => {
                   
                   {roles.length === 0 && (
                     <div className="text-center py-8">
-                      <Shield className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No roles found</h3>
-                      <p className="text-gray-600 mb-4">
+                      <Shield className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No roles found</h3>
+                      <p className="text-gray-600 dark:text-gray-400 mb-4">
                         {error?.toLowerCase().includes('auth')
                           ? 'You must be logged in to view roles.'
                           : 'Define roles to manage access across the system.'}
@@ -887,7 +890,7 @@ const SuperAdminControlPanel: React.FC = () => {
                       {error?.toLowerCase().includes('auth') && (
                         <a
                           href="/auth/login"
-                          className="inline-flex items-center px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+                          className="inline-flex items-center px-4 py-2 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600"
                         >
                           Go to Login
                         </a>
@@ -903,7 +906,7 @@ const SuperAdminControlPanel: React.FC = () => {
                   {pendingKyc.map(submission => (
                     <div
                       key={submission.id}
-                      className="border border-gray-200 rounded-lg p-4 hover:bg-gray-50 cursor-pointer"
+                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer"
                       onClick={() => setSelectedKycSubmission({
                         ...submission,
                         user: users.find(u => u.id === submission.user_id) || {} as UserType,
@@ -913,19 +916,19 @@ const SuperAdminControlPanel: React.FC = () => {
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="font-medium text-gray-900">
+                          <h4 className="font-medium text-gray-900 dark:text-gray-100">
                             {submission.first_name} {submission.last_name}
                           </h4>
-                          <p className="text-sm text-gray-500">{submission.personal_email}</p>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{submission.personal_email}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500">
                             Submitted {new Date(submission.created_at).toLocaleDateString()}
                           </p>
                         </div>
                         <div className="flex items-center space-x-2">
-                          <span className="px-2 py-1 bg-yellow-100 text-yellow-800 text-xs rounded-full">
+                          <span className="px-2 py-1 bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300 text-xs rounded-full">
                             Pending Review
                           </span>
-                          <Eye className="w-4 h-4 text-gray-400" />
+                          <Eye className="w-4 h-4 text-gray-400 dark:text-gray-500" />
                         </div>
                       </div>
                     </div>
@@ -933,9 +936,9 @@ const SuperAdminControlPanel: React.FC = () => {
                   
                   {pendingKyc.length === 0 && (
                     <div className="text-center py-8">
-                      <CheckCircle className="w-12 h-12 text-green-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">All caught up!</h3>
-                      <p className="text-gray-600">No pending KYC submissions to review.</p>
+                      <CheckCircle className="w-12 h-12 text-green-400 dark:text-green-500 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">All caught up!</h3>
+                      <p className="text-gray-600 dark:text-gray-400">No pending KYC submissions to review.</p>
                     </div>
                   )}
                 </div>
@@ -947,15 +950,15 @@ const SuperAdminControlPanel: React.FC = () => {
                   {invitations.map(invitation => (
                     <div
                       key={invitation.id}
-                      className="border border-gray-200 rounded-lg p-4"
+                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4"
                     >
                       <div className="flex items-center justify-between">
                         <div>
-                          <h4 className="font-medium text-gray-900">
+                          <h4 className="font-medium text-gray-900 dark:text-gray-100">
                             {invitation.invitee_name}
                           </h4>
-                          <p className="text-sm text-gray-500">{invitation.invitee_email}</p>
-                          <p className="text-xs text-gray-400">
+                          <p className="text-sm text-gray-500 dark:text-gray-400">{invitation.invitee_email}</p>
+                          <p className="text-xs text-gray-400 dark:text-gray-500">
                             Invited {new Date(invitation.created_at).toLocaleDateString()}
                             {invitation.expires_at && (
                               <> • Expires {new Date(invitation.expires_at).toLocaleDateString()}</>
@@ -965,17 +968,17 @@ const SuperAdminControlPanel: React.FC = () => {
                         <div className="flex items-center space-x-2">
                           <span className={`px-2 py-1 text-xs rounded-full ${
                             invitation.status === 'pending_kyc'
-                              ? 'bg-yellow-100 text-yellow-800'
+                              ? 'bg-yellow-100 dark:bg-yellow-900/50 text-yellow-800 dark:text-yellow-300'
                               : invitation.status === 'kyc_submitted'
-                              ? 'bg-blue-100 text-blue-800'
+                              ? 'bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300'
                               : invitation.status === 'expired'
-                              ? 'bg-gray-100 text-gray-800'
-                              : 'bg-red-100 text-red-800'
+                              ? 'bg-gray-100 dark:bg-gray-700 text-gray-800 dark:text-gray-300'
+                              : 'bg-red-100 dark:bg-red-900/50 text-red-800 dark:text-red-300'
                           }`}>
                             {invitation.status}
                           </span>
                           {invitation.role && (
-                            <span className="px-2 py-1 bg-blue-100 text-blue-800 text-xs rounded-full">
+                            <span className="px-2 py-1 bg-blue-100 dark:bg-blue-900/50 text-blue-800 dark:text-blue-300 text-xs rounded-full">
                               {invitation.role.name}
                             </span>
                           )}
@@ -986,12 +989,12 @@ const SuperAdminControlPanel: React.FC = () => {
                   
                   {invitations.length === 0 && (
                     <div className="text-center py-8">
-                      <Activity className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-medium text-gray-900 mb-2">No invitations</h3>
-                      <p className="text-gray-600 mb-4">Start by inviting users to join your organization.</p>
+                      <Activity className="w-12 h-12 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">No invitations</h3>
+                      <p className="text-gray-600 dark:text-gray-400 mb-4">Start by inviting users to join your organization.</p>
                       <button
                         onClick={() => setShowInviteModal(true)}
-                        className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700"
+                        className="bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600"
                       >
                         Send Invitation
                       </button>
@@ -1003,23 +1006,23 @@ const SuperAdminControlPanel: React.FC = () => {
               {/* Role Info Modal */}
               {showRoleInfo && roleInfoTarget && (
                 <div className="fixed inset-0 z-50 flex items-center justify-center">
-                  <div className="absolute inset-0 bg-black/30" onClick={closeRoleInfo} />
-                  <div className="relative bg-white rounded-lg shadow-lg w-full max-w-lg mx-4 p-6">
+                  <div className="absolute inset-0 bg-black/30 dark:bg-black/60" onClick={closeRoleInfo} />
+                  <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg dark:shadow-gray-900/50 w-full max-w-lg mx-4 p-6">
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex items-center space-x-3">
-                        <div className="p-2 bg-blue-100 rounded-lg"><Shield className="h-6 w-6 text-blue-600" /></div>
+                        <div className="p-2 bg-blue-100 dark:bg-blue-900/50 rounded-lg"><Shield className="h-6 w-6 text-blue-600 dark:text-blue-400" /></div>
                         <div>
-                          <h3 className="text-lg font-semibold text-gray-900">{roleInfoTarget.name}</h3>
-                          <p className="text-xs text-gray-500">Role ID: {String(roleInfoTarget.id)}</p>
+                          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">{roleInfoTarget.name}</h3>
+                          <p className="text-xs text-gray-500 dark:text-gray-400">Role ID: {String(roleInfoTarget.id)}</p>
                         </div>
                       </div>
-                      <button onClick={closeRoleInfo} className="text-gray-400 hover:text-gray-600">✕</button>
+                      <button onClick={closeRoleInfo} className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300">✕</button>
                     </div>
 
                     <div className="space-y-4">
                       <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-1">Purpose</h4>
-                        <p className="text-sm text-gray-700">{getRolePurpose(roleInfoTarget.name)}</p>
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Purpose</h4>
+                        <p className="text-sm text-gray-700 dark:text-gray-300">{getRolePurpose(roleInfoTarget.name)}</p>
                       </div>
                       <div className="grid grid-cols-2 gap-4">
                         {(() => {
@@ -1027,50 +1030,50 @@ const SuperAdminControlPanel: React.FC = () => {
                           const total = (roleInfoTarget.total_permissions || totalPermissions || MAX_PERMISSIONS) as number;
                           const pct = total > 0 ? Math.round((granted / total) * 100) : 0;
                           return (
-                            <div className="col-span-2 bg-gray-50 rounded-md p-3 border border-gray-100">
+                            <div className="col-span-2 bg-gray-50 dark:bg-gray-700 rounded-md p-3 border border-gray-100 dark:border-gray-600">
                               <div className="flex items-center justify-between mb-1">
-                                <div className="text-xs text-gray-500">Permission space used</div>
-                                <div className="text-xs text-gray-700 font-medium">{pct}%</div>
+                                <div className="text-xs text-gray-500 dark:text-gray-400">Permission space used</div>
+                                <div className="text-xs text-gray-700 dark:text-gray-300 font-medium">{pct}%</div>
                               </div>
-                              <div className="w-full h-2 bg-gray-200 rounded">
-                                <div className="h-2 bg-blue-600 rounded" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
+                              <div className="w-full h-2 bg-gray-200 dark:bg-gray-600 rounded">
+                                <div className="h-2 bg-blue-600 dark:bg-blue-500 rounded" style={{ width: `${Math.min(100, Math.max(0, pct))}%` }} />
                               </div>
                             </div>
                           );
                         })()}
-                        <div className="bg-gray-50 rounded-md p-3 border border-gray-100">
-                          <div className="text-xs text-gray-500">Total Permissions (granted)</div>
-                          <div className="text-xl font-semibold text-gray-900">
+                        <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-3 border border-gray-100 dark:border-gray-600">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Total Permissions (granted)</div>
+                          <div className="text-xl font-semibold text-gray-900 dark:text-gray-100">
                             {(rolePermCounts[String(roleInfoTarget.id)] ?? roleInfoTarget.permission_count ?? getPermissionCount(roleInfoTarget))}
-                            <span className="text-sm text-gray-500"> / {(roleInfoTarget.total_permissions || totalPermissions || MAX_PERMISSIONS)}</span>
+                            <span className="text-sm text-gray-500 dark:text-gray-400"> / {(roleInfoTarget.total_permissions || totalPermissions || MAX_PERMISSIONS)}</span>
                           </div>
                         </div>
-                        <div className="bg-gray-50 rounded-md p-3 border border-gray-100">
-                          <div className="text-xs text-gray-500">Total Users under this role</div>
-                          <div className="text-xl font-semibold text-gray-900">{getUserCountForRole(roleInfoTarget)}</div>
+                        <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-3 border border-gray-100 dark:border-gray-600">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Total Users under this role</div>
+                          <div className="text-xl font-semibold text-gray-900 dark:text-gray-100">{getUserCountForRole(roleInfoTarget)}</div>
                         </div>
-                        <div className="bg-gray-50 rounded-md p-3 border border-gray-100">
-                          <div className="text-xs text-gray-500">Approval Level</div>
-                          <div className="text-xl font-semibold text-gray-900">{getApprovalLevel(roleInfoTarget)}</div>
+                        <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-3 border border-gray-100 dark:border-gray-600">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Approval Level</div>
+                          <div className="text-xl font-semibold text-gray-900 dark:text-gray-100">{getApprovalLevel(roleInfoTarget)}</div>
                         </div>
-                        <div className="bg-gray-50 rounded-md p-3 border border-gray-100">
-                          <div className="text-xs text-gray-500">Created / Updated</div>
-                          <div className="text-sm text-gray-900">
+                        <div className="bg-gray-50 dark:bg-gray-700 rounded-md p-3 border border-gray-100 dark:border-gray-600">
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Created / Updated</div>
+                          <div className="text-sm text-gray-900 dark:text-gray-100">
                             {roleInfoTarget.created_at ? new Date(roleInfoTarget.created_at).toLocaleString() : '-'}
-                            <span className="text-gray-400"> • </span>
+                            <span className="text-gray-400 dark:text-gray-500"> • </span>
                             {roleInfoTarget.updated_at ? new Date(roleInfoTarget.updated_at).toLocaleString() : '-'}
                           </div>
                         </div>
                       </div>
 
                       <div>
-                        <h4 className="text-sm font-medium text-gray-700 mb-1">Notes</h4>
-                        <p className="text-xs text-gray-500">Levels indicate seniority; permissions reflect explicit grants. Totals may grow as routes/actions increase.</p>
+                        <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Notes</h4>
+                        <p className="text-xs text-gray-500 dark:text-gray-400">Levels indicate seniority; permissions reflect explicit grants. Totals may grow as routes/actions increase.</p>
                       </div>
                     </div>
 
                     <div className="mt-5 flex justify-end space-x-2">
-                      <button onClick={closeRoleInfo} className="px-4 py-2 text-sm rounded-md bg-gray-100 hover:bg-gray-200 text-gray-700">Close</button>
+                      <button onClick={closeRoleInfo} className="px-4 py-2 text-sm rounded-md bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300">Close</button>
                     </div>
                   </div>
                 </div>
@@ -1083,85 +1086,68 @@ const SuperAdminControlPanel: React.FC = () => {
   );
 
       
-  const tabs = [
-    { id: 'dashboard', label: 'Dashboard', icon: BarChart3 },
-    { id: 'orders', label: 'Order Management', icon: ShoppingCart },
-    { id: 'users', label: 'Role Management', icon: Users },
-    { id: 'activity', label: 'Activity Log', icon: Activity },
-    { id: 'database', label: 'Database Browser', icon: Database },
-    { id: 'security', label: 'Security Monitor', icon: Server },
-    { id: 'settings', label: 'System Settings', icon: Settings },
+  // Navigation tabs configuration for responsive layout
+  const navigationTabs = [
+    { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard, path: '' },
+    { id: 'orders', label: 'Order Management', icon: ShoppingCart, path: '' },
+    { id: 'users', label: 'Role Management', icon: Users, path: '' },
+    { id: 'activity', label: 'Activity Log', icon: Activity, path: '' },
+    { id: 'database', label: 'Database Browser', icon: Database, path: '' },
   ];
 
   return (
-    <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-950 overflow-x-hidden">
-      <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
-        {/* Prevent horizontal overflow on small screens by allowing inner scroll for wide content */}
-        <div className="overflow-x-auto">
-         <div className="pt-6 pb-8">
-           <div className="flex items-center justify-between">
-             <div className="flex items-center">
-               <HeaderLogo />
-        {/* Slightly smaller title to further reduce perceived banner size */}
-        <h1 className="text-xl font-bold text-gray-900">
+    <div className="min-h-screen w-full bg-gray-50 dark:bg-gray-950">
+      {/* Fixed Top Bar - Reduced Size */}
+      <div className="fixed top-0 left-0 right-0 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 z-40 shadow-sm">
+        <div className="max-w-screen-2xl mx-auto px-3 sm:px-4 lg:px-6">
+          <div className="flex items-center justify-between h-12">
+            <div className="flex items-center gap-2">
+              <HeaderLogo />
+              <h1 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
                 Super Admin Control Panel
               </h1>
             </div>
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center gap-2">
               <TopNavDbIndicator />
               <button
                 onClick={() => window.location.reload()}
-                className="bg-blue-600 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 flex items-center space-x-2 text-sm"
+                className="bg-blue-600 text-white px-2 py-1 rounded hover:bg-blue-700 flex items-center gap-1 text-xs"
                 aria-label="Refresh"
                 title="Refresh"
               >
-                <RefreshCw className="w-4 h-4" />
-                <span>Refresh</span>
+                <RefreshCw className="w-3 h-3" />
+                <span className="hidden sm:inline">Refresh</span>
               </button>
               <button
                 onClick={handleLogout}
-                className="bg-gray-700 text-white px-3 py-1.5 rounded-md hover:bg-gray-800 flex items-center space-x-2 text-sm"
+                className="bg-gray-700 text-white px-2 py-1 rounded hover:bg-gray-800 flex items-center gap-1 text-xs"
                 aria-label="Logout"
                 title="Logout"
               >
-                <LogOut className="w-4 h-4" />
-                <span>Logout</span>
+                <LogOut className="w-3 h-3" />
+                <span className="hidden sm:inline">Logout</span>
               </button>
+              <DarkModeToggle />
             </div>
           </div>
         </div>
       </div>
 
-  {/* Navigation Tabs */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="border-b border-gray-200">
-          <nav className="-mb-px flex space-x-8">
-            {tabs.map(tab => (
-              <button
-                key={tab.id}
-                onClick={() => handleTabChange(tab.id)}
-        className={`py-[6px] px-1 border-b-2 font-medium text-sm flex items-center space-x-2 ${
-                  activeTab === tab.id
-                    ? 'border-blue-500 text-blue-600'
-                    : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                }`}
-              >
-                <tab.icon className="w-4 h-4" />
-                <span>{tab.label}</span>
-              </button>
-            ))}
-          </nav>
-        </div>
-      </div>
-
-  {/* Content */}
-  <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-5">
+      {/* Responsive Navigation with Content */}
+      <ResponsiveDashboardLayout 
+        tabs={navigationTabs} 
+        currentTab={activeTab} 
+        onTabChange={handleTabChange}
+      >
+        {/* Content - Offset for fixed header */}
+        <div className="pt-12">
+          <div className="max-w-7xl mx-auto px-3 sm:px-4 lg:px-6 py-4">
         {error && (
-          <div className="mb-6 bg-red-50 border border-red-200 rounded-lg p-4">
+          <div className="mb-6 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg p-4">
             <div className="flex">
-              <AlertTriangle className="h-5 w-5 text-red-400" />
+              <AlertTriangle className="h-5 w-5 text-red-400 dark:text-red-500" />
               <div className="ml-3">
-                <p className="text-sm text-red-800">{error}</p>
+                <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
               </div>
             </div>
           </div>
@@ -1169,7 +1155,7 @@ const SuperAdminControlPanel: React.FC = () => {
 
         {loading && (
           <div className="flex justify-center items-center py-12">
-            <RefreshCw className="w-8 h-8 animate-spin text-blue-600" />
+            <RefreshCw className="w-8 h-8 animate-spin text-blue-600 dark:text-blue-400" />
           </div>
         )}
 
@@ -1178,16 +1164,16 @@ const SuperAdminControlPanel: React.FC = () => {
             {activeTab === 'dashboard' && <DashboardTab />}
             {activeTab === 'orders' && (
               <div className="text-center py-12">
-                <ShoppingCart className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">
+                <ShoppingCart className="w-16 h-16 text-gray-400 dark:text-gray-500 mx-auto mb-4" />
+                <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
                   Order Management
                 </h3>
-                <p className="text-gray-500 mb-6">
+                <p className="text-gray-500 dark:text-gray-400 mb-6">
                   Access the comprehensive Super Admin Order Management System
                 </p>
                 <a
                   href="/super-admin/orders"
-                  className="inline-flex items-center px-6 py-3 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors"
+                  className="inline-flex items-center px-6 py-3 bg-indigo-600 dark:bg-indigo-500 text-white rounded-lg hover:bg-indigo-700 dark:hover:bg-indigo-600 transition-colors"
                 >
                   <ShoppingCart className="w-5 h-5 mr-2" />
                   Open Order Management
@@ -1222,10 +1208,10 @@ const SuperAdminControlPanel: React.FC = () => {
             )}
           </>
         )}
-      </div>
+        </div>
       
-      {/* User Management Modals and Components */}
-      {showInviteModal && (
+        {/* User Management Modals and Components */}
+        {showInviteModal && (
         <InviteUserModal
           isOpen={showInviteModal}
           onClose={() => setShowInviteModal(false)}
@@ -1303,8 +1289,9 @@ const SuperAdminControlPanel: React.FC = () => {
           </button>
         </div>
       )}
+        </div>
+      </ResponsiveDashboardLayout>
     </div>
-  </div>
   );
 };
 

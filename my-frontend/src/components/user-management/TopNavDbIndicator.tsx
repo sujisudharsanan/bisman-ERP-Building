@@ -129,23 +129,24 @@ export function TopNavDbIndicator() {
   };
 
   return (
-    <div className="flex items-center space-x-2 px-3 py-1.5 bg-panel text-theme rounded-lg border border-theme">
-      <div className={`${getStatusColor()} flex items-center justify-center w-5 h-5 rounded`}> 
+    <div className="flex items-center space-x-2 px-2 sm:px-3 py-1.5 bg-panel text-theme rounded-lg border border-theme">
+      <div className={`${getStatusColor()} flex items-center justify-center w-5 h-5 rounded`} title={getStatusText()}> 
         {/* Icon colored by status for quick glance */}
         <StatusIcon />
       </div>
-      <span className="text-sm font-medium text-theme">
+      {/* Hide text on small screens, show on sm and above */}
+      <span className="hidden sm:inline text-sm font-medium text-theme">
         {getStatusText()}
       </span>
       {dbStatus.activeConnections !== undefined && dbStatus.connected && (
-        <span className="text-xs text-muted">
+        <span className="hidden md:inline text-xs text-muted">
           ({dbStatus.activeConnections} active)
         </span>
       )}
       <button
         onClick={checkDatabaseStatus}
         disabled={isLoading}
-        className="text-xs text-muted hover:text-theme disabled:opacity-50"
+        className="hidden sm:inline text-xs text-muted hover:text-theme disabled:opacity-50"
         title="Refresh status"
       >
         Refresh
