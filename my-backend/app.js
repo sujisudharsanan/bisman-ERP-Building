@@ -316,6 +316,10 @@ app.use('/api/pages', pagesRoutes)
 const permissionsRoutes = require('./routes/permissionsRoutes')
 app.use('/api/permissions', permissionsRoutes)
 
+// Reports routes for generating system reports
+const reportsRoutes = require('./routes/reportsRoutes')
+app.use('/api/reports', reportsRoutes)
+
 // Security monitoring routes (versioned)
 try {
   const securityRoutes = require('./routes/securityRoutes')

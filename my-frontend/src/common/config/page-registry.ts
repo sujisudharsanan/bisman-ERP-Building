@@ -1,7 +1,196 @@
 /**
- * Centralized Page Registry
- * Maps all ERP pages to their routes, permissions, roles, and metadata
- * Automatically scanned to generate dynamic navigation
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * CENTRALIZED PAGE REGISTRY - BISMAN ERP
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * This file is the SINGLE SOURCE OF TRUTH for all ERP pages, routes, and navigation.
+ * It maps all pages to their routes, permissions, roles, icons, and metadata.
+ * The DynamicSidebar component automatically generates navigation from this registry.
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 📋 BEFORE ADDING A NEW PAGE
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * 1. ✅ Check if the page already exists
+ *    - Use Ctrl+F (or Cmd+F) to search PAGE_REGISTRY for your page name/path
+ *    - Avoid duplicate IDs and paths
+ * 
+ * 2. ✅ Identify the correct module
+ *    - system: User management, settings, audit logs, system configuration
+ *    - finance: Financial operations, accounting, treasury, budgeting
+ *    - procurement: Purchase orders, vendor management, procurement processes
+ *    - operations: Warehouse, logistics, inventory, delivery operations
+ *    - compliance: Legal, regulatory compliance, audits, policy management
+ * 
+ * 3. ✅ Define required permissions
+ *    - What actions does a user need to access this page?
+ *    - Examples: 'system-settings', 'financial-reporting', 'purchase-order-create'
+ *    - Users need AT LEAST ONE of the listed permissions (OR logic)
+ * 
+ * 4. ✅ Assign target roles
+ *    - Which roles should see this page in their sidebar?
+ *    - Examples: ['SUPER_ADMIN', 'CFO', 'FINANCE_CONTROLLER']
+ *    - Multiple roles can access the same page
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🔨 ADDING A NEW PAGE - STEP BY STEP
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * Step 1: Create the page file
+ * ────────────────────────────────────────────────────────────────────────────
+ * Create: src/app/[module]/[page-name]/page.tsx
+ * 
+ * Example:
+ *   src/app/finance/budget-approval/page.tsx
+ * 
+ * Template:
+ *   ```typescript
+ *   import SuperAdminShell from '@/components/layouts/SuperAdminShell';
+ *   
+ *   export default function BudgetApprovalPage() {
+ *     return (
+ *       <SuperAdminShell title="Budget Approval" module="finance">
+ *         <div className="p-6">
+ *           <h1>Budget Approval</h1>
+ *           {/* Your page content here *\/}
+ *         </div>
+ *       </SuperAdminShell>
+ *     );
+ *   }
+ *   ```
+ * 
+ * Step 2: Add entry to PAGE_REGISTRY
+ * ────────────────────────────────────────────────────────────────────────────
+ * Scroll down to the PAGE_REGISTRY array and add your page entry.
+ * Copy an existing entry and modify it.
+ * 
+ * Example:
+ *   ```typescript
+ *   {
+ *     id: 'budget-approval',                    // Unique kebab-case ID
+ *     name: 'Budget Approval',                  // Display name in sidebar
+ *     path: '/finance/budget-approval',         // Route path (must match folder)
+ *     icon: CheckCircle,                        // Icon from lucide-react
+ *     module: 'finance',                        // Module category
+ *     permissions: ['budget-approve'],          // Required permissions (OR)
+ *     roles: ['CFO', 'FINANCE_CONTROLLER'],     // Target roles
+ *     status: 'active',                         // active | coming-soon | disabled
+ *     description: 'Approve and review budget requests',
+ *     order: 10,                                // Display order in sidebar
+ *   },
+ *   ```
+ * 
+ * Step 3: Run consistency check
+ * ────────────────────────────────────────────────────────────────────────────
+ *   ```bash
+ *   cd my-backend
+ *   node check-modules-consistency.js
+ *   ```
+ * 
+ * This will verify:
+ *   ✅ Page file exists
+ *   ✅ Page is registered here
+ *   ✅ Backend route exists (if needed)
+ *   ✅ No dead links
+ *   ✅ No orphan pages
+ * 
+ * Step 4: Test with demo user
+ * ────────────────────────────────────────────────────────────────────────────
+ *   Login credentials: demo_[role]@bisman.demo / Demo@123
+ *   
+ *   Examples:
+ *   - demo_super_admin@bisman.demo
+ *   - demo_cfo@bisman.demo
+ *   - demo_finance_controller@bisman.demo
+ * 
+ *   1. Login with a user that has the target role
+ *   2. Check sidebar - your page should appear
+ *   3. Click the page link - it should load without errors
+ *   4. Verify permissions work correctly
+ * 
+ * Step 5: Commit both files
+ * ────────────────────────────────────────────────────────────────────────────
+ *   ```bash
+ *   git add src/app/[module]/[page-name]/page.tsx
+ *   git add src/common/config/page-registry.ts
+ *   git commit -m "feat: add [page-name] page to [module] module"
+ *   ```
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * ✅ VERIFICATION CHECKLIST
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * Before committing, ensure:
+ * 
+ * □ Page file created in correct directory structure
+ * □ PAGE_REGISTRY entry added with all required fields
+ * □ Unique ID (no duplicates)
+ * □ Correct module assignment
+ * □ Appropriate permissions defined
+ * □ Target roles assigned
+ * □ Icon imported from lucide-react
+ * □ Consistency check passes
+ * □ Page appears in sidebar for target roles
+ * □ Page loads without errors
+ * □ No TypeScript errors
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🚫 DON'T DO THIS
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * ❌ Don't create pages without updating this registry
+ *    → Pages won't appear in sidebar navigation
+ * 
+ * ❌ Don't duplicate page IDs
+ *    → Causes routing conflicts and sidebar errors
+ * 
+ * ❌ Don't change existing page paths without migration plan
+ *    → Breaks user bookmarks and external links
+ * 
+ * ❌ Don't delete pages from registry
+ *    → Set status: 'disabled' instead for backward compatibility
+ * 
+ * ❌ Don't assign empty roles array
+ *    → Page becomes orphan and unreachable
+ * 
+ * ❌ Don't forget to run consistency check
+ *    → Undetected issues may break production
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 🛠️ MAINTENANCE COMMANDS
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * Check consistency:
+ *   cd my-backend && node check-modules-consistency.js
+ * 
+ * Export to JSON (for AI tools):
+ *   cd my-backend && node scripts/export-page-registry.js
+ * 
+ * Create missing pages:
+ *   cd my-backend && node create-missing-pages.js --module [name]
+ *   cd my-backend && node create-missing-pages.js --all
+ * 
+ * View all demo users:
+ *   cd my-backend && node scripts/list-users.js
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 📊 CURRENT STATISTICS
+ * ═══════════════════════════════════════════════════════════════════════════════
+ * 
+ * Total Pages: 84
+ * Total Modules: 5
+ * 
+ * Pages by Module:
+ *   - system: 16 pages
+ *   - finance: 32 pages
+ *   - operations: 15 pages
+ *   - procurement: 6 pages
+ *   - compliance: 10 pages
+ *   - role dashboards: 6 pages
+ * 
+ * Last Updated: October 22, 2025
+ * 
+ * ═══════════════════════════════════════════════════════════════════════════════
  */
 
 import {
@@ -133,6 +322,30 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 3,
   },
   {
+    id: 'roles-users-report',
+    name: 'Roles & Users Report',
+    path: '/system/roles-users-report',
+    icon: FileText,
+    module: 'system',
+    permissions: ['user-management'],
+    roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
+    status: 'active',
+    description: 'View comprehensive report of all roles and assigned users',
+    order: 4,
+  },
+  {
+    id: 'pages-roles-report',
+    name: 'Pages & Roles Report',
+    path: '/system/pages-roles-report',
+    icon: FileText,
+    module: 'system',
+    permissions: ['user-management', 'system-settings'],
+    roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
+    status: 'active',
+    description: 'View all pages and their assigned roles, identify orphan pages',
+    order: 5,
+  },
+  {
     id: 'audit-logs',
     name: 'Audit Logs',
     path: '/system/audit-logs',
@@ -142,7 +355,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR', 'IT ADMIN'],
     status: 'active',
     description: 'View system activity and audit trails',
-    order: 4,
+    order: 5,
   },
   {
     id: 'backup-restore',
@@ -154,7 +367,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
     status: 'active',
     description: 'Manage system backups and restoration',
-    order: 5,
+    order: 6,
   },
   {
     id: 'scheduler',
@@ -166,7 +379,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
     status: 'active',
     description: 'Configure automated tasks and schedules',
-    order: 6,
+    order: 7,
   },
   {
     id: 'system-health',
@@ -178,7 +391,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR', 'IT ADMIN'],
     status: 'active',
     description: 'Monitor system performance and health',
-    order: 7,
+    order: 8,
   },
   {
     id: 'integration-settings',
@@ -190,7 +403,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
     status: 'active',
     description: 'Configure third-party integrations',
-    order: 8,
+    order: 9,
   },
   {
     id: 'error-logs',
@@ -202,7 +415,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR', 'IT ADMIN'],
     status: 'active',
     description: 'View and manage system error logs',
-    order: 9,
+    order: 10,
   },
   {
     id: 'server-logs',
@@ -214,7 +427,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
     status: 'active',
     description: 'Access server logs and diagnostics',
-    order: 10,
+    order: 11,
   },
   {
     id: 'deployment-tools',
@@ -226,7 +439,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
     status: 'active',
     description: 'Manage deployments and releases',
-    order: 11,
+    order: 12,
   },
   {
     id: 'api-config',
@@ -238,7 +451,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
     status: 'active',
     description: 'Configure API integrations',
-    order: 12,
+    order: 13,
   },
   {
     id: 'company-setup',
@@ -250,7 +463,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     roles: ['SUPER_ADMIN', 'ADMIN'],
     status: 'active',
     description: 'Configure company information',
-    order: 13,
+    order: 14,
   },
   {
     id: 'master-data',
@@ -262,7 +475,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     roles: ['SUPER_ADMIN', 'ADMIN'],
     status: 'active',
     description: 'Manage master data entities',
-    order: 14,
+    order: 15,
   },
   {
     id: 'system-about',
@@ -1027,6 +1240,80 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     description: 'User profile',
     order: 99,
+  },
+
+  // ==================== ROLE-BASED DASHBOARDS (6 pages) ====================
+  {
+    id: 'hub-incharge-dashboard',
+    name: 'Hub Incharge Dashboard',
+    path: '/hub-incharge',
+    icon: MapPin,
+    module: 'operations',
+    permissions: ['kpi-dashboard'],
+    roles: ['HUB INCHARGE'],
+    status: 'active',
+    description: 'Hub operations management dashboard',
+    order: 100,
+  },
+  {
+    id: 'store-incharge-dashboard',
+    name: 'Store Incharge Dashboard',
+    path: '/store-incharge',
+    icon: Package,
+    module: 'operations',
+    permissions: ['kpi-dashboard'],
+    roles: ['STORE INCHARGE'],
+    status: 'active',
+    description: 'Store operations management dashboard',
+    order: 101,
+  },
+  {
+    id: 'operations-manager-dashboard',
+    name: 'Operations Manager Dashboard',
+    path: '/operations-manager',
+    icon: Briefcase,
+    module: 'operations',
+    permissions: ['kpi-dashboard'],
+    roles: ['OPERATIONS MANAGER'],
+    status: 'active',
+    description: 'Operations oversight and management',
+    order: 102,
+  },
+  {
+    id: 'procurement-officer-dashboard',
+    name: 'Procurement Officer Dashboard',
+    path: '/procurement-officer',
+    icon: ShoppingCart,
+    module: 'procurement',
+    permissions: ['purchase-order'],
+    roles: ['PROCUREMENT OFFICER'],
+    status: 'active',
+    description: 'Procurement management dashboard',
+    order: 100,
+  },
+  {
+    id: 'finance-controller-dashboard',
+    name: 'Finance Controller Dashboard',
+    path: '/finance-controller',
+    icon: Calculator,
+    module: 'finance',
+    permissions: ['executive-dashboard'],
+    roles: ['FINANCE CONTROLLER'],
+    status: 'active',
+    description: 'Financial control and oversight',
+    order: 100,
+  },
+  {
+    id: 'compliance-officer-dashboard',
+    name: 'Compliance Officer Dashboard',
+    path: '/compliance-officer',
+    icon: Shield,
+    module: 'compliance',
+    permissions: ['compliance-dashboard'],
+    roles: ['COMPLIANCE'],
+    status: 'active',
+    description: 'Compliance monitoring and management',
+    order: 100,
   },
 ];
 

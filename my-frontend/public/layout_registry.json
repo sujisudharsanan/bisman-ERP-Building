@@ -1,0 +1,1311 @@
+{
+  "meta": {
+    "version": "1.0.0",
+    "exportedAt": "2025-10-22T17:36:24.070Z",
+    "source": "my-frontend/src/common/config/page-registry.ts",
+    "generator": "scripts/export-page-registry.js"
+  },
+  "statistics": {
+    "totalPages": 79,
+    "totalModules": 1,
+    "pagesByModule": {
+      "system": 16,
+      "finance": 32,
+      "procurement": 6,
+      "operations": 15,
+      "compliance": 10
+    },
+    "pagesByStatus": {
+      "active": 79,
+      "coming-soon": 0,
+      "disabled": 0
+    }
+  },
+  "modules": {
+    "system": {
+      "id": "system",
+      "name": "System Administration",
+      "description": "System management and configuration",
+      "order": 1
+    }
+  },
+  "pages": [
+    {
+      "id": "system-settings",
+      "name": "System Settings",
+      "path": "/system/system-settings",
+      "module": "system",
+      "status": "active",
+      "description": "Configure system-wide settings",
+      "order": 1,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "SYSTEM ADMINISTRATOR",
+        "IT ADMIN"
+      ]
+    },
+    {
+      "id": "user-management",
+      "name": "User Management",
+      "path": "/system/user-management",
+      "module": "system",
+      "status": "active",
+      "description": "Manage users and permissions",
+      "order": 2,
+      "permissions": [
+        "user-management"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ADMIN",
+        "SYSTEM ADMINISTRATOR"
+      ]
+    },
+    {
+      "id": "permission-manager",
+      "name": "Permission Manager",
+      "path": "/system/permission-manager",
+      "module": "system",
+      "status": "active",
+      "description": "Manage system permissions",
+      "order": 3,
+      "permissions": [
+        "user-management"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "SYSTEM ADMINISTRATOR"
+      ]
+    },
+    {
+      "id": "roles-users-report",
+      "name": "Roles & Users Report",
+      "path": "/system/roles-users-report",
+      "module": "system",
+      "status": "active",
+      "description": "View comprehensive report of all roles and assigned users",
+      "order": 4,
+      "permissions": [
+        "user-management"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "SYSTEM ADMINISTRATOR"
+      ]
+    },
+    {
+      "id": "audit-logs",
+      "name": "Audit Logs",
+      "path": "/system/audit-logs",
+      "module": "system",
+      "status": "active",
+      "description": "View system activity and audit trails",
+      "order": 5,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "SYSTEM ADMINISTRATOR",
+        "IT ADMIN"
+      ]
+    },
+    {
+      "id": "backup-restore",
+      "name": "Backup & Restore",
+      "path": "/system/backup-restore",
+      "module": "system",
+      "status": "active",
+      "description": "Manage system backups and restoration",
+      "order": 6,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "SYSTEM ADMINISTRATOR"
+      ]
+    },
+    {
+      "id": "scheduler",
+      "name": "Task Scheduler",
+      "path": "/system/scheduler",
+      "module": "system",
+      "status": "active",
+      "description": "Configure automated tasks and schedules",
+      "order": 7,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "SYSTEM ADMINISTRATOR"
+      ]
+    },
+    {
+      "id": "system-health",
+      "name": "System Health",
+      "path": "/system/system-health-dashboard",
+      "module": "system",
+      "status": "active",
+      "description": "Monitor system performance and health",
+      "order": 8,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "SYSTEM ADMINISTRATOR",
+        "IT ADMIN"
+      ]
+    },
+    {
+      "id": "integration-settings",
+      "name": "Integration Settings",
+      "path": "/system/integration-settings",
+      "module": "system",
+      "status": "active",
+      "description": "Configure third-party integrations",
+      "order": 9,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "SYSTEM ADMINISTRATOR"
+      ]
+    },
+    {
+      "id": "error-logs",
+      "name": "Error Logs",
+      "path": "/system/error-logs",
+      "module": "system",
+      "status": "active",
+      "description": "View and manage system error logs",
+      "order": 10,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "SYSTEM ADMINISTRATOR",
+        "IT ADMIN"
+      ]
+    },
+    {
+      "id": "server-logs",
+      "name": "Server Logs",
+      "path": "/system/server-logs",
+      "module": "system",
+      "status": "active",
+      "description": "Access server logs and diagnostics",
+      "order": 11,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "SYSTEM ADMINISTRATOR"
+      ]
+    },
+    {
+      "id": "deployment-tools",
+      "name": "Deployment Tools",
+      "path": "/system/deployment-tools",
+      "module": "system",
+      "status": "active",
+      "description": "Manage deployments and releases",
+      "order": 12,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "SYSTEM ADMINISTRATOR"
+      ]
+    },
+    {
+      "id": "api-config",
+      "name": "API Configuration",
+      "path": "/system/api-integration-config",
+      "module": "system",
+      "status": "active",
+      "description": "Configure API integrations",
+      "order": 13,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "SYSTEM ADMINISTRATOR"
+      ]
+    },
+    {
+      "id": "company-setup",
+      "name": "Company Setup",
+      "path": "/system/company-setup",
+      "module": "system",
+      "status": "active",
+      "description": "Configure company information",
+      "order": 14,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "master-data",
+      "name": "Master Data",
+      "path": "/system/master-data-management",
+      "module": "system",
+      "status": "active",
+      "description": "Manage master data entities",
+      "order": 15,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "system-about",
+      "name": "About Me",
+      "path": "/system/about-me",
+      "module": "system",
+      "status": "active",
+      "description": "User profile",
+      "order": 99,
+      "permissions": [
+        "system-settings",
+        "user-management"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "SYSTEM ADMINISTRATOR",
+        "IT ADMIN"
+      ]
+    },
+    {
+      "id": "financial-statements",
+      "name": "Financial Statements",
+      "path": "/finance/financial-statements",
+      "module": "finance",
+      "status": "active",
+      "description": "View comprehensive financial statements",
+      "order": 2,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "FINANCE CONTROLLER"
+      ]
+    },
+    {
+      "id": "general-ledger",
+      "name": "General Ledger",
+      "path": "/finance/general-ledger",
+      "module": "finance",
+      "status": "active",
+      "description": "Manage general ledger entries",
+      "order": 3,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "FINANCE CONTROLLER",
+        "ACCOUNTS"
+      ]
+    },
+    {
+      "id": "budgeting-forecasting",
+      "name": "Budgeting & Forecasting",
+      "path": "/finance/budgeting-forecasting",
+      "module": "finance",
+      "status": "active",
+      "description": "Create and manage budgets",
+      "order": 4,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "FINANCE CONTROLLER"
+      ]
+    },
+    {
+      "id": "cash-flow-statement",
+      "name": "Cash Flow Statement",
+      "path": "/finance/cash-flow-statement",
+      "module": "finance",
+      "status": "active",
+      "description": "View cash flow reports",
+      "order": 5,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "TREASURY"
+      ]
+    },
+    {
+      "id": "company-dashboard",
+      "name": "Company Dashboard",
+      "path": "/finance/company-dashboard",
+      "module": "finance",
+      "status": "active",
+      "description": "Executive company overview",
+      "order": 6,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO"
+      ]
+    },
+    {
+      "id": "period-end-closing",
+      "name": "Period End Closing",
+      "path": "/finance/period-end-closing",
+      "module": "finance",
+      "status": "active",
+      "description": "Manage period closing process",
+      "order": 7,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "FINANCE CONTROLLER",
+        "ACCOUNTS"
+      ]
+    },
+    {
+      "id": "cost-center-analysis",
+      "name": "Cost Center Analysis",
+      "path": "/finance/cost-center-analysis",
+      "module": "finance",
+      "status": "active",
+      "description": "Analyze cost centers",
+      "order": 8,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "FINANCE CONTROLLER"
+      ]
+    },
+    {
+      "id": "journal-entries-approval",
+      "name": "Journal Entry Approval",
+      "path": "/finance/journal-entries-approval",
+      "module": "finance",
+      "status": "active",
+      "description": "Approve journal entries",
+      "order": 9,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "FINANCE CONTROLLER"
+      ]
+    },
+    {
+      "id": "trial-balance",
+      "name": "Trial Balance",
+      "path": "/finance/trial-balance",
+      "module": "finance",
+      "status": "active",
+      "description": "View trial balance reports",
+      "order": 10,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "FINANCE CONTROLLER",
+        "ACCOUNTS"
+      ]
+    },
+    {
+      "id": "journal-entries",
+      "name": "Journal Entries",
+      "path": "/finance/journal-entries",
+      "module": "finance",
+      "status": "active",
+      "description": "Manage journal entries",
+      "order": 11,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "ACCOUNTS",
+        "FINANCE CONTROLLER"
+      ]
+    },
+    {
+      "id": "inter-company-reconciliation",
+      "name": "Inter-Company Reconciliation",
+      "path": "/finance/inter-company-reconciliation",
+      "module": "finance",
+      "status": "active",
+      "description": "Reconcile inter-company transactions",
+      "order": 12,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "FINANCE CONTROLLER"
+      ]
+    },
+    {
+      "id": "fixed-asset-register",
+      "name": "Fixed Asset Register",
+      "path": "/finance/fixed-asset-register",
+      "module": "finance",
+      "status": "active",
+      "description": "Manage fixed assets",
+      "order": 13,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "ACCOUNTS",
+        "FINANCE CONTROLLER"
+      ]
+    },
+    {
+      "id": "tax-reports",
+      "name": "Tax Reports",
+      "path": "/finance/tax-reports",
+      "module": "finance",
+      "status": "active",
+      "description": "Generate tax reports",
+      "order": 14,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "FINANCE CONTROLLER",
+        "ACCOUNTS"
+      ]
+    },
+    {
+      "id": "bank-reconciliation",
+      "name": "Bank Reconciliation",
+      "path": "/finance/bank-reconciliation",
+      "module": "finance",
+      "status": "active",
+      "description": "Reconcile bank statements",
+      "order": 15,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "BANKER",
+        "ACCOUNTS",
+        "TREASURY"
+      ]
+    },
+    {
+      "id": "cash-flow-forecast",
+      "name": "Cash Flow Forecast",
+      "path": "/finance/cash-flow-forecast",
+      "module": "finance",
+      "status": "active",
+      "description": "Forecast cash flow",
+      "order": 16,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "TREASURY"
+      ]
+    },
+    {
+      "id": "payment-gateway",
+      "name": "Payment Gateway",
+      "path": "/finance/payment-gateway-integration",
+      "module": "finance",
+      "status": "active",
+      "description": "Manage payment integrations",
+      "order": 17,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "TREASURY",
+        "BANKER"
+      ]
+    },
+    {
+      "id": "foreign-exchange",
+      "name": "Foreign Exchange",
+      "path": "/finance/foreign-exchange-management",
+      "module": "finance",
+      "status": "active",
+      "description": "Manage FX transactions",
+      "order": 18,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "TREASURY",
+        "BANKER"
+      ]
+    },
+    {
+      "id": "loan-management",
+      "name": "Loan Management",
+      "path": "/finance/loan-management",
+      "module": "finance",
+      "status": "active",
+      "description": "Track loans and financing",
+      "order": 19,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "TREASURY"
+      ]
+    },
+    {
+      "id": "chart-of-accounts",
+      "name": "Chart of Accounts",
+      "path": "/finance/chart-of-accounts",
+      "module": "finance",
+      "status": "active",
+      "description": "Manage account structure",
+      "order": 20,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "FINANCE CONTROLLER",
+        "ACCOUNTS"
+      ]
+    },
+    {
+      "id": "invoice-posting",
+      "name": "Invoice Posting",
+      "path": "/finance/invoice-posting",
+      "module": "finance",
+      "status": "active",
+      "description": "Post and manage invoices",
+      "order": 21,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "ACCOUNTS",
+        "ACCOUNTS PAYABLE"
+      ]
+    },
+    {
+      "id": "period-adjustments",
+      "name": "Period Adjustments",
+      "path": "/finance/period-end-adjustment-entries",
+      "module": "finance",
+      "status": "active",
+      "description": "Manage period adjustments",
+      "order": 22,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "FINANCE CONTROLLER",
+        "ACCOUNTS"
+      ]
+    },
+    {
+      "id": "purchase-invoice",
+      "name": "Purchase Invoice",
+      "path": "/finance/purchase-invoice",
+      "module": "finance",
+      "status": "active",
+      "description": "Process purchase invoices",
+      "order": 23,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "ACCOUNTS PAYABLE",
+        "ACCOUNTS"
+      ]
+    },
+    {
+      "id": "payment-entry",
+      "name": "Payment Entry",
+      "path": "/finance/payment-entry",
+      "module": "finance",
+      "status": "active",
+      "description": "Record payment transactions",
+      "order": 24,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "ACCOUNTS PAYABLE",
+        "TREASURY",
+        "BANKER"
+      ]
+    },
+    {
+      "id": "vendor-master",
+      "name": "Vendor Master",
+      "path": "/finance/vendor-master",
+      "module": "finance",
+      "status": "active",
+      "description": "Manage vendor information",
+      "order": 25,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "ACCOUNTS PAYABLE",
+        "PROCUREMENT OFFICER"
+      ]
+    },
+    {
+      "id": "expense-report",
+      "name": "Expense Report",
+      "path": "/finance/expense-report",
+      "module": "finance",
+      "status": "active",
+      "description": "Submit and track expenses",
+      "order": 26,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "ACCOUNTS",
+        "FINANCE CONTROLLER"
+      ]
+    },
+    {
+      "id": "payment-batch",
+      "name": "Batch Processing",
+      "path": "/finance/payment-batch-processing",
+      "module": "finance",
+      "status": "active",
+      "description": "Process payment batches",
+      "order": 27,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "TREASURY",
+        "BANKER",
+        "ACCOUNTS PAYABLE"
+      ]
+    },
+    {
+      "id": "payment-view",
+      "name": "Payment View",
+      "path": "/finance/payment-entry-view",
+      "module": "finance",
+      "status": "active",
+      "description": "View payment entries",
+      "order": 28,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "ACCOUNTS",
+        "TREASURY"
+      ]
+    },
+    {
+      "id": "bank-upload",
+      "name": "Bank Statement Upload",
+      "path": "/finance/bank-statement-upload",
+      "module": "finance",
+      "status": "active",
+      "description": "Upload bank statements",
+      "order": 29,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "BANKER",
+        "ACCOUNTS"
+      ]
+    },
+    {
+      "id": "bank-reconcile-exec",
+      "name": "Execute Reconciliation",
+      "path": "/finance/bank-reconciliation-execute",
+      "module": "finance",
+      "status": "active",
+      "description": "Execute bank reconciliation",
+      "order": 30,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "BANKER",
+        "ACCOUNTS"
+      ]
+    },
+    {
+      "id": "payment-approval",
+      "name": "Payment Approval",
+      "path": "/finance/payment-approval-queue",
+      "module": "finance",
+      "status": "active",
+      "description": "Approve pending payments",
+      "order": 31,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "TREASURY",
+        "FINANCE CONTROLLER"
+      ]
+    },
+    {
+      "id": "finance-about",
+      "name": "About Me",
+      "path": "/finance/about-me",
+      "module": "finance",
+      "status": "active",
+      "description": "User profile",
+      "order": 99,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "FINANCE CONTROLLER",
+        "TREASURY",
+        "ACCOUNTS",
+        "ACCOUNTS PAYABLE",
+        "BANKER"
+      ]
+    },
+    {
+      "id": "purchase-request",
+      "name": "Purchase Request",
+      "path": "/procurement/purchase-request",
+      "module": "procurement",
+      "status": "active",
+      "description": "Create and manage purchase requests",
+      "order": 2,
+      "permissions": [
+        "purchase-order"
+      ],
+      "roles": [
+        "PROCUREMENT OFFICER",
+        "STORE INCHARGE"
+      ]
+    },
+    {
+      "id": "supplier-quotation",
+      "name": "Supplier Quotation",
+      "path": "/procurement/supplier-quotation",
+      "module": "procurement",
+      "status": "active",
+      "description": "Manage supplier quotations",
+      "order": 3,
+      "permissions": [
+        "purchase-order"
+      ],
+      "roles": [
+        "PROCUREMENT OFFICER"
+      ]
+    },
+    {
+      "id": "supplier-master",
+      "name": "Supplier Master",
+      "path": "/procurement/supplier-master",
+      "module": "procurement",
+      "status": "active",
+      "description": "Manage supplier database",
+      "order": 4,
+      "permissions": [
+        "purchase-order"
+      ],
+      "roles": [
+        "PROCUREMENT OFFICER"
+      ]
+    },
+    {
+      "id": "material-request",
+      "name": "Material Request",
+      "path": "/procurement/material-request",
+      "module": "procurement",
+      "status": "active",
+      "description": "Create material requests",
+      "order": 5,
+      "permissions": [
+        "purchase-order"
+      ],
+      "roles": [
+        "PROCUREMENT OFFICER",
+        "STORE INCHARGE",
+        "OPERATIONS MANAGER"
+      ]
+    },
+    {
+      "id": "procurement-about",
+      "name": "About Me",
+      "path": "/procurement/about-me",
+      "module": "procurement",
+      "status": "active",
+      "description": "User profile",
+      "order": 99,
+      "permissions": [
+        "purchase-order"
+      ],
+      "roles": [
+        "PROCUREMENT OFFICER"
+      ]
+    },
+    {
+      "id": "stock-entry",
+      "name": "Stock Entry",
+      "path": "/operations/stock-entry",
+      "module": "operations",
+      "status": "active",
+      "description": "Record stock movements",
+      "order": 2,
+      "permissions": [
+        "kpi-dashboard"
+      ],
+      "roles": [
+        "STORE INCHARGE",
+        "HUB INCHARGE",
+        "OPERATIONS MANAGER"
+      ]
+    },
+    {
+      "id": "item-master",
+      "name": "Item Master",
+      "path": "/operations/item-master-limited",
+      "module": "operations",
+      "status": "active",
+      "description": "Manage item catalog",
+      "order": 3,
+      "permissions": [
+        "kpi-dashboard"
+      ],
+      "roles": [
+        "STORE INCHARGE",
+        "OPERATIONS MANAGER"
+      ]
+    },
+    {
+      "id": "stock-ledger",
+      "name": "Stock Ledger",
+      "path": "/operations/stock-ledger",
+      "module": "operations",
+      "status": "active",
+      "description": "View stock ledger",
+      "order": 4,
+      "permissions": [
+        "kpi-dashboard"
+      ],
+      "roles": [
+        "STORE INCHARGE",
+        "OPERATIONS MANAGER"
+      ]
+    },
+    {
+      "id": "delivery-note",
+      "name": "Delivery Note",
+      "path": "/operations/delivery-note",
+      "module": "operations",
+      "status": "active",
+      "description": "Manage delivery notes",
+      "order": 5,
+      "permissions": [
+        "kpi-dashboard"
+      ],
+      "roles": [
+        "HUB INCHARGE",
+        "OPERATIONS MANAGER"
+      ]
+    },
+    {
+      "id": "quality-inspection",
+      "name": "Quality Inspection",
+      "path": "/operations/quality-inspection",
+      "module": "operations",
+      "status": "active",
+      "description": "Perform quality checks",
+      "order": 6,
+      "permissions": [
+        "kpi-dashboard"
+      ],
+      "roles": [
+        "STORE INCHARGE",
+        "OPERATIONS MANAGER"
+      ]
+    },
+    {
+      "id": "sales-order",
+      "name": "Sales Order",
+      "path": "/operations/sales-order",
+      "module": "operations",
+      "status": "active",
+      "description": "Manage sales orders",
+      "order": 7,
+      "permissions": [
+        "kpi-dashboard"
+      ],
+      "roles": [
+        "HUB INCHARGE",
+        "OPERATIONS MANAGER"
+      ]
+    },
+    {
+      "id": "work-order",
+      "name": "Work Order",
+      "path": "/operations/work-order",
+      "module": "operations",
+      "status": "active",
+      "description": "Create and track work orders",
+      "order": 8,
+      "permissions": [
+        "kpi-dashboard"
+      ],
+      "roles": [
+        "OPERATIONS MANAGER",
+        "HUB INCHARGE"
+      ]
+    },
+    {
+      "id": "bom-view",
+      "name": "Bill of Materials",
+      "path": "/operations/bom-view",
+      "module": "operations",
+      "status": "active",
+      "description": "View BOM structure",
+      "order": 9,
+      "permissions": [
+        "kpi-dashboard"
+      ],
+      "roles": [
+        "OPERATIONS MANAGER",
+        "STORE INCHARGE"
+      ]
+    },
+    {
+      "id": "shipping-logistics",
+      "name": "Shipping & Logistics",
+      "path": "/operations/shipping-logistics",
+      "module": "operations",
+      "status": "active",
+      "description": "Manage shipping operations",
+      "order": 10,
+      "permissions": [
+        "kpi-dashboard"
+      ],
+      "roles": [
+        "HUB INCHARGE",
+        "OPERATIONS MANAGER"
+      ]
+    },
+    {
+      "id": "stock-transfer",
+      "name": "Stock Transfer",
+      "path": "/operations/stock-entry-transfer",
+      "module": "operations",
+      "status": "active",
+      "description": "Transfer stock between locations",
+      "order": 11,
+      "permissions": [
+        "kpi-dashboard"
+      ],
+      "roles": [
+        "STORE INCHARGE",
+        "HUB INCHARGE"
+      ]
+    },
+    {
+      "id": "sales-order-view",
+      "name": "Sales Order View",
+      "path": "/operations/sales-order-view",
+      "module": "operations",
+      "status": "active",
+      "description": "View sales orders",
+      "order": 12,
+      "permissions": [
+        "kpi-dashboard"
+      ],
+      "roles": [
+        "HUB INCHARGE",
+        "OPERATIONS MANAGER"
+      ]
+    },
+    {
+      "id": "asset-register",
+      "name": "Asset Register",
+      "path": "/operations/asset-register-hub",
+      "module": "operations",
+      "status": "active",
+      "description": "Manage hub assets",
+      "order": 13,
+      "permissions": [
+        "kpi-dashboard"
+      ],
+      "roles": [
+        "HUB INCHARGE",
+        "OPERATIONS MANAGER"
+      ]
+    },
+    {
+      "id": "operations-about",
+      "name": "About Me",
+      "path": "/operations/about-me",
+      "module": "operations",
+      "status": "active",
+      "description": "User profile",
+      "order": 99,
+      "permissions": [
+        "kpi-dashboard"
+      ],
+      "roles": [
+        "OPERATIONS MANAGER",
+        "HUB INCHARGE",
+        "STORE INCHARGE"
+      ]
+    },
+    {
+      "id": "audit-trail",
+      "name": "Audit Trail",
+      "path": "/compliance/audit-trail",
+      "module": "compliance",
+      "status": "active",
+      "description": "View complete audit trail",
+      "order": 2,
+      "permissions": [
+        "compliance-dashboard"
+      ],
+      "roles": [
+        "COMPLIANCE",
+        "LEGAL"
+      ]
+    },
+    {
+      "id": "policy-management",
+      "name": "Policy Management",
+      "path": "/compliance/policy-management",
+      "module": "compliance",
+      "status": "active",
+      "description": "Manage compliance policies",
+      "order": 3,
+      "permissions": [
+        "compliance-dashboard"
+      ],
+      "roles": [
+        "COMPLIANCE",
+        "LEGAL"
+      ]
+    },
+    {
+      "id": "regulatory-templates",
+      "name": "Report Templates",
+      "path": "/compliance/regulatory-report-templates",
+      "module": "compliance",
+      "status": "active",
+      "description": "Manage regulatory templates",
+      "order": 4,
+      "permissions": [
+        "compliance-dashboard"
+      ],
+      "roles": [
+        "COMPLIANCE",
+        "LEGAL"
+      ]
+    },
+    {
+      "id": "approval-workflows",
+      "name": "Approval Workflows",
+      "path": "/compliance/approval-workflow-view",
+      "module": "compliance",
+      "status": "active",
+      "description": "View approval processes",
+      "order": 5,
+      "permissions": [
+        "compliance-dashboard"
+      ],
+      "roles": [
+        "COMPLIANCE"
+      ]
+    },
+    {
+      "id": "contract-management",
+      "name": "Contract Management",
+      "path": "/compliance/contract-management",
+      "module": "compliance",
+      "status": "active",
+      "description": "Manage contracts",
+      "order": 6,
+      "permissions": [
+        "compliance-dashboard"
+      ],
+      "roles": [
+        "LEGAL",
+        "COMPLIANCE"
+      ]
+    },
+    {
+      "id": "litigation-tracker",
+      "name": "Litigation Tracker",
+      "path": "/compliance/litigation-tracker",
+      "module": "compliance",
+      "status": "active",
+      "description": "Track legal cases",
+      "order": 7,
+      "permissions": [
+        "compliance-dashboard"
+      ],
+      "roles": [
+        "LEGAL"
+      ]
+    },
+    {
+      "id": "document-repository",
+      "name": "Document Repository",
+      "path": "/compliance/document-repository-view",
+      "module": "compliance",
+      "status": "active",
+      "description": "Access document library",
+      "order": 8,
+      "permissions": [
+        "compliance-dashboard"
+      ],
+      "roles": [
+        "COMPLIANCE",
+        "LEGAL"
+      ]
+    },
+    {
+      "id": "legal-master",
+      "name": "Legal Master Data",
+      "path": "/compliance/vendor-customer-master-legal",
+      "module": "compliance",
+      "status": "active",
+      "description": "Manage legal entity data",
+      "order": 9,
+      "permissions": [
+        "compliance-dashboard"
+      ],
+      "roles": [
+        "LEGAL",
+        "COMPLIANCE"
+      ]
+    },
+    {
+      "id": "compliance-about",
+      "name": "About Me",
+      "path": "/compliance/about-me",
+      "module": "compliance",
+      "status": "active",
+      "description": "User profile",
+      "order": 99,
+      "permissions": [
+        "compliance-dashboard"
+      ],
+      "roles": [
+        "COMPLIANCE",
+        "LEGAL"
+      ]
+    },
+    {
+      "id": "store-incharge-dashboard",
+      "name": "Store Incharge Dashboard",
+      "path": "/store-incharge",
+      "module": "operations",
+      "status": "active",
+      "description": "Store operations management dashboard",
+      "order": 101,
+      "permissions": [
+        "kpi-dashboard"
+      ],
+      "roles": [
+        "STORE INCHARGE"
+      ]
+    },
+    {
+      "id": "operations-manager-dashboard",
+      "name": "Operations Manager Dashboard",
+      "path": "/operations-manager",
+      "module": "operations",
+      "status": "active",
+      "description": "Operations oversight and management",
+      "order": 102,
+      "permissions": [
+        "kpi-dashboard"
+      ],
+      "roles": [
+        "OPERATIONS MANAGER"
+      ]
+    },
+    {
+      "id": "procurement-officer-dashboard",
+      "name": "Procurement Officer Dashboard",
+      "path": "/procurement-officer",
+      "module": "procurement",
+      "status": "active",
+      "description": "Procurement management dashboard",
+      "order": 100,
+      "permissions": [
+        "purchase-order"
+      ],
+      "roles": [
+        "PROCUREMENT OFFICER"
+      ]
+    },
+    {
+      "id": "finance-controller-dashboard",
+      "name": "Finance Controller Dashboard",
+      "path": "/finance-controller",
+      "module": "finance",
+      "status": "active",
+      "description": "Financial control and oversight",
+      "order": 100,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "FINANCE CONTROLLER"
+      ]
+    },
+    {
+      "id": "compliance-officer-dashboard",
+      "name": "Compliance Officer Dashboard",
+      "path": "/compliance-officer",
+      "module": "compliance",
+      "status": "active",
+      "description": "Compliance monitoring and management",
+      "order": 100,
+      "permissions": [
+        "compliance-dashboard"
+      ],
+      "roles": [
+        "COMPLIANCE"
+      ]
+    }
+  ]
+}

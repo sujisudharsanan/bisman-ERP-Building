@@ -1,0 +1,434 @@
+{
+  "timestamp": "2025-10-22T18:39:49.667Z",
+  "summary": {
+    "total": 66,
+    "implemented": 3,
+    "placeholder": 21,
+    "minimal": 42,
+    "empty": 0,
+    "error": 0
+  },
+  "categories": {
+    "empty": [],
+    "placeholder": [
+      {
+        "path": "(dashboard)/finance/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"Feature Under Development\"",
+        "size": 8328
+      },
+      {
+        "path": "(dashboard)/users/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"Feature Under Development\"",
+        "size": 12542
+      },
+      {
+        "path": "_dashboard_backup/users/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"placeholder\"",
+        "size": 11853
+      },
+      {
+        "path": "auth/login/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"placeholder\"",
+        "size": 22673
+      },
+      {
+        "path": "auth/standard-login/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"placeholder\"",
+        "size": 13381
+      },
+      {
+        "path": "loader-demo/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"placeholder\"",
+        "size": 225
+      },
+      {
+        "path": "super-admin/orders/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"placeholder\"",
+        "size": 15741
+      },
+      {
+        "path": "system/about-me/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"Under Construction\"",
+        "size": 1733
+      },
+      {
+        "path": "system/api-integration-config/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"TODO: Implement\"",
+        "size": 14420
+      },
+      {
+        "path": "system/audit-logs/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"TODO: Implement\"",
+        "size": 14327
+      },
+      {
+        "path": "system/backup-restore/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"TODO: Implement\"",
+        "size": 14359
+      },
+      {
+        "path": "system/company-setup/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"TODO: Implement\"",
+        "size": 14351
+      },
+      {
+        "path": "system/deployment-tools/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"TODO: Implement\"",
+        "size": 14375
+      },
+      {
+        "path": "system/error-logs/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"TODO: Implement\"",
+        "size": 14327
+      },
+      {
+        "path": "system/integration-settings/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"TODO: Implement\"",
+        "size": 14407
+      },
+      {
+        "path": "system/master-data-management/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"TODO: Implement\"",
+        "size": 14420
+      },
+      {
+        "path": "system/pages-roles-report/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"Coming Soon\"",
+        "size": 19457
+      },
+      {
+        "path": "system/scheduler/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"TODO: Implement\"",
+        "size": 14322
+      },
+      {
+        "path": "system/server-logs/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"TODO: Implement\"",
+        "size": 14335
+      },
+      {
+        "path": "system/system-health-dashboard/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"TODO: Implement\"",
+        "size": 14428
+      },
+      {
+        "path": "system/user-management/page.tsx",
+        "category": "placeholder",
+        "reason": "Contains placeholder text: \"TODO: Implement\"",
+        "size": 14367
+      }
+    ],
+    "minimal": [
+      {
+        "path": "_dashboard_backup/finance/page.tsx",
+        "category": "minimal",
+        "reason": "Has basic structure but may need enhancement",
+        "size": 150,
+        "linesOfCode": 7
+      },
+      {
+        "path": "access-denied/page.tsx",
+        "category": "minimal",
+        "reason": "Has basic structure but may need enhancement",
+        "size": 3217,
+        "linesOfCode": 83
+      },
+      {
+        "path": "accounts/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 3039
+      },
+      {
+        "path": "accounts-payable/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 3078
+      },
+      {
+        "path": "admin/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 2984
+      },
+      {
+        "path": "admin/permissions/page.tsx",
+        "category": "minimal",
+        "reason": "Has basic structure but may need enhancement",
+        "size": 251,
+        "linesOfCode": 7
+      },
+      {
+        "path": "auth/admin-login/page.tsx",
+        "category": "minimal",
+        "reason": "Has basic structure but may need enhancement",
+        "size": 657,
+        "linesOfCode": 23
+      },
+      {
+        "path": "auth/hub-incharge-login/page.tsx",
+        "category": "minimal",
+        "reason": "Has basic structure but may need enhancement",
+        "size": 1389,
+        "linesOfCode": 33
+      },
+      {
+        "path": "auth/manager-login/page.tsx",
+        "category": "minimal",
+        "reason": "Has basic structure but may need enhancement",
+        "size": 659,
+        "linesOfCode": 23
+      },
+      {
+        "path": "auth/portals/page.tsx",
+        "category": "minimal",
+        "reason": "Has basic structure but may need enhancement",
+        "size": 5948,
+        "linesOfCode": 180
+      },
+      {
+        "path": "banker/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 3025
+      },
+      {
+        "path": "cfo-dashboard/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 3012
+      },
+      {
+        "path": "compliance/compliance-dashboard/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 2914
+      },
+      {
+        "path": "compliance/legal-case-management/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 2905
+      },
+      {
+        "path": "compliance-officer/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 3050
+      },
+      {
+        "path": "dashboard/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 3575
+      },
+      {
+        "path": "demo/layout-registry/page.tsx",
+        "category": "minimal",
+        "reason": "Has basic structure but may need enhancement",
+        "size": 275,
+        "linesOfCode": 13
+      },
+      {
+        "path": "example/page.tsx",
+        "category": "minimal",
+        "reason": "Has basic structure but may need enhancement",
+        "size": 8540,
+        "linesOfCode": 210
+      },
+      {
+        "path": "examples/auth-client/page.tsx",
+        "category": "minimal",
+        "reason": "Has basic structure but may need enhancement",
+        "size": 529,
+        "linesOfCode": 21
+      },
+      {
+        "path": "examples/auth-ssr/page.tsx",
+        "category": "minimal",
+        "reason": "Has basic structure but may need enhancement",
+        "size": 622,
+        "linesOfCode": 18
+      },
+      {
+        "path": "finance/accounts-payable-summary/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 2925
+      },
+      {
+        "path": "finance/accounts-receivable-summary/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 2937
+      },
+      {
+        "path": "finance/executive-dashboard/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 2896
+      },
+      {
+        "path": "finance/general-ledger/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 2898
+      },
+      {
+        "path": "finance-controller/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 3088
+      },
+      {
+        "path": "hub-incharge/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 3560
+      },
+      {
+        "path": "it-admin/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 3101
+      },
+      {
+        "path": "legal/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 3022
+      },
+      {
+        "path": "manager/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 7314
+      },
+      {
+        "path": "operations/inventory-management/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 2922
+      },
+      {
+        "path": "operations/kpi-dashboard/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 2923
+      },
+      {
+        "path": "operations-manager/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 3097
+      },
+      {
+        "path": "page.tsx",
+        "category": "minimal",
+        "reason": "Has basic structure but may need enhancement",
+        "size": 1467,
+        "linesOfCode": 52
+      },
+      {
+        "path": "procurement/purchase-orders/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 2928
+      },
+      {
+        "path": "procurement-officer/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 3083
+      },
+      {
+        "path": "staff/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 3027
+      },
+      {
+        "path": "store-incharge/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 3102
+      },
+      {
+        "path": "super-admin/page.tsx",
+        "category": "minimal",
+        "reason": "Has basic structure but may need enhancement",
+        "size": 1963,
+        "linesOfCode": 71
+      },
+      {
+        "path": "super-admin/security/page.tsx",
+        "category": "minimal",
+        "reason": "Has basic structure but may need enhancement",
+        "size": 2170,
+        "linesOfCode": 72
+      },
+      {
+        "path": "system/system-settings/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 2900
+      },
+      {
+        "path": "task-dashboard/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 2794
+      },
+      {
+        "path": "treasury/page.tsx",
+        "category": "minimal",
+        "reason": "Has minimal component structure",
+        "size": 3041
+      }
+    ],
+    "implemented": [
+      {
+        "path": "super-admin/system/page.tsx",
+        "category": "implemented",
+        "reason": "Has substantial implementation",
+        "size": 12562,
+        "linesOfCode": 335
+      },
+      {
+        "path": "system/permission-manager/page.tsx",
+        "category": "implemented",
+        "reason": "Has substantial implementation",
+        "size": 12933,
+        "linesOfCode": 284
+      },
+      {
+        "path": "system/roles-users-report/page.tsx",
+        "category": "implemented",
+        "reason": "Has substantial implementation",
+        "size": 14832,
+        "linesOfCode": 316
+      }
+    ],
+    "error": []
+  }
+}
