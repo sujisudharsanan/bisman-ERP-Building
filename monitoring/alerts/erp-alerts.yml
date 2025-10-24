@@ -1,0 +1,146 @@
+# Prometheus Alert Rules for ERP Monitoring
+
+groups:
+  - name: erp_api_alerts
+    interval: 30s
+    rules:
+      # Alert if API latency exceeds 800ms
+      - alert: HighAPILatency
+        expr: http_request_duration_ms{quantile="0.95"} > 800
+        for: 2m
+        labels:
+          severity: warning
+          component: backend
+        annotations:
+          summary: "High API latency detected"
+          description: "95th percentile API latency is {{ $value }}ms (threshold: 800ms)"
+          
+      # Alert if error rate exceeds 5%
+      - alert: HighErrorRate
+        expr: (rate(http_requests_total{status=~"5.."}[5m]) / rate(http_requests_total[5m])) > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          component: backend
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+          
+      # Alert if cache hit rate drops below 70%
+      - alert: LowCacheHitRate
+        expr: cache_hit_rate < 0.70
+        for: 5m
+        labels:
+          severity: warning
+          component: cache
+        annotations:
+          summary: "Low cache hit rate"
+          description: "Cache hit rate is {{ $value | humanizePercentage }} (threshold: 70%)"
+
+  - name: erp_database_alerts
+    interval: 30s
+    rules:
+      # Alert if database response time exceeds 500ms
+      - alert: SlowDatabaseQueries
+        expr: pg_stat_activity_max_tx_duration > 500
+        for: 2m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Slow database queries detected"
+          description: "Database query duration is {{ $value }}ms (threshold: 500ms)"
+          
+      # Alert if database storage exceeds 85%
+      - alert: HighDatabaseStorage
+        expr: (pg_database_size_bytes / pg_settings_max_wal_size_bytes) > 0.85
+        for: 5m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Database storage usage high"
+          description: "Database storage is {{ $value | humanizePercentage }} full (threshold: 85%)"
+          
+      # Alert if too many database connections
+      - alert: HighDatabaseConnections
+        expr: pg_stat_database_numbackends > 80
+        for: 2m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "High number of database connections"
+          description: "{{ $value }} active connections (threshold: 80)"
+
+  - name: erp_system_alerts
+    interval: 30s
+    rules:
+      # Alert if CPU usage exceeds 80%
+      - alert: HighCPUUsage
+        expr: (100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)) > 80
+        for: 2m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage"
+          description: "CPU usage is {{ $value | humanizePercentage }} (threshold: 80%)"
+          
+      # Alert if memory usage exceeds 85%
+      - alert: HighMemoryUsage
+        expr: (1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) > 0.85
+        for: 2m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value | humanizePercentage }} (threshold: 85%)"
+          
+      # Alert if disk usage exceeds 85%
+      - alert: HighDiskUsage
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"} / node_filesystem_size_bytes) < 0.15
+        for: 5m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Low disk space"
+          description: "Disk usage is {{ $value | humanizePercentage }} (threshold: 85%)"
+
+  - name: erp_frontend_alerts
+    interval: 60s
+    rules:
+      # Alert if LCP exceeds 2.5s
+      - alert: HighLCP
+        expr: web_vitals_lcp_seconds > 2.5
+        for: 5m
+        labels:
+          severity: warning
+          component: frontend
+        annotations:
+          summary: "High Largest Contentful Paint"
+          description: "LCP is {{ $value }}s (threshold: 2.5s)"
+          
+      # Alert if FID exceeds 100ms
+      - alert: HighFID
+        expr: web_vitals_fid_ms > 100
+        for: 5m
+        labels:
+          severity: warning
+          component: frontend
+        annotations:
+          summary: "High First Input Delay"
+          description: "FID is {{ $value }}ms (threshold: 100ms)"
+          
+      # Alert if CLS exceeds 0.1
+      - alert: HighCLS
+        expr: web_vitals_cls > 0.1
+        for: 5m
+        labels:
+          severity: warning
+          component: frontend
+        annotations:
+          summary: "High Cumulative Layout Shift"
+          description: "CLS is {{ $value }} (threshold: 0.1)"

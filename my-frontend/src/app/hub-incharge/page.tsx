@@ -12,22 +12,16 @@ export default function HubInchargePage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   
-  const { dashboardData, loading: dataLoading } = useDashboardData(user?.roleName || 'STAFF');
+  // Get user role, normalize it for comparison
+  const userRole = (user?.roleName || user?.role || '').toUpperCase().replace(/[_\s-]/g, '_');
+  
+  const { dashboardData, loading: dataLoading } = useDashboardData(user?.roleName || 'Hub Incharge');
 
-  // Redirect if user is not authenticated or doesn't have STAFF access
+  // Redirect if user is not authenticated
   React.useEffect(() => {
-    if (!authLoading) {
-      if (!user) {
-        router.push('/auth/login');
-      } else if (user.roleName === 'SUPER_ADMIN') {
-        router.push('/super-admin');
-      } else if (user.roleName === 'ADMIN') {
-        router.push('/admin');
-      } else if (user.roleName === 'MANAGER') {
-        router.push('/manager');
-      } else if (user.roleName && !['STAFF', 'ADMIN', 'MANAGER'].includes(user.roleName)) {
-        router.push('/auth/login');
-      }
+    if (!authLoading && !user) {
+      console.log('🚫 No user authenticated, redirecting to login');
+      router.push('/auth/login');
     }
   }, [user, authLoading, router]);
 
@@ -42,12 +36,16 @@ export default function HubInchargePage() {
     );
   }
 
-  if (!user || !user.roleName || !['STAFF', 'ADMIN', 'MANAGER'].includes(user.roleName)) {
+  // Allow access for authenticated users (Hub Incharge, STAFF, or compatible roles)
+  if (!user) {
+    console.log('🚫 No user, not rendering page');
     return null;
   }
 
+  console.log('✅ Rendering Hub Incharge page for user:', user.username, 'role:', user.roleName || user.role);
+
   return (
-    <DashboardLayout role={user.roleName || 'STAFF'}>
+    <DashboardLayout role={user.roleName || user.role || 'Hub Incharge'}>
     <div className="h-full max-w-full min-h-0">
   <div className="w-full min-h-0">
             {/* main content area; grid will scroll and split stays at bottom */}

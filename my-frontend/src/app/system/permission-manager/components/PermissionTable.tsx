@@ -1,19 +1,22 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useMemo } from 'react';
 
 interface Props {
   pages: { key: string; name: string; module?: string }[];
   allowed: string[];
   roleDefaults?: string[];
   showOverridePages?: boolean;
+  searchQuery?: string;
   onToggle: (key: string) => void;
   onDeselectAll?: () => void;
   onSelectDefault?: () => void;
   onToggleOverrideView?: () => void;
 }
 
-export default function PermissionTable({ pages, allowed, roleDefaults = [], showOverridePages = false, onToggle, onDeselectAll, onSelectDefault, onToggleOverrideView }: Props) {
+export default function PermissionTable({ pages, allowed, roleDefaults = [], showOverridePages = false, searchQuery = '', onToggle, onDeselectAll, onSelectDefault, onToggleOverrideView }: Props) {
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+
   // Helper to check if a permission is a user override (not in role defaults)
   const isUserOverride = (key: string) => {
     return allowed.includes(key) && !roleDefaults.includes(key);
@@ -22,6 +25,53 @@ export default function PermissionTable({ pages, allowed, roleDefaults = [], sho
   // Helper to check if a permission is from role defaults
   const isRoleDefault = (key: string) => {
     return roleDefaults.includes(key);
+  };
+
+  // Filter pages based on search query
+  const filteredPages = useMemo(() => {
+    if (!searchQuery.trim()) return pages;
+    const query = searchQuery.toLowerCase();
+    return pages.filter(p => 
+      p.name.toLowerCase().includes(query) || 
+      p.key.toLowerCase().includes(query) ||
+      (p.module && p.module.toLowerCase().includes(query))
+    );
+  }, [pages, searchQuery]);
+
+  // Group pages by module
+  const groupedPages = useMemo(() => {
+    const groups: Record<string, typeof pages> = {};
+    filteredPages.forEach(page => {
+      const module = page.module || 'Other';
+      if (!groups[module]) {
+        groups[module] = [];
+      }
+      groups[module].push(page);
+    });
+    return groups;
+  }, [filteredPages]);
+
+  const modules = useMemo(() => Object.keys(groupedPages).sort(), [groupedPages]);
+
+  // Toggle module expansion
+  const toggleModule = (module: string) => {
+    const newExpanded = new Set(expandedModules);
+    if (newExpanded.has(module)) {
+      newExpanded.delete(module);
+    } else {
+      newExpanded.add(module);
+    }
+    setExpandedModules(newExpanded);
+  };
+
+  // Expand all modules
+  const expandAll = () => {
+    setExpandedModules(new Set(modules));
+  };
+
+  // Collapse all modules
+  const collapseAll = () => {
+    setExpandedModules(new Set());
   };
   
   return (
@@ -73,6 +123,20 @@ export default function PermissionTable({ pages, allowed, roleDefaults = [], sho
               </button>
             )}
           </div>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={expandAll}
+              className="text-xs px-2 py-1 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 rounded transition-colors"
+            >
+              Expand All
+            </button>
+            <button
+              onClick={collapseAll}
+              className="text-xs px-2 py-1 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200 hover:bg-gray-100 dark:hover:bg-slate-700 rounded transition-colors"
+            >
+              Collapse All
+            </button>
+          </div>
         </div>
         
         {/* Legend */}
@@ -112,7 +176,7 @@ export default function PermissionTable({ pages, allowed, roleDefaults = [], sho
       
       <div className="overflow-auto max-h-[60vh]">
         <table className="min-w-full text-sm">
-          <thead className="sticky top-0 bg-gray-50 dark:bg-slate-900">
+          <thead className="sticky top-0 bg-gray-50 dark:bg-slate-900 z-10">
             <tr className="text-left text-gray-600 dark:text-gray-300">
               <th className="px-4 py-2 font-medium">Page / Module</th>
               <th className="px-4 py-2 font-medium w-36">Access</th>
@@ -120,50 +184,92 @@ export default function PermissionTable({ pages, allowed, roleDefaults = [], sho
             </tr>
           </thead>
           <tbody className="divide-y divide-gray-200 dark:divide-slate-800">
-            {pages.map(p => {
-              const hasAccess = allowed.includes(p.key);
-              const isOverride = isUserOverride(p.key);
-              const isDefault = isRoleDefault(p.key);
-              
-              return (
-                <tr key={p.key} className={`hover:bg-gray-50 dark:hover:bg-slate-700/50 ${isOverride ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}>
-                  <td className="px-4 py-2 text-gray-800 dark:text-gray-100">
-                    <div className="font-medium">{p.name}</div>
-                    {p.module && (<div className="text-xs text-gray-500 dark:text-gray-400">{p.module}</div>)}
-                  </td>
-                  <td className="px-4 py-2">
-                    <label className="inline-flex items-center">
-                      <input
-                        type="checkbox"
-                        checked={hasAccess}
-                        onChange={() => onToggle(p.key)}
-                        className="h-4 w-4 rounded border-gray-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
-                      />
-                    </label>
-                  </td>
-                  <td className="px-4 py-2">
-                    {hasAccess && (
-                      <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
-                        isOverride 
-                          ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
-                          : isDefault
-                          ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
-                          : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
-                      }`}>
-                        <div className={`w-1.5 h-1.5 rounded-full ${
-                          isOverride ? 'bg-blue-500' : isDefault ? 'bg-green-500' : 'bg-gray-500'
-                        }`}></div>
-                        {isOverride ? 'Custom' : isDefault ? 'Role' : 'Active'}
-                      </span>
-                    )}
-                  </td>
-                </tr>
-              );
-            })}
-            {pages.length === 0 && (
+            {modules.length === 0 ? (
               <tr>
-                <td colSpan={3} className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">No pages available</td>
+                <td colSpan={3} className="px-4 py-6 text-center text-gray-500 dark:text-gray-400">
+                  {searchQuery ? `No pages found matching "${searchQuery}"` : 'No pages available'}
+                </td>
               </tr>
+            ) : (
+              modules.map((module) => {
+                const modulePagesData = groupedPages[module];
+                const isExpanded = expandedModules.has(module);
+                const moduleGrantedCount = modulePagesData.filter(p => allowed.includes(p.key)).length;
+                
+                return (
+                  <React.Fragment key={module}>
+                    {/* Module Header Row */}
+                    <tr 
+                      onClick={() => toggleModule(module)}
+                      className="bg-gray-100 dark:bg-slate-900/70 hover:bg-gray-200 dark:hover:bg-slate-900 cursor-pointer sticky top-[41px] z-[5]"
+                    >
+                      <td colSpan={3} className="px-4 py-2">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <svg 
+                              className={`w-4 h-4 text-gray-600 dark:text-gray-400 transition-transform ${isExpanded ? 'rotate-90' : ''}`} 
+                              fill="none" 
+                              stroke="currentColor" 
+                              viewBox="0 0 24 24"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                            </svg>
+                            <span className="font-semibold text-gray-800 dark:text-gray-200">{module}</span>
+                            <span className="text-xs text-gray-500 dark:text-gray-400">
+                              ({modulePagesData.length} page{modulePagesData.length !== 1 ? 's' : ''})
+                            </span>
+                          </div>
+                          <span className="text-xs font-medium text-gray-600 dark:text-gray-400">
+                            {moduleGrantedCount} / {modulePagesData.length} granted
+                          </span>
+                        </div>
+                      </td>
+                    </tr>
+                    
+                    {/* Module Pages - Only show if expanded */}
+                    {isExpanded && modulePagesData.map(p => {
+                      const hasAccess = allowed.includes(p.key);
+                      const isOverride = isUserOverride(p.key);
+                      const isDefault = isRoleDefault(p.key);
+                      
+                      return (
+                        <tr key={p.key} className={`hover:bg-gray-50 dark:hover:bg-slate-700/50 ${isOverride ? 'bg-blue-50/30 dark:bg-blue-900/10' : ''}`}>
+                          <td className="px-4 py-2 pl-12 text-gray-800 dark:text-gray-100">
+                            <div className="font-medium">{p.name}</div>
+                            <div className="text-xs text-gray-500 dark:text-gray-400">{p.key}</div>
+                          </td>
+                          <td className="px-4 py-2">
+                            <label className="inline-flex items-center">
+                              <input
+                                type="checkbox"
+                                checked={hasAccess}
+                                onChange={() => onToggle(p.key)}
+                                className="h-4 w-4 rounded border-gray-300 dark:border-slate-600 text-blue-600 focus:ring-blue-500"
+                              />
+                            </label>
+                          </td>
+                          <td className="px-4 py-2">
+                            {hasAccess && (
+                              <span className={`inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${
+                                isOverride 
+                                  ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300' 
+                                  : isDefault
+                                  ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300'
+                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300'
+                              }`}>
+                                <div className={`w-1.5 h-1.5 rounded-full ${
+                                  isOverride ? 'bg-blue-500' : isDefault ? 'bg-green-500' : 'bg-gray-500'
+                                }`}></div>
+                                {isOverride ? 'Custom' : isDefault ? 'Role' : 'Active'}
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </React.Fragment>
+                );
+              })
             )}
           </tbody>
         </table>

@@ -3,16 +3,26 @@ export type User = { id: string; name: string; email?: string; username?: string
 export type PageItem = { key: string; name: string; module?: string };
 
 const fetchJson = async <T>(url: string): Promise<T> => {
+  console.log('[API] Fetching:', url);
   const res = await fetch(url, { credentials: 'include' });
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-  return res.json();
+  console.log('[API] Response status:', res.status, res.statusText);
+  if (!res.ok) {
+    const errorText = await res.text().catch(() => res.statusText);
+    console.error('[API] Error response:', errorText);
+    throw new Error(`${res.status} ${res.statusText}: ${errorText}`);
+  }
+  const data = await res.json();
+  console.log('[API] Response data:', data);
+  return data;
 };
 
 export const api = {
   // Fetch roles from backend DB and locally filter by query
   searchRoles: async (q: string): Promise<Role[]> => {
     console.log('[PermissionManager] Fetching roles...');
-    const resp = await fetchJson<any>(`/api/privileges/roles`);
+    // Add cache-busting timestamp to ensure fresh data
+    const timestamp = Date.now();
+    const resp = await fetchJson<any>(`/api/privileges/roles?_t=${timestamp}`);
     console.log('[PermissionManager] Roles response:', resp);
     
     const rows = Array.isArray(resp?.data) ? resp.data : Array.isArray(resp) ? resp : [];
@@ -24,7 +34,7 @@ export const api = {
       userCount: typeof r.user_count !== 'undefined' ? Number(r.user_count) : (typeof r.userCount !== 'undefined' ? Number(r.userCount) : undefined)
     }));
     
-    console.log('[PermissionManager] Mapped roles:', mapped.map(r => `${r.name} (${r.userCount} users)`));
+    console.log('[PermissionManager] Mapped roles:', mapped.map(r => `${r.name} (ID: ${r.id}, ${r.userCount} users)`));
     
     if (!q) return mapped;
     const ql = q.toLowerCase();
@@ -45,6 +55,38 @@ export const api = {
     try {
       resp = await tryFetch(roleKey);
       console.log(`[PermissionManager] Response:`, resp);
+      
+      // If we got an empty result and have a roleName, try alternative formats
+      if (resp && Array.isArray(resp.data) && resp.data.length === 0 && roleName) {
+        console.log(`[PermissionManager] Got 0 users with roleKey ${roleKey}, trying roleName variants...`);
+        
+        // Try exact role name first (e.g., "Hub Incharge")
+        try {
+          console.log(`[PermissionManager] Trying exact roleName: ${roleName}`);
+          const resp2 = await tryFetch(roleName);
+          if (resp2 && Array.isArray(resp2.data) && resp2.data.length > 0) {
+            console.log(`[PermissionManager] Found users with exact roleName!`);
+            resp = resp2;
+          }
+        } catch (e2) {
+          // Continue to try other formats
+        }
+        
+        // If still empty, try normalized format (e.g., "HUB_INCHARGE")
+        if (resp.data.length === 0) {
+          const norm = roleName.replace(/[\s-]+/g, '_').toUpperCase();
+          console.log(`[PermissionManager] Trying normalized roleName: ${norm}`);
+          try {
+            const resp3 = await tryFetch(norm);
+            if (resp3 && Array.isArray(resp3.data) && resp3.data.length > 0) {
+              console.log(`[PermissionManager] Found users with normalized roleName!`);
+              resp = resp3;
+            }
+          } catch (e3) {
+            console.error(`[PermissionManager] All retry attempts failed`);
+          }
+        }
+      }
     } catch (e1) {
       console.error(`[PermissionManager] Error with roleKey ${roleKey}:`, e1);
       if (roleName) {

@@ -236,10 +236,23 @@ export const ROLE_DEFAULT_PAGES: RoleDefaultPages[] = [
     description: 'Distribution hub operations',
     defaultPages: [
       'dashboard',
-      'hub-incharge',
-      'operations/inventory-management',
-      'operations/warehouse-management',
-      'operations/dispatch-management',
+      'hub-incharge-dashboard',
+      'delivery-note',
+      'material-receipt',
+      'goods-receipt-note',
+      'goods-issue-note',
+    ],
+  },
+  {
+    role: 'HUB_INCHARGE',
+    description: 'Distribution hub operations (underscore format)',
+    defaultPages: [
+      'dashboard',
+      'hub-incharge-dashboard',
+      'delivery-note',
+      'material-receipt',
+      'goods-receipt-note',
+      'goods-issue-note',
     ],
   },
   {

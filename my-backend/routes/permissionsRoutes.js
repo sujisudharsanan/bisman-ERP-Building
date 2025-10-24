@@ -4,8 +4,9 @@ const router = express.Router();
 const authMiddleware = require('../middleware/auth');
 const rbacMiddleware = require('../middleware/rbac');
 const { getPrisma } = require('../lib/prisma');
+const cacheService = require('../services/cacheService'); // ✅ Cache service
 
-// GET /api/permissions - Get user's allowed pages
+// GET /api/permissions - Get user's allowed pages (with caching)
 router.get('/', authMiddleware.authenticate, async (req, res) => {
   try {
     const prisma = getPrisma();
@@ -27,19 +28,41 @@ router.get('/', authMiddleware.authenticate, async (req, res) => {
       });
     }
 
-    // Query user permissions from rbac_user_permissions table
+    const userIdInt = parseInt(userId);
+
+    // ✅ PERFORMANCE: Check cache first
+    const cached = cacheService.permissions.getByUser(userIdInt);
+    if (cached) {
+      console.log(`[permissions] Cache HIT for user ${userIdInt}`);
+      return res.json({
+        success: true,
+        data: {
+          userId: userIdInt,
+          allowedPages: cached,
+          cached: true
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Cache miss - query database
+    console.log(`[permissions] Cache MISS for user ${userIdInt} - querying DB`);
     const permissions = await prisma.rbac_user_permissions.findMany({
-      where: { user_id: parseInt(userId) },
+      where: { user_id: userIdInt },
       select: { page_key: true }
     });
 
     const allowedPages = permissions.map(p => p.page_key);
 
+    // ✅ PERFORMANCE: Store in cache (5 min TTL)
+    cacheService.permissions.setByUser(userIdInt, allowedPages);
+
     res.json({
       success: true,
       data: {
-        userId: parseInt(userId),
-        allowedPages
+        userId: userIdInt,
+        allowedPages,
+        cached: false
       },
       timestamp: new Date().toISOString()
     });
@@ -98,6 +121,10 @@ router.post('/update',
           }))
         });
       }
+
+      // ✅ PERFORMANCE: Invalidate cache for this user
+      cacheService.permissions.invalidateUser(userIdInt);
+      console.log(`[permissions] Cache invalidated for user ${userIdInt}`);
 
       res.json({
         success: true,

@@ -194,14 +194,14 @@
  */
 
 import {
-  Shield, Users, Database, Activity, Settings, Key, Server,
+  Shield, Users, Database, Activity, Settings, Key, Server, User, UserPlus,
   DollarSign, FileText, TrendingUp, BarChart3, PieChart, Briefcase,
   ShoppingCart, Package, Truck, ClipboardCheck, FileCheck, Scale,
   AlertTriangle, BookOpen, Archive, CreditCard, Wallet, Building,
   Calculator, Receipt, Banknote, FileSpreadsheet, Landmark, Globe,
   Coins, FolderOpen, FileEdit, Upload, CheckCircle, Clock,
   Box, Boxes, ListChecks, Tag, Factory, Route, MapPin,
-  Clipboard, FileSignature, Gavel, Folder, UserCheck,
+  Clipboard, FileSignature, Gavel, Folder, UserCheck, Bell, HelpCircle, MessageSquare,
   type LucideIcon
 } from 'lucide-react';
 
@@ -214,7 +214,7 @@ export interface PageMetadata {
   name: string;
   path: string;
   icon: LucideIcon;
-  module: 'system' | 'finance' | 'procurement' | 'operations' | 'compliance';
+  module: 'system' | 'finance' | 'procurement' | 'operations' | 'compliance' | 'common';
   permissions: string[]; // Required permissions (OR logic)
   roles: string[]; // Recommended roles
   status: PageStatus;
@@ -276,6 +276,14 @@ export const MODULES: Record<string, ModuleMetadata> = {
     description: 'Compliance and legal management',
     color: 'red',
     order: 5,
+  },
+  common: {
+    id: 'common',
+    name: 'Common',
+    icon: User,
+    description: 'Pages available to all users',
+    color: 'gray',
+    order: 999, // Show at bottom of sidebar
   },
 };
 
@@ -476,18 +484,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     description: 'Manage master data entities',
     order: 15,
-  },
-  {
-    id: 'system-about',
-    name: 'About Me',
-    path: '/system/about-me',
-    icon: Users,
-    module: 'system',
-    permissions: ['system-settings', 'user-management'],
-    roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR', 'IT ADMIN'],
-    status: 'active',
-    description: 'User profile',
-    order: 99,
   },
 
   // ==================== FINANCE MODULE (30 pages) ====================
@@ -863,18 +859,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'Approve pending payments',
     order: 31,
   },
-  {
-    id: 'finance-about',
-    name: 'About Me',
-    path: '/finance/about-me',
-    icon: Users,
-    module: 'finance',
-    permissions: ['executive-dashboard'],
-    roles: ['CFO', 'FINANCE CONTROLLER', 'TREASURY', 'ACCOUNTS', 'ACCOUNTS PAYABLE', 'BANKER'],
-    status: 'active',
-    description: 'User profile',
-    order: 99,
-  },
 
   // ==================== PROCUREMENT MODULE (4 pages) ====================
   {
@@ -936,18 +920,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     description: 'Create material requests',
     order: 5,
-  },
-  {
-    id: 'procurement-about',
-    name: 'About Me',
-    path: '/procurement/about-me',
-    icon: Users,
-    module: 'procurement',
-    permissions: ['purchase-order'],
-    roles: ['PROCUREMENT OFFICER'],
-    status: 'active',
-    description: 'User profile',
-    order: 99,
   },
 
   // ==================== OPERATIONS MODULE (12 pages) ====================
@@ -1107,18 +1079,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'Manage hub assets',
     order: 13,
   },
-  {
-    id: 'operations-about',
-    name: 'About Me',
-    path: '/operations/about-me',
-    icon: Users,
-    module: 'operations',
-    permissions: ['kpi-dashboard'],
-    roles: ['OPERATIONS MANAGER', 'HUB INCHARGE', 'STORE INCHARGE'],
-    status: 'active',
-    description: 'User profile',
-    order: 99,
-  },
 
   // ==================== COMPLIANCE MODULE (8 pages) ====================
   {
@@ -1229,18 +1189,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'Manage legal entity data',
     order: 9,
   },
-  {
-    id: 'compliance-about',
-    name: 'About Me',
-    path: '/compliance/about-me',
-    icon: Users,
-    module: 'compliance',
-    permissions: ['compliance-dashboard'],
-    roles: ['COMPLIANCE', 'LEGAL'],
-    status: 'active',
-    description: 'User profile',
-    order: 99,
-  },
 
   // ==================== ROLE-BASED DASHBOARDS (6 pages) ====================
   {
@@ -1314,6 +1262,129 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     description: 'Compliance monitoring and management',
     order: 100,
+  },
+
+  // ==================== COMMON MODULE (9 pages) ====================
+  // These pages are accessible to ALL authenticated users regardless of role
+  {
+    id: 'user-creation',
+    name: 'Create User',
+    path: '/common/user-creation',
+    icon: UserPlus,
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['SUPER_ADMIN', 'ADMIN', 'SYSTEM ADMINISTRATOR', 'MANAGER', 'HUB INCHARGE'],
+    status: 'active',
+    description: 'Create and register new users',
+    order: 0.5,
+  },
+  {
+    id: 'common-about-me',
+    name: 'About Me',
+    path: '/common/about-me',
+    icon: User,
+    module: 'common',
+    permissions: ['authenticated'], // Special permission - all logged-in users
+    roles: ['ALL'], // Available to all roles
+    status: 'active',
+    description: 'View and manage your profile information',
+    order: 1,
+  },
+  {
+    id: 'common-change-password',
+    name: 'Change Password',
+    path: '/common/change-password',
+    icon: Key,
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL'],
+    status: 'active',
+    description: 'Update your account password',
+    order: 2,
+  },
+  {
+    id: 'common-security-settings',
+    name: 'Security Settings',
+    path: '/common/security-settings',
+    icon: Shield,
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL'],
+    status: 'active',
+    description: 'Manage your account security preferences',
+    order: 3,
+  },
+  {
+    id: 'common-notifications',
+    name: 'Notifications',
+    path: '/common/notifications',
+    icon: Bell,
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL'],
+    status: 'active',
+    description: 'View and manage your notifications',
+    order: 4,
+  },
+  {
+    id: 'common-messages',
+    name: 'Messages',
+    path: '/common/messages',
+    icon: MessageSquare,
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL'],
+    status: 'active',
+    description: 'Internal messaging system',
+    order: 5,
+  },
+  {
+    id: 'common-help-center',
+    name: 'Help Center',
+    path: '/common/help-center',
+    icon: HelpCircle,
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL'],
+    status: 'active',
+    description: 'Get help and support resources',
+    order: 6,
+  },
+  {
+    id: 'common-documentation',
+    name: 'Documentation',
+    path: '/common/documentation',
+    icon: FileText,
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL'],
+    status: 'active',
+    description: 'System documentation and guides',
+    order: 7,
+  },
+  {
+    id: 'common-user-settings',
+    name: 'User Settings',
+    path: '/common/user-settings',
+    icon: Settings,
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL'],
+    status: 'active',
+    description: 'Customize your preferences and settings',
+    order: 8,
+  },
+  {
+    id: 'common-payment-request',
+    name: 'Payment Request',
+    path: '/common/payment-request',
+    icon: DollarSign,
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL'],
+    status: 'active',
+    description: 'Submit and track payment requests',
+    order: 9,
   },
 ];
 

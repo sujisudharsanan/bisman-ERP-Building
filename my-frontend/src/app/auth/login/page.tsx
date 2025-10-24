@@ -302,8 +302,6 @@ export default function StandardLoginPage() {
           // Operations Roles → Independent Operations Dashboards
           case 'OPERATIONS_MANAGER':
           case 'OPERATIONS MANAGER':
-          case 'HUB_INCHARGE':
-          case 'HUB INCHARGE':
           case 'WAREHOUSE_MANAGER':
           case 'WAREHOUSE MANAGER':
           case 'LOGISTICS_MANAGER':
@@ -311,6 +309,10 @@ export default function StandardLoginPage() {
           case 'INVENTORY_CONTROLLER':
           case 'INVENTORY CONTROLLER':
             targetPath = '/operations-manager';
+            break;
+          case 'HUB_INCHARGE':
+          case 'HUB INCHARGE':
+            targetPath = '/hub-incharge';
             break;
           case 'STORE_INCHARGE':
           case 'STORE INCHARGE':

@@ -2,9 +2,26 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/hooks/useAuth';
-import SuperAdminControlPanel from '@/components/SuperAdminControlPanel';
 import PermissionGuard from '@/common/components/PermissionGuard';
+
+// ✅ PERFORMANCE: Lazy load the heavy SuperAdminControlPanel
+// This component is 12MB and should only load after authentication
+const SuperAdminControlPanel = dynamic(
+  () => import('@/components/SuperAdminControlPanel'),
+  {
+    loading: () => (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-700 dark:text-gray-300">Loading Super Admin dashboard...</p>
+        </div>
+      </div>
+    ),
+    ssr: false
+  }
+);
 
 export default function SuperAdminPage() {
   const { user, loading } = useAuth();

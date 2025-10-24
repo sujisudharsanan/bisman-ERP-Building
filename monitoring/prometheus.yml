@@ -1,0 +1,47 @@
+# Prometheus Configuration for ERP Monitoring
+# Scrapes metrics from backend, database, and system
+
+global:
+  scrape_interval: 15s     # Scrape targets every 15 seconds
+  evaluation_interval: 15s # Evaluate rules every 15 seconds
+  
+  external_labels:
+    monitor: 'bisman-erp'
+    environment: 'development'
+
+# Alerting configuration
+alerting:
+  alertmanagers:
+    - static_configs:
+        - targets:
+            - localhost:9093
+
+# Load rules once and periodically evaluate them
+rule_files:
+  - "alerts/*.yml"
+
+# Scrape configurations
+scrape_configs:
+  # Backend API metrics
+  - job_name: 'erp-backend'
+    static_configs:
+      - targets: ['localhost:3001']
+    metrics_path: '/metrics'
+    scrape_interval: 10s
+    
+  # Node exporter for system metrics
+  - job_name: 'node-exporter'
+    static_configs:
+      - targets: ['localhost:9100']
+    
+  # PostgreSQL exporter for database metrics  
+  - job_name: 'postgres'
+    static_configs:
+      - targets: ['localhost:9187']
+      
+  # Custom ERP metrics endpoint
+  - job_name: 'erp-custom-metrics'
+    static_configs:
+      - targets: ['localhost:3001']
+    metrics_path: '/api/metrics'
+    scrape_interval: 30s

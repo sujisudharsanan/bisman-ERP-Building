@@ -3,6 +3,7 @@
 import React from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import { useAuth } from '@/common/hooks/useAuth';
 import {
   Home,
   User,
@@ -28,29 +29,86 @@ type TabName =
   | 'Tasks & Requests'
   | 'Settings';
 
+// Map tab names to their page keys in the permission system
+const TAB_TO_PAGE_KEY: Record<TabName, string> = {
+  'Dashboard': 'hub-incharge-dashboard',
+  'About Me': 'about-me',
+  'Approvals': 'hub-incharge-approvals',
+  'Purchase': 'hub-incharge-purchase',
+  'Expenses': 'hub-incharge-expenses',
+  'Performance': 'hub-incharge-performance',
+  'Messages': 'hub-incharge-messages',
+  'Create Task': 'hub-incharge-create-task',
+  'Tasks & Requests': 'hub-incharge-tasks-requests',
+  'Settings': 'hub-incharge-settings',
+};
+
 export default function HubInchargeTabs() {
   const searchParams = useSearchParams();
   const router = useRouter();
+  const { user, hasAccess } = useAuth();
+  const [userAllowedPages, setUserAllowedPages] = React.useState<string[]>([]);
+  const [isLoadingPermissions, setIsLoadingPermissions] = React.useState(true);
+  
   const initialTab = (searchParams?.get('tab') as TabName) || 'Dashboard';
   const [activeTab, setActiveTab] = React.useState<TabName>(initialTab);
+
+  // Fetch user permissions from database
+  React.useEffect(() => {
+    const fetchUserPermissions = async () => {
+      if (!user?.id) {
+        setIsLoadingPermissions(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/permissions?userId=${user.id}`, {
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const allowedPages = result.data?.allowedPages || result.allowedPages || [];
+          setUserAllowedPages(allowedPages);
+        }
+      } catch (error) {
+        console.error('[HubInchargeTabs] Error fetching permissions:', error);
+      } finally {
+        setIsLoadingPermissions(false);
+      }
+    };
+
+    fetchUserPermissions();
+  }, [user?.id]);
 
   React.useEffect(() => {
     setActiveTab(initialTab);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams?.toString()]);
 
-  const navItems: { name: TabName; icon: JSX.Element }[] = [
-    { name: 'Dashboard', icon: <Home size={16} /> },
-    { name: 'About Me', icon: <User size={16} /> },
-    { name: 'Approvals', icon: <CheckCircle size={16} /> },
-    { name: 'Purchase', icon: <ShoppingCart size={16} /> },
-    { name: 'Expenses', icon: <DollarSign size={16} /> },
-    { name: 'Performance', icon: <BarChart3 size={16} /> },
-    { name: 'Messages', icon: <MessageCircle size={16} /> },
-    { name: 'Create Task', icon: <PlusCircle size={16} /> },
-    { name: 'Tasks & Requests', icon: <ClipboardList size={16} /> },
-    { name: 'Settings', icon: <Settings size={16} /> },
+  // All available tabs with their page keys
+  const allNavItems: { name: TabName; icon: JSX.Element; pageKey: string }[] = [
+    { name: 'Dashboard', icon: <Home size={16} />, pageKey: TAB_TO_PAGE_KEY['Dashboard'] },
+    { name: 'About Me', icon: <User size={16} />, pageKey: TAB_TO_PAGE_KEY['About Me'] },
+    { name: 'Approvals', icon: <CheckCircle size={16} />, pageKey: TAB_TO_PAGE_KEY['Approvals'] },
+    { name: 'Purchase', icon: <ShoppingCart size={16} />, pageKey: TAB_TO_PAGE_KEY['Purchase'] },
+    { name: 'Expenses', icon: <DollarSign size={16} />, pageKey: TAB_TO_PAGE_KEY['Expenses'] },
+    { name: 'Performance', icon: <BarChart3 size={16} />, pageKey: TAB_TO_PAGE_KEY['Performance'] },
+    { name: 'Messages', icon: <MessageCircle size={16} />, pageKey: TAB_TO_PAGE_KEY['Messages'] },
+    { name: 'Create Task', icon: <PlusCircle size={16} />, pageKey: TAB_TO_PAGE_KEY['Create Task'] },
+    { name: 'Tasks & Requests', icon: <ClipboardList size={16} />, pageKey: TAB_TO_PAGE_KEY['Tasks & Requests'] },
+    { name: 'Settings', icon: <Settings size={16} />, pageKey: TAB_TO_PAGE_KEY['Settings'] },
   ];
+
+  // Filter tabs based on user permissions
+  const navItems = React.useMemo(() => {
+    if (isLoadingPermissions) return allNavItems; // Show all while loading
+    
+    return allNavItems.filter(item => {
+      // Check if user has permission for this page
+      return userAllowedPages.includes(item.pageKey);
+    });
+  }, [isLoadingPermissions, userAllowedPages]);
 
   const handleTabChange = (tabName: TabName) => {
     setActiveTab(tabName);
@@ -109,8 +167,39 @@ const EmbeddedHubIncharge = dynamic(
 // Static bottom bar to mimic Excel-like sheet tabs
 export function HubInchargeBottomBar() {
   const router = useRouter();
+  const { user } = useAuth();
   const [activeTab, setActiveTab] = React.useState('Dashboard');
   const [mounted, setMounted] = React.useState(false);
+  const [userAllowedPages, setUserAllowedPages] = React.useState<string[]>([]);
+  const [isLoadingPermissions, setIsLoadingPermissions] = React.useState(true);
+
+  // Fetch user permissions from database
+  React.useEffect(() => {
+    const fetchUserPermissions = async () => {
+      if (!user?.id) {
+        setIsLoadingPermissions(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`/api/permissions?userId=${user.id}`, {
+          credentials: 'include',
+        });
+
+        if (response.ok) {
+          const result = await response.json();
+          const allowedPages = result.data?.allowedPages || result.allowedPages || [];
+          setUserAllowedPages(allowedPages);
+        }
+      } catch (error) {
+        console.error('[HubInchargeBottomBar] Error fetching permissions:', error);
+      } finally {
+        setIsLoadingPermissions(false);
+      }
+    };
+
+    fetchUserPermissions();
+  }, [user?.id]);
 
   React.useEffect(() => {
     setMounted(true);
@@ -122,18 +211,29 @@ export function HubInchargeBottomBar() {
     }
   }, []);
 
-  const navItems: { name: string; icon: JSX.Element }[] = [
-    { name: 'Dashboard', icon: <Home size={16} /> },
-    { name: 'About Me', icon: <User size={16} /> },
-    { name: 'Approvals', icon: <CheckCircle size={16} /> },
-    { name: 'Purchase', icon: <ShoppingCart size={16} /> },
-    { name: 'Expenses', icon: <DollarSign size={16} /> },
-    { name: 'Performance', icon: <BarChart3 size={16} /> },
-    { name: 'Messages', icon: <MessageCircle size={16} /> },
-    { name: 'Create Task', icon: <PlusCircle size={16} /> },
-    { name: 'Tasks & Requests', icon: <ClipboardList size={16} /> },
-    { name: 'Settings', icon: <Settings size={16} /> },
+  // All available tabs with their page keys
+  const allNavItems: { name: string; icon: JSX.Element; pageKey: string }[] = [
+    { name: 'Dashboard', icon: <Home size={16} />, pageKey: 'hub-incharge-dashboard' },
+    { name: 'About Me', icon: <User size={16} />, pageKey: 'about-me' },
+    { name: 'Approvals', icon: <CheckCircle size={16} />, pageKey: 'hub-incharge-approvals' },
+    { name: 'Purchase', icon: <ShoppingCart size={16} />, pageKey: 'hub-incharge-purchase' },
+    { name: 'Expenses', icon: <DollarSign size={16} />, pageKey: 'hub-incharge-expenses' },
+    { name: 'Performance', icon: <BarChart3 size={16} />, pageKey: 'hub-incharge-performance' },
+    { name: 'Messages', icon: <MessageCircle size={16} />, pageKey: 'hub-incharge-messages' },
+    { name: 'Create Task', icon: <PlusCircle size={16} />, pageKey: 'hub-incharge-create-task' },
+    { name: 'Tasks & Requests', icon: <ClipboardList size={16} />, pageKey: 'hub-incharge-tasks-requests' },
+    { name: 'Settings', icon: <Settings size={16} />, pageKey: 'hub-incharge-settings' },
   ];
+
+  // Filter tabs based on user permissions
+  const navItems = React.useMemo(() => {
+    if (isLoadingPermissions) return allNavItems; // Show all while loading
+    
+    return allNavItems.filter(item => {
+      // Check if user has permission for this page
+      return userAllowedPages.includes(item.pageKey);
+    });
+  }, [isLoadingPermissions, userAllowedPages]);
 
   const handleTabChange = (tabName: string) => {
     setActiveTab(tabName as any);

@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/common/hooks/useAuth';
-import { User, Upload, Search } from 'lucide-react';
+import { User, Upload, Search, Landmark, Plus, Edit3, Trash2, Eye, EyeOff, Star, CheckCircle, Clock, X, Check } from 'lucide-react';
 
 interface EmployeeDetail {
   label: string;
@@ -22,6 +22,36 @@ interface AwardsSection {
 interface ExperienceSection {
   title: string;
   items: string[];
+}
+
+interface BankAccount {
+  id: string;
+  account_holder_name: string;
+  account_number: string;
+  account_type: 'savings' | 'current' | 'salary' | 'business';
+  bank_name: string;
+  branch_name?: string;
+  ifsc_code?: string;
+  swift_code?: string;
+  iban?: string;
+  currency: string;
+  is_primary: boolean;
+  is_verified: boolean;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface BankAccountFormData {
+  account_holder_name: string;
+  account_number: string;
+  account_type: 'savings' | 'current' | 'salary' | 'business';
+  bank_name: string;
+  branch_name: string;
+  ifsc_code: string;
+  swift_code: string;
+  iban: string;
+  currency: string;
+  is_primary: boolean;
 }
 
 interface Employee {
@@ -106,6 +136,24 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
   const [filteredEmployees, setFilteredEmployees] = useState<Employee[]>(employees);
   const [uploading, setUploading] = useState(false);
 
+  // Bank Account States
+  const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [showBankModal, setShowBankModal] = useState(false);
+  const [editingAccount, setEditingAccount] = useState<BankAccount | null>(null);
+  const [showAccountNumbers, setShowAccountNumbers] = useState<Set<string>>(new Set());
+  const [bankFormData, setBankFormData] = useState<BankAccountFormData>({
+    account_holder_name: '',
+    account_number: '',
+    account_type: 'savings',
+    bank_name: '',
+    branch_name: '',
+    ifsc_code: '',
+    swift_code: '',
+    iban: '',
+    currency: 'USD',
+    is_primary: false,
+  });
+
   // Filter employees based on search term
   useEffect(() => {
     const filtered = employees.filter(
@@ -139,6 +187,48 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
 
     loadProfilePicture();
   }, [apiBaseUrl]);
+
+  // Load bank accounts
+  useEffect(() => {
+    const loadBankAccounts = async () => {
+      try {
+        // TODO: Replace with actual API call
+        // const response = await fetch(`${apiBaseUrl}/api/bank-accounts`, {
+        //   method: 'GET',
+        //   credentials: 'include',
+        // });
+        // if (response.ok) {
+        //   const data = await response.json();
+        //   setBankAccounts(data.accounts);
+        // }
+
+        // Mock data for now
+        const mockAccounts: BankAccount[] = [
+          {
+            id: '1',
+            account_holder_name: user?.name || user?.username || 'User',
+            account_number: '1234567890',
+            account_type: 'salary',
+            bank_name: 'State Bank of India',
+            branch_name: 'Main Branch',
+            ifsc_code: 'SBIN0001234',
+            currency: 'INR',
+            is_primary: true,
+            is_verified: true,
+            is_active: true,
+            created_at: '2024-01-01',
+          },
+        ];
+        setBankAccounts(mockAccounts);
+      } catch (error) {
+        console.error('Failed to load bank accounts:', error);
+      }
+    };
+
+    if (user) {
+      loadBankAccounts();
+    }
+  }, [user, apiBaseUrl]);
 
   const handlePhotoUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -186,6 +276,91 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
       setUploading(false);
       const input = document.getElementById('photo-upload-input') as HTMLInputElement | null;
       if (input) input.value = '';
+    }
+  };
+
+  // Bank Account Functions
+  const handleAddBankAccount = () => {
+    setBankFormData({
+      account_holder_name: user?.name || user?.username || '',
+      account_number: '',
+      account_type: 'savings',
+      bank_name: '',
+      branch_name: '',
+      ifsc_code: '',
+      swift_code: '',
+      iban: '',
+      currency: 'USD',
+      is_primary: bankAccounts.length === 0,
+    });
+    setEditingAccount(null);
+    setShowBankModal(true);
+  };
+
+  const handleEditBankAccount = (account: BankAccount) => {
+    setBankFormData({
+      account_holder_name: account.account_holder_name,
+      account_number: account.account_number,
+      account_type: account.account_type,
+      bank_name: account.bank_name,
+      branch_name: account.branch_name || '',
+      ifsc_code: account.ifsc_code || '',
+      swift_code: account.swift_code || '',
+      iban: account.iban || '',
+      currency: account.currency,
+      is_primary: account.is_primary,
+    });
+    setEditingAccount(account);
+    setShowBankModal(true);
+  };
+
+  const handleSaveBankAccount = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      // TODO: Replace with actual API call
+      console.log('Save bank account:', bankFormData);
+      setShowBankModal(false);
+      // Reload accounts after save
+    } catch (error) {
+      console.error('Failed to save bank account:', error);
+    }
+  };
+
+  const handleDeleteBankAccount = async (accountId: string) => {
+    if (!confirm('Are you sure you want to delete this bank account?')) return;
+    try {
+      // TODO: Replace with actual API call
+      console.log('Delete account:', accountId);
+      setBankAccounts(accounts => accounts.filter(a => a.id !== accountId));
+    } catch (error) {
+      console.error('Failed to delete bank account:', error);
+    }
+  };
+
+  const toggleShowAccountNumber = (accountId: string) => {
+    setShowAccountNumbers(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(accountId)) {
+        newSet.delete(accountId);
+      } else {
+        newSet.add(accountId);
+      }
+      return newSet;
+    });
+  };
+
+  const maskAccountNumber = (accountNumber: string) => {
+    if (accountNumber.length <= 4) return accountNumber;
+    return '****' + accountNumber.slice(-4);
+  };
+
+  const getAccountTypeIcon = (type: string) => {
+    switch (type) {
+      case 'savings': return '💰';
+      case 'current': return '💼';
+      case 'salary': return '💵';
+      case 'business': return '🏢';
+      default: return '🏦';
     }
   };
 
@@ -635,6 +810,213 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
                 </div>
               )}
 
+              {/* Bank Accounts Section */}
+              <div className="info-section">
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '15px' }}>
+                  <h3 style={{ margin: 0, borderBottom: 'none', paddingBottom: 0 }}>
+                    <Landmark size={20} style={{ display: 'inline', marginRight: '8px', verticalAlign: 'middle' }} />
+                    Bank Accounts
+                  </h3>
+                  <button
+                    onClick={handleAddBankAccount}
+                    className="upload-button"
+                    style={{ fontSize: '12px', padding: '6px 12px' }}
+                  >
+                    <Plus size={14} />
+                    Add Account
+                  </button>
+                </div>
+
+                {bankAccounts.length === 0 ? (
+                  <div style={{ textAlign: 'center', padding: '30px 20px', color: '#6b7280' }} className="dark:text-gray-400">
+                    <Landmark size={40} style={{ margin: '0 auto 10px', opacity: 0.5 }} />
+                    <p style={{ margin: 0, fontSize: '14px' }}>No bank accounts added yet</p>
+                  </div>
+                ) : (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                    {bankAccounts.map(account => {
+                      const isNumberVisible = showAccountNumbers.has(account.id);
+                      return (
+                        <div
+                          key={account.id}
+                          style={{
+                            padding: '15px',
+                            backgroundColor: '#f8fafc',
+                            borderRadius: '8px',
+                            border: '1px solid #e5e7eb',
+                          }}
+                          className="dark:bg-gray-700 dark:border-gray-600"
+                        >
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'start', marginBottom: '10px' }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                              <span style={{ fontSize: '20px' }}>{getAccountTypeIcon(account.account_type)}</span>
+                              <div>
+                                <h4 style={{ margin: 0, fontSize: '16px', fontWeight: 600, color: '#374151' }} className="dark:text-gray-100">
+                                  {account.bank_name}
+                                </h4>
+                                <p style={{ margin: 0, fontSize: '12px', color: '#6b7280', textTransform: 'capitalize' }} className="dark:text-gray-400">
+                                  {account.account_type} Account
+                                </p>
+                              </div>
+                            </div>
+                            <div style={{ display: 'flex', gap: '6px' }}>
+                              {account.is_primary && (
+                                <span style={{ 
+                                  padding: '4px 8px', 
+                                  backgroundColor: '#fef3c7', 
+                                  color: '#92400e', 
+                                  borderRadius: '4px', 
+                                  fontSize: '11px', 
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }} className="dark:bg-yellow-900/30 dark:text-yellow-300">
+                                  <Star size={12} className="fill-current" />
+                                  Primary
+                                </span>
+                              )}
+                              {account.is_verified ? (
+                                <span style={{ 
+                                  padding: '4px 8px', 
+                                  backgroundColor: '#d1fae5', 
+                                  color: '#065f46', 
+                                  borderRadius: '4px', 
+                                  fontSize: '11px', 
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }} className="dark:bg-green-900/30 dark:text-green-300">
+                                  <CheckCircle size={12} />
+                                  Verified
+                                </span>
+                              ) : (
+                                <span style={{ 
+                                  padding: '4px 8px', 
+                                  backgroundColor: '#fef3c7', 
+                                  color: '#92400e', 
+                                  borderRadius: '4px', 
+                                  fontSize: '11px', 
+                                  fontWeight: 600,
+                                  display: 'flex',
+                                  alignItems: 'center',
+                                  gap: '4px'
+                                }} className="dark:bg-yellow-900/30 dark:text-yellow-300">
+                                  <Clock size={12} />
+                                  Pending
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                            <div>
+                              <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }} className="dark:text-gray-400">
+                                Account Holder
+                              </span>
+                              <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#374151', fontWeight: 500 }} className="dark:text-gray-200">
+                                {account.account_holder_name}
+                              </p>
+                            </div>
+                            <div>
+                              <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }} className="dark:text-gray-400">
+                                Account Number
+                              </span>
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginTop: '4px' }}>
+                                <p style={{ margin: 0, fontSize: '13px', color: '#374151', fontWeight: 500, fontFamily: 'monospace' }} className="dark:text-gray-200">
+                                  {isNumberVisible ? account.account_number : maskAccountNumber(account.account_number)}
+                                </p>
+                                <button
+                                  onClick={() => toggleShowAccountNumber(account.id)}
+                                  style={{ 
+                                    background: 'none', 
+                                    border: 'none', 
+                                    cursor: 'pointer', 
+                                    color: '#6b7280',
+                                    padding: '2px',
+                                    display: 'flex',
+                                    alignItems: 'center'
+                                  }}
+                                  className="dark:text-gray-400 hover:text-blue-500 dark:hover:text-blue-400"
+                                >
+                                  {isNumberVisible ? <EyeOff size={14} /> : <Eye size={14} />}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div style={{ display: 'grid', gridTemplateColumns: account.ifsc_code ? '1fr 1fr' : '1fr', gap: '10px', marginBottom: '10px' }}>
+                            {account.branch_name && (
+                              <div>
+                                <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }} className="dark:text-gray-400">
+                                  Branch
+                                </span>
+                                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#374151' }} className="dark:text-gray-200">
+                                  {account.branch_name}
+                                </p>
+                              </div>
+                            )}
+                            {account.ifsc_code && (
+                              <div>
+                                <span style={{ fontSize: '11px', color: '#6b7280', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.5px' }} className="dark:text-gray-400">
+                                  IFSC Code
+                                </span>
+                                <p style={{ margin: '4px 0 0 0', fontSize: '13px', color: '#374151', fontFamily: 'monospace' }} className="dark:text-gray-200">
+                                  {account.ifsc_code}
+                                </p>
+                              </div>
+                            )}
+                          </div>
+
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', paddingTop: '10px', borderTop: '1px solid #e5e7eb' }} className="dark:border-gray-600">
+                            <span style={{ fontSize: '11px', color: '#6b7280' }} className="dark:text-gray-400">
+                              Currency: {account.currency}
+                            </span>
+                            <div style={{ display: 'flex', gap: '8px' }}>
+                              <button
+                                onClick={() => handleEditBankAccount(account)}
+                                style={{ 
+                                  padding: '6px', 
+                                  background: 'none', 
+                                  border: 'none', 
+                                  cursor: 'pointer', 
+                                  color: '#3b82f6',
+                                  borderRadius: '4px',
+                                  display: 'flex',
+                                  alignItems: 'center'
+                                }}
+                                className="hover:bg-blue-50 dark:hover:bg-blue-900/20"
+                                title="Edit account"
+                              >
+                                <Edit3 size={16} />
+                              </button>
+                              <button
+                                onClick={() => handleDeleteBankAccount(account.id)}
+                                style={{ 
+                                  padding: '6px', 
+                                  background: 'none', 
+                                  border: 'none', 
+                                  cursor: 'pointer', 
+                                  color: '#ef4444',
+                                  borderRadius: '4px',
+                                  display: 'flex',
+                                  alignItems: 'center'
+                                }}
+                                className="hover:bg-red-50 dark:hover:bg-red-900/20"
+                                title="Delete account"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
               {activeEmployee.education && (
                 <div className="info-section list-section">
                   <h3>{activeEmployee.education.title}</h3>
@@ -671,6 +1053,262 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
           </div>
         </div>
       </div>
+
+      {/* Bank Account Modal */}
+      {showBankModal && (
+        <div style={{
+          position: 'fixed',
+          inset: 0,
+          backgroundColor: 'rgba(0, 0, 0, 0.5)',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center',
+          zIndex: 50,
+          padding: '16px'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            borderRadius: '8px',
+            width: '100%',
+            maxWidth: '600px',
+            maxHeight: '90vh',
+            overflow: 'auto'
+          }} className="dark:bg-gray-800">
+            <div style={{
+              position: 'sticky',
+              top: 0,
+              backgroundColor: 'white',
+              borderBottom: '1px solid #e5e7eb',
+              padding: '20px',
+              zIndex: 10
+            }} className="dark:bg-gray-800 dark:border-gray-700">
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <h2 style={{ margin: 0, fontSize: '20px', fontWeight: 'bold', color: '#1f2937' }} className="dark:text-gray-100">
+                  {editingAccount ? 'Edit Bank Account' : 'Add Bank Account'}
+                </h2>
+                <button
+                  onClick={() => setShowBankModal(false)}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: '#6b7280', padding: '4px' }}
+                  className="hover:text-gray-900 dark:hover:text-gray-300"
+                >
+                  <X size={24} />
+                </button>
+              </div>
+            </div>
+
+            <form onSubmit={handleSaveBankAccount} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '16px' }}>
+              <div>
+                <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '8px' }} className="dark:text-gray-300">
+                  Account Holder Name *
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={bankFormData.account_holder_name}
+                  onChange={(e) => setBankFormData({ ...bankFormData, account_holder_name: e.target.value })}
+                  style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
+                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                  placeholder="Name as per bank account"
+                />
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '8px' }} className="dark:text-gray-300">
+                    Account Number *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={bankFormData.account_number}
+                    onChange={(e) => setBankFormData({ ...bankFormData, account_number: e.target.value })}
+                    style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
+                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                    placeholder="Account number"
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '8px' }} className="dark:text-gray-300">
+                    Account Type *
+                  </label>
+                  <select
+                    required
+                    value={bankFormData.account_type}
+                    onChange={(e) => setBankFormData({ ...bankFormData, account_type: e.target.value as any })}
+                    style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
+                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                  >
+                    <option value="savings">💰 Savings</option>
+                    <option value="current">💼 Current</option>
+                    <option value="salary">💵 Salary</option>
+                    <option value="business">🏢 Business</option>
+                  </select>
+                </div>
+              </div>
+
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '8px' }} className="dark:text-gray-300">
+                    Bank Name *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={bankFormData.bank_name}
+                    onChange={(e) => setBankFormData({ ...bankFormData, bank_name: e.target.value })}
+                    style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
+                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                    placeholder="e.g., State Bank of India"
+                  />
+                </div>
+
+                <div>
+                  <label style={{ display: 'block', fontSize: '14px', fontWeight: 500, color: '#374151', marginBottom: '8px' }} className="dark:text-gray-300">
+                    Branch Name
+                  </label>
+                  <input
+                    type="text"
+                    value={bankFormData.branch_name}
+                    onChange={(e) => setBankFormData({ ...bankFormData, branch_name: e.target.value })}
+                    style={{ width: '100%', padding: '10px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '14px' }}
+                    className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                    placeholder="Branch name"
+                  />
+                </div>
+              </div>
+
+              <div style={{ borderTop: '1px solid #e5e7eb', paddingTop: '16px' }} className="dark:border-gray-700">
+                <h3 style={{ fontSize: '14px', fontWeight: 600, color: '#374151', marginBottom: '12px' }} className="dark:text-gray-200">
+                  Routing Codes (Provide at least one)
+                </h3>
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px' }}>
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#6b7280', marginBottom: '6px' }} className="dark:text-gray-400">
+                      IFSC Code (India)
+                    </label>
+                    <input
+                      type="text"
+                      value={bankFormData.ifsc_code}
+                      onChange={(e) => setBankFormData({ ...bankFormData, ifsc_code: e.target.value.toUpperCase() })}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}
+                      className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                      placeholder="SBIN0001234"
+                      maxLength={11}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#6b7280', marginBottom: '6px' }} className="dark:text-gray-400">
+                      SWIFT Code
+                    </label>
+                    <input
+                      type="text"
+                      value={bankFormData.swift_code}
+                      onChange={(e) => setBankFormData({ ...bankFormData, swift_code: e.target.value.toUpperCase() })}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}
+                      className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                      placeholder="SBININBB123"
+                      maxLength={11}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#6b7280', marginBottom: '6px' }} className="dark:text-gray-400">
+                      IBAN
+                    </label>
+                    <input
+                      type="text"
+                      value={bankFormData.iban}
+                      onChange={(e) => setBankFormData({ ...bankFormData, iban: e.target.value.toUpperCase() })}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}
+                      className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                      placeholder="GB29NWBK60161331926819"
+                      maxLength={34}
+                    />
+                  </div>
+
+                  <div>
+                    <label style={{ display: 'block', fontSize: '13px', fontWeight: 500, color: '#6b7280', marginBottom: '6px' }} className="dark:text-gray-400">
+                      Currency *
+                    </label>
+                    <select
+                      required
+                      value={bankFormData.currency}
+                      onChange={(e) => setBankFormData({ ...bankFormData, currency: e.target.value })}
+                      style={{ width: '100%', padding: '8px', border: '1px solid #d1d5db', borderRadius: '6px', fontSize: '13px' }}
+                      className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-100"
+                    >
+                      <option value="USD">$ USD</option>
+                      <option value="EUR">€ EUR</option>
+                      <option value="GBP">£ GBP</option>
+                      <option value="INR">₹ INR</option>
+                      <option value="AUD">A$ AUD</option>
+                      <option value="CAD">C$ CAD</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <input
+                  type="checkbox"
+                  id="is_primary"
+                  checked={bankFormData.is_primary}
+                  onChange={(e) => setBankFormData({ ...bankFormData, is_primary: e.target.checked })}
+                  style={{ width: '16px', height: '16px' }}
+                />
+                <label htmlFor="is_primary" style={{ fontSize: '14px', color: '#374151', cursor: 'pointer' }} className="dark:text-gray-300">
+                  Set as primary account for salary
+                </label>
+              </div>
+
+              <div style={{ display: 'flex', gap: '12px', paddingTop: '16px' }}>
+                <button
+                  type="button"
+                  onClick={() => setShowBankModal(false)}
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: '#374151',
+                    backgroundColor: 'white',
+                    cursor: 'pointer'
+                  }}
+                  className="dark:bg-gray-700 dark:border-gray-600 dark:text-gray-200 hover:bg-gray-50 dark:hover:bg-gray-600"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  style={{
+                    flex: 1,
+                    padding: '10px',
+                    border: 'none',
+                    borderRadius: '6px',
+                    fontSize: '14px',
+                    fontWeight: 500,
+                    color: 'white',
+                    backgroundColor: '#3b82f6',
+                    cursor: 'pointer',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    gap: '6px'
+                  }}
+                  className="hover:bg-blue-700"
+                >
+                  <Check size={16} />
+                  {editingAccount ? 'Update Account' : 'Add Account'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -1,0 +1,8 @@
+ 21M	.next/static/chunks/app
+5.8M	.next/static/chunks/main-app.js
+480K	.next/static/chunks/_app-pages-browser_src_store_useAuth_ts.js
+412K	.next/static/chunks/_app-pages-browser_src_components_hub-incharge_HubInchargeApp_tsx.js
+132K	.next/static/chunks/app-pages-internals.js
+112K	.next/static/chunks/polyfills.js
+ 56K	.next/static/chunks/webpack.js
+ 52K	.next/static/chunks/_app-pages-browser_src_components_settings_PageDirectory_tsx.js

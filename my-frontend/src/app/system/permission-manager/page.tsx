@@ -81,6 +81,7 @@ export default function PermissionManagerPage() {
   const [showAssignDialog, setShowAssignDialog] = useState(false);
   const [unassigning, setUnassigning] = useState(false);
   const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const handleUnassignUser = async (userId: string) => {
     if (!perms.role || !confirm('Remove this user from the role?')) return;
@@ -110,6 +111,9 @@ export default function PermissionManagerPage() {
   const handleSave = async () => {
     await perms.save();
     setHasUnsavedChanges(false);
+    // Reset to default view after saving
+    perms.setUser(null);
+    perms.setRole(null);
   };
 
   return (
@@ -197,7 +201,18 @@ export default function PermissionManagerPage() {
               </div>
               {/* Error display */}
               {perms.usersError && (
-                <div className="text-xs text-red-400 mb-2">{perms.usersError}</div>
+                <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded p-2 mb-2">
+                  <div className="text-xs text-red-600 dark:text-red-400 font-medium mb-1">Error Loading Users</div>
+                  <div className="text-xs text-red-500 dark:text-red-300">{perms.usersError}</div>
+                  {perms.usersError.includes('401') && (
+                    <button
+                      onClick={() => window.location.href = '/auth/login'}
+                      className="mt-2 text-xs px-2 py-1 rounded bg-red-600 hover:bg-red-700 text-white"
+                    >
+                      Re-login
+                    </button>
+                  )}
+                </div>
               )}
               {/* Diagnostics when no users found */}
               {perms.role && perms.usersForRole.length === 0 && !perms.showingAllUsers && (
@@ -263,35 +278,60 @@ export default function PermissionManagerPage() {
                 </div>
               ) : (
                 <>
-                  {/* Permission Stats */}
+                  {/* Permission Stats with Search */}
                   <div className="mb-3 p-3 bg-gray-50 dark:bg-slate-900/50 border border-gray-200 dark:border-slate-700 rounded-md">
-                    <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center gap-4">
                         <div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">Role Default Pages</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Role Defaults</div>
                           <div className="text-sm font-semibold text-gray-800 dark:text-gray-100">
-                            {perms.roleDefaultCount} pages
+                            {perms.roleDefaultCount} {perms.roleDefaultCount === 1 ? 'page' : 'pages'}
                           </div>
                         </div>
                         <div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">User Overrides</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Custom Overrides</div>
                           <div className="text-sm font-semibold text-blue-600 dark:text-blue-400">
-                            {perms.userOverrideCount} custom
+                            +{perms.userOverrideCount} {perms.userOverrideCount === 1 ? 'page' : 'pages'}
                           </div>
                         </div>
                         <div>
-                          <div className="text-xs text-gray-500 dark:text-gray-400">Total Permissions</div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400">Total Access</div>
                           <div className="text-sm font-semibold text-green-600 dark:text-green-400">
-                            {perms.allowed.length} / {perms.allPages.length}
+                            {perms.allowed.length} {perms.allowed.length === 1 ? 'page' : 'pages'}
                           </div>
                         </div>
                       </div>
-                      {hasUnsavedChanges && (
-                        <div className="flex items-center gap-2 text-xs text-yellow-600 dark:text-yellow-400">
-                          <span className="animate-pulse">●</span>
-                          <span>Unsaved changes</span>
+                      <div className="flex items-center gap-3">
+                        {hasUnsavedChanges && (
+                          <div className="flex items-center gap-2 text-xs text-yellow-600 dark:text-yellow-400 whitespace-nowrap">
+                            <span className="animate-pulse">●</span>
+                            <span>Unsaved changes</span>
+                          </div>
+                        )}
+                        {/* Search Bar */}
+                        <div className="relative w-72">
+                          <input
+                            type="text"
+                            value={searchQuery}
+                            onChange={(e) => setSearchQuery(e.target.value)}
+                            placeholder="Search pages..."
+                            className="w-full px-3 py-1.5 pl-8 text-sm border border-gray-300 dark:border-slate-600 rounded-md bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                          />
+                          <svg className="absolute left-2.5 top-2 w-4 h-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                          </svg>
+                          {searchQuery && (
+                            <button
+                              onClick={() => setSearchQuery('')}
+                              className="absolute right-2.5 top-2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300"
+                            >
+                              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                              </svg>
+                            </button>
+                          )}
                         </div>
-                      )}
+                      </div>
                     </div>
                   </div>
 
@@ -300,6 +340,7 @@ export default function PermissionManagerPage() {
                     allowed={perms.allowed}
                     roleDefaults={perms.roleDefaults}
                     showOverridePages={perms.showOverridePages}
+                    searchQuery={searchQuery}
                     onToggle={(key) => { perms.toggle(key); handlePermissionChange(); }}
                     onSelectDefault={() => { perms.selectDefault(); handlePermissionChange(); }}
                     onDeselectAll={() => { perms.deselectAll(); handlePermissionChange(); }}

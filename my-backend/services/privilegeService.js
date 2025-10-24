@@ -145,27 +145,37 @@ class PrivilegeService {
       });
 
       // Manually count users for each role since there's no FK relation
+      // SIMPLIFIED APPROACH: Just count exact matches first, then try common variations
       const rolesWithCounts = await Promise.all(
         roles.map(async (role) => {
-          // Build role name variations to match against users.role field
-          const normalized = role.name.toUpperCase().replace(/[\s-]+/g, '_');
-          const roleVariations = [
-            normalized,                                    // SUPER_ADMIN
-            normalized.toLowerCase(),                      // super_admin
-            normalized.replace(/_/g, ' '),                 // SUPER ADMIN
-            normalized.replace(/_/g, ' ').toLowerCase(),   // super admin
-            normalized.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '), // Super Admin
-            normalized.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('_'),  // Super_Admin
-            role.name  // Also try original role name as-is
-          ];
-          // Remove duplicates
-          const uniqueVariations = [...new Set(roleVariations)];
+          let userCount = 0;
           
-          const userCount = await this.prisma.user.count({
-            where: { role: { in: uniqueVariations } }
-          });
-          
-          console.log(`[getAllRoles] Role "${role.name}" (ID ${role.id}): ${userCount} user(s)`);
+          try {
+            // Try exact match first (most common case)
+            userCount = await this.prisma.user.count({
+              where: { role: role.name }
+            });
+            
+            // If no exact match, try normalized variations
+            if (userCount === 0) {
+              const normalized = role.name.toUpperCase().replace(/[\s-]+/g, '_');
+              const roleVariations = [
+                normalized,                                    // SUPER_ADMIN
+                normalized.toLowerCase(),                      // super_admin
+                normalized.replace(/_/g, ' '),                 // SUPER ADMIN
+                normalized.replace(/_/g, ' ').toLowerCase(),   // super admin
+              ];
+              
+              userCount = await this.prisma.user.count({
+                where: { role: { in: roleVariations } }
+              });
+            }
+            
+            console.log(`[getAllRoles] Role "${role.name}" (ID ${role.id}): ${userCount} user(s)`);
+          } catch (e) {
+            console.error(`[getAllRoles] Error counting users for role ${role.name}:`, e.message);
+            userCount = 0;
+          }
           
           return {
             id: role.id,

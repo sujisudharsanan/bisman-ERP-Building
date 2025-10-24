@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import Link from 'next/link';
 import SuperAdminShell from '@/components/layouts/SuperAdminShell';
 import { 
   FileText, Download, Search, Filter, AlertTriangle, 
@@ -188,7 +189,7 @@ export default function PagesRolesReportPage() {
 
   if (loading) {
     return (
-      <SuperAdminShell title="Pages & Roles Report" module="system">
+      <SuperAdminShell title="Pages & Roles Report">
         <div className="flex items-center justify-center h-64">
           <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
         </div>
@@ -198,7 +199,7 @@ export default function PagesRolesReportPage() {
 
   if (error) {
     return (
-      <SuperAdminShell title="Pages & Roles Report" module="system">
+      <SuperAdminShell title="Pages & Roles Report">
         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
           <div className="flex items-center gap-3">
             <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
@@ -213,7 +214,7 @@ export default function PagesRolesReportPage() {
   }
 
   return (
-    <SuperAdminShell title="Pages & Roles Report" module="system">
+    <SuperAdminShell title="Pages & Roles Report">
       <div className="space-y-6">
 
         {/* Breadcrumb Navigation */}

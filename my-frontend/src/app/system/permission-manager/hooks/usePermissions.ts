@@ -28,15 +28,20 @@ export function usePermissions() {
         setUsersError(null);
         setShowingAllUsers(false);
         // Show users for selected role only
+        console.log('[usePermissions] Loading users for role:', role);
         const list = role ? await api.searchUsersByRole(role.id, '', role.name) : [];
+        console.log('[usePermissions] Received users:', list.length, list);
         if (!cancelled) {
           setUsersForRole(list);
           // If role selected but empty result, probe total DB users to aid diagnosis
           if (role && list.length === 0) {
+            console.log('[usePermissions] No users found, checking total DB users');
             try {
               const all = await api.searchAllUsers('');
+              console.log('[usePermissions] Total DB users:', all.length);
               if (!cancelled) setAllUsersCount(all.length);
-            } catch {
+            } catch (e2) {
+              console.error('[usePermissions] Failed to get total users:', e2);
               if (!cancelled) setAllUsersCount(null);
             }
           } else {
@@ -44,8 +49,19 @@ export function usePermissions() {
           }
         }
       } catch (e: any) {
+        console.error('[usePermissions] Error loading users:', e);
         if (!cancelled) {
-          setUsersError(e?.message || 'Failed to load users');
+          const errorMsg = e?.message || 'Failed to load users';
+          // Provide helpful message for common errors
+          let displayError = errorMsg;
+          if (errorMsg.includes('401')) {
+            displayError = '401 Unauthorized - Please refresh the page or log in again';
+          } else if (errorMsg.includes('403')) {
+            displayError = '403 Forbidden - You do not have permission to view users';
+          } else if (errorMsg.includes('500')) {
+            displayError = '500 Server Error - Backend service issue';
+          }
+          setUsersError(displayError);
           setUsersForRole([]);
           setAllUsersCount(null);
         }

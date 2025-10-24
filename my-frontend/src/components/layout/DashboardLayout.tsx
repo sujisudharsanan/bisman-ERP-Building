@@ -40,7 +40,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
         </div>
         {/* Place bottom bar outside the scrollable main so it's not clipped */}
         {/* Only render for hub-incharge role to avoid unnecessary rendering */}
-        {role === 'STAFF' && (
+        {(role === 'STAFF' || role?.toLowerCase().includes('hub') || role?.toLowerCase().includes('incharge')) && (
           <ErrorBoundary fallback={null}>
             <HubInchargeBottomBar />
           </ErrorBoundary>

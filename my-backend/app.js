@@ -3,6 +3,7 @@ const enforce = require('express-sslify')
 const helmet = require('helmet')
 const express = require('express')
 const cors = require('cors')
+const compression = require('compression') // ✅ Response compression
 const path = require('path')
 const fs = require('fs')
 const { Pool } = require('pg')
@@ -62,6 +63,23 @@ app.use(helmet({
   contentSecurityPolicy: false,
   crossOriginEmbedderPolicy: false,
 }))
+
+// ✅ PERFORMANCE OPTIMIZATION: Response compression (GZIP)
+// Reduces API response sizes by ~70-80%
+app.use(compression({
+  // Only compress responses larger than 1KB
+  threshold: 1024,
+  // Compression level (0-9, where 6 is default balance of speed/compression)
+  level: 6,
+  // Filter function - compress JSON and text responses
+  filter: (req, res) => {
+    if (req.headers['x-no-compression']) {
+      return false;
+    }
+    return compression.filter(req, res);
+  }
+}))
+console.log('[app.js] ✅ Response compression enabled (GZIP)');
 
 // Rate limiting for authentication endpoints
 const loginLimiter = rateLimit({
@@ -204,6 +222,27 @@ app.get('/api/health/database', async (req, res) => {
     })
   }
 })
+
+// ✅ PERFORMANCE: Cache statistics endpoint
+app.get('/api/health/cache', (req, res) => {
+  try {
+    const cacheService = require('./services/cacheService');
+    const stats = cacheService.getStats();
+    
+    return res.json({
+      success: true,
+      data: stats,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('Cache stats endpoint failed:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to retrieve cache statistics',
+      timestamp: new Date().toISOString()
+    });
+  }
+});
 // RBAC tables health checker: verifies presence and row counts
 app.get('/api/health/rbac', async (req, res) => {
   const now = new Date().toISOString()

@@ -84,12 +84,12 @@
     "husky": "^9.1.7",
     "jsdom": "^27.0.0",
     "lint-staged": "^15.2.11",
-    "postcss": "8.4.24",
+    "postcss": "^8.5.6",
     "postcss-preset-env": "^10.4.0",
     "prettier": "^3.4.2",
     "tailwindcss": "3.4.7",
     "typescript": "latest",
-    "vitest": "^1.0.0"
+    "vitest": "^4.0.3"
   },
   "devDependenciesAddons": {
     "acorn": "^8.8.2"

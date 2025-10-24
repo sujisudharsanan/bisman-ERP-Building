@@ -53,14 +53,19 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
       }
 
       try {
-        const response = await fetch(`http://localhost:3001/api/permissions?userId=${user.id}`, {
+        // Use relative URL to leverage Next.js API proxy
+        const response = await fetch(`/api/permissions?userId=${user.id}`, {
           credentials: 'include',
         });
 
         if (response.ok) {
-          const data = await response.json();
-          console.log('[Sidebar] User permissions from DB:', data);
-          setUserAllowedPages(data.allowedPages || []);
+          const result = await response.json();
+          console.log('[Sidebar] User permissions from DB:', result);
+          
+          // Backend returns: { success: true, data: { userId, allowedPages } }
+          const allowedPages = result.data?.allowedPages || result.allowedPages || [];
+          console.log('[Sidebar] Extracted allowed pages:', allowedPages);
+          setUserAllowedPages(allowedPages);
         } else {
           console.error('[Sidebar] Failed to fetch permissions:', response.status);
           setUserAllowedPages([]);
@@ -76,22 +81,15 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
     fetchUserPermissions();
   }, [user?.id, isSuperAdmin]);
 
-  // Redirect to access denied page if user has no permissions (except Super Admin)
-  useEffect(() => {
-    if (!isLoadingPermissions && userAllowedPages.length === 0 && user?.id && !isSuperAdmin) {
-      // Only redirect if not already on access-denied page
-      if (!pathname?.includes('access-denied') && !pathname?.includes('auth')) {
-        // Use replace to avoid showing content before redirect
-        router.replace('/access-denied');
-      }
-    }
-  }, [isLoadingPermissions, userAllowedPages, user?.id, pathname, router, isSuperAdmin]);
-
   // Get user permissions based on database permissions
   const userPermissions = useMemo(() => {
-    if (!user || userAllowedPages.length === 0) return [];
+    if (!user) return [];
     
     const perms = new Set<string>();
+    
+    // All authenticated users automatically get 'authenticated' permission
+    // This allows access to common module pages
+    perms.add('authenticated');
     
     // Match allowed pages from database with PAGE_REGISTRY
     PAGE_REGISTRY.forEach(page => {
@@ -108,10 +106,45 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
     return Array.from(perms);
   }, [user, userAllowedPages, isSuperAdmin]);
 
-  // Get navigation structure based on user permissions
+  // Redirect to access denied page if user has no permissions (except Super Admin)
+  // Note: Users with only 'authenticated' permission (common pages) should NOT be redirected
+  useEffect(() => {
+    if (!isLoadingPermissions && userPermissions.length === 0 && user?.id && !isSuperAdmin) {
+      // Only redirect if not already on access-denied page
+      if (!pathname?.includes('access-denied') && !pathname?.includes('auth')) {
+        // Use replace to avoid showing content before redirect
+        router.replace('/access-denied');
+      }
+    }
+  }, [isLoadingPermissions, userPermissions, user?.id, pathname, router, isSuperAdmin]);
+
+  // Get navigation structure based on user's allowed pages (from database)
+  // Filter by page IDs, not by permissions, to show only explicitly granted pages
   const navigation = useMemo(() => {
-    return getNavigationStructure(userPermissions);
-  }, [userPermissions]);
+    if (!user) return {};
+    
+    // For Super Admin, show all pages
+    if (isSuperAdmin) {
+      return getNavigationStructure(userPermissions);
+    }
+    
+    // For regular users, filter by allowed page IDs from database
+    const grouped: Record<string, PageMetadata[]> = {};
+    
+    Object.keys(MODULES).forEach(moduleId => {
+      grouped[moduleId] = PAGE_REGISTRY
+        .filter(page => {
+          // Include if page ID is in user's allowed pages
+          // OR if page has 'authenticated' permission (common pages)
+          return userAllowedPages.includes(page.id) || 
+                 page.permissions.includes('authenticated');
+        })
+        .filter(page => page.module === moduleId)
+        .sort((a, b) => (a.order || 0) - (b.order || 0));
+    });
+    
+    return grouped;
+  }, [user, userAllowedPages, userPermissions, isSuperAdmin]);
 
   // Remove toggle function - modules will always be expanded
   // const toggleModule = (moduleId: string) => {

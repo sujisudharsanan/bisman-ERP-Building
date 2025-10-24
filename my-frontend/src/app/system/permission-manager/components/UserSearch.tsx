@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { useEffect, useState } from 'react';
@@ -17,13 +18,29 @@ export default function UserSearch({ roleId, roleName, value, onChange, disabled
   const [open, setOpen] = useState(false);
 
   useEffect(() => {
-    if (!roleId) { setList([]); return; }
+    console.log('[UserSearch] roleId:', roleId, 'roleName:', roleName);
+    if (roleId == null) { 
+      console.log('[UserSearch] roleId is null/undefined, skipping fetch');
+      setList([]); 
+      return; 
+    }
     let active = true;
-    api.searchUsersByRole(roleId, q, roleName).then(r => { if (active) setList(r); });
+    console.log('[UserSearch] Fetching users for role:', roleId, roleName);
+    api.searchUsersByRole(roleId, q, roleName)
+      .then(r => { 
+        if (active) {
+          console.log('[UserSearch] Received users:', r.length);
+          setList(r);
+        }
+      })
+      .catch(err => {
+        console.error('[UserSearch] Error fetching users:', err);
+        if (active) setList([]);
+      });
     return () => { active = false; };
   }, [q, roleId, roleName]);
 
-  const disabled = propDisabled || !roleId;
+  const disabled = propDisabled || roleId == null;
 
   return (
     <div className="relative w-full">
