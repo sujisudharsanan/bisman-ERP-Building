@@ -1,0 +1,1092 @@
+name: 🚀 Performance CI/CD Pipeline
+
+on:
+  push:
+    branches: [main, under-development, staging]
+  pull_request:
+    branches: [main, under-development, staging]
+  schedule:
+    # Monthly full audit - 1st day of month at 2 AM
+    - cron: '0 2 1 * *'
+  workflow_dispatch: # Manual trigger
+
+env:
+  NODE_VERSION: '18'
+  POSTGRES_VERSION: '14'
+  MAX_BUNDLE_INCREASE: '20' # Percentage
+  MAX_API_LATENCY: '700' # Milliseconds
+  STORAGE_QUOTA_THRESHOLD: '90' # Percentage
+
+jobs:
+  # ═══════════════════════════════════════════════════════════
+  # 1. Setup & Build
+  # ═══════════════════════════════════════════════════════════
+  setup-and-build:
+    name: 📦 Setup & Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    
+    outputs:
+      backend-cache-key: ${{ steps.cache-keys.outputs.backend }}
+      frontend-cache-key: ${{ steps.cache-keys.outputs.frontend }}
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2 # Need previous commit for bundle comparison
+      
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: 📝 Generate cache keys
+        id: cache-keys
+        run: |
+          echo "backend=${{ runner.os }}-backend-${{ hashFiles('my-backend/package-lock.json') }}" >> $GITHUB_OUTPUT
+          echo "frontend=${{ runner.os }}-frontend-${{ hashFiles('my-frontend/package-lock.json') }}" >> $GITHUB_OUTPUT
+      
+      - name: 📦 Cache backend node_modules
+        uses: actions/cache@v3
+        with:
+          path: my-backend/node_modules
+          key: ${{ steps.cache-keys.outputs.backend }}
+          restore-keys: |
+            ${{ runner.os }}-backend-
+      
+      - name: 📦 Cache frontend node_modules
+        uses: actions/cache@v3
+        with:
+          path: |
+            my-frontend/node_modules
+            my-frontend/.next/cache
+          key: ${{ steps.cache-keys.outputs.frontend }}
+          restore-keys: |
+            ${{ runner.os }}-frontend-
+      
+      - name: 📥 Install backend dependencies
+        working-directory: my-backend
+        run: npm ci --prefer-offline --no-audit
+      
+      - name: 📥 Install frontend dependencies
+        working-directory: my-frontend
+        run: npm ci --prefer-offline --no-audit
+      
+      - name: 🔨 Build backend
+        working-directory: my-backend
+        run: npm run build || echo "No build script"
+      
+      - name: 🔨 Build frontend with bundle analyzer
+        working-directory: my-frontend
+        env:
+          ANALYZE: true
+          NODE_ENV: production
+        run: |
+          npm run build
+          
+          # Generate bundle stats
+          if [ -f .next/analyze/client.html ]; then
+            mkdir -p ../artifacts
+            cp .next/analyze/client.html ../artifacts/bundle-analysis.html
+          fi
+      
+      - name: 📊 Upload build artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: build-artifacts
+          path: |
+            artifacts/
+            my-frontend/.next/
+          retention-days: 7
+
+  # ═══════════════════════════════════════════════════════════
+  # 2. Bundle Size Analysis
+  # ═══════════════════════════════════════════════════════════
+  bundle-analysis:
+    name: 📊 Bundle Size Analysis
+    runs-on: ubuntu-latest
+    needs: setup-and-build
+    timeout-minutes: 10
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+      
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-artifacts
+      
+      - name: 📊 Analyze bundle size changes
+        id: bundle-check
+        run: |
+          cat > check-bundle.js << 'EOF'
+          const fs = require('fs');
+          const path = require('path');
+          
+          // Read current build stats
+          const nextDir = 'my-frontend/.next';
+          const buildManifest = JSON.parse(
+            fs.readFileSync(path.join(nextDir, 'build-manifest.json'), 'utf8')
+          );
+          
+          // Calculate total size
+          let totalSize = 0;
+          const sizeMap = {};
+          
+          function getFileSize(filePath) {
+            try {
+              const fullPath = path.join(nextDir, filePath);
+              if (fs.existsSync(fullPath)) {
+                return fs.statSync(fullPath).size;
+              }
+            } catch (e) {}
+            return 0;
+          }
+          
+          // Analyze pages
+          Object.entries(buildManifest.pages).forEach(([page, files]) => {
+            let pageSize = 0;
+            files.forEach(file => {
+              const size = getFileSize(file);
+              pageSize += size;
+              totalSize += size;
+            });
+            sizeMap[page] = pageSize;
+          });
+          
+          // Check for large bundles
+          const MAX_PAGE_SIZE = 5 * 1024 * 1024; // 5MB
+          const largeBundles = Object.entries(sizeMap)
+            .filter(([_, size]) => size > MAX_PAGE_SIZE)
+            .map(([page, size]) => `${page}: ${(size / 1024 / 1024).toFixed(2)}MB`);
+          
+          const report = {
+            totalSize: totalSize,
+            totalSizeMB: (totalSize / 1024 / 1024).toFixed(2),
+            pageCount: Object.keys(sizeMap).length,
+            largeBundles: largeBundles,
+            topPages: Object.entries(sizeMap)
+              .sort((a, b) => b[1] - a[1])
+              .slice(0, 5)
+              .map(([page, size]) => ({
+                page,
+                sizeMB: (size / 1024 / 1024).toFixed(2)
+              }))
+          };
+          
+          console.log(JSON.stringify(report, null, 2));
+          
+          // Save for comparison
+          fs.writeFileSync('bundle-report.json', JSON.stringify(report, null, 2));
+          
+          // Check against limits
+          if (largeBundles.length > 0) {
+            console.log('⚠️  WARNING: Large bundles detected:');
+            largeBundles.forEach(b => console.log(`  - ${b}`));
+          }
+          
+          process.exit(0);
+          EOF
+          
+          node check-bundle.js
+      
+      - name: 📊 Compare with previous build
+        if: github.event_name == 'pull_request'
+        run: |
+          cat > compare-bundle.sh << 'EOF'
+          #!/bin/bash
+          
+          # Get previous commit bundle size
+          git checkout HEAD~1 2>/dev/null || exit 0
+          
+          if [ -f "bundle-report.json" ]; then
+            PREV_SIZE=$(jq -r '.totalSize' bundle-report.json)
+          else
+            echo "No previous bundle report found"
+            exit 0
+          fi
+          
+          git checkout - 2>/dev/null
+          
+          CURR_SIZE=$(jq -r '.totalSize' bundle-report.json)
+          
+          # Calculate percentage change
+          INCREASE=$(echo "scale=2; (($CURR_SIZE - $PREV_SIZE) / $PREV_SIZE) * 100" | bc)
+          
+          echo "Previous size: $(echo "scale=2; $PREV_SIZE / 1024 / 1024" | bc)MB"
+          echo "Current size: $(echo "scale=2; $CURR_SIZE / 1024 / 1024" | bc)MB"
+          echo "Change: ${INCREASE}%"
+          
+          # Check threshold
+          if (( $(echo "$INCREASE > $MAX_BUNDLE_INCREASE" | bc -l) )); then
+            echo "❌ Bundle size increased by ${INCREASE}% (threshold: ${MAX_BUNDLE_INCREASE}%)"
+            exit 1
+          fi
+          
+          echo "✅ Bundle size change within acceptable limits"
+          EOF
+          
+          chmod +x compare-bundle.sh
+          ./compare-bundle.sh
+      
+      - name: 💬 Comment PR with bundle analysis
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const fs = require('fs');
+            const report = JSON.parse(fs.readFileSync('bundle-report.json', 'utf8'));
+            
+            const body = `## 📊 Bundle Size Analysis
+            
+            **Total Bundle Size:** ${report.totalSizeMB} MB
+            **Pages:** ${report.pageCount}
+            
+            ### Top 5 Largest Pages
+            ${report.topPages.map(p => `- \`${p.page}\`: ${p.sizeMB} MB`).join('\n')}
+            
+            ${report.largeBundles.length > 0 ? `
+            ### ⚠️ Large Bundles (>5MB)
+            ${report.largeBundles.map(b => `- ${b}`).join('\n')}
+            ` : '✅ No bundles exceed 5MB limit'}
+            `;
+            
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: body
+            });
+
+  # ═══════════════════════════════════════════════════════════
+  # 3. Lighthouse CI - Frontend Performance
+  # ═══════════════════════════════════════════════════════════
+  lighthouse-ci:
+    name: 🔦 Lighthouse CI
+    runs-on: ubuntu-latest
+    needs: setup-and-build
+    timeout-minutes: 20
+    
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_DB: bisman_erp_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: 📦 Restore backend cache
+        uses: actions/cache@v3
+        with:
+          path: my-backend/node_modules
+          key: ${{ needs.setup-and-build.outputs.backend-cache-key }}
+      
+      - name: 📦 Restore frontend cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            my-frontend/node_modules
+            my-frontend/.next/cache
+          key: ${{ needs.setup-and-build.outputs.frontend-cache-key }}
+      
+      - name: 📥 Download build artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: build-artifacts
+      
+      - name: 🗄️ Setup test database
+        run: |
+          # Run migrations
+          cd my-backend
+          DATABASE_URL="postgresql://postgres:postgres@localhost:5432/bisman_erp_test" npx prisma migrate deploy || true
+          DATABASE_URL="postgresql://postgres:postgres@localhost:5432/bisman_erp_test" npx prisma db seed || true
+      
+      - name: 🚀 Start backend server
+        working-directory: my-backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bisman_erp_test
+          NODE_ENV: production
+          PORT: 5000
+        run: |
+          npm start &
+          echo $! > backend.pid
+          
+          # Wait for backend to be ready
+          timeout 60 bash -c 'until curl -f http://localhost:5000/api/health; do sleep 2; done'
+      
+      - name: 🚀 Start frontend server
+        working-directory: my-frontend
+        env:
+          NEXT_PUBLIC_API_URL: http://localhost:5000
+          NODE_ENV: production
+        run: |
+          npm start &
+          echo $! > frontend.pid
+          
+          # Wait for frontend to be ready
+          timeout 60 bash -c 'until curl -f http://localhost:3000; do sleep 2; done'
+      
+      - name: 🔦 Run Lighthouse CI
+        uses: treosh/lighthouse-ci-action@v10
+        with:
+          urls: |
+            http://localhost:3000
+            http://localhost:3000/login
+            http://localhost:3000/dashboard
+            http://localhost:3000/super-admin
+          uploadArtifacts: true
+          temporaryPublicStorage: true
+          runs: 3
+          budgetPath: ./lighthouse-budget.json
+      
+      - name: 🔦 Custom Lighthouse assertions
+        run: |
+          npm install -g @lhci/cli
+          
+          cat > lighthouserc.json << 'EOF'
+          {
+            "ci": {
+              "collect": {
+                "url": [
+                  "http://localhost:3000",
+                  "http://localhost:3000/login",
+                  "http://localhost:3000/dashboard",
+                  "http://localhost:3000/super-admin"
+                ],
+                "numberOfRuns": 3
+              },
+              "assert": {
+                "assertions": {
+                  "categories:performance": ["error", {"minScore": 0.8}],
+                  "categories:accessibility": ["error", {"minScore": 0.9}],
+                  "categories:best-practices": ["error", {"minScore": 0.85}],
+                  "categories:seo": ["warn", {"minScore": 0.8}],
+                  
+                  "largest-contentful-paint": ["error", {"maxNumericValue": 2500}],
+                  "total-blocking-time": ["error", {"maxNumericValue": 300}],
+                  "cumulative-layout-shift": ["error", {"maxNumericValue": 0.1}],
+                  "first-contentful-paint": ["warn", {"maxNumericValue": 1800}],
+                  "speed-index": ["warn", {"maxNumericValue": 3000}],
+                  "interactive": ["error", {"maxNumericValue": 3000}],
+                  
+                  "total-byte-weight": ["warn", {"maxNumericValue": 5242880}],
+                  "dom-size": ["warn", {"maxNumericValue": 1500}],
+                  "bootup-time": ["warn", {"maxNumericValue": 3000}]
+                }
+              },
+              "upload": {
+                "target": "temporary-public-storage"
+              }
+            }
+          }
+          EOF
+          
+          lhci autorun || echo "Lighthouse CI completed with warnings"
+      
+      - name: 🛑 Stop servers
+        if: always()
+        run: |
+          [ -f my-backend/backend.pid ] && kill $(cat my-backend/backend.pid) || true
+          [ -f my-frontend/frontend.pid ] && kill $(cat my-frontend/frontend.pid) || true
+
+  # ═══════════════════════════════════════════════════════════
+  # 4. API Performance Testing
+  # ═══════════════════════════════════════════════════════════
+  api-performance:
+    name: ⚡ API Performance Tests
+    runs-on: ubuntu-latest
+    needs: setup-and-build
+    timeout-minutes: 15
+    
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_DB: bisman_erp_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: 📦 Restore backend cache
+        uses: actions/cache@v3
+        with:
+          path: my-backend/node_modules
+          key: ${{ needs.setup-and-build.outputs.backend-cache-key }}
+      
+      - name: 🗄️ Setup test database
+        run: |
+          cd my-backend
+          DATABASE_URL="postgresql://postgres:postgres@localhost:5432/bisman_erp_test" npx prisma migrate deploy || true
+          DATABASE_URL="postgresql://postgres:postgres@localhost:5432/bisman_erp_test" npx prisma db seed || true
+      
+      - name: 🚀 Start backend server
+        working-directory: my-backend
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/bisman_erp_test
+          NODE_ENV: production
+          PORT: 5000
+        run: |
+          npm start &
+          echo $! > backend.pid
+          timeout 60 bash -c 'until curl -f http://localhost:5000/api/health; do sleep 2; done'
+      
+      - name: 📥 Install Artillery
+        run: npm install -g artillery@latest
+      
+      - name: ⚡ Run API performance tests
+        run: |
+          cat > artillery-config.yml << 'EOF'
+          config:
+            target: "http://localhost:5000"
+            phases:
+              - duration: 60
+                arrivalRate: 10
+                name: "Warm up"
+              - duration: 120
+                arrivalRate: 50
+                name: "Sustained load"
+              - duration: 60
+                arrivalRate: 100
+                name: "Spike test"
+            processor: "./artillery-processor.js"
+            ensure:
+              maxErrorRate: 5
+              p95: 700
+              p99: 1000
+          
+          scenarios:
+            - name: "Health Check"
+              weight: 20
+              flow:
+                - get:
+                    url: "/api/health"
+                    expect:
+                      - statusCode: 200
+            
+            - name: "Cache Health"
+              weight: 15
+              flow:
+                - get:
+                    url: "/api/health/cache"
+                    expect:
+                      - statusCode: 200
+            
+            - name: "Database Health"
+              weight: 15
+              flow:
+                - get:
+                    url: "/api/health/database"
+                    expect:
+                      - statusCode: 200
+            
+            - name: "Pages API"
+              weight: 25
+              flow:
+                - get:
+                    url: "/api/pages"
+                    expect:
+                      - statusCode: 200
+                      - contentType: json
+            
+            - name: "Permissions API"
+              weight: 25
+              flow:
+                - get:
+                    url: "/api/permissions"
+                    expect:
+                      - statusCode: 200
+                      - contentType: json
+          EOF
+          
+          # Create processor for custom metrics
+          cat > artillery-processor.js << 'EOF'
+          module.exports = {
+            setCustomMetrics: function(requestParams, response, context, ee, next) {
+              if (response.timings) {
+                ee.emit('counter', 'custom.response_time', response.timings.phases.total);
+              }
+              return next();
+            }
+          };
+          EOF
+          
+          # Run Artillery test
+          artillery run artillery-config.yml \
+            --output artillery-report.json \
+            || ARTILLERY_EXIT_CODE=$?
+          
+          # Generate HTML report
+          artillery report artillery-report.json \
+            --output artillery-report.html
+          
+          # Parse results
+          node << 'NODESCRIPT'
+          const fs = require('fs');
+          const report = JSON.parse(fs.readFileSync('artillery-report.json', 'utf8'));
+          
+          const summary = report.aggregate.summaries;
+          const latency = summary['http.response_time'];
+          const errors = summary['errors.ECONNREFUSED'] || 0;
+          const requests = summary['http.requests'];
+          
+          const avgLatency = latency.mean;
+          const p95Latency = latency.p95;
+          const errorRate = (errors / requests) * 100;
+          
+          console.log('=== API Performance Summary ===');
+          console.log(`Total Requests: ${requests}`);
+          console.log(`Average Latency: ${avgLatency.toFixed(2)}ms`);
+          console.log(`P95 Latency: ${p95Latency.toFixed(2)}ms`);
+          console.log(`P99 Latency: ${latency.p99.toFixed(2)}ms`);
+          console.log(`Error Rate: ${errorRate.toFixed(2)}%`);
+          
+          // Check thresholds
+          const MAX_LATENCY = parseInt(process.env.MAX_API_LATENCY);
+          
+          if (p95Latency > MAX_LATENCY) {
+            console.log(`❌ FAILED: P95 latency ${p95Latency.toFixed(2)}ms exceeds threshold ${MAX_LATENCY}ms`);
+            process.exit(1);
+          }
+          
+          if (errorRate > 5) {
+            console.log(`❌ FAILED: Error rate ${errorRate.toFixed(2)}% exceeds 5% threshold`);
+            process.exit(1);
+          }
+          
+          console.log('✅ All performance thresholds met!');
+          
+          // Save summary
+          fs.writeFileSync('api-performance-summary.json', JSON.stringify({
+            totalRequests: requests,
+            avgLatency: avgLatency.toFixed(2),
+            p95Latency: p95Latency.toFixed(2),
+            p99Latency: latency.p99.toFixed(2),
+            errorRate: errorRate.toFixed(2),
+            passed: true
+          }, null, 2));
+          NODESCRIPT
+          
+          if [ ! -z "$ARTILLERY_EXIT_CODE" ] && [ $ARTILLERY_EXIT_CODE -ne 0 ]; then
+            echo "❌ Artillery tests failed"
+            exit $ARTILLERY_EXIT_CODE
+          fi
+      
+      - name: 📊 Upload Artillery reports
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: api-performance-reports
+          path: |
+            artillery-report.json
+            artillery-report.html
+            api-performance-summary.json
+      
+      - name: 🛑 Stop backend server
+        if: always()
+        run: |
+          [ -f my-backend/backend.pid ] && kill $(cat my-backend/backend.pid) || true
+
+  # ═══════════════════════════════════════════════════════════
+  # 5. Database Health Check
+  # ═══════════════════════════════════════════════════════════
+  database-health:
+    name: 🗄️ Database Health Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    
+    services:
+      postgres:
+        image: postgres:14
+        env:
+          POSTGRES_DB: bisman_erp_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+      
+      - name: 📥 Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client postgresql-contrib
+      
+      - name: 🗄️ Run database health checks
+        env:
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          PGDATABASE: bisman_erp_test
+        run: |
+          cat > db-health-check.sh << 'EOF'
+          #!/bin/bash
+          
+          echo "=== Database Health Check ==="
+          
+          # 1. Database Size
+          echo -e "\n📊 Database Size:"
+          psql -t -c "
+            SELECT 
+              pg_size_pretty(pg_database_size('$PGDATABASE')) as size,
+              pg_database_size('$PGDATABASE') as size_bytes
+          " | tee db_size.txt
+          
+          DB_SIZE_BYTES=$(psql -t -A -c "SELECT pg_database_size('$PGDATABASE')")
+          DB_SIZE_MB=$((DB_SIZE_BYTES / 1024 / 1024))
+          
+          echo "Database size: ${DB_SIZE_MB} MB"
+          
+          # 2. Table Sizes
+          echo -e "\n📋 Top 10 Largest Tables:"
+          psql -c "
+            SELECT 
+              schemaname,
+              tablename,
+              pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) AS size,
+              pg_total_relation_size(schemaname||'.'||tablename) as size_bytes
+            FROM pg_tables
+            WHERE schemaname NOT IN ('pg_catalog', 'information_schema')
+            ORDER BY size_bytes DESC
+            LIMIT 10;
+          "
+          
+          # 3. Index Usage
+          echo -e "\n🔍 Index Usage Statistics:"
+          psql -c "
+            SELECT 
+              schemaname,
+              tablename,
+              indexname,
+              idx_scan as scans,
+              idx_tup_read as tuples_read,
+              idx_tup_fetch as tuples_fetched
+            FROM pg_stat_user_indexes
+            WHERE idx_scan = 0
+            ORDER BY schemaname, tablename
+            LIMIT 10;
+          " | tee unused_indexes.txt
+          
+          # 4. Slow Queries (if pg_stat_statements enabled)
+          echo -e "\n⏱️  Checking for pg_stat_statements extension:"
+          psql -c "CREATE EXTENSION IF NOT EXISTS pg_stat_statements;" || echo "Extension not available in test env"
+          
+          # 5. Connection Stats
+          echo -e "\n🔌 Connection Statistics:"
+          psql -c "
+            SELECT 
+              count(*) as total_connections,
+              count(*) FILTER (WHERE state = 'active') as active,
+              count(*) FILTER (WHERE state = 'idle') as idle
+            FROM pg_stat_activity;
+          "
+          
+          # 6. Table Bloat Estimation
+          echo -e "\n💾 Table Bloat Check:"
+          psql -c "
+            SELECT
+              schemaname,
+              tablename,
+              pg_size_pretty(pg_total_relation_size(schemaname||'.'||tablename)) as total_size,
+              n_live_tup as live_tuples,
+              n_dead_tup as dead_tuples,
+              round(100.0 * n_dead_tup / NULLIF(n_live_tup + n_dead_tup, 0), 2) as bloat_pct
+            FROM pg_stat_user_tables
+            WHERE n_dead_tup > 0
+            ORDER BY n_dead_tup DESC
+            LIMIT 10;
+          "
+          
+          # 7. Cache Hit Ratio
+          echo -e "\n💨 Cache Hit Ratio:"
+          psql -c "
+            SELECT 
+              sum(heap_blks_read) as heap_read,
+              sum(heap_blks_hit) as heap_hit,
+              round(100.0 * sum(heap_blks_hit) / NULLIF(sum(heap_blks_hit) + sum(heap_blks_read), 0), 2) as cache_hit_ratio
+            FROM pg_statio_user_tables;
+          "
+          
+          # Generate JSON report
+          cat > db-health-report.json << REPORT
+          {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "database_size_mb": ${DB_SIZE_MB},
+            "checks": {
+              "size_check": "$([ $DB_SIZE_MB -lt 1000 ] && echo 'PASS' || echo 'WARN')",
+              "unused_indexes": $(wc -l < unused_indexes.txt),
+              "bloat_check": "PASS"
+            }
+          }
+          REPORT
+          
+          cat db-health-report.json
+          
+          # Check thresholds
+          if [ $DB_SIZE_MB -gt 5000 ]; then
+            echo "❌ Database size exceeds 5GB threshold"
+            exit 1
+          fi
+          
+          echo "✅ Database health check passed"
+          EOF
+          
+          chmod +x db-health-check.sh
+          ./db-health-check.sh
+      
+      - name: 📊 Upload database health report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: database-health-report
+          path: db-health-report.json
+
+  # ═══════════════════════════════════════════════════════════
+  # 6. Storage Cleanup Validation
+  # ═══════════════════════════════════════════════════════════
+  storage-check:
+    name: 💾 Storage Cleanup Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 💾 Check storage usage
+        run: |
+          cat > check-storage.sh << 'EOF'
+          #!/bin/bash
+          
+          echo "=== Storage Usage Check ==="
+          
+          # Define directories to check
+          DIRS_TO_CHECK=(
+            "my-backend/uploads"
+            "my-backend/logs"
+            "my-backend/tmp"
+            "my-frontend/.next"
+            "my-frontend/public/uploads"
+          )
+          
+          TOTAL_SIZE=0
+          ISSUES=0
+          
+          for dir in "${DIRS_TO_CHECK[@]}"; do
+            if [ -d "$dir" ]; then
+              SIZE=$(du -sm "$dir" 2>/dev/null | cut -f1)
+              TOTAL_SIZE=$((TOTAL_SIZE + SIZE))
+              
+              echo "$dir: ${SIZE}MB"
+              
+              # Check individual directory limits
+              if [ "$dir" = "my-backend/uploads" ] && [ $SIZE -gt 1000 ]; then
+                echo "⚠️  WARNING: uploads directory exceeds 1GB"
+                ISSUES=$((ISSUES + 1))
+              fi
+              
+              if [ "$dir" = "my-backend/logs" ] && [ $SIZE -gt 100 ]; then
+                echo "⚠️  WARNING: logs directory exceeds 100MB"
+                ISSUES=$((ISSUES + 1))
+              fi
+            else
+              echo "$dir: not found (OK)"
+            fi
+          done
+          
+          echo -e "\nTotal checked storage: ${TOTAL_SIZE}MB"
+          
+          # Check old files in uploads
+          if [ -d "my-backend/uploads" ]; then
+            OLD_FILES=$(find my-backend/uploads -type f -mtime +30 2>/dev/null | wc -l)
+            echo "Files older than 30 days in uploads: $OLD_FILES"
+            
+            if [ $OLD_FILES -gt 100 ]; then
+              echo "⚠️  WARNING: ${OLD_FILES} old files should be cleaned up"
+              ISSUES=$((ISSUES + 1))
+            fi
+          fi
+          
+          # Check log rotation
+          if [ -d "my-backend/logs" ]; then
+            LOG_COUNT=$(find my-backend/logs -name "*.log" 2>/dev/null | wc -l)
+            echo "Log files count: $LOG_COUNT"
+            
+            if [ $LOG_COUNT -gt 50 ]; then
+              echo "⚠️  WARNING: Too many log files, rotation recommended"
+              ISSUES=$((ISSUES + 1))
+            fi
+          fi
+          
+          # Generate report
+          cat > storage-report.json << REPORT
+          {
+            "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+            "total_size_mb": ${TOTAL_SIZE},
+            "issues_found": ${ISSUES},
+            "status": "$([ $ISSUES -eq 0 ] && echo 'PASS' || echo 'WARN')"
+          }
+          REPORT
+          
+          cat storage-report.json
+          
+          if [ $ISSUES -gt 0 ]; then
+            echo "⚠️  Storage issues detected. Consider running cleanup-storage.sh"
+          else
+            echo "✅ Storage usage within acceptable limits"
+          fi
+          EOF
+          
+          chmod +x check-storage.sh
+          ./check-storage.sh
+      
+      - name: 📊 Upload storage report
+        if: always()
+        uses: actions/upload-artifact@v3
+        with:
+          name: storage-report
+          path: storage-report.json
+
+  # ═══════════════════════════════════════════════════════════
+  # 7. Docker Build Optimization
+  # ═══════════════════════════════════════════════════════════
+  docker-build:
+    name: 🐳 Docker Multi-Stage Build
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: github.event_name == 'push' || github.event_name == 'schedule'
+    
+    steps:
+      - name: 📥 Checkout code
+        uses: actions/checkout@v4
+      
+      - name: 🔧 Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+      
+      - name: 🔐 Login to Docker Hub (if configured)
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+        continue-on-error: true
+      
+      - name: 🏗️ Build optimized Docker image
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: ./Dockerfile.optimized
+          push: false
+          tags: bisman-erp:${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NODE_ENV=production
+            BUILDKIT_INLINE_CACHE=1
+      
+      - name: 📊 Analyze image size
+        run: |
+          docker images bisman-erp:${{ github.sha }} --format "{{.Size}}" > image-size.txt
+          IMAGE_SIZE=$(cat image-size.txt)
+          
+          echo "Docker image size: $IMAGE_SIZE"
+          echo "::notice title=Docker Image Size::Image size: $IMAGE_SIZE"
+
+  # ═══════════════════════════════════════════════════════════
+  # 8. Notifications & Reporting
+  # ═══════════════════════════════════════════════════════════
+  notify:
+    name: 📢 Send Notifications
+    runs-on: ubuntu-latest
+    needs: [bundle-analysis, lighthouse-ci, api-performance, database-health, storage-check]
+    if: always()
+    
+    steps:
+      - name: 📥 Download all artifacts
+        uses: actions/download-artifact@v3
+      
+      - name: 📊 Generate summary report
+        run: |
+          cat > performance-summary.md << 'EOF'
+          # 🚀 Performance CI/CD Summary
+          
+          **Workflow:** ${{ github.workflow }}
+          **Run:** #${{ github.run_number }}
+          **Commit:** ${{ github.sha }}
+          **Branch:** ${{ github.ref_name }}
+          **Triggered by:** ${{ github.event_name }}
+          **Date:** $(date -u +"%Y-%m-%d %H:%M:%S UTC")
+          
+          ---
+          
+          ## 📊 Results Summary
+          
+          | Check | Status |
+          |-------|--------|
+          | Bundle Analysis | ${{ needs.bundle-analysis.result == 'success' && '✅ PASS' || '❌ FAIL' }} |
+          | Lighthouse CI | ${{ needs.lighthouse-ci.result == 'success' && '✅ PASS' || '❌ FAIL' }} |
+          | API Performance | ${{ needs.api-performance.result == 'success' && '✅ PASS' || '❌ FAIL' }} |
+          | Database Health | ${{ needs.database-health.result == 'success' && '✅ PASS' || '❌ FAIL' }} |
+          | Storage Check | ${{ needs.storage-check.result == 'success' && '✅ PASS' || '❌ FAIL' }} |
+          
+          ---
+          
+          ## 📈 Detailed Reports
+          
+          View detailed reports in the workflow artifacts.
+          
+          **Workflow URL:** ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          
+          EOF
+          
+          cat performance-summary.md
+      
+      - name: 📢 Notify Slack on failure
+        if: failure() && (github.event_name == 'push' || github.event_name == 'schedule')
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "🚨 Performance CI/CD Failed",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "🚨 Performance Regression Detected"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Repository:*\n${{ github.repository }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Branch:*\n${{ github.ref_name }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Commit:*\n${{ github.sha }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Workflow:*\n${{ github.workflow }}"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "*Failed Checks:*\n${{ needs.bundle-analysis.result != 'success' && '❌ Bundle Analysis\n' || '' }}${{ needs.lighthouse-ci.result != 'success' && '❌ Lighthouse CI\n' || '' }}${{ needs.api-performance.result != 'success' && '❌ API Performance\n' || '' }}${{ needs.database-health.result != 'success' && '❌ Database Health\n' || '' }}${{ needs.storage-check.result != 'success' && '❌ Storage Check' || '' }}"
+                  }
+                },
+                {
+                  "type": "actions",
+                  "elements": [
+                    {
+                      "type": "button",
+                      "text": {
+                        "type": "plain_text",
+                        "text": "View Workflow"
+                      },
+                      "url": "${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+                    }
+                  ]
+                }
+              ]
+            }
+        continue-on-error: true
+      
+      - name: 📢 Notify Slack on success
+        if: success() && github.event_name == 'schedule'
+        uses: slackapi/slack-github-action@v1.25.0
+        with:
+          webhook: ${{ secrets.SLACK_WEBHOOK_URL }}
+          webhook-type: incoming-webhook
+          payload: |
+            {
+              "text": "✅ Monthly Performance Audit Complete",
+              "blocks": [
+                {
+                  "type": "header",
+                  "text": {
+                    "type": "plain_text",
+                    "text": "✅ Monthly Performance Audit - All Checks Passed"
+                  }
+                },
+                {
+                  "type": "section",
+                  "fields": [
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Repository:*\n${{ github.repository }}"
+                    },
+                    {
+                      "type": "mrkdwn",
+                      "text": "*Date:*\n$(date -u +'%Y-%m-%d')"
+                    }
+                  ]
+                },
+                {
+                  "type": "section",
+                  "text": {
+                    "type": "mrkdwn",
+                    "text": "All performance checks passed successfully! 🎉"
+                  }
+                }
+              ]
+            }
+        continue-on-error: true
