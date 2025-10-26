@@ -25,7 +25,8 @@ import {
   ShoppingCart,
   Boxes,
   ClipboardCheck,
-  Scale
+  Scale,
+  Fuel
 } from 'lucide-react';
 
 interface DemoUser {
@@ -35,6 +36,7 @@ interface DemoUser {
   password: string;
   role: string;
   department: string;
+  category: string;
   icon: React.ReactNode;
   description: string;
   redirectPath: string;
@@ -42,14 +44,39 @@ interface DemoUser {
 
 const DEMO_USERS: DemoUser[] = [
   {
-    id: 'super_admin',
-    name: 'Super Admin',
-    email: 'demo_super_admin@bisman.demo',
-    password: 'Demo@123',
+    id: 'enterprise_admin',
+    name: 'Enterprise Admin',
+    email: 'enterprise@bisman.erp',
+    password: 'enterprise123',
+    role: 'ENTERPRISE_ADMIN',
+    department: 'Enterprise Management',
+    category: 'Enterprise',
+    icon: <Building className="w-5 h-5" />, 
+    description: 'Manage all businesses, assign modules, control subscriptions',
+    redirectPath: '/enterprise-admin/dashboard'
+  },
+  {
+    id: 'business_superadmin',
+    name: 'Business Super Admin',
+    email: 'business_superadmin@bisman.demo',
+    password: 'Super@123',
     role: 'SUPER_ADMIN',
-    department: 'System Administration',
+    department: 'Business ERP',
+    category: 'Super Admin',
     icon: <Settings className="w-5 h-5" />, 
-    description: 'Full system access, database management, security controls',
+    description: 'Super admin for Business ERP module - full system access',
+    redirectPath: '/super-admin'
+  },
+  {
+    id: 'pump_superadmin',
+    name: 'Pump Super Admin',
+    email: 'pump_superadmin@bisman.demo',
+    password: 'Super@123',
+    role: 'SUPER_ADMIN',
+    department: 'Pump Management',
+    category: 'Super Admin',
+    icon: <Fuel className="w-5 h-5" />, 
+    description: 'Petrol pump operations, fuel management',
     redirectPath: '/super-admin'
   },
   {
@@ -59,9 +86,22 @@ const DEMO_USERS: DemoUser[] = [
     password: 'Demo@123',
     role: 'IT_ADMIN',
     department: 'IT & Platform',
+    category: 'Administration',
     icon: <ServerCog className="w-5 h-5" />, 
-    description: 'IT operations, platform settings, backups, monitoring',
+    description: 'IT operations, platform settings, monitoring',
     redirectPath: '/it-admin'
+  },
+  {
+    id: 'admin',
+    name: 'Admin',
+    email: 'demo_admin@bisman.demo',
+    password: 'Demo@123',
+    role: 'ADMIN',
+    department: 'Administration',
+    category: 'Administration',
+    icon: <Shield className="w-5 h-5" />, 
+    description: 'User management, roles, permissions',
+    redirectPath: '/admin'
   },
   {
     id: 'cfo',
@@ -70,8 +110,9 @@ const DEMO_USERS: DemoUser[] = [
     password: 'Demo@123',
     role: 'CFO',
     department: 'Finance Leadership',
+    category: 'Finance',
     icon: <Banknote className="w-5 h-5" />, 
-    description: 'Financial oversight, consolidated reporting, approvals',
+    description: 'Financial oversight, reporting, approvals',
     redirectPath: '/cfo-dashboard'
   },
   {
@@ -80,9 +121,10 @@ const DEMO_USERS: DemoUser[] = [
     email: 'demo_finance_controller@bisman.demo',
     password: 'Demo@123',
     role: 'FINANCE_CONTROLLER',
-    department: 'Finance',
+    department: 'Finance Control',
+    category: 'Finance',
     icon: <FileSpreadsheet className="w-5 h-5" />, 
-    description: 'Control, closing, compliance with financial policies',
+    description: 'Financial control, closing, compliance',
     redirectPath: '/finance-controller'
   },
   {
@@ -91,9 +133,10 @@ const DEMO_USERS: DemoUser[] = [
     email: 'demo_treasury@bisman.demo',
     password: 'Demo@123',
     role: 'TREASURY',
-    department: 'Finance - Treasury',
+    department: 'Treasury',
+    category: 'Finance',
     icon: <Wallet className="w-5 h-5" />, 
-    description: 'Cash flow, bank positions, funding, payments',
+    description: 'Cash flow, bank positions, payments',
     redirectPath: '/treasury'
   },
   {
@@ -102,9 +145,10 @@ const DEMO_USERS: DemoUser[] = [
     email: 'demo_accounts@bisman.demo',
     password: 'Demo@123',
     role: 'ACCOUNTS',
-    department: 'Finance - Accounts',
+    department: 'Accounting',
+    category: 'Finance',
     icon: <FileSpreadsheet className="w-5 h-5" />, 
-    description: 'GL, journals, reconciliations, month-end tasks',
+    description: 'GL, journals, reconciliations',
     redirectPath: '/accounts'
   },
   {
@@ -113,9 +157,10 @@ const DEMO_USERS: DemoUser[] = [
     email: 'demo_accounts_payable@bisman.demo',
     password: 'Demo@123',
     role: 'ACCOUNTS_PAYABLE',
-    department: 'Finance - AP',
+    department: 'Accounts Payable',
+    category: 'Finance',
     icon: <ReceiptIndianRupee className="w-5 h-5" />, 
-    description: 'Vendor invoices, 3-way match, payment runs',
+    description: 'Vendor invoices, payment runs',
     redirectPath: '/accounts-payable'
   },
   {
@@ -124,9 +169,10 @@ const DEMO_USERS: DemoUser[] = [
     email: 'demo_banker@bisman.demo',
     password: 'Demo@123',
     role: 'BANKER',
-    department: 'Finance - Banking',
+    department: 'Banking',
+    category: 'Finance',
     icon: <Landmark className="w-5 h-5" />, 
-    description: 'Bank liaison, statements, reconciliations',
+    description: 'Bank liaison, reconciliations',
     redirectPath: '/banker'
   },
   {
@@ -136,6 +182,7 @@ const DEMO_USERS: DemoUser[] = [
     password: 'Demo@123',
     role: 'PROCUREMENT_OFFICER',
     department: 'Procurement',
+    category: 'Operations',
     icon: <ShoppingCart className="w-5 h-5" />, 
     description: 'PR/PO lifecycle, vendor management',
     redirectPath: '/procurement-officer'
@@ -147,9 +194,34 @@ const DEMO_USERS: DemoUser[] = [
     password: 'Demo@123',
     role: 'STORE_INCHARGE',
     department: 'Stores & Warehouse',
+    category: 'Operations',
     icon: <Boxes className="w-5 h-5" />, 
-    description: 'GRN, inventory custody, stock movements',
+    description: 'GRN, inventory, stock movements',
     redirectPath: '/store-incharge'
+  },
+  {
+    id: 'manager',
+    name: 'Operations Manager',
+    email: 'demo_operations_manager@bisman.demo',
+    password: 'Demo@123',
+    role: 'MANAGER',
+    department: 'Operations',
+    category: 'Operations',
+    icon: <Briefcase className="w-5 h-5" />, 
+    description: 'Management dashboard, staff oversight',
+    redirectPath: '/operations-manager'
+  },
+  {
+    id: 'hub_incharge',
+    name: 'Hub Incharge',
+    email: 'demo_hub_incharge@bisman.demo',
+    password: 'Demo@123',
+    role: 'HUB_INCHARGE',
+    department: 'Hub Operations',
+    category: 'Operations',
+    icon: <Building className="w-5 h-5" />, 
+    description: 'Hub-level operations, inventory, sales',
+    redirectPath: '/hub-incharge'
   },
   {
     id: 'compliance',
@@ -158,6 +230,7 @@ const DEMO_USERS: DemoUser[] = [
     password: 'Demo@123',
     role: 'COMPLIANCE',
     department: 'Governance',
+    category: 'Governance',
     icon: <ClipboardCheck className="w-5 h-5" />, 
     description: 'Policy, audit trails, corrective actions',
     redirectPath: '/compliance-officer'
@@ -169,42 +242,10 @@ const DEMO_USERS: DemoUser[] = [
     password: 'Demo@123',
     role: 'LEGAL',
     department: 'Legal',
+    category: 'Governance',
     icon: <Scale className="w-5 h-5" />, 
     description: 'Contracts, disputes, SLA enforcement',
     redirectPath: '/legal'
-  },
-  {
-    id: 'admin',
-    name: 'Admin',
-    email: 'demo_admin@bisman.demo',
-    password: 'Demo@123',
-    role: 'ADMIN',
-    department: 'Administration',
-    icon: <Shield className="w-5 h-5" />, 
-    description: 'User management, roles, permissions, system configuration',
-    redirectPath: '/admin'
-  },
-  {
-    id: 'manager',
-    name: 'Operations Manager',
-    email: 'demo_operations_manager@bisman.demo',
-    password: 'Demo@123',
-    role: 'MANAGER',
-    department: 'Operations',
-    icon: <Briefcase className="w-5 h-5" />, 
-    description: 'Management dashboard, reports, staff oversight, hub operations',
-    redirectPath: '/operations-manager'
-  },
-  {
-    id: 'hub_incharge',
-    name: 'Hub Incharge',
-    email: 'demo_hub_incharge@bisman.demo',
-    password: 'Demo@123',
-    role: 'HUB_INCHARGE',
-    department: 'Operations',
-    icon: <Building className="w-5 h-5" />, 
-    description: 'Hub-level operations, inventory, sales, approvals, task management',
-    redirectPath: '/hub-incharge'
   }
 ];
 
@@ -248,6 +289,12 @@ export default function StandardLoginPage() {
         // Role-based redirection - route to independent role dashboards
         let targetPath = '/dashboard'; // Default fallback
         switch (user.roleName?.toUpperCase()) {
+          // Enterprise Management
+          case 'ENTERPRISE_ADMIN':
+          case 'ENTERPRISE ADMIN':
+            targetPath = '/enterprise-admin/dashboard';
+            break;
+            
           // System Administration
           case 'SUPER_ADMIN':
             targetPath = '/super-admin';
@@ -576,27 +623,40 @@ export default function StandardLoginPage() {
           {/* Demo Users */}
           <div className="mt-6">
             <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-slate-600">Demo accounts</h3>
-              <button onClick={() => setShowDemoUsers(!showDemoUsers)} className="text-sm text-slate-400">{showDemoUsers ? 'Hide' : 'Show'}</button>
+              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-300">Demo accounts</h3>
+              <button onClick={() => setShowDemoUsers(!showDemoUsers)} className="text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">{showDemoUsers ? 'Hide' : 'Show'}</button>
             </div>
 
             {showDemoUsers && (
-              <div className="mt-3 space-y-3">
-                {DEMO_USERS.map((user) => (
-                  <div key={user.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-md p-3">
-                    <div className="flex items-center space-x-3">
-                      <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded flex items-center justify-center text-amber-600">{user.icon}</div>
-                      <div>
-                        <div className="text-sm font-medium text-slate-800 dark:text-slate-100">{user.name}</div>
-                        <div className="text-xs text-slate-500 dark:text-slate-400">{user.department}</div>
+              <div className="mt-3 max-h-96 overflow-y-auto space-y-4">
+                {/* Group users by category */}
+                {['Enterprise', 'Super Admin', 'Administration', 'Finance', 'Operations', 'Governance'].map((category) => {
+                  const categoryUsers = DEMO_USERS.filter(user => user.category === category);
+                  if (categoryUsers.length === 0) return null;
+                  
+                  return (
+                    <div key={category}>
+                      <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">{category}</div>
+                      <div className="space-y-2">
+                        {categoryUsers.map((user) => (
+                          <div key={user.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-md p-3 hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors">
+                            <div className="flex items-center space-x-3 flex-1 min-w-0">
+                              <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded flex items-center justify-center text-amber-600 flex-shrink-0">{user.icon}</div>
+                              <div className="min-w-0 flex-1">
+                                <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{user.name}</div>
+                                <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</div>
+                              </div>
+                            </div>
+                            <div className="flex items-center space-x-2 ml-2">
+                              <button onClick={() => fillDemoCredentials(user)} className="text-xs px-3 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-100 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors">Fill</button>
+                              <button onClick={() => handleQuickLogin(user)} disabled={loading} className="text-xs px-3 py-1 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Login</button>
+                            </div>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <div className="flex items-center space-x-2">
-                      <button onClick={() => fillDemoCredentials(user)} className="text-xs px-3 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-100 border rounded">Fill</button>
-                      <button onClick={() => handleQuickLogin(user)} disabled={loading} className="text-xs px-3 py-1 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded">Login</button>
-                    </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </div>

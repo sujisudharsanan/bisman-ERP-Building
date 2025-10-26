@@ -74,12 +74,61 @@ export default function Header({ onMenuToggle }: HeaderProps) {
     >
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center h-16">
-          {/* Left side - Menu toggle */}
+          {/* Left side - User info and Menu toggle */}
+          <div className="flex items-center space-x-4">
+            {loading ? (
+              <span 
+                className="text-sm text-gray-500"
+                role="status"
+                aria-live="polite"
+              >
+                {t('common.loading')}
+              </span>
+            ) : user ? (
+              <Link 
+                href="/profile"
+                className="flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg p-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                aria-label={t('header.go_to_profile')}
+              >
+                {/* User Avatar - Circular, clickable */}
+                <Avatar 
+                  className="w-10 h-10 ring-2 ring-blue-500/20"
+                  aria-hidden="true"
+                >
+                  {user.profilePhotoUrl ? (
+                    <AvatarImage 
+                      src={user.profilePhotoUrl} 
+                      alt={t('header.profile_alt')}
+                    />
+                  ) : (
+                    <AvatarFallback className="bg-blue-600 text-white">
+                      <User className="w-5 h-5" aria-hidden="true" />
+                    </AvatarFallback>
+                  )}
+                </Avatar>
+
+                {/* User Name and Role */}
+                <div className="flex flex-col items-start">
+                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                    {user.name}
+                  </span>
+                  <span 
+                    className="text-xs text-gray-500 dark:text-gray-400"
+                    aria-label={`Role: ${getRoleDisplayName(user.role || 'USER')}`}
+                  >
+                    {getRoleDisplayName(user.role || 'USER')}
+                  </span>
+                </div>
+              </Link>
+            ) : null}
+          </div>
+
+          {/* Right side - Additional actions or menu toggle */}
           <div className="flex items-center">
             {onMenuToggle && (
               <button 
                 onClick={onMenuToggle}
-                className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label="Open main menu"
                 aria-expanded="false"
               >
@@ -100,57 +149,6 @@ export default function Header({ onMenuToggle }: HeaderProps) {
                 </svg>
               </button>
             )}
-          </div>
-
-          {/* Right side - User info */}
-          <div className="flex items-center space-x-4">
-            {loading ? (
-              <span 
-                className="text-sm text-gray-500"
-                role="status"
-                aria-live="polite"
-              >
-                {t('common.loading')}
-              </span>
-            ) : user ? (
-              <Link 
-                href="/profile"
-                className="flex items-center space-x-3 hover:bg-panel/80 rounded-lg p-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-                aria-label={t('header.go_to_profile')}
-              >
-                {/* User Avatar - Circular, clickable */}
-                <Avatar 
-                  className="w-10 h-10"
-                  aria-hidden="true"
-                >
-                  {user.profilePhotoUrl ? (
-                    <AvatarImage 
-                      src={user.profilePhotoUrl} 
-                      alt={t('header.profile_alt')}
-                    />
-                  ) : (
-                    <AvatarFallback className="bg-blue-600 text-white">
-                      <User className="w-5 h-5" aria-hidden="true" />
-                    </AvatarFallback>
-                  )}
-                </Avatar>
-
-                {/* User Name and Role */}
-                <div className="flex flex-col items-start">
-                  <span className="text-sm font-semibold text-theme">
-                    {user.name}
-                  </span>
-                  <span 
-                    className="text-xs text-muted"
-                    aria-label={`Role: ${getRoleDisplayName(user.role || 'USER')}`}
-                  >
-                    {t('header.role_dashboard', { 
-                      role: getRoleDisplayName(user.role || 'USER') 
-                    })}
-                  </span>
-                </div>
-              </Link>
-            ) : null}
           </div>
         </div>
       </div>

@@ -298,11 +298,8 @@ app.get('/api/health/rbac', async (req, res) => {
     return res.status(500).json({ ok: false, error: 'RBAC health check failed', timestamp: now })
   }
 })
-// Short alias used by some legacy UI code
-app.get('/api/health/db', (req, res) => {
-  req.url = '/api/health/database'
-  app._router.handle(req, res, () => res.status(404).end())
-})
+
+// OLD /api/health/db alias REMOVED - Use /api/health/database directly
 
 // Test CORS route
 try {
@@ -574,226 +571,15 @@ if (databaseUrl) {
 const { authenticate, requireRole } = require('./middleware/auth')
 
 
-// In-memory session store for dev users (when DB is unavailable)
-const devUserSessions = Object.create(null)
+// Development users REMOVED - All users now exist in database
+// Use seed scripts to create demo users: seed-multi-tenant.js, create-all-demo-users.js, etc.
 
-// Development users for testing (support both 'password' and 'changeme' where docs use it)
-const devUsers = [
-  // Super Admin
-  { id: 0, email: 'super@bisman.local', password: 'password', role: 'SUPER_ADMIN', isDev: true },
-  { id: 100, email: 'super@bisman.local', password: 'changeme', role: 'SUPER_ADMIN', isDev: true },
-  // Admin
-  { id: 2, email: 'admin@business.com', password: 'admin123', role: 'ADMIN', isDev: true },
-  { id: 101, email: 'admin@bisman.local', password: 'changeme', role: 'ADMIN', isDev: true },
-  // Manager
-  { id: 1, email: 'manager@business.com', password: 'password', role: 'MANAGER', isDev: true },
-  { id: 102, email: 'manager@bisman.local', password: 'changeme', role: 'MANAGER', isDev: true },
-  // Staff / Hub Incharge
-  { id: 3, email: 'staff@business.com', password: 'staff123', role: 'STAFF', isDev: true },
-  { id: 103, email: 'hub@bisman.local', password: 'changeme', role: 'STAFF', isDev: true },
-  
-  // Demo credentials for production testing (bisman.demo domain)
-  { id: 300, email: 'demo_hub_incharge@bisman.demo', password: 'changeme', role: 'HUB_INCHARGE', isDev: true },
-  { id: 301, email: 'demo_admin@bisman.demo', password: 'changeme', role: 'ADMIN', isDev: true },
-  { id: 302, email: 'demo_manager@bisman.demo', password: 'changeme', role: 'MANAGER', isDev: true },
-  { id: 303, email: 'demo_super@bisman.demo', password: 'changeme', role: 'SUPER_ADMIN', isDev: true },
-
-  // New Finance & Operations demo users
-  { id: 201, email: 'it@bisman.local', password: 'changeme', role: 'IT_ADMIN', isDev: true },
-  { id: 202, email: 'cfo@bisman.local', password: 'changeme', role: 'CFO', isDev: true },
-  { id: 203, email: 'controller@bisman.local', password: 'changeme', role: 'FINANCE_CONTROLLER', isDev: true },
-  { id: 204, email: 'treasury@bisman.local', password: 'changeme', role: 'TREASURY', isDev: true },
-  { id: 205, email: 'accounts@bisman.local', password: 'changeme', role: 'ACCOUNTS', isDev: true },
-  { id: 206, email: 'ap@bisman.local', password: 'changeme', role: 'ACCOUNTS_PAYABLE', isDev: true },
-  { id: 207, email: 'banker@bisman.local', password: 'changeme', role: 'BANKER', isDev: true },
-  { id: 208, email: 'procurement@bisman.local', password: 'changeme', role: 'PROCUREMENT_OFFICER', isDev: true },
-  { id: 209, email: 'store@bisman.local', password: 'changeme', role: 'STORE_INCHARGE', isDev: true },
-  { id: 210, email: 'compliance@bisman.local', password: 'changeme', role: 'COMPLIANCE', isDev: true },
-  { id: 211, email: 'legal@bisman.local', password: 'changeme', role: 'LEGAL', isDev: true }
-]
-
-// Simple login endpoint with fallback for development
-app.use('/api/login', loginLimiter)
+// Simple login rate limiting
 app.use('/api/auth', apiLimiter)
 
-app.post('/api/login', async (req, res) => {
-  const { email, password } = req.body
-
-  if (!email || !password) {
-    return res.status(400).json({ message: 'Email and password are required' });
-  }
-
-  // Check if dev users are allowed (only in development or if explicitly enabled)
-  const allowDevUsers = process.env.NODE_ENV !== 'production' || process.env.ALLOW_DEV_USERS === 'true';
-
-  let user = null;
-  let dbError = null;
-
-  // Try database first, but catch any errors (connection issues, etc.)
-  try {
-    user = await prisma.user.findUnique({
-      where: { email },
-    });
-    console.log('Login: DB query completed', user ? 'User found' : 'User not found');
-  } catch (error) {
-    dbError = error;
-    console.error('Login: DB query failed:', error.message);
-    
-    // In production, if DB fails, reject login (don't fallback)
-    if (!allowDevUsers) {
-      console.error('❌ Production mode: Database authentication required but failed');
-      return res.status(503).json({ 
-        message: 'Service temporarily unavailable. Please try again later.',
-        error: 'Database connection failed'
-      });
-    }
-    console.warn('Login: Development mode - will try dev users fallback');
-  }
-
-  // If user found in DB, validate password
-  if (user && !dbError) {
-    if (!bcrypt.compareSync(password, user.password)) {
-      console.log('Login: DB password mismatch');
-      
-      // In production, do NOT fallback to dev users
-      if (!allowDevUsers) {
-        console.log('❌ Production mode: Invalid credentials, no fallback allowed');
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
-      
-      // Development mode: try dev users fallback
-      console.log('Login: Development mode - trying dev users fallback after password mismatch');
-      const devUser = devUsers.find(u => u.email === email && u.password === password);
-      if (!devUser) {
-        return res.status(401).json({ message: 'Invalid credentials' });
-      }
-      console.log('✅ Login: Successfully authenticated via dev user fallback after password mismatch.');
-      user = devUser;
-    } else {
-      console.log('✅ Login: Successfully authenticated via database.');
-    }
-  } else if (!user) {
-    // User not found in DB
-    console.log('Login: User not found in database');
-    
-    // In production, do NOT fallback to dev users
-    if (!allowDevUsers) {
-      console.log('❌ Production mode: User not found, no fallback allowed');
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-    
-    // Development mode: try dev users
-    console.log('Login: Development mode - trying dev users fallback');
-    const devUser = devUsers.find(u => u.email === email && u.password === password);
-    if (!devUser) {
-      return res.status(401).json({ message: 'Invalid credentials' });
-    }
-    console.log('✅ Login: Successfully authenticated via dev user fallback.');
-    console.log('✅ User authenticated with role:', devUser.role);
-    user = devUser;
-  }
-
-  // At this point, user is authenticated (either from DB or devUsers in dev mode)
-  try {
-
-    // Normalize role field (could be role or roleName from DB)
-    const userRole = user.role || user.roleName || 'MANAGER';
-    const userEmail = user.email || user.username || email;
-    const userId = user.id || user.userId || 0;
-
-    // Generate and send tokens WITH role
-    const accessToken = generateAccessToken({ 
-      id: userId, 
-      email: userEmail, 
-      role: userRole,
-      username: user.username || userEmail.split('@')[0]
-    });
-    const refreshToken = generateRefreshToken({ 
-      id: userId, 
-      email: userEmail,
-      role: userRole
-    });
-
-    // If this is a dev user (not present in DB), skip DB persistence and use in-memory session
-    if (user.isDev) {
-      devUserSessions[refreshToken] = { userId: user.id, email: user.email }
-    } else {
-      try {
-        // Persist refresh token to DB
-        const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
-        const expiryDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
-
-        await prisma.user_sessions.create({
-          data: {
-            session_token: hashedToken,
-            user_id: user.id,
-            expires_at: expiryDate,
-            created_at: new Date(),
-            is_active: true,
-          },
-        });
-        console.log('Successfully persisted refresh token to DB.');
-      } catch (dbError) {
-        console.error('Refresh token persist failed due to DB error:', dbError);
-        // If it's a real user, this is a critical error.
-        return res.status(500).json({ message: 'Could not persist session. Please try again.' });
-      }
-    }
-
-  // Cookie configuration for cross-domain deployment (e.g., Vercel frontend + Railway backend)
-  // Use SameSite=None and Secure=true in production to allow cross-site cookies over HTTPS
-  // For localhost development, use SameSite=Lax without secure flag
-  const isProduction = process.env.NODE_ENV === 'production';
-  const cookieSecure = isProduction;  // true in production (HTTPS required)
-  const sameSitePolicy = isProduction ? 'none' : 'lax';  // 'lax' for localhost, 'none' for production
-  
-  const cookieDomain = process.env.COOKIE_DOMAIN || undefined
-  const cookieOptions = {
-    httpOnly: true,
-    secure: cookieSecure,
-    sameSite: sameSitePolicy,
-    path: '/',
-    ...(cookieDomain ? { domain: cookieDomain } : {}),
-  };
-
-  res.cookie('access_token', accessToken, { 
-    ...cookieOptions, 
-    maxAge: 60 * 60 * 1000  // 1 hour
-  });
-  
-  res.cookie('refresh_token', refreshToken, { 
-    ...cookieOptions, 
-    maxAge: 7 * 24 * 60 * 60 * 1000  // 7 days
-  });
-
-  console.log('✅ Login successful - Tokens generated with role:', userRole);
-  console.log('✅ Cookies set with:', { httpOnly: true, secure: cookieSecure, sameSite: sameSitePolicy });
-    res.json({ 
-      message: 'Login successful', 
-      user: { 
-        id: userId, 
-        email: userEmail,
-        role: userRole,
-        roleName: userRole,
-        username: user.username || userEmail.split('@')[0]
-      } 
-    })
-  } catch (error) {
-    // Catch any other errors (token generation, cookie setting, etc.)
-    console.error('❌ Login Error (unexpected):', error.message);
-    console.error('Stack:', error.stack);
-    return res.status(500).json({ 
-      message: 'An error occurred during login. Please try again.',
-      error: process.env.NODE_ENV === 'production' ? undefined : error.message
-    });
-  }
-})
-
-// Alias for clients that POST to /login instead of /api/login
-app.post('/login', (req, res) => {
-  req.url = '/api/login'
-  app._router.handle(req, res, () => res.status(404).end())
-})
+// OLD /api/login endpoint REMOVED - Now using /api/auth/login from routes/auth.js
+// The old endpoint only checked the users table and didn't support super_admins or enterprise_admins
+// All authentication now flows through /api/auth/login which supports multi-tenant architecture
 
 app.post('/api/token/refresh', async (req, res) => {
   const { refresh_token: refreshToken } = req.cookies;
@@ -813,14 +599,9 @@ app.post('/api/token/refresh', async (req, res) => {
     });
 
     if (!existingSession) {
-      console.log('Refresh token not found in DB or expired, falling back to in-memory session.');
-      // Fallback to "in-memory" session check for dev user
-      const devSession = devUserSessions[refreshToken];
-      if (!devSession) {
-        return res.status(401).json({ message: 'Invalid refresh token' });
-      }
-      // ... existing dev user logic
-    } else {
+      console.log('❌ Refresh token not found in DB or expired');
+      return res.status(401).json({ message: 'Invalid refresh token' });
+    }
         console.log('Refresh token validated against database.');
         // Validate token signature and get user id from token
         let decoded;
@@ -851,24 +632,14 @@ app.post('/api/token/refresh', async (req, res) => {
 
         res.cookie('access_token', newAccessToken, accessCookieOpts)
         res.json({ message: 'Token refreshed successfully' })
-    }
   } catch (error) {
-    console.error('Refresh Token DB Error:', error); // Enhanced logging
-    console.log('Refresh Token: DB operation failed, falling back to in-memory session.');
-    // Fallback for DB connection error
-    const devSession = devUserSessions[refreshToken];
-    if (!devSession) {
-      return res.status(401).json({ message: 'Invalid refresh token' });
-    }
-    // ... existing dev user logic
+    console.error('❌ Refresh Token Error:', error);
+    return res.status(401).json({ message: 'Invalid refresh token' });
   }
 });
 
-// Alias route for /api/refresh (redirects to /api/token/refresh)
-app.post('/api/refresh', (req, res) => {
-  req.url = '/api/token/refresh'
-  app._router.handle(req, res, () => res.status(404).end())
-})
+// OLD /api/refresh alias REMOVED - Use /api/token/refresh directly
+// All clients should use the standard /api/token/refresh endpoint
 
 // This should be at the end of all other middleware and routes
 app.use((err, req, res, next) => {
@@ -939,11 +710,38 @@ app.get('/api/admin', authenticate, requireRole('ADMIN'), async (req, res) => {
 // Get master modules configuration
 app.get('/api/enterprise-admin/master-modules', authenticate, requireRole('ENTERPRISE_ADMIN'), async (req, res) => {
   try {
+    // Fetch modules from database
+    const dbModules = await prisma.module.findMany({
+      orderBy: {
+        id: 'asc'
+      }
+    });
+
+    // Also get the config modules for page information
     const { MASTER_MODULES } = require('./config/master-modules');
+
+    // Merge database modules with config modules (for pages info)
+    const modulesWithPages = dbModules.map(dbModule => {
+      const configModule = MASTER_MODULES.find(m => m.id === dbModule.module_name);
+      
+      return {
+        id: dbModule.id, // Use database ID for assignment
+        module_name: dbModule.module_name,
+        display_name: dbModule.display_name,
+        name: dbModule.display_name, // For frontend compatibility
+        productType: dbModule.productType,
+        description: configModule?.description || dbModule.description || '',
+        icon: configModule?.icon || 'FiBox',
+        category: configModule?.category || 'General',
+        businessCategory: configModule?.businessCategory || 'All',
+        pages: configModule?.pages || []
+      };
+    });
+
     res.json({ 
       ok: true, 
-      modules: MASTER_MODULES,
-      total: MASTER_MODULES.length
+      modules: modulesWithPages,
+      total: modulesWithPages.length
     });
   } catch (error) {
     console.error('Error fetching master modules:', error);
@@ -957,70 +755,57 @@ app.get('/api/enterprise-admin/master-modules', authenticate, requireRole('ENTER
 
 // Get all Super Admins
 app.get('/api/enterprise-admin/super-admins', authenticate, requireRole('ENTERPRISE_ADMIN'), async (req, res) => {
+  console.log('🔵 GET /api/enterprise-admin/super-admins - Request received');
+  console.log('🔵 User:', req.user);
   try {
-    const superAdmins = await prisma.user.findMany({
-      where: {
-        role: 'SUPER_ADMIN'
-      },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        role: true,
-        createdAt: true,
-        profile_pic_url: true
+    // Fetch from super_admins table with module assignments
+    const superAdmins = await prisma.superAdmin.findMany({
+      include: {
+        moduleAssignments: {
+          include: {
+            module: {
+              select: {
+                id: true,
+                module_name: true,
+                display_name: true,
+                productType: true
+              }
+            }
+          }
+        }
       },
       orderBy: {
-        createdAt: 'desc'
+        created_at: 'desc'
       }
     });
 
-    // TODO: Fetch actual permissions from database when permission table is created
-    // For now, return super admins with email-specific module assignments
+    // Format response to match frontend expectations
     const superAdminsWithPermissions = superAdmins.map(admin => {
-      // Remove Pump Management modules from demo_super_admin@bisman.demo
-      if (admin.email === 'demo_super_admin@bisman.demo') {
-        return {
-          ...admin,
-          businessName: 'Business ERP Division',
-          businessType: 'Business ERP',
-          vertical: 'ERP',
-          isActive: true,
-            assignedModules: ['finance', 'common'], // ERP + common module
-            pagePermissions: {
-              finance: ['dashboard', 'accounts', 'accounts-payable', 'accounts-receivable', 'accounts-payable-summary', 'general-ledger', 'executive-dashboard', 'cfo-dashboard', 'finance-controller', 'treasury', 'banker'],
-              common: ['dashboard', 'settings', 'profile', 'notifications']
-            }
-        };
-      }
-      // Suji only gets Pump Management modules (operations, task-management)
-      if (admin.email === 'suji@gmail.com') {
-        return {
-          ...admin,
-          businessName: 'Pump Management Division',
-          businessType: 'Pump Management',
-          vertical: 'Petrol Pump',
-          isActive: true,
-            assignedModules: ['operations', 'task-management', 'common'],
-            pagePermissions: {
-              operations: ['dashboard', 'inventory', 'kpi', 'hub-incharge', 'store-incharge', 'manager', 'staff'],
-              'task-management': ['dashboard', 'my-tasks', 'team-tasks'],
-              common: ['dashboard', 'settings', 'profile', 'notifications']
-            }
-        };
-      }
-      // Default: Business ERP modules
+      // Extract assigned module IDs (numeric IDs from database)
+      const assignedModules = admin.moduleAssignments.map(ma => ma.module.id);
+      
+      // Build page permissions object: { moduleId: [pageIds] }
+      const pagePermissions = {};
+      admin.moduleAssignments.forEach(ma => {
+        if (ma.page_permissions && Array.isArray(ma.page_permissions)) {
+          pagePermissions[ma.module.id] = ma.page_permissions;
+        }
+      });
+      
       return {
-        ...admin,
-        businessName: admin.username || 'Business Name',
-        businessType: 'General',
-        isActive: true,
-          assignedModules: ['finance', 'operations', 'common'], // Default modules + common
-          pagePermissions: {
-            finance: ['dashboard', 'accounts', 'accounts-payable', 'accounts-receivable', 'accounts-payable-summary', 'general-ledger', 'executive-dashboard', 'cfo-dashboard', 'finance-controller', 'treasury', 'banker'],
-            operations: ['dashboard', 'inventory', 'kpi', 'hub-incharge', 'store-incharge', 'manager', 'staff'],
-            common: ['dashboard', 'settings', 'profile', 'notifications']
-          }
+        id: admin.id,
+        username: admin.name,
+        email: admin.email,
+        role: 'SUPER_ADMIN',
+        productType: admin.productType, // BUSINESS_ERP or PUMP_ERP
+        businessName: admin.name,
+        businessType: admin.productType === 'BUSINESS_ERP' ? 'Business ERP' : 'Pump Management',
+        vertical: admin.productType === 'BUSINESS_ERP' ? 'ERP' : 'Petrol Pump',
+        isActive: admin.is_active,
+        createdAt: admin.created_at,
+        profile_pic_url: admin.profile_pic_url,
+        assignedModules: assignedModules, // Now contains [1, 2, 3, ...] instead of ["finance", "hr", ...]
+        pagePermissions: pagePermissions // { 1: ["page1", "page2"], 2: ["page3"] }
       };
     });
 
@@ -1067,9 +852,86 @@ app.patch('/api/enterprise-admin/super-admins/:id/permissions', authenticate, re
 // Get current user's module permissions (for Super Admin sidebar filtering)
 app.get('/api/auth/me/permissions', authenticate, async (req, res) => {
   try {
-    const userId = req.user.userId;
+    console.log('🔍 [PERMISSIONS] Request from user:', {
+      id: req.user.id,
+      email: req.user.email,
+      role: req.user.role
+    });
+    
+    const userId = req.user.id; // FIXED: was req.user.userId
 
-    // Fetch user details
+    // For SUPER_ADMIN role, fetch from super_admins table
+    if (req.user.role === 'SUPER_ADMIN') {
+      const superAdmin = await prisma.superAdmin.findUnique({
+        where: { id: userId },
+        include: {
+          moduleAssignments: {
+            include: {
+              module: true
+            }
+          }
+        }
+      });
+
+      if (!superAdmin) {
+        console.error('❌ [PERMISSIONS] Super Admin not found:', userId);
+        return res.status(404).json({ ok: false, error: 'Super Admin not found' });
+      }
+
+      console.log('✅ [PERMISSIONS] Super Admin found:', superAdmin.name);
+      console.log('📦 [PERMISSIONS] Module assignments:', superAdmin.moduleAssignments.length);
+
+      // Load pages from config
+      const { MASTER_MODULES } = require('./config/master-modules');
+
+      // Build permissions from database
+      const assignedModules = [];
+      const pagePermissions = {};
+
+      superAdmin.moduleAssignments.forEach(assignment => {
+        const module = assignment.module;
+        const moduleName = module.module_name;
+        assignedModules.push(moduleName);
+
+        // Get page permissions from assignment
+        if (assignment.page_permissions && Array.isArray(assignment.page_permissions) && assignment.page_permissions.length > 0) {
+          // Use assigned pages
+          pagePermissions[moduleName] = assignment.page_permissions;
+          console.log(`📄 [PERMISSIONS] Module ${module.display_name} (${moduleName}): ${assignment.page_permissions.length} pages assigned`);
+        } else {
+          // Fallback: show all pages from config if no specific permissions
+          const configModule = MASTER_MODULES.find(m => m.id === moduleName);
+          if (configModule && configModule.pages) {
+            pagePermissions[moduleName] = configModule.pages.map(p => p.id);
+            console.log(`📄 [PERMISSIONS] Module ${module.display_name} (${moduleName}): ALL ${configModule.pages.length} pages (no restriction)`);
+          } else {
+            pagePermissions[moduleName] = [];
+            console.log(`⚠️  [PERMISSIONS] Module ${module.display_name} (${moduleName}): NO pages found in config`);
+          }
+        }
+      });
+
+      console.log('🎯 [PERMISSIONS] Final permissions:', {
+        modules: assignedModules.length,
+        totalPages: Object.values(pagePermissions).flat().length
+      });
+
+      return res.json({
+        ok: true,
+        user: {
+          id: superAdmin.id,
+          username: superAdmin.name,
+          email: superAdmin.email,
+          role: 'SUPER_ADMIN',
+          permissions: {
+            assignedModules,
+            pagePermissions
+          }
+        }
+      });
+    }
+
+    // For other users, fetch from users table
     const user = await prisma.user.findUnique({
       where: { id: userId },
       select: {
@@ -1084,49 +946,19 @@ app.get('/api/auth/me/permissions', authenticate, async (req, res) => {
       return res.status(404).json({ ok: false, error: 'User not found' });
     }
 
-    // If not SUPER_ADMIN, return empty permissions
-    if (user.role !== 'SUPER_ADMIN') {
-      return res.json({
-        ok: true,
-        user: {
-          ...user,
-          permissions: {
-            assignedModules: [],
-            pagePermissions: {}
-          }
-        }
-      });
-    }
-
-    // Super Admin permissions (same logic as super-admins list endpoint)
-    let permissions = {
-      assignedModules: ['finance', 'operations'],
-      pagePermissions: {
-        finance: ['dashboard', 'accounts', 'accounts-payable', 'accounts-receivable', 'accounts-payable-summary', 'general-ledger', 'executive-dashboard', 'cfo-dashboard', 'finance-controller', 'treasury', 'banker'],
-        operations: ['dashboard', 'inventory', 'kpi', 'hub-incharge', 'store-incharge', 'manager', 'staff']
-      }
-    };
-
-    // Suji gets ONLY Pump Management modules
-    if (user.email === 'suji@gmail.com') {
-      permissions = {
-        assignedModules: ['operations', 'task-management'],
-        pagePermissions: {
-          operations: ['dashboard', 'inventory', 'kpi', 'hub-incharge', 'store-incharge', 'manager', 'staff'],
-          'task-management': ['dashboard', 'my-tasks', 'team-tasks']
-        }
-      };
-    }
-
+    // Return empty permissions for non-super-admins
     res.json({
       ok: true,
       user: {
         ...user,
-        permissions
+        permissions: {
+          assignedModules: [],
+          pagePermissions: {}
+        }
       }
     });
   } catch (error) {
-    console.error('Error fetching user permissions:', error);
+    console.error('❌ [PERMISSIONS] Error fetching user permissions:', error);
     res.status(500).json({
       ok: false,
       error: 'Failed to fetch user permissions',
@@ -1313,39 +1145,271 @@ app.patch('/api/enterprise-admin/super-admins/:id/status', authenticate, require
   }
 });
 
+// Create Super Admin
+app.post('/api/enterprise-admin/super-admins', authenticate, requireRole('ENTERPRISE_ADMIN'), async (req, res) => {
+  try {
+    const { username, email, password, productType } = req.body;
+
+    // Validate required fields
+    if (!username || !email || !password || !productType) {
+      return res.status(400).json({ 
+        ok: false, 
+        message: 'Username, email, password, and product type are required' 
+      });
+    }
+
+    // Validate product type
+    if (!['BUSINESS_ERP', 'PUMP_ERP'].includes(productType)) {
+      return res.status(400).json({ 
+        ok: false, 
+        message: 'Invalid product type. Must be BUSINESS_ERP or PUMP_ERP' 
+      });
+    }
+
+    // Check if username already exists
+    const existingUsername = await prisma.superAdmin.findUnique({
+      where: { username }
+    });
+
+    if (existingUsername) {
+      return res.status(400).json({ 
+        ok: false, 
+        message: 'Username already exists' 
+      });
+    }
+
+    // Check if email already exists
+    const existingEmail = await prisma.superAdmin.findUnique({
+      where: { email }
+    });
+
+    if (existingEmail) {
+      return res.status(400).json({ 
+        ok: false, 
+        message: 'Email already exists' 
+      });
+    }
+
+    // Hash password
+    const hashedPassword = await bcrypt.hash(password, 10);
+
+    // Create Super Admin
+    const newSuperAdmin = await prisma.superAdmin.create({
+      data: {
+        username,
+        email,
+        password: hashedPassword,
+        productType,
+        isActive: true,
+        role: 'SUPER_ADMIN'
+      }
+    });
+
+    // Remove password from response
+    const { password: _, ...superAdminData } = newSuperAdmin;
+
+    console.log('Super Admin created:', superAdminData);
+
+    res.status(201).json({
+      ok: true,
+      message: 'Super Admin created successfully',
+      superAdmin: superAdminData
+    });
+  } catch (error) {
+    console.error('Error creating Super Admin:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: 'Failed to create Super Admin',
+      message: error.message 
+    });
+  }
+});
+
+// Delete Super Admin
+app.delete('/api/enterprise-admin/super-admins/:id', authenticate, requireRole('ENTERPRISE_ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const superAdminId = parseInt(id, 10);
+
+    if (isNaN(superAdminId)) {
+      return res.status(400).json({ 
+        ok: false, 
+        message: 'Invalid Super Admin ID' 
+      });
+    }
+
+    // Check if Super Admin exists
+    const superAdmin = await prisma.superAdmin.findUnique({
+      where: { id: superAdminId }
+    });
+
+    if (!superAdmin) {
+      return res.status(404).json({ 
+        ok: false, 
+        message: 'Super Admin not found' 
+      });
+    }
+
+    // Delete all module assignments first (cascade)
+    await prisma.moduleAssignment.deleteMany({
+      where: { super_admin_id: superAdminId }
+    });
+
+    // Delete the Super Admin
+    await prisma.superAdmin.delete({
+      where: { id: superAdminId }
+    });
+
+    console.log('Super Admin deleted:', superAdminId);
+
+    res.json({
+      ok: true,
+      message: 'Super Admin deleted successfully'
+    });
+  } catch (error) {
+    console.error('Error deleting Super Admin:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: 'Failed to delete Super Admin',
+      message: error.message 
+    });
+  }
+});
+
 // Assign module to Super Admin
 app.post('/api/enterprise-admin/super-admins/:id/assign-module', authenticate, requireRole('ENTERPRISE_ADMIN'), async (req, res) => {
   try {
     const { id } = req.params;
     const { moduleId, pageIds } = req.body;
 
+    console.log('🔵 ASSIGN MODULE REQUEST:', { 
+      superAdminId: id, 
+      moduleId, 
+      pageIds,
+      pageCount: pageIds?.length || 0 
+    });
+
     if (!moduleId) {
+      console.error('❌ No moduleId provided');
       return res.status(400).json({ 
         ok: false, 
         message: 'Module ID is required' 
       });
     }
 
-    // Update assignedModules in user_permissions table (or user table if embedded)
-    await prisma.user.update({
-      where: { id: parseInt(id) },
-      data: {
-        assignedModules: {
-          push: moduleId
-        },
-        // Optionally update pagePermissions if needed
+    const superAdminId = parseInt(id);
+    const moduleIdInt = parseInt(moduleId);
+
+    // Verify super admin exists
+    const superAdmin = await prisma.superAdmin.findUnique({
+      where: { id: superAdminId }
+    });
+
+    if (!superAdmin) {
+      console.error('❌ Super admin not found:', superAdminId);
+      return res.status(404).json({ 
+        ok: false, 
+        message: 'Super admin not found' 
+      });
+    }
+
+    console.log('✅ Super admin found:', superAdmin.name);
+
+    // Verify module exists
+    const module = await prisma.module.findUnique({
+      where: { id: moduleIdInt }
+    });
+
+    if (!module) {
+      console.error('❌ Module not found:', moduleIdInt);
+      return res.status(404).json({ 
+        ok: false, 
+        message: 'Module not found' 
+      });
+    }
+
+    console.log('✅ Module found:', module.display_name);
+
+    // Check if assignment already exists
+    const existingAssignment = await prisma.moduleAssignment.findFirst({
+      where: {
+        super_admin_id: superAdminId,
+        module_id: moduleIdInt
       }
     });
 
+    let assignment;
+    let message;
+
+    if (existingAssignment) {
+      // UPDATE existing assignment - update page permissions
+      console.log('📝 Updating existing assignment...');
+      assignment = await prisma.moduleAssignment.update({
+        where: { id: existingAssignment.id },
+        data: {
+          assigned_at: new Date(), // Update timestamp to reflect the update
+          page_permissions: pageIds || [] // Update page permissions
+        },
+        include: {
+          module: true,
+          superAdmin: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          }
+        }
+      });
+      message = 'Module pages updated successfully';
+      console.log('✅ Assignment updated successfully');
+    } else {
+      // CREATE new module assignment with page permissions
+      console.log('➕ Creating new assignment...');
+      assignment = await prisma.moduleAssignment.create({
+        data: {
+          super_admin_id: superAdminId,
+          module_id: moduleIdInt,
+          page_permissions: pageIds || [] // Store page permissions
+        },
+        include: {
+          module: true,
+          superAdmin: {
+            select: {
+              id: true,
+              name: true,
+              email: true
+            }
+          }
+        }
+      });
+      message = 'Module assigned successfully';
+      console.log('✅ Assignment created successfully');
+    }
+
+    // TODO: Handle pageIds if you want to store page-level permissions in the database
+    // For now, this endpoint just manages module-level assignments
+
+    console.log('🎉 Sending success response:', message);
     res.json({ 
       ok: true, 
-      message: 'Module assigned successfully',
-      userId: parseInt(id),
-      moduleId,
-      pageIds: pageIds || []
+      message: message,
+      assignment: {
+        id: assignment.id,
+        superAdminId: assignment.super_admin_id,
+        moduleId: assignment.module_id,
+        moduleName: assignment.module.module_name,
+        displayName: assignment.module.display_name,
+        assignedAt: assignment.assigned_at
+      }
     });
   } catch (error) {
-    console.error('Error assigning module:', error);
+    console.error('❌ ERROR ASSIGNING MODULE:', error);
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack
+    });
     res.status(500).json({ 
       ok: false, 
       error: 'Failed to assign module',
@@ -1367,24 +1431,38 @@ app.post('/api/enterprise-admin/super-admins/:id/unassign-module', authenticate,
       });
     }
 
-    // Remove moduleId from assignedModules array
-    const user = await prisma.user.findUnique({ where: { id: parseInt(id) } });
-    if (!user) {
-      return res.status(404).json({ ok: false, message: 'Super Admin not found' });
-    }
-    const updatedModules = (user.assignedModules || []).filter(mid => mid !== moduleId);
-    await prisma.user.update({
-      where: { id: parseInt(id) },
-      data: {
-        assignedModules: updatedModules
+    const superAdminId = parseInt(id);
+    const moduleIdInt = parseInt(moduleId);
+
+    // Find the assignment
+    const assignment = await prisma.moduleAssignment.findFirst({
+      where: {
+        super_admin_id: superAdminId,
+        module_id: moduleIdInt
+      },
+      include: {
+        module: true
       }
+    });
+
+    if (!assignment) {
+      return res.status(404).json({ 
+        ok: false, 
+        message: 'Module assignment not found' 
+      });
+    }
+
+    // Delete the assignment
+    await prisma.moduleAssignment.delete({
+      where: { id: assignment.id }
     });
 
     res.json({ 
       ok: true, 
       message: 'Module unassigned successfully',
-      userId: parseInt(id),
-      moduleId
+      superAdminId,
+      moduleId: moduleIdInt,
+      moduleName: assignment.module.module_name
     });
   } catch (error) {
     console.error('Error unassigning module:', error);

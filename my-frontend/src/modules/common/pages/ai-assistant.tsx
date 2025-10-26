@@ -13,7 +13,7 @@ import {
   CheckCircle,
   Sparkles
 } from 'lucide-react';
-import { apiClient } from '@/services/apiClient';
+import apiClient from '@/services/apiClient';
 
 interface Message {
   id: string;

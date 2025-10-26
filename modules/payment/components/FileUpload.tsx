@@ -1,7 +1,44 @@
 'use client';
 
 import React, { useRef, useState } from 'react';
-import { Upload, X, File, CheckCircle, AlertCircle } from 'lucide-react';
+
+/* Minimal local SVG icon components to avoid depending on 'lucide-react' */
+const Upload = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props} xmlns="http://www.w3.org/2000/svg">
+    <path d="M21 15v4a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1v-4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M17 8l-5-5-5 5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M12 3v12" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const X = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props} xmlns="http://www.w3.org/2000/svg">
+    <path d="M18 6L6 18" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M6 6l12 12" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const File = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props} xmlns="http://www.w3.org/2000/svg">
+    <path d="M14 3H6a1 1 0 0 0-1 1v16a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M14 3v6h6" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const CheckCircle = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props} xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M9 12l2 2 4-4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+const AlertCircle = (props: React.SVGProps<SVGSVGElement>) => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" {...props} xmlns="http://www.w3.org/2000/svg">
+    <circle cx="12" cy="12" r="9" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M12 8v5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M12 16h.01" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
 
 interface FileUploadProps {
   label: string;

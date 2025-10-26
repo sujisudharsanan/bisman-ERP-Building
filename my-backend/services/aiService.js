@@ -10,7 +10,23 @@
  * 3. Ensure Ollama is running: ollama serve
  */
 
-const { Ollama } = require('langchain/llms/ollama');
+// Try to import Ollama, with fallback for when langchain is not installed
+let Ollama;
+try {
+  const langchain = require('@langchain/community/llms/ollama');
+  Ollama = langchain.Ollama;
+} catch (e) {
+  // Fallback: create a mock class if langchain not installed
+  console.warn('[aiService] LangChain not installed. AI features will be limited.');
+  Ollama = class {
+    constructor(config) {
+      this.config = config;
+    }
+    async invoke(prompt) {
+      throw new Error('LangChain not installed. Run: npm install @langchain/community');
+    }
+  };
+}
 
 // Configuration
 const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
