@@ -2,7 +2,7 @@
 ## Fullstack Dockerfile (backend + frontend) for Railway
 
 # ---- deps: install and prepare backend with Prisma ----
-FROM node:18-alpine AS deps
+FROM node:20-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache postgresql-client openssl libc6-compat
 COPY my-backend/package*.json ./
@@ -12,7 +12,7 @@ COPY my-backend/ ./
 RUN npx prisma generate
 
 # ---- build-frontend: install, build, export Next.js ----
-FROM node:18-alpine AS build-frontend
+FROM node:20-alpine AS build-frontend
 WORKDIR /app
 COPY my-frontend/package*.json ./frontend/
 RUN npm install --prefix frontend
@@ -24,7 +24,7 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build --prefix frontend
 
 # ---- runner: minimal runtime with dumb-init; copy pruned node_modules later ----
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 RUN apk add --no-cache dumb-init libc6-compat
 WORKDIR /app
 

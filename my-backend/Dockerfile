@@ -3,7 +3,7 @@
 ## Multi-stage Dockerfile for my-backend
 
 # ---- deps: install full deps, generate Prisma, then prune ----
-FROM node:18-alpine AS deps
+FROM node:20-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache postgresql-client openssl libc6-compat
 COPY package*.json ./
@@ -13,7 +13,7 @@ COPY . .
 RUN npx prisma generate && npm prune --omit=dev
 
 # ---- runner: minimal runtime with dumb-init ----
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 RUN apk add --no-cache dumb-init
 WORKDIR /app
 COPY --from=deps /app /app
