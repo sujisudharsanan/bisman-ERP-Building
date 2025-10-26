@@ -140,7 +140,8 @@ export default function EnterpriseAdminUsersPage() {
 
   const loadSuperAdmins = async () => {
     try {
-      const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      // Use relative URL when NEXT_PUBLIC_API_URL is not set (same-origin in Railway)
+      const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
       const response = await fetch(`${baseURL}/api/enterprise-admin/super-admins`, {
         method: 'GET',
         credentials: 'include',
