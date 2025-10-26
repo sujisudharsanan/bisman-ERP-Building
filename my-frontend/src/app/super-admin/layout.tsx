@@ -1,6 +1,12 @@
 import React from 'react';
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import type { Metadata } from 'next';
+
+export const metadata: Metadata = {
+  title: 'BISMAN ERP - Super Admin Dashboard',
+  description: 'Super Admin Dashboard - Access and manage your assigned modules',
+};
 
 interface SuperAdminLayoutProps {
   children: React.ReactNode;

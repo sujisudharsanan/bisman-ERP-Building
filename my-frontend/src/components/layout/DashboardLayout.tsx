@@ -1,7 +1,7 @@
 'use client';
 
-import React, { useEffect } from 'react';
-import DashboardSidebar from './DashboardSidebar';
+import React, { useEffect, useState } from 'react';
+import Sidebar from './Sidebar';
 import TopNavbar from './TopNavbar';
 import { HubInchargeBottomBar } from '@/components/hub-incharge/HubInchargeTabs';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -12,22 +12,40 @@ interface DashboardLayoutProps {
 }
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
   useEffect(() => {
     console.log('🎨 DashboardLayout mounted for role:', role);
     return () => console.log('🎨 DashboardLayout unmounted');
   }, [role]);
 
+  const toggleSidebar = () => {
+    setSidebarOpen(!sidebarOpen);
+  };
+
   return (
     <ErrorBoundary>
-      <div className="bg-theme text-theme min-h-screen flex overflow-hidden theme-transition">
-        <ErrorBoundary fallback={<div className="w-16 bg-red-100 dark:bg-red-900/20 flex items-center justify-center"><p className="text-red-600 text-xs">Sidebar Error</p></div>}>
-          <DashboardSidebar />
+      <div className="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col theme-transition">
+        {/* Top Navbar - Fixed at top */}
+        <ErrorBoundary fallback={<div className="h-16 bg-red-100 dark:bg-red-900/20 flex items-center justify-center"><p className="text-red-600 text-sm">TopNavbar Error</p></div>}>
+          <TopNavbar showThemeToggle />
         </ErrorBoundary>
-        <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-          <ErrorBoundary fallback={<div className="h-16 bg-red-100 dark:bg-red-900/20 flex items-center justify-center"><p className="text-red-600 text-sm">TopNavbar Error</p></div>}>
-            <TopNavbar showThemeToggle />
+
+        {/* Content Area with Sidebar */}
+        <div className="flex flex-1 overflow-hidden">
+          {/* Sidebar - Beneath navbar */}
+          <ErrorBoundary fallback={<div className="w-16 bg-red-100 dark:bg-red-900/20 flex items-center justify-center"><p className="text-red-600 text-xs">Sidebar Error</p></div>}>
+            <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
           </ErrorBoundary>
-          <main className="py-px flex-1 overflow-auto">
+
+          {/* Main Content */}
+          <main 
+            className={`
+              flex-1 overflow-auto transition-all duration-300
+              ${sidebarOpen ? 'ml-64' : 'ml-20'}
+              p-6
+            `}
+          >
             <ErrorBoundary fallback={
               <div className="p-8 text-center">
                 <h2 className="text-xl font-bold text-red-600 mb-4">Content Error</h2>
@@ -38,8 +56,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
             </ErrorBoundary>
           </main>
         </div>
-        {/* Place bottom bar outside the scrollable main so it's not clipped */}
-        {/* Only render for hub-incharge role to avoid unnecessary rendering */}
+
+        {/* Bottom bar for hub-incharge role */}
         {(role === 'STAFF' || role?.toLowerCase().includes('hub') || role?.toLowerCase().includes('incharge')) && (
           <ErrorBoundary fallback={null}>
             <HubInchargeBottomBar />

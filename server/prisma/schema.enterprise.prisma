@@ -1,0 +1,327 @@
+// ============================================================================
+// ENTERPRISE DATABASE SCHEMA
+// ============================================================================
+// Purpose: Central control plane for multi-tenant ERP
+// Contains: Enterprise admins, super admins, clients, modules, audit logs
+// Database: enterprise_db (single shared database)
+// Generated Client: .prisma/client-enterprise
+// ============================================================================
+
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../../node_modules/.prisma/client-enterprise"
+  binaryTargets = ["native", "linux-musl"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("ENTERPRISE_DATABASE_URL")
+}
+
+// ============================================================================
+// ENTERPRISE ADMINS
+// ============================================================================
+// Highest level users who manage the entire platform
+
+model EnterpriseAdmin {
+  id        String   @id @default(uuid())
+  name      String
+  email     String   @unique
+  password  String   // Hashed with bcrypt
+  role      String   @default("ADMIN") // ADMIN, SUPER_ADMIN, READ_ONLY
+  isActive  Boolean  @default(true)
+  lastLogin DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Audit trail
+  createdClients Client[]     @relation("CreatedByAdmin")
+  auditLogs      AuditLog[]   @relation("PerformedByAdmin")
+  sessions       AdminSession[]
+
+  @@index([email])
+  @@index([isActive])
+  @@map("enterprise_admins")
+}
+
+// ============================================================================
+// ADMIN SESSIONS
+// ============================================================================
+// Track active sessions for security
+
+model AdminSession {
+  id             String          @id @default(uuid())
+  adminId        String
+  admin          EnterpriseAdmin @relation(fields: [adminId], references: [id], onDelete: Cascade)
+  token          String          @unique // JWT token hash
+  ipAddress      String?
+  userAgent      String?
+  expiresAt      DateTime
+  lastActivityAt DateTime        @default(now())
+  createdAt      DateTime        @default(now())
+
+  @@index([adminId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("admin_sessions")
+}
+
+// ============================================================================
+// SUPER ADMINS
+// ============================================================================
+// Module/segment managers who oversee specific clients
+
+model SuperAdmin {
+  id              String   @id @default(uuid())
+  name            String
+  email           String   @unique
+  password        String   // Hashed with bcrypt
+  segment         String   // Business ERP, Pump Management, etc.
+  businessType    String?  // Retail, Manufacturing, Petrol Pump, etc.
+  assignedModules Json?    // Array of module IDs ["finance", "operations"]
+  permissions     Json?    // Granular permissions object
+  isActive        Boolean  @default(true)
+  createdById     String
+  lastLogin       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  clients    ClientSuperAdmin[]
+  auditLogs  AuditLog[]         @relation("PerformedBySuperAdmin")
+
+  @@index([email])
+  @@index([segment])
+  @@index([isActive])
+  @@map("super_admins")
+}
+
+// ============================================================================
+// MODULES
+// ============================================================================
+// Available features/modules in the ERP system
+
+model Module {
+  id               String   @id @default(uuid())
+  name             String   @unique
+  slug             String   @unique
+  description      String?
+  businessCategory String   // Business ERP, Pump Management
+  icon             String?
+  color            String?  // UI color code
+  pages            Json?    // Array of page definitions
+  isActive         Boolean  @default(true)
+  displayOrder     Int      @default(0)
+  requiredFeatures Json?    // Prerequisites
+  pricing          Json?    // Module pricing info
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  // Relations
+  clientModules ClientModule[]
+
+  @@index([slug])
+  @@index([businessCategory])
+  @@index([isActive])
+  @@map("modules")
+}
+
+// ============================================================================
+// CLIENTS (TENANTS)
+// ============================================================================
+// Each client gets their own isolated database
+
+model Client {
+  id              String   @id @default(uuid())
+  name            String
+  slug            String   @unique // URL-friendly identifier
+  adminEmail      String   // Primary contact email
+  adminName       String?
+  businessType    String?  // Industry type
+  segment         String?  // Business classification
+  
+  // Database connection (ENCRYPTED in production)
+  dbConnectionUri String   @db.Text // Store encrypted or use secrets manager
+  dbName          String   @unique  // client_db_<uuid>
+  dbHost          String?
+  dbPort          Int      @default(5432)
+  shardId         String?  // For horizontal scaling
+  
+  // Status and limits
+  status          String   @default("ACTIVE") // ACTIVE, SUSPENDED, DELETED
+  tier            String   @default("BASIC")  // BASIC, PROFESSIONAL, ENTERPRISE
+  maxUsers        Int      @default(10)
+  maxStorage      Int      @default(1000) // MB
+  
+  // Metadata
+  metadata        Json?    // Custom client-specific data
+  features        Json?    // Feature flags
+  billingInfo     Json?    // Billing details
+  
+  // Audit
+  createdById     String
+  createdBy       EnterpriseAdmin @relation("CreatedByAdmin", fields: [createdById], references: [id])
+  provisionedAt   DateTime @default(now())
+  lastAccessedAt  DateTime?
+  expiresAt       DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  superAdmins   ClientSuperAdmin[]
+  modules       ClientModule[]
+  auditLogs     AuditLog[]         @relation("ClientAuditLogs")
+  
+  @@index([slug])
+  @@index([status])
+  @@index([tier])
+  @@index([dbName])
+  @@map("clients")
+}
+
+// ============================================================================
+// CLIENT-SUPER ADMIN MAPPING
+// ============================================================================
+// Many-to-many relationship between clients and super admins
+
+model ClientSuperAdmin {
+  id           String      @id @default(uuid())
+  clientId     String
+  client       Client      @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  superAdminId String
+  superAdmin   SuperAdmin  @relation(fields: [superAdminId], references: [id], onDelete: Cascade)
+  role         String      @default("ADMIN") // ADMIN, VIEWER
+  permissions  Json?       // Override permissions for this client
+  assignedAt   DateTime    @default(now())
+  assignedBy   String?     // Who assigned this super admin
+
+  @@unique([clientId, superAdminId])
+  @@index([clientId])
+  @@index([superAdminId])
+  @@map("client_super_admins")
+}
+
+// ============================================================================
+// CLIENT-MODULE MAPPING
+// ============================================================================
+// Track which modules are enabled for each client
+
+model ClientModule {
+  id          String   @id @default(uuid())
+  clientId    String
+  client      Client   @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  moduleId    String
+  module      Module   @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+  isEnabled   Boolean  @default(true)
+  config      Json?    // Module-specific configuration
+  enabledAt   DateTime @default(now())
+  enabledBy   String?  // Who enabled this module
+
+  @@unique([clientId, moduleId])
+  @@index([clientId])
+  @@index([moduleId])
+  @@map("client_modules")
+}
+
+// ============================================================================
+// AUDIT LOGS
+// ============================================================================
+// Global audit trail for all enterprise-level actions
+
+model AuditLog {
+  id              String   @id @default(uuid())
+  
+  // What happened
+  entity          String   // Client, SuperAdmin, Module, etc.
+  entityId        String   // ID of the affected entity
+  action          String   // CREATE, UPDATE, DELETE, LOGIN, etc.
+  description     String?  // Human-readable description
+  payload         Json?    // Before/after state, request body, etc.
+  
+  // Who did it
+  performedBy     String?  // User ID (admin or super admin)
+  performedByType String?  // ENTERPRISE_ADMIN, SUPER_ADMIN
+  performedByAdmin      EnterpriseAdmin? @relation("PerformedByAdmin", fields: [performedBy], references: [id], onDelete: SetNull)
+  performedBySuperAdmin SuperAdmin?      @relation("PerformedBySuperAdmin", fields: [performedBy], references: [id], onDelete: SetNull)
+  
+  // Context
+  clientId        String?  // If action relates to specific client
+  client          Client?  @relation("ClientAuditLogs", fields: [clientId], references: [id], onDelete: SetNull)
+  ipAddress       String?
+  userAgent       String?
+  
+  // When
+  timestamp       DateTime @default(now())
+  
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([performedBy])
+  @@index([clientId])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// SYSTEM SETTINGS
+// ============================================================================
+// Platform-wide configuration
+
+model SystemSetting {
+  id          String   @id @default(uuid())
+  key         String   @unique
+  value       String   @db.Text
+  type        String   // STRING, NUMBER, BOOLEAN, JSON
+  category    String   // SECURITY, BILLING, FEATURES, etc.
+  description String?
+  isPublic    Boolean  @default(false) // Can clients see this?
+  updatedBy   String?
+  updatedAt   DateTime @updatedAt
+  createdAt   DateTime @default(now())
+
+  @@index([key])
+  @@index([category])
+  @@map("system_settings")
+}
+
+// ============================================================================
+// API KEYS
+// ============================================================================
+// For programmatic access to enterprise APIs
+
+model ApiKey {
+  id          String   @id @default(uuid())
+  name        String   // Friendly name
+  key         String   @unique // Hashed API key
+  scope       String[] // Array of allowed scopes
+  adminId     String?  // Owner admin
+  expiresAt   DateTime?
+  lastUsedAt  DateTime?
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  @@index([key])
+  @@index([isActive])
+  @@map("api_keys")
+}
+
+// ============================================================================
+// WEBHOOKS
+// ============================================================================
+// Event notifications for integrations
+
+model Webhook {
+  id          String   @id @default(uuid())
+  clientId    String?  // Null = enterprise-level webhook
+  url         String
+  events      String[] // Array of event types to listen for
+  secret      String   // For signature verification
+  isActive    Boolean  @default(true)
+  lastSuccess DateTime?
+  lastFailure DateTime?
+  failCount   Int      @default(0)
+  createdAt   DateTime @default(now())
+
+  @@index([clientId])
+  @@index([isActive])
+  @@map("webhooks")
+}
