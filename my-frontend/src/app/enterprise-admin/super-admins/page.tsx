@@ -90,7 +90,8 @@ export default function SuperAdminManagementPage() {
 
   const loadMasterModules = async () => {
     try {
-      const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      // Use relative URL when NEXT_PUBLIC_API_URL is not set (same-origin in Railway)
+      const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
       const response = await fetch(`${baseURL}/api/enterprise-admin/master-modules`, {
         method: 'GET',
         credentials: 'include',

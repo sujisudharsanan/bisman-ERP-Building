@@ -48,7 +48,8 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
       if (isSuperAdmin) {
         console.log('[Sidebar] Super Admin detected - fetching assigned modules');
         try {
-          const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+          // Use relative URL when NEXT_PUBLIC_API_URL is not set (same-origin in Railway)
+          const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
           const response = await fetch(`${baseURL}/api/auth/me/permissions`, {
             credentials: 'include',
           });

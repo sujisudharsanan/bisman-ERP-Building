@@ -21,6 +21,8 @@ COPY my-frontend/ ./frontend
 ENV CI=true
 ENV RAILWAY=1
 ENV NEXT_TELEMETRY_DISABLED=1
+# Set API URL for frontend build - Railway will use internal service communication
+ENV NEXT_PUBLIC_API_URL=""
 RUN npm run build --prefix frontend
 
 # ---- runner: minimal runtime with dumb-init; copy pruned node_modules later ----
