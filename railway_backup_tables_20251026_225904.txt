@@ -1,0 +1,19 @@
+                 List of relations
+ Schema |         Name          | Type  |  Owner   
+--------+-----------------------+-------+----------
+ public | actions               | table | postgres
+ public | audit_logs            | table | postgres
+ public | migration_history     | table | postgres
+ public | rbac_actions          | table | postgres
+ public | rbac_permissions      | table | postgres
+ public | rbac_roles            | table | postgres
+ public | rbac_routes           | table | postgres
+ public | rbac_user_permissions | table | postgres
+ public | rbac_user_roles       | table | postgres
+ public | recent_activity       | table | postgres
+ public | roles                 | table | postgres
+ public | routes                | table | postgres
+ public | user_sessions         | table | postgres
+ public | users                 | table | postgres
+(14 rows)
+
