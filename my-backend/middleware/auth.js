@@ -18,6 +18,13 @@ const devUsers = [
   { id: 101, email: 'admin@bisman.local', password: 'changeme', role: 'ADMIN' },
   { id: 102, email: 'manager@bisman.local', password: 'changeme', role: 'MANAGER' },
   { id: 103, email: 'hub@bisman.local', password: 'changeme', role: 'STAFF' },
+
+  // Demo credentials for production testing (bisman.demo domain)
+  { id: 300, email: 'demo_hub_incharge@bisman.demo', password: 'changeme', role: 'HUB_INCHARGE' },
+  { id: 301, email: 'demo_admin@bisman.demo', password: 'changeme', role: 'ADMIN' },
+  { id: 302, email: 'demo_manager@bisman.demo', password: 'changeme', role: 'MANAGER' },
+  { id: 303, email: 'demo_super@bisman.demo', password: 'changeme', role: 'SUPER_ADMIN' },
+
   // New Finance & Operations demo users
   { id: 201, email: 'it@bisman.local', password: 'changeme', role: 'IT_ADMIN' },
   { id: 202, email: 'cfo@bisman.local', password: 'changeme', role: 'CFO' },
@@ -76,13 +83,62 @@ async function authenticate(req, res, next) {
 
     // Try Prisma first if database is available
     try {
-      if (subjectId != null) {
-        user = await prisma.user.findUnique({ where: { id: subjectId } })
+      // Check userType from JWT to determine which table to query
+      if (payload.userType === 'ENTERPRISE_ADMIN') {
+        console.log('[authenticate] Looking up Enterprise Admin with id:', subjectId)
+        user = await prisma.enterpriseAdmin.findUnique({ 
+          where: { id: subjectId },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            profile_pic_url: true,
+            is_active: true
+          }
+        })
+        if (user) {
+          user.role = 'ENTERPRISE_ADMIN'
+          user.roleName = 'ENTERPRISE_ADMIN'
+          user.productType = 'ALL'
+          user.userType = 'ENTERPRISE_ADMIN'
+        }
+      } else if (payload.userType === 'SUPER_ADMIN') {
+        console.log('[authenticate] Looking up Super Admin with id:', subjectId)
+        user = await prisma.superAdmin.findUnique({ 
+          where: { id: subjectId },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            productType: true,
+            profile_pic_url: true,
+            is_active: true
+          }
+        })
+        if (user) {
+          const moduleAssignments = await prisma.moduleAssignment.findMany({
+            where: { super_admin_id: user.id },
+            include: { module: true }
+          })
+          user.assignedModules = moduleAssignments.map(ma => ma.module.module_name)
+          user.role = 'SUPER_ADMIN'
+          user.roleName = 'SUPER_ADMIN'
+          user.userType = 'SUPER_ADMIN'
+        }
+      } else {
+        // Regular user
+        console.log('[authenticate] Looking up User with id:', subjectId)
+        if (subjectId != null) {
+          user = await prisma.user.findUnique({ where: { id: subjectId } })
+        }
+        if (user) {
+          delete user.password
+          user.roleName = user.role || null
+        }
       }
+      
       if (user) {
-        delete user.password
         req.user = user
-        req.user.roleName = user.role || null
       }
     } catch (dbError) {
       console.log('Database not available, using development user lookup')
@@ -113,16 +169,29 @@ async function authenticate(req, res, next) {
 
 function requireRole(role) {
   return function (req, res, next) {
-    if (!req.user) return res.status(401).json({ error: 'not authenticated' })
-    const actual = req.user.roleName || (req.user.role && req.user.role.name)
+    console.log('[requireRole] Checking role authorization...')
+    console.log('[requireRole] Required role(s):', role)
+    console.log('[requireRole] User:', req.user)
+    
+    if (!req.user) {
+      console.log('[requireRole] ❌ User not authenticated')
+      return res.status(401).json({ error: 'not authenticated' })
+    }
+    
+    // Support both object-style role and string role
+    const actual = req.user.roleName || req.user.role || (req.user.role && req.user.role.name)
+    console.log('[requireRole] User actual role:', actual)
     
     // Support both single role and array of roles
     const allowedRoles = Array.isArray(role) ? role : [role]
+    console.log('[requireRole] Allowed roles:', allowedRoles)
     
     if (!allowedRoles.includes(actual)) {
-      return res.status(403).json({ error: 'forbidden' })
+      console.log('[requireRole] ❌ Access forbidden - User role', actual, 'not in allowed roles:', allowedRoles)
+      return res.status(403).json({ error: 'forbidden', message: `Role ${actual} not authorized. Required: ${allowedRoles.join(', ')}` })
     }
     
+    console.log('[requireRole] ✅ Role authorization passed')
     next()
   }
 }

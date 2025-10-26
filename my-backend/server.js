@@ -46,6 +46,14 @@ async function start() {
     // Continue anyway - healthcheck will still work
   }
 
+  // Initialize AI Analytics Cron Jobs
+  try {
+    const aiCron = require('./cron/aiAnalyticsJob');
+    console.log('[startup] ✅ AI Analytics cron jobs initialized');
+  } catch (cronError) {
+    console.warn('[startup] AI cron jobs not initialized:', cronError.message);
+  }
+
   // Prepare Next.js if available
   if (nextApp) {
     try {

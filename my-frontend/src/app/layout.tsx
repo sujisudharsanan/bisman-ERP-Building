@@ -13,7 +13,7 @@ import { ToastProvider } from '@/components/ui/toast';
 const inter = Inter({ subsets: ['latin'] });
 
 export const metadata: Metadata = {
-  title: 'BISMAN ERP - Super Admin Dashboard',
+  title: 'BISMAN ERP - Dashboard',
   description: 'Comprehensive ERP system with RBAC support',
 };
 

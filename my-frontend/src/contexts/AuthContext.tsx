@@ -91,7 +91,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
     setLoading(true);
     try {
       const baseURL = API_BASE;
-      const response = await fetch(`${baseURL}/api/login`, {
+      const response = await fetch(`${baseURL}/api/auth/login`, {
         method: 'POST',
         credentials: 'include',
         headers: {

@@ -27,6 +27,7 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
   const pathname = usePathname();
   const router = useRouter();
   const [userAllowedPages, setUserAllowedPages] = useState<string[]>([]);
+  const [superAdminModules, setSuperAdminModules] = useState<string[]>([]);
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(true);
 
   // Check if user is Super Admin
@@ -43,15 +44,47 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
         return;
       }
 
-      // Super Admin gets all pages by default
+      // Super Admin: Fetch assigned modules from backend
       if (isSuperAdmin) {
-        console.log('[Sidebar] Super Admin detected - granting all access');
-        const allPageKeys = PAGE_REGISTRY.map(page => page.id);
-        setUserAllowedPages(allPageKeys);
+        console.log('[Sidebar] Super Admin detected - fetching assigned modules');
+        try {
+          const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+          const response = await fetch(`${baseURL}/api/auth/me/permissions`, {
+            credentials: 'include',
+          });
+
+          if (response.ok) {
+            const result = await response.json();
+            console.log('[Sidebar] Super Admin permissions:', result);
+            
+            const assignedModules = result.user?.permissions?.assignedModules || [];
+            setSuperAdminModules(assignedModules);
+            
+            // Grant all pages from assigned modules
+            const allPageKeys = PAGE_REGISTRY
+              .filter(page => assignedModules.includes(page.module))
+              .map(page => page.id);
+            
+            console.log('[Sidebar] Assigned modules:', assignedModules);
+            console.log('[Sidebar] Allowed pages:', allPageKeys.length);
+            setUserAllowedPages(allPageKeys);
+          } else {
+            console.error('[Sidebar] Failed to fetch Super Admin permissions:', response.status);
+            // Fallback: grant all access if API fails
+            const allPageKeys = PAGE_REGISTRY.map(page => page.id);
+            setUserAllowedPages(allPageKeys);
+          }
+        } catch (error) {
+          console.error('[Sidebar] Error fetching Super Admin permissions:', error);
+          // Fallback: grant all access if API fails
+          const allPageKeys = PAGE_REGISTRY.map(page => page.id);
+          setUserAllowedPages(allPageKeys);
+        }
         setIsLoadingPermissions(false);
         return;
       }
 
+      // Regular users: Fetch page permissions from database
       try {
         // Use relative URL to leverage Next.js API proxy
         const response = await fetch(`/api/permissions?userId=${user.id}`, {
@@ -123,9 +156,22 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
   const navigation = useMemo(() => {
     if (!user) return {};
     
-    // For Super Admin, show all pages
+    // For Super Admin, show only modules they're assigned to
     if (isSuperAdmin) {
-      return getNavigationStructure(userPermissions);
+      const grouped: Record<string, PageMetadata[]> = {};
+      
+      // Filter modules based on assigned modules
+      Object.keys(MODULES).forEach(moduleId => {
+        // Only include modules in assignedModules
+        if (superAdminModules.includes(moduleId)) {
+          grouped[moduleId] = PAGE_REGISTRY
+            .filter(page => page.module === moduleId)
+            .sort((a, b) => (a.order || 0) - (b.order || 0));
+        }
+      });
+      
+      console.log('[Sidebar] Super Admin filtered modules:', Object.keys(grouped));
+      return grouped;
     }
     
     // For regular users, filter by allowed page IDs from database
@@ -144,7 +190,7 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
     });
     
     return grouped;
-  }, [user, userAllowedPages, userPermissions, isSuperAdmin]);
+  }, [user, userAllowedPages, isSuperAdmin, superAdminModules]);
 
   // Remove toggle function - modules will always be expanded
   // const toggleModule = (moduleId: string) => {

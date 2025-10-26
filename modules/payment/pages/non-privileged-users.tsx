@@ -2,24 +2,21 @@
 
 import React, { useState, useEffect } from 'react';
 import {
-  UserPlus,
-  Building2,
-  MapPin,
-  Phone,
-  Mail,
-  CreditCard,
-  FileText,
-  Upload,
-  Save,
-  X,
-  AlertCircle,
-  CheckCircle,
-  Calendar,
-  Repeat,
-  Building,
-  Landmark,
-  IdCard,
-} from 'lucide-react';
+  FiUserPlus,
+  FiMapPin,
+  FiPhone,
+  FiMail,
+  FiCreditCard,
+  FiFileText,
+  FiUpload,
+  FiSave,
+  FiX,
+  FiAlertCircle,
+  FiCheckCircle,
+  FiCalendar,
+  FiRepeat,
+  FiHome,
+} from 'react-icons/fi';
 import FileUpload from '../components/FileUpload';
 import {
   NonPrivilegedUserFormData,
@@ -310,63 +307,61 @@ export default function NonPrivilegedUsersPage() {
 
   return (
     <div className="max-w-7xl mx-auto">
-      {/* Header */}
-      <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6 mb-6">
-        <div className="flex items-center space-x-3">
-          <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-            <UserPlus className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
-              Create Non-Privileged User
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
-              Register vendors, building owners, and creditors
-            </p>
-          </div>
-        </div>
-      </div>
-
-      {/* Success Message */}
-      {submitSuccess && (
-        <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
+      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Header */}
+        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
           <div className="flex items-center space-x-3">
-            <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <FiUserPlus className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+            </div>
             <div>
-              <p className="text-sm font-medium text-green-800 dark:text-green-300">
-                User created successfully!
-              </p>
-              <p className="text-xs text-green-600 dark:text-green-400 mt-1">
-                The user has been submitted for manager approval.
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
+                Non-Privileged Users
+              </h1>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                Register vendors, building owners, and creditors
               </p>
             </div>
           </div>
         </div>
-      )}
 
-      {/* Error Message */}
-      {submitError && (
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 mb-6">
-          <div className="flex items-center space-x-3">
-            <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
-            <p className="text-sm font-medium text-red-800 dark:text-red-300">
-              {submitError}
-            </p>
+        {/* Success Message */}
+        {submitSuccess && (
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4">
+            <div className="flex items-center space-x-3">
+              <FiCheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+              <div>
+                <p className="text-sm font-medium text-green-800 dark:text-green-300">
+                  User created successfully!
+                </p>
+                <p className="text-xs text-green-600 dark:text-green-400 mt-1">
+                  The user has been submitted for manager approval.
+                </p>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      {/* Form */}
-      <form onSubmit={handleSubmit} className="space-y-6">
+        {/* Error Message */}
+        {submitError && (
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4">
+            <div className="flex items-center space-x-3">
+              <FiAlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+              <p className="text-sm font-medium text-red-800 dark:text-red-300">
+                {submitError}
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Personal Information */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
           <div className="flex items-center space-x-2 mb-4">
-            <Building2 className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <FiHome className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Personal Information
             </h2>
           </div>
-
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -522,13 +517,12 @@ export default function NonPrivilegedUsersPage() {
         {/* Contact Information */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
           <div className="flex items-center space-x-2 mb-4">
-            <MapPin className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <FiMapPin className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Contact Information
             </h2>
           </div>
-
-          <div className="grid grid-cols-1 gap-4">
+          <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Address <span className="text-red-500">*</span>
@@ -654,13 +648,12 @@ export default function NonPrivilegedUsersPage() {
         {/* Bank Details */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
           <div className="flex items-center space-x-2 mb-4">
-            <Landmark className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <FiCreditCard className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Bank Details
             </h2>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="space-y-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Bank Holder Name <span className="text-red-500">*</span>
@@ -759,13 +752,12 @@ export default function NonPrivilegedUsersPage() {
         {/* Document Uploads */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
           <div className="flex items-center space-x-2 mb-4">
-            <Upload className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <FiUpload className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Document Uploads
             </h2>
           </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-4">
             <FileUpload
               label="Bank Passbook"
               value={uploadedFiles.bank_passbook}
@@ -821,14 +813,13 @@ export default function NonPrivilegedUsersPage() {
         {/* Recurring Payment */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
           <div className="flex items-center space-x-2 mb-4">
-            <Repeat className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <FiRepeat className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Recurring Payment
             </h2>
           </div>
-
           <div className="space-y-4">
-            <div className="flex items-center">
+            <div>
               <input
                 type="checkbox"
                 name="is_recurring"
@@ -931,12 +922,11 @@ export default function NonPrivilegedUsersPage() {
         {/* Remarks */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
           <div className="flex items-center space-x-2 mb-4">
-            <FileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <FiFileText className="w-5 h-5 text-gray-600 dark:text-gray-400" />
             <h2 className="text-lg font-semibold text-gray-900 dark:text-white">
               Additional Information
             </h2>
           </div>
-
           <div>
             <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
               Remarks
@@ -965,10 +955,9 @@ export default function NonPrivilegedUsersPage() {
               transition-colors duration-200 flex items-center space-x-2
               disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <X className="w-4 h-4" />
+            <FiX className="w-4 h-4" />
             <span>Reset</span>
           </button>
-
           <button
             type="submit"
             disabled={isSubmitting}
@@ -976,7 +965,7 @@ export default function NonPrivilegedUsersPage() {
               transition-colors duration-200 flex items-center space-x-2
               disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            <Save className="w-4 h-4" />
+            <FiSave className="w-4 h-4" />
             <span>{isSubmitting ? 'Submitting...' : 'Submit for Approval'}</span>
           </button>
         </div>

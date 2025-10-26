@@ -1,0 +1,457 @@
+// ============================================================================
+// CLIENT DATABASE SCHEMA (TENANT-SPECIFIC)
+// ============================================================================
+// Purpose: Isolated data for each tenant/client
+// Contains: Users, roles, permissions, transactions, client-specific data
+// Database: client_db_<uuid> (separate database per tenant)
+// Generated Client: .prisma/client-client
+// ============================================================================
+
+generator client {
+  provider      = "prisma-client-js"
+  output        = "../../node_modules/.prisma/client-client"
+  binaryTargets = ["native", "linux-musl"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("CLIENT_DATABASE_URL")
+}
+
+// ============================================================================
+// USERS (TENANT-SCOPED)
+// ============================================================================
+// Users within a specific client/tenant
+
+model User {
+  id          String    @id @default(uuid())
+  email       String    @unique
+  username    String?   @unique
+  password    String    // Hashed with bcrypt
+  name        String
+  firstName   String?
+  lastName    String?
+  phone       String?
+  avatar      String?
+  
+  // Status
+  isActive    Boolean   @default(true)
+  isVerified  Boolean   @default(false)
+  status      String    @default("ACTIVE") // ACTIVE, SUSPENDED, DELETED
+  
+  // Profile
+  department  String?
+  designation String?
+  employeeId  String?   @unique
+  metadata    Json?     // Custom fields
+  
+  // Security
+  lastLogin   DateTime?
+  lastPasswordChange DateTime?
+  failedLoginAttempts Int @default(0)
+  lockedUntil DateTime?
+  twoFactorEnabled Boolean @default(false)
+  twoFactorSecret String?
+  
+  // Audit
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  createdBy   String?
+  updatedBy   String?
+
+  // Relations
+  userRoles      UserRole[]
+  sessions       UserSession[]
+  auditLogs      AuditLog[]        @relation("PerformedByUser")
+  notifications  Notification[]
+  activityLogs   ActivityLog[]
+
+  @@index([email])
+  @@index([username])
+  @@index([isActive])
+  @@index([employeeId])
+  @@map("users")
+}
+
+// ============================================================================
+// USER SESSIONS
+// ============================================================================
+// Track active user sessions
+
+model UserSession {
+  id             String   @id @default(uuid())
+  userId         String
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token          String   @unique // JWT token hash
+  refreshToken   String?  @unique
+  ipAddress      String?
+  userAgent      String?
+  deviceType     String?  // mobile, desktop, tablet
+  location       String?
+  expiresAt      DateTime
+  lastActivityAt DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  @@index([userId])
+  @@index([token])
+  @@index([expiresAt])
+  @@map("user_sessions")
+}
+
+// ============================================================================
+// ROLES
+// ============================================================================
+// Define user roles within the tenant
+
+model Role {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  type        String   @default("CUSTOM") // SYSTEM, CUSTOM
+  level       Int      @default(0) // Hierarchy level
+  isActive    Boolean  @default(true)
+  metadata    Json?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  createdBy   String?
+
+  // Relations
+  userRoles       UserRole[]
+  rolePermissions RolePermission[]
+
+  @@index([slug])
+  @@index([isActive])
+  @@map("roles")
+}
+
+// ============================================================================
+// PERMISSIONS
+// ============================================================================
+// Granular permissions for resources
+
+model Permission {
+  id          String   @id @default(uuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  resource    String   // users, invoices, reports, etc.
+  action      String   // create, read, update, delete, approve, etc.
+  module      String?  // finance, operations, etc.
+  conditions  Json?    // Advanced conditions (e.g., own records only)
+  isActive    Boolean  @default(true)
+  createdAt   DateTime @default(now())
+
+  // Relations
+  rolePermissions RolePermission[]
+
+  @@unique([resource, action])
+  @@index([slug])
+  @@index([resource])
+  @@index([module])
+  @@map("permissions")
+}
+
+// ============================================================================
+// ROLE-PERMISSION MAPPING
+// ============================================================================
+// Many-to-many relationship
+
+model RolePermission {
+  id           String     @id @default(uuid())
+  roleId       String
+  role         Role       @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  permissionId String
+  permission   Permission @relation(fields: [permissionId], references: [id], onDelete: Cascade)
+  assignedAt   DateTime   @default(now())
+  assignedBy   String?
+
+  @@unique([roleId, permissionId])
+  @@index([roleId])
+  @@index([permissionId])
+  @@map("role_permissions")
+}
+
+// ============================================================================
+// USER-ROLE MAPPING
+// ============================================================================
+// Many-to-many relationship (users can have multiple roles)
+
+model UserRole {
+  id         String   @id @default(uuid())
+  userId     String
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  roleId     String
+  role       Role     @relation(fields: [roleId], references: [id], onDelete: Cascade)
+  assignedAt DateTime @default(now())
+  assignedBy String?
+  expiresAt  DateTime?
+
+  @@unique([userId, roleId])
+  @@index([userId])
+  @@index([roleId])
+  @@map("user_roles")
+}
+
+// ============================================================================
+// TRANSACTIONS (BUSINESS DATA)
+// ============================================================================
+// Generic transaction model - extend based on business needs
+
+model Transaction {
+  id            String   @id @default(uuid())
+  type          String   // invoice, payment, order, etc.
+  referenceId   String?  @unique
+  status        String   // pending, completed, cancelled
+  amount        Decimal? @db.Decimal(15, 2)
+  currency      String   @default("USD")
+  description   String?
+  metadata      Json?    // Flexible data storage
+  
+  // Parties involved
+  fromUserId    String?
+  toUserId      String?
+  
+  // Categorization
+  category      String?
+  subcategory   String?
+  tags          String[]
+  
+  // Dates
+  transactionDate DateTime @default(now())
+  dueDate       DateTime?
+  completedDate DateTime?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  createdBy     String?
+
+  // Relations
+  lineItems     TransactionLineItem[]
+  attachments   Attachment[]
+
+  @@index([type])
+  @@index([status])
+  @@index([referenceId])
+  @@index([transactionDate])
+  @@map("transactions")
+}
+
+// ============================================================================
+// TRANSACTION LINE ITEMS
+// ============================================================================
+// Detailed breakdown of transactions
+
+model TransactionLineItem {
+  id            String      @id @default(uuid())
+  transactionId String
+  transaction   Transaction @relation(fields: [transactionId], references: [id], onDelete: Cascade)
+  description   String
+  quantity      Decimal     @db.Decimal(10, 2)
+  unitPrice     Decimal     @db.Decimal(15, 2)
+  discount      Decimal?    @db.Decimal(15, 2)
+  tax           Decimal?    @db.Decimal(15, 2)
+  total         Decimal     @db.Decimal(15, 2)
+  metadata      Json?
+  createdAt     DateTime    @default(now())
+
+  @@index([transactionId])
+  @@map("transaction_line_items")
+}
+
+// ============================================================================
+// ATTACHMENTS
+// ============================================================================
+// File attachments for various entities
+
+model Attachment {
+  id            String      @id @default(uuid())
+  fileName      String
+  originalName  String
+  fileSize      Int         // bytes
+  mimeType      String
+  fileUrl       String      // S3, local storage, etc.
+  fileType      String      // document, image, video
+  
+  // Relations
+  entityType    String      // transaction, user, etc.
+  entityId      String
+  transaction   Transaction? @relation(fields: [entityId], references: [id], onDelete: Cascade)
+  
+  uploadedBy    String?
+  uploadedAt    DateTime    @default(now())
+  metadata      Json?
+
+  @@index([entityType, entityId])
+  @@map("attachments")
+}
+
+// ============================================================================
+// AUDIT LOGS (TENANT-SCOPED)
+// ============================================================================
+// Track all changes within the tenant
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  
+  // What happened
+  entity      String   // User, Role, Transaction, etc.
+  entityId    String
+  action      String   // CREATE, UPDATE, DELETE, etc.
+  changes     Json?    // Before/after values
+  description String?
+  
+  // Who did it
+  performedBy String?
+  user        User?    @relation("PerformedByUser", fields: [performedBy], references: [id], onDelete: SetNull)
+  
+  // Context
+  ipAddress   String?
+  userAgent   String?
+  method      String?  // HTTP method
+  endpoint    String?  // API endpoint
+  
+  // When
+  timestamp   DateTime @default(now())
+
+  @@index([entity, entityId])
+  @@index([action])
+  @@index([performedBy])
+  @@index([timestamp])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// ACTIVITY LOGS
+// ============================================================================
+// User activity tracking (lighter than audit logs)
+
+model ActivityLog {
+  id          String   @id @default(uuid())
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  activity    String   // login, logout, view_page, etc.
+  description String?
+  metadata    Json?
+  ipAddress   String?
+  timestamp   DateTime @default(now())
+
+  @@index([userId])
+  @@index([activity])
+  @@index([timestamp])
+  @@map("activity_logs")
+}
+
+// ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+// In-app notifications for users
+
+model Notification {
+  id        String   @id @default(uuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String   // info, warning, success, error
+  title     String
+  message   String   @db.Text
+  link      String?  // Deep link to related entity
+  isRead    Boolean  @default(false)
+  readAt    DateTime?
+  metadata  Json?
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([isRead])
+  @@index([createdAt])
+  @@map("notifications")
+}
+
+// ============================================================================
+// SETTINGS (TENANT-SCOPED)
+// ============================================================================
+// Client-specific settings
+
+model Setting {
+  id        String   @id @default(uuid())
+  key       String   @unique
+  value     String   @db.Text
+  type      String   // STRING, NUMBER, BOOLEAN, JSON
+  category  String   // general, security, billing, etc.
+  isPublic  Boolean  @default(false) // Can users see this?
+  updatedBy String?
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+
+  @@index([key])
+  @@index([category])
+  @@map("settings")
+}
+
+// ============================================================================
+// CUSTOM FIELDS
+// ============================================================================
+// Allow tenants to define custom fields
+
+model CustomField {
+  id          String   @id @default(uuid())
+  entity      String   // users, transactions, etc.
+  name        String
+  slug        String
+  fieldType   String   // text, number, date, dropdown, etc.
+  options     Json?    // For dropdown/radio/checkbox
+  isRequired  Boolean  @default(false)
+  isActive    Boolean  @default(true)
+  displayOrder Int     @default(0)
+  validation  Json?    // Validation rules
+  createdAt   DateTime @default(now())
+
+  @@unique([entity, slug])
+  @@index([entity])
+  @@map("custom_fields")
+}
+
+// ============================================================================
+// REPORTS
+// ============================================================================
+// Saved reports and report definitions
+
+model Report {
+  id          String   @id @default(uuid())
+  name        String
+  description String?
+  type        String   // table, chart, dashboard
+  query       Json     // Report configuration
+  filters     Json?
+  schedule    Json?    // For automated reports
+  isPublic    Boolean  @default(false)
+  createdBy   String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([type])
+  @@index([createdBy])
+  @@map("reports")
+}
+
+// ============================================================================
+// JOBS (BACKGROUND TASKS)
+// ============================================================================
+// Track async background jobs
+
+model Job {
+  id          String   @id @default(uuid())
+  type        String   // import, export, report_generation, etc.
+  status      String   // pending, running, completed, failed
+  progress    Int      @default(0) // 0-100
+  input       Json?    // Job parameters
+  output      Json?    // Job result
+  error       String?  @db.Text
+  startedAt   DateTime?
+  completedAt DateTime?
+  createdBy   String?
+  createdAt   DateTime @default(now())
+
+  @@index([type])
+  @@index([status])
+  @@index([createdBy])
+  @@map("jobs")
+}

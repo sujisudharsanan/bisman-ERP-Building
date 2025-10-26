@@ -99,7 +99,8 @@
  *   Login credentials: demo_[role]@bisman.demo / Demo@123
  *   
  *   Examples:
- *   - demo_super_admin@bisman.demo
+ *   - business_superadmin@bisman.demo
+ *   - pump_superadmin@bisman.demo
  *   - demo_cfo@bisman.demo
  *   - demo_finance_controller@bisman.demo
  * 

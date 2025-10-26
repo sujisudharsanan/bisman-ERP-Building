@@ -1,22 +1,23 @@
 {
   "meta": {
     "version": "1.0.0",
-    "exportedAt": "2025-10-22T17:36:24.070Z",
+    "exportedAt": "2025-10-26T15:53:05.331Z",
     "source": "my-frontend/src/common/config/page-registry.ts",
     "generator": "scripts/export-page-registry.js"
   },
   "statistics": {
-    "totalPages": 79,
+    "totalPages": 84,
     "totalModules": 1,
     "pagesByModule": {
       "system": 16,
-      "finance": 32,
-      "procurement": 6,
-      "operations": 15,
-      "compliance": 10
+      "finance": 31,
+      "procurement": 5,
+      "operations": 14,
+      "compliance": 9,
+      "common": 9
     },
     "pagesByStatus": {
-      "active": 79,
+      "active": 84,
       "coming-soon": 0,
       "disabled": 0
     }
@@ -90,6 +91,23 @@
       "order": 4,
       "permissions": [
         "user-management"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "SYSTEM ADMINISTRATOR"
+      ]
+    },
+    {
+      "id": "pages-roles-report",
+      "name": "Pages & Roles Report",
+      "path": "/system/pages-roles-report",
+      "module": "system",
+      "status": "active",
+      "description": "View all pages and their assigned roles, identify orphan pages",
+      "order": 5,
+      "permissions": [
+        "user-management",
+        "system-settings"
       ],
       "roles": [
         "SUPER_ADMIN",
@@ -273,24 +291,6 @@
       "roles": [
         "SUPER_ADMIN",
         "ADMIN"
-      ]
-    },
-    {
-      "id": "system-about",
-      "name": "About Me",
-      "path": "/system/about-me",
-      "module": "system",
-      "status": "active",
-      "description": "User profile",
-      "order": 99,
-      "permissions": [
-        "system-settings",
-        "user-management"
-      ],
-      "roles": [
-        "SUPER_ADMIN",
-        "SYSTEM ADMINISTRATOR",
-        "IT ADMIN"
       ]
     },
     {
@@ -783,26 +783,6 @@
       ]
     },
     {
-      "id": "finance-about",
-      "name": "About Me",
-      "path": "/finance/about-me",
-      "module": "finance",
-      "status": "active",
-      "description": "User profile",
-      "order": 99,
-      "permissions": [
-        "executive-dashboard"
-      ],
-      "roles": [
-        "CFO",
-        "FINANCE CONTROLLER",
-        "TREASURY",
-        "ACCOUNTS",
-        "ACCOUNTS PAYABLE",
-        "BANKER"
-      ]
-    },
-    {
       "id": "purchase-request",
       "name": "Purchase Request",
       "path": "/procurement/purchase-request",
@@ -863,21 +843,6 @@
         "PROCUREMENT OFFICER",
         "STORE INCHARGE",
         "OPERATIONS MANAGER"
-      ]
-    },
-    {
-      "id": "procurement-about",
-      "name": "About Me",
-      "path": "/procurement/about-me",
-      "module": "procurement",
-      "status": "active",
-      "description": "User profile",
-      "order": 99,
-      "permissions": [
-        "purchase-order"
-      ],
-      "roles": [
-        "PROCUREMENT OFFICER"
       ]
     },
     {
@@ -1074,23 +1039,6 @@
       ]
     },
     {
-      "id": "operations-about",
-      "name": "About Me",
-      "path": "/operations/about-me",
-      "module": "operations",
-      "status": "active",
-      "description": "User profile",
-      "order": 99,
-      "permissions": [
-        "kpi-dashboard"
-      ],
-      "roles": [
-        "OPERATIONS MANAGER",
-        "HUB INCHARGE",
-        "STORE INCHARGE"
-      ]
-    },
-    {
       "id": "audit-trail",
       "name": "Audit Trail",
       "path": "/compliance/audit-trail",
@@ -1217,22 +1165,6 @@
       ]
     },
     {
-      "id": "compliance-about",
-      "name": "About Me",
-      "path": "/compliance/about-me",
-      "module": "compliance",
-      "status": "active",
-      "description": "User profile",
-      "order": 99,
-      "permissions": [
-        "compliance-dashboard"
-      ],
-      "roles": [
-        "COMPLIANCE",
-        "LEGAL"
-      ]
-    },
-    {
       "id": "store-incharge-dashboard",
       "name": "Store Incharge Dashboard",
       "path": "/store-incharge",
@@ -1305,6 +1237,141 @@
       ],
       "roles": [
         "COMPLIANCE"
+      ]
+    },
+    {
+      "id": "common-about-me",
+      "name": "About Me",
+      "path": "/common/about-me",
+      "module": "common",
+      "status": "active",
+      "description": "View and manage your profile information",
+      "order": 1,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
+      "id": "common-change-password",
+      "name": "Change Password",
+      "path": "/common/change-password",
+      "module": "common",
+      "status": "active",
+      "description": "Update your account password",
+      "order": 2,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
+      "id": "common-security-settings",
+      "name": "Security Settings",
+      "path": "/common/security-settings",
+      "module": "common",
+      "status": "active",
+      "description": "Manage your account security preferences",
+      "order": 3,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
+      "id": "common-notifications",
+      "name": "Notifications",
+      "path": "/common/notifications",
+      "module": "common",
+      "status": "active",
+      "description": "View and manage your notifications",
+      "order": 4,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
+      "id": "common-messages",
+      "name": "Messages",
+      "path": "/common/messages",
+      "module": "common",
+      "status": "active",
+      "description": "Internal messaging system",
+      "order": 5,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
+      "id": "common-help-center",
+      "name": "Help Center",
+      "path": "/common/help-center",
+      "module": "common",
+      "status": "active",
+      "description": "Get help and support resources",
+      "order": 6,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
+      "id": "common-documentation",
+      "name": "Documentation",
+      "path": "/common/documentation",
+      "module": "common",
+      "status": "active",
+      "description": "System documentation and guides",
+      "order": 7,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
+      "id": "common-user-settings",
+      "name": "User Settings",
+      "path": "/common/user-settings",
+      "module": "common",
+      "status": "active",
+      "description": "Customize your preferences and settings",
+      "order": 8,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
+      "id": "common-payment-request",
+      "name": "Payment Request",
+      "path": "/common/payment-request",
+      "module": "common",
+      "status": "active",
+      "description": "Submit and track payment requests",
+      "order": 9,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
       ]
     }
   ]
