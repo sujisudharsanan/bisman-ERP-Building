@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   FiGrid,
-  FiUsers,
+  FiPackage,
   FiSettings,
   FiLogOut,
 } from 'react-icons/fi';
@@ -40,8 +40,8 @@ export default function EnterpriseAdminSidebar({ className = '' }: EnterpriseAdm
     },
     {
       id: 'users',
-      label: 'Users',
-      icon: FiUsers,
+      label: 'Module Management',
+      icon: FiPackage,
       href: '/enterprise-admin/users',
     },
     {
