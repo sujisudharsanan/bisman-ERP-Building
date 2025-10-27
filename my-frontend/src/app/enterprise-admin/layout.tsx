@@ -1,14 +1,21 @@
-import type { Metadata } from 'next';
+'use client';
 
-export const metadata: Metadata = {
-  title: 'BISMAN ERP - Enterprise Admin Dashboard',
-  description: 'Enterprise Admin Control Panel - Manage Super Admins and Module Assignments',
-};
+import React from 'react';
+import ProtectedRoute from '@/components/ProtectedRoute';
+// Note: Client layouts cannot export `metadata`. Page-level metadata can be set in individual pages.
 
 export default function EnterpriseAdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <>{children}</>;
+  return (
+    <ProtectedRoute allowedRoles={['ENTERPRISE_ADMIN']}>
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+        <div className="w-full">
+          <main className="p-6">{children}</main>
+        </div>
+      </div>
+    </ProtectedRoute>
+  );
 }

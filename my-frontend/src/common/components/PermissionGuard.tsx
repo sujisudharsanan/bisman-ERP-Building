@@ -52,7 +52,8 @@ export default function PermissionGuard({
       }
 
       try {
-        const response = await fetch(`http://localhost:3001/api/permissions?userId=${user.id}`, {
+        // Use Next.js API proxy (same-origin, no CORS)
+        const response = await fetch(`/api/permissions?userId=${user.id}`, {
           credentials: 'include',
         });
 

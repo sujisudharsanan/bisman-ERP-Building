@@ -8,6 +8,17 @@ import {
   FiPackage,
   FiSettings,
   FiLogOut,
+  FiCpu,
+  FiFileText,
+  FiActivity,
+  FiUsers,
+  FiLayers,
+  FiDollarSign,
+  FiShield,
+  FiZap,
+  FiHelpCircle,
+  FiBarChart2,
+  FiBell,
 } from 'react-icons/fi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -45,11 +56,39 @@ export default function EnterpriseAdminSidebar({ className = '' }: EnterpriseAdm
       href: '/enterprise-admin/users',
     },
     {
+      id: 'ai-handling',
+      label: 'AI Handling',
+      icon: FiCpu,
+      href: '/enterprise-admin/ai-handling',
+    },
+    {
+      id: 'activity-logs',
+      label: 'Activity Logs',
+      icon: FiActivity,
+      href: '/enterprise-admin/activity-logs',
+    },
+    {
+      id: 'logs',
+      label: 'System Logs',
+      icon: FiFileText,
+      href: '/enterprise-admin/logs',
+    },
+    {
       id: 'settings',
       label: 'Settings',
       icon: FiSettings,
       href: '/enterprise-admin/settings',
     },
+  // New enterprise links (appended without altering existing ones)
+  { id: 'super-admins', label: 'Super Admins', icon: FiUsers, href: '/enterprise-admin/super-admins' },
+  { id: 'organizations', label: 'Organizations', icon: FiLayers, href: '/enterprise-admin/organizations' },
+  { id: 'modules', label: 'Modules', icon: FiZap, href: '/enterprise-admin/modules' },
+  { id: 'billing', label: 'Billing', icon: FiDollarSign, href: '/enterprise-admin/billing' },
+  { id: 'audit', label: 'Audit & Security', icon: FiShield, href: '/enterprise-admin/audit' },
+  { id: 'integrations', label: 'Integrations', icon: FiPackage, href: '/enterprise-admin/integrations' },
+  { id: 'support', label: 'Support', icon: FiHelpCircle, href: '/enterprise-admin/support' },
+  { id: 'reports', label: 'Reports', icon: FiBarChart2, href: '/enterprise-admin/reports' },
+  { id: 'notifications', label: 'Notifications', icon: FiBell, href: '/enterprise-admin/notifications' },
   ];
 
   const isActive = (href: string) => {

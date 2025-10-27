@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 // Proxy to backend /api/me and forward cookies bidirectionally
 const BACKEND_BASE =
@@ -11,12 +11,13 @@ const BACKEND_BASE =
       'http://localhost:3001'
     );
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const res = await fetch(`${BACKEND_BASE}/api/me`, {
+  const res = await fetch(`${BACKEND_BASE}/api/me`, {
       method: 'GET',
       headers: {
-        // In an edge/runtime without request context, let backend read cookies directly if same origin
+    // Forward incoming cookies so backend can authenticate
+    cookie: req.headers.get('cookie') || '',
       },
       cache: 'no-store'
     });

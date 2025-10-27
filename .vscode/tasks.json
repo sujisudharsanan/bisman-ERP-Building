@@ -15,6 +15,21 @@
 			"isBackground": false,
 			"problemMatcher": [],
 			"group": "build"
+		},
+		{
+			"label": "frontend type-check",
+			"type": "shell",
+			"command": "bash -lc 'cd \"my-frontend\" && npm run -s type-check'",
+			"problemMatcher": [
+				"$tsc"
+			],
+			"group": "build"
+		},
+		{
+			"label": "frontend type-check",
+			"type": "shell",
+			"command": "bash -lc 'cd \"my-frontend\" && npm run -s type-check'",
+			"group": "build"
 		}
 	]
 }

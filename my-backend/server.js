@@ -31,10 +31,63 @@ async function start() {
   const server = express();
   server.set('trust proxy', 1);
   
-  // CRITICAL: Add healthcheck endpoint BEFORE mounting apiApp or Next
+  // ============================================================================
+  // CRITICAL: Health Check Endpoint - Must be BEFORE app.js middleware
+  // ============================================================================
   // This ensures /api/health is always available even if app.js has issues
-  server.get('/api/health', (_req, res) => {
-    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  server.get('/api/health', (req, res) => {
+    const origin = req.headers.origin;
+    const isProd = process.env.NODE_ENV === 'production';
+    
+    // Build allowed origins from environment
+    const allowedOrigins = [
+      process.env.FRONTEND_URL || 'http://localhost:3000',
+      'http://localhost:3001',
+      process.env.PRODUCTION_URL || 'https://bisman.erp',
+      'https://bisman-erp-frontend.vercel.app',
+      'https://bisman-erp-frontend-production.up.railway.app',
+      'https://bisman-erp-backend-production.up.railway.app'
+    ].filter(Boolean);
+    
+    // Set CORS headers explicitly (this endpoint bypasses app.js CORS)
+    if (origin) {
+      if (allowedOrigins.includes(origin) || (!isProd && origin.startsWith('http://localhost:'))) {
+        res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+      }
+    }
+    
+    // Return health status with environment info
+    res.status(200).json({ 
+      status: 'ok', 
+      timestamp: new Date().toISOString(),
+      environment: isProd ? 'production' : 'development',
+      version: '1.0.0'
+    });
+  });
+  
+  // Handle OPTIONS preflight for /api/health
+  server.options('/api/health', (req, res) => {
+    const origin = req.headers.origin;
+    const isProd = process.env.NODE_ENV === 'production';
+    const allowedOrigins = [
+      process.env.FRONTEND_URL || 'http://localhost:3000',
+      'http://localhost:3001',
+      process.env.PRODUCTION_URL || 'https://bisman.erp',
+      'https://bisman-erp-frontend.vercel.app',
+      'https://bisman-erp-frontend-production.up.railway.app',
+      'https://bisman-erp-backend-production.up.railway.app'
+    ].filter(Boolean);
+    
+    if (origin && (allowedOrigins.includes(origin) || (!isProd && origin.startsWith('http://localhost:')))) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Access-Control-Allow-Credentials', 'true');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, PATCH, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+    }
+    res.status(200).end();
   });
 
   // Mount API routes (may have issues, but healthcheck is already registered)
@@ -76,8 +129,23 @@ async function start() {
 
   const port = process.env.PORT || 8080;
   const serverInstance = server.listen(port, '0.0.0.0', () => {
-    console.log(`[startup] ✅ Server listening on http://0.0.0.0:${port}`);
-    console.log(`[startup] ✅ Healthcheck available at http://0.0.0.0:${port}/api/health`);
+    const isProd = process.env.NODE_ENV === 'production';
+    const allowedOrigins = [
+      process.env.FRONTEND_URL || 'http://localhost:3000',
+      process.env.PRODUCTION_URL || 'https://bisman.erp'
+    ];
+    
+    console.log('\n' + '='.repeat(70));
+    console.log('🚀 BISMAN ERP Backend Server Started Successfully');
+    console.log('='.repeat(70));
+    console.log(`📡 Server URL:        http://0.0.0.0:${port}`);
+    console.log(`🏥 Health Check:      http://0.0.0.0:${port}/api/health`);
+    console.log(`🌍 Environment:       ${isProd ? 'PRODUCTION' : 'DEVELOPMENT'}`);
+    console.log(`🔒 CORS Enabled:      YES`);
+    console.log(`🌐 Allowed Origins:   ${allowedOrigins.join(', ')}`);
+    console.log(`🍪 Credentials:       ENABLED (JWT/Cookies)`);
+    console.log(`⚡ Next.js Frontend:  ${nextApp ? 'INTEGRATED' : 'API-ONLY MODE'}`);
+    console.log('='.repeat(70) + '\n');
   });
 
   // Handle server errors

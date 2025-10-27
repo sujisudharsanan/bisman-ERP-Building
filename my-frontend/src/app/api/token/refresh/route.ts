@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 const BACKEND_BASE =
   process.env.RAILWAY_ENVIRONMENT
@@ -10,11 +10,13 @@ const BACKEND_BASE =
       'http://localhost:3001'
     );
 
-export async function POST() {
+export async function POST(req: NextRequest) {
   try {
     const res = await fetch(`${BACKEND_BASE}/api/token/refresh`, {
       method: 'POST',
-      headers: {},
+      headers: {
+        cookie: req.headers.get('cookie') || '',
+      },
       cache: 'no-store',
     });
 

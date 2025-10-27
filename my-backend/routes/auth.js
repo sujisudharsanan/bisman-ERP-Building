@@ -300,7 +300,8 @@ function getRedirectPath(role) {
  */
 router.post('/logout', async (req, res) => {
   try {
-    const refreshToken = req.cookies?.refreshToken;
+  // Prefer modern snake_case cookie names; keep legacy camelCase fallback
+  const refreshToken = req.cookies?.refresh_token || req.cookies?.refreshToken;
 
     if (refreshToken) {
       // Revoke refresh token from database
@@ -313,9 +314,11 @@ router.post('/logout', async (req, res) => {
       });
     }
 
-    // Clear cookies
-    res.clearCookie('accessToken');
-    res.clearCookie('refreshToken');
+  // Clear cookies (both modern and legacy names)
+  try { res.clearCookie('access_token', { path: '/' }); } catch (e) {}
+  try { res.clearCookie('refresh_token', { path: '/' }); } catch (e) {}
+  try { res.clearCookie('accessToken', { path: '/' }); } catch (e) {}
+  try { res.clearCookie('refreshToken', { path: '/' }); } catch (e) {}
 
     res.json({ message: 'Logout successful' });
   } catch (error) {
