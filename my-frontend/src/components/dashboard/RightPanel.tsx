@@ -114,8 +114,8 @@ const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar' }) => {
   const containerClass = isInline
     ? 'w-full bg-transparent border-0 backdrop-blur-0 overflow-visible h-auto min-h-0'
     : isDock
-  ? 'w-56 sm:w-60 md:w-64 lg:w-64 xl:w-64 bg-transparent border-0 backdrop-blur-0 h-full overflow-y-auto -ml-2 min-h-0'
-  : 'w-full lg:w-64 xl:w-72 2xl:w-80 bg-panel/60 backdrop-blur-sm border-l border-theme overflow-y-auto flex flex-col h-full min-h-0 px-0.5';
+  ? 'w-44 sm:w-48 md:w-52 lg:w-52 xl:w-52 bg-transparent border-0 backdrop-blur-0 h-full overflow-y-auto -ml-2 min-h-0'
+  : 'w-full lg:w-52 xl:w-56 2xl:w-64 bg-panel/60 backdrop-blur-sm border-l border-theme overflow-y-auto flex flex-col h-full min-h-0 px-0.5';
   const wrapperClass = isInline
     ? 'grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 max-w-[960px] xl:max-w-[1000px]'
     : isDock

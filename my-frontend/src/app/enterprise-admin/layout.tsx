@@ -27,7 +27,7 @@ export default function EnterpriseAdminLayout({
               `${sidebarOpen ? 'block' : 'hidden'} lg:block`
             }
           >
-            <EnterpriseAdminSidebar className="w-64" />
+            <EnterpriseAdminSidebar className="w-52" />
           </div>
 
           {/* Main content */}

@@ -99,7 +99,7 @@ export default function SuperAdminShell({ title = 'Super Admin', children }: Sup
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-14 left-0 bottom-0 w-64 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-transparent overflow-y-auto z-40 transform transition-transform duration-200 ease-in-out ${
+        className={`fixed top-14 left-0 bottom-0 w-52 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-transparent overflow-y-auto z-40 transform transition-transform duration-200 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0`}
       >
@@ -107,7 +107,7 @@ export default function SuperAdminShell({ title = 'Super Admin', children }: Sup
       </aside>
 
       {/* Main content */}
-      <div className="pt-14 lg:pl-64 min-h-screen">
+      <div className="pt-14 lg:pl-52 min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">{children}</div>
       </div>
     </div>

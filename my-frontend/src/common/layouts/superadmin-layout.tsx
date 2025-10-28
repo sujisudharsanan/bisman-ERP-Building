@@ -191,7 +191,7 @@ export default function SuperAdminLayout({
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-16 left-0 bottom-0 z-40 w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800
+          fixed top-16 left-0 bottom-0 z-40 w-52 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800
           overflow-y-auto transition-transform duration-200 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
@@ -200,7 +200,7 @@ export default function SuperAdminLayout({
       </aside>
 
       {/* Main Content */}
-      <div className="pt-16 lg:pl-64">
+      <div className="pt-16 lg:pl-52">
         {/* Page Header (Mobile) */}
         {(title || description) && (
           <div className="md:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-4">

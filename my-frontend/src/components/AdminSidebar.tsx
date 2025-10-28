@@ -39,7 +39,7 @@ export default function AdminSidebar({ user }: { user: SessionUser | null }) {
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   return (
-    <aside className="w-64 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 min-h-screen p-4">
+    <aside className="w-52 border-r border-gray-200 dark:border-gray-800 bg-white dark:bg-slate-900 min-h-screen p-4">
       <div className="flex items-center justify-between mb-4">
         <span className="font-semibold">Admin</span>
         <button className="text-sm px-2 py-1 border rounded" onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}>

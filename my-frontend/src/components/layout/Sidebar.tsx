@@ -101,7 +101,7 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white dark:bg-gray-800 
           border-r border-gray-200 dark:border-gray-700 shadow-lg
           transition-all duration-300 ease-in-out z-40
-          ${isOpen ? 'w-64' : 'w-20'}
+          ${isOpen ? 'w-52' : 'w-16'}
         `}
       >
         {/* Toggle Button */}

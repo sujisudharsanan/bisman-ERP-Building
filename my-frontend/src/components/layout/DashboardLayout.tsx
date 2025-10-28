@@ -42,7 +42,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
           <main 
             className={`
               flex-1 overflow-auto transition-all duration-300
-              ${sidebarOpen ? 'ml-64' : 'ml-20'}
+              ${sidebarOpen ? 'ml-52' : 'ml-16'}
               p-6
             `}
           >

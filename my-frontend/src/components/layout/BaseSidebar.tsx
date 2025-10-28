@@ -90,7 +90,7 @@ const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, 
           fixed md:sticky top-0 left-0 h-screen z-50
           bg-gray-900/95 backdrop-blur-sm border-r border-gray-800
           transition-all duration-300 ease-in-out
-          ${collapsed && !isMobile ? 'w-20' : 'w-64'}
+          ${collapsed && !isMobile ? 'w-16' : 'w-52'}
           ${isMobile && collapsed ? '-translate-x-full' : 'translate-x-0'}
           flex flex-col
         `}
