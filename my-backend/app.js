@@ -430,6 +430,8 @@ try {
   const enterpriseAdminBilling = require('./routes/enterpriseAdminBilling')
   const enterpriseAdminAudit = require('./routes/enterpriseAdminAudit')
   const enterpriseAdminReports = require('./routes/enterpriseAdminReports')
+  const enterpriseAdminAI = require('./routes/enterpriseAdminAI')
+  const enterpriseAdminLogs = require('./routes/enterpriseAdminLogs')
   
   app.use('/api/enterprise-admin/dashboard', enterpriseAdminDashboard)
   app.use('/api/enterprise-admin/organizations', enterpriseAdminOrganizations)
@@ -437,8 +439,10 @@ try {
   app.use('/api/enterprise-admin/billing', enterpriseAdminBilling)
   app.use('/api/enterprise-admin/audit', enterpriseAdminAudit)
   app.use('/api/enterprise-admin/reports', enterpriseAdminReports)
+  app.use('/api/enterprise-admin/ai', enterpriseAdminAI)
+  app.use('/api/enterprise-admin/logs', enterpriseAdminLogs)
   
-  console.log('✅ Enterprise Admin Management routes loaded')
+  console.log('✅ Enterprise Admin Management routes loaded (8 modules)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Enterprise Admin Management routes not loaded:', e && e.message)
