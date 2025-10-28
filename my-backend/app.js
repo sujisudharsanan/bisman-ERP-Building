@@ -422,6 +422,29 @@ try {
   }
 }
 
+// Enterprise Admin Dashboard & Management routes (protected)
+try {
+  const enterpriseAdminDashboard = require('./routes/enterpriseAdminDashboard')
+  const enterpriseAdminOrganizations = require('./routes/enterpriseAdminOrganizations')
+  const enterpriseAdminModules = require('./routes/enterpriseAdminModules')
+  const enterpriseAdminBilling = require('./routes/enterpriseAdminBilling')
+  const enterpriseAdminAudit = require('./routes/enterpriseAdminAudit')
+  const enterpriseAdminReports = require('./routes/enterpriseAdminReports')
+  
+  app.use('/api/enterprise-admin/dashboard', enterpriseAdminDashboard)
+  app.use('/api/enterprise-admin/organizations', enterpriseAdminOrganizations)
+  app.use('/api/enterprise-admin/modules', enterpriseAdminModules)
+  app.use('/api/enterprise-admin/billing', enterpriseAdminBilling)
+  app.use('/api/enterprise-admin/audit', enterpriseAdminAudit)
+  app.use('/api/enterprise-admin/reports', enterpriseAdminReports)
+  
+  console.log('✅ Enterprise Admin Management routes loaded')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Enterprise Admin Management routes not loaded:', e && e.message)
+  }
+}
+
 // Super Admin routes (protected)
 try {
   const superAdminRoutes = require('./routes/superAdmin')

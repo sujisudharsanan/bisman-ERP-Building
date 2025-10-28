@@ -150,15 +150,16 @@ export default function EnterpriseAdminDashboard() {
         }
       }
 
-      // Mock data for module usage trends (TODO: create real API endpoint)
-      setModuleUsage([
-        { month: 'Jan', users: 45 },
-        { month: 'Feb', users: 52 },
-        { month: 'Mar', users: 61 },
-        { month: 'Apr', users: 58 },
-        { month: 'May', users: 70 },
-        { month: 'Jun', users: 85 },
-      ]);
+      // Fetch module usage trends (real data from API)
+      const trendsRes = await fetch(`${baseURL}/api/enterprise-admin/dashboard/module-usage-trends?months=6`, {
+        credentials: 'include',
+      });
+      if (trendsRes.ok) {
+        const trendsData = await trendsRes.json();
+        if (trendsData.ok && trendsData.trends) {
+          setModuleUsage(trendsData.trends);
+        }
+      }
 
       setLastUpdated(new Date());
     } catch (error) {
