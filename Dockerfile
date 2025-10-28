@@ -14,9 +14,12 @@ RUN npx prisma generate
 # ---- build-frontend: install, build, export Next.js ----
 FROM node:20-alpine AS build-frontend
 WORKDIR /app
+RUN apk add --no-cache postgresql-client openssl libc6-compat
 COPY my-frontend/package*.json ./frontend/
 RUN npm install --prefix frontend
 COPY my-frontend/ ./frontend
+# Generate Prisma client for frontend before build
+RUN cd frontend && npx prisma generate
 # In CI, skip lint/type-check prebuild and Next telemetry; build Next app
 ENV CI=true
 ENV RAILWAY=1
