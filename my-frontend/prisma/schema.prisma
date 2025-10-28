@@ -10,22 +10,23 @@ datasource db {
 }
 
 model User {
-  id           String        @id @default(cuid())
-  email        String        @unique
-  name         String?
-  password     String?
-  theme        String        @default("light")
-  roles        UserRole[]
-  memberships  Membership[]
-  apiKeys      ApiKey[]      @relation("UserApiKeys")
-  createdAt    DateTime      @default(now())
+  id          String       @id @default(cuid())
+  email       String       @unique
+  name        String?
+  password    String?
+  theme       String       @default("light")
+  roles       UserRole[]
+  memberships Membership[]
+  apiKeys     ApiKey[]     @relation("UserApiKeys")
+  createdAt   DateTime     @default(now())
 }
 
 model Role {
-  id    String   @id @default(cuid())
-  key   String   @unique // SUPER_ADMIN, ENTERPRISE_ADMIN, ORG_ADMIN, ORG_USER
-  name  String
-  users UserRole[]
+  id          String       @id @default(cuid())
+  key         String       @unique // SUPER_ADMIN, ENTERPRISE_ADMIN, ORG_ADMIN, ORG_USER
+  name        String
+  users       UserRole[]
+  memberships Membership[]
 }
 
 model UserRole {
@@ -37,27 +38,27 @@ model UserRole {
 }
 
 model Organization {
-  id            String        @id @default(cuid())
-  name          String
-  slug          String        @unique
-  description   String?
-  subscription  Subscription?
-  memberships   Membership[]
-  modules       OrgsEnabled[]
-  tickets       Ticket[]
-  apiKeys       ApiKey[]
-  createdAt     DateTime      @default(now())
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  description  String?
+  subscription Subscription?
+  memberships  Membership[]
+  modules      OrgsEnabled[]
+  tickets      Ticket[]
+  apiKeys      ApiKey[]
+  createdAt    DateTime      @default(now())
 }
 
 model Membership {
-  id             String        @id @default(cuid())
-  user           User          @relation(fields: [userId], references: [id])
+  id             String       @id @default(cuid())
+  user           User         @relation(fields: [userId], references: [id])
   userId         String
-  organization   Organization  @relation(fields: [organizationId], references: [id])
+  organization   Organization @relation(fields: [organizationId], references: [id])
   organizationId String
-  role           Role          @relation(fields: [roleId], references: [id])
+  role           Role         @relation(fields: [roleId], references: [id])
   roleId         String
-  createdAt      DateTime      @default(now())
+  createdAt      DateTime     @default(now())
 }
 
 model Module {
@@ -68,22 +69,22 @@ model Module {
 }
 
 model OrgsEnabled {
-  id       String        @id @default(cuid())
-  org      Organization  @relation(fields: [orgId], references: [id])
+  id       String       @id @default(cuid())
+  org      Organization @relation(fields: [orgId], references: [id])
   orgId    String
-  module   Module        @relation(fields: [moduleId], references: [id])
+  module   Module       @relation(fields: [moduleId], references: [id])
   moduleId String
-  enabled  Boolean       @default(true)
+  enabled  Boolean      @default(true)
 }
 
 model Subscription {
-  id            String       @id @default(cuid())
-  organization  Organization @relation(fields: [organizationId], references: [id])
-  organizationId String      @unique
-  plan          String
-  status        String       @default("active")
-  startsAt      DateTime     @default(now())
-  endsAt        DateTime?
+  id             String       @id @default(cuid())
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String       @unique
+  plan           String
+  status         String       @default("active")
+  startsAt       DateTime     @default(now())
+  endsAt         DateTime?
 }
 
 model AuditLog {
@@ -96,22 +97,22 @@ model AuditLog {
 }
 
 model ApiKey {
-  id              String        @id @default(cuid())
-  key             String        @unique
-  name            String
-  organization    Organization? @relation(fields: [organizationId], references: [id])
-  organizationId  String?
-  createdByUser   User          @relation("UserApiKeys", fields: [createdBy], references: [id])
-  createdBy       String
-  revoked         Boolean       @default(false)
-  createdAt       DateTime      @default(now())
+  id             String        @id @default(cuid())
+  key            String        @unique
+  name           String
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String?
+  createdByUser  User          @relation("UserApiKeys", fields: [createdBy], references: [id])
+  createdBy      String
+  revoked        Boolean       @default(false)
+  createdAt      DateTime      @default(now())
 }
 
 model Ticket {
-  id            String       @id @default(cuid())
-  organization  Organization @relation(fields: [organizationId], references: [id])
+  id             String       @id @default(cuid())
+  organization   Organization @relation(fields: [organizationId], references: [id])
   organizationId String
-  title         String
-  status        String       @default("open")
-  createdAt     DateTime     @default(now())
+  title          String
+  status         String       @default("open")
+  createdAt      DateTime     @default(now())
 }
