@@ -2217,9 +2217,10 @@ app.use(express.static(path.join(__dirname, '../my-frontend/build')))
 // ERROR HANDLING - Must be LAST in middleware chain
 // ============================================================================
 
-// 404 Handler - Catch all undefined routes
-app.use((req, res, next) => {
-  console.warn(`[404] Route not found: ${req.method} ${req.originalUrl}`);
+// 404 Handler - Only catch /api/* routes to allow Next.js to handle frontend routes
+// This prevents the backend from intercepting frontend pages (/, /admin, etc.)
+app.use('/api/*', (req, res, next) => {
+  console.warn(`[404] API route not found: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     success: false,
     error: 'Route not found',
