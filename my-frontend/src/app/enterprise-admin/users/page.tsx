@@ -1,22 +1,19 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from "react";
 import {
-  FiUsers,
+  FiAlertCircle,
+  FiCheckCircle,
+  FiMail,
   FiPackage,
   FiShield,
-  FiCheckCircle,
-  FiXCircle,
-  FiMail,
-  FiPlus,
-  FiTrash2,
+  FiUsers,
   FiX,
-  FiAlertCircle,
-} from 'react-icons/fi';
-import { useRouter } from 'next/navigation';
-import { useAuth } from '@/contexts/AuthContext';
-import EnterpriseAdminNavbar from '@/components/EnterpriseAdminNavbar';
-import EnterpriseAdminSidebar from '@/components/EnterpriseAdminSidebar';
+  FiXCircle,
+  FiTrash2,
+} from "react-icons/fi";
+import { useRouter } from "next/navigation";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Module {
   id: number; // Changed from string to number (database ID)
@@ -55,7 +52,6 @@ interface SuperAdmin {
 export default function EnterpriseAdminUsersPage() {
   const router = useRouter();
   const { user, loading } = useAuth();
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const [superAdmins, setSuperAdmins] = useState<SuperAdmin[]>([]);
   const [availableModules, setAvailableModules] = useState<Module[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,14 +61,7 @@ export default function EnterpriseAdminUsersPage() {
   const [selectedPageIds, setSelectedPageIds] = useState<string[]>([]); // Selected pages for assignment
   const [isSaving, setIsSaving] = useState(false);
   
-  // Create Super Admin Modal State
-  const [showCreateModal, setShowCreateModal] = useState(false);
-  const [createFormData, setCreateFormData] = useState({
-    username: '',
-    email: '',
-    password: '',
-    productType: 'BUSINESS_ERP' as 'BUSINESS_ERP' | 'PUMP_ERP'
-  });
+  // Create Super Admin UI removed
 
   // Show ALL modules for both categories (no filtering by businessCategory)
   const businessERPModules = availableModules; // All modules available for Business ERP
@@ -312,48 +301,7 @@ export default function EnterpriseAdminUsersPage() {
     }
   };
 
-  const handleCreateSuperAdmin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!createFormData.username || !createFormData.email || !createFormData.password) {
-      alert('Please fill all required fields');
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${baseURL}/api/enterprise-admin/super-admins`, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(createFormData),
-      });
-
-      const data = await response.json();
-      
-      if (!response.ok) {
-        throw new Error(data.message || 'Failed to create super admin');
-      }
-
-      alert('Super Admin created successfully!');
-      await loadSuperAdmins();
-      setShowCreateModal(false);
-      setCreateFormData({
-        username: '',
-        email: '',
-        password: '',
-        productType: 'BUSINESS_ERP'
-      });
-    } catch (error: any) {
-      console.error('Error creating super admin:', error);
-      alert(error.message || 'Failed to create super admin');
-    } finally {
-      setIsSaving(false);
-    }
-  };
+  // (Create Super Admin handler removed)
 
   const handleDeleteSuperAdmin = async (adminId: number, adminUsername: string) => {
     if (!confirm(`Are you sure you want to delete Super Admin "${adminUsername}"? This action cannot be undone.`)) {
@@ -399,36 +347,35 @@ export default function EnterpriseAdminUsersPage() {
     );
   }
 
+  // Derived values for JSX
+  const selectedSuperAdmin = selectedSuperAdminFilter
+    ? superAdmins.find((a) => a.id === selectedSuperAdminFilter)
+    : undefined;
+  const isModuleAssigned = selectedModule && selectedSuperAdmin
+    ? selectedSuperAdmin.assignedModules?.includes(selectedModule.id)
+    : false;
+  // Assigned module counts
+  // If a Super Admin is selected, show counts for that admin based on their productType.
+  // Otherwise, show aggregate counts across all Super Admins by productType.
+  const assignedBusinessCount = selectedSuperAdmin
+    ? (selectedSuperAdmin.productType === 'BUSINESS_ERP' ? (selectedSuperAdmin.assignedModules?.length || 0) : 0)
+    : superAdmins
+        .filter((a) => a.productType === 'BUSINESS_ERP')
+        .reduce((sum, a) => sum + (a.assignedModules?.length || 0), 0);
+  const assignedPumpCount = selectedSuperAdmin
+    ? (selectedSuperAdmin.productType === 'PUMP_ERP' ? (selectedSuperAdmin.assignedModules?.length || 0) : 0)
+    : superAdmins
+        .filter((a) => a.productType === 'PUMP_ERP')
+        .reduce((sum, a) => sum + (a.assignedModules?.length || 0), 0);
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-      {/* Top Navigation */}
-      <EnterpriseAdminNavbar onMenuToggle={() => setSidebarOpen(!sidebarOpen)} />
-
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 bg-black/50 dark:bg-black/70 z-40 lg:hidden backdrop-blur-sm top-14"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={`fixed top-14 left-0 bottom-0 w-64 z-40 transform transition-transform duration-200 ease-in-out ${
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-        } lg:translate-x-0`}
-      >
-        <EnterpriseAdminSidebar className="h-full" />
-      </aside>
-
-      {/* Main Content */}
-      <div className="pt-14 lg:pl-64 min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         {/* Header */}
         <div className="mb-6">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <h1 className="text-2xl font-semibold text-gray-900 dark:text-white flex items-center gap-3">
                 <FiPackage className="text-blue-600" />
                 Module Management
               </h1>
@@ -436,19 +383,13 @@ export default function EnterpriseAdminUsersPage() {
                 View modules on the left, Super Admins assigned to each module on the right
               </p>
             </div>
-            <button
-              onClick={() => setShowCreateModal(true)}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors inline-flex items-center gap-2 font-medium shadow-sm"
-            >
-              <FiPlus size={18} />
-              Create Super Admin
-            </button>
+            {/* Create Super Admin button removed as per requirement */}
           </div>
         </div>
 
         {/* Stats Cards - Reduced size */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3 mb-4">
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-xs text-gray-600 dark:text-gray-400">Total Super Admins</p>
@@ -466,11 +407,11 @@ export default function EnterpriseAdminUsersPage() {
               <FiPackage className="text-2xl text-purple-600" />
             </div>
           </div>
-          <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
+      <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Business ERP</p>
-                <p className="text-xl font-bold text-purple-600">{businessERPModules.length}</p>
+        <p className="text-xs text-gray-600 dark:text-gray-400">Business ERP (Assigned)</p>
+        <p className="text-xl font-bold text-purple-600">{assignedBusinessCount}</p>
               </div>
               <FiPackage className="text-2xl text-purple-600" />
             </div>
@@ -478,8 +419,8 @@ export default function EnterpriseAdminUsersPage() {
           <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-xs text-gray-600 dark:text-gray-400">Pump Management</p>
-                <p className="text-xl font-bold text-orange-600">{pumpManagementModules.length}</p>
+        <p className="text-xs text-gray-600 dark:text-gray-400">Pump Management (Assigned)</p>
+        <p className="text-xl font-bold text-orange-600">{assignedPumpCount}</p>
               </div>
               <FiPackage className="text-2xl text-orange-600" />
             </div>
@@ -489,7 +430,7 @@ export default function EnterpriseAdminUsersPage() {
         {/* Main Content: Four-Column Layout */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
           {/* COLUMN 1: Category Selection - Compact */}
-          <div className="lg:col-span-2 space-y-3">
+          <div className="lg:col-span-3 space-y-3">
             <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow sticky top-6">
               <h2 className="text-base font-bold text-gray-900 dark:text-white mb-4 flex items-center gap-2">
                 <FiPackage className="text-blue-600" size={16} />
@@ -795,8 +736,8 @@ export default function EnterpriseAdminUsersPage() {
             )}
           </div>
 
-          {/* COLUMN 4: Pages & Assignment Panel - NEW */}
-          <div className="lg:col-span-4">
+          {/* COLUMN 4: Pages & Assignment Panel */}
+          <div className="lg:col-span-3">
             {selectedModule ? (
               <div className="bg-white dark:bg-gray-800 p-4 rounded-lg shadow">
                 <div className="mb-4 pb-3 border-b-2 border-blue-200 dark:border-blue-800">
@@ -808,55 +749,41 @@ export default function EnterpriseAdminUsersPage() {
                     {selectedModule.name} - {selectedModule.pages?.length || 0} pages
                   </p>
                 </div>
-
                 {selectedSuperAdminFilter ? (
                   <>
-                    {/* Check if module is assigned to the selected super admin */}
-                    {(() => {
-                      const selectedSuperAdmin = superAdmins.find(a => a.id === selectedSuperAdminFilter);
-                      const isModuleAssigned = selectedSuperAdmin?.assignedModules?.includes(selectedModule.id);
-                      
-                      // Always show page list and action buttons
-                      return (
-                        <>
-                          {/* Status Banner */}
-                          {!isModuleAssigned && (
-                            <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
-                              <div className="flex items-start gap-2">
-                                <FiAlertCircle className="text-yellow-600 dark:text-yellow-500 mt-0.5" size={16} />
-                                <div>
-                                  <p className="text-xs font-semibold text-yellow-800 dark:text-yellow-300">
-                                    Module Not Assigned
-                                  </p>
-                                  <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-0.5">
-                                    Select pages below and click "Assign Selected Pages" to grant access to {selectedSuperAdmin?.username}.
-                                  </p>
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                          
-                          {/* Action Buttons */}
-                          <div className="flex gap-2 mb-4">
-                            <button
-                              onClick={toggleSelectAllPages}
-                              className="flex-1 px-3 py-2 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors font-medium"
-                            >
-                              {selectedPageIds.length === (selectedModule.pages?.length || 0) ? 'Deselect All' : 'Select All'}
-                            </button>
-                            {isModuleAssigned && (
-                              <button
-                                onClick={unassignModuleFromSuperAdmin}
-                                disabled={isSaving}
-                                className="px-3 py-2 text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 font-medium inline-flex items-center gap-1.5"
-                              >
-                                <FiXCircle size={14} />
-                                {isSaving ? 'Removing...' : 'Remove Module'}
-                              </button>
-                            )}
+                    {!isModuleAssigned && (
+                      <div className="mb-4 p-3 bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <FiAlertCircle className="text-yellow-600 dark:text-yellow-500 mt-0.5" size={16} />
+                          <div>
+                            <p className="text-xs font-semibold text-yellow-800 dark:text-yellow-300">Module Not Assigned</p>
+                            <p className="text-xs text-yellow-700 dark:text-yellow-400 mt-0.5">
+                              Select pages below and click "Assign Selected Pages" to grant access to {selectedSuperAdmin?.username}.
+                            </p>
                           </div>
+                        </div>
+                      </div>
+                    )}
 
-                    {/* Pages List with Checkboxes */}
+                    <div className="flex gap-2 mb-4">
+                      <button
+                        onClick={toggleSelectAllPages}
+                        className="flex-1 px-3 py-2 text-xs bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400 rounded-lg hover:bg-blue-200 dark:hover:bg-blue-900/50 transition-colors font-medium"
+                      >
+                        {selectedPageIds.length === (selectedModule.pages?.length || 0) ? "Deselect All" : "Select All"}
+                      </button>
+                      {isModuleAssigned && (
+                        <button
+                          onClick={unassignModuleFromSuperAdmin}
+                          disabled={isSaving}
+                          className="px-3 py-2 text-xs bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 rounded-lg hover:bg-red-200 dark:hover:bg-red-900/50 transition-colors disabled:opacity-50 font-medium inline-flex items-center gap-1.5"
+                        >
+                          <FiXCircle size={14} />
+                          {isSaving ? "Removing..." : "Remove Module"}
+                        </button>
+                      )}
+                    </div>
+
                     <div className="space-y-2 max-h-[500px] overflow-y-auto mb-4">
                       {selectedModule.pages && selectedModule.pages.length > 0 ? (
                         selectedModule.pages.map((page) => {
@@ -866,8 +793,8 @@ export default function EnterpriseAdminUsersPage() {
                               key={page.id}
                               className={`flex items-start gap-3 p-3 rounded-lg border-2 cursor-pointer transition-all ${
                                 isChecked
-                                  ? 'bg-green-50 dark:bg-green-900/20 border-green-400 dark:border-green-600'
-                                  : 'bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:border-blue-300'
+                                  ? "bg-green-50 dark:bg-green-900/20 border-green-400 dark:border-green-600"
+                                  : "bg-gray-50 dark:bg-gray-700 border-gray-200 dark:border-gray-600 hover:border-blue-300"
                               }`}
                             >
                               <input
@@ -878,17 +805,11 @@ export default function EnterpriseAdminUsersPage() {
                               />
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                  <span className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                                    {page.name}
-                                  </span>
-                                  {isChecked && (
-                                    <FiCheckCircle className="text-green-600 flex-shrink-0" size={14} />
-                                  )}
+                                  <span className="text-sm font-medium text-gray-900 dark:text-white truncate">{page.name}</span>
+                                  {isChecked && <FiCheckCircle className="text-green-600 flex-shrink-0" size={14} />}
                                 </div>
                                 {page.path && (
-                                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate block">
-                                    {page.path}
-                                  </span>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400 truncate block">{page.path}</span>
                                 )}
                               </div>
                             </label>
@@ -902,36 +823,30 @@ export default function EnterpriseAdminUsersPage() {
                       )}
                     </div>
 
-                    {/* Save Button - Only show when pages are selected */}
                     {selectedPageIds.length > 0 && (
                       <button
                         onClick={assignModuleToSuperAdmin}
                         disabled={isSaving}
                         className={`w-full px-4 py-2.5 text-white rounded-lg transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed text-sm font-medium ${
-                          isModuleAssigned 
-                            ? 'bg-blue-600 hover:bg-blue-700' 
-                            : 'bg-green-600 hover:bg-green-700'
+                          isModuleAssigned ? "bg-blue-600 hover:bg-blue-700" : "bg-green-600 hover:bg-green-700"
                         }`}
                       >
                         {isSaving ? (
                           <>
                             <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            {isModuleAssigned ? 'Updating...' : 'Assigning...'}
+                            {isModuleAssigned ? "Updating..." : "Assigning..."}
                           </>
                         ) : (
                           <>
                             <FiCheckCircle size={16} />
-                            {isModuleAssigned 
-                              ? `Update ${selectedPageIds.length} Page${selectedPageIds.length !== 1 ? 's' : ''}`
-                              : `Assign ${selectedPageIds.length} Selected Page${selectedPageIds.length !== 1 ? 's' : ''}`
-                            }
+                            {isModuleAssigned
+                              ? `Update ${selectedPageIds.length} Page${selectedPageIds.length !== 1 ? "s" : ""}`
+                              : `Assign ${selectedPageIds.length} Selected Page${selectedPageIds.length !== 1 ? "s" : ""}`}
                           </>
                         )}
                       </button>
                     )}
-                  </>
-                );
-              })()}                    {/* Selection Info */}
+
                     <div className="mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded-lg">
                       <p className="text-xs text-gray-600 dark:text-gray-400 text-center">
                         Selected: <span className="font-bold text-blue-600">{selectedPageIds.length}</span> / {selectedModule.pages?.length || 0} pages
@@ -959,141 +874,9 @@ export default function EnterpriseAdminUsersPage() {
             )}
           </div>
         </div>
-        </div>
       </div>
       
-      {/* Create Super Admin Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 dark:bg-black/70 z-50 flex items-center justify-center p-4">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-md w-full max-h-[90vh] overflow-y-auto">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
-              <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                <FiShield className="text-blue-600" />
-                Create Super Admin
-              </h2>
-              <button
-                onClick={() => {
-                  setShowCreateModal(false);
-                  setCreateFormData({
-                    username: '',
-                    email: '',
-                    password: '',
-                    productType: 'BUSINESS_ERP'
-                  });
-                }}
-                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-              >
-                <FiX size={20} />
-              </button>
-            </div>
-
-            {/* Modal Body */}
-            <form onSubmit={handleCreateSuperAdmin} className="p-6 space-y-4">
-              {/* Username */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Username <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={createFormData.username}
-                  onChange={(e) => setCreateFormData({ ...createFormData, username: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter username"
-                  required
-                />
-              </div>
-
-              {/* Email */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Email <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="email"
-                  value={createFormData.email}
-                  onChange={(e) => setCreateFormData({ ...createFormData, email: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter email"
-                  required
-                />
-              </div>
-
-              {/* Password */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Password <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="password"
-                  value={createFormData.password}
-                  onChange={(e) => setCreateFormData({ ...createFormData, password: e.target.value })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Enter password"
-                  required
-                  minLength={6}
-                />
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  Minimum 6 characters
-                </p>
-              </div>
-
-              {/* Product Type */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Product Type <span className="text-red-500">*</span>
-                </label>
-                <select
-                  value={createFormData.productType}
-                  onChange={(e) => setCreateFormData({ ...createFormData, productType: e.target.value as 'BUSINESS_ERP' | 'PUMP_ERP' })}
-                  className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  required
-                >
-                  <option value="BUSINESS_ERP">Business ERP</option>
-                  <option value="PUMP_ERP">Pump Management</option>
-                </select>
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowCreateModal(false);
-                    setCreateFormData({
-                      username: '',
-                      email: '',
-                      password: '',
-                      productType: 'BUSINESS_ERP'
-                    });
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSaving}
-                  className="flex-1 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed font-medium inline-flex items-center justify-center gap-2"
-                >
-                  {isSaving ? (
-                    <>
-                      <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                      Creating...
-                    </>
-                  ) : (
-                    <>
-                      <FiPlus size={16} />
-                      Create
-                    </>
-                  )}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+  {/* Create Super Admin Modal removed */}
     </div>
   );
 }

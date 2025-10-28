@@ -5,8 +5,7 @@ import { motion } from 'framer-motion';
 import { FileText, Search, AlertCircle, CheckCircle, Info, XCircle, Clock, User, Tag, RefreshCw, Download } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import EnterpriseAdminNavbar from '@/components/EnterpriseAdminNavbar';
-import EnterpriseAdminSidebar from '@/components/EnterpriseAdminSidebar';
+// Navbar and Sidebar are rendered by the enterprise-admin layout
 
 type Level = 'info' | 'warning' | 'error' | 'success';
 
@@ -142,10 +141,8 @@ export default function EnterpriseActivityLogsPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <EnterpriseAdminNavbar />
       <div className="flex">
-        <EnterpriseAdminSidebar />
-        <main className="flex-1 p-8 ml-64">
+        <main className="flex-1 p-8">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">

@@ -18,8 +18,7 @@ import {
   MessageSquare,
   FileText,
 } from 'lucide-react';
-import EnterpriseAdminNavbar from '@/components/EnterpriseAdminNavbar';
-import EnterpriseAdminSidebar from '@/components/EnterpriseAdminSidebar';
+// Navbar and Sidebar are injected by the enterprise-admin layout
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 
@@ -126,12 +125,8 @@ export default function AIHandlingPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <EnterpriseAdminNavbar />
-      
       <div className="flex">
-        <EnterpriseAdminSidebar />
-        
-        <main className="flex-1 p-8 ml-64">
+        <main className="flex-1 p-8">
           <div className="max-w-7xl mx-auto">
             {/* Header */}
             <motion.div

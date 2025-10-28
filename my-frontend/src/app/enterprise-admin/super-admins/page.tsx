@@ -279,12 +279,7 @@ export default function SuperAdminManagementPage() {
               Manage Super Admins and assign modules
             </p>
           </div>
-          <button
-            onClick={() => router.push('/enterprise-admin/super-admins/create')}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-          >
-            <FiPlus /> Create Super Admin
-          </button>
+          {/* Create Super Admin button removed as per requirement */}
         </div>
 
         {/* Stats Cards */}

@@ -28,8 +28,7 @@ import {
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import EnterpriseAdminNavbar from '@/components/EnterpriseAdminNavbar';
-import EnterpriseAdminSidebar from '@/components/EnterpriseAdminSidebar';
+// Navbar and Sidebar are provided by the enterprise-admin layout
 
 // Types
 interface DashboardStats {
@@ -250,11 +249,7 @@ export default function EnterpriseAdminDashboard() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-      <EnterpriseAdminNavbar />
-      
       <div className="flex">
-        <EnterpriseAdminSidebar />
-        
         <main className="flex-1 p-8">
           {/* Header */}
           <div className="flex items-center justify-between mb-8">
