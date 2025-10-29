@@ -25,6 +25,7 @@ interface Organization {
 export default function OrganizationsPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
   const [filterPlan, setFilterPlan] = useState('all');
@@ -49,6 +50,7 @@ export default function OrganizationsPage() {
   const fetchOrganizations = async () => {
     try {
       setLoading(true);
+  setError(null as any);
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '10',
@@ -68,6 +70,7 @@ export default function OrganizationsPage() {
       }
     } catch (error) {
       console.error('Failed to fetch organizations:', error);
+      setError('Failed to load organizations');
     } finally {
       setLoading(false);
     }
@@ -169,6 +172,12 @@ export default function OrganizationsPage() {
 
   return (
     <div className="space-y-6">
+      {error && (
+        <div className="p-3 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300">
+          {error}
+          <button onClick={fetchOrganizations} className="ml-3 underline">Retry</button>
+        </div>
+      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>

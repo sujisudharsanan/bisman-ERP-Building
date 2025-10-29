@@ -1,0 +1,29 @@
+
+[34m📦 Exporting Page Registry to JSON...[0m
+
+[32m✅ Successfully exported page registry![0m
+[34m📄 Output file:[0m /Users/abhi/Desktop/BISMAN ERP/my-frontend/public/layout_registry.json
+
+[34m📊 Statistics:[0m
+   Total Pages: 84
+   Total Modules: 1
+
+[34m📦 Pages by Module:[0m
+   system: 16 pages
+   finance: 31 pages
+   procurement: 5 pages
+   operations: 14 pages
+   compliance: 9 pages
+   common: 9 pages
+
+[34m📊 Pages by Status:[0m
+   active: 84 pages
+   coming-soon: 0 pages
+   disabled: 0 pages
+
+[33m💡 This file can be used by AI tools and documentation generators[0m
+
+  ▲ Next.js 14.2.33
+  - Environments: .env.local, .env.production
+
+   Creating an optimized production build ...

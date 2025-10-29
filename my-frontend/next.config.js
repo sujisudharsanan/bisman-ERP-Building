@@ -26,9 +26,9 @@ const nextConfig = {
     if (dev && !isServer) {
       config.stats = 'errors-warnings';
     }
-    // Avoid disk pressure in CI
-    if (process.env.CI === 'true') {
-      config.cache = false;
+    // Avoid disk pressure in CI or when explicitly disabled
+    if (process.env.CI === 'true' || process.env.NO_CACHE === '1') {
+      config.cache = false; // disable persistent file cache to prevent ENOSPC
     }
     return config;
   },

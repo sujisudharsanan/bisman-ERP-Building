@@ -50,10 +50,10 @@ export default function EnterpriseAdminSidebar({ className = '' }: EnterpriseAdm
       href: '/enterprise-admin/dashboard',
     },
     {
-      id: 'users',
+      id: 'modules',
       label: 'Module Management',
       icon: FiPackage,
-      href: '/enterprise-admin/users',
+      href: '/enterprise-admin/modules',
     },
     {
       id: 'ai-handling',
@@ -82,7 +82,7 @@ export default function EnterpriseAdminSidebar({ className = '' }: EnterpriseAdm
   // New enterprise links (appended without altering existing ones)
   { id: 'super-admins', label: 'Super Admins', icon: FiUsers, href: '/enterprise-admin/super-admins' },
   { id: 'organizations', label: 'Organizations', icon: FiLayers, href: '/enterprise-admin/organizations' },
-  { id: 'modules', label: 'Modules', icon: FiZap, href: '/enterprise-admin/modules' },
+  { id: 'users', label: 'Users', icon: FiZap, href: '/enterprise-admin/users' },
   { id: 'billing', label: 'Billing', icon: FiDollarSign, href: '/enterprise-admin/billing' },
   { id: 'audit', label: 'Audit & Security', icon: FiShield, href: '/enterprise-admin/audit' },
   { id: 'integrations', label: 'Integrations', icon: FiPackage, href: '/enterprise-admin/integrations' },

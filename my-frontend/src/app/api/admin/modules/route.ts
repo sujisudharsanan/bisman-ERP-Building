@@ -19,11 +19,18 @@ export async function POST(req: Request) {
   }
   const mod = await prisma.module.findUnique({ where: { key: body.moduleKey } });
   if (!mod) return NextResponse.json({ ok: false, error: 'module not found' }, { status: 404 });
-  const rel = await prisma.orgsEnabled.upsert({
-    where: { orgId_moduleId: { orgId: body.orgId, moduleId: mod.id } },
-    update: { enabled: body.enabled },
-    create: { orgId: body.orgId, moduleId: mod.id, enabled: body.enabled },
+  // No composite unique in schema; do a findFirst then update or create
+  const existing = await prisma.orgsEnabled.findFirst({
+    where: { orgId: body.orgId, moduleId: mod.id },
   });
+  const rel = existing
+    ? await prisma.orgsEnabled.update({
+        where: { id: existing.id },
+        data: { enabled: body.enabled },
+      })
+    : await prisma.orgsEnabled.create({
+        data: { orgId: body.orgId, moduleId: mod.id, enabled: body.enabled },
+      });
   // TODO: append audit log
   return NextResponse.json({ ok: true, data: rel });
 }

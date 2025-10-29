@@ -3,22 +3,8 @@
 import React, { useEffect, useMemo, useState } from "react";
 import { FiUsers, FiPackage, FiGrid, FiCheckCircle } from "react-icons/fi";
 
-type Module = {
-  id: number;
-  moduleKey: string; // backend: module_name
-  name: string; // backend: display_name/name
-  productType?: string; // BUSINESS_ERP | PUMP_ERP
-  businessCategory?: string; // "Business ERP" | "Pump Management" | "All"
-  pages?: Array<{ id: string; name?: string; path: string }>;
-};
-type SuperAdmin = {
-  id: number;
-  name?: string;
-  email?: string;
-  role?: string;
-  productType?: string;
-  assignedModules?: number[];
-};
+type Module = { id: string; key: string; name: string };
+type SuperAdmin = { id: string; name?: string; email?: string; role?: string; productType?: string };
 type Registry = {
   // Very loose type; depends on generated layout_registry.json
   pages?: Array<{ path: string; title?: string; module?: string; moduleKey?: string }>;
@@ -29,13 +15,6 @@ const CATEGORIES = [
   { key: "pump", label: "Pump Management", color: "orange" },
 ];
 
-// Defensive helper to pull array by key
-function arr<T = any>(obj: any, key: string): T[] {
-  if (!obj || typeof obj !== "object") return [];
-  const v = obj[key];
-  return Array.isArray(v) ? (v as T[]) : [];
-}
-
 export default function Page() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -45,12 +24,10 @@ export default function Page() {
   const [registry, setRegistry] = useState<Registry | null>(null);
 
   const [category, setCategory] = useState<string | null>(null);
-  const [selectedAdminId, setSelectedAdminId] = useState<number | null>(null);
-  const [selectedModuleId, setSelectedModuleId] = useState<number | null>(null);
+  const [selectedAdminId, setSelectedAdminId] = useState<string | null>(null);
   const [selectedModuleKey, setSelectedModuleKey] = useState<string | null>(null);
   const [selectedPageIds, setSelectedPageIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
-  const [authHint, setAuthHint] = useState<string | null>(null);
 
   useEffect(() => {
     const load = async () => {
@@ -58,48 +35,16 @@ export default function Page() {
       setError(null);
       try {
         const [modsRes, usersRes, regRes] = await Promise.all([
-          fetch("/api/enterprise-admin/master-modules", { credentials: "include" }),
-          fetch("/api/enterprise-admin/super-admins", { credentials: "include" }),
+          fetch("/api/admin/modules"),
+          fetch("/api/admin/users"),
           fetch("/layout_registry.json").catch(() => new Response("{}")),
         ]);
-        const modsJson = await modsRes.json().catch(() => ({}));
-        let usersJson: any = {};
-        if (usersRes.ok) {
-          usersJson = await usersRes.json().catch(() => ({}));
-        } else {
-          // Fallback to enterprise route (less strict) to keep UI functional in dev
-          const alt = await fetch("/api/enterprise/super-admins", { credentials: "include" });
-          if (alt.ok) {
-            usersJson = await alt.json().catch(() => ({}));
-            setAuthHint('Super Admins loaded via fallback. For strict mode, ensure your role is ENTERPRISE_ADMIN.');
-          } else if (usersRes.status === 403 || usersRes.status === 401) {
-            setAuthHint('Access to Super Admins is forbidden. Ensure you are logged in as ENTERPRISE_ADMIN.');
-          }
-        }
+        const modsData = await modsRes.json().catch(() => ({}));
+        const usersData = await usersRes.json().catch(() => ({}));
         const registryData = await regRes.json().catch(() => ({}));
 
-        const mods = arr<any>(modsJson, "modules").map((m) => ({
-          id: Number(m.id),
-          moduleKey: String(m.module_name ?? m.id ?? ""),
-          name: String(m.display_name ?? m.name ?? m.module_name ?? ""),
-          productType: m.productType,
-          businessCategory: m.businessCategory,
-          pages: Array.isArray(m.pages) ? m.pages : [],
-        })) as Module[];
-
-        const admins = arr<any>(usersJson, "superAdmins").map((a) => ({
-          id: Number(a.id),
-          name: a.username ?? a.name,
-          email: a.email,
-          role: a.role ?? "SUPER_ADMIN",
-          productType: a.productType,
-          assignedModules: Array.isArray(a.assignedModules)
-            ? a.assignedModules.map((x: any) => Number(x))
-            : [],
-        })) as SuperAdmin[];
-
-        setModules(mods);
-        setSuperAdmins(admins);
+        setModules(modsData?.data ?? modsData ?? []);
+        setSuperAdmins(usersData?.data ?? usersData ?? []);
         setRegistry(registryData);
       } catch (e: any) {
         setError(e?.message || "Failed to load data");
@@ -111,78 +56,36 @@ export default function Page() {
   }, []);
 
   const categoryCounts = useMemo(() => {
-    const list = Array.isArray(modules) ? modules : [];
-    const isPump = (m: Module) =>
-      (m.businessCategory ?? "").toLowerCase().includes("pump") || m.productType === "PUMP_ERP";
+    const isPump = (m: Module) => m.key?.toLowerCase().includes("pump");
     return {
-      business: list.filter((m) => !isPump(m)).length,
-      pump: list.filter((m) => isPump(m)).length,
+      business: modules.filter((m) => !isPump(m)).length,
+      pump: modules.filter((m) => isPump(m)).length,
     };
   }, [modules]);
 
-  const modulesById = useMemo(() => {
-    const map = new Map<number, Module>();
-    modules.forEach((m) => map.set(m.id, m));
-    return map;
-  }, [modules]);
-
   const filteredAdmins = useMemo(() => {
-    const list = Array.isArray(superAdmins) ? superAdmins : [];
-    if (!category) return list;
-    return list.filter((s) => {
-      if (!s.productType) return true;
-      const isPump = s.productType === "PUMP_ERP" || s.productType?.toLowerCase().includes("pump");
-      return category === "pump" ? isPump : !isPump;
-    });
+    if (!category) return superAdmins;
+    // If productType is available, filter by it. Otherwise, show all.
+    return superAdmins.filter((s) => !s.productType || s.productType.toLowerCase().includes(category));
   }, [superAdmins, category]);
 
   const filteredModules = useMemo(() => {
-    const list = Array.isArray(modules) ? modules : [];
-    if (!category) return list;
-    const isPump = (m: Module) =>
-      (m.businessCategory ?? "").toLowerCase().includes("pump") || m.productType === "PUMP_ERP";
-    return list.filter((m) => (category === "pump" ? isPump(m) : !isPump(m)));
+    if (!category) return modules;
+    const isPump = (m: Module) => m.key?.toLowerCase().includes("pump");
+    return modules.filter((m) => (category === "pump" ? isPump(m) : !isPump(m)));
   }, [modules, category]);
 
   const pagesForSelectedModule = useMemo(() => {
-    if (!selectedModuleId) return [] as { id: string; title?: string; path: string }[];
-    const mod = modulesById.get(selectedModuleId);
-    const fromModule = (mod?.pages ?? []).map((p) => ({ id: p.id ?? p.path, title: p.name, path: p.path }));
-    if (fromModule.length) return fromModule;
-    // Fallback to registry heuristic if module config has no pages
-    if (!registry || !selectedModuleKey) return [];
-    const regPages = Array.isArray(registry.pages) ? registry.pages : [];
-    const matched = regPages.filter((p) => {
+    if (!registry || !selectedModuleKey) return [] as { id: string; title?: string; path: string }[];
+    const pages = Array.isArray(registry.pages) ? registry.pages : [];
+    // Heuristic: match by moduleKey or module or search by path containing the module key
+    const matched = pages.filter((p) => {
       const mk = (p as any).moduleKey || (p as any).module;
       if (mk && typeof mk === "string") return mk.toLowerCase().includes(selectedModuleKey.toLowerCase());
       return p.path?.toLowerCase().includes(selectedModuleKey.toLowerCase());
     });
     return matched.map((p) => ({ id: p.path, title: p.title, path: p.path }));
-  }, [modulesById, registry, selectedModuleId, selectedModuleKey]);
-
-  // Derived counts (no hooks inside JSX to avoid hook-order issues during HMR)
-  const assignedBusinessCount = (() => {
-    let business = 0;
-    superAdmins.forEach((sa) => {
-      (sa.assignedModules || []).forEach((mid) => {
-        const m = modulesById.get(mid);
-        const isPump = m && ((m.businessCategory ?? "").toLowerCase().includes("pump") || m?.productType === "PUMP_ERP");
-        if (!isPump) business++;
-      });
-    });
-    return business;
-  })();
-  const assignedPumpCount = (() => {
-    let pump = 0;
-    superAdmins.forEach((sa) => {
-      (sa.assignedModules || []).forEach((mid) => {
-        const m = modulesById.get(mid);
-        const isPump = m && ((m.businessCategory ?? "").toLowerCase().includes("pump") || m?.productType === "PUMP_ERP");
-        if (isPump) pump++;
-      });
-    });
-    return pump;
-  })();
+  }, [registry, selectedModuleKey]);
 
   const togglePage = (id: string) => {
     setSelectedPageIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
@@ -194,14 +97,13 @@ export default function Page() {
   };
 
   const assignPages = async () => {
-    if (!selectedAdminId || !selectedModuleId) return;
+    if (!selectedAdminId || !selectedModuleKey) return;
     try {
       setSaving(true);
       await fetch(`/api/enterprise-admin/super-admins/${selectedAdminId}/assign-module`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify({ moduleId: selectedModuleId, pageIds: selectedPageIds }),
+        body: JSON.stringify({ moduleId: selectedModuleKey, pages: selectedPageIds }),
       });
     } finally {
       setSaving(false);
@@ -213,17 +115,6 @@ export default function Page() {
 
   return (
     <div className="space-y-6 text-gray-900 dark:text-gray-100">
-      {authHint && (
-        <div className="rounded-md border border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 px-3 py-2 text-sm flex items-center justify-between">
-          <span>{authHint}</span>
-          <a 
-            href="/auth/login" 
-            className="ml-4 px-3 py-1 text-xs rounded border border-yellow-600 hover:bg-yellow-100 dark:hover:bg-yellow-800"
-          >
-            Re-login as Enterprise Admin
-          </a>
-        </div>
-      )}
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-semibold">Module Management</h1>
@@ -232,45 +123,16 @@ export default function Page() {
             // simple refetch
             setLoading(true);
             Promise.all([
-              fetch("/api/enterprise-admin/master-modules", { credentials: "include" }),
-              fetch("/api/enterprise-admin/super-admins", { credentials: "include" }),
+              fetch("/api/admin/modules"),
+              fetch("/api/admin/users"),
               fetch("/layout_registry.json").catch(() => new Response("{}")),
             ])
               .then(async ([m, u, r]) => {
                 const md = await m.json().catch(() => ({}));
-                let ud: any = {};
-                if (u.ok) {
-                  ud = await u.json().catch(() => ({}));
-                } else {
-                  const alt = await fetch("/api/enterprise/super-admins", { credentials: "include" });
-                  if (alt.ok) {
-                    ud = await alt.json().catch(() => ({}));
-                    setAuthHint('Super Admins loaded via fallback. For strict mode, ensure your role is ENTERPRISE_ADMIN.');
-                  } else if (u.status === 403 || u.status === 401) {
-                    setAuthHint('Access to Super Admins is forbidden. Ensure you are logged in as ENTERPRISE_ADMIN.');
-                  }
-                }
+                const ud = await u.json().catch(() => ({}));
                 const rd = await r.json().catch(() => ({}));
-                const mods = arr<any>(md, "modules").map((mm) => ({
-                  id: Number(mm.id),
-                  moduleKey: String(mm.module_name ?? mm.id ?? ""),
-                  name: String(mm.display_name ?? mm.name ?? mm.module_name ?? ""),
-                  productType: mm.productType,
-                  businessCategory: mm.businessCategory,
-                  pages: Array.isArray(mm.pages) ? mm.pages : [],
-                })) as Module[];
-                const admins = arr<any>(ud, "superAdmins").map((a) => ({
-                  id: Number(a.id),
-                  name: a.username ?? a.name,
-                  email: a.email,
-                  role: a.role ?? "SUPER_ADMIN",
-                  productType: a.productType,
-                  assignedModules: Array.isArray(a.assignedModules)
-                    ? a.assignedModules.map((x: any) => Number(x))
-                    : [],
-                })) as SuperAdmin[];
-                setModules(mods);
-                setSuperAdmins(admins);
+                setModules(md?.data ?? md ?? []);
+                setSuperAdmins(ud?.data ?? ud ?? []);
                 setRegistry(rd);
               })
               .finally(() => setLoading(false));
@@ -308,7 +170,7 @@ export default function Page() {
             </span>
             Business ERP (Assigned)
           </div>
-          <div className="text-xl font-semibold mt-1">{assignedBusinessCount}</div>
+          <div className="text-xl font-semibold mt-1">0</div>
         </div>
         <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
           <div className="flex items-center gap-2 text-xs text-gray-600 dark:text-gray-400">
@@ -317,7 +179,7 @@ export default function Page() {
             </span>
             Pump Management (Assigned)
           </div>
-          <div className="text-xl font-semibold mt-1">{assignedPumpCount}</div>
+          <div className="text-xl font-semibold mt-1">0</div>
         </div>
       </div>
 
@@ -403,7 +265,7 @@ export default function Page() {
                 title={a.email}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate">{a.name || a.email || String(a.id)}</span>
+                  <span className="truncate">{a.name || a.email || a.id}</span>
                   <span className="text-[10px] text-gray-500">{a.role || "SUPER_ADMIN"}</span>
                 </div>
               </button>
@@ -422,20 +284,19 @@ export default function Page() {
               <button
                 key={m.id}
                 onClick={() => {
-                  setSelectedModuleId(m.id);
-                  setSelectedModuleKey(m.moduleKey);
+                  setSelectedModuleKey(m.key);
                   setSelectedPageIds([]);
                 }}
                 className={`w-full text-left rounded-md border px-3 py-2 text-xs transition ${
-                  selectedModuleId === m.id
+                  selectedModuleKey === m.key
                     ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30"
                     : "border-gray-200 dark:border-gray-700 hover:border-blue-300"
                 }`}
-                title={m.moduleKey}
+                title={m.key}
               >
                 <div className="flex items-center justify-between gap-2">
                   <span className="truncate">{m.name}</span>
-                  <span className="text-[10px] text-gray-500">{m.moduleKey}</span>
+                  <span className="text-[10px] text-gray-500">{m.key}</span>
                 </div>
               </button>
             ))}
@@ -450,7 +311,7 @@ export default function Page() {
               {selectedPageIds.length} selected
             </div>
           </div>
-          {!selectedModuleId ? (
+          {!selectedModuleKey ? (
             <div className="text-xs text-gray-500">Select a module to view pages</div>
           ) : pagesForSelectedModule.length === 0 ? (
             <div className="text-xs text-gray-500">No pages found for this module</div>

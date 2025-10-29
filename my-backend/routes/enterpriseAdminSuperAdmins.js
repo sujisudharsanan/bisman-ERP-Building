@@ -2,7 +2,12 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
+const { authenticate, requireRole } = require('../middleware/auth');
 const prisma = new PrismaClient();
+
+// Apply authentication middleware to all routes
+router.use(authenticate);
+router.use(requireRole('ENTERPRISE_ADMIN'));
 
 const requireEnterpriseAdmin = (req, res, next) => {
   const userRole = (req.user?.role || '').toUpperCase();
@@ -13,8 +18,11 @@ const requireEnterpriseAdmin = (req, res, next) => {
 };
 
 // Get all super admins
-router.get('/', requireEnterpriseAdmin, async (req, res) => {
+router.get('/', async (req, res) => {
   try {
+    console.log('🔵 GET /api/enterprise-admin/super-admins - Request received');
+    console.log('🔵 User:', req.user);
+    
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 50;
     const skip = (page - 1) * limit;
@@ -26,51 +34,53 @@ router.get('/', requireEnterpriseAdmin, async (req, res) => {
         orderBy: { created_at: 'desc' },
         select: {
           id: true,
-          username: true,
+          name: true,
           email: true,
-          role: true,
+          productType: true,
           is_active: true,
-          mfa_enabled: true,
-          last_login: true,
           created_at: true,
-          updated_at: true,
-          enterpriseAdmin: {
-            select: {
-              id: true,
-              companyName: true
-            }
-          }
+          updated_at: true
         }
       }),
       prisma.superAdmin.count()
     ]);
 
-    const transformedAdmins = superAdmins.map(admin => ({
-      id: admin.id,
-      name: admin.username,
-      email: admin.email,
-      role: admin.role || 'SUPER_ADMIN',
-      roleType: admin.role === 'SUPER_ADMIN' ? 'Full Control' : 'Read Only',
-      status: admin.is_active ? 'active' : 'disabled',
-      mfaStatus: admin.mfa_enabled ? 'enabled' : 'disabled',
-      lastActivity: admin.last_login?.toISOString() || null,
-      enterprise: admin.enterpriseAdmin?.companyName || 'N/A',
-      createdAt: admin.created_at?.toISOString()
+    console.log(`🔵 Found ${superAdmins.length} super admins`);
+
+    // Transform to include assigned modules
+    const transformedAdmins = await Promise.all(superAdmins.map(async (admin) => {
+      const moduleAssignments = await prisma.moduleAssignment.findMany({
+        where: { super_admin_id: admin.id },
+        include: { module: true }
+      });
+
+      return {
+        id: admin.id,
+        name: admin.name,
+        email: admin.email,
+        productType: admin.productType,
+        status: admin.is_active ? 'active' : 'inactive',
+        assignedModules: moduleAssignments.map(ma => ({
+          module_id: ma.module_id,
+          module_name: ma.module.module_name,
+          assigned_pages: ma.assigned_pages || []
+        }))
+      };
     }));
 
     res.json({
       ok: true,
       superAdmins: transformedAdmins,
+      total,
       pagination: {
         page,
         limit,
-        total,
         totalPages: Math.ceil(total / limit)
       }
     });
   } catch (error) {
     console.error('[Super Admins List Error]:', error);
-    res.status(500).json({ ok: false, error: 'Failed to fetch super admins' });
+    res.status(500).json({ ok: false, error: 'Failed to fetch super admins', message: error.message });
   }
 });
 
