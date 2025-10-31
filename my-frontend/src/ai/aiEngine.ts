@@ -103,8 +103,10 @@ export class AIEngine {
 }
 
 // Provider selection: allow env override at build/runtime; default to local
-const resolvedProvider: AIProvider =
-  (typeof process !== 'undefined' && (process.env.NEXT_PUBLIC_AI_PROVIDER as AIProvider)) || 'local';
+const envProvider = (typeof process !== 'undefined' && (process.env.NEXT_PUBLIC_AI_PROVIDER as AIProvider)) || undefined;
+const isProd = typeof process !== 'undefined' && process.env.NODE_ENV === 'production';
+const onRailway = typeof process !== 'undefined' && process.env.RAILWAY === '1';
+const resolvedProvider: AIProvider = envProvider || (isProd || onRailway ? 'api' : 'local');
 
 export const engine = new AIEngine({ provider: resolvedProvider });
 

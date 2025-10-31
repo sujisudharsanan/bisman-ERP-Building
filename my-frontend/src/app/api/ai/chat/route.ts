@@ -52,22 +52,39 @@ export async function POST(req: NextRequest) {
     // Retrieve any tagged RAG hints (placeholder)
     const ragTags = await filterRagByAllowed([], user.allowedModules || []);
 
-    // Call local Ollama via internal proxy
-    const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/api/ollama/chat`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        messages: [
-          { role: 'system', content: sys },
-          // Optionally include RAG context as a system/narrative message
-          ...(ragTags.length ? [{ role: 'system', content: `Relevant tags: ${ragTags.join(', ')}` }] : []),
-          { role: 'user', content: prompt },
-        ],
-        stream: false,
-      }),
-    });
-    const j = await res.json().catch(() => ({}));
-    const content = j?.message?.content || 'AI is offline. Ensure Ollama is running.';
+    // Choose provider: hosted API relay or local Ollama
+    const provider = String(process.env.NEXT_PUBLIC_AI_PROVIDER || process.env.AI_PROVIDER || '').toLowerCase();
+    const useApi = provider === 'api' || !!process.env.AI_API_KEY;
+    let content = '';
+    if (useApi) {
+      // Use secure relay with a composed prompt including persona + guardrail
+      const relayPrompt = [sys, ragTags.length ? `Relevant tags: ${ragTags.join(', ')}` : '', `User: ${prompt}`]
+        .filter(Boolean)
+        .join('\n\n');
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/api/ai/relay`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ op: 'chat', prompt: relayPrompt }),
+      });
+      const j = await res.json().catch(() => ({}));
+      content = j?.content || 'AI provider is not reachable. Check AI_API_BASE_URL/AI_API_KEY.';
+    } else {
+      // Call local Ollama via internal proxy
+      const res = await fetch(`${process.env.NEXT_PUBLIC_BASE_PATH || ''}/api/ollama/chat`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [
+            { role: 'system', content: sys },
+            ...(ragTags.length ? [{ role: 'system', content: `Relevant tags: ${ragTags.join(', ')}` }] : []),
+            { role: 'user', content: prompt },
+          ],
+          stream: false,
+        }),
+      });
+      const j = await res.json().catch(() => ({}));
+      content = j?.message?.content || 'AI is offline. Ensure Ollama is running on localhost:11434.';
+    }
 
     const latency = Date.now() - start;
     // Log usage
@@ -87,7 +104,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, message: { role: 'assistant', content: 'Sorry, that module is not available for your role.' } });
     }
 
-    return NextResponse.json({ ok: true, message: { role: 'assistant', content } });
+  return NextResponse.json({ ok: true, message: { role: 'assistant', content } });
   } catch (e: any) {
     return NextResponse.json({ ok: false, error: e?.message || 'chat_error' }, { status: 500 });
   }
