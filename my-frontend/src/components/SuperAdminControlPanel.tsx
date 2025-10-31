@@ -56,6 +56,7 @@ import {
   ShoppingCart,
   LogOut,
   LayoutDashboard,
+  Package,
 } from 'lucide-react';
 
 // ✅ PERFORMANCE: Lazy load heavy components with dynamic imports
@@ -235,6 +236,7 @@ const SuperAdminControlPanel: React.FC = () => {
   const [showRoleInfo, setShowRoleInfo] = useState(false);
   const [roleInfoTarget, setRoleInfoTarget] = useState<any | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [assignedModulesCount, setAssignedModulesCount] = useState<number>(0);
   // For Privilege Management deep-linking from Role Management "Edit Role"
   const [privInitialRoleId, setPrivInitialRoleId] = useState<string | number | null>(searchParams?.get('role') || null);
 
@@ -602,6 +604,23 @@ const SuperAdminControlPanel: React.FC = () => {
       loadInvitations();
     }
   }, [activeTab]);
+
+  // Fetch assigned modules count for current user
+  useEffect(() => {
+    const fetchAssignedModules = async () => {
+      try {
+        const response = await fetch('/api/auth/me/permissions', { credentials: 'include' });
+        if (response.ok) {
+          const data = await response.json();
+          const modulesCount = data?.user?.permissions?.assignedModules?.length || 0;
+          setAssignedModulesCount(modulesCount);
+        }
+      } catch (err) {
+        console.error('Failed to fetch assigned modules:', err);
+      }
+    };
+    fetchAssignedModules();
+  }, []);
 
   // Dashboard Tab Component
   const DashboardTab = () => (
@@ -1166,6 +1185,12 @@ const SuperAdminControlPanel: React.FC = () => {
             </div>
             <div className="flex items-center gap-2">
               <TopNavDbIndicator />
+              {assignedModulesCount > 0 && (
+                <div className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300 text-xs font-medium border border-green-300 dark:border-green-700">
+                  <Package className="w-3.5 h-3.5" />
+                  <span>{assignedModulesCount} Module{assignedModulesCount !== 1 ? 's' : ''}</span>
+                </div>
+              )}
               <button
                 onClick={() => window.location.reload()}
                 className="bg-blue-600 dark:bg-blue-500 text-white px-2 sm:px-3 py-1.5 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center gap-1.5 text-xs font-medium shadow-sm"

@@ -12,11 +12,24 @@ export default function EnterpriseAdminLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  
+  const handleRefresh = () => {
+    // Trigger a custom event that pages can listen to
+    window.dispatchEvent(new CustomEvent('enterprise-admin-refresh'));
+    // Fallback to reload if page doesn't handle the event
+    setTimeout(() => {
+      window.location.reload();
+    }, 100);
+  };
+  
   return (
     <ProtectedRoute allowedRoles={['ENTERPRISE_ADMIN']}>
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
         {/* Fixed top navbar */}
-        <EnterpriseAdminNavbar onMenuToggle={() => setSidebarOpen((v) => !v)} />
+        <EnterpriseAdminNavbar 
+          onMenuToggle={() => setSidebarOpen((v) => !v)}
+          onRefresh={handleRefresh}
+        />
 
         {/* Content starts below navbar height (h-14) */}
         <div className="pt-14 flex">
