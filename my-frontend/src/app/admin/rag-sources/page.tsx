@@ -1,4 +1,6 @@
 import { prisma } from '@/lib/prisma';
+export const dynamic = 'force-dynamic';
+export const revalidate = 0;
 
 type RagRow = { id: string; fileName: string; path: string; tags: string[]; embeddingStatus: string; createdAt: Date };
 export default async function RAGSourcesPage() {
