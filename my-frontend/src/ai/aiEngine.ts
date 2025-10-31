@@ -102,11 +102,15 @@ export class AIEngine {
   }
 }
 
-// Provider selection: allow env override at build/runtime; default to local
+// Provider selection with sensible auto-detect:
+// 1) If NEXT_PUBLIC_AI_PROVIDER is set, respect it.
+// 2) If Ollama URL is provided, prefer local.
+// 3) Else if API key is present, use api.
+// 4) Fallback to local.
 const envProvider = (typeof process !== 'undefined' && (process.env.NEXT_PUBLIC_AI_PROVIDER as AIProvider)) || undefined;
-const isProd = typeof process !== 'undefined' && process.env.NODE_ENV === 'production';
-const onRailway = typeof process !== 'undefined' && process.env.RAILWAY === '1';
-const resolvedProvider: AIProvider = envProvider || (isProd || onRailway ? 'api' : 'local');
+const hasOllama = typeof process !== 'undefined' && !!(process.env.NEXT_PUBLIC_OLLAMA_URL || process.env.OLLAMA_URL || process.env.OLLAMA_HOST);
+const hasApiKey = typeof process !== 'undefined' && !!(process.env.AI_API_KEY);
+const resolvedProvider: AIProvider = envProvider || (hasOllama ? 'local' : hasApiKey ? 'api' : 'local');
 
 export const engine = new AIEngine({ provider: resolvedProvider });
 

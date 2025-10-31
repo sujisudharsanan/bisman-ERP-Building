@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import SuperAdminLayout from '@/common/layouts/superadmin-layout';
 import { useAuth } from '@/common/hooks/useAuth';
 import { Search, Plus, RefreshCw } from 'lucide-react';
+import SystemLogViewer from '@/components/system/SystemLogViewer';
 
 export default function ServerLogs() {
   const { hasAccess } = useAuth();
@@ -66,18 +67,8 @@ export default function ServerLogs() {
           />
         </div>
 
-        {/* Content Card */}
-        <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
-          <div className="text-center py-12">
-            <div className="text-6xl mb-4">📊</div>
-            <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100 mb-2">
-              Server Logs Content
-            </h3>
-            <p className="text-gray-600 dark:text-gray-400 mb-4">
-              This page is ready for implementation. Connect your backend API to display data.
-            </p>
-          </div>
-        </div>
+  {/* System Log Viewer */}
+  <SystemLogViewer />
       </div>
     </SuperAdminLayout>
   );

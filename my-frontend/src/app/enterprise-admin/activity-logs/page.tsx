@@ -1,292 +1,168 @@
-'use client';
+"use client";
 
 import React, { useEffect, useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-import { FileText, Search, AlertCircle, CheckCircle, Info, XCircle, Clock, User, Tag, RefreshCw, Download } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { useRouter } from 'next/navigation';
-// Navbar and Sidebar are rendered by the enterprise-admin layout
+import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, Filter, Info, Search, ShieldAlert, User } from 'lucide-react';
+import { formatAbsolute, formatRelative } from '@/lib/time';
 
-type Level = 'info' | 'warning' | 'error' | 'success';
-
-interface ActivityLog {
+type Log = {
   id: string;
   timestamp: string;
-  level: Level;
   action: string;
-  user?: string;
-  module?: string;
-  details?: string;
-  ip_address?: string;
-}
+  target?: string | null;
+  actorId?: string | null;
+  actor?: { id: string; name?: string | null; email?: string | null };
+  severity?: 'info' | 'warn' | 'error' | 'success';
+  meta?: any;
+};
 
-interface Stats {
-  total: number;
-  errors: number;
-  warnings: number;
-  info: number;
-}
+const severityIcon = (s?: string) => {
+  switch (s) {
+    case 'success':
+      return <CheckCircle2 className="w-4 h-4 text-green-600" />;
+    case 'warn':
+      return <ShieldAlert className="w-4 h-4 text-amber-600" />;
+    case 'error':
+      return <AlertCircle className="w-4 h-4 text-red-600" />;
+    default:
+      return <Info className="w-4 h-4 text-slate-600" />;
+  }
+};
 
-export default function EnterpriseActivityLogsPage() {
-  const { user, loading } = useAuth();
-  const router = useRouter();
+export default function ActivityLogsPage() {
+  const [q, setQ] = useState('');
+  const [severity, setSeverity] = useState<string>('');
+  const [actorId, setActorId] = useState('');
+  const [range, setRange] = useState<{ from?: string; to?: string }>({});
+  const [logs, setLogs] = useState<Log[]>([]);
+  const [cursor, setCursor] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
-  const [logs, setLogs] = useState<ActivityLog[]>([]);
-  const [stats, setStats] = useState<Stats>({ total: 0, errors: 0, warnings: 0, info: 0 });
-  const [isLoading, setIsLoading] = useState(true);
-  const [mounted, setMounted] = useState(false);
+  const grouped = useMemo(() => {
+    const map: Record<string, Log[]> = {};
+    for (const l of logs) {
+      const d = new Date(l.timestamp);
+      const key = d.toDateString();
+      if (!map[key]) map[key] = [];
+      map[key].push(l);
+    }
+    return Object.entries(map);
+  }, [logs]);
 
-  // Filters
-  const [search, setSearch] = useState('');
-  const [level, setLevel] = useState<'all' | Level>('all');
-  const [module, setModule] = useState('all');
-  const [range, setRange] = useState<'today' | 'week' | 'month' | 'all'>('today');
-
-  useEffect(() => setMounted(true), []);
+  const fetchLogs = async (append = false) => {
+    setLoading(true);
+    try {
+      const params = new URLSearchParams();
+      if (q) params.set('q', q);
+      if (severity) params.set('severity', severity);
+      if (actorId) params.set('actorId', actorId);
+      if (range.from) params.set('from', range.from);
+      if (range.to) params.set('to', range.to);
+      if (append && cursor) params.set('cursor', cursor);
+      const r = await fetch(`/api/activity-logs?${params.toString()}`);
+      const j = await r.json();
+      if (j.ok) {
+        setLogs((prev) => (append ? [...prev, ...j.data] : j.data));
+        setCursor(j.nextCursor || null);
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    if (loading) return;
-    if (!user) {
-      router.push('/auth/login');
-      return;
-    }
-    const role = (user.role || user.roleName || '').toUpperCase();
-    if (role !== 'ENTERPRISE_ADMIN') {
-      router.push('/enterprise-admin/dashboard');
-      return;
-    }
-    fetchLogs();
+    fetchLogs(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [loading, user, range]);
-
-  const fetchLogs = async () => {
-    setIsLoading(true);
-    try {
-      const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
-      const res = await fetch(`${baseURL}/api/enterprise-admin/logs?range=${range}&limit=500`, {
-        credentials: 'include',
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data?.ok) {
-          setLogs(data.logs || []);
-          setStats(data.stats || { total: 0, errors: 0, warnings: 0, info: 0 });
-        }
-      }
-    } catch (e) {
-      console.error('Failed to load activity logs', e);
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const filtered = useMemo(() => {
-    let out = logs;
-    if (search) {
-      const q = search.toLowerCase();
-      out = out.filter(l =>
-        l.action.toLowerCase().includes(q) ||
-        (l.user || '').toLowerCase().includes(q) ||
-        (l.details || '').toLowerCase().includes(q)
-      );
-    }
-    if (level !== 'all') {
-      out = out.filter(l => l.level === level);
-    }
-    if (module !== 'all') {
-      out = out.filter(l => (l.module || '').toLowerCase() === module.toLowerCase());
-    }
-    return out;
-  }, [logs, search, level, module]);
-
-  const getLevelIcon = (lvl: string) => {
-    switch (lvl) {
-      case 'error':
-        return <XCircle className="w-5 h-5 text-red-500" />;
-      case 'warning':
-        return <AlertCircle className="w-5 h-5 text-yellow-500" />;
-      case 'success':
-        return <CheckCircle className="w-5 h-5 text-green-500" />;
-      default:
-        return <Info className="w-5 h-5 text-blue-500" />;
-    }
-  };
-
-  const getLevelBg = (lvl: string) => {
-    switch (lvl) {
-      case 'error':
-        return 'bg-red-50 dark:bg-red-900/20 border-red-200 dark:border-red-800';
-      case 'warning':
-        return 'bg-yellow-50 dark:bg-yellow-900/20 border-yellow-200 dark:border-yellow-800';
-      case 'success':
-        return 'bg-green-50 dark:bg-green-900/20 border-green-200 dark:border-green-800';
-      default:
-        return 'bg-blue-50 dark:bg-blue-900/20 border-blue-200 dark:border-blue-800';
-    }
-  };
-
-  const exportCsv = () => {
-    const csv = [
-      ['Timestamp', 'Level', 'Action', 'User', 'Module', 'Details'].join(','),
-      ...filtered.map(l => [l.timestamp, l.level, l.action, l.user || 'System', l.module || 'N/A', (l.details || '').replaceAll('\n',' ')].join(','))
-    ].join('\n');
-    const blob = new Blob([csv], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `activity_logs_${new Date().toISOString()}.csv`;
-    a.click();
-    URL.revokeObjectURL(url);
-  };
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
-      <div className="flex">
-        <main className="flex-1 p-8">
-          <div className="max-w-7xl mx-auto">
-            {/* Header */}
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} className="mb-8">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-4xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                    <FileText className="w-10 h-10 text-indigo-600" />
-                    Activity Logs
-                  </h1>
-                  <p className="text-gray-600 dark:text-gray-400 mt-2">Full activity trail across the system</p>
-                </div>
-                <div className="flex gap-3">
-                  <button onClick={exportCsv} className="flex items-center gap-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors">
-                    <Download className="w-4 h-4" />
-                    Export
-                  </button>
-                  <button onClick={fetchLogs} className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
-                    <RefreshCw className="w-4 h-4" />
-                    Refresh
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Stats */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-              <Stat label="Total" value={stats.total} color="indigo" icon={<FileText className="w-6 h-6" />} loading={isLoading} />
-              <Stat label="Errors" value={stats.errors} color="red" icon={<XCircle className="w-6 h-6" />} loading={isLoading} />
-              <Stat label="Warnings" value={stats.warnings} color="yellow" icon={<AlertCircle className="w-6 h-6" />} loading={isLoading} />
-              <Stat label="Info" value={stats.info} color="blue" icon={<Info className="w-6 h-6" />} loading={isLoading} />
-            </div>
-
-            {/* Filters */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }} className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 mb-6">
-              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input value={search} onChange={e => setSearch(e.target.value)} placeholder="Search activity..." className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white" />
-                </div>
-                <select value={level} onChange={e => setLevel(e.target.value as any)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white">
-                  <option value="all">All Levels</option>
-                  <option value="error">Errors</option>
-                  <option value="warning">Warnings</option>
-                  <option value="success">Success</option>
-                  <option value="info">Info</option>
-                </select>
-                <select value={module} onChange={e => setModule(e.target.value)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white">
-                  <option value="all">All Modules</option>
-                  <option value="auth">Authentication</option>
-                  <option value="enterprise">Enterprise Admin</option>
-                  <option value="finance">Finance</option>
-                  <option value="system">System</option>
-                </select>
-                <select value={range} onChange={e => setRange(e.target.value as any)} className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-indigo-500 dark:bg-slate-700 dark:text-white">
-                  <option value="today">Today</option>
-                  <option value="week">Last 7 Days</option>
-                  <option value="month">Last 30 Days</option>
-                  <option value="all">All Time</option>
-                </select>
-              </div>
-            </motion.div>
-
-            {/* List */}
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white">Entries ({filtered.length})</h2>
-              </div>
-              <div className="space-y-3">
-                {isLoading ? (
-                  Array.from({ length: 10 }).map((_, i) => (
-                    <div key={i} className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 animate-pulse">
-                      <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-2"></div>
-                      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2"></div>
-                    </div>
-                  ))
-                ) : filtered.length === 0 ? (
-                  <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                    <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No activity found for selected filters</p>
-                  </div>
-                ) : (
-                  filtered.map((log) => (
-                    <motion.div key={log.id} initial={{ opacity: 0, x: -20 }} animate={{ opacity: 1, x: 0 }} className={`border rounded-lg p-4 ${getLevelBg(log.level)}`}>
-                      <div className="flex items-start gap-4">
-                        <div className="mt-1">{getLevelIcon(log.level)}</div>
-                        <div className="flex-1">
-                          <div className="flex items-start justify-between mb-2">
-                            <h3 className="font-semibold text-gray-900 dark:text-white">{log.action}</h3>
-                            <span className="text-xs text-gray-500 dark:text-gray-400 flex items-center gap-1">
-                              <Clock className="w-3 h-3" />
-                              {mounted ? new Date(log.timestamp).toLocaleString() : '—'}
-                            </span>
-                          </div>
-                          {log.details && <p className="text-sm text-gray-600 dark:text-gray-300 mb-2">{log.details}</p>}
-                          <div className="flex items-center gap-4 text-xs text-gray-500 dark:text-gray-400">
-                            {log.user && (
-                              <span className="flex items-center gap-1">
-                                <User className="w-3 h-3" />
-                                {log.user}
-                              </span>
-                            )}
-                            {log.module && (
-                              <span className="flex items-center gap-1">
-                                <Tag className="w-3 h-3" />
-                                {log.module}
-                              </span>
-                            )}
-                            {log.ip_address && <span className="flex items-center gap-1">IP: {log.ip_address}</span>}
-                          </div>
-                        </div>
-                      </div>
-                    </motion.div>
-                  ))
-                )}
-              </div>
-            </motion.div>
+    <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+      {/* Filters */}
+      <aside className="lg:col-span-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 h-fit">
+        <div className="flex items-center gap-2 font-semibold mb-3"><Filter className="w-4 h-4"/> Filters</div>
+        <div className="space-y-3 text-sm">
+          <div className="relative">
+            <Search className="w-4 h-4 absolute left-2 top-2.5 text-slate-400"/>
+            <input value={q} onChange={(e)=>setQ(e.target.value)} placeholder="Search keywords" className="w-full pl-7 pr-2 py-2 rounded border border-slate-300 dark:border-slate-600 bg-transparent"/>
           </div>
-        </main>
-      </div>
-    </div>
-  );
-}
-
-function Stat({ icon, label, value, color, loading }: { icon: React.ReactNode; label: string; value: number; color: 'indigo' | 'red' | 'yellow' | 'blue'; loading?: boolean }) {
-  const colorClasses = {
-    indigo: 'from-indigo-500 to-indigo-600',
-    red: 'from-red-500 to-red-600',
-    yellow: 'from-yellow-500 to-yellow-600',
-    blue: 'from-blue-500 to-blue-600',
-  } as const;
-  return (
-    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6">
-      <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${colorClasses[color]} flex items-center justify-center text-white mb-4`}>{icon}</div>
-      {loading ? (
-        <div className="animate-pulse">
-          <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-20 mb-2"></div>
-          <div className="h-6 bg-gray-200 dark:bg-gray-700 rounded w-16"></div>
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Severity</label>
+            <select value={severity} onChange={(e)=>setSeverity(e.target.value)} className="w-full border rounded px-2 py-2 bg-transparent">
+              <option value="">All</option>
+              <option value="info">Info</option>
+              <option value="success">Success</option>
+              <option value="warn">Warning</option>
+              <option value="error">Error</option>
+            </select>
+          </div>
+          <div>
+            <label className="block text-xs text-slate-500 mb-1">Actor ID</label>
+            <input value={actorId} onChange={(e)=>setActorId(e.target.value)} placeholder="User ID or system" className="w-full border rounded px-2 py-2 bg-transparent"/>
+          </div>
+          <div className="grid grid-cols-2 gap-2">
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">From</label>
+              <input type="date" value={range.from || ''} onChange={(e)=>setRange(r=>({...r, from: e.target.value}))} className="w-full border rounded px-2 py-2 bg-transparent"/>
+            </div>
+            <div>
+              <label className="block text-xs text-slate-500 mb-1">To</label>
+              <input type="date" value={range.to || ''} onChange={(e)=>setRange(r=>({...r, to: e.target.value}))} className="w-full border rounded px-2 py-2 bg-transparent"/>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button onClick={()=>{setCursor(null); fetchLogs(false);}} className="px-3 py-2 rounded bg-indigo-600 text-white text-sm">Apply</button>
+            <button onClick={()=>{setQ('');setSeverity('');setActorId('');setRange({}); setCursor(null); fetchLogs(false);}} className="px-3 py-2 rounded border text-sm">Reset</button>
+          </div>
         </div>
-      ) : (
-        <>
-          <p className="text-sm text-gray-600 dark:text-gray-400 mb-1">{label}</p>
-          <p className="text-2xl font-bold text-gray-900 dark:text-white">{value.toLocaleString()}</p>
-        </>
-      )}
-    </motion.div>
+      </aside>
+
+      {/* List */}
+      <section className="lg:col-span-3 space-y-6">
+        {grouped.length === 0 ? (
+          <div className="text-center text-slate-500">No activity yet.</div>
+        ) : grouped.map(([day, items]) => (
+          <div key={day}>
+            <div className="sticky top-0 z-10 bg-slate-50 dark:bg-slate-900 py-1 px-2 rounded text-xs text-slate-500 border">{day}</div>
+            <ul className="mt-2 divide-y divide-slate-200 dark:divide-slate-700">
+              {items.map((l) => (
+                <li key={l.id} className="p-3 hover:bg-slate-50/60 dark:hover:bg-slate-800/40">
+                  <div className="flex items-start gap-3">
+                    <div className="mt-1">{severityIcon(l.severity)}</div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between gap-2">
+                        <div className="truncate text-sm">
+                          <span className="font-medium">{l.action}</span>
+                          {l.target ? <span className="text-slate-500"> on {l.target}</span> : null}
+                          {l.actor ? (
+                            <span className="ml-2 inline-flex items-center gap-1 text-slate-500"><User className="w-3 h-3"/> {l.actor.name || l.actor.email || l.actor.id}</span>
+                          ) : null}
+                        </div>
+                        <div className="text-xs text-slate-500" title={formatAbsolute(l.timestamp)}>{formatRelative(l.timestamp)}</div>
+                      </div>
+                      {l.meta ? (
+                        <button onClick={()=>setExpanded(e=>({...e, [l.id]: !e[l.id]}))} className="mt-1 inline-flex items-center gap-1 text-xs text-indigo-600">
+                          {expanded[l.id] ? <ChevronDown className="w-3 h-3"/> : <ChevronRight className="w-3 h-3"/>}
+                          Details
+                        </button>
+                      ) : null}
+                      {expanded[l.id] ? (
+                        <pre className="mt-2 text-xs bg-slate-100 dark:bg-slate-800 p-2 rounded overflow-auto max-h-64">{JSON.stringify(l.meta, null, 2)}</pre>
+                      ) : null}
+                    </div>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ))}
+        {cursor ? (
+          <div className="flex justify-center">
+            <button disabled={loading} onClick={()=>fetchLogs(true)} className="px-4 py-2 rounded border text-sm disabled:opacity-60">
+              {loading ? 'Loading...' : 'Load more'}
+            </button>
+          </div>
+        ) : null}
+      </section>
+    </div>
   );
 }
