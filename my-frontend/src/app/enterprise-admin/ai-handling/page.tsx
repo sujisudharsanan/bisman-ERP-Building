@@ -165,31 +165,7 @@ export default function AIHandlingPage() {
       <div className="flex">
         <main className="flex-1 p-8">
           <div className="max-w-7xl mx-auto">
-            {/* Header */}
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="mb-8"
-            >
-              <div className="flex items-center justify-between">
-                <div>
-                  <h1 className="text-4xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-                    <Brain className="w-10 h-10 text-purple-600" />
-                    AI Handling & Management
-                  </h1>
-                  <p className="text-gray-600 dark:text-gray-400 mt-2">
-                    Monitor and manage AI models, usage, and performance
-                  </p>
-                </div>
-                <button
-                  onClick={fetchAIData}
-                  className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Refresh
-                </button>
-              </div>
-            </motion.div>
+            {/* Header removed per request (title and refresh button) */}
 
             {/* Metrics Cards */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
@@ -234,89 +210,7 @@ export default function AIHandlingPage() {
               />
             </div>
 
-            {/* AI Models Grid */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: 0.2 }}
-              className="bg-white dark:bg-slate-800 rounded-xl shadow-lg p-6 mb-8"
-            >
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
-                  <Brain className="w-6 h-6 text-purple-600" />
-                  AI Models
-                </h2>
-                <button className="flex items-center gap-2 px-4 py-2 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-lg hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors">
-                  <Settings className="w-4 h-4" />
-                  Configure
-                </button>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {isLoading ? (
-                  Array(6)
-                    .fill(0)
-                    .map((_, i) => (
-                      <div
-                        key={i}
-                        className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 animate-pulse"
-                      >
-                        <div className="h-4 bg-gray-200 dark:bg-gray-700 rounded w-3/4 mb-4"></div>
-                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-1/2 mb-2"></div>
-                        <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded w-2/3"></div>
-                      </div>
-                    ))
-                ) : models.length === 0 ? (
-                  <div className="col-span-3 text-center py-12 text-gray-500 dark:text-gray-400">
-                    <Brain className="w-12 h-12 mx-auto mb-4 opacity-50" />
-                    <p>No AI models configured yet</p>
-                  </div>
-                ) : (
-                  models.map((model) => (
-                    <motion.div
-                      key={model.id}
-                      whileHover={{ scale: 1.02 }}
-                      className="border border-gray-200 dark:border-gray-700 rounded-lg p-4 cursor-pointer hover:border-purple-300 dark:hover:border-purple-600 transition-all"
-                      onClick={() => setSelectedModel(model)}
-                    >
-                      <div className="flex items-start justify-between mb-3">
-                        <div>
-                          <h3 className="font-semibold text-gray-900 dark:text-white">
-                            {model.name}
-                          </h3>
-                          <p className="text-sm text-gray-600 dark:text-gray-400">
-                            {model.provider}
-                          </p>
-                        </div>
-                        {getStatusIcon(model.status)}
-                      </div>
-
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">Usage:</span>
-                          <span className="font-medium text-gray-900 dark:text-white">
-                            {model.usage.toLocaleString()}
-                          </span>
-                        </div>
-                        <div className="flex justify-between text-sm">
-                          <span className="text-gray-600 dark:text-gray-400">Response:</span>
-                          <span className="font-medium text-gray-900 dark:text-white">
-                            {model.avgResponseTime}ms
-                          </span>
-                        </div>
-                                            <span className="text-xs text-gray-500 dark:text-gray-400">
-                      Last used: {mounted ? new Date(model.lastUsed).toLocaleString() : 'Loading...'}
-                    </span>
-                      </div>
-
-                      <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700">
-                        <div className={`h-2 rounded-full ${getStatusColor(model.status)}`}></div>
-                      </div>
-                    </motion.div>
-                  ))
-                )}
-              </div>
-            </motion.div>
+            {/* AI Models section removed per request */}
 
             {/* Usage Analytics */}
             <motion.div

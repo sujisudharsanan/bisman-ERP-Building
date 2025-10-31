@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Send, Sparkles } from 'lucide-react';
-import BismanChatIcon from './BismanChatIcon';
+import ChatSmileMessageIcon from './ChatSmileMessageIcon';
 import { ChatMsg, useOllamaChat } from '@/hooks/useOllamaChat';
 
 export default function ERPChatWidget({ userName }: { userName?: string }) {
@@ -41,7 +41,7 @@ export default function ERPChatWidget({ userName }: { userName?: string }) {
         className="rounded-full"
         aria-label="Open Spark"
       >
-        <BismanChatIcon state={iconState} unread={0} />
+        <ChatSmileMessageIcon state={iconState} size={60} />
       </button>
 
       {open && (

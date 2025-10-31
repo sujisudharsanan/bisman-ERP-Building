@@ -1,31 +1,63 @@
 "use client";
-import React from 'react';
+import React, { useRef } from 'react';
 
 type IconState = 'idle' | 'attentive' | 'listening' | 'thinking' | 'notify';
 
-export default function BismanChatIcon({ state = 'idle', unread = 0 }: { state?: IconState; unread?: number }) {
+export default function BismanChatIcon({
+  state = 'idle',
+  unread = 0,
+  logoSrc = '/assets/bisman-logo.svg',
+  size = 64, // px, icon outer diameter
+}: {
+  state?: IconState;
+  unread?: number;
+  logoSrc?: string;
+  size?: number;
+}) {
   const isNotify = state === 'notify';
   const isThinking = state === 'thinking';
   const isListening = state === 'listening';
   const isAttentive = state === 'attentive';
 
+  const px = `${size}px`;
+  const imgRef = useRef<HTMLImageElement | null>(null);
+
   return (
-    <div className={`relative w-14 h-14 rounded-full shadow-xl ${isNotify ? 'animate-bounce-fast' : ''}`} aria-label="ERP Buddy">
+    <div
+      className={`relative rounded-full shadow-xl ${isNotify ? 'animate-bounce-fast' : ''}`}
+      style={{ width: px, height: px }}
+      aria-label="ERP Buddy"
+    >
       {/* Brand logo background */}
-      <div className="absolute inset-0 rounded-full overflow-hidden">
-        {/* Use your SVG from public/assets; graceful fallback tint */}
-        <img
-          src="/assets/bisman-logo.svg"
-          alt="BISMAN logo"
-          className="w-full h-full object-contain"
-          onError={(e) => {
-            // fallback to yellow gradient circle
-            const t = e.currentTarget as HTMLImageElement;
-            t.style.display = 'none';
-            const parent = t.parentElement;
-            if (parent) parent.classList.add('fallback-bg');
-          }}
-        />
+      <div className="absolute inset-0 rounded-full overflow-hidden bg-white">
+        {/* Padded container so full logo is visible inside circle */}
+        <div className="w-full h-full p-2">
+          <img
+            ref={imgRef}
+            src={logoSrc}
+            alt="BISMAN logo"
+            className="w-full h-full object-contain block"
+            onError={(e) => {
+              const t = e.currentTarget as HTMLImageElement;
+              // Fallback chain: try commonly used public paths, then gradient
+              const tried = t.getAttribute('data-tried') || '';
+              if (!tried.includes('alt1')) {
+                t.setAttribute('data-tried', tried + ' alt1');
+                t.src = '/bisman-logo.svg';
+                return;
+              }
+              if (!tried.includes('alt2')) {
+                t.setAttribute('data-tried', tried + ' alt2');
+                t.src = '/logo.svg';
+                return;
+              }
+              // Final fallback: hide image, show brand tint
+              t.style.display = 'none';
+              const parent = t.parentElement?.parentElement; // padded wrapper's parent
+              if (parent) parent.classList.add('fallback-bg');
+            }}
+          />
+        </div>
       </div>
 
       {/* Unread badge */}
@@ -38,16 +70,17 @@ export default function BismanChatIcon({ state = 'idle', unread = 0 }: { state?:
       {/* Smiley circle at lower‑right (acts as the small dot in logo) */}
       <div
         className={
-          'absolute w-6 h-6 rounded-full flex items-center justify-center text-base ' +
-          'right-1 bottom-1 bg-white/90 text-yellow-600 ' +
+          'absolute rounded-full flex items-center justify-center text-base ' +
+          'bg-white/90 text-yellow-600 ' +
           (isThinking ? 'orbit' : isListening ? 'heartbeat' : isAttentive ? 'wink' : 'pulse')
         }
+        style={{ width: Math.max(20, size * 0.3), height: Math.max(20, size * 0.3), right: Math.max(2, size * 0.06), bottom: Math.max(2, size * 0.06) }}
       >
         <span aria-hidden>🙂</span>
       </div>
 
       <style jsx>{`
-        .fallback-bg { background: radial-gradient(circle at 30% 30%, #fde047, #facc15); }
+  .fallback-bg { background: radial-gradient(circle at 30% 30%, #fde047, #facc15); }
         @keyframes gentlePulse { 0%, 100% { transform: scale(1); opacity: 1; } 50% { transform: scale(1.06); opacity: 0.95; } }
         @keyframes heartBeat { 0%, 100% { transform: scale(1); } 25% { transform: scale(1.15); } 50% { transform: scale(0.97); } 75% { transform: scale(1.12); } }
         @keyframes quickWink { 0% { transform: scaleY(1); } 50% { transform: scaleY(0.6); } 100% { transform: scaleY(1); } }
