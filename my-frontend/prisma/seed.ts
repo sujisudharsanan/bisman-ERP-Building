@@ -84,6 +84,31 @@ async function main() {
   await prisma.subscription.upsert({ where: { organizationId: orgA.id }, update: {}, create: { organizationId: orgA.id, plan: 'pro' } });
   await prisma.subscription.upsert({ where: { organizationId: orgB.id }, update: {}, create: { organizationId: orgB.id, plan: 'starter' } });
 
+  // Allowed modules per role
+  if (superRole) {
+    await (prisma as any).allowedModule.createMany({ data: [
+      { roleId: superRole.id, moduleKey: 'BILLING' },
+      { roleId: superRole.id, moduleKey: 'REPORTS' },
+      { roleId: superRole.id, moduleKey: 'INTEGRATIONS' },
+      { roleId: superRole.id, moduleKey: 'AI_AUTOMATION' },
+    ], skipDuplicates: true });
+  }
+  if (entRole) {
+    await (prisma as any).allowedModule.createMany({ data: [
+      { roleId: entRole.id, moduleKey: 'BILLING' },
+      { roleId: entRole.id, moduleKey: 'REPORTS' },
+    ], skipDuplicates: true });
+  }
+
+  // Example RAG source
+  await (prisma as any).ragSource.create({ data: {
+    fileName: 'welcome.txt',
+    path: 'data/rag/welcome.txt',
+    tags: ['BILLING'],
+    uploadedBy: superAdmin.id,
+    embeddingStatus: 'pending'
+  }});
+
   console.log('Seed complete');
 }
 

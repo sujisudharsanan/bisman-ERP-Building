@@ -27,6 +27,7 @@ model Role {
   name        String
   users       UserRole[]
   memberships Membership[]
+  allowed     AllowedModule[]
 }
 
 model UserRole {
@@ -115,4 +116,47 @@ model Ticket {
   title          String
   status         String       @default("open")
   createdAt      DateTime     @default(now())
+}
+
+// AI Co-Pilot additions
+model AllowedModule {
+  id        String @id @default(cuid())
+  role      Role   @relation(fields: [roleId], references: [id])
+  roleId    String
+  moduleKey String
+  @@unique([roleId, moduleKey])
+}
+
+model RagSource {
+  id              String   @id @default(cuid())
+  fileName        String
+  path            String
+  tags            String[]
+  uploadedBy      String
+  embeddingStatus String   @default("pending") // pending|ready|failed
+  createdAt       DateTime @default(now())
+  embeddings      Embedding[]
+}
+
+model AiUsageLog {
+  id              String   @id @default(cuid())
+  timestamp       DateTime @default(now())
+  userId          String
+  role            String
+  moduleRequested String?
+  prompt          String
+  responseLen     Int
+  mode            String
+  latencyMs       Int
+  authorized      Boolean
+}
+
+model Embedding {
+  id         String     @id @default(cuid())
+  source     RagSource  @relation(fields: [sourceId], references: [id])
+  sourceId   String
+  chunkIndex Int
+  vector     Json
+  createdAt  DateTime   @default(now())
+  @@unique([sourceId, chunkIndex])
 }

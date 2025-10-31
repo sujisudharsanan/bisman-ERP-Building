@@ -40,6 +40,11 @@
 			"label": "frontend type-check",
 			"type": "shell",
 			"command": "bash -lc 'cd \"my-frontend\" && npm run -s type-check'"
+		},
+		{
+			"label": "frontend type-check",
+			"type": "shell",
+			"command": "bash -lc 'cd \"my-frontend\" && npm run -s type-check'"
 		}
 	]
 }

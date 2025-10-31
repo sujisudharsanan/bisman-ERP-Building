@@ -4,6 +4,10 @@ import React from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import EnterpriseAdminNavbar from '@/components/EnterpriseAdminNavbar';
 import EnterpriseAdminSidebar from '@/components/EnterpriseAdminSidebar';
+import ERPChatWidget from '@/components/ERPChatWidget';
+import WelcomePopup from '@/components/WelcomePopup';
+import { useAuth } from '@/contexts/AuthContext';
+
 // Note: Client layouts cannot export `metadata`. Page-level metadata can be set in individual pages.
 
 export default function EnterpriseAdminLayout({
@@ -12,6 +16,7 @@ export default function EnterpriseAdminLayout({
   children: React.ReactNode;
 }) {
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const { user } = useAuth();
   
   const handleRefresh = () => {
     // Trigger a custom event that pages can listen to
@@ -25,6 +30,7 @@ export default function EnterpriseAdminLayout({
   return (
     <ProtectedRoute allowedRoles={['ENTERPRISE_ADMIN']}>
       <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+  <WelcomePopup userName={user?.name || user?.username} />
         {/* Fixed top navbar */}
         <EnterpriseAdminNavbar 
           onMenuToggle={() => setSidebarOpen((v) => !v)}
@@ -46,6 +52,7 @@ export default function EnterpriseAdminLayout({
           {/* Main content */}
           <main className="flex-1 p-4 sm:p-6">{children}</main>
         </div>
+        <ERPChatWidget userName={user?.name || user?.username} />
       </div>
     </ProtectedRoute>
   );

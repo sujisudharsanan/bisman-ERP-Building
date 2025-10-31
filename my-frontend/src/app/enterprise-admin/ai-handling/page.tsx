@@ -54,6 +54,9 @@ export default function AIHandlingPage() {
   const [models, setModels] = useState<AIModel[]>([]);
   const [selectedModel, setSelectedModel] = useState<AIModel | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [settings, setSettings] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
+  const [allModules, setAllModules] = useState<any[]>([]);
 
   useEffect(() => {
     setMounted(true);
@@ -65,7 +68,9 @@ export default function AIHandlingPage() {
       router.push('/auth/login');
       return;
     }
-    fetchAIData();
+  fetchAIData();
+  fetchSettings();
+  fetchAllModules();
   }, [user, router, mounted]);
 
   const fetchAIData = async () => {
@@ -94,6 +99,38 @@ export default function AIHandlingPage() {
       console.error('Error fetching AI data:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/ai/settings', { credentials: 'include' });
+      const j = await res.json();
+      if (j.ok) setSettings(j.settings);
+    } catch (e) {}
+  };
+
+  const saveSettings = async () => {
+    try {
+      setSaving(true);
+      const res = await fetch('/api/ai/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include', body: JSON.stringify(settings) });
+      const j = await res.json();
+      if (j.ok) setSettings(j.settings);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const fetchAllModules = async () => {
+    try {
+      const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
+      const r = await fetch(`${baseURL}/api/enterprise-admin/master-modules`, { credentials: 'include' });
+      if (!r.ok) return;
+      const j = await r.json();
+      if (j.ok && Array.isArray(j.modules)) setAllModules(j.modules);
+      else if (Array.isArray(j)) setAllModules(j);
+    } catch (e) {
+      // ignore
     }
   };
 
@@ -336,6 +373,136 @@ export default function AIHandlingPage() {
             </motion.div>
           </div>
         </main>
+      </div>
+
+      {/* Settings Card (Centered in AI Models section) */}
+      <div className="max-w-7xl mx-auto">
+        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg mt-4">
+          <div className="px-4 py-3 bg-slate-50 dark:bg-slate-900 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
+            <div className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+              <Settings className="w-4 h-4 text-purple-600" />
+              AI Settings
+            </div>
+            <button onClick={saveSettings} disabled={!settings || saving} className="px-3 py-1 text-sm rounded bg-purple-600 text-white disabled:opacity-60">{saving? 'Saving…':'Save'}</button>
+          </div>
+          <div className="p-4 space-y-5 text-sm">
+            {!settings ? (
+              <div className="text-gray-500">Loading…</div>
+            ) : (
+              <>
+                <label className="flex items-center gap-2">
+                  <input type="checkbox" checked={!!settings.enabled} onChange={e=>setSettings((s:any)=>({...s, enabled: e.target.checked}))} />
+                  Enable AI
+                </label>
+                <div className="grid grid-cols-2 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500">Provider</label>
+                    <select className="w-full border rounded px-2 py-1" value={settings.provider} onChange={e=>setSettings((s:any)=>({...s, provider: e.target.value}))}>
+                      <option value="local">Local (Ollama)</option>
+                      <option value="api">API (placeholder)</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500">Model</label>
+                    <input className="w-full border rounded px-2 py-1" value={settings.model||''} onChange={e=>setSettings((s:any)=>({...s, model: e.target.value}))} />
+                  </div>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-xs text-gray-500">Temperature</label>
+                    <input type="number" step="0.1" min="0" max="1" className="w-full border rounded px-2 py-1" value={settings.temperature} onChange={e=>setSettings((s:any)=>({...s, temperature: Number(e.target.value)}))} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500">Top‑K</label>
+                    <input type="number" className="w-full border rounded px-2 py-1" value={settings.rag?.topK||6} onChange={e=>setSettings((s:any)=>({...s, rag:{...s.rag, topK: Number(e.target.value)}}))} />
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500">Retention (days)</label>
+                    <input type="number" className="w-full border rounded px-2 py-1" value={settings.security?.retentionDays||180} onChange={e=>setSettings((s:any)=>({...s, security:{...s.security, retentionDays: Number(e.target.value)}}))} />
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">Domains</div>
+                  <div className="grid grid-cols-3 gap-2">
+                    {Object.keys(settings.domains||{}).map((k)=> (
+                      <label key={k} className="flex items-center gap-2">
+                        <input type="checkbox" checked={!!settings.domains[k]} onChange={e=>setSettings((s:any)=>({...s, domains:{...s.domains, [k]: e.target.checked}}))} /> {k}
+                      </label>
+                    ))}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">Tools</div>
+                  <div className="flex flex-wrap gap-2">
+                    {['query-data','export-csv','create-task','send-email','raise-ticket'].map(t=> (
+                      <label key={t} className="flex items-center gap-1 border rounded px-2 py-1">
+                        <input type="checkbox" checked={settings.tools?.includes(t)} onChange={e=>setSettings((s:any)=> ({...s, tools: e.target.checked ? Array.from(new Set([...(s.tools||[]), t])) : (s.tools||[]).filter((x:string)=>x!==t)}))} />
+                        <span>{t}</span>
+                      </label>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Module Allow/Deny List */}
+                <div>
+                  <div className="text-xs text-gray-500 mb-1">Modules (Allow AI Access)</div>
+                  {allModules.length === 0 ? (
+                    <div className="text-gray-500">No modules found or insufficient permission.</div>
+                  ) : (
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                      {allModules.map((m)=>{
+                        const modId = m.id ?? m.module_name ?? m.name;
+                        const allowed: string[] = settings.allowedModules || [];
+                        const isChecked = allowed.includes(String(modId));
+                        return (
+                          <label key={String(modId)} className="flex items-center gap-2 border rounded px-2 py-1">
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={(e)=>setSettings((s:any)=>{
+                                const idStr = String(modId);
+                                const cur: string[] = s.allowedModules || [];
+                                return { ...s, allowedModules: e.target.checked
+                                  ? Array.from(new Set([...cur, idStr]))
+                                  : cur.filter((x)=>x!==idStr)
+                                };
+                              })}
+                            />
+                            <span className="truncate" title={m.display_name || m.name || m.module_name}>{m.display_name || m.name || m.module_name}</span>
+                          </label>
+                        );
+                      })}
+                    </div>
+                  )}
+                  <p className="text-xs text-gray-500 mt-1">Unchecked modules will be blocked for AI features.</p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2">
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={!!settings.security?.rls} onChange={e=>setSettings((s:any)=>({...s, security:{...s.security, rls: e.target.checked}}))} />
+                    Enforce Row‑Level Security
+                  </label>
+                  <label className="flex items-center gap-2">
+                    <input type="checkbox" checked={!!settings.security?.redactPII} onChange={e=>setSettings((s:any)=>({...s, security:{...s.security, redactPII: e.target.checked}}))} />
+                    Redact PII
+                  </label>
+                  <div>
+                    <label className="text-xs text-gray-500">Prompt Logging</label>
+                    <select className="w-full border rounded px-2 py-1" value={settings.security?.promptLogging||'hashed'} onChange={e=>setSettings((s:any)=>({...s, security:{...s.security, promptLogging: e.target.value}}))}>
+                      <option value="on">On</option>
+                      <option value="hashed">Hashed</option>
+                      <option value="off">Off</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="text-xs text-gray-500">Model Allow‑list</label>
+                    <input className="w-full border rounded px-2 py-1" value={(settings.security?.modelAllow||[]).join(',')} onChange={e=>setSettings((s:any)=>({...s, security:{...s.security, modelAllow: e.target.value.split(',').map((x)=>x.trim()).filter(Boolean)}}))} />
+                  </div>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );
