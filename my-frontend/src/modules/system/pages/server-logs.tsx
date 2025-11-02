@@ -10,7 +10,15 @@ export default function ServerLogs() {
   const { hasAccess } = useAuth();
   const [loading, setLoading] = useState(false);
 
-  if (!hasAccess('system-settings')) {
+  // Allow via System Settings OR Pump Management (common module)
+  const canView =
+    hasAccess('system-settings') ||
+    hasAccess('pump-management:common') ||
+    hasAccess('pump:common') ||
+    hasAccess('pump-management-common') ||
+    hasAccess('pump-management');
+
+  if (!canView) {
     return (
       <SuperAdminLayout title="Access Denied">
         <div className="flex items-center justify-center min-h-[400px]">

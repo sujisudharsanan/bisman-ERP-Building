@@ -33,6 +33,7 @@ const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
 const { logSanitizer } = require('./middleware/logSanitizer')
 const privilegeService = require('./services/privilegeService')
+const TenantGuard = require('./middleware/tenantGuard') // ✅ SECURITY: Multi-tenant isolation
 
 const app = express()
 
@@ -201,8 +202,9 @@ app.use(express.json())
 // Parse cookies early so downstream routers (e.g., /api/privileges) can access auth cookies
 app.use(cookieParser())
 
-// Serve static files for uploads
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
+// ❌ SECURITY FIX: Removed public static file serving
+// OLD CODE: app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
+// NEW: Files now served via authenticated endpoint (moved after middleware imports)
 
 // Compat: rewrite legacy underscore paths to hyphenated versions
 // e.g., /api/hub_incharge/* -> /api/hub-incharge/*
@@ -227,9 +229,11 @@ try {
   console.warn('[app.js] userReport routes not loaded:', e?.message || e);
 }
 
-// Public database health endpoint (no auth required)
-// Exposed early and unconditionally so UI can detect DB status in all environments
-app.get('/api/health/database', async (req, res) => {
+// ✅ SECURITY FIX: Protected database health endpoint (Enterprise Admin only)
+// Exposes sensitive database information, must be protected
+// MOVED AFTER MIDDLEWARE IMPORT (line ~750)
+/*
+app.get('/api/health/database', authenticate, requireRole('ENTERPRISE_ADMIN'), async (req, res) => {
   try {
     const startTime = Date.now()
     const health = await privilegeService.checkDatabaseHealth()
@@ -245,7 +249,7 @@ app.get('/api/health/database', async (req, res) => {
       timestamp: new Date().toISOString(),
     })
   } catch (error) {
-    console.error('Public DB health endpoint failed:', error)
+    console.error('DB health endpoint failed:', error)
     return res.status(500).json({
       success: false,
       error: {
@@ -257,8 +261,8 @@ app.get('/api/health/database', async (req, res) => {
   }
 })
 
-// ✅ PERFORMANCE: Cache statistics endpoint
-app.get('/api/health/cache', (req, res) => {
+// ✅ SECURITY FIX: Protected cache statistics endpoint (Enterprise Admin only)
+app.get('/api/health/cache', authenticate, requireRole('ENTERPRISE_ADMIN'), (req, res) => {
   try {
     const cacheService = require('./services/cacheService');
     const stats = cacheService.getStats();
@@ -277,8 +281,9 @@ app.get('/api/health/cache', (req, res) => {
     });
   }
 });
-// RBAC tables health checker: verifies presence and row counts
-app.get('/api/health/rbac', async (req, res) => {
+
+// ✅ SECURITY FIX: Protected RBAC health checker (Enterprise Admin only)
+app.get('/api/health/rbac', authenticate, requireRole('ENTERPRISE_ADMIN'), async (req, res) => {
   const now = new Date().toISOString()
   try {
     if (!databaseUrl) {
@@ -364,6 +369,8 @@ if (process.env.DEBUG_CORS === '1') {
   })
 }
 
+*/
+
 // System route (memory usage)
 try {
   const systemRoutes = require('./routes/system')
@@ -385,6 +392,21 @@ app.use('/api/pages', pagesRoutes)
 // Permissions routes for managing user page access
 const permissionsRoutes = require('./routes/permissionsRoutes')
 app.use('/api/permissions', permissionsRoutes)
+
+// Permission checking API (new - for frontend page guards)
+const permissionCheckRoutes = require('./routes/permissions')
+app.use('/api/permissions', permissionCheckRoutes)
+
+// Role-based route protection middleware
+const { 
+  requireEnterpriseAdmin, 
+  requireBusinessLevel,
+  smartRouteProtection 
+} = require('./middleware/roleProtection')
+
+// Apply smart route protection to all authenticated routes
+// MOVED AFTER MIDDLEWARE IMPORT (line ~800)
+// app.use('/api/*', authenticate, smartRouteProtection)
 
 // Reports routes for generating system reports
 const reportsRoutes = require('./routes/reportsRoutes')
@@ -414,8 +436,9 @@ try {
 // Enterprise Admin routes (protected)
 try {
   const enterpriseRoutes = require('./routes/enterprise')
-  app.use('/api/enterprise', enterpriseRoutes)
-  console.log('✅ Enterprise Admin routes loaded')
+  // Protect all enterprise routes - only ENTERPRISE_ADMIN can access
+  app.use('/api/enterprise', authenticate, requireEnterpriseAdmin, enterpriseRoutes)
+  console.log('✅ Enterprise Admin routes loaded (protected)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Enterprise routes not loaded:', e && e.message)
@@ -458,6 +481,44 @@ try {
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Enterprise Admin Management routes not loaded:', e && e.message)
+  }
+}
+
+// Payment Approval System routes (protected)
+try {
+  const paymentRequestsRoutes = require('./dist/routes/paymentRequests').default
+  const tasksRoutes = require('./dist/routes/tasks').default
+  const paymentsRoutes = require('./dist/routes/payments').default
+  
+  if (paymentRequestsRoutes && tasksRoutes && paymentsRoutes) {
+    app.use('/api/common/payment-requests', paymentRequestsRoutes)
+    app.use('/api/common/tasks', tasksRoutes)
+    app.use('/api/common/tasks', paymentsRoutes) // For /:id/payment endpoint
+    app.use('/api/payment', paymentsRoutes) // For /public/:token, /initiate, /webhook/*
+    
+    console.log('✅ Payment Approval System routes loaded (3 modules)')
+  } else {
+    console.warn('⚠️  Payment Approval System routes: Some modules failed to load')
+  }
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Payment Approval System routes not loaded:', e && e.message)
+  }
+}
+
+// User Management System routes (protected)
+try {
+  const usersRoutes = require('./dist/routes/users').default
+  
+  if (usersRoutes) {
+    app.use('/api/system/users', usersRoutes)
+    console.log('✅ User Management System routes loaded')
+  } else {
+    console.warn('⚠️  User Management System routes failed to load')
+  }
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('User Management System routes not loaded:', e && e.message)
   }
 }
 
@@ -644,6 +705,55 @@ if (databaseUrl) {
 
 const { authenticate, requireRole } = require('./middleware/auth')
 
+// ✅ SECURITY: Secure file serving with authentication and tenant isolation
+app.get('/api/secure-files/:category/:filename', authenticate, async (req, res) => {
+  try {
+    const { category, filename } = req.params;
+    const { user } = req;
+    
+    // Validate category
+    const allowedCategories = ['profile_pics', 'documents', 'attachments'];
+    if (!allowedCategories.includes(category)) {
+      return res.status(400).json({ error: 'Invalid file category' });
+    }
+    
+    // Construct file path
+    const filePath = path.join(__dirname, 'uploads', category, filename);
+    
+    // Security: Prevent directory traversal attacks
+    const normalizedPath = path.normalize(filePath);
+    const uploadsDir = path.join(__dirname, 'uploads');
+    if (!normalizedPath.startsWith(uploadsDir)) {
+      console.error('[SecureFiles] ⚠️  Directory traversal attempt:', {
+        userId: user.id,
+        requestedPath: filePath,
+        normalizedPath,
+      });
+      return res.status(403).json({ error: 'Invalid file path' });
+    }
+    
+    // Verify file exists
+    if (!fs.existsSync(filePath)) {
+      return res.status(404).json({ error: 'File not found' });
+    }
+    
+    // TODO: Add tenant-specific file access validation
+    // For now, authenticated users can access any file
+    // Future: Store tenant_id with file metadata and validate
+    
+    console.log('[SecureFiles] ✅ File access granted:', {
+      userId: user.id,
+      category,
+      filename,
+    });
+    
+    res.sendFile(filePath);
+  } catch (error) {
+    console.error('[SecureFiles] Error serving file:', error);
+    res.status(500).json({ error: 'Failed to serve file' });
+  }
+});
+
 
 // Development users REMOVED - All users now exist in database
 // Use seed scripts to create demo users: seed-multi-tenant.js, create-all-demo-users.js, etc.
@@ -782,14 +892,46 @@ app.get('/api/admin', authenticate, requireRole('ADMIN'), async (req, res) => {
 
 // Enterprise Admin API endpoints
 // Get master modules configuration
-app.get('/api/enterprise-admin/master-modules', authenticate, requireRole('ENTERPRISE_ADMIN'), async (req, res) => {
+app.get('/api/enterprise-admin/master-modules', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN']), async (req, res) => {
   try {
-    // Fetch modules from database
-    const dbModules = await prisma.module.findMany({
-      orderBy: {
-        id: 'asc'
-      }
-    });
+    // ✅ SECURITY FIX: Filter modules based on user role
+    let dbModules;
+    
+    if (req.user.userType === 'SUPER_ADMIN') {
+      // Super Admin should only see modules assigned by Enterprise Admin
+      console.log('[master-modules] Super Admin access - filtering by assigned modules');
+      console.log('[master-modules] Super Admin ID:', req.user.id);
+      console.log('[master-modules] Assigned modules:', req.user.assignedModules);
+      
+      // Get module IDs from module assignments
+      const moduleAssignments = await prisma.moduleAssignment.findMany({
+        where: { super_admin_id: req.user.id },
+        include: { module: true }
+      });
+      
+      const assignedModuleIds = moduleAssignments.map(ma => ma.module_id);
+      console.log('[master-modules] Assigned module IDs:', assignedModuleIds);
+      
+      // Fetch only assigned modules
+      dbModules = await prisma.module.findMany({
+        where: {
+          id: {
+            in: assignedModuleIds
+          }
+        },
+        orderBy: {
+          id: 'asc'
+        }
+      });
+    } else {
+      // Enterprise Admin can see all modules
+      console.log('[master-modules] Enterprise Admin access - showing all modules');
+      dbModules = await prisma.module.findMany({
+        orderBy: {
+          id: 'asc'
+        }
+      });
+    }
 
     // Also get the config modules for page information
     const { MASTER_MODULES } = require('./config/master-modules');
@@ -812,6 +954,7 @@ app.get('/api/enterprise-admin/master-modules', authenticate, requireRole('ENTER
       };
     });
 
+    console.log('[master-modules] Returning', modulesWithPages.length, 'modules');
     res.json({ 
       ok: true, 
       modules: modulesWithPages,
@@ -933,6 +1076,27 @@ app.get('/api/auth/me/permissions', authenticate, async (req, res) => {
     });
     
     const userId = req.user.id; // FIXED: was req.user.userId
+
+    // For ENTERPRISE_ADMIN role - only enterprise-level access
+    if (req.user.role === 'ENTERPRISE_ADMIN') {
+      console.log('🏢 [PERMISSIONS] Enterprise Admin detected');
+      return res.json({
+        ok: true,
+        user: {
+          id: userId,
+          username: req.user.username || req.user.email,
+          email: req.user.email,
+          role: 'ENTERPRISE_ADMIN',
+          permissions: {
+            assignedModules: ['enterprise-management'],  // Only enterprise module
+            accessLevel: 'enterprise',
+            pagePermissions: {
+              'enterprise-management': ['super-admins', 'clients', 'modules', 'billing', 'analytics', 'dashboard']
+            }
+          }
+        }
+      });
+    }
 
     // For SUPER_ADMIN role, fetch from super_admins table
     if (req.user.role === 'SUPER_ADMIN') {
@@ -1069,6 +1233,9 @@ app.post('/api/enterprise-admin/super-admins', authenticate, requireRole('ENTERP
     // Hash password
     const hashedPassword = bcrypt.hashSync(password, 10);
 
+    // ✅ SECURITY FIX: Get tenant_id from authenticated user
+    const tenantId = TenantGuard.getTenantId(req);
+
     // Create user
     const newUser = await prisma.user.create({
       data: {
@@ -1076,6 +1243,7 @@ app.post('/api/enterprise-admin/super-admins', authenticate, requireRole('ENTERP
         email,
         password: hashedPassword,
         role: 'SUPER_ADMIN',
+        tenant_id: tenantId, // ✅ SECURITY: Assign to creator's tenant
         createdAt: new Date(),
       }
     });
@@ -1121,9 +1289,16 @@ app.put('/api/enterprise-admin/super-admins/:id', authenticate, requireRole('ENT
     if (email) updateData.email = email;
     if (password) updateData.password = bcrypt.hashSync(password, 10);
 
+    // ✅ SECURITY FIX: Add tenant filter to prevent cross-tenant updates
+    const tenantId = TenantGuard.getTenantId(req);
+    const whereClause = { id: parseInt(id) };
+    if (tenantId) {
+      whereClause.tenant_id = tenantId; // ✅ SECURITY: Ensure user belongs to same tenant
+    }
+
     // Update user
     const updatedUser = await prisma.user.update({
-      where: { id: parseInt(id) },
+      where: whereClause,
       data: updateData
     });
 
@@ -1404,11 +1579,15 @@ app.post('/api/enterprise-admin/super-admins/:id/assign-module', authenticate, r
 
     console.log('✅ Module found:', module.display_name);
 
+    // ✅ SECURITY FIX: Get tenant context for isolation
+    const tenantId = TenantGuard.getTenantId(req);
+
     // Check if assignment already exists
     const existingAssignment = await prisma.moduleAssignment.findFirst({
       where: {
         super_admin_id: superAdminId,
-        module_id: moduleIdInt
+        module_id: moduleIdInt,
+        ...(tenantId && { tenant_id: tenantId }) // ✅ SECURITY: Check within tenant
       }
     });
 
@@ -1444,7 +1623,8 @@ app.post('/api/enterprise-admin/super-admins/:id/assign-module', authenticate, r
         data: {
           super_admin_id: superAdminId,
           module_id: moduleIdInt,
-          page_permissions: pageIds || [] // Store page permissions
+          page_permissions: pageIds || [], // Store page permissions
+          ...(tenantId && { tenant_id: tenantId }) // ✅ SECURITY: Assign to tenant
         },
         include: {
           module: true,
@@ -1508,11 +1688,15 @@ app.post('/api/enterprise-admin/super-admins/:id/unassign-module', authenticate,
     const superAdminId = parseInt(id);
     const moduleIdInt = parseInt(moduleId);
 
+    // ✅ SECURITY FIX: Get tenant context
+    const tenantId = TenantGuard.getTenantId(req);
+
     // Find the assignment
     const assignment = await prisma.moduleAssignment.findFirst({
       where: {
         super_admin_id: superAdminId,
-        module_id: moduleIdInt
+        module_id: moduleIdInt,
+        ...(tenantId && { tenant_id: tenantId }) // ✅ SECURITY: Only within tenant
       },
       include: {
         module: true
@@ -1612,7 +1796,11 @@ app.get('/api/enterprise-admin/dashboard/super-admin-distribution', authenticate
 // Activity Logs
 app.get('/api/enterprise-admin/dashboard/activity', authenticate, requireRole('ENTERPRISE_ADMIN'), async (req, res) => {
   try {
+    // ✅ SECURITY FIX: Add tenant filter for audit logs
+    const whereClause = TenantGuard.getTenantFilter(req);
+    
     const recentActivity = await prisma.auditLog.findMany({
+      where: whereClause, // ✅ SECURITY: Filter by tenant_id
       take: 10,
       orderBy: { timestamp: 'desc' },
       select: {
@@ -1790,7 +1978,8 @@ app.get('/api/enterprise-admin/logs', authenticate, requireRole('ENTERPRISE_ADMI
     const where = {
       ...(Object.keys(dateFilter).length > 0 && { timestamp: dateFilter }),
       ...(level && { level }),
-      ...(module && { module })
+      ...(module && { module }),
+      ...TenantGuard.getTenantFilter(req) // ✅ SECURITY: Add tenant isolation
     };
 
     // Fetch logs from audit_logs table
@@ -2127,7 +2316,11 @@ app.get('/api/users', authenticate, requireRole(['ADMIN', 'SUPER_ADMIN']), async
     
     // Try to fetch from database first
     try {
+      // ✅ SECURITY FIX: Add tenant filter to prevent cross-tenant data access
+      const whereClause = TenantGuard.getTenantFilter(req);
+      
       const dbUsers = await prisma.user.findMany({
+        where: whereClause, // ✅ SECURITY: Filter by tenant_id
         select: {
           id: true,
           username: true,

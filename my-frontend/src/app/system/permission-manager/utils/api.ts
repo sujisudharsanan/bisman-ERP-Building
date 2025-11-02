@@ -19,26 +19,58 @@ const fetchJson = async <T>(url: string): Promise<T> => {
 export const api = {
   // Fetch roles from backend DB and locally filter by query
   searchRoles: async (q: string): Promise<Role[]> => {
-    console.log('[PermissionManager] Fetching roles...');
-    // Add cache-busting timestamp to ensure fresh data
-    const timestamp = Date.now();
-    const resp = await fetchJson<any>(`/api/privileges/roles?_t=${timestamp}`);
-    console.log('[PermissionManager] Roles response:', resp);
-    
-    const rows = Array.isArray(resp?.data) ? resp.data : Array.isArray(resp) ? resp : [];
-    console.log(`[PermissionManager] Found ${rows.length} roles in response`);
-    
-    const mapped: Role[] = rows.map((r: any) => ({
-      id: String(r.id),
-      name: r.name || String(r.id),
-      userCount: typeof r.user_count !== 'undefined' ? Number(r.user_count) : (typeof r.userCount !== 'undefined' ? Number(r.userCount) : undefined)
-    }));
-    
-    console.log('[PermissionManager] Mapped roles:', mapped.map(r => `${r.name} (ID: ${r.id}, ${r.userCount} users)`));
-    
-    if (!q) return mapped;
-    const ql = q.toLowerCase();
-    return mapped.filter(r => r.name.toLowerCase().includes(ql) || r.id.toLowerCase().includes(ql));
+    console.log('[PermissionManager] Fetching roles from users...');
+    try {
+      // Get roles from users endpoint instead of empty rbac_roles table
+      const resp = await fetchJson<any>(`/api/system/users?limit=1000`);
+      console.log('[PermissionManager] Users response for roles:', resp);
+      
+      const users = Array.isArray(resp?.data) ? resp.data : [];
+      console.log(`[PermissionManager] Found ${users.length} users`);
+      
+      // Extract unique roles from users, excluding SUPER_ADMIN and ENTERPRISE_ADMIN
+      const roleMap = new Map<string, { count: number }>();
+      users.forEach((user: any) => {
+        const role = user.role;
+        if (role && role !== 'SUPER_ADMIN' && role !== 'ENTERPRISE_ADMIN') {
+          const existing = roleMap.get(role) || { count: 0 };
+          roleMap.set(role, { count: existing.count + 1 });
+        }
+      });
+      
+      const mapped: Role[] = Array.from(roleMap.entries()).map(([roleName, data]) => ({
+        id: roleName,
+        name: roleName,
+        userCount: data.count
+      }));
+      
+      console.log('[PermissionManager] Extracted roles from users:', mapped.map(r => `${r.name} (${r.userCount} users)`));
+      
+      if (!q) return mapped;
+      const ql = q.toLowerCase();
+      return mapped.filter(r => r.name.toLowerCase().includes(ql) || r.id.toLowerCase().includes(ql));
+    } catch (error) {
+      console.error('[PermissionManager] Error fetching roles:', error);
+      // Fallback to original endpoint if users endpoint fails
+      console.log('[PermissionManager] Falling back to /api/privileges/roles');
+      const resp = await fetchJson<any>(`/api/privileges/roles`);
+      console.log('[PermissionManager] Roles response:', resp);
+      
+      const rows = Array.isArray(resp?.data) ? resp.data : Array.isArray(resp) ? resp : [];
+      console.log(`[PermissionManager] Found ${rows.length} roles in response`);
+      
+      const mapped: Role[] = rows.map((r: any) => ({
+        id: String(r.id),
+        name: r.name || String(r.id),
+        userCount: typeof r.user_count !== 'undefined' ? Number(r.user_count) : (typeof r.userCount !== 'undefined' ? Number(r.userCount) : undefined)
+      }));
+      
+      console.log('[PermissionManager] Mapped roles:', mapped.map(r => `${r.name} (ID: ${r.id}, ${r.userCount} users)`));
+      
+      if (!q) return mapped;
+      const ql = q.toLowerCase();
+      return mapped.filter(r => r.name.toLowerCase().includes(ql) || r.id.toLowerCase().includes(ql));
+    }
   },
   // Fetch users for a role from backend DB and locally filter by query
   searchUsersByRole: async (roleKey: string, q: string, roleName?: string): Promise<User[]> => {

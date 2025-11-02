@@ -23,6 +23,7 @@ model User {
   email           String          @unique @db.VarChar(150)
   password        String          @db.VarChar(255)
   role            String?         @db.VarChar(50)
+  is_active       Boolean         @default(true) // P0 FIX: Track active status
   
   // Multi-tenant fields
   productType     String?         @default("BUSINESS_ERP") @db.VarChar(50) // "PUMP_ERP" | "BUSINESS_ERP" | "ALL"
@@ -40,10 +41,25 @@ model User {
   superAdmin      SuperAdmin?     @relation("SuperAdminUsers", fields: [super_admin_id], references: [id], onDelete: SetNull)
   auditLogs       AuditLog[]
   user_sessions   user_sessions[]
+  
+  // Payment system relations
+  paymentRequestsCreated  PaymentRequest[]      @relation("PaymentRequestCreator")
+  expensesCreated         Expense[]             @relation("ExpenseCreator")
+  tasksCreated            Task[]                @relation("TaskCreator")
+  tasksAssigned           Task[]                @relation("TaskAssignee")
+  approvals               Approval[]            @relation("TaskApprovals")
+  messages                Message[]             @relation("TaskMessages")
+  paymentRecords          PaymentRecord[]       @relation("PaymentRecords")
+  paymentActivityLogs     PaymentActivityLog[]  @relation("PaymentActivityLogs")
+  
+  // P0 FIX: Approver selection relations
+  approverConfigurations  ApproverConfiguration[] @relation("ApproverConfigurations")
+  approverSelectionLogs   ApproverSelectionLog[]  @relation("ApproverSelectionLogs")
 
   @@index([tenant_id], map: "idx_users_tenant")
   @@index([productType], map: "idx_users_product_type")
   @@index([super_admin_id], map: "idx_users_super_admin")
+  @@index([is_active], map: "idx_users_active")
   @@map("users")
 }
 
@@ -285,6 +301,7 @@ model Client {
   // Relations
   superAdmin         SuperAdmin @relation("SuperAdminClients", fields: [super_admin_id], references: [id], onDelete: Cascade)
   users              User[]     @relation("ClientUsers")
+  paymentRequests    PaymentRequest[] @relation("ClientPaymentRequests")
 
   @@index([super_admin_id], map: "idx_clients_super_admin")
   @@index([productType], map: "idx_clients_product_type")
@@ -348,4 +365,323 @@ model ModuleAssignment {
   @@index([super_admin_id], map: "idx_module_assignments_super_admin")
   @@index([module_id], map: "idx_module_assignments_module")
   @@map("module_assignments")
+}
+
+// ==========================================
+// MULTI-LEVEL APPROVAL PAYMENT SYSTEM
+// ==========================================
+
+model PaymentRequest {
+  id                String              @id @default(cuid())
+  requestId         String              @unique // Auto-generated: PR-YYYY-MM-DD-XXXX
+  clientId          String?             @db.Uuid
+  clientName        String              @db.VarChar(200)
+  clientEmail       String?             @db.VarChar(150)
+  clientPhone       String?             @db.VarChar(50)
+  
+  // Amount details
+  subtotal          Decimal             @db.Decimal(18, 2)
+  taxAmount         Decimal             @default(0) @db.Decimal(18, 2)
+  discountAmount    Decimal             @default(0) @db.Decimal(18, 2)
+  totalAmount       Decimal             @db.Decimal(18, 2)
+  currency          String              @default("INR") @db.VarChar(10)
+  
+  // Metadata
+  description       String?             @db.Text
+  notes             String?             @db.Text
+  dueDate           DateTime?           @db.Timestamp(6)
+  invoiceNumber     String?             @db.VarChar(100)
+  
+  // Workflow status
+  status            String              @default("DRAFT") @db.VarChar(50)
+  // DRAFT → SUBMITTED → L1_PENDING → L2_PENDING → FINANCE_PENDING → SENT_TO_CLIENT → PAID → CLOSED
+  
+  // Attachments and documents
+  attachments       Json?               // [{name, url, type, size}]
+  
+  // Public payment link
+  paymentToken      String?             @unique // Secure token for public payment page
+  paymentLinkSentAt DateTime?           @db.Timestamp(6)
+  
+  // Relations
+  createdById       Int
+  createdBy         User                @relation("PaymentRequestCreator", fields: [createdById], references: [id])
+  client            Client?             @relation("ClientPaymentRequests", fields: [clientId], references: [id], onDelete: SetNull)
+  
+  // Related records
+  lineItems         PaymentRequestLineItem[]
+  task              Task?
+  expense           Expense?
+  activityLogs      PaymentActivityLog[]
+  
+  createdAt         DateTime            @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime            @default(now()) @updatedAt @db.Timestamp(6)
+
+  @@index([requestId], map: "idx_payment_requests_request_id")
+  @@index([clientId], map: "idx_payment_requests_client")
+  @@index([status], map: "idx_payment_requests_status")
+  @@index([createdById], map: "idx_payment_requests_creator")
+  @@index([paymentToken], map: "idx_payment_requests_token")
+  @@map("payment_requests")
+}
+
+model PaymentRequestLineItem {
+  id                Int             @id @default(autoincrement())
+  paymentRequestId  String
+  
+  description       String          @db.VarChar(500)
+  quantity          Decimal         @default(1) @db.Decimal(10, 2)
+  unit              String?         @default("unit") @db.VarChar(50)
+  rate              Decimal         @db.Decimal(18, 2)
+  taxRate           Decimal         @default(0) @db.Decimal(5, 2) // percentage
+  discountRate      Decimal         @default(0) @db.Decimal(5, 2) // percentage
+  lineTotal         Decimal         @db.Decimal(18, 2)
+  
+  sortOrder         Int             @default(0)
+  
+  paymentRequest    PaymentRequest  @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
+  
+  @@index([paymentRequestId], map: "idx_line_items_payment_request")
+  @@map("payment_request_line_items")
+}
+
+model Expense {
+  id                String          @id @default(cuid())
+  requestId         String          @unique // Links to PaymentRequest.requestId
+  paymentRequestId  String          @unique
+  
+  createdById       Int
+  clientId          String?         @db.Uuid
+  description       String?         @db.Text
+  amount            Decimal         @db.Decimal(18, 2)
+  currency          String          @default("INR") @db.VarChar(10)
+  dueDate           DateTime?       @db.Timestamp(6)
+  status            String          @default("DRAFT") @db.VarChar(50)
+  // DRAFT → SUBMITTED → IN_PROGRESS → COMPLETED → CANCELLED
+  
+  attachments       Json?           // [{name, url, type}]
+  
+  createdAt         DateTime        @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime        @default(now()) @updatedAt @db.Timestamp(6)
+  
+  // Relations
+  createdBy         User            @relation("ExpenseCreator", fields: [createdById], references: [id])
+  paymentRequest    PaymentRequest  @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
+  task              Task?
+
+  @@index([requestId], map: "idx_expenses_request_id")
+  @@index([paymentRequestId], map: "idx_expenses_payment_request")
+  @@index([createdById], map: "idx_expenses_creator")
+  @@index([status], map: "idx_expenses_status")
+  @@map("expenses")
+}
+
+model Task {
+  id                String          @id @default(cuid())
+  expenseId         String          @unique
+  paymentRequestId  String          @unique
+  
+  title             String          @db.VarChar(300)
+  description       String?         @db.Text
+  currentLevel      Int             @default(0) // 0=L1, 1=L2, 2=Finance, 3=Banker
+  status            String          @default("PENDING") @db.VarChar(50)
+  // PENDING → APPROVED → REJECTED → IN_PROCESS → COMPLETED → RETURNED
+  
+  createdById       Int
+  assigneeId        Int?            // Current approver user id
+  
+  createdAt         DateTime        @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime        @default(now()) @updatedAt @db.Timestamp(6)
+  
+  // Relations
+  createdBy         User            @relation("TaskCreator", fields: [createdById], references: [id])
+  assignee          User?           @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  expense           Expense         @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  paymentRequest    PaymentRequest  @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
+  
+  approvals         Approval[]
+  messages          Message[]
+  paymentRecords    PaymentRecord[]
+  
+  // P0 FIX: Approver selection audit logs
+  approverSelectionLogs ApproverSelectionLog[] @relation("ApproverSelectionLogs")
+
+  @@index([expenseId], map: "idx_tasks_expense")
+  @@index([paymentRequestId], map: "idx_tasks_payment_request")
+  @@index([assigneeId], map: "idx_tasks_assignee")
+  @@index([status], map: "idx_tasks_status")
+  @@index([currentLevel], map: "idx_tasks_level")
+  @@map("tasks")
+}
+
+model Approval {
+  id                String          @id @default(cuid())
+  taskId            String
+  level             Int             // 0=L1, 1=L2, 2=Finance, 3=Banker
+  levelName         String          @db.VarChar(100) // "L1 Manager", "L2 Senior Manager", etc.
+  
+  approverId        Int
+  action            String          @db.VarChar(50) // APPROVED | REJECTED | RETURNED
+  comment           String?         @db.Text
+  attachments       Json?           // [{name, url, type}]
+  
+  createdAt         DateTime        @default(now()) @db.Timestamp(6)
+  
+  // Relations
+  task              Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  approver          User            @relation("TaskApprovals", fields: [approverId], references: [id])
+
+  @@index([taskId], map: "idx_approvals_task")
+  @@index([approverId], map: "idx_approvals_approver")
+  @@index([level], map: "idx_approvals_level")
+  @@map("approvals")
+}
+
+model Message {
+  id                String          @id @default(cuid())
+  taskId            String
+  senderId          Int
+  
+  body              String?         @db.Text
+  attachments       Json?           // [{name, url, type, size}]
+  type              String          @default("TEXT") @db.VarChar(50)
+  // TEXT | APPROVAL | SYSTEM | PAYMENT
+  
+  meta              Json?           // {approveAction: "APPROVED", level: 1, amount: 1000, etc.}
+  
+  createdAt         DateTime        @default(now()) @db.Timestamp(6)
+  
+  // Relations
+  task              Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  sender            User            @relation("TaskMessages", fields: [senderId], references: [id])
+
+  @@index([taskId], map: "idx_messages_task")
+  @@index([senderId], map: "idx_messages_sender")
+  @@index([type], map: "idx_messages_type")
+  @@map("messages")
+}
+
+model PaymentRecord {
+  id                String          @id @default(cuid())
+  taskId            String
+  paymentRequestId  String
+  
+  // Banker details
+  paidById          Int?            // Banker user id
+  paymentMode       String?         @db.VarChar(100) // BankTransfer | Cheque | Online | Cash | Razorpay | Stripe
+  paymentGateway    String?         @db.VarChar(100) // Razorpay, Stripe, PayPal, etc.
+  transactionId     String?         @db.VarChar(255)
+  
+  // Bank transfer details
+  details           Json?           // {bankName, accountNumber, ifsc, reference, chequeNumber, etc.}
+  
+  // Payment amounts
+  amount            Decimal         @db.Decimal(18, 2)
+  currency          String          @default("INR") @db.VarChar(10)
+  
+  paidAt            DateTime?       @db.Timestamp(6)
+  receiptUrl        String?         // Receipt/proof of payment
+  
+  notes             String?         @db.Text
+  
+  createdAt         DateTime        @default(now()) @db.Timestamp(6)
+  
+  // Relations
+  task              Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  paidBy            User?           @relation("PaymentRecords", fields: [paidById], references: [id], onDelete: SetNull)
+
+  @@index([taskId], map: "idx_payment_records_task")
+  @@index([paymentRequestId], map: "idx_payment_records_payment_request")
+  @@index([paidById], map: "idx_payment_records_paid_by")
+  @@index([transactionId], map: "idx_payment_records_transaction")
+  @@map("payment_records")
+}
+
+model ApprovalLevel {
+  id                Int             @id @default(autoincrement())
+  level             Int             @unique // 0, 1, 2, 3
+  levelName         String          @db.VarChar(100) // "L1 Manager", "L2 Senior Manager", etc.
+  roleName          String          @db.VarChar(100) // Role that can approve at this level
+  sortOrder         Int             @default(0)
+  isActive          Boolean         @default(true)
+  approvalLimit     Decimal?        @db.Decimal(15, 2) // Maximum amount approvable at this level
+  
+  createdAt         DateTime        @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime        @default(now()) @updatedAt @db.Timestamp(6)
+
+  @@index([level], map: "idx_approval_levels_level")
+  @@map("approval_levels")
+}
+
+// P0 FIX: Smart Approver Selection Configuration
+model ApproverConfiguration {
+  id                String          @id @default(cuid())
+  userId            Int
+  level             Int             // 0-3 (L1-L4)
+  approvalLimit     Decimal?        @db.Decimal(15, 2) // Maximum amount this approver can handle
+  isActive          Boolean         @default(true)
+  isAvailable       Boolean         @default(true) // For leave/unavailability tracking
+  autoAssign        Boolean         @default(true) // Include in auto-assignment pool
+  priority          Int             @default(0)    // Higher priority gets assigned first
+  maxConcurrentTasks Int?          @default(10)   // Max pending tasks before excluding
+  
+  createdAt         DateTime        @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime        @default(now()) @updatedAt @db.Timestamp(6)
+  
+  // Relations
+  user              User            @relation("ApproverConfigurations", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, level])
+  @@index([userId], map: "idx_approver_config_user")
+  @@index([level, isActive], map: "idx_approver_config_level_active")
+  @@index([isActive, isAvailable], map: "idx_approver_config_availability")
+  @@map("approver_configurations")
+}
+
+// P0 FIX: Approver Selection Audit Trail
+model ApproverSelectionLog {
+  id                    String          @id @default(cuid())
+  taskId                String?
+  paymentRequestId      String?
+  level                 Int             // 0-3 (L1-L4)
+  selectedApproverId    Int
+  requestedApprovers    Json?           // Array of requested approver IDs
+  availableApprovers    Json?           // Array of all available approver IDs
+  selectionMethod       String          @db.VarChar(50) // REQUESTED | WORKLOAD_BALANCED | APPROVAL_LIMIT | ESCALATED | FALLBACK
+  paymentAmount         Decimal?        @db.Decimal(15, 2)
+  approverWorkload      Int?            // Pending tasks at time of assignment
+  metadata              Json?           // Additional selection criteria/context
+  
+  createdAt             DateTime        @default(now()) @db.Timestamp(6)
+  
+  // Relations
+  task                  Task?           @relation("ApproverSelectionLogs", fields: [taskId], references: [id], onDelete: SetNull)
+  selectedApprover      User            @relation("ApproverSelectionLogs", fields: [selectedApproverId], references: [id], onDelete: Cascade)
+  
+  @@index([taskId], map: "idx_selection_log_task")
+  @@index([selectedApproverId], map: "idx_selection_log_approver")
+  @@index([level, createdAt], map: "idx_selection_log_level_created")
+  @@map("approver_selection_logs")
+}
+
+model PaymentActivityLog {
+  id                Int             @id @default(autoincrement())
+  paymentRequestId  String
+  userId            Int?
+  action            String          @db.VarChar(100) // CREATED | SUBMITTED | APPROVED | REJECTED | SENT_TO_CLIENT | PAID | etc.
+  oldStatus         String?         @db.VarChar(50)
+  newStatus         String?         @db.VarChar(50)
+  comment           String?         @db.Text
+  metadata          Json?           // Additional context data
+  
+  createdAt         DateTime        @default(now()) @db.Timestamp(6)
+  
+  // Relations
+  paymentRequest    PaymentRequest  @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
+  user              User?           @relation("PaymentActivityLogs", fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([paymentRequestId], map: "idx_activity_logs_payment_request")
+  @@index([userId], map: "idx_activity_logs_user")
+  @@index([action], map: "idx_activity_logs_action")
+  @@map("payment_activity_logs")
 }

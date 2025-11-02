@@ -217,35 +217,6 @@ export default function PagesRolesReportPage() {
     <SuperAdminShell title="Pages & Roles Report">
       <div className="space-y-6">
 
-        {/* Breadcrumb Navigation */}
-        <Breadcrumb items={[
-          { label: 'System', href: '/system' },
-          { label: 'Pages Roles Report' }
-        ]} />
-
-
-        {/* Quick Links */}
-        <QuickLinks links={[{"label":"User Management","href":"/system/user-management"},{"label":"System Settings","href":"/system/system-settings"},{"label":"Audit Logs","href":"/system/audit-logs"},{"label":"Roles & Users Report","href":"/system/roles-users-report"}]} />
-
-        {/* Header */}
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Pages & Roles Report
-            </h1>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              View all pages and their assigned roles • Updated {reportData && new Date(reportData.timestamp).toLocaleString()}
-            </p>
-          </div>
-          <button
-            onClick={handleExportCSV}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
-          >
-            <Download className="w-4 h-4" />
-            Export CSV
-          </button>
-        </div>
-
         {/* Statistics Cards */}
         {reportData && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">

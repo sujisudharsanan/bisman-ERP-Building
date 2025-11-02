@@ -1,7 +1,7 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
  * CENTRALIZED PAGE REGISTRY - BISMAN ERP
- * ═══════════════════════════════════════════════════════════════════════════════
+  path: '/pump-management/server-logs',
  * 
  * This file is the SINGLE SOURCE OF TRUTH for all ERP pages, routes, and navigation.
  * It maps all pages to their routes, permissions, roles, icons, and metadata.
@@ -82,7 +82,7 @@
  * 
  * Step 3: Run consistency check
  * ────────────────────────────────────────────────────────────────────────────
- *   ```bash
+  module: 'pump-management',
  *   cd my-backend
  *   node check-modules-consistency.js
  *   ```
@@ -215,7 +215,7 @@ export interface PageMetadata {
   name: string;
   path: string;
   icon: LucideIcon;
-  module: 'system' | 'finance' | 'procurement' | 'operations' | 'compliance' | 'common';
+  module: 'system' | 'finance' | 'procurement' | 'operations' | 'compliance' | 'common' | 'pump-management';
   permissions: string[]; // Required permissions (OR logic)
   roles: string[]; // Recommended roles
   status: PageStatus;
@@ -278,6 +278,14 @@ export const MODULES: Record<string, ModuleMetadata> = {
     color: 'red',
     order: 5,
   },
+  'pump-management': {
+    id: 'pump-management',
+    name: 'Pump Management',
+    icon: Factory,
+    description: 'Pump operations, diagnostics, and common tools',
+    color: 'amber',
+    order: 6,
+  },
   common: {
     id: 'common',
     name: 'Common',
@@ -332,7 +340,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   },
   {
     id: 'roles-users-report',
-    name: 'Roles & Users Report',
+    name: 'Modules & Roles',
     path: '/system/roles-users-report',
     icon: FileText,
     module: 'system',
@@ -372,7 +380,14 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     path: '/system/backup-restore',
     icon: Database,
     module: 'system',
-    permissions: ['system-settings'],
+    // Allow via either system settings or pump management common permissions
+    permissions: [
+      'system-settings',
+      'pump-management:common',
+      'pump:common',
+      'pump-management-common',
+      'pump-management'
+    ],
     roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
     status: 'active',
     description: 'Manage system backups and restoration',
@@ -429,14 +444,21 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   {
     id: 'server-logs',
     name: 'Server Logs',
-    path: '/system/server-logs',
+    path: '/pump-management/server-logs',
     icon: Server,
-    module: 'system',
-    permissions: ['system-settings'],
+    module: 'pump-management',
+    // Allow via System Settings OR Pump Management (common module)
+    permissions: [
+      'system-settings',
+      'pump-management:common',
+      'pump:common',
+      'pump-management-common',
+      'pump-management'
+    ],
     roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
     status: 'active',
     description: 'Access server logs and diagnostics',
-    order: 11,
+    order: 1,
   },
   {
     id: 'deployment-tools',
@@ -1386,6 +1408,30 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     description: 'Submit and track payment requests',
     order: 9,
+  },
+  {
+    id: 'payment-requests-create',
+    name: 'Create Payment Request',
+    path: '/common/payment-requests/create',
+    icon: DollarSign,
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL'],
+    status: 'active',
+    description: 'Create new payment request with line items',
+    order: 9.1,
+  },
+  {
+    id: 'task-approvals',
+    name: 'Task Approvals',
+    path: '/common/task-approvals',
+    icon: CheckCircle,
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL'],
+    status: 'active',
+    description: 'Manage and approve payment workflow tasks',
+    order: 9.2,
   },
 ];
 

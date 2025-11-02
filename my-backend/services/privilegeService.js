@@ -3,6 +3,7 @@
 
 // Use shared Prisma singleton to avoid multiple pools
 const { getPrisma } = require('../lib/prisma');
+const TenantGuard = require('../middleware/tenantGuard'); // ✅ SECURITY: Multi-tenant isolation
 const prisma = getPrisma();
 
 // Lightweight DB readiness cache so we don't probe every call

@@ -150,9 +150,9 @@ export default function Page() {
             setAuthHint('Access to Super Admins is forbidden. Ensure you are logged in as ENTERPRISE_ADMIN.');
           }
         }
-        const registryData = await regRes.json().catch(() => ({}));
+  const registryData = await regRes.json().catch(() => ({}));
 
-        const mods = arr<any>(modsJson, "modules").map((m) => ({
+        let mods = arr<any>(modsJson, "modules").map((m) => ({
           id: Number.isFinite(Number(m.id)) ? Number(m.id) : String(m.id ?? m.module_name ?? ""),
           moduleKey: String(m.module_name ?? m.id ?? ""),
           name: String(m.display_name ?? m.name ?? m.module_name ?? ""),
@@ -160,6 +160,35 @@ export default function Page() {
           businessCategory: m.businessCategory,
           pages: Array.isArray(m.pages) ? m.pages : [],
         })) as Module[];
+
+        // Inject a virtual "Common (Pump)" module if backend doesn't provide one
+        try {
+          const regPages = Array.isArray((registryData as any).pages) ? (registryData as any).pages : [];
+          const commonPages = regPages.filter((p: any) => {
+            const mk = (p as any).moduleKey || (p as any).module;
+            return String(mk || '').toLowerCase() === 'common';
+          });
+          const hasPumpCommonAlready = mods.some(
+            (m) => String(m.moduleKey || '').toLowerCase() === 'pump-common' || String(m.name || '').toLowerCase().includes('common') && ((m.productType === 'PUMP_ERP') || String(m.businessCategory || '').toLowerCase().includes('pump'))
+          );
+          if (!hasPumpCommonAlready && commonPages.length) {
+            const virtualPumpCommon: Module = {
+              id: 'pump-common',
+              moduleKey: 'pump-common',
+              name: 'Common (Pump)',
+              productType: 'PUMP_ERP',
+              businessCategory: 'pump',
+              pages: commonPages.map((p: any) => ({
+                id: String(p.id || p.path),
+                name: String(p.name || p.title || p.id || p.path),
+                path: String(p.path),
+              })),
+            };
+            mods = [...mods, virtualPumpCommon];
+          }
+        } catch (e) {
+          // non-fatal; continue without virtual module
+        }
 
         const admins = arr<any>(usersJson, "superAdmins").map((a) => ({
           id: Number(a.id),

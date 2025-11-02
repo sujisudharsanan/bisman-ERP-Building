@@ -44,6 +44,15 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
         return;
       }
 
+      // Enterprise Admin: Set enterprise modules directly
+      if (user.role === 'ENTERPRISE_ADMIN' || user?.roleName === 'ENTERPRISE_ADMIN') {
+        console.log('[Sidebar] Enterprise Admin detected - setting enterprise modules');
+        setSuperAdminModules(['enterprise-management']);
+        setUserAllowedPages([]); // Enterprise admin doesn't use page-level permissions
+        setIsLoadingPermissions(false);
+        return;
+      }
+
       // Super Admin: Fetch assigned modules from backend
       if (isSuperAdmin) {
         console.log('[Sidebar] Super Admin detected - fetching assigned modules');
@@ -157,21 +166,57 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
   const navigation = useMemo(() => {
     if (!user) return {};
     
-    // For Super Admin, show only modules they're assigned to
+    // ENTERPRISE_ADMIN: Only enterprise-level pages
+    if (user.role === 'ENTERPRISE_ADMIN' || user.roleName === 'ENTERPRISE_ADMIN') {
+      console.log('[Sidebar] Enterprise Admin detected - showing enterprise pages only');
+      const grouped: Record<string, PageMetadata[]> = {};
+      
+      Object.keys(MODULES).forEach(moduleId => {
+        grouped[moduleId] = PAGE_REGISTRY
+          .filter(page => {
+            // Only show pages that are:
+            // 1. For enterprise-level access (enterprise-management module, etc.)
+            // 2. OR common pages (accessible to all roles)
+            const isEnterprisePage = page.path.startsWith('/enterprise') || 
+                                      page.roles.includes('ENTERPRISE_ADMIN');
+            const isCommonPage = page.permissions.includes('authenticated') || 
+                                 page.module === 'common';
+            return (isEnterprisePage || isCommonPage) && page.module === moduleId;
+          })
+          .sort((a, b) => (a.order || 0) - (b.order || 0));
+      });
+      
+      console.log('[Sidebar] Enterprise Admin modules:', Object.keys(grouped).filter(k => grouped[k].length > 0));
+      return grouped;
+    }
+    
+    // SUPER_ADMIN: Only assigned business modules + common pages (NO enterprise pages)
     if (isSuperAdmin) {
       const grouped: Record<string, PageMetadata[]> = {};
       
       // Filter modules based on assigned modules
       Object.keys(MODULES).forEach(moduleId => {
-        // Only include modules in assignedModules
-        if (superAdminModules.includes(moduleId)) {
+        // Only include modules in assignedModules OR common module
+        if (superAdminModules.includes(moduleId) || moduleId === 'common') {
           grouped[moduleId] = PAGE_REGISTRY
+            .filter(page => {
+              // Explicitly EXCLUDE enterprise-level pages
+              // Explicitly EXCLUDE enterprise-level pages
+              const isEnterprisePage = page.path.startsWith('/enterprise') || 
+                                        page.roles.includes('ENTERPRISE_ADMIN');
+              // Include if it's a business page or common page, but NOT enterprise page
+              const isCommonPage = page.permissions.includes('authenticated') || 
+                                   page.module === 'common';
+              const isAssignedModule = page.module === moduleId;
+              
+              return !isEnterprisePage && (isCommonPage || isAssignedModule);
+            })
             .filter(page => page.module === moduleId)
             .sort((a, b) => (a.order || 0) - (b.order || 0));
         }
       });
       
-      console.log('[Sidebar] Super Admin filtered modules:', Object.keys(grouped));
+      console.log('[Sidebar] Super Admin filtered modules:', Object.keys(grouped).filter(k => grouped[k].length > 0));
       return grouped;
     }
     
@@ -181,10 +226,12 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
     Object.keys(MODULES).forEach(moduleId => {
       grouped[moduleId] = PAGE_REGISTRY
         .filter(page => {
-          // Include if page ID is in user's allowed pages
-          // OR if page has 'authenticated' permission (common pages)
-          return userAllowedPages.includes(page.id) || 
-                 page.permissions.includes('authenticated');
+          // Exclude enterprise pages for regular users
+          const isEnterprisePage = page.path.startsWith('/enterprise');
+          return !isEnterprisePage && (
+            userAllowedPages.includes(page.id) || 
+            page.permissions.includes('authenticated')
+          );
         })
         .filter(page => page.module === moduleId)
         .sort((a, b) => (a.order || 0) - (b.order || 0));

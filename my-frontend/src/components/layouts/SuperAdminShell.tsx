@@ -1,11 +1,12 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import DynamicSidebar from '@/common/components/DynamicSidebar';
 import DarkModeToggle from '@/components/ui/DarkModeToggle';
 import { TopNavDbIndicator } from '@/components/user-management';
 import { LogOut, RefreshCw } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 type SuperAdminShellProps = {
   title?: string;
@@ -37,6 +38,18 @@ const HeaderLogo: React.FC = () => {
 
 export default function SuperAdminShell({ title = 'Super Admin', children }: SuperAdminShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const { user } = useAuth();
+
+  // Format role name for display
+  const formatRoleName = (role: string | undefined) => {
+    if (!role) return 'Admin';
+    return role
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  };
+
+  const roleName = formatRoleName(user?.roleName || user?.role);
 
   const handleLogout = async () => {
     try { await fetch('/api/logout', { method: 'POST', credentials: 'include' }); } catch {}
@@ -61,13 +74,15 @@ export default function SuperAdminShell({ title = 'Super Admin', children }: Sup
                 </svg>
               </button>
               <HeaderLogo />
-              <h1 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">{title}</h1>
+              <div className="flex flex-col">
+                <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{roleName}</h1>
+                <p className="text-xs text-gray-600 dark:text-gray-400">{title}</p>
+              </div>
             </div>
             <div className="flex items-center gap-2">
-              <TopNavDbIndicator />
               <button
                 onClick={() => window.location.reload()}
-                className="bg-blue-600 dark:bg-blue-500 text-white px-2 sm:px-3 py-1.5 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center gap-1.5 text-xs font-medium shadow-sm"
+                className="bg-blue-600 dark:bg-blue-500 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center gap-1.5 text-xs font-medium shadow-sm"
                 aria-label="Refresh"
                 title="Refresh"
               >
@@ -76,7 +91,7 @@ export default function SuperAdminShell({ title = 'Super Admin', children }: Sup
               </button>
               <button
                 onClick={handleLogout}
-                className="bg-gray-700 dark:bg-gray-600 text-white px-2 sm:px-3 py-1.5 rounded-md hover:bg-gray-800 dark:hover:bg-gray-700 transition-colors flex items-center gap-1.5 text-xs font-medium shadow-sm"
+                className="bg-gray-700 dark:bg-gray-600 text-white px-3 py-1.5 rounded-md hover:bg-gray-800 dark:hover:bg-gray-700 transition-colors flex items-center gap-1.5 text-xs font-medium shadow-sm"
                 aria-label="Logout"
                 title="Logout"
               >

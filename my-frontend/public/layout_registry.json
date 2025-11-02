@@ -1,15 +1,16 @@
 {
   "meta": {
     "version": "1.0.0",
-    "exportedAt": "2025-10-29T05:30:00.486Z",
+    "exportedAt": "2025-11-01T03:26:31.387Z",
     "source": "my-frontend/src/common/config/page-registry.ts",
     "generator": "scripts/export-page-registry.js"
   },
   "statistics": {
     "totalPages": 84,
-    "totalModules": 1,
+    "totalModules": 2,
     "pagesByModule": {
-      "system": 16,
+      "system": 15,
+      "pump-management": 1,
       "finance": 31,
       "procurement": 5,
       "operations": 14,
@@ -28,6 +29,12 @@
       "name": "System Administration",
       "description": "System management and configuration",
       "order": 1
+    },
+    "management": {
+      "id": "management",
+      "name": "Compliance & Legal",
+      "description": "Compliance and legal management",
+      "order": 5
     }
   },
   "pages": [
@@ -140,7 +147,11 @@
       "description": "Manage system backups and restoration",
       "order": 6,
       "permissions": [
-        "system-settings"
+        "system-settings",
+        "pump-management:common",
+        "pump:common",
+        "pump-management-common",
+        "pump-management"
       ],
       "roles": [
         "SUPER_ADMIN",
@@ -216,13 +227,17 @@
     {
       "id": "server-logs",
       "name": "Server Logs",
-      "path": "/system/server-logs",
-      "module": "system",
+      "path": "/pump-management/server-logs",
+      "module": "pump-management",
       "status": "active",
       "description": "Access server logs and diagnostics",
-      "order": 11,
+      "order": 1,
       "permissions": [
-        "system-settings"
+        "system-settings",
+        "pump-management:common",
+        "pump:common",
+        "pump-management-common",
+        "pump-management"
       ],
       "roles": [
         "SUPER_ADMIN",

@@ -1,19 +1,82 @@
 const express = require('express');
 const router = express.Router();
 const { getPrisma } = require('../lib/prisma');
+const { authenticate } = require('../middleware/auth'); // ✅ SECURITY: Add authentication
+const TenantGuard = require('../middleware/tenantGuard'); // ✅ SECURITY: Multi-tenant isolation
 
 /**
  * GET /api/reports/roles-users
  * Generate a comprehensive report of all roles with their assigned users and email IDs
  */
-router.get('/roles-users', async (req, res) => {
+router.get('/roles-users', authenticate, async (req, res) => {
   const prisma = getPrisma();
   
   try {
     console.log('[RolesUsersReport] Generating roles and users report...');
     
-    // Fetch all roles
-    let roles = await prisma.rbac_roles.findMany();
+    // ✅ SECURITY FIX: Define tenant filter at the beginning
+    const tenantFilter = TenantGuard.getTenantFilter(req);
+    
+    // Try to fetch from rbac_roles table first
+    let roles = [];
+    try {
+      roles = await prisma.rbac_roles.findMany();
+      console.log(`[RolesUsersReport] Found ${roles.length} roles in rbac_roles table`);
+    } catch (err) {
+      console.log('[RolesUsersReport] rbac_roles table not available or empty, falling back to roles table');
+    }
+    
+    // If rbac_roles is empty, try the simple roles table
+    if (roles.length === 0) {
+      try {
+        const simpleRoles = await prisma.role.findMany();
+        console.log(`[RolesUsersReport] Found ${simpleRoles.length} roles in roles table`);
+        // Convert to rbac_roles format
+        roles = simpleRoles.map(r => ({
+          id: r.id,
+          name: r.name,
+          display_name: r.name,
+          description: null,
+          level: 1,
+          status: 'active',
+          is_active: true
+        }));
+      } catch (err) {
+        console.log('[RolesUsersReport] roles table not available');
+      }
+    }
+    
+    // If still no roles, extract unique roles from users table
+    if (roles.length === 0) {
+      console.log('[RolesUsersReport] No roles tables available, extracting unique roles from users');
+      // ✅ SECURITY FIX: Add tenant filter
+      const users = await prisma.User.findMany({
+        where: tenantFilter, // ✅ SECURITY: Filter by tenant_id
+        select: { role: true },
+        distinct: ['role']
+      });
+      
+      const uniqueRoles = users.map((u, index) => u.role).filter(r => r);
+      roles = uniqueRoles.map((roleName, index) => ({
+        id: index + 1,
+        name: roleName,
+        display_name: roleName.split('_').map(w => 
+          w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+        ).join(' '),
+        description: null,
+        level: 1,
+        status: 'active',
+        is_active: true
+      }));
+      console.log(`[RolesUsersReport] Extracted ${roles.length} unique roles from users`);
+    }
+    
+    // Filter out SUPER_ADMIN and ENTERPRISE_ADMIN
+    roles = roles.filter(role => {
+      const roleName = String(role.name).toUpperCase();
+      return roleName !== 'SUPER_ADMIN' && roleName !== 'ENTERPRISE_ADMIN';
+    });
+    
     // Sort: active first, then by level (desc), then by name
     roles = roles.sort((a, b) => {
       // Active roles first
@@ -25,10 +88,11 @@ router.get('/roles-users', async (req, res) => {
       return String(a.name).localeCompare(String(b.name));
     });
     
-    console.log(`[RolesUsersReport] Found ${roles.length} roles`);
+    console.log(`[RolesUsersReport] Found ${roles.length} roles (excluding SUPER_ADMIN and ENTERPRISE_ADMIN)`);
     
     // Fetch all users with their role information
     const users = await prisma.User.findMany({
+      where: tenantFilter, // ✅ SECURITY: Filter by tenant_id
       select: {
         id: true,
         username: true,
@@ -106,19 +170,70 @@ router.get('/roles-users', async (req, res) => {
  * GET /api/reports/roles-users/csv
  * Download roles and users report as CSV
  */
-router.get('/roles-users/csv', async (req, res) => {
+router.get('/roles-users/csv', authenticate, async (req, res) => {
   const prisma = getPrisma();
   
   try {
+    // ✅ SECURITY FIX: Add tenant filter
+    const tenantFilter = TenantGuard.getTenantFilter(req);
     console.log('[RolesUsersReport] Generating CSV export...');
     
-    // Fetch all roles
-    const roles = await prisma.rbac_roles.findMany({
-      orderBy: { name: 'asc' }
+    // Try to fetch from rbac_roles table first
+    let roles = [];
+    try {
+      roles = await prisma.rbac_roles.findMany({ orderBy: { name: 'asc' } });
+    } catch (err) {
+      console.log('[RolesUsersReport CSV] rbac_roles table not available, trying roles table');
+    }
+    
+    // If rbac_roles is empty, try the simple roles table
+    if (roles.length === 0) {
+      try {
+        const simpleRoles = await prisma.role.findMany({ orderBy: { name: 'asc' } });
+        // Convert to rbac_roles format
+        roles = simpleRoles.map(r => ({
+          id: r.id,
+          name: r.name,
+          display_name: r.name,
+          description: null,
+          status: 'active'
+        }));
+      } catch (err) {
+        console.log('[RolesUsersReport CSV] roles table not available');
+      }
+    }
+    
+    // If still no roles, extract unique roles from users table
+    if (roles.length === 0) {
+      // ✅ SECURITY FIX: Add tenant filter
+      const allUsers = await prisma.User.findMany({
+        where: tenantFilter, // ✅ SECURITY: Filter by tenant_id
+        select: { role: true },
+        distinct: ['role']
+      });
+      
+      const uniqueRoles = allUsers.map((u, index) => u.role).filter(r => r);
+      roles = uniqueRoles.map((roleName, index) => ({
+        id: index + 1,
+        name: roleName,
+        display_name: roleName.split('_').map(w => 
+          w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()
+        ).join(' '),
+        description: null,
+        status: 'active'
+      })).sort((a, b) => a.name.localeCompare(b.name));
+    }
+    
+    // Filter out SUPER_ADMIN and ENTERPRISE_ADMIN
+    roles = roles.filter(role => {
+      const roleName = String(role.name).toUpperCase();
+      return roleName !== 'SUPER_ADMIN' && roleName !== 'ENTERPRISE_ADMIN';
     });
     
+    // ✅ SECURITY FIX: Add tenant filter
     // Fetch all users
     const users = await prisma.User.findMany({
+      where: tenantFilter, // ✅ SECURITY: Filter by tenant_id
       select: {
         id: true,
         username: true,

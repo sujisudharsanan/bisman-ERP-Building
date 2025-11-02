@@ -1,128 +1,106 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect, useMemo } from 'react';
 import SuperAdminShell from '@/components/layouts/SuperAdminShell';
+import { FiGrid, FiUsers, FiFile } from 'react-icons/fi';
 
-interface User {
-  userId: number;
-  username: string;
-  email: string;
-  createdAt: string;
-}
+type Module = {
+  id: number | string;
+  module_name: string;
+  display_name?: string;
+  name: string;
+  productType?: string;
+  businessCategory?: string;
+  enabled?: boolean;
+  pages?: string[];
+};
 
-interface RoleData {
-  roleId: number;
-  roleName: string;
-  roleDisplayName: string;
-  roleDescription: string | null;
-  roleLevel: number | null;
-  roleStatus: string;
-  userCount: number;
-  users: User[];
-}
+type PagePermission = {
+  pageName: string;
+  allowed: boolean;
+};
 
-interface ReportSummary {
+type ReportSummary = {
   totalRoles: number;
   totalUsers: number;
   rolesWithUsers: number;
   rolesWithoutUsers: number;
   generatedAt: string;
-}
+};
 
+type UserDetail = {
+  userId: number;
+  username: string;
+  email: string;
+  createdAt: string;
+};
 
-// Breadcrumb Navigation Component
-function Breadcrumb({ items }: { items: Array<{ label: string; href?: string }> }) {
-  return (
-    <nav className="flex mb-4" aria-label="Breadcrumb">
-      <ol className="inline-flex items-center space-x-1 md:space-x-3">
-        <li className="inline-flex items-center">
-          <Link
-            href="/dashboard"
-            className="inline-flex items-center text-sm font-medium text-gray-700 hover:text-blue-600 dark:text-gray-400 dark:hover:text-white"
-          >
-            <svg className="w-3 h-3 mr-2.5" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-              <path d="M10.707 2.293a1 1 0 00-1.414 0l-7 7a1 1 0 001.414 1.414L4 10.414V17a1 1 0 001 1h2a1 1 0 001-1v-2a1 1 0 011-1h2a1 1 0 011 1v2a1 1 0 001 1h2a1 1 0 001-1v-6.586l.293.293a1 1 0 001.414-1.414l-7-7z"></path>
-            </svg>
-            Dashboard
-          </Link>
-        </li>
-        {items.map((item, index) => (
-          <li key={index}>
-            <div className="flex items-center">
-              <svg className="w-3 h-3 text-gray-400 mx-1" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">
-                <path fillRule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clipRule="evenodd"></path>
-              </svg>
-              {item.href ? (
-                <Link
-                  href={item.href}
-                  className="ml-1 text-sm font-medium text-gray-700 hover:text-blue-600 md:ml-2 dark:text-gray-400 dark:hover:text-white"
-                >
-                  {item.label}
-                </Link>
-              ) : (
-                <span className="ml-1 text-sm font-medium text-gray-500 md:ml-2 dark:text-gray-400">
-                  {item.label}
-                </span>
-              )}
-            </div>
-          </li>
-        ))}
-      </ol>
-    </nav>
-  );
-}
+type RoleReport = {
+  roleId: number;
+  roleName: string;
+  roleDisplayName: string;
+  roleDescription: string | null;
+  roleStatus: string;
+  userCount: number;
+  users: UserDetail[];
+};
 
-
-// Quick Links Component
-function QuickLinks({ links }: { links: Array<{ label: string; href: string; icon?: React.ReactNode }> }) {
-  return (
-    <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-      <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100 mb-3">Quick Links</h3>
-      <div className="flex flex-wrap gap-2">
-        {links.map((link, index) => (
-          <Link
-            key={index}
-            href={link.href}
-            className="inline-flex items-center px-3 py-1.5 text-sm font-medium text-blue-700 bg-white dark:bg-blue-900 border border-blue-300 dark:border-blue-700 rounded-md hover:bg-blue-100 dark:hover:bg-blue-800 transition-colors"
-          >
-            {link.icon && <span className="mr-1.5">{link.icon}</span>}
-            {link.label}
-          </Link>
-        ))}
-      </div>
-    </div>
-  );
-}
+const CATEGORIES = [
+  { key: 'business', label: 'Business ERP', color: 'purple' },
+];
 
 export default function RolesUsersReportPage() {
-  const [loading, setLoading] = useState(false);
-  const [reportData, setReportData] = useState<RoleData[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [reportData, setReportData] = useState<RoleReport[]>([]);
+  const [modules, setModules] = useState<Module[]>([]);
   const [summary, setSummary] = useState<ReportSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | null>('business'); // Auto-select Business ERP
+  const [selectedModuleName, setSelectedModuleName] = useState<string | null>(null);
+  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
   const [expandedRoles, setExpandedRoles] = useState<Set<number>>(new Set());
+  const [pagePermissions, setPagePermissions] = useState<Record<string, boolean>>({});
 
   const loadReport = async () => {
     setLoading(true);
     setError(null);
     
     try {
-      const response = await fetch('/api/reports/roles-users', {
-        credentials: 'include'
-      });
+      // Load modules and roles data
+      const [rolesRes, modulesRes] = await Promise.all([
+        fetch('/api/reports/roles-users', { credentials: 'include' }),
+        fetch('/api/enterprise-admin/master-modules', { credentials: 'include' })
+      ]);
       
-      if (!response.ok) {
-        throw new Error(`Failed to load report: ${response.statusText}`);
+      // API automatically filters out SUPER_ADMIN and ENTERPRISE_ADMIN roles
+      if (!rolesRes.ok) {
+        throw new Error(`Failed to load report: ${rolesRes.statusText}`);
       }
       
-      const data = await response.json();
+      const rolesData = await rolesRes.json();
       
-      if (data.success) {
-        setReportData(data.data);
-        setSummary(data.summary);
+      if (rolesData.success) {
+        setReportData(rolesData.data);
+        setSummary(rolesData.summary);
       } else {
-        throw new Error(data.error || 'Failed to load report');
+        throw new Error(rolesData.error || 'Failed to load report');
       }
+
+      // Load modules
+      const modulesData = await modulesRes.json().catch(() => ({}));
+      console.log('[RolesUsersReport] Modules API response:', modulesData);
+      
+      const modsList = modulesData.ok && Array.isArray(modulesData.modules) 
+        ? modulesData.modules 
+        : Array.isArray(modulesData.data) 
+          ? modulesData.data 
+          : Array.isArray(modulesData) 
+            ? modulesData 
+            : [];
+      
+      console.log('[RolesUsersReport] Extracted modules:', modsList.length, modsList);
+      setModules(modsList);
+
     } catch (err: any) {
       setError(err.message);
       console.error('[RolesUsersReport] Error:', err);
@@ -135,8 +113,59 @@ export default function RolesUsersReportPage() {
     loadReport();
   }, []);
 
-  const downloadCSV = () => {
-    window.open('/api/reports/roles-users/csv', '_blank');
+  const filteredModules = useMemo(() => {
+    // Only show Business ERP modules (exclude pump-related)
+    const isPump = (m: Module) =>
+      (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP';
+    return modules.filter(m => !isPump(m));
+  }, [modules]);
+
+  const filteredRoles = useMemo(() => {
+    if (!selectedModuleName) return reportData;
+    // Filter roles based on selected module if needed
+    // For now, return all roles (roles are not module-specific in current implementation)
+    return reportData;
+  }, [reportData, selectedModuleName]);
+
+  const selectedRole = useMemo(() => {
+    if (!selectedRoleId) return null;
+    return reportData.find(r => r.roleId === selectedRoleId) || null;
+  }, [reportData, selectedRoleId]);
+
+  const selectedModule = useMemo(() => {
+    if (!selectedModuleName) return null;
+    const module = filteredModules.find(m => m.module_name === selectedModuleName) || null;
+    console.log('[selectedModule] Found module:', module);
+    console.log('[selectedModule] Module pages:', module?.pages);
+    return module;
+  }, [filteredModules, selectedModuleName]);
+
+  const modulePages = useMemo(() => {
+    if (!selectedModule) {
+      console.log('[modulePages] No selected module');
+      return [];
+    }
+    if (!selectedModule.pages || !Array.isArray(selectedModule.pages)) {
+      console.log('[modulePages] Module has no pages array:', selectedModule);
+      return [];
+    }
+    console.log('[modulePages] Returning pages:', selectedModule.pages);
+    return selectedModule.pages;
+  }, [selectedModule]);
+
+  // Debug logging for pages panel
+  useEffect(() => {
+    if (selectedModuleName) {
+      console.log('[DEBUG] Module selected:', selectedModuleName);
+      console.log('[DEBUG] modulePages:', modulePages);
+    }
+  }, [selectedModuleName, modulePages]);
+
+  const togglePagePermission = (pageName: string) => {
+    setPagePermissions(prev => ({
+      ...prev,
+      [pageName]: !prev[pageName]
+    }));
   };
 
   const toggleRole = (roleId: number) => {
@@ -160,63 +189,48 @@ export default function RolesUsersReportPage() {
   };
 
   return (
-    <SuperAdminShell title="Roles & Users Report">
+    <SuperAdminShell title="Modules & Roles">
       <div className="space-y-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-lg font-semibold text-gray-800 dark:text-gray-100">
-              System Roles and Users Report
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400">
-              Complete list of all roles with assigned users and their email addresses
-            </p>
+        {/* Statistics Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm text-purple-600 dark:text-purple-400">Total Modules</div>
+                <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">{filteredModules.length}</div>
+              </div>
+              <FiGrid className="w-8 h-8 text-purple-500" />
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={loadReport}
-              disabled={loading}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700 border border-gray-300 dark:border-slate-600 rounded-md transition-colors disabled:opacity-50"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
-              {loading ? 'Loading...' : 'Refresh'}
-            </button>
-            <button
-              onClick={downloadCSV}
-              disabled={loading || !summary}
-              className="inline-flex items-center gap-2 px-3 py-2 text-sm text-white bg-green-600 hover:bg-green-700 border border-green-700 rounded-md transition-colors disabled:opacity-50"
-            >
-              <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-              </svg>
-              Download CSV
-            </button>
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm text-blue-600 dark:text-blue-400">Total Roles</div>
+                <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">{summary?.totalRoles || 0}</div>
+              </div>
+              <FiUsers className="w-8 h-8 text-blue-500" />
+            </div>
+          </div>
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm text-green-600 dark:text-green-400">Total Users</div>
+                <div className="text-2xl font-bold text-green-900 dark:text-green-100">{summary?.totalUsers || 0}</div>
+              </div>
+              <FiFile className="w-8 h-8 text-green-500" />
+            </div>
+          </div>
+          <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-md p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-sm text-orange-600 dark:text-orange-400">Active Category</div>
+                <div className="text-lg font-bold text-orange-900 dark:text-orange-100">
+                  Business ERP
+                </div>
+              </div>
+            </div>
           </div>
         </div>
-
-        {/* Summary Cards */}
-        {summary && (
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div className="p-4 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md">
-              <div className="text-sm text-blue-600 dark:text-blue-400">Total Roles</div>
-              <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">{summary.totalRoles}</div>
-            </div>
-            <div className="p-4 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md">
-              <div className="text-sm text-green-600 dark:text-green-400">Total Users</div>
-              <div className="text-2xl font-bold text-green-900 dark:text-green-100">{summary.totalUsers}</div>
-            </div>
-            <div className="p-4 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md">
-              <div className="text-sm text-purple-600 dark:text-purple-400">Roles with Users</div>
-              <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">{summary.rolesWithUsers}</div>
-            </div>
-            <div className="p-4 bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700 rounded-md">
-              <div className="text-sm text-gray-600 dark:text-gray-400">Empty Roles</div>
-              <div className="text-2xl font-bold text-gray-900 dark:text-gray-100">{summary.rolesWithoutUsers}</div>
-            </div>
-          </div>
-        )}
 
         {/* Error Display */}
         {error && (
@@ -230,144 +244,288 @@ export default function RolesUsersReportPage() {
           </div>
         )}
 
-        {/* Expand/Collapse Controls */}
-        {reportData.length > 0 && (
-          <div className="flex items-center gap-2">
-            <button
-              onClick={expandAll}
-              className="text-xs px-2 py-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded border border-blue-300 dark:border-blue-700"
-            >
-              Expand All
-            </button>
-            <button
-              onClick={collapseAll}
-              className="text-xs px-2 py-1 text-gray-600 dark:text-gray-400 hover:bg-gray-50 dark:hover:bg-gray-800 rounded border border-gray-300 dark:border-gray-700"
-            >
-              Collapse All
-            </button>
+
+
+        {/* Quick action: Jump to 4th row (Page Permissions) */}
+        <div className="flex justify-end">
+          <button
+            type="button"
+            onClick={() => {
+              const el = document.querySelector('[data-fourth-row]') as HTMLElement | null;
+              if (el) {
+                try {
+                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                } catch {}
+              }
+            }}
+            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
+            title="Jump to Page Permissions panel"
+          >
+            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M3 10a1 1 0 011-1h8.586L9.293 5.707A1 1 0 1110.707 4.293l5 5a1 1 0 010 1.414l-5 5a1 1 0 11-1.414-1.414L12.586 11H4a1 1 0 01-1-1z"/></svg>
+            Go to Page Permissions
+          </button>
+        </div>
+
+        {/* Three Column Layout: Modules | Roles | Users */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+          {/* 1. Modules */}
+          <div className="rounded-lg border bg-white dark:bg-gray-900 p-3">
+            <div className="text-sm font-semibold mb-2 flex items-center justify-between">
+              <span>Modules</span>
+              <span className="text-xs font-normal px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                {filteredModules.length}
+              </span>
+            </div>
+            <div className="space-y-1 max-h-[520px] overflow-y-auto">
+              {filteredModules.length === 0 && (
+                <div className="text-xs text-gray-500">No Modules</div>
+              )}
+              {filteredModules.map((m) => {
+                const isSelected = selectedModuleName === m.module_name;
+                return (
+                  <button
+                    key={m.id}
+                    onClick={() => {
+                      console.log('[ModuleClick] Selected module:', m.module_name, m);
+                      setSelectedModuleName(m.module_name);
+                      setSelectedRoleId(null);
+                      // Smoothly reveal the 4th row (works well across browsers)
+                      requestAnimationFrame(() => {
+                        const fourthRow = document.querySelector('[data-fourth-row]') as HTMLElement | null;
+                        if (fourthRow?.scrollIntoView) {
+                          try {
+                            fourthRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          } catch {
+                            // Fallback for older browsers
+                            const rect = fourthRow.getBoundingClientRect();
+                            window.scrollTo({ top: window.scrollY + rect.top - 80, behavior: 'smooth' });
+                          }
+                        }
+                      });
+                    }}
+                    className={`w-full text-left rounded-md border p-3 transition ${
+                      isSelected
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'
+                    }`}
+                    title={m.display_name || m.name}
+                  >
+                    <div className="text-xs truncate font-medium">{m.display_name || m.name}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 2. Roles */}
+          <div className="rounded-lg border bg-white dark:bg-gray-900 p-3">
+            <div className="text-sm font-semibold mb-2 flex items-center justify-between">
+              <span>Roles</span>
+              {selectedModuleName && (
+                <span className="text-xs font-normal px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                  {filteredRoles.length}
+                </span>
+              )}
+            </div>
+            <div className="space-y-1 max-h-[520px] overflow-y-auto">
+              {!selectedModuleName && (
+                <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300">
+                  ⚠️ Select a module to view roles
+                </div>
+              )}
+              {selectedModuleName && filteredRoles.length === 0 && (
+                <div className="text-xs text-gray-500">No Roles</div>
+              )}
+              {selectedModuleName && filteredRoles.map((r) => {
+                const isSelected = selectedRoleId === r.roleId;
+                return (
+                  <button
+                    key={r.roleId}
+                    onClick={() => setSelectedRoleId(r.roleId)}
+                    className={`w-full text-left rounded-md border px-3 py-2 text-xs transition ${
+                      isSelected
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                        : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'
+                    }`}
+                    title={r.roleName}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate font-medium">{r.roleDisplayName}</span>
+                      <span className={`inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full text-xs font-semibold ${
+                        r.userCount > 0
+                          ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
+                          : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
+                      }`}>
+                        {r.userCount}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                      {r.roleName}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3. Users */}
+          <div className="rounded-lg border bg-white dark:bg-gray-900 p-3">
+            <div className="text-sm font-semibold mb-2 flex items-center justify-between">
+              <span>Users</span>
+              {selectedRole && (
+                <span className="text-xs font-normal px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">
+                  {selectedRole.users.length}
+                </span>
+              )}
+            </div>
+            <div className="space-y-1 max-h-[520px] overflow-y-auto">
+              {!selectedRoleId && (
+                <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300">
+                  ⚠️ Select a role to view users
+                </div>
+              )}
+              {selectedRoleId && !selectedRole && (
+                <div className="text-xs text-gray-500">Loading users...</div>
+              )}
+              {selectedRole && selectedRole.users.length === 0 && (
+                <div className="text-xs text-gray-500">No users assigned to this role</div>
+              )}
+              {selectedRole && selectedRole.users.map((user) => (
+                <div
+                  key={user.userId}
+                  className="rounded-md border border-gray-200 dark:border-gray-700 p-3 hover:bg-gray-50 dark:hover:bg-gray-800"
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {user.username}
+                      </div>
+                      <div className="text-[10px] text-blue-600 dark:text-blue-400 truncate mt-0.5">
+                        {user.email}
+                      </div>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                        ID: {user.userId} • Created: {new Date(user.createdAt).toLocaleDateString()}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Fourth Row: Pages with Toggle Switches */}
+        {selectedModuleName ? (
+          <div data-fourth-row className="rounded-lg border-2 border-blue-500 bg-white dark:bg-gray-900 p-4 mt-4">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                  📄 Pages in {String(selectedModule?.display_name || selectedModule?.name || selectedModuleName)}
+                </h3>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  Toggle to allow or disallow access to specific pages
+                </p>
+              </div>
+              {modulePages.length > 0 && (
+                <span className="text-xs font-normal px-2 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">
+                  {modulePages.length} pages
+                </span>
+              )}
+            </div>
+            
+            {modulePages.length > 0 ? (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+              {modulePages.map((page) => {
+                const isAllowed = pagePermissions[page] !== false; // Default to true
+                return (
+                  <div
+                    key={page}
+                    className={`flex items-center justify-between p-3 rounded-lg border transition-all ${
+                      isAllowed
+                        ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
+                        : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'
+                    }`}
+                  >
+                    <div className="flex-1 min-w-0 mr-3">
+                      <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
+                        {page}
+                      </div>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">
+                        {isAllowed ? '✓ Allowed' : '✗ Disallowed'}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => togglePagePermission(page)}
+                      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${
+                        isAllowed
+                          ? 'bg-green-600 dark:bg-green-500'
+                          : 'bg-gray-300 dark:bg-gray-600'
+                      }`}
+                      role="switch"
+                      aria-checked={isAllowed}
+                      title={isAllowed ? 'Click to disallow' : 'Click to allow'}
+                    >
+                      <span
+                        aria-hidden="true"
+                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${
+                          isAllowed ? 'translate-x-5' : 'translate-x-0'
+                        }`}
+                      />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Save Button */}
+            <div className="flex items-center justify-end gap-3 mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+              <button
+                onClick={() => {
+                  console.log('[PagePermissions] Saving permissions:', pagePermissions);
+                  // TODO: Implement API call to save permissions
+                  alert('Page permissions saved! (Backend integration pending)');
+                }}
+                className="px-4 py-2 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+              >
+                Save Permissions
+              </button>
+              <button
+                onClick={() => {
+                  // Reset all to allowed
+                  const resetPermissions: Record<string, boolean> = {};
+                  modulePages.forEach(page => {
+                    resetPermissions[page] = true;
+                  });
+                  setPagePermissions(resetPermissions);
+                }}
+                className="px-4 py-2 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+              >
+                Reset to All Allowed
+              </button>
+            </div>
+              </>
+            ) : (
+              <div className="rounded-lg border border-yellow-300 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 p-4">
+                <div className="text-sm text-yellow-700 dark:text-yellow-300">
+                  ⚠️ This module has no pages defined in the API response. Pages will appear here once the backend includes page data.
+                </div>
+                <div className="text-xs text-gray-600 dark:text-gray-400 mt-2">
+                  Expected API field: <code className="bg-gray-800 text-green-400 px-1 rounded">{`pages: ["page1", "page2", ...]`}</code>
+                </div>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div data-fourth-row className="rounded-lg border-2 border-dashed border-blue-300 dark:border-blue-700 bg-blue-50 dark:bg-blue-900/20 p-8 text-center mt-4">
+            <div className="text-base font-medium text-blue-700 dark:text-blue-300 mb-2">
+              📄 Page Permissions Panel
+            </div>
+            <div className="text-sm text-blue-600 dark:text-blue-400">
+              👆 Click a module above to view and manage page permissions
+            </div>
           </div>
         )}
-
-        {/* Report Table */}
-        <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg overflow-hidden">
-          {loading ? (
-            <div className="p-8 text-center">
-              <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-blue-600 border-r-transparent"></div>
-              <p className="mt-2 text-sm text-gray-600 dark:text-gray-400">Loading report...</p>
-            </div>
-          ) : reportData.length === 0 ? (
-            <div className="p-8 text-center text-gray-600 dark:text-gray-400">
-              No roles found in the system
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="min-w-full divide-y divide-gray-200 dark:divide-slate-700">
-                <thead className="bg-gray-50 dark:bg-slate-900">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Role
-                    </th>
-                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Status
-                    </th>
-                    <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Users
-                    </th>
-                    <th className="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">
-                      Actions
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
-                  {reportData.map((role) => (
-                    <React.Fragment key={role.roleId}>
-                      <tr className="hover:bg-gray-50 dark:hover:bg-slate-700/50">
-                        <td className="px-4 py-3">
-                          <div className="flex flex-col">
-                            <div className="flex items-center gap-2">
-                              <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
-                                {role.roleDisplayName}
-                              </div>
-                              <span className="text-xs px-1.5 py-0.5 bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 rounded font-mono">
-                                ID: {role.roleId}
-                              </span>
-                            </div>
-                            <div className="text-xs text-gray-500 dark:text-gray-400 font-mono">
-                              DB Role: {role.roleName}
-                            </div>
-                            {role.roleDescription && (
-                              <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                                {role.roleDescription}
-                              </div>
-                            )}
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <span className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-                            role.roleStatus === 'active' 
-                              ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
-                              : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-                          }`}>
-                            {role.roleStatus}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-center">
-                          <span className={`inline-flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold ${
-                            role.userCount > 0
-                              ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300'
-                              : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'
-                          }`}>
-                            {role.userCount}
-                          </span>
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          {role.userCount > 0 && (
-                            <button
-                              onClick={() => toggleRole(role.roleId)}
-                              className="text-xs px-2 py-1 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
-                            >
-                              {expandedRoles.has(role.roleId) ? 'Hide Users' : 'Show Users'}
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                      {expandedRoles.has(role.roleId) && role.users.length > 0 && (
-                        <tr>
-                          <td colSpan={4} className="px-4 py-2 bg-gray-50 dark:bg-slate-900/50">
-                            <div className="ml-8">
-                              <table className="min-w-full">
-                                <thead>
-                                  <tr className="border-b border-gray-200 dark:border-slate-700">
-                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">User ID</th>
-                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Username</th>
-                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Email</th>
-                                    <th className="px-2 py-2 text-left text-xs font-medium text-gray-600 dark:text-gray-400">Created</th>
-                                  </tr>
-                                </thead>
-                                <tbody className="divide-y divide-gray-200 dark:divide-slate-700">
-                                  {role.users.map((user) => (
-                                    <tr key={user.userId} className="hover:bg-gray-100 dark:hover:bg-slate-800">
-                                      <td className="px-2 py-2 text-xs text-gray-600 dark:text-gray-400">{user.userId}</td>
-                                      <td className="px-2 py-2 text-xs font-medium text-gray-900 dark:text-gray-100">{user.username}</td>
-                                      <td className="px-2 py-2 text-xs text-blue-600 dark:text-blue-400">{user.email}</td>
-                                      <td className="px-2 py-2 text-xs text-gray-500 dark:text-gray-400">
-                                        {new Date(user.createdAt).toLocaleDateString()}
-                                      </td>
-                                    </tr>
-                                  ))}
-                                </tbody>
-                              </table>
-                            </div>
-                          </td>
-                        </tr>
-                      )}
-                    </React.Fragment>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
 
         {/* Footer Info */}
         {summary && (

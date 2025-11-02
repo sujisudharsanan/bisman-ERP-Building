@@ -37,7 +37,9 @@ const nextConfig = {
     if (API_URL) {
       return [
         { source: '/api/:path*', destination: `${API_URL}/api/:path*` },
-        { source: '/uploads/:path*', destination: `${API_URL}/uploads/:path*` },
+        // ✅ SECURITY FIX: Removed public /uploads/ proxy
+        // Files now served via authenticated /api/secure-files endpoint
+        // OLD: { source: '/uploads/:path*', destination: `${API_URL}/uploads/:path*` },
       ];
     }
     return [];

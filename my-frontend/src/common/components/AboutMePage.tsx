@@ -177,7 +177,9 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
         if (response.ok) {
           const result = await response.json();
           if (result.success && result.profile_pic_url) {
-            setSelectedPhoto(`${baseURL}${result.profile_pic_url}`);
+            // ✅ SECURITY FIX: Convert /uploads/ URL to /api/secure-files/
+            const secureUrl = result.profile_pic_url.replace('/uploads/', '/api/secure-files/');
+            setSelectedPhoto(`${baseURL}${secureUrl}`);
           }
         }
       } catch {
@@ -263,7 +265,9 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
       const result = await response.json();
 
       if (response.ok && result.success) {
-        const fullImageUrl = `${baseURL}${result.url}`;
+        // ✅ SECURITY FIX: Convert /uploads/ URL to /api/secure-files/
+        const secureUrl = result.url.replace('/uploads/', '/api/secure-files/');
+        const fullImageUrl = `${baseURL}${secureUrl}`;
         setSelectedPhoto(fullImageUrl);
         alert('Profile picture updated successfully!');
       } else {
