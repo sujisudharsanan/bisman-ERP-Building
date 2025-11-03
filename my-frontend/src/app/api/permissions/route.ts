@@ -22,15 +22,24 @@ function forwardHeaders(req: NextRequest): HeadersInit {
   return headers;
 }
 
-// GET /api/permissions?userId=123 -> { success, data: { userId, allowedPages } }
+// GET /api/permissions
+// - By user:    /api/permissions?userId=123 -> { success, data: { userId, allowedPages } }
+// - By role:    /api/permissions?roleId=1&moduleName=system -> { success, data: { roleId, moduleName, allowedPages } }
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const userId = searchParams.get('userId') || '';
+    const roleId = searchParams.get('roleId') || '';
+    const moduleName = searchParams.get('moduleName') || '';
     const base = getBackendBase();
 
     if (base) {
-      const url = `${base.replace(/\/$/, '')}/api/permissions?userId=${encodeURIComponent(userId)}`;
+      // Build backend URL with whichever identifiers are provided
+      const qs = new URLSearchParams();
+      if (userId) qs.set('userId', userId);
+      if (roleId) qs.set('roleId', roleId);
+      if (moduleName) qs.set('moduleName', moduleName);
+      const url = `${base.replace(/\/$/, '')}/api/permissions?${qs.toString()}`;
       const res = await fetch(url, {
         method: 'GET',
         headers: forwardHeaders(req),
@@ -41,10 +50,13 @@ export async function GET(req: NextRequest) {
     }
 
     // Safe fallback (no backend configured)
-    return NextResponse.json({
-      success: true,
-      data: { userId, allowedPages: [] as string[] },
-    });
+    if (userId) {
+      return NextResponse.json({ success: true, data: { userId, allowedPages: [] as string[] } });
+    }
+    if (roleId) {
+      return NextResponse.json({ success: true, data: { roleId, moduleName, allowedPages: [] as string[] } });
+    }
+    return NextResponse.json({ success: true, data: { allowedPages: [] as string[] } });
   } catch (error) {
     return NextResponse.json({ success: false, error: 'Failed to load permissions' }, { status: 500 });
   }

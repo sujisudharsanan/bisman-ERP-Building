@@ -141,6 +141,33 @@ export default function RolesUsersReportPage() {
     }));
   };
 
+  // Load existing permissions for selected role+module and prefill toggles
+  useEffect(() => {
+    const loadRolePerms = async () => {
+      if (!selectedRoleId || !selectedModuleName) return;
+      try {
+        const res = await fetch(`/api/permissions?roleId=${selectedRoleId}&moduleName=${encodeURIComponent(selectedModuleName)}`, { credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        const allowed: string[] = data?.data?.allowedPages || data?.allowedPages || [];
+        if (Array.isArray(allowed) && allowed.length > 0) {
+          const state: Record<string, boolean> = {};
+          (modulePages || []).forEach(p => { state[p] = allowed.includes(p); });
+          setPagePermissions(state);
+        } else {
+          // Default to allowed for listed pages
+          const state: Record<string, boolean> = {};
+          (modulePages || []).forEach(p => { state[p] = true; });
+          setPagePermissions(state);
+        }
+      } catch {
+        const state: Record<string, boolean> = {};
+        (modulePages || []).forEach(p => { state[p] = true; });
+        setPagePermissions(state);
+      }
+    };
+    loadRolePerms();
+  }, [selectedRoleId, selectedModuleName, modulePages]);
+
   const handleSave = async () => {
     if (!selectedRoleId || !selectedModuleName) {
       setSaveError('Select a module and a role before saving');
