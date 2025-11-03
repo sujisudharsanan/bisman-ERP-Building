@@ -48,7 +48,6 @@ export default function RolesUsersReportPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedModuleName, setSelectedModuleName] = useState<string | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
-  const [expandedRoles, setExpandedRoles] = useState<Set<number>>(new Set());
   const [pagePermissions, setPagePermissions] = useState<Record<string, boolean>>({});
 
   const loadReport = async () => {
@@ -84,8 +83,9 @@ export default function RolesUsersReportPage() {
             : [];
 
       setModules(modsList);
-    } catch (err: any) {
-      setError(err.message);
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setError(msg);
       console.error('[RolesUsersReport] Error:', err);
     } finally {
       setLoading(false);
@@ -95,6 +95,7 @@ export default function RolesUsersReportPage() {
   useEffect(() => {
     loadReport();
   }, []);
+
 
   const filteredModules = useMemo(() => {
     const isPump = (m: Module) =>
@@ -114,8 +115,8 @@ export default function RolesUsersReportPage() {
 
   const selectedModule = useMemo(() => {
     if (!selectedModuleName) return null;
-    const module = filteredModules.find(m => m.module_name === selectedModuleName) || null;
-    return module;
+    const found = filteredModules.find(m => m.module_name === selectedModuleName) || null;
+    return found;
   }, [filteredModules, selectedModuleName]);
 
   const modulePages = useMemo(() => {
@@ -126,8 +127,7 @@ export default function RolesUsersReportPage() {
 
   useEffect(() => {
     if (selectedModuleName) {
-      console.log('[DEBUG] Module selected:', selectedModuleName);
-      console.log('[DEBUG] modulePages:', modulePages);
+      // Debugging info intentionally omitted in production.
     }
   }, [selectedModuleName, modulePages]);
 
@@ -138,8 +138,15 @@ export default function RolesUsersReportPage() {
     }));
   };
 
-  const expandAll = () => setExpandedRoles(new Set(reportData.map(r => r.roleId)));
-  const collapseAll = () => setExpandedRoles(new Set());
+  // expandedRoles and expand/collapse helpers removed (unused in UI)
+
+  if (loading) {
+    return (
+      <SuperAdminShell title="Modules & Roles">
+        <div className="p-4">Loading...</div>
+      </SuperAdminShell>
+    );
+  }
 
   return (
     <SuperAdminShell title="Modules & Roles">
@@ -204,7 +211,9 @@ export default function RolesUsersReportPage() {
               if (el) {
                 try {
                   el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                } catch {}
+                } catch {
+                  void 0; // no-op to satisfy lint rule
+                }
               }
             }}
             className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
@@ -239,6 +248,7 @@ export default function RolesUsersReportPage() {
                           try {
                             fourthRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
                           } catch {
+                            // ignore - fallback below
                             const rect = fourthRow.getBoundingClientRect();
                             window.scrollTo({ top: window.scrollY + rect.top - 80, behavior: 'smooth' });
                           }
@@ -369,7 +379,6 @@ export default function RolesUsersReportPage() {
                     <div className="flex items-center justify-end gap-2 mt-3">
                       <button
                         onClick={() => {
-                          console.log('[PagePermissions] Saving permissions:', pagePermissions);
                           alert('Page permissions saved! (Backend integration pending)');
                         }}
                         className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
