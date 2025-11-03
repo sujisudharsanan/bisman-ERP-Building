@@ -49,6 +49,9 @@ export default function RolesUsersReportPage() {
   const [selectedModuleName, setSelectedModuleName] = useState<string | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
   const [pagePermissions, setPagePermissions] = useState<Record<string, boolean>>({});
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
 
   const loadReport = async () => {
     setLoading(true);
@@ -138,6 +141,36 @@ export default function RolesUsersReportPage() {
     }));
   };
 
+  const handleSave = async () => {
+    if (!selectedRoleId || !selectedModuleName) {
+      setSaveError('Select a module and a role before saving');
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    setSaveSuccess(null);
+    try {
+      const allowedPages = (modulePages || []).filter(p => pagePermissions[p] !== false);
+      const res = await fetch('/api/permissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ roleId: selectedRoleId, moduleName: selectedModuleName, allowedPages }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) {
+        throw new Error(data?.error || 'Failed to save');
+      }
+      setSaveSuccess('Permissions saved');
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      setSaveError(msg);
+    } finally {
+      setSaving(false);
+      setTimeout(() => { setSaveSuccess(null); setSaveError(null); }, 2500);
+    }
+  };
+
   // expandedRoles and expand/collapse helpers removed (unused in UI)
 
   if (loading) {
@@ -202,7 +235,7 @@ export default function RolesUsersReportPage() {
           </div>
         )}
 
-        {/* Quick action: Jump to 4th column (Pages) */}
+  {/* Quick action: Jump to 4th column (Pages) */}
         <div className="flex justify-end">
           <button
             type="button"
@@ -223,6 +256,13 @@ export default function RolesUsersReportPage() {
             Go to Page Permissions
           </button>
         </div>
+
+        {/* Save status */}
+        {(saveError || saveSuccess) && (
+          <div className={`p-2 text-xs rounded border ${saveError ? 'bg-red-50 border-red-300 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300' : 'bg-green-50 border-green-300 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300'}`}>
+            {saveError || saveSuccess}
+          </div>
+        )}
 
         {/* Four Column Layout: Modules | Roles | Users | Pages */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
@@ -378,12 +418,12 @@ export default function RolesUsersReportPage() {
                     {/* Save/Reset Buttons */}
                     <div className="flex items-center justify-end gap-2 mt-3">
                       <button
-                        onClick={() => {
-                          alert('Page permissions saved! (Backend integration pending)');
-                        }}
-                        className="px-3 py-1.5 text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                        onClick={handleSave}
+                        disabled={saving}
+                        className={`px-3 py-1.5 text-xs font-medium text-white rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${saving ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
+                        title={saving ? 'Saving...' : 'Save permissions'}
                       >
-                        Save
+                        {saving ? 'Saving…' : 'Save'}
                       </button>
                       <button
                         onClick={() => {
