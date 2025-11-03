@@ -3,8 +3,11 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { Send, Sparkles } from 'lucide-react';
 import ChatSmileMessageIcon from './ChatSmileMessageIcon';
 import { ChatMsg, useOllamaChat } from '@/hooks/useOllamaChat';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function ERPChatWidget({ userName }: { userName?: string }) {
+  const { user } = useAuth();
+  if (!user) return null;
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [iconState, setIconState] = useState<'idle'|'attentive'|'listening'|'thinking'|'notify'>('idle');

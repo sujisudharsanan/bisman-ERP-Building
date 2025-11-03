@@ -29,10 +29,14 @@ export async function POST(req: NextRequest) {
     const model = settings?.model || process.env.OLLAMA_MODEL || 'llama3:8b';
     const temperature = typeof settings?.temperature === 'number' ? settings.temperature : 0.2;
 
-    const host = process.env.OLLAMA_HOST || 'http://localhost:11434';
-    const res = await fetch(`${host}/api/chat`, {
+  const host = process.env.OLLAMA_HOST || process.env.OLLAMA_URL || process.env.NEXT_PUBLIC_OLLAMA_URL || 'http://localhost:11434';
+  const addNgrok = /ngrok(-free)?\.(dev|io)/i.test(host) || String(process.env.NGROK_BYPASS || '').toLowerCase() === 'true';
+    const res = await fetch(`${host.replace(/\/$/, '')}/api/chat`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(addNgrok ? { 'ngrok-skip-browser-warning': 'true', 'Accept': 'application/json' } : { 'Accept': 'application/json' })
+      },
       body: JSON.stringify({ model, messages, stream, options: { temperature } }),
     });
 

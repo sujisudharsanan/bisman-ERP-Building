@@ -9,6 +9,7 @@ import FloatingBottomNav from '@/components/ui/FloatingBottomNav';
 import HealthBoot from '@/components/dev/HealthBoot';
 import RenderLogger from '@/components/debug/RenderLogger';
 import { ToastProvider } from '@/components/ui/toast';
+import ChatGuard from '@/components/ChatGuard';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -44,6 +45,8 @@ export default function RootLayout({
               <FloatingBottomNav />
               {/* Health check bootstraper (client-only) */}
               <HealthBoot />
+              {/* Chat widget guarded: hidden on public routes and when not authenticated */}
+              <ChatGuard />
       </ToastProvider>
             </PermissionProvider>
           </AuthProvider>

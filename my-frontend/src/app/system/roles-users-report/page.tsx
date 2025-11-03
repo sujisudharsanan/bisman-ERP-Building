@@ -2,7 +2,8 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import SuperAdminShell from '@/components/layouts/SuperAdminShell';
-import { FiGrid, FiUsers, FiFile } from 'react-icons/fi';
+import { FiGrid, FiUsers, FiFile, FiUserPlus } from 'react-icons/fi';
+import { useToast } from '@/components/ui/toast';
 
 type Module = {
   id: number | string;
@@ -12,7 +13,7 @@ type Module = {
   productType?: string;
   businessCategory?: string;
   enabled?: boolean;
-  pages?: string[];
+  pages?: Array<string | { id?: string; name?: string; path?: string; title?: string }>;
 };
 
 type ReportSummary = {
@@ -41,6 +42,7 @@ type RoleReport = {
 };
 
 export default function RolesUsersReportPage() {
+  const { toast } = useToast();
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<RoleReport[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
@@ -48,10 +50,33 @@ export default function RolesUsersReportPage() {
   const [error, setError] = useState<string | null>(null);
   const [selectedModuleName, setSelectedModuleName] = useState<string | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
+  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
   const [pagePermissions, setPagePermissions] = useState<Record<string, boolean>>({});
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+
+  // Total unique users across all roles (used for per-module user count display)
+  const totalUniqueUsers = useMemo(() => {
+    const ids = new Set<number>();
+    for (const r of reportData) {
+      for (const u of r.users) ids.add(u.userId);
+    }
+    return ids.size;
+  }, [reportData]);
+
+  // Row color identification palette (stable, cyclical)
+  const ROW_COLORS = [
+    'bg-indigo-500',
+    'bg-blue-500',
+    'bg-emerald-500',
+    'bg-amber-500',
+    'bg-rose-500',
+    'bg-violet-500',
+    'bg-cyan-500',
+    'bg-fuchsia-500',
+  ] as const;
+  const colorForIndex = (idx: number) => ROW_COLORS[idx % ROW_COLORS.length];
 
   const loadReport = async () => {
     setLoading(true);
@@ -106,10 +131,40 @@ export default function RolesUsersReportPage() {
     return modules.filter(m => !isPump(m));
   }, [modules]);
 
+  // Helpers to map roles to modules heuristically (until backend provides explicit mapping)
+  const normalize = (s: string) => s.replace(/[_-]+/g, ' ').toLowerCase();
+  const getModuleKeywords = (m?: Module | null): string[] => {
+    if (!m) return [];
+    const base = normalize(String(m.display_name || m.name || m.module_name || ''));
+    const words = base.split(/\s+/).filter(Boolean);
+    const slug = (m.module_name || '').toLowerCase();
+    const extras: Record<string, string[]> = {
+      finance: ['finance', 'account', 'accounts', 'ledger', 'payable', 'receivable', 'bank', 'banker', 'cfo', 'controller', 'general ledger'],
+      administration: ['admin', 'administrator', 'compliance'],
+      inventory: ['inventory', 'stock', 'warehouse'],
+      legal: ['legal', 'law'],
+      common: ['common', 'shared', 'general'],
+      'system administration': ['system', 'sysadmin', 'super admin', 'settings'],
+      'super admin': ['super admin', 'superadmin'],
+      'human resources': ['hr', 'human resources', 'recruit', 'payroll', 'attendance'],
+    };
+    const add = extras[base] || extras[slug] || [];
+    return Array.from(new Set([...words, ...add]));
+  };
+  const roleMatchesModule = (r: RoleReport, m?: Module | null) => {
+    if (!m) return true;
+    const keys = getModuleKeywords(m);
+    if (keys.length === 0) return true;
+    const a = normalize(r.roleName);
+    const b = normalize(r.roleDisplayName);
+    return keys.some(k => a.includes(k) || b.includes(k));
+  };
+
   const filteredRoles = useMemo(() => {
     if (!selectedModuleName) return reportData;
-    return reportData;
-  }, [reportData, selectedModuleName]);
+    const mod = filteredModules.find(mm => mm.module_name === selectedModuleName) || null;
+    return reportData.filter(r => roleMatchesModule(r, mod));
+  }, [reportData, selectedModuleName, filteredModules]);
 
   const selectedRole = useMemo(() => {
     if (!selectedRoleId) return null;
@@ -122,10 +177,40 @@ export default function RolesUsersReportPage() {
     return found;
   }, [filteredModules, selectedModuleName]);
 
+  // Helper: count pages for any module (normalizes strings/objects)
+  const getModulePageCount = (m: Module): number => {
+    const raw = Array.isArray(m.pages) ? m.pages : [];
+    const normalized = raw.map((p, idx) => {
+      if (typeof p === 'string') return { key: p };
+      const key = (p?.id || p?.path || p?.name || p?.title || `page_${idx}`).toString();
+      return { key };
+    });
+    const uniq = new Set<string>();
+    normalized.forEach(p => uniq.add(p.key));
+    return uniq.size;
+  };
+
+  // Compute unique users in a module by aggregating users of roles that match that module
+  const getModuleUsersCount = (m: Module): number => {
+    const relevantRoles = reportData.filter(r => roleMatchesModule(r, m));
+    const ids = new Set<number>();
+    relevantRoles.forEach(r => r.users.forEach(u => ids.add(u.userId)));
+    return ids.size;
+  };
+
+  // Normalize module pages into { key, label } to handle strings or objects from API
   const modulePages = useMemo(() => {
-    if (!selectedModule) return [] as string[];
-    if (!selectedModule.pages || !Array.isArray(selectedModule.pages)) return [] as string[];
-    return selectedModule.pages;
+    if (!selectedModule || !Array.isArray(selectedModule.pages)) return [] as { key: string; label: string }[];
+    const normalized = (selectedModule.pages as Array<string | { id?: string; name?: string; path?: string; title?: string }>)
+      .map((p, idx) => {
+        if (typeof p === 'string') return { key: p, label: p };
+        const key = (p?.id || p?.path || p?.name || p?.title || `page_${idx}`).toString();
+        const label = (p?.title || p?.name || p?.path || p?.id || `Page ${idx + 1}`).toString();
+        return { key, label };
+      });
+    const uniq = new Map<string, { key: string; label: string }>();
+    normalized.forEach(item => { if (!uniq.has(item.key)) uniq.set(item.key, item); });
+    return Array.from(uniq.values());
   }, [selectedModule]);
 
   useEffect(() => {
@@ -141,43 +226,20 @@ export default function RolesUsersReportPage() {
     }));
   };
 
-  // Load existing permissions for selected role+module and prefill toggles
-  useEffect(() => {
-    const loadRolePerms = async () => {
-      if (!selectedRoleId || !selectedModuleName) return;
-      try {
-        const res = await fetch(`/api/permissions?roleId=${selectedRoleId}&moduleName=${encodeURIComponent(selectedModuleName)}`, { credentials: 'include' });
-        const data = await res.json().catch(() => ({}));
-        const allowed: string[] = data?.data?.allowedPages || data?.allowedPages || [];
-        if (Array.isArray(allowed) && allowed.length > 0) {
-          const state: Record<string, boolean> = {};
-          (modulePages || []).forEach(p => { state[p] = allowed.includes(p); });
-          setPagePermissions(state);
-        } else {
-          // Default to allowed for listed pages
-          const state: Record<string, boolean> = {};
-          (modulePages || []).forEach(p => { state[p] = true; });
-          setPagePermissions(state);
-        }
-      } catch {
-        const state: Record<string, boolean> = {};
-        (modulePages || []).forEach(p => { state[p] = true; });
-        setPagePermissions(state);
-      }
-    };
-    loadRolePerms();
-  }, [selectedRoleId, selectedModuleName, modulePages]);
-
-  const handleSave = async () => {
-    if (!selectedRoleId || !selectedModuleName) {
-      setSaveError('Select a module and a role before saving');
+  // Assign selected role to selected module by granting all pages (quick setup)
+  const handleAssignRoleToModule = async () => {
+    if (!selectedModuleName) {
+      toast({ variant: 'destructive', title: 'Select a module', description: 'Choose a module to assign the role to.' });
       return;
     }
-    setSaving(true);
-    setSaveError(null);
-    setSaveSuccess(null);
+    if (!selectedRoleId) {
+      toast({ variant: 'destructive', title: 'Select a role', description: 'Choose a role to assign to this module.' });
+      return;
+    }
     try {
-      const allowedPages = (modulePages || []).filter(p => pagePermissions[p] !== false);
+      setSaving(true);
+      // allow all pages in the current module by default
+      const allowedPages = (modulePages || []).map(p => p.key);
       const res = await fetch('/api/permissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -186,12 +248,110 @@ export default function RolesUsersReportPage() {
       });
       const data = await res.json().catch(() => ({}));
       if (!res.ok || data?.success === false) {
+        throw new Error(data?.error || 'Failed to assign role');
+      }
+      // reflect in UI
+      const state: Record<string, boolean> = {};
+      (modulePages || []).forEach(p => { state[p.key] = true; });
+      setPagePermissions(state);
+      toast({ variant: 'success', title: 'Role assigned', description: 'All pages enabled for this role in the module.' });
+    } catch (e: unknown) {
+      const msg = e instanceof Error ? e.message : String(e);
+      toast({ variant: 'destructive', title: 'Assignment failed', description: msg });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Load existing permissions for selected role/user + module and prefill toggles
+  useEffect(() => {
+    const loadRolePerms = async () => {
+      if (!selectedModuleName) return;
+      if (!selectedRoleId && !selectedUserId) return;
+      try {
+        const query = selectedUserId
+          ? `/api/permissions?userId=${selectedUserId}&moduleName=${encodeURIComponent(selectedModuleName)}`
+          : `/api/permissions?roleId=${selectedRoleId}&moduleName=${encodeURIComponent(selectedModuleName)}`;
+        const res = await fetch(query, { credentials: 'include' });
+        const data = await res.json().catch(() => ({}));
+        const allowed: string[] = data?.data?.allowedPages || data?.allowedPages || [];
+        if (Array.isArray(allowed) && allowed.length > 0) {
+          const state: Record<string, boolean> = {};
+          (modulePages || []).forEach(p => { state[p.key] = allowed.includes(p.key) || allowed.includes(p.label); });
+          setPagePermissions(state);
+          toast({ variant: 'success', title: 'Permissions loaded', description: 'Existing permissions applied.' });
+        } else {
+          // Default to allowed for listed pages
+          const state: Record<string, boolean> = {};
+          (modulePages || []).forEach(p => { state[p.key] = true; });
+          setPagePermissions(state);
+          toast({ title: 'Defaults applied', description: 'No saved permissions found.' });
+        }
+      } catch {
+        const state: Record<string, boolean> = {};
+        (modulePages || []).forEach(p => { state[p.key] = true; });
+        setPagePermissions(state);
+        toast({ title: 'Using defaults', description: 'Failed to load; using default allowed.' });
+      }
+    };
+    loadRolePerms();
+  }, [selectedRoleId, selectedUserId, selectedModuleName, modulePages]);
+
+  const reloadFromServer = async () => {
+    if (!selectedModuleName) return;
+    if (!selectedRoleId && !selectedUserId) return;
+    try {
+      const query = selectedUserId
+        ? `/api/permissions?userId=${selectedUserId}&moduleName=${encodeURIComponent(selectedModuleName)}`
+        : `/api/permissions?roleId=${selectedRoleId}&moduleName=${encodeURIComponent(selectedModuleName)}`;
+      const res = await fetch(query, { credentials: 'include' });
+      const data = await res.json().catch(() => ({}));
+      const allowed: string[] = data?.data?.allowedPages || data?.allowedPages || [];
+      const state: Record<string, boolean> = {};
+    (modulePages || []).forEach(p => { state[p.key] = allowed.length ? (allowed.includes(p.key) || allowed.includes(p.label)) : true; });
+      setPagePermissions(state);
+      toast({ title: 'Reloaded', description: 'Permissions refreshed from server.' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Reload failed', description: 'Could not fetch from server.' });
+    }
+  };
+
+  const handleSave = async () => {
+    if (!selectedModuleName) {
+      setSaveError('Select a module before saving');
+      return;
+    }
+    if (!selectedRoleId && !selectedUserId) {
+      setSaveError('Select a role and user before saving');
+      return;
+    }
+    setSaving(true);
+    setSaveError(null);
+    setSaveSuccess(null);
+    try {
+      const allowedPages = (modulePages || [])
+        .filter(p => pagePermissions[p.key] !== false)
+        .map(p => p.key);
+      const res = await fetch('/api/permissions', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(
+          selectedUserId
+            ? { userId: selectedUserId, moduleName: selectedModuleName, allowedPages }
+            : { roleId: selectedRoleId, moduleName: selectedModuleName, allowedPages }
+        ),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok || data?.success === false) {
         throw new Error(data?.error || 'Failed to save');
       }
       setSaveSuccess('Permissions saved');
+  toast({ variant: 'success', title: 'Saved', description: 'Permissions updated successfully.' });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setSaveError(msg);
+  toast({ variant: 'destructive', title: 'Save failed', description: String(msg) });
     } finally {
       setSaving(false);
       setTimeout(() => { setSaveSuccess(null); setSaveError(null); }, 2500);
@@ -212,39 +372,39 @@ export default function RolesUsersReportPage() {
     <SuperAdminShell title="Modules & Roles">
       <div className="space-y-4">
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md p-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md p-2 border-l-4 border-l-purple-400">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-purple-600 dark:text-purple-400">Total Modules</div>
-                <div className="text-2xl font-bold text-purple-900 dark:text-purple-100">{filteredModules.length}</div>
+                <div className="text-xs text-purple-600 dark:text-purple-400">Total Modules</div>
+                <div className="text-lg font-bold text-purple-900 dark:text-purple-100">{filteredModules.length}</div>
               </div>
-              <FiGrid className="w-8 h-8 text-purple-500" />
+              <FiGrid className="w-4 h-4 text-purple-500" />
             </div>
           </div>
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-4">
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-2 border-l-4 border-l-blue-400">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-blue-600 dark:text-blue-400">Total Roles</div>
-                <div className="text-2xl font-bold text-blue-900 dark:text-blue-100">{summary?.totalRoles || 0}</div>
+                <div className="text-xs text-blue-600 dark:text-blue-400">Total Roles</div>
+                <div className="text-lg font-bold text-blue-900 dark:text-blue-100">{summary?.totalRoles || 0}</div>
               </div>
-              <FiUsers className="w-8 h-8 text-blue-500" />
+              <FiUsers className="w-4 h-4 text-blue-500" />
             </div>
           </div>
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-4">
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-2 border-l-4 border-l-green-400">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-green-600 dark:text-green-400">Total Users</div>
-                <div className="text-2xl font-bold text-green-900 dark:text-green-100">{summary?.totalUsers || 0}</div>
+                <div className="text-xs text-green-600 dark:text-green-400">Total Users</div>
+                <div className="text-lg font-bold text-green-900 dark:text-green-100">{summary?.totalUsers || 0}</div>
               </div>
-              <FiFile className="w-8 h-8 text-green-500" />
+              <FiFile className="w-4 h-4 text-green-500" />
             </div>
           </div>
-          <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-md p-4">
+          <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-md p-2 border-l-4 border-l-orange-400">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-sm text-orange-600 dark:text-orange-400">Active Category</div>
-                <div className="text-lg font-bold text-orange-900 dark:text-orange-100">Business ERP</div>
+                <div className="text-xs text-orange-600 dark:text-orange-400">Active Category</div>
+                <div className="text-sm font-bold text-orange-900 dark:text-orange-100">Business ERP</div>
               </div>
             </div>
           </div>
@@ -262,27 +422,7 @@ export default function RolesUsersReportPage() {
           </div>
         )}
 
-  {/* Quick action: Jump to 4th column (Pages) */}
-        <div className="flex justify-end">
-          <button
-            type="button"
-            onClick={() => {
-              const el = document.querySelector('[data-fourth-row]') as HTMLElement | null;
-              if (el) {
-                try {
-                  el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                } catch {
-                  void 0; // no-op to satisfy lint rule
-                }
-              }
-            }}
-            className="inline-flex items-center gap-2 px-3 py-1.5 text-xs font-medium rounded-md border border-blue-300 dark:border-blue-700 text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors"
-            title="Jump to Page Permissions panel"
-          >
-            <svg className="w-4 h-4" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true"><path d="M3 10a1 1 0 011-1h8.586L9.293 5.707A1 1 0 1110.707 4.293l5 5a1 1 0 010 1.414l-5 5a1 1 0 11-1.414-1.414L12.586 11H4a1 1 0 01-1-1z"/></svg>
-            Go to Page Permissions
-          </button>
-        </div>
+  {/* Quick action removed as requested */}
 
         {/* Save status */}
         {(saveError || saveSuccess) && (
@@ -297,12 +437,26 @@ export default function RolesUsersReportPage() {
           <div className="rounded-lg border bg-white dark:bg-gray-900 p-3">
             <div className="text-sm font-semibold mb-2 flex items-center justify-between">
               <span>Modules</span>
-              <span className="text-xs font-normal px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">{filteredModules.length}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-normal px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800" title="Total modules">{filteredModules.length}</span>
+                <button
+                  onClick={handleAssignRoleToModule}
+                  disabled={!selectedModuleName || !selectedRoleId || saving}
+                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${(!selectedModuleName || !selectedRoleId || saving) ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+                  title={(!selectedModuleName || !selectedRoleId) ? 'Select a module and a role to assign' : 'Assign selected role to this module'}
+                >
+                  <FiUserPlus className="w-3 h-3" />
+                  Assign Role
+                </button>
+              </div>
             </div>
             <div className="space-y-1 max-h-[520px] overflow-y-auto">
               {filteredModules.length === 0 && <div className="text-xs text-gray-500">No Modules</div>}
-              {filteredModules.map((m) => {
+              {filteredModules.map((m, idx) => {
                 const isSelected = selectedModuleName === m.module_name;
+                const pageCount = getModulePageCount(m);
+                const usersCount = getModuleUsersCount(m);
+                const barColor = colorForIndex(idx);
                 return (
                   <button
                     key={m.id}
@@ -322,10 +476,21 @@ export default function RolesUsersReportPage() {
                         }
                       });
                     }}
-                    className={`w-full text-left rounded-md border p-3 transition ${isSelected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'}`}
+                    className={`relative pl-2 w-full text-left rounded-md border p-3 transition ${isSelected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'}`}
                     title={m.display_name || m.name}
                   >
-                    <div className="text-xs truncate font-medium">{m.display_name || m.name}</div>
+                    <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${barColor}`} />
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="text-xs truncate font-medium">{m.display_name || m.name}</div>
+                      <div className="flex items-center gap-1">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300" title="Pages in this module">
+                          {pageCount}
+                        </span>
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" title="Total users (all roles)">
+                          {usersCount}
+                        </span>
+                      </div>
+                    </div>
                   </button>
                 );
               })}
@@ -345,15 +510,17 @@ export default function RolesUsersReportPage() {
                 <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300">⚠️ Select a module to view roles</div>
               )}
               {selectedModuleName && filteredRoles.length === 0 && <div className="text-xs text-gray-500">No Roles</div>}
-              {selectedModuleName && filteredRoles.map((r) => {
+      {selectedModuleName && filteredRoles.map((r, idx) => {
                 const isSelected = selectedRoleId === r.roleId;
+                const barColor = colorForIndex(idx);
                 return (
                   <button
                     key={r.roleId}
-                    onClick={() => setSelectedRoleId(r.roleId)}
-                    className={`w-full text-left rounded-md border px-3 py-2 text-xs transition ${isSelected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'}`}
+        onClick={() => { setSelectedRoleId(r.roleId); setSelectedUserId(null); }}
+                    className={`relative pl-2 w-full text-left rounded-md border px-3 py-2 text-xs transition ${isSelected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'}`}
                     title={r.roleName}
                   >
+                    <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${barColor}`} />
                     <div className="flex items-center justify-between gap-2">
                       <span className="truncate font-medium">{r.roleDisplayName}</span>
                       <span className={`inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full text-xs font-semibold ${r.userCount > 0 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>{r.userCount}</span>
@@ -379,8 +546,14 @@ export default function RolesUsersReportPage() {
               )}
               {selectedRoleId && !selectedRole && <div className="text-xs text-gray-500">Loading users...</div>}
               {selectedRole && selectedRole.users.length === 0 && <div className="text-xs text-gray-500">No users assigned to this role</div>}
-              {selectedRole && selectedRole.users.map((user) => (
-                <div key={user.userId} className="rounded-md border border-gray-200 dark:border-gray-700 p-3 hover:bg-gray-50 dark:hover:bg-gray-800">
+              {selectedRole && selectedRole.users.map((user, idx) => (
+                <button
+                  type="button"
+                  onClick={() => setSelectedUserId(user.userId)}
+                  key={user.userId}
+                  className={`text-left w-full relative pl-2 rounded-md border p-3 hover:bg-gray-50 dark:hover:bg-gray-800 ${selectedUserId === user.userId ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700'}`}
+                >
+                  <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${colorForIndex(idx)}`} />
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex-1 min-w-0">
                       <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{user.username}</div>
@@ -388,7 +561,7 @@ export default function RolesUsersReportPage() {
                       <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">ID: {user.userId} • Created: {new Date(user.createdAt).toLocaleDateString()}</div>
                     </div>
                   </div>
-                </div>
+                </button>
               ))}
             </div>
           </div>
@@ -416,19 +589,26 @@ export default function RolesUsersReportPage() {
                   <>
                     <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-2">
-                        {modulePages.map((page) => {
-                          const isAllowed = pagePermissions[page] !== false; // Default to true
+                        {!selectedUserId && (
+                          <div className="col-span-full rounded-md border border-yellow-300 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 p-2 text-xs text-yellow-800 dark:text-yellow-200">
+                            Select a user to enable page toggles.
+                          </div>
+                        )}
+                        {modulePages.map((page, idx) => {
+                          const isAllowed = pagePermissions[page.key] !== false; // Default to true
                           return (
-                            <div key={page} className={`flex items-center justify-between p-3 rounded-lg border transition-all ${isAllowed ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20' : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'}`}>
+                            <div key={page.key} className={`relative pl-2 flex items-center justify-between p-3 rounded-lg border transition-all ${isAllowed ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20' : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'}`}>
+                              <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${colorForIndex(idx)}`} />
                               <div className="flex-1 min-w-0 mr-3">
-                                <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{page}</div>
+                                <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{page.label}</div>
                                 <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{isAllowed ? '✓ Allowed' : '✗ Disallowed'}</div>
                               </div>
                               <button
-                                onClick={() => togglePagePermission(page)}
+                                onClick={() => selectedUserId && togglePagePermission(page.key)}
                                 className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isAllowed ? 'bg-green-600 dark:bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}
                                 role="switch"
                                 aria-checked={isAllowed}
+                                disabled={!selectedUserId}
                                 title={isAllowed ? 'Click to disallow' : 'Click to allow'}
                               >
                                 <span
@@ -446,21 +626,31 @@ export default function RolesUsersReportPage() {
                     <div className="flex items-center justify-end gap-2 mt-3">
                       <button
                         onClick={handleSave}
-                        disabled={saving}
+                        disabled={saving || !selectedUserId}
                         className={`px-3 py-1.5 text-xs font-medium text-white rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${saving ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
                         title={saving ? 'Saving...' : 'Save permissions'}
                       >
                         {saving ? 'Saving…' : 'Save'}
                       </button>
                       <button
+                        onClick={reloadFromServer}
+                        className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50"
+                        disabled={!selectedUserId}
+                        title="Reload from server"
+                      >
+                        Reload
+                      </button>
+                      <button
                         onClick={() => {
                           const resetPermissions: Record<string, boolean> = {};
                           modulePages.forEach(page => {
-                            resetPermissions[page] = true;
+                            resetPermissions[page.key] = true;
                           });
                           setPagePermissions(resetPermissions);
+                          toast({ title: 'Reset', description: 'Toggles reset to allowed.' });
                         }}
-                        className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2"
+                        className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50"
+                        disabled={!selectedUserId}
                       >
                         Reset
                       </button>

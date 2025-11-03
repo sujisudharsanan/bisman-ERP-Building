@@ -1,61 +1,77 @@
 /**
- * Ollama client wrappers for chat and embeddings.
- * Tries /v1 endpoints first, falls back to legacy /api.
+ * Ollama client wrappers (native API) for chat and embeddings.
+ * Compatible with Ollama 0.1.32: uses /api/chat and /api/embeddings only.
  */
 
-const OLLAMA_URL = process.env.OLLAMA_URL || process.env.NEXT_PUBLIC_OLLAMA_URL || 'http://localhost:11434';
-const DEFAULT_MODEL = process.env.OLLAMA_MODEL || 'llama3:8b';
+const OLLAMA_URL = (process.env.OLLAMA_URL || process.env.NEXT_PUBLIC_OLLAMA_URL || 'http://localhost:11434').replace(/\/$/, '');
+const DEFAULT_MODEL = process.env.OLLAMA_MODEL || process.env.NEXT_PUBLIC_OLLAMA_MODEL || 'llama3:latest';
+const NGROK_BYPASS = String(process.env.NGROK_BYPASS || '').toLowerCase() === 'true';
+const isNgrok = /ngrok(-free)?\.(dev|io)/i.test(OLLAMA_URL);
+const PREFER_GENERATE = String(process.env.OLLAMA_PREFER_GENERATE || '').toLowerCase() === 'true';
+
+function withNgrokHeaders(base: Record<string, string>): Record<string, string> {
+  if (isNgrok || NGROK_BYPASS) {
+    return {
+      ...base,
+      'ngrok-skip-browser-warning': 'true',
+    };
+  }
+  return base;
+}
 
 export type ChatMessage = { role: 'system' | 'user' | 'assistant'; content: string };
 
 export async function callChat(messages: ChatMessage[], model = DEFAULT_MODEL): Promise<string> {
-  // Try OpenAI-style /v1 endpoint
-  try {
-    const r = await fetch(`${OLLAMA_URL}/v1/chat/completions`, {
+  // If configured, skip /api/chat entirely and use /api/generate for compatibility
+  if (PREFER_GENERATE) {
+    const prompt = messages.map((m) => `${m.role.toUpperCase()}: ${m.content}`).join('\n');
+    const rg = await fetch(`${OLLAMA_URL}/api/generate`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, messages, stream: false }),
+      headers: withNgrokHeaders({ 'Content-Type': 'application/json', 'Accept': 'application/json' }),
+      body: JSON.stringify({ model, prompt, stream: false }),
     });
-    if (r.ok) {
-      const j: any = await r.json();
-      const content = j?.choices?.[0]?.message?.content;
-      if (content) return content;
-    }
-  } catch {}
-  // Fallback to /api/chat
-  const r2 = await fetch(`${OLLAMA_URL}/api/chat`, {
+    if (!rg.ok) throw new Error(`ollama_generate_${rg.status}`);
+    const jg: any = await rg.json();
+    return jg?.response || jg?.content || '';
+  }
+
+  // Default: try /api/chat first
+  const r = await fetch(`${OLLAMA_URL}/api/chat`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: withNgrokHeaders({ 'Content-Type': 'application/json', 'Accept': 'application/json' }),
     body: JSON.stringify({ model, messages, stream: false }),
   });
-  if (!r2.ok) throw new Error(`ollama_chat_${r2.status}`);
-  const j2: any = await r2.json();
-  return j2?.message?.content || '';
+  if (r.ok) {
+    const j: any = await r.json();
+    return j?.message?.content || j?.content || '';
+  }
+  // Fallback for older/limited builds: synthesize a prompt and use /api/generate
+  if (r.status === 404 || r.status === 405) {
+    const prompt = messages
+      .map((m) => `${m.role.toUpperCase()}: ${m.content}`)
+      .join('\n');
+    const rg = await fetch(`${OLLAMA_URL}/api/generate`, {
+      method: 'POST',
+      headers: withNgrokHeaders({ 'Content-Type': 'application/json', 'Accept': 'application/json' }),
+      body: JSON.stringify({ model, prompt, stream: false }),
+    });
+    if (!rg.ok) throw new Error(`ollama_generate_${rg.status}`);
+    const jg: any = await rg.json();
+    return jg?.response || jg?.content || '';
+  }
+  throw new Error(`ollama_chat_${r.status}`);
 }
 
 export async function getEmbedding(input: string, model = DEFAULT_MODEL): Promise<number[]> {
-  // Try OpenAI-style /v1/embeddings
-  try {
-    const r = await fetch(`${OLLAMA_URL}/v1/embeddings`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ model, input }),
-    });
-    if (r.ok) {
-      const j: any = await r.json();
-      const vec = j?.data?.[0]?.embedding;
-      if (Array.isArray(vec)) return vec;
-    }
-  } catch {}
-  // Fallback to /api/embeddings
-  const r2 = await fetch(`${OLLAMA_URL}/api/embeddings`, {
+  const r = await fetch(`${OLLAMA_URL}/api/embeddings`, {
     method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
+    headers: withNgrokHeaders({ 'Content-Type': 'application/json', 'Accept': 'application/json' }),
     body: JSON.stringify({ model, prompt: input }),
   });
-  if (!r2.ok) throw new Error(`ollama_embed_${r2.status}`);
-  const j2: any = await r2.json();
-  const vec = j2?.embedding;
+  if (!r.ok) throw new Error(`ollama_embed_${r.status}`);
+  const j: any = await r.json();
+  // Some versions return { embedding }, others { embeddings: [[...]] }
+  const vec = j?.embedding || j?.embeddings?.[0];
   if (!Array.isArray(vec)) throw new Error('embedding_format_error');
-  return vec;
+  return vec as number[];
 }

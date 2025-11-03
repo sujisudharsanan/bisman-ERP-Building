@@ -18,6 +18,7 @@ type SuperAdmin = {
   role?: string;
   productType?: string;
   assignedModules?: Array<number | string>;
+  pagePermissions?: Record<string, string[]>; // moduleId -> pageIds
 };
 type Registry = {
   pages?: Array<{ path: string; title?: string; module?: string; moduleKey?: string }>;
@@ -32,6 +33,19 @@ function arr<T = any>(obj: any, key: string): T[] {
   if (!obj || typeof obj !== "object") return [];
   const v = obj[key];
   return Array.isArray(v) ? (v as T[]) : [];
+}
+
+// Normalize page id/token; returns a canonical id without leading slash
+function canonicalPageId(id: string): string {
+  const s = String(id || "");
+  return s.replace(/^\//, "");
+}
+
+// For compatibility, generate both forms (with and without leading slash)
+function bothForms(id: string): [string, string] {
+  const noSlash = canonicalPageId(id);
+  const withSlash = noSlash ? `/${noSlash}` : noSlash;
+  return [withSlash, noSlash];
 }
 
 // Normalize any "assigned module" value coming from API into an id (number) or a module key (string)
@@ -190,16 +204,37 @@ export default function Page() {
           // non-fatal; continue without virtual module
         }
 
-        const admins = arr<any>(usersJson, "superAdmins").map((a) => ({
-          id: Number(a.id),
-          name: a.username ?? a.name,
-          email: a.email,
-          role: a.role ?? "SUPER_ADMIN",
-          productType: a.productType,
-          assignedModules: pickAssignedArray(a)
-            .map((x: any) => normalizeAssigned(x))
-            .filter((v: any) => v !== null),
-        })) as SuperAdmin[];
+        const admins = arr<any>(usersJson, "superAdmins").map((a) => {
+          // Build page permissions map if backend provided it (various shapes supported)
+          const pagePerms: Record<string, string[]> = (() => {
+            if (a.pagePermissions && typeof a.pagePermissions === 'object') return a.pagePermissions as Record<string, string[]>;
+            const perms: Record<string, string[]> = {};
+            const assigned = Array.isArray(a.assignedModules) ? a.assignedModules : (Array.isArray(a.moduleAssignments) ? a.moduleAssignments : []);
+            assigned.forEach((item: any) => {
+              if (item && typeof item === 'object') {
+                const midRaw = item.module_id ?? item.moduleId ?? item.id ?? item.module?.id;
+                const pages = item.assigned_pages ?? item.page_permissions ?? item.pages;
+                if (midRaw != null && Array.isArray(pages)) {
+                  const mid = String(Number.isFinite(Number(midRaw)) ? Number(midRaw) : midRaw);
+                  perms[mid] = pages.map((p: any) => String(p));
+                }
+              }
+            });
+            return perms;
+          })();
+
+          return {
+            id: Number(a.id),
+            name: a.username ?? a.name,
+            email: a.email,
+            role: a.role ?? "SUPER_ADMIN",
+            productType: a.productType,
+            assignedModules: pickAssignedArray(a)
+              .map((x: any) => normalizeAssigned(x))
+              .filter((v: any) => v !== null),
+            pagePermissions: pagePerms,
+          } as SuperAdmin;
+        }) as SuperAdmin[];
 
         setModules(mods);
         setSuperAdmins(admins);
@@ -331,7 +366,7 @@ export default function Page() {
     if (!selectedModuleId) return [] as { id: string; title?: string; path: string; isAssigned?: boolean }[];
     const mod = modulesById.get(selectedModuleId);
     const fromModule = (mod?.pages ?? []).map((p) => ({ 
-      id: p.id ?? p.path, 
+      id: canonicalPageId(p.id ?? p.path), 
       title: p.name, 
       path: p.path,
       isAssigned: false // Will be determined below
@@ -347,25 +382,25 @@ export default function Page() {
         if (mk && typeof mk === "string") return mk.toLowerCase().includes(selectedModuleKey.toLowerCase());
         return p.path?.toLowerCase().includes(selectedModuleKey.toLowerCase());
       });
-      pages = matched.map((p) => ({ id: p.path, title: p.title, path: p.path, isAssigned: false }));
+  pages = matched.map((p) => ({ id: canonicalPageId(p.path), title: p.title, path: p.path, isAssigned: false }));
     }
     
-    // If admin is selected, mark pages as assigned and sort
+    // If admin is selected, mark pages as assigned based on pagePermissions
     if (selectedAdmin && selectedModuleId) {
-      const assignedMods = selectedAdmin.assignedModules || [];
-      const idSet = new Set<number>();
-      const keySet = new Set<string>();
-      assignedMods.forEach((v) => {
-        const n = Number(v);
-        if (Number.isFinite(n)) idSet.add(n);
-        if (v != null) keySet.add(String(v).toLowerCase());
+      const modKey = String(selectedModuleId);
+      const assignedForModule = selectedAdmin.pagePermissions?.[modKey] || [];
+      const assignedSet = new Set<string>();
+      (assignedForModule || []).forEach((x) => {
+        const [withSlash, noSlash] = bothForms(String(x));
+        if (withSlash) assignedSet.add(withSlash);
+        if (noSlash) assignedSet.add(noSlash);
       });
-      const isModuleAssigned = idSet.has(Number(selectedModuleId)) || (selectedModuleKey ? keySet.has(String(selectedModuleKey).toLowerCase()) : false);
-      
-      // Mark all pages as assigned if module is assigned (simplified approach)
-      // In a more sophisticated system, you'd check individual page permissions
-      pages = pages.map(p => ({ ...p, isAssigned: isModuleAssigned }));
-      
+      pages = pages.map((p) => {
+        const [withSlash, noSlash] = bothForms(String(p.id));
+        const isAssigned = assignedSet.has(withSlash) || assignedSet.has(noSlash);
+        return { ...p, isAssigned };
+      });
+
       // Sort: assigned pages first, then unassigned
       const assigned = pages.filter(p => p.isAssigned);
       const unassigned = pages.filter(p => !p.isAssigned);
@@ -425,39 +460,97 @@ export default function Page() {
   }, [modules, selectedAdmin, assignedBusinessCount, assignedPumpCount]);
 
   const togglePage = (id: string) => {
-    setSelectedPageIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+    console.log('🔄 Toggle page:', id, 'Current selection:', selectedPageIds);
+    setSelectedPageIds((prev) => {
+      const newSelection = prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id];
+      console.log('✅ New selection:', newSelection);
+      return newSelection;
+    });
   };
   const toggleAllPages = () => {
     const all = pagesForSelectedModule.map((p) => p.id);
     const allSelected = selectedPageIds.length === all.length;
+    console.log('🔄 Toggle all pages:', allSelected ? 'Deselect' : 'Select', 'Count:', all.length);
     setSelectedPageIds(allSelected ? [] : all);
   };
 
   const assignPages = async () => {
-    if (!selectedAdminId || !selectedModuleId) return;
+    // Require admin, module, and at least one selected page for assignment
+    console.log('🚀 Assign Pages called:', {
+      selectedAdminId,
+      selectedModuleId,
+      selectedPageIdsCount: selectedPageIds.length,
+      selectedPageIds: selectedPageIds
+    });
+    
+    if (!selectedAdminId || !selectedModuleId || selectedPageIds.length === 0) {
+      console.warn('⚠️ Cannot assign: Missing requirements', {
+        hasAdmin: !!selectedAdminId,
+        hasModule: !!selectedModuleId,
+        hasPages: selectedPageIds.length > 0
+      });
+      return;
+    }
+    
     try {
       setSaving(true);
-      await fetch(`/api/enterprise-admin/super-admins/${selectedAdminId}/assign-module`, {
+      console.log('📤 Sending assign request...');
+      const resAssign = await fetch(`/api/enterprise-admin/super-admins/${selectedAdminId}/assign-module`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ moduleId: selectedModuleId, pageIds: selectedPageIds }),
+        // Send both pageIds and pages for maximum backend compatibility
+        body: JSON.stringify({ 
+          moduleId: selectedModuleId, 
+          pageIds: selectedPageIds,
+          pages: selectedPageIds,
+          // Also send normalized without leading slash
+          pageIdsNormalized: selectedPageIds.map(canonicalPageId),
+        }),
       });
+      if (!resAssign.ok) {
+        const text = await resAssign.text().catch(() => '');
+        console.error('❌ Assign failed', resAssign.status, text);
+        if (typeof window !== 'undefined') alert(`Assign failed: ${resAssign.status}`);
+        return;
+      }
+      
+      console.log('✅ Assign successful!');
       
       // Refresh super admins data after assignment to update green/red indicators
         const usersRes = await fetch("/api/enterprise-admin/super-admins", { credentials: "include" });
       if (usersRes.ok) {
         const usersJson = await usersRes.json().catch(() => ({}));
-        const admins = arr<any>(usersJson, "superAdmins").map((a) => ({
-          id: Number(a.id),
-          name: a.username ?? a.name,
-          email: a.email,
-          role: a.role ?? "SUPER_ADMIN",
-          productType: a.productType,
-          assignedModules: pickAssignedArray(a)
-            .map((x: any) => normalizeAssigned(x))
-            .filter((v: any) => v !== null),
-        })) as SuperAdmin[];
+        const admins = arr<any>(usersJson, "superAdmins").map((a) => {
+          const pagePerms: Record<string, string[]> = (() => {
+            if (a.pagePermissions && typeof a.pagePermissions === 'object') return a.pagePermissions as Record<string, string[]>;
+            const perms: Record<string, string[]> = {};
+            const assigned = Array.isArray(a.assignedModules) ? a.assignedModules : (Array.isArray(a.moduleAssignments) ? a.moduleAssignments : []);
+            assigned.forEach((item: any) => {
+              if (item && typeof item === 'object') {
+                const midRaw = item.module_id ?? item.moduleId ?? item.id ?? item.module?.id;
+                const pages = item.assigned_pages ?? item.page_permissions ?? item.pages;
+                if (midRaw != null && Array.isArray(pages)) {
+                  const mid = String(Number.isFinite(Number(midRaw)) ? Number(midRaw) : midRaw);
+                  perms[mid] = pages.map((p: any) => String(p));
+                }
+              }
+            });
+            return perms;
+          })();
+
+          return {
+            id: Number(a.id),
+            name: a.username ?? a.name,
+            email: a.email,
+            role: a.role ?? "SUPER_ADMIN",
+            productType: a.productType,
+            assignedModules: pickAssignedArray(a)
+              .map((x: any) => normalizeAssigned(x))
+              .filter((v: any) => v !== null),
+            pagePermissions: pagePerms,
+          } as SuperAdmin;
+        }) as SuperAdmin[];
         setSuperAdmins(admins);
       }
     } finally {
@@ -469,12 +562,24 @@ export default function Page() {
     if (!selectedAdminId || !selectedModuleId) return;
     try {
       setSaving(true);
-      await fetch(`/api/enterprise-admin/super-admins/${selectedAdminId}/unassign-module`, {
+      const resUnassign = await fetch(`/api/enterprise-admin/super-admins/${selectedAdminId}/unassign-module`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ moduleId: selectedModuleId, pageIds: selectedPageIds }),
+        // Send both pageIds and pages for maximum backend compatibility
+        body: JSON.stringify({ 
+          moduleId: selectedModuleId, 
+          pageIds: selectedPageIds,
+          pages: selectedPageIds,
+          pageIdsNormalized: selectedPageIds.map(canonicalPageId),
+        }),
       });
+      if (!resUnassign.ok) {
+        const text = await resUnassign.text().catch(() => '');
+        console.error('Unassign failed', resUnassign.status, text);
+        if (typeof window !== 'undefined') alert(`Unassign failed: ${resUnassign.status}`);
+        return;
+      }
 
       // Refresh super admins data after unassignment
       const usersRes = await fetch("/api/enterprise-admin/super-admins", { credentials: "include" });
@@ -675,9 +780,16 @@ export default function Page() {
         <button
                   key={m.id}
                   onClick={() => {
-          setSelectedModuleId(Number.isFinite(Number(m.id)) ? Number(m.id) : null);
+          const nextModuleId = Number.isFinite(Number(m.id)) ? Number(m.id) : null;
+          setSelectedModuleId(nextModuleId);
                     setSelectedModuleKey(m.moduleKey);
-                    setSelectedPageIds([]);
+                    // Preselect already assigned pages for this admin+module if available
+                    if (selectedAdmin && nextModuleId) {
+                      const existing = selectedAdmin.pagePermissions?.[String(nextModuleId)] || [];
+                      setSelectedPageIds(existing.map(canonicalPageId));
+                    } else {
+                      setSelectedPageIds([]);
+                    }
                   }}
                   className={`w-full text-left rounded-md border px-3 py-2 text-xs transition ${
           isSelected
@@ -714,9 +826,15 @@ export default function Page() {
                     <button
                       key={m.id}
                       onClick={() => {
-                        setSelectedModuleId(Number.isFinite(Number(m.id)) ? Number(m.id) : null);
+                        const nextModuleId = Number.isFinite(Number(m.id)) ? Number(m.id) : null;
+                        setSelectedModuleId(nextModuleId);
                         setSelectedModuleKey(m.moduleKey);
-                        setSelectedPageIds([]);
+                        if (selectedAdmin && nextModuleId) {
+                          const existing = selectedAdmin.pagePermissions?.[String(nextModuleId)] || [];
+                          setSelectedPageIds(existing.map(canonicalPageId));
+                        } else {
+                          setSelectedPageIds([]);
+                        }
                       }}
                       className={`w-full text-left rounded-md border px-3 py-2 text-xs transition ${
                         isSelected
@@ -768,6 +886,9 @@ export default function Page() {
             <div className="space-y-1 max-h-[460px] overflow-y-auto">
               {/* With both selections, show controls */}
               <div className="flex items-center gap-2 mb-2">
+                <span className="text-xs text-gray-600 dark:text-gray-400">
+                  {selectedPageIds.length} of {pagesForSelectedModule.length} selected
+                </span>
                 <button
                   onClick={toggleAllPages}
                   className="px-2 py-1 text-xs rounded border hover:bg-blue-50 dark:hover:bg-blue-900/30"
@@ -775,18 +896,20 @@ export default function Page() {
                   {selectedPageIds.length === pagesForSelectedModule.length ? "Deselect All" : "Select All"}
                 </button>
                 <button
-                  disabled={!selectedAdminId || saving}
+                  disabled={!selectedAdminId || saving || selectedPageIds.length === 0}
                   onClick={assignPages}
-                  className="px-2 py-1 text-xs rounded border bg-green-600 text-white disabled:opacity-60"
+                  className="px-2 py-1 text-xs rounded border bg-green-600 text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                  title={selectedPageIds.length === 0 ? "Select at least one page" : `Assign ${selectedPageIds.length} page(s)`}
                 >
-                  {saving ? "Saving..." : "Assign"}
+                  {saving ? "Saving..." : `Assign (${selectedPageIds.length})`}
                 </button>
                 <button
                   disabled={!selectedAdminId || saving || selectedPageIds.length === 0}
                   onClick={unassignPages}
-                  className="px-2 py-1 text-xs rounded border bg-red-600 text-white disabled:opacity-60"
+                  className="px-2 py-1 text-xs rounded border bg-red-600 text-white disabled:opacity-60 disabled:cursor-not-allowed"
+                  title={selectedPageIds.length === 0 ? "Select at least one page" : `Unassign ${selectedPageIds.length} page(s)`}
                 >
-                  {saving ? "Saving..." : "Unassign"}
+                  {saving ? "Saving..." : `Unassign (${selectedPageIds.length})`}
                 </button>
               </div>
               {pagesForSelectedModule.map((p) => {
@@ -796,11 +919,15 @@ export default function Page() {
                 const showGreen = selectedAdminId && isAssigned;
                 const showRed = selectedAdminId && !isAssigned;
                 
+                // Debug: Log page selection state
+                if (checked) {
+                  console.log('✅ Page selected:', p.id, p.title);
+                }
+                
                 return (
-                  <label
+                  <div
                     key={p.id}
-                    onClick={() => togglePage(p.id)}
-                    className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs cursor-pointer transition ${
+                    className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs transition ${
                       checked
                         ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 ring-1 ring-blue-300 dark:ring-blue-700"
                         : showYellow
@@ -812,10 +939,13 @@ export default function Page() {
                   >
                     <input
                       type="checkbox"
-                      checked={isAssigned}
-                      readOnly
-                      aria-readonly="true"
-                      className="accent-green-600 pointer-events-none"
+                      checked={checked}
+                      onChange={(e) => {
+                        console.log('📋 Checkbox clicked:', p.id, 'New state:', e.target.checked);
+                        togglePage(p.id);
+                      }}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
+                      aria-label={`Select page ${p.title || p.path}`}
                     />
                     <div className="flex-1 min-w-0 flex items-center gap-1.5">
                       {/* status icons removed; checkbox shows assigned status */}
@@ -827,7 +957,7 @@ export default function Page() {
                         <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Selected</span>
                       )}
                     </div>
-                  </label>
+                  </div>
                 );
               })}
             </div>

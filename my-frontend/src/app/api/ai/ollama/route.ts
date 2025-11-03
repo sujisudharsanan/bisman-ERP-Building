@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-const OLLAMA_URL = process.env.OLLAMA_URL || process.env.NEXT_PUBLIC_OLLAMA_URL || 'http://localhost:11434';
+const OLLAMA_URL = (process.env.OLLAMA_URL || process.env.NEXT_PUBLIC_OLLAMA_URL || 'http://localhost:11434').replace(/\/$/, '');
+const ADD_NGROK = /ngrok(-free)?\.(dev|io)/i.test(OLLAMA_URL) || String(process.env.NGROK_BYPASS || '').toLowerCase() === 'true';
 
 export async function POST(req: NextRequest) {
   try {
@@ -10,9 +11,9 @@ export async function POST(req: NextRequest) {
 
     if (op === 'generate') {
       const prompt: string = body?.prompt || '';
-      const r = await fetch(`${OLLAMA_URL.replace(/\/$/, '')}/api/generate`, {
+      const r = await fetch(`${OLLAMA_URL}/api/generate`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', ...(ADD_NGROK ? { 'ngrok-skip-browser-warning': 'true' } : {}) },
         body: JSON.stringify({ model, prompt, stream: false })
       });
       if (!r.ok) {
@@ -25,9 +26,9 @@ export async function POST(req: NextRequest) {
 
     if (op === 'embed') {
       const text: string = body?.text || '';
-      const r = await fetch(`${OLLAMA_URL.replace(/\/$/, '')}/api/embeddings`, {
+      const r = await fetch(`${OLLAMA_URL}/api/embeddings`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', ...(ADD_NGROK ? { 'ngrok-skip-browser-warning': 'true' } : {}) },
         body: JSON.stringify({ model, prompt: text })
       });
       if (!r.ok) {

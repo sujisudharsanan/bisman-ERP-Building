@@ -28,6 +28,7 @@ import {
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import ChatWidget from '@/components/ai/ChatWidget';
 // Navbar and Sidebar are provided by the enterprise-admin layout
 
 // Types
@@ -396,6 +397,9 @@ export default function EnterpriseAdminDashboard() {
 
           {/* Activity Feed & System Insights */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="lg:col-span-1">
+              <ChatWidget />
+            </div>
             {/* Activity Feed */}
             <motion.div
               initial={{ opacity: 0, y: 20 }}

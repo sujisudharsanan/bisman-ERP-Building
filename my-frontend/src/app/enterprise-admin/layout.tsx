@@ -4,7 +4,6 @@ import React from 'react';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import EnterpriseAdminNavbar from '@/components/EnterpriseAdminNavbar';
 import EnterpriseAdminSidebar from '@/components/EnterpriseAdminSidebar';
-import ERPChatWidget from '@/components/ERPChatWidget';
 import WelcomePopup from '@/components/WelcomePopup';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -52,7 +51,7 @@ export default function EnterpriseAdminLayout({
           {/* Main content */}
           <main className="flex-1 p-4 sm:p-6">{children}</main>
         </div>
-        <ERPChatWidget userName={user?.name || user?.username} />
+  {/* Chat widget moved to global RootLayout; old widget removed */}
       </div>
     </ProtectedRoute>
   );

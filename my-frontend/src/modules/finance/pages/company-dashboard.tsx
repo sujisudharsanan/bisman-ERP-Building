@@ -4,6 +4,7 @@ import React, { useState } from 'react';
 import SuperAdminLayout from '@/common/layouts/superadmin-layout';
 import { useAuth } from '@/common/hooks/useAuth';
 import { Search, Plus, RefreshCw } from 'lucide-react';
+import AiHealthCard from '@/components/ai/AiHealthCard';
 
 export default function CompanyDashboard() {
   const { hasAccess } = useAuth();
@@ -66,7 +67,10 @@ export default function CompanyDashboard() {
           />
         </div>
 
-        {/* Content Card */}
+  {/* AI Health */}
+  <AiHealthCard />
+
+  {/* Content Card */}
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
           <div className="text-center py-12">
             <div className="text-6xl mb-4">📊</div>

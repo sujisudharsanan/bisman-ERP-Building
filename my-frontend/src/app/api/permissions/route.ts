@@ -1,6 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
 
+// In-memory fallback store when no backend is configured (dev only)
+// Keyed by `${roleId}::${moduleName}` or `user::${userId}`
+const memoryStore: {
+  byRole: Record<string, string[]>;
+  byUser: Record<string, string[]>;
+} = { byRole: {}, byUser: {} };
+
 // Resolve backend base URL from environment
 function getBackendBase(): string | null {
   return (
@@ -49,12 +56,16 @@ export async function GET(req: NextRequest) {
       return NextResponse.json(data, { status: res.status });
     }
 
-    // Safe fallback (no backend configured)
+    // Safe fallback (no backend configured) with in-memory persistence
     if (userId) {
-      return NextResponse.json({ success: true, data: { userId, allowedPages: [] as string[] } });
+      const key = `user::${userId}`;
+      const allowed = memoryStore.byUser[key] || [];
+      return NextResponse.json({ success: true, data: { userId, allowedPages: allowed } });
     }
     if (roleId) {
-      return NextResponse.json({ success: true, data: { roleId, moduleName, allowedPages: [] as string[] } });
+      const key = `${roleId}::${moduleName}`;
+      const allowed = memoryStore.byRole[key] || [];
+      return NextResponse.json({ success: true, data: { roleId, moduleName, allowedPages: allowed } });
     }
     return NextResponse.json({ success: true, data: { allowedPages: [] as string[] } });
   } catch (error) {
@@ -80,12 +91,20 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(data, { status: res.status });
     }
 
-    // Safe fallback echo
-    return NextResponse.json({
-      success: true,
-      message: 'Saved (mock, no backend configured)',
-      data: body,
-    });
+    // Safe fallback: persist in memory
+    const { roleId, moduleName, userId, allowedPages } = body || {};
+    const keys = Array.isArray(allowedPages)
+      ? allowedPages.map((a: any) => (typeof a === 'string' ? a : (a?.id || a?.path || a?.name || a?.title || ''))).filter(Boolean)
+      : [];
+    if (userId) {
+      const k = `user::${userId}`;
+      memoryStore.byUser[k] = keys;
+    }
+    if (roleId) {
+      const k = `${roleId}::${moduleName || ''}`;
+      memoryStore.byRole[k] = keys;
+    }
+    return NextResponse.json({ success: true, data: { roleId, moduleName, userId, allowedPages: keys } });
   } catch (error) {
     return NextResponse.json({ success: false, error: 'Failed to save permissions' }, { status: 500 });
   }

@@ -17,3 +17,6 @@ Guardrail: If a user asks about a module outside allowedModules, respond exactly
   const answer = await callChat(messages);
   return NextResponse.json({ ok: true, message: { role: 'assistant', content: answer } });
 }
+
+// Deprecated: Not used by App Router. Kept intentionally empty to avoid confusion.
+export {};

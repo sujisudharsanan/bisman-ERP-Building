@@ -53,7 +53,8 @@ export function useOllamaChat(initialMode: ChatMode = 'erp') {
         const a: ChatMsg = { id: uuid(), role: 'assistant', content: j.message.content, ts: Date.now() };
         setMessages((prev) => [...prev, a]);
       } else {
-        const a: ChatMsg = { id: uuid(), role: 'assistant', content: 'AI is offline. Ensure Ollama is installed and running on localhost:11434.', ts: Date.now() };
+        const detail = j?.error ? ` (${String(j.error)})` : '';
+        const a: ChatMsg = { id: uuid(), role: 'assistant', content: `AI is offline or unreachable${detail}. Check OLLAMA_URL / tunnel and try again.`, ts: Date.now() };
         setMessages((prev) => [...prev, a]);
       }
     } catch (e: any) {
