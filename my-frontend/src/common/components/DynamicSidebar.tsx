@@ -12,10 +12,7 @@ import { Circle, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/common/hooks/useAuth';
 import {
   PAGE_REGISTRY,
-  MODULES,
-  getNavigationStructure,
   type PageMetadata,
-  type ModuleMetadata,
 } from '@/common/config/page-registry';
 
 interface DynamicSidebarProps {
@@ -161,84 +158,34 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
     }
   }, [isLoadingPermissions, userPermissions, user?.id, pathname, router, isSuperAdmin]);
 
-  // Get navigation structure based on user's allowed pages (from database)
-  // Filter by page IDs, not by permissions, to show only explicitly granted pages
-  const navigation = useMemo(() => {
-    if (!user) return {};
-    
-    // ENTERPRISE_ADMIN: Only enterprise-level pages
-    if (user.role === 'ENTERPRISE_ADMIN' || user.roleName === 'ENTERPRISE_ADMIN') {
-      console.log('[Sidebar] Enterprise Admin detected - showing enterprise pages only');
-      const grouped: Record<string, PageMetadata[]> = {};
-      
-      Object.keys(MODULES).forEach(moduleId => {
-        grouped[moduleId] = PAGE_REGISTRY
-          .filter(page => {
-            // Only show pages that are:
-            // 1. For enterprise-level access (enterprise-management module, etc.)
-            // 2. OR common pages (accessible to all roles)
-            const isEnterprisePage = page.path.startsWith('/enterprise') || 
-                                      page.roles.includes('ENTERPRISE_ADMIN');
-            const isCommonPage = page.permissions.includes('authenticated') || 
-                                 page.module === 'common';
-            return (isEnterprisePage || isCommonPage) && page.module === moduleId;
-          })
-          .sort((a, b) => (a.order || 0) - (b.order || 0));
-      });
-      
-      console.log('[Sidebar] Enterprise Admin modules:', Object.keys(grouped).filter(k => grouped[k].length > 0));
-      return grouped;
+  // Compute a FLAT list of visible pages (no module headers), per requirements
+  const visiblePages = useMemo<PageMetadata[]>(() => {
+    if (!user) return [];
+
+    const isEnterprise = user.role === 'ENTERPRISE_ADMIN' || user.roleName === 'ENTERPRISE_ADMIN';
+
+    let pages = PAGE_REGISTRY.filter(p => p.status === 'active');
+
+    if (isEnterprise) {
+      // Enterprise Admin: enterprise-specific pages only
+      pages = pages.filter(p => p.path.startsWith('/enterprise') || p.roles.includes('ENTERPRISE_ADMIN'));
+    } else if (isSuperAdmin) {
+      // Super Admin: ONLY System Administration pages
+      pages = pages.filter(p => p.module === 'system');
+    } else {
+      // Regular users: only explicitly allowed pages from DB
+      pages = pages.filter(p => userAllowedPages.includes(p.id));
     }
-    
-    // SUPER_ADMIN: Only assigned business modules + common pages (NO enterprise pages)
-    if (isSuperAdmin) {
-      const grouped: Record<string, PageMetadata[]> = {};
-      
-      // Filter modules based on assigned modules
-      Object.keys(MODULES).forEach(moduleId => {
-        // Only include modules in assignedModules OR common module
-        if (superAdminModules.includes(moduleId) || moduleId === 'common') {
-          grouped[moduleId] = PAGE_REGISTRY
-            .filter(page => {
-              // Explicitly EXCLUDE enterprise-level pages
-              // Explicitly EXCLUDE enterprise-level pages
-              const isEnterprisePage = page.path.startsWith('/enterprise') || 
-                                        page.roles.includes('ENTERPRISE_ADMIN');
-              // Include if it's a business page or common page, but NOT enterprise page
-              const isCommonPage = page.permissions.includes('authenticated') || 
-                                   page.module === 'common';
-              const isAssignedModule = page.module === moduleId;
-              
-              return !isEnterprisePage && (isCommonPage || isAssignedModule);
-            })
-            .filter(page => page.module === moduleId)
-            .sort((a, b) => (a.order || 0) - (b.order || 0));
-        }
-      });
-      
-      console.log('[Sidebar] Super Admin filtered modules:', Object.keys(grouped).filter(k => grouped[k].length > 0));
-      return grouped;
+
+    // Non-enterprise users should not see enterprise pages
+    if (!isEnterprise) {
+      pages = pages.filter(p => !p.path.startsWith('/enterprise'));
     }
-    
-    // For regular users, filter by allowed page IDs from database
-    const grouped: Record<string, PageMetadata[]> = {};
-    
-    Object.keys(MODULES).forEach(moduleId => {
-      grouped[moduleId] = PAGE_REGISTRY
-        .filter(page => {
-          // Exclude enterprise pages for regular users
-          const isEnterprisePage = page.path.startsWith('/enterprise');
-          return !isEnterprisePage && (
-            userAllowedPages.includes(page.id) || 
-            page.permissions.includes('authenticated')
-          );
-        })
-        .filter(page => page.module === moduleId)
-        .sort((a, b) => (a.order || 0) - (b.order || 0));
-    });
-    
-    return grouped;
-  }, [user, userAllowedPages, isSuperAdmin, superAdminModules]);
+
+    // Sort by explicit order then name
+    pages.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name));
+    return pages;
+  }, [user, userAllowedPages, isSuperAdmin]);
 
   // Remove toggle function - modules will always be expanded
   // const toggleModule = (moduleId: string) => {
@@ -336,38 +283,7 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
     );
   };
 
-  // Render module section
-  const renderModule = (moduleId: string, module: ModuleMetadata, pages: PageMetadata[]) => {
-    if (pages.length === 0) return null;
-
-    // Always expanded - no toggle state needed
-    const ModuleIcon = module.icon;
-    const hasActiveChild = pages.some(page => isActivePath(page.path));
-
-    return (
-      <div key={moduleId} className="mb-2">
-        {/* Module Header - Not clickable, just displays the module name */}
-        <div
-          className={`
-            w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium
-            ${hasActiveChild
-              ? getModuleColorClass(module.color)
-              : 'text-gray-900 dark:text-gray-100'
-            }
-          `}
-        >
-          <ModuleIcon className="w-5 h-5 flex-shrink-0" />
-          <span className="flex-1 text-left truncate">{module.name}</span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">{pages.length}</span>
-        </div>
-
-        {/* Module Pages - Always visible */}
-        <div className="ml-3 mt-1 space-y-1 pl-4 border-l border-gray-200 dark:border-gray-700">
-          {pages.map(page => renderPageLink(page))}
-        </div>
-      </div>
-    );
-  };
+  // Module rendering removed per requirement: no module names, flat page list
 
   return (
     <div className={`py-4 ${className}`}>
@@ -382,7 +298,7 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
           </h2>
         </Link>
         <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-          {isLoadingPermissions ? 'Loading permissions...' : `${Object.values(navigation).flat().length} pages available`}
+          {isLoadingPermissions ? 'Loading permissions...' : `${visiblePages.length} pages available`}
         </p>
       </div>
 
@@ -396,17 +312,15 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
         </div>
       )}
 
-      {/* Module Navigation */}
+      {/* Flat page list (no module headers) */}
       {!isLoadingPermissions && (
         <div className="space-y-1 px-2">
-          {Object.entries(MODULES)
-            .sort(([, a], [, b]) => a.order - b.order)
-            .map(([moduleId, module]) => renderModule(moduleId, module, navigation[moduleId] || []))}
+          {visiblePages.map(page => renderPageLink(page))}
         </div>
       )}
 
       {/* Empty State */}
-      {!isLoadingPermissions && Object.values(navigation).flat().length === 0 && (
+  {!isLoadingPermissions && visiblePages.length === 0 && (
         <div className="px-3 py-8 text-center">
           <Circle className="w-12 h-12 text-gray-300 dark:text-gray-700 mx-auto mb-3" />
           <p className="text-sm text-gray-500 dark:text-gray-400">
