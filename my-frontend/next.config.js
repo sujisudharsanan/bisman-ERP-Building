@@ -12,6 +12,8 @@ const API_URL =
 
 const isCI = process.env.CI === 'true' || process.env.VERCEL === '1' || process.env.RAILWAY === '1';
 
+const MM_URL = process.env.MM_BASE_URL || 'http://localhost:8065';
+
 const nextConfig = {
   reactStrictMode: false, // Temporarily disabled to debug webpack errors
   // swcMinify was removed in Next 13+; removing to avoid warnings
@@ -33,60 +35,76 @@ const nextConfig = {
     return config;
   },
   async rewrites() {
+    const rules = [];
+    // Mattermost proxy (always enabled)
+    rules.push(
+      { source: '/chat', destination: `${MM_URL}/` },
+      { source: '/chat/:path*', destination: `${MM_URL}/:path*` },
+      // MM webapp loads assets and calls APIs at absolute paths
+      { source: '/static/:path*', destination: `${MM_URL}/static/:path*` },
+      { source: '/plugins/:path*', destination: `${MM_URL}/plugins/:path*` },
+      // Ensure API v4 hits Mattermost before generic /api proxy below
+      { source: '/api/v4/:path*', destination: `${MM_URL}/api/v4/:path*` },
+    );
+
     // Prefer same-origin to avoid CORS; only rewrite if explicit external API_URL is provided.
     if (API_URL) {
-      return [
+      rules.push(
         { source: '/api/:path*', destination: `${API_URL}/api/:path*` },
-        // ✅ SECURITY FIX: Removed public /uploads/ proxy
-        // Files now served via authenticated /api/secure-files endpoint
-        // OLD: { source: '/uploads/:path*', destination: `${API_URL}/uploads/:path*` },
-      ];
+      );
     }
-    return [];
+    return rules;
   },
   async headers() {
+    const isProd = process.env.NODE_ENV === 'production';
+    if (!isProd) {
+      // In development, avoid strict headers that can interfere with HMR and chunk loading.
+      return [];
+    }
     return [
+      // Relaxed headers ONLY for the /chat proxy so Mattermost can be embedded
       {
-        source: '/(.*)',
+        source: '/chat/:path*',
         headers: [
-          {
-            key: 'X-Content-Type-Options',
-            value: 'nosniff',
-          },
-          {
-            key: 'X-Frame-Options',
-            value: 'DENY',
-          },
-          {
-            key: 'X-XSS-Protection',
-            value: '1; mode=block',
-          },
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=31536000; includeSubDomains; preload',
-          },
-          {
-            key: 'Content-Security-Policy',
-            value: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'X-XSS-Protection', value: '1; mode=block' },
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
+          { key: 'Content-Security-Policy', value: [
               "default-src 'self'",
               "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
               "style-src 'self' 'unsafe-inline'",
               "img-src 'self' data: https: blob:",
               "font-src 'self' data:",
-              "connect-src 'self' http://localhost:* https: wss: ws://localhost:*",
+              "connect-src 'self' https: wss:",
+              "frame-ancestors 'self'",
+              "base-uri 'self'",
+              "form-action 'self'"
+            ].join('; ') },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+        ],
+      },
+      {
+        source: '/((?!chat/).*)',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-XSS-Protection', value: '1; mode=block' },
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
+          { key: 'Content-Security-Policy', value: [
+              "default-src 'self'",
+              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+              "style-src 'self' 'unsafe-inline'",
+              "img-src 'self' data: https: blob:",
+              "font-src 'self' data:",
+              "connect-src 'self' https: wss:",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'"
-            ].join('; ')
-          },
-          {
-            key: 'Referrer-Policy',
-            value: 'strict-origin-when-cross-origin',
-          },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=()',
-          },
+            ].join('; ') },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         ],
       },
     ];

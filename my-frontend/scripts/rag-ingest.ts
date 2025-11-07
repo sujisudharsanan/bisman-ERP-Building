@@ -9,7 +9,7 @@ import path from 'path';
 // Lazy import prisma to avoid TS evaluating client types in CI
 // eslint-disable-next-line @typescript-eslint/no-var-requires
 const { prisma } = require('../src/lib/prisma');
-import { getEmbedding } from '@/lib/ollama';
+import { getEmbedding } from '@/lib/aiClient';
 
 type Args = { file: string; modules: string[]; user: string };
 

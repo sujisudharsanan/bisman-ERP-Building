@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { Inter } from 'next/font/google';
 import '../styles/globals.css';
+import './tawk-inline.css';
 import { AuthProvider } from '../contexts/AuthContext';
 import { PermissionProvider } from '../contexts/PermissionContext';
 import { ThemeProvider } from '../contexts/ThemeContext';

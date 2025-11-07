@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import { prisma } from '@/lib/prisma';
-import { getEmbedding } from '@/lib/ollama';
+import { getEmbedding } from '@/lib/aiClient';
 
 function chunkText(text: string, size = 1000, overlap = 200): string[] {
   const chunks: string[] = [];

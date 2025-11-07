@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server';
 
 const AI_BASE = (process.env.AI_BASE_URL || '').replace(/\/$/, '');
-const OLLAMA_URL = (process.env.OLLAMA_URL || process.env.NEXT_PUBLIC_OLLAMA_URL || '').replace(/\/$/, '');
+const OLLAMA_URL = '' as unknown as string; // deprecated
 
 export async function GET() {
-  // Try AI_BASE_URL first (Railway Open WebUI or proxy), then fallback to OLLAMA_URL
-  const targets = [AI_BASE && { base: AI_BASE, kind: 'ai' }, OLLAMA_URL && { base: OLLAMA_URL, kind: 'ollama' }].filter(Boolean) as Array<{ base: string; kind: 'ai' | 'ollama' }>;
-  if (!targets.length) return NextResponse.json({ ok: false, error: 'no_base_config', detail: 'Set AI_BASE_URL or OLLAMA_URL' });
+  // Only use AI_BASE_URL moving forward
+  const targets = [AI_BASE && { base: AI_BASE, kind: 'ai' }].filter(Boolean) as Array<{ base: string; kind: 'ai' }>;
+  if (!targets.length) return NextResponse.json({ ok: false, error: 'no_base_config', detail: 'Set AI_BASE_URL' });
   for (const t of targets) {
     try {
       // Prefer /api/tags; if 404 try a tiny /api/generate probe
@@ -23,11 +23,11 @@ export async function GET() {
         continue;
       }
       const j = await res.json().catch(() => ({}));
-      return NextResponse.json({ ok: true, base: t.base, via: t.kind, models: j?.models || j?.data || j || [] });
+  return NextResponse.json({ ok: true, base: t.base, via: t.kind, models: j?.models || j?.data || j || [] });
     } catch (e: any) {
       // Try next target
       continue;
     }
   }
-  return NextResponse.json({ ok: false, error: 'unreachable', detail: 'AI_BASE_URL/OLLAMA_URL not reachable' }, { status: 200 });
+  return NextResponse.json({ ok: false, error: 'unreachable', detail: 'AI_BASE_URL not reachable' }, { status: 200 });
 }

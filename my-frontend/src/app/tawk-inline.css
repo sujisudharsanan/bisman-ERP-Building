@@ -1,0 +1,32 @@
+/* Tawk inline embed styles */
+
+#erpChatBox {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: inherit;
+  background: transparent;
+}
+
+#erpChatBox iframe {
+  width: 100% !important;
+  height: 100% !important;
+  min-height: 100% !important;
+  border: 0 !important;
+  border-radius: inherit !important;
+  background: transparent !important;
+}
+
+/* Hide default floating launcher and branding if injected */
+#tawkchat-container,
+#tawkchat-widget-iframe,
+.tawk-button,
+.tawk-branding,
+.tawk-min-chat-icon,
+[id^="tawk_"][class*="widget"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}

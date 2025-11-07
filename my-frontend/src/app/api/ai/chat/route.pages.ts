@@ -1,6 +1,6 @@
 // For acceptance: Pages Router-style signature reference (not used by Next app router runtime)
 import { NextRequest, NextResponse } from 'next/server';
-import { callChat } from '@/lib/ollama';
+import { callChat } from '@/lib/aiClient';
 import { buildContext } from '@/lib/contextBuilder';
 
 export async function POST(req: NextRequest) {
