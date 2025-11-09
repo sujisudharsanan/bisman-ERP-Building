@@ -1,15 +1,18 @@
-# Deploy Mattermost Team Edition on Railway using the official image.
-# Relies on env vars provided by Railway and our provisioning script.
+# Deploy Mattermost Team Edition on Railway
+# Simplified - let Railway handle PORT via environment variables
 
 FROM mattermost/mattermost-team-edition:latest
 
-# Make Mattermost listen on the platform-provided PORT when present.
-ENV PORT=8065 \
-    MM_SERVICESETTINGS_LISTENADDRESS=":${PORT}" \
-    MM_SQLSETTINGS_DRIVERNAME=postgres \
+# Set environment defaults
+ENV MM_SQLSETTINGS_DRIVERNAME=postgres \
+    MM_FILESETTINGS_DRIVERNAME=local \
+    MM_FILESETTINGS_DIRECTORY=/mattermost/data \
     MM_PLUGINSETTINGS_ENABLE="true" \
     MM_SERVICESETTINGS_ENABLEPERSONALACCESSTOKENS="true" \
     MM_SERVICESETTINGS_ENABLEUSERACCESSTOKENS="true"
 
-# Default EXPOSE for docs; Railway routes to the running container port.
+# Expose the port
 EXPOSE 8065
+
+# Use the default Mattermost entrypoint and command
+# We'll set MM_SERVICESETTINGS_LISTENADDRESS via Railway variables
