@@ -1,0 +1,147 @@
+package main
+
+import (
+	"strings"
+
+	"github.com/mattermost/mattermost/server/public/model"
+	"github.com/mattermost/mattermost/server/public/plugin"
+)
+
+// Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
+type Plugin struct {
+	plugin.MattermostPlugin
+	botID string
+}
+
+// OnActivate is invoked when the plugin is activated. It creates the ERP bot user.
+func (p *Plugin) OnActivate() error {
+	bot := &model.Bot{
+		Username:    "erpbot",
+		DisplayName: "ERP Assistant",
+		Description: "Internal ERP helper - ask about invoices, POs, attendance, and more!",
+	}
+	
+	// Try to create the bot, if it exists this will fail silently
+	createdBot, err := p.API.CreateBot(bot)
+	if err != nil {
+		// If bot already exists, we'll get it in the message handler
+		p.API.LogInfo("Bot might already exist, will handle in message handler")
+		// Try to get the bot by checking user by username
+		user, userErr := p.API.GetUserByUsername(bot.Username)
+		if userErr == nil && user.IsBot {
+			p.botID = user.Id
+			p.API.LogInfo("Found existing ERP Assistant bot", "botID", p.botID)
+			return nil
+		}
+		// If we can't find it, return the original error
+		return err
+	}
+	
+	p.botID = createdBot.UserId
+	p.API.LogInfo("ERP Assistant bot activated successfully", "botID", p.botID)
+	
+	return nil
+}
+
+// reply generates rule-based responses based on the message content
+func reply(msg string) string {
+	m := strings.ToLower(msg)
+	
+	switch {
+	case strings.Contains(m, "invoice"):
+		return "🧾 **Invoice Management**\n\nTo create an invoice, navigate to:\n→ *Finance → Billing → New Invoice*\n\nFor viewing existing invoices:\n→ *Finance → Billing → Invoice List*"
+	
+	case strings.Contains(m, "purchase") || strings.Contains(m, "po"):
+		return "📦 **Purchase Orders**\n\nPurchase Orders are managed here:\n→ *Procurement → PO List*\n\nTo create a new PO:\n→ *Procurement → Create PO*"
+	
+	case strings.Contains(m, "leave") || strings.Contains(m, "attendance"):
+		return "🕒 **Attendance & Leave**\n\nManage your attendance:\n→ *HR → Attendance → My Records*\n\nApply for leave:\n→ *HR → Leave Management → Apply Leave*"
+	
+	case strings.Contains(m, "inventory") || strings.Contains(m, "stock"):
+		return "📊 **Inventory Management**\n\nCheck stock levels:\n→ *Warehouse → Inventory → Stock Status*\n\nManage items:\n→ *Warehouse → Items → Item Master*"
+	
+	case strings.Contains(m, "customer") || strings.Contains(m, "client"):
+		return "👥 **Customer Management**\n\nView customers:\n→ *Sales → Customers → Customer List*\n\nAdd new customer:\n→ *Sales → Customers → New Customer*"
+	
+	case strings.Contains(m, "vendor") || strings.Contains(m, "supplier"):
+		return "🏢 **Vendor Management**\n\nManage vendors:\n→ *Procurement → Vendors → Vendor List*\n\nAdd new vendor:\n→ *Procurement → Vendors → New Vendor*"
+	
+	case strings.Contains(m, "payment"):
+		return "💰 **Payment Processing**\n\nRecord payments:\n→ *Finance → Payments → Payment Entry*\n\nView payment history:\n→ *Finance → Payments → Payment List*"
+	
+	case strings.Contains(m, "report") || strings.Contains(m, "analytics"):
+		return "📈 **Reports & Analytics**\n\nAccess reports:\n→ *Dashboard → Reports*\n\nCustom analytics:\n→ *Dashboard → Analytics → Custom Reports*"
+	
+	case strings.Contains(m, "user") || strings.Contains(m, "employee"):
+		return "👤 **User Management**\n\nManage employees:\n→ *HR → Employees → Employee List*\n\nAdd new user:\n→ *Settings → Users → Create User*"
+	
+	case strings.Contains(m, "approval") || strings.Contains(m, "pending"):
+		return "✅ **Approvals & Workflow**\n\nView pending approvals:\n→ *Dashboard → Approvals → Pending Items*\n\nApproval history:\n→ *Dashboard → Approvals → History*"
+	
+	case strings.Contains(m, "help") || strings.Contains(m, "hello") || strings.Contains(m, "hi"):
+		return "🤖 **Hi! I'm your ERP Assistant**\n\nI can help you with:\n" +
+			"• 🧾 Invoices & Billing\n" +
+			"• 📦 Purchase Orders\n" +
+			"• 🕒 Attendance & Leave\n" +
+			"• 📊 Inventory & Stock\n" +
+			"• 👥 Customers & Vendors\n" +
+			"• 💰 Payments\n" +
+			"• 📈 Reports & Analytics\n" +
+			"• ✅ Approvals\n\n" +
+			"Just ask me about any of these topics!"
+	
+	default:
+		return "🤔 **I'm not sure about that...**\n\n" +
+			"Try asking me about:\n" +
+			"• Invoices or billing\n" +
+			"• Purchase orders (PO)\n" +
+			"• Attendance or leave\n" +
+			"• Inventory or stock\n" +
+			"• Customers or vendors\n" +
+			"• Payments\n" +
+			"• Reports\n\n" +
+			"Or just say **help** to see all topics I can assist with!"
+	}
+}
+
+// MessageHasBeenPosted is invoked after a message has been posted by a user.
+// This is where the bot listens for mentions or DMs and responds accordingly.
+func (p *Plugin) MessageHasBeenPosted(c *plugin.Context, post *model.Post) {
+	// Ignore messages from the bot itself to prevent infinite loops
+	if post.UserId == p.botID {
+		return
+	}
+	
+	// Get the channel information
+	channel, appErr := p.API.GetChannel(post.ChannelId)
+	if appErr != nil {
+		p.API.LogError("Failed to get channel", "error", appErr.Error())
+		return
+	}
+	
+	// Check if it's a DM or Group message (always respond)
+	isDM := channel != nil && (channel.Type == model.ChannelTypeDirect || channel.Type == model.ChannelTypeGroup)
+	
+	// In public channels, only respond if @erpbot is mentioned
+	if !isDM && !strings.Contains(strings.ToLower(post.Message), "@erpbot") {
+		return
+	}
+	
+	// Generate the response
+	answer := reply(post.Message)
+	
+	// Create and post the reply
+	replyPost := &model.Post{
+		UserId:    p.botID,
+		ChannelId: post.ChannelId,
+		RootId:    post.Id,
+		Message:   answer,
+	}
+	
+	if _, appErr := p.API.CreatePost(replyPost); appErr != nil {
+		p.API.LogError("Failed to create reply post", "error", appErr.Error())
+		return
+	}
+	
+	p.API.LogDebug("ERP Assistant responded to message", "channelId", post.ChannelId, "isDM", isDM)
+}

@@ -33,9 +33,10 @@ export async function POST(req: Request) {
     let mmUser = await mmFindUserByEmail(user.email);
     if (!mmUser) {
       const username = (user.username || user.name || user.email.split('@')[0]).toLowerCase().replace(/[^a-z0-9._-]/g,'');
-      const password = user.password || Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+      // Use demo password for development; in production, sync from ERP user passwords
+      const password = user.password || process.env.NEXT_PUBLIC_MM_DEMO_PASSWORD || 'Welcome@2025';
       mmUser = await mmCreateUser({ email: user.email, username: username || `u${user.id}`, password, first_name: user.name?.split(' ')?.[0] || '', last_name: user.name?.split(' ')?.slice(1)?.join(' ') || '' });
-      // IMPORTANT: store this password securely in your ERP for auto-login
+      // IMPORTANT: In production, store password from ERP user for auto-login
     }
 
     await mmAddUserToTeam(team.id, mmUser.id);
