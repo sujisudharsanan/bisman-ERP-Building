@@ -578,6 +578,19 @@ try {
   console.warn('[app.js] Install dependencies: npm install langchain node-cron')
 }
 
+// Mattermost Chatbot Integration routes (protected - requires authentication)
+try {
+  const mattermostBotRoute = require('./routes/mattermostBot')
+  
+  // Mattermost bot integration endpoints
+  app.use('/api/mattermost', mattermostBotRoute)
+  
+  console.log('[app.js] ✅ Mattermost Bot Integration routes loaded')
+  console.log('[app.js] 🤖 Chatbot can now query real ERP data!')
+} catch (e) {
+  console.warn('[app.js] Mattermost Bot routes not loaded:', e && e.message)
+}
+
 // prisma initialized above
 
 // Health check endpoint - relies on global CORS middleware
