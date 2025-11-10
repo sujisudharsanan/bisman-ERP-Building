@@ -17,15 +17,36 @@ type Plugin struct {
 	botID          string
 	fuzzyModel     *fuzzy.Model
 	lastContext    map[string]string                // userID -> last topic for context
-	conversationHistory map[string][]ConversationMessage // userID -> message history
+	conversationHistory map[string][]ConversationMessage // userID -> message history (expanded to 50 messages)
 	typingDelay    bool                             // Simulate human typing
+	userPreferences map[string]UserPreference        // userID -> preferences
+	conversationState map[string]ConversationState   // userID -> current conversation state
 }
 
-// ConversationMessage stores user messages for context
+// ConversationMessage stores user messages for context (enhanced)
 type ConversationMessage struct {
 	Role      string
 	Content   string
 	Timestamp time.Time
+	Intent    string    // Detected intent for this message
+	Entities  []Entity  // Detected entities
+}
+
+// UserPreference stores user-specific settings
+type UserPreference struct {
+	PreferredLanguage string
+	DetailLevel       string // "brief", "normal", "detailed"
+	ShowEmojis        bool
+	RememberContext   bool
+}
+
+// ConversationState tracks multi-turn conversations
+type ConversationState struct {
+	Topic           string
+	SubTopic        string
+	AwaitingInput   bool
+	LastQuestion    string
+	FollowUpCount   int
 }
 
 // Entity represents a detected entity in user input
@@ -419,25 +440,27 @@ func (p *Plugin) storeConversationMessage(userID, role, content string) {
 		Timestamp: time.Now(),
 	})
 	
-	// Keep only last 5 messages (10 total with bot responses)
-	if len(history) > 10 {
-		history = history[len(history)-10:]
+	// ✅ MAXIMUM CHAT CAPACITY: Keep last 50 messages (100 total with bot responses)
+	// Allows for deep, extended conversations with full context
+	if len(history) > 100 {
+		history = history[len(history)-100:]
 	}
 	
 	p.conversationHistory[userID] = history
 }
 
-// getConversationContext returns recent conversation for context
+// getConversationContext returns recent conversation for context (enhanced)
 func (p *Plugin) getConversationContext(userID string) string {
 	history := p.conversationHistory[userID]
 	if len(history) == 0 {
 		return ""
 	}
 	
-	// Build context from last 3 user messages
+	// ✅ MAXIMUM CONTEXT: Build context from last 10 user messages
+	// Provides much richer context for better AI understanding
 	var context strings.Builder
 	count := 0
-	for i := len(history) - 1; i >= 0 && count < 3; i-- {
+	for i := len(history) - 1; i >= 0 && count < 10; i-- {
 		if history[i].Role == "user" {
 			context.WriteString(history[i].Content)
 			context.WriteString(" ")
@@ -448,8 +471,202 @@ func (p *Plugin) getConversationContext(userID string) string {
 	return context.String()
 }
 
+// ✅ MAXIMUM CHAT CAPACITY: Advanced conversation features
+
+// detectFollowUp checks if message is a follow-up question
+func (p *Plugin) detectFollowUp(userID, message string) bool {
+	lowerMsg := strings.ToLower(message)
+	followUpPhrases := []string{
+		"more", "tell me more", "explain", "how about", "what about",
+		"can you", "also", "and", "details", "elaborate", "continue",
+		"yes", "okay", "sure", "go on", "next", "then what",
+	}
+	
+	for _, phrase := range followUpPhrases {
+		if strings.Contains(lowerMsg, phrase) {
+			return true
+		}
+	}
+	
+	// Check if message is very short (likely a follow-up)
+	words := strings.Fields(message)
+	if len(words) <= 3 && p.lastContext[userID] != "" {
+		return true
+	}
+	
+	return false
+}
+
+// getDetailedExplanation provides in-depth explanations
+func (p *Plugin) getDetailedExplanation(topic string) string {
+	detailedResponses := map[string]string{
+		"invoice": `📝 **Complete Invoice Guide**
+
+**What is an Invoice?**
+An invoice is a commercial document that itemizes and records a transaction between a buyer and a seller. It's essentially a bill requesting payment.
+
+**Creating an Invoice:**
+1. Navigate to **Finance → Billing → New Invoice**
+2. Select customer from dropdown or create new
+3. Add invoice details:
+   - Invoice date (auto-filled with today)
+   - Due date (configurable: Net 30, Net 60, etc.)
+   - Payment terms
+4. Add line items:
+   - Product/Service name
+   - Description
+   - Quantity
+   - Unit price
+   - Tax rate (auto-calculated)
+5. Review totals:
+   - Subtotal
+   - Tax amount
+   - Discount (if applicable)
+   - Final total
+6. Click **Save & Send**
+
+**Advanced Features:**
+✨ **Templates** - Save frequently used invoice formats
+✨ **Recurring Invoices** - Auto-generate monthly/weekly invoices
+✨ **Multi-currency** - Bill in any currency with real-time rates
+✨ **Payment Integration** - Accept online payments directly
+✨ **Auto-reminders** - Send payment reminders automatically
+
+**Best Practices:**
+✅ Always add invoice notes for special instructions
+✅ Use clear item descriptions
+✅ Set realistic payment terms
+✅ Track payment status regularly
+✅ Follow up on overdue invoices promptly
+
+Need help with any specific part?`,
+
+		"leave": `🏖️ **Complete Leave Management Guide**
+
+**Types of Leave:**
+1. **Sick Leave** - Medical emergencies, illness
+2. **Casual Leave** - Personal reasons, family events
+3. **Annual Leave** - Vacation, planned time off
+4. **Unpaid Leave** - Extended absences
+5. **Compensatory Off** - For overtime work
+6. **Maternity/Paternity Leave** - New parents
+
+**Applying for Leave:**
+1. Go to **HR → Leave Management → Apply Leave**
+2. Select leave type from dropdown
+3. Choose dates:
+   - Start date
+   - End date
+   - Half day option available
+4. Calculate total days (auto-calculated)
+5. Add reason (be specific and professional)
+6. Attach documents if needed (medical certificate, etc.)
+7. Submit for approval
+
+**Approval Workflow:**
+Manager Review → HR Review → Final Approval
+
+**Leave Balance:**
+- View remaining leave in **My Profile → Leave Balance**
+- Different types have different quotas
+- Unused leave may roll over (depends on company policy)
+
+**Pro Tips:**
+✅ Apply well in advance (1 week minimum)
+✅ Plan leaves around project deadlines
+✅ Keep manager informed
+✅ Provide handover notes for extended leave
+✅ Check team calendar for conflicts
+
+**Emergency Leave:**
+For sudden emergencies, you can apply retrospectively with proper justification and documents.
+
+Want to know more about specific leave types?`,
+
+		"approval": `✅ **Complete Approval Workflow Guide**
+
+**What Gets Approved:**
+- Purchase Orders over threshold
+- Leave requests
+- Expense claims
+- Invoice payments
+- Budget allocations
+- Resource requests
+
+**Approval Levels:**
+1. **First Level** - Immediate manager/supervisor
+2. **Second Level** - Department head
+3. **Final Level** - Finance/Executive (for high-value items)
+
+**Approval Process:**
+1. Navigate to **Workflow → My Tasks** or **Approvals**
+2. See pending items with:
+   - Request type
+   - Requester name
+   - Amount (if applicable)
+   - Submitted date
+   - Priority
+3. Click on item to review:
+   - Full details
+   - Attachments
+   - Comments/notes
+   - History/audit trail
+4. Take action:
+   - **Approve** ✅ - Move to next level
+   - **Reject** ❌ - Send back with reason
+   - **Request Changes** 📝 - Ask for modifications
+   - **Defer** ⏸️ - Need more time/info
+
+**Email Notifications:**
+📧 Get instant emails for:
+- New approval requests
+- Status updates
+- Escalations (if delayed)
+- Final decisions
+
+**Mobile App:**
+📱 Approve on-the-go from mobile app
+
+**Best Practices:**
+✅ Review within 24-48 hours
+✅ Add clear comments if rejecting
+✅ Check attached documents thoroughly
+✅ Verify budget availability
+✅ Consider business impact
+✅ Maintain audit trail
+
+**Escalation:**
+If no action taken within SLA:
+- Auto-escalates to next level
+- Sends reminders
+- Flags in dashboard
+
+Need help with a specific approval type?`,
+	}
+
+	if detailed, exists := detailedResponses[topic]; exists {
+		return detailed
+	}
+
+	return "I can provide detailed information! What would you like to know more about? (invoice, leave, approval, purchase order, etc.)"
+}
+
 // generateContextualReply creates intelligent replies using conversation history and NLP
 func (p *Plugin) generateContextualReply(userID, message string) string {
+	// Get conversation context (for future use)
+	_ = p.getConversationContext(userID)
+	
+	// Check for follow-up questions
+	isFollowUp := p.detectFollowUp(userID, message)
+	
+	// If it's a follow-up and we have context, provide detailed explanation
+	if isFollowUp && p.lastContext[userID] != "" {
+		detailed := p.getDetailedExplanation(p.lastContext[userID])
+		if detailed != "" {
+			return detailed
+		}
+	}
+	
 	// Use new lightweight NLP system
 	analysis := p.analyzeIntent(message)
 	
