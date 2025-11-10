@@ -412,6 +412,17 @@ const {
 const reportsRoutes = require('./routes/reportsRoutes')
 app.use('/api/reports', reportsRoutes)
 
+// Calendar routes for event management
+try {
+  const calendarRoutes = require('./routes/calendar')
+  app.use('/api/calendar', calendarRoutes)  // ✅ FIX: Changed from '/api' to '/api/calendar' to avoid blocking auth routes
+  console.log('✅ Calendar routes loaded at /api/calendar')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Calendar routes not loaded:', e && e.message)
+  }
+}
+
 // Security monitoring routes (versioned)
 try {
   const securityRoutes = require('./routes/securityRoutes')
