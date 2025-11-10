@@ -54,13 +54,18 @@ interface CalendarEvent {
 }
 
 // Event Modal Component
-function EventModal({ isOpen, onClose, onSave, event, calendars }: {
+interface EventModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave: (formData: any, eventId?: string) => void;
   event: any;
   calendars: any[];
-}) {
+}
+
+type InputEl = HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement;
+
+function EventModal(props: EventModalProps) {
+  const { isOpen, onClose, onSave, event, calendars } = props;
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -105,7 +110,7 @@ function EventModal({ isOpen, onClose, onSave, event, calendars }: {
     onSave(formData, event?.id);
   };
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+  const handleChange = (e: React.ChangeEvent<InputEl>) => {
     const { name, value, type, checked } = e.target as HTMLInputElement;
     setFormData(prev => ({
       ...prev,
@@ -296,19 +301,19 @@ function EventModal({ isOpen, onClose, onSave, event, calendars }: {
               <option value="15">15 minutes before</option>
               <option value="30">30 minutes before</option>
               <option value="60">1 hour before</option>
-              <option value="1440">1 day before</option>
-            </select>
-// Main Calendar Component
-export default function CalendarPage() {
-  const calendarRef = useRef<any>(null);
-  const [events, setEvents] = useState<Event[]>([]);
-  const [calendars, setCalendars] = useState<Calendar[]>([]);
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
-              className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
-            >
-              Cancel
-            </button>
+    <option value="1440">1 day before</option>
+  </select>
+</div>
+
+{/* Actions */}
+<div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+  <button
+    type="button"
+    onClick={onClose}
+    className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+  >
+    Cancel
+  </button>
             <button
               type="submit"
               className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
@@ -378,19 +383,19 @@ export default function CalendarPage() {
     }
   };
 
-  const handleDateClick = (info) => {
+  const handleDateClick = (info: any) => {
     // Click on empty date - create new event
     setSelectedEvent(null);
     setIsModalOpen(true);
   };
 
-  const handleEventClick = (info) => {
+  const handleEventClick = (info: any) => {
     // Click on existing event - edit
     setSelectedEvent(info.event);
     setIsModalOpen(true);
   };
 
-  const handleEventDrop = async (info) => {
+  const handleEventDrop = async (info: any) => {
     // Event dragged to new date
     try {
       const token = localStorage.getItem('token');
@@ -408,7 +413,7 @@ export default function CalendarPage() {
     }
   };
 
-  const handleEventResize = async (info) => {
+  const handleEventResize = async (info: any) => {
     // Event resized (duration changed)
     try {
       const token = localStorage.getItem('token');
@@ -425,7 +430,7 @@ export default function CalendarPage() {
     }
   };
 
-  const handleSaveEvent = async (formData, eventId) => {
+  const handleSaveEvent = async (formData: any, eventId?: string) => {
     try {
       const token = localStorage.getItem('token');
 
@@ -450,14 +455,14 @@ export default function CalendarPage() {
     }
   };
 
-  const handleViewChange = (view) => {
+  const handleViewChange = (view: string) => {
     setCurrentView(view);
     if (calendarRef.current) {
       calendarRef.current.getApi().changeView(view);
     }
   };
 
-  const handleNavigate = (direction) => {
+  const handleNavigate = (direction: string) => {
     if (calendarRef.current) {
       const api = calendarRef.current.getApi();
       if (direction === 'prev') {
