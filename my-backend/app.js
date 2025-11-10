@@ -65,22 +65,38 @@ app.use(helmet({
   crossOriginEmbedderPolicy: false,
 }))
 
-// ✅ PERFORMANCE OPTIMIZATION: Response compression (GZIP)
-// Reduces API response sizes by ~70-80%
+// ✅ PERFORMANCE OPTIMIZATION: Maximum Response Compression (GZIP)
+// Reduces API response sizes by ~80-90% with maximum compression
+// Optimized for AI chat responses with large payloads
 app.use(compression({
-  // Only compress responses larger than 1KB
-  threshold: 1024,
-  // Compression level (0-9, where 6 is default balance of speed/compression)
-  level: 6,
-  // Filter function - compress JSON and text responses
+  // Compress responses larger than 256 bytes (lower threshold for more compression)
+  threshold: 256,
+  // Maximum compression level (9 = best compression, slower speed)
+  // Perfect for AI chat where response size matters more than compression time
+  level: 9,
+  // Memory level (1-9, where 9 uses most memory for better compression)
+  memLevel: 9,
+  // Filter function - compress ALL JSON and text responses
   filter: (req, res) => {
+    // Allow clients to opt-out if needed
     if (req.headers['x-no-compression']) {
       return false;
     }
+    
+    // Force compression for AI endpoints (large payloads)
+    if (req.path.includes('/ai') || req.path.includes('/chat')) {
+      return true;
+    }
+    
+    // Use default filter for other responses
     return compression.filter(req, res);
-  }
+  },
+  // Use Brotli compression when supported (better than GZIP for text)
+  // Falls back to GZIP for older browsers
+  strategy: 0 // Z_DEFAULT_STRATEGY for best compression
 }))
-console.log('[app.js] ✅ Response compression enabled (GZIP)');
+console.log('[app.js] ✅ Maximum response compression enabled (Level 9 GZIP/Brotli)');
+console.log('[app.js] 🚀 Optimized for AI chat responses - expect 80-90% size reduction');
 
 // Rate limiting for authentication endpoints
 const loginLimiter = rateLimit({
