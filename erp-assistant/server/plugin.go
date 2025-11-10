@@ -6,7 +6,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/jdkato/prose/v2"
 	"github.com/mattermost/mattermost/server/public/model"
 	"github.com/mattermost/mattermost/server/public/plugin"
 	"github.com/sajari/fuzzy"
@@ -15,9 +14,31 @@ import (
 // Plugin implements the interface expected by the Mattermost server
 type Plugin struct {
 	plugin.MattermostPlugin
-	botID       string
-	fuzzyModel  *fuzzy.Model
-	lastContext map[string]string // userID -> last topic for context
+	botID          string
+	fuzzyModel     *fuzzy.Model
+	lastContext    map[string]string                // userID -> last topic for context
+	conversationHistory map[string][]ConversationMessage // userID -> message history
+	typingDelay    bool                             // Simulate human typing
+}
+
+// ConversationMessage stores user messages for context
+type ConversationMessage struct {
+	Role      string
+	Content   string
+	Timestamp time.Time
+}
+
+// Entity represents a detected entity in user input
+type Entity struct {
+	Type  string // "module", "action", "document_type"
+	Value string
+}
+
+// IntentAnalysis contains parsed information from user message
+type IntentAnalysis struct {
+	Intent    string
+	Entities  []Entity
+	Confidence float64
 }
 
 // ERP vocabulary for spell correction
@@ -45,6 +66,26 @@ var erpVocabulary = []string{
 	"help", "need", "want", "show", "find", "get",
 }
 
+// ERP modules and their aliases
+var moduleAliases = map[string][]string{
+	"finance":     {"finance", "billing", "accounting", "money", "payment"},
+	"procurement": {"procurement", "purchase", "buying", "vendor", "supplier"},
+	"hr":          {"hr", "human", "resources", "employee", "staff", "people"},
+	"inventory":   {"inventory", "stock", "warehouse", "goods", "items"},
+	"workflow":    {"workflow", "approval", "process", "task"},
+	"reports":     {"reports", "analytics", "dashboard", "stats"},
+}
+
+// Document type patterns
+var documentTypes = map[string][]string{
+	"invoice":        {"invoice", "bill", "billing"},
+	"purchase_order": {"purchase", "order", "po"},
+	"leave":          {"leave", "vacation", "time", "off", "absent"},
+	"attendance":     {"attendance", "present", "check", "in"},
+	"receipt":        {"receipt", "payment", "proof"},
+	"quotation":      {"quotation", "quote", "estimate"},
+}
+
 // Friendly openers
 var openers = []string{
 	"Sure thing! 😊",
@@ -57,6 +98,8 @@ var openers = []string{
 	"Absolutely!",
 	"Coming right up!",
 	"Of course! ✨",
+	"Let's fix that!",
+	"Sure —",
 }
 
 // Friendly closers
@@ -69,15 +112,21 @@ var closers = []string{
 	"Let me know if you need more info! 📝",
 	"Feel free to ask if you get stuck!",
 	"Just ping me anytime! 💬",
+	"Need anything else?",
+	"Want a summary?",
 }
 
 // OnActivate is invoked when the plugin is activated
 func (p *Plugin) OnActivate() error {
+	p.API.LogInfo("🚀 ERP Assistant plugin activating...")
+	
 	// Initialize random seed
 	rand.Seed(time.Now().UnixNano())
 	
 	// Initialize context memory
 	p.lastContext = make(map[string]string)
+	p.conversationHistory = make(map[string][]ConversationMessage)
+	p.API.LogInfo("✅ Context memory initialized")
 	
 	// Initialize fuzzy spell checker
 	p.fuzzyModel = fuzzy.NewModel()
@@ -85,31 +134,39 @@ func (p *Plugin) OnActivate() error {
 	p.fuzzyModel.SetDepth(2)     // Check 2-letter combinations
 	
 	// Train the model with ERP vocabulary
-	p.API.LogInfo("Training fuzzy model with ERP vocabulary...")
+	p.API.LogInfo("Training fuzzy model with ERP vocabulary...", "words", len(erpVocabulary))
 	p.fuzzyModel.Train(erpVocabulary)
-	p.API.LogInfo("Fuzzy model training complete", "words", len(erpVocabulary))
+	p.API.LogInfo("✅ Fuzzy model training complete")
 	
-	// Create bot user
+	// Create or find bot user
 	bot := &model.Bot{
 		Username:    "erpbot",
 		DisplayName: "ERP Assistant",
-		Description: "🤖 Your friendly ERP helper - I understand typos and speak human!",
+		Description: "🤖 Your friendly ERP helper - I understand typos and speak human! 100% internal, no external APIs.",
 	}
 	
+	p.API.LogInfo("Looking for bot user 'erpbot'...")
 	createdBot, err := p.API.CreateBot(bot)
 	if err != nil {
-		p.API.LogInfo("Bot might already exist, checking...")
+		p.API.LogWarn("Bot creation returned error, checking if bot exists", "error", err.Error())
 		user, userErr := p.API.GetUserByUsername(bot.Username)
-		if userErr == nil && user.IsBot {
-			p.botID = user.Id
-			p.API.LogInfo("Found existing ERP Assistant bot", "botID", p.botID)
-			return nil
+		if userErr != nil {
+			p.API.LogError("Failed to find existing bot", "error", userErr.Error())
+			return userErr
 		}
-		return err
+		if user.IsBot {
+			p.botID = user.Id
+			p.API.LogInfo("✅ Found existing ERP Assistant bot", "botID", p.botID)
+		} else {
+			p.API.LogError("User 'erpbot' exists but is not a bot!")
+			return fmt.Errorf("erpbot user exists but is not a bot")
+		}
+	} else {
+		p.botID = createdBot.UserId
+		p.API.LogInfo("✅ Created new ERP Assistant bot", "botID", p.botID)
 	}
 	
-	p.botID = createdBot.UserId
-	p.API.LogInfo("🎉 ERP Assistant bot activated successfully!", "botID", p.botID)
+	p.API.LogInfo("🎉 ERP Assistant plugin activated successfully!", "botID", p.botID, "vocabulary", len(erpVocabulary))
 	
 	return nil
 }
@@ -141,227 +198,303 @@ func (p *Plugin) spellCorrectSentence(sentence string) string {
 	return strings.Join(corrected, " ")
 }
 
-// analyzeWithProse uses lightweight NLP to extract tokens and entities
-func analyzeWithProse(text string) (tokens []string, entities map[string]bool, err error) {
-	doc, err := prose.NewDocument(text)
-	if err != nil {
-		return nil, nil, err
+// Extract entities from message using lightweight pattern matching
+func (p *Plugin) extractEntities(message string) []Entity {
+	entities := []Entity{}
+	lowerMessage := strings.ToLower(message)
+	
+	// Detect modules
+	for module, aliases := range moduleAliases {
+		for _, alias := range aliases {
+			if strings.Contains(lowerMessage, alias) {
+				entities = append(entities, Entity{Type: "module", Value: module})
+				break
+			}
+		}
 	}
 	
-	entities = make(map[string]bool)
-	
-	// Extract tokens
-	for _, tok := range doc.Tokens() {
-		tokens = append(tokens, strings.ToLower(tok.Text))
+	// Detect document types
+	for docType, aliases := range documentTypes {
+		for _, alias := range aliases {
+			if strings.Contains(lowerMessage, alias) {
+				entities = append(entities, Entity{Type: "document", Value: docType})
+				break
+			}
+		}
 	}
 	
-	// Extract named entities (optional - for better context)
-	for _, ent := range doc.Entities() {
-		entities[strings.ToLower(ent.Text)] = true
+	// Detect actions
+	actions := []string{"create", "view", "edit", "delete", "update", "search", "approve", "reject"}
+	for _, action := range actions {
+		if strings.Contains(lowerMessage, action) {
+			entities = append(entities, Entity{Type: "action", Value: action})
+			break
+		}
 	}
 	
-	return tokens, entities, nil
+	return entities
 }
 
-// detectIntent determines what the user is asking about
-func detectIntent(tokens []string) string {
-	tokenSet := make(map[string]bool)
-	for _, t := range tokens {
-		tokenSet[t] = true
+// Calculate confidence score based on matches
+func (p *Plugin) calculateConfidence(message string, intent string, entities []Entity) float64 {
+	score := 0.5 // Base score
+	
+	// Boost if entities found
+	if len(entities) > 0 {
+		score += 0.2
+	}
+	if len(entities) > 1 {
+		score += 0.1
 	}
 	
+	// Boost for exact keywords
+	lowerMessage := strings.ToLower(message)
+	if strings.Contains(lowerMessage, intent) {
+		score += 0.2
+	}
+	
+	if score > 1.0 {
+		score = 1.0
+	}
+	
+	return score
+}
+
+// Analyze intent with entity extraction (lightweight NLP alternative to prose)
+func (p *Plugin) analyzeIntent(message string) IntentAnalysis {
+	lowerMessage := strings.ToLower(message)
+	entities := p.extractEntities(message)
+	
+	// Determine intent from keywords
+	intent := "general"
+	if strings.Contains(lowerMessage, "create") || strings.Contains(lowerMessage, "make") || strings.Contains(lowerMessage, "add") {
+		intent = "create"
+	} else if strings.Contains(lowerMessage, "view") || strings.Contains(lowerMessage, "show") || strings.Contains(lowerMessage, "see") {
+		intent = "view"
+	} else if strings.Contains(lowerMessage, "edit") || strings.Contains(lowerMessage, "update") || strings.Contains(lowerMessage, "change") {
+		intent = "edit"
+	} else if strings.Contains(lowerMessage, "delete") || strings.Contains(lowerMessage, "remove") {
+		intent = "delete"
+	} else if strings.Contains(lowerMessage, "approve") || strings.Contains(lowerMessage, "approval") {
+		intent = "approve"
+	} else if strings.Contains(lowerMessage, "report") || strings.Contains(lowerMessage, "dashboard") {
+		intent = "report"
+	} else if strings.Contains(lowerMessage, "help") || strings.Contains(lowerMessage, "how") {
+		intent = "help"
+	}
+	
+	confidence := p.calculateConfidence(message, intent, entities)
+	
+	return IntentAnalysis{
+		Intent:     intent,
+		Entities:   entities,
+		Confidence: confidence,
+	}
+}
+
+// Get random opener for human-like responses
+func randomOpener() string {
+	return openers[rand.Intn(len(openers))]
+}
+
+// Get random closer for human-like responses
+func randomCloser() string {
+	return closers[rand.Intn(len(closers))]
+}
+
+// Generate friendly human-like response with emojis and context
+func (p *Plugin) generateFriendlyReply(message string, analysis IntentAnalysis) string {
+	opener := randomOpener()
+	closer := randomCloser()
+	
+	// Extract module and document from entities
+	var module, document string
+	for _, entity := range analysis.Entities {
+		if entity.Type == "module" {
+			module = entity.Value
+		} else if entity.Type == "document" {
+			document = entity.Value
+		}
+	}
+	
+	// Generate contextual response based on intent and entities
+	var body string
+	
+	switch analysis.Intent {
+	case "create":
+		if module != "" && document != "" {
+			body = fmt.Sprintf("To create a new %s in the %s module:\n\n1. Go to **%s Module** 🎯\n2. Click on **%s** section\n3. Hit the **+ Create** button\n4. Fill in the required details\n5. Click **Save** when done!\n\nThe system will auto-generate the document number and notify relevant approvers.", 
+				document, module, strings.Title(module), strings.Title(document))
+		} else if module != "" {
+			body = fmt.Sprintf("In the **%s module**, you can create:\n• Invoices 📄\n• Purchase Orders 📦\n• Reports 📊\n\nJust navigate to the module and look for the **+ Create** button!", 
+				strings.Title(module))
+		} else {
+			body = "You can create:\n• **Invoices** (Finance Module)\n• **Purchase Orders** (Procurement)\n• **Leave Requests** (HR)\n• **Attendance Records** (HR)\n\nWhich would you like to create?"
+		}
+		
+	case "view", "show":
+		if module != "" {
+			body = fmt.Sprintf("To view records in **%s**:\n\n1. Click the **%s** module in the sidebar 📋\n2. You'll see a list/table of all records\n3. Use filters and search to find specific items\n4. Click any row to see full details\n\nYou can also export to Excel or PDF from the top-right corner! 📥", 
+				strings.Title(module), strings.Title(module))
+		} else {
+			body = "You can view:\n• **Invoices** 📄\n• **Purchase Orders** 📦\n• **Attendance Records** ⏰\n• **Reports & Analytics** 📊\n\nWhich module are you interested in?"
+		}
+		
+	case "approve":
+		body = "For **approvals**, here's the workflow:\n\n1. Go to **Workflow** or **Approvals** section 📝\n2. You'll see pending items in **My Tasks**\n3. Click to review details\n4. Add comments if needed 💬\n5. Click **Approve** ✅ or **Reject** ❌\n\nThe system will notify the next approver or requester automatically!"
+		
+	case "report":
+		body = "Access **Reports** from:\n\n1. **Dashboard** → Real-time analytics 📊\n2. **Reports Module** → Detailed reports\n3. **Finance** → Financial reports 💰\n4. **HR** → Attendance & payroll reports\n\nYou can filter by date, department, and export to Excel/PDF!"
+		
+	case "help":
+		if module != "" {
+			body = fmt.Sprintf("**%s Module** helps you:\n• Manage all %s-related tasks\n• Track records and approvals\n• Generate reports\n• Handle workflows\n\nWhat specific task do you need help with?", 
+				strings.Title(module), module)
+		} else {
+			body = "I can help you with:\n• Creating invoices, POs, leaves 📝\n• Viewing and searching records 🔍\n• Approvals and workflows ✅\n• Generating reports 📊\n• Navigating modules 🧭\n\nWhat would you like to know more about?"
+		}
+		
+	default:
+		body = "I understand you're looking for help with the ERP system! 😊\n\nI can assist with:\n• **Finance** - Invoices, payments, billing 💰\n• **Procurement** - Purchase orders, vendors 📦\n• **HR** - Attendance, leave, payroll 👥\n• **Inventory** - Stock, warehouse 📊\n• **Workflows** - Approvals, tasks ✅\n\nCould you tell me more about what you need?"
+	}
+	
+	return fmt.Sprintf("%s %s\n\n%s", opener, body, closer)
+}
+
+// detectIntent determines what the user is asking about (lightweight version)
+func detectIntent(message string) string {
+	m := strings.ToLower(message)
+	
 	// Check for specific topics
-	if tokenSet["invoice"] || tokenSet["invoices"] || tokenSet["billing"] {
+	if strings.Contains(m, "invoice") || strings.Contains(m, "billing") {
 		return "invoice"
 	}
-	if tokenSet["purchase"] || tokenSet["order"] || tokenSet["po"] {
+	if strings.Contains(m, "purchase") || strings.Contains(m, "order") || strings.Contains(m, "po") {
 		return "purchase_order"
 	}
-	if tokenSet["leave"] || tokenSet["leaves"] || tokenSet["absent"] {
+	if strings.Contains(m, "leave") || strings.Contains(m, "absent") {
 		return "leave"
 	}
-	if tokenSet["attendance"] || tokenSet["timesheet"] {
+	if strings.Contains(m, "attendance") || strings.Contains(m, "timesheet") {
 		return "attendance"
 	}
-	if tokenSet["inventory"] || tokenSet["stock"] || tokenSet["warehouse"] {
+	if strings.Contains(m, "inventory") || strings.Contains(m, "stock") || strings.Contains(m, "warehouse") {
 		return "inventory"
 	}
-	if tokenSet["customer"] || tokenSet["customers"] || tokenSet["client"] {
+	if strings.Contains(m, "customer") || strings.Contains(m, "client") {
 		return "customer"
 	}
-	if tokenSet["vendor"] || tokenSet["vendors"] || tokenSet["supplier"] {
+	if strings.Contains(m, "vendor") || strings.Contains(m, "supplier") {
 		return "vendor"
 	}
-	if tokenSet["payment"] || tokenSet["payments"] || tokenSet["pay"] {
+	if strings.Contains(m, "payment") || strings.Contains(m, "pay") {
 		return "payment"
 	}
-	if tokenSet["report"] || tokenSet["reports"] || tokenSet["analytics"] {
+	if strings.Contains(m, "report") || strings.Contains(m, "analytics") {
 		return "reports"
 	}
-	if tokenSet["user"] || tokenSet["users"] || tokenSet["employee"] {
+	if strings.Contains(m, "user") || strings.Contains(m, "employee") {
 		return "users"
 	}
-	if tokenSet["approval"] || tokenSet["approvals"] || tokenSet["approve"] {
+	if strings.Contains(m, "approval") || strings.Contains(m, "approve") {
 		return "approvals"
 	}
-	if tokenSet["help"] || tokenSet["support"] || tokenSet["assist"] {
+	if strings.Contains(m, "help") || strings.Contains(m, "support") || strings.Contains(m, "assist") {
 		return "help"
 	}
 	
 	return "general"
 }
 
-// generateFriendlyReply creates a human-like response with variety
-func (p *Plugin) generateFriendlyReply(userID, corrected string, tokens []string, entities map[string]bool) string {
-	intent := detectIntent(tokens)
-	
-	// Remember context
-	p.lastContext[userID] = intent
-	
-	// Random opener
-	opener := openers[rand.Intn(len(openers))]
-	
-	// Random closer
-	closer := closers[rand.Intn(len(closers))]
-	
-	// Core response based on intent
-	var core string
-	
-	switch intent {
-	case "invoice":
-		responses := []string{
-			"To create an invoice, head to **Finance → Billing → New Invoice**. Fill in customer details, add line items, and hit save!",
-			"Creating invoices is easy! Go to the **Billing** module, click **New Invoice**, select your customer, and add the items you're billing for.",
-			"You can make a new invoice from **Finance → Invoices → Create New**. Just pick the customer and add your line items! 🧾",
-		}
-		core = responses[rand.Intn(len(responses))]
-		
-	case "purchase_order":
-		responses := []string{
-			"For purchase orders, navigate to **Procurement → Purchase Orders → Create PO**. Select your vendor, add items, and submit for approval!",
-			"Making a PO? Go to **Procurement → New PO**, choose the vendor, add what you need, and send it for approval. Easy! 📦",
-			"You'll find PO creation under **Procurement → Purchase Orders**. Pick a vendor, list the items, and submit!",
-		}
-		core = responses[rand.Intn(len(responses))]
-		
-	case "leave":
-		responses := []string{
-			"To apply for leave, visit **HR → Leave Management → Apply Leave**. Choose your dates, select leave type, and submit!",
-			"Requesting time off? Head to **Leave Management**, click **Apply**, pick your dates and reason, then submit for approval.",
-			"You can apply for leave from **HR → Leaves**. Just fill in the dates, type of leave, and any notes! 🏖️",
-		}
-		core = responses[rand.Intn(len(responses))]
-		
-	case "attendance":
-		responses := []string{
-			"Check attendance in **HR → Attendance Tracking**. You can view daily logs, mark attendance, or export reports!",
-			"Attendance is managed under **HR → Attendance**. Mark present/absent, view logs, and generate reports from there.",
-			"Find attendance tracking in the **HR module**. You can log attendance, view history, and pull reports! ⏰",
-		}
-		core = responses[rand.Intn(len(responses))]
-		
-	case "inventory":
-		responses := []string{
-			"Inventory management is in **Warehouse → Stock Management**. Track stock levels, add items, or check movement history!",
-			"Managing stock? Go to **Inventory → Warehouse**, where you can see current levels, add products, and track transfers.",
-			"You'll find inventory tools under **Warehouse → Inventory**. Check stock, add new items, or view transactions! 📊",
-		}
-		core = responses[rand.Intn(len(responses))]
-		
-	case "customer":
-		responses := []string{
-			"Customer management is under **CRM → Customers**. Add new customers, update details, or view transaction history!",
-			"Head to **CRM → Customer Directory** to add customers, edit info, or see their purchase history.",
-			"You can manage customers from **Sales → CRM**. Create records, update contacts, and track interactions! 👥",
-		}
-		core = responses[rand.Intn(len(responses))]
-		
-	case "vendor":
-		responses := []string{
-			"Vendor info is in **Procurement → Vendor Management**. Add vendors, update details, or view purchase history!",
-			"Managing suppliers? Visit **Procurement → Vendors** to add new ones, edit info, or check past orders.",
-			"Find vendor management under **Procurement**. You can create vendor profiles and track all purchases! 🏢",
-		}
-		core = responses[rand.Intn(len(responses))]
-		
-	case "payment":
-		responses := []string{
-			"Process payments from **Finance → Payments**. Record payments, link to invoices, and track payment status!",
-			"To make a payment, go to **Finance → Payment Processing**. Select invoice, enter amount, and mark as paid.",
-			"Payment processing is under **Finance → Payments**. You can record, track, and reconcile all payments there! 💳",
-		}
-		core = responses[rand.Intn(len(responses))]
-		
-	case "reports":
-		responses := []string{
-			"Reports are available in **Analytics → Reports**. Choose from financial, inventory, HR, or custom reports!",
-			"Need reports? Head to **Reports & Analytics** where you'll find pre-built reports or can create custom ones.",
-			"You can generate reports from **Dashboard → Reports**. Tons of options for finance, sales, HR, and more! 📈",
-		}
-		core = responses[rand.Intn(len(responses))]
-		
-	case "users":
-		responses := []string{
-			"User management is in **Settings → Users & Permissions**. Add users, assign roles, and manage access!",
-			"Managing team members? Go to **Admin → User Management** to create accounts and set permissions.",
-			"Find user admin tools under **Settings → Users**. Add people, assign roles, and control access! 👨‍💼",
-		}
-		core = responses[rand.Intn(len(responses))]
-		
-	case "approvals":
-		responses := []string{
-			"Approvals are tracked in **Workflow → Approval Queue**. Review pending items, approve/reject, and add comments!",
-			"Check your approval queue under **Workflow → Approvals**. You can approve, reject, or request changes.",
-			"The approval system is in **Workflow Management**. See pending requests, take action, and track history! ✅",
-		}
-		core = responses[rand.Intn(len(responses))]
-		
-	case "help":
-		core = "I'm here to help with all things ERP! Ask me about:\n\n" +
-			"💰 **Finance**: Invoices, payments, billing\n" +
-			"📦 **Procurement**: Purchase orders, vendors, GRN\n" +
-			"👥 **HR**: Leave, attendance, payroll\n" +
-			"📊 **Inventory**: Stock, warehouse, products\n" +
-			"🔄 **Workflows**: Approvals, processes\n" +
-			"📈 **Reports**: Analytics, dashboards\n\n" +
-			"Just type your question naturally - I understand typos! 😊"
-		
-	default:
-		responses := []string{
-			"Hmm, I'm not quite sure about that one. Could you rephrase? Maybe mention what module you're working in (Finance, HR, Inventory, etc.)?",
-			"I didn't quite catch that! Try asking about specific features like invoices, leave, inventory, or reports.",
-			"Not sure I understood! 🤔 Are you asking about invoices, purchase orders, attendance, or something else?",
-		}
-		core = responses[rand.Intn(len(responses))]
-		closer = "Type **help** to see what I can assist with!"
+// storeConversationMessage adds a message to user's conversation history
+func (p *Plugin) storeConversationMessage(userID, role, content string) {
+	if p.conversationHistory == nil {
+		p.conversationHistory = make(map[string][]ConversationMessage)
 	}
 	
-	// Build final message with variation
-	if intent == "help" {
-		return fmt.Sprintf("%s\n\n%s", opener, core)
+	history := p.conversationHistory[userID]
+	history = append(history, ConversationMessage{
+		Role:      role,
+		Content:   content,
+		Timestamp: time.Now(),
+	})
+	
+	// Keep only last 5 messages (10 total with bot responses)
+	if len(history) > 10 {
+		history = history[len(history)-10:]
 	}
 	
-	return fmt.Sprintf("%s\n\n%s\n\n%s", opener, core, closer)
+	p.conversationHistory[userID] = history
 }
 
-// MessageHasBeenPosted is invoked when a message is posted
+// getConversationContext returns recent conversation for context
+func (p *Plugin) getConversationContext(userID string) string {
+	history := p.conversationHistory[userID]
+	if len(history) == 0 {
+		return ""
+	}
+	
+	// Build context from last 3 user messages
+	var context strings.Builder
+	count := 0
+	for i := len(history) - 1; i >= 0 && count < 3; i-- {
+		if history[i].Role == "user" {
+			context.WriteString(history[i].Content)
+			context.WriteString(" ")
+			count++
+		}
+	}
+	
+	return context.String()
+}
+
+// generateContextualReply creates intelligent replies using conversation history and NLP
+func (p *Plugin) generateContextualReply(userID, message string) string {
+	// Use new lightweight NLP system
+	analysis := p.analyzeIntent(message)
+	
+	// Generate friendly human-like response
+	reply := p.generateFriendlyReply(message, analysis)
+	
+	// Remember context for follow-ups
+	p.lastContext[userID] = analysis.Intent
+	
+	// Log analysis for debugging
+	p.API.LogDebug("Intent Analysis", 
+		"intent", analysis.Intent, 
+		"confidence", fmt.Sprintf("%.2f", analysis.Confidence),
+		"entities", len(analysis.Entities))
+	
+	return reply
+}
+
+// detectIntent determines what the user is asking about (lightweight version)
 func (p *Plugin) MessageHasBeenPosted(c *plugin.Context, post *model.Post) {
 	// Ignore our own messages
 	if post.UserId == p.botID {
+		p.API.LogDebug("Ignoring bot's own message")
 		return
 	}
 	
 	// Get channel to check if it's a DM
 	channel, appErr := p.API.GetChannel(post.ChannelId)
 	if appErr != nil {
+		p.API.LogError("Failed to get channel", "error", appErr.Error())
 		return
 	}
 	
 	isDM := channel.Type == model.ChannelTypeDirect
 	isMentioned := strings.Contains(post.Message, "@erpbot")
 	
+	p.API.LogDebug("Message received", 
+		"channelType", channel.Type, 
+		"isDM", isDM, 
+		"isMentioned", isMentioned,
+		"message", post.Message)
+	
 	// Only respond to DMs or mentions
 	if !isDM && !isMentioned {
+		p.API.LogDebug("Not a DM and not mentioned, ignoring")
 		return
 	}
 	
@@ -369,29 +502,32 @@ func (p *Plugin) MessageHasBeenPosted(c *plugin.Context, post *model.Post) {
 	message := strings.ReplaceAll(post.Message, "@erpbot", "")
 	message = strings.TrimSpace(message)
 	
+	if message == "" {
+		p.API.LogDebug("Empty message after cleanup, ignoring")
+		return
+	}
+	
 	// Log original message
-	p.API.LogDebug("Received message", "original", message)
+	p.API.LogInfo("Processing message", "original", message, "userId", post.UserId)
+	
+	// Store conversation history (keep last 5 messages)
+	p.storeConversationMessage(post.UserId, "user", message)
 	
 	// Step 1: Spell correction
 	corrected := p.spellCorrectSentence(message)
 	if corrected != message {
-		p.API.LogDebug("Spell corrected", "from", message, "to", corrected)
+		p.API.LogInfo("Spell corrected", "from", message, "to", corrected)
 	}
 	
-	// Step 2: NLP analysis
-	tokens, entities, err := analyzeWithProse(corrected)
-	if err != nil {
-		p.API.LogError("Prose analysis failed", "error", err.Error())
-		tokens = strings.Fields(strings.ToLower(corrected))
-		entities = make(map[string]bool)
-	}
+	// Step 2: Generate contextual reply (100% internal - no external APIs)
+	reply := p.generateContextualReply(post.UserId, corrected)
 	
-	p.API.LogDebug("NLP analysis", "tokens", tokens, "entities", entities)
+	p.API.LogInfo("Generated reply", "length", len(reply))
 	
-	// Step 3: Generate friendly reply
-	reply := p.generateFriendlyReply(post.UserId, corrected, tokens, entities)
+	// Store bot response in history
+	p.storeConversationMessage(post.UserId, "assistant", reply)
 	
-	// Step 4: Send reply
+	// Step 3: Send reply
 	replyPost := &model.Post{
 		ChannelId: post.ChannelId,
 		RootId:    post.Id,
@@ -400,5 +536,7 @@ func (p *Plugin) MessageHasBeenPosted(c *plugin.Context, post *model.Post) {
 	
 	if _, createErr := p.API.CreatePost(replyPost); createErr != nil {
 		p.API.LogError("Failed to create reply", "error", createErr.Error())
+	} else {
+		p.API.LogInfo("✅ Reply sent successfully")
 	}
 }

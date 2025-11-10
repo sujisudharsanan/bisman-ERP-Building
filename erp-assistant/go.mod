@@ -3,7 +3,6 @@ module github.com/mattermost/mattermost-plugin-starter-template
 go 1.24.3
 
 require (
-	github.com/jdkato/prose/v2 v2.0.0
 	github.com/mattermost/mattermost/server/public v0.1.10
 	github.com/pkg/errors v0.9.1
 	github.com/sajari/fuzzy v1.0.0
@@ -12,7 +11,6 @@ require (
 require (
 	filippo.io/edwards25519 v1.1.0 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
-	github.com/deckarep/golang-set v1.7.1 // indirect
 	github.com/dyatlov/go-opengraph/opengraph v0.0.0-20220524092352-606d7b1e5f8a // indirect
 	github.com/fatih/color v1.18.0 // indirect
 	github.com/francoispqt/gojay v1.2.13 // indirect
@@ -32,7 +30,6 @@ require (
 	github.com/mattermost/logr/v2 v2.0.21 // indirect
 	github.com/mattn/go-colorable v0.1.14 // indirect
 	github.com/mattn/go-isatty v0.0.20 // indirect
-	github.com/mingrammer/commonregex v1.0.1 // indirect
 	github.com/oklog/run v1.1.0 // indirect
 	github.com/pborman/uuid v1.2.1 // indirect
 	github.com/pelletier/go-toml v1.9.5 // indirect
@@ -46,12 +43,10 @@ require (
 	golang.org/x/net v0.34.0 // indirect
 	golang.org/x/sys v0.29.0 // indirect
 	golang.org/x/text v0.21.0 // indirect
-	gonum.org/v1/gonum v0.7.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20250124145028-65684f501c47 // indirect
 	google.golang.org/grpc v1.70.0 // indirect
 	google.golang.org/protobuf v1.36.4 // indirect
 	gopkg.in/natefinch/lumberjack.v2 v2.2.1 // indirect
-	gopkg.in/neurosnap/sentences.v1 v1.0.6 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )

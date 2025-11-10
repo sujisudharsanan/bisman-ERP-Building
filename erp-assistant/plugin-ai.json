@@ -1,0 +1,66 @@
+{
+    "id": "com.bisman.erp.assistant",
+    "name": "AI ERP Assistant",
+    "description": "Intelligent ERP assistant powered by AI - understands natural language and provides context-aware help",
+    "homepage_url": "https://bisman.erp",
+    "support_url": "https://bisman.erp/support",
+    "release_notes_url": "https://bisman.erp/releases",
+    "icon_path": "assets/icon.svg",
+    "version": "2.0.0",
+    "min_server_version": "5.20.0",
+    "server": {
+        "executables": {
+            "linux-amd64": "server/dist/plugin-linux-amd64",
+            "darwin-amd64": "server/dist/plugin-darwin-amd64",
+            "windows-amd64": "server/dist/plugin-windows-amd64.exe"
+        }
+    },
+    "settings_schema": {
+        "header": "Configure your AI ERP Assistant",
+        "footer": "For best results, provide an OpenAI API key",
+        "settings": [
+            {
+                "key": "OpenAIEnabled",
+                "display_name": "Enable AI Features",
+                "type": "bool",
+                "help_text": "Enable AI-powered responses using OpenAI. Requires API key.",
+                "default": true
+            },
+            {
+                "key": "OpenAIModel",
+                "display_name": "OpenAI Model",
+                "type": "dropdown",
+                "help_text": "Which OpenAI model to use. GPT-3.5-turbo is faster and cheaper, GPT-4 is more accurate.",
+                "default": "gpt-3.5-turbo",
+                "options": [
+                    {
+                        "display_name": "GPT-3.5 Turbo (Fast & Cheap)",
+                        "value": "gpt-3.5-turbo"
+                    },
+                    {
+                        "display_name": "GPT-4 (Most Accurate)",
+                        "value": "gpt-4"
+                    },
+                    {
+                        "display_name": "GPT-4 Turbo",
+                        "value": "gpt-4-turbo-preview"
+                    }
+                ]
+            },
+            {
+                "key": "EnableContextMemory",
+                "display_name": "Enable Conversation Memory",
+                "type": "bool",
+                "help_text": "Remember conversation context across messages. Uses more tokens but provides better responses.",
+                "default": true
+            },
+            {
+                "key": "MaxContextMessages",
+                "display_name": "Max Context Messages",
+                "type": "number",
+                "help_text": "How many previous messages to remember (higher = more context but more expensive)",
+                "default": 10
+            }
+        ]
+    }
+}
