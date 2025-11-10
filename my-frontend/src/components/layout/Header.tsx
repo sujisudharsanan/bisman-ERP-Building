@@ -16,7 +16,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useUser } from '@/hooks/useUser';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { User } from 'lucide-react';
+import { User, Calendar } from 'lucide-react';
 
 interface HeaderProps {
   onMenuToggle?: () => void;
@@ -123,8 +123,18 @@ export default function Header({ onMenuToggle }: HeaderProps) {
             ) : null}
           </div>
 
-          {/* Right side - Additional actions or menu toggle */}
-          <div className="flex items-center">
+          {/* Right side - Calendar icon and menu toggle */}
+          <div className="flex items-center space-x-2">
+            {/* Calendar Icon */}
+            <Link
+              href="/calendar"
+              className="p-2 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Go to calendar"
+              title="Calendar"
+            >
+              <Calendar className="w-5 h-5" />
+            </Link>
+
             {onMenuToggle && (
               <button 
                 onClick={onMenuToggle}

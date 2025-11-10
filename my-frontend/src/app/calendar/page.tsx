@@ -29,8 +29,38 @@ import {
 } from 'lucide-react';
 import axios from 'axios';
 
+// Types
+interface Calendar {
+  id: string;
+  name: string;
+  color: string;
+  is_default?: boolean;
+}
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  start?: Date;
+  end?: Date;
+  allDay?: boolean;
+  extendedProps?: {
+    description?: string;
+    location?: string;
+    calendarId?: string;
+    eventType?: string;
+    priority?: string;
+    reminderMinutes?: number;
+  };
+}
+
 // Event Modal Component
-function EventModal({ isOpen, onClose, onSave, event, calendars }) {
+function EventModal({ isOpen, onClose, onSave, event, calendars }: {
+  isOpen: boolean;
+  onClose: () => void;
+  onSave: (formData: any, eventId?: string) => void;
+  event: any;
+  calendars: any[];
+}) {
   const [formData, setFormData] = useState({
     title: '',
     description: '',
@@ -70,13 +100,13 @@ function EventModal({ isOpen, onClose, onSave, event, calendars }) {
     }
   }, [event, calendars, isOpen]);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     onSave(formData, event?.id);
   };
 
-  const handleChange = (e) => {
-    const { name, value, type, checked } = e.target;
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
+    const { name, value, type, checked } = e.target as HTMLInputElement;
     setFormData(prev => ({
       ...prev,
       [name]: type === 'checkbox' ? checked : value
@@ -268,13 +298,13 @@ function EventModal({ isOpen, onClose, onSave, event, calendars }) {
               <option value="60">1 hour before</option>
               <option value="1440">1 day before</option>
             </select>
-          </div>
-
-          {/* Action Buttons */}
-          <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
-            <button
-              type="button"
-              onClick={onClose}
+// Main Calendar Component
+export default function CalendarPage() {
+  const calendarRef = useRef<any>(null);
+  const [events, setEvents] = useState<Event[]>([]);
+  const [calendars, setCalendars] = useState<Calendar[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<Event | null>(null);
               className="px-4 py-2 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
             >
               Cancel
@@ -294,11 +324,11 @@ function EventModal({ isOpen, onClose, onSave, event, calendars }) {
 
 // Main Calendar Component
 export default function CalendarPage() {
-  const calendarRef = useRef(null);
-  const [events, setEvents] = useState([]);
-  const [calendars, setCalendars] = useState([]);
+  const calendarRef = useRef<any>(null);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [calendars, setCalendars] = useState<Calendar[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [selectedEvent, setSelectedEvent] = useState<CalendarEvent | null>(null);
   const [currentView, setCurrentView] = useState('dayGridMonth');
   const [currentDate, setCurrentDate] = useState(new Date());
   const [loading, setLoading] = useState(true);

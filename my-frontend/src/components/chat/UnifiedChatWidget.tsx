@@ -2,7 +2,7 @@
 
 import React, { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
-import { FiMessageCircle, FiX, FiBot, FiUsers, FiMail } from "react-icons/fi";
+import { FiMessageCircle, FiX, FiCpu, FiUsers, FiMail } from "react-icons/fi";
 import ChatWidget from "./ChatWidget";
 import MattermostEmbed from "./MattermostEmbed";
 
@@ -43,7 +43,7 @@ export default function UnifiedChatWidget() {
                     : 'text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-700'
                 }`}
               >
-                <FiBot className="w-4 h-4" />
+                <FiCpu className="w-4 h-4" />
                 <span className="text-sm font-medium">AI Assistant</span>
               </button>
               <button
@@ -126,7 +126,7 @@ function AIAssistantContent() {
       <div className="flex-1 overflow-y-auto p-4 space-y-3">
         {messages.length === 0 && (
           <div className="text-center text-gray-500 dark:text-gray-400 mt-8">
-            <FiBot className="w-12 h-12 mx-auto mb-2 opacity-50" />
+            <FiCpu className="w-12 h-12 mx-auto mb-2 opacity-50" />
             <p className="text-sm">Ask me anything about your ERP system!</p>
           </div>
         )}
