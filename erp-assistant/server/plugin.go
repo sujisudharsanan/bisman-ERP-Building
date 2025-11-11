@@ -125,6 +125,48 @@ func (p *Plugin) OnActivate() error {
 	return nil
 }
 
+// correctSpelling uses the fuzzy model to gently correct common ERP words
+func (p *Plugin) correctSpelling(message string) string {
+	if p.fuzzyModel == nil || message == "" {
+		return message
+	}
+	words := strings.Fields(message)
+	for i, w := range words {
+		lw := strings.ToLower(strings.Trim(w, ".,!?;:"))
+		if lw == "" {
+			continue
+		}
+		suggestions := p.fuzzyModel.Suggestions(lw, false)
+		if len(suggestions) > 0 && suggestions[0] != lw {
+			// replace only the inner word, preserve basic punctuation
+			words[i] = strings.Replace(words[i], lw, suggestions[0], 1)
+		}
+	}
+	return strings.Join(words, " ")
+}
+
+func isGreeting(msg string) bool {
+	m := strings.ToLower(strings.TrimSpace(msg))
+	greetings := []string{"hi", "hello", "hey", "hii", "hlo", "helo"}
+	for _, g := range greetings {
+		if m == g || strings.HasPrefix(m, g+" ") || strings.Contains(m, " "+g+" ") || strings.HasSuffix(m, " "+g) {
+			return true
+		}
+	}
+	return false
+}
+
+func isAffirmative(msg string) bool {
+	m := strings.ToLower(strings.TrimSpace(msg))
+	yes := []string{"yes", "y", "yeah", "yep", "sure", "ok", "okay", "confirm", "please do", "go ahead"}
+	for _, v := range yes {
+		if m == v || strings.HasPrefix(m, v+" ") || strings.HasSuffix(m, " "+v) {
+			return true
+		}
+	}
+	return false
+}
+
 // MessageHasBeenPosted handles new posts and replies when appropriate
 func (p *Plugin) MessageHasBeenPosted(c *plugin.Context, post *model.Post) {
 	// Safety checks
@@ -142,7 +184,9 @@ func (p *Plugin) MessageHasBeenPosted(c *plugin.Context, post *model.Post) {
 		return
 	}
 
-	lower := strings.ToLower(post.Message)
+	// Spell-correct incoming message lightly for better intent detection
+	corrected := p.correctSpelling(post.Message)
+	lower := strings.ToLower(corrected)
 	addressed := false
 
 	// Respond if in a DM with the bot
@@ -165,13 +209,88 @@ func (p *Plugin) MessageHasBeenPosted(c *plugin.Context, post *model.Post) {
 	userID := post.UserId
 	p.conversationHistory[userID] = append(p.conversationHistory[userID], ConversationMessage{
 		Role:      "user",
-		Content:   post.Message,
+		Content:   corrected,
 		Timestamp: time.Now(),
 	})
 
-	// Analyze and compose reply
+	// Personalized name
+	name := "there"
+	if u, uerr := p.API.GetUser(userID); uerr == nil && u != nil {
+		if u.FirstName != "" {
+			name = u.FirstName
+		} else {
+			name = u.Username
+		}
+	}
+
+	// First-time seen check (persisted)
+	seenKey := "seen:" + userID
+	firstTime := false
+	if b, gerr := p.API.KVGet(seenKey); gerr == nil && (b == nil || len(b) == 0) {
+		firstTime = true
+		_ = p.API.KVSet(seenKey, []byte("1"))
+	}
+
+	// Attendance flow state
+	state := p.conversationState[userID]
+
+	// Greeting branch
+	if isGreeting(lower) || strings.Contains(lower, "@erpbot") {
+		var greet strings.Builder
+		greet.WriteString(fmt.Sprintf("Hi %s! ", name))
+		greet.WriteString("How are you today? ")
+		if firstTime {
+			greet.WriteString("It looks like this is our first chat. Would you like me to mark your attendance for today? ")
+			// remember awaiting confirmation
+			state.AwaitingInput = true
+			state.LastQuestion = "attendance_confirm"
+			p.conversationState[userID] = state
+		}
+		greet.WriteString("What can I help you with today?")
+
+		// Post reply
+		if p.botID == "" {
+			p.API.LogWarn("Bot ID not set; skipping reply")
+			return
+		}
+		resp := &model.Post{UserId: p.botID, ChannelId: post.ChannelId, Message: greet.String(), RootId: post.Id}
+		if _, appErr := p.API.CreatePost(resp); appErr != nil {
+			p.API.LogError("Failed to post greeting", "error", appErr.Error())
+		}
+		// Store assistant reply
+		p.conversationHistory[userID] = append(p.conversationHistory[userID], ConversationMessage{Role: "assistant", Content: greet.String(), Timestamp: time.Now()})
+		return
+	}
+
+	// Attendance confirmation branch
+	if state.AwaitingInput && state.LastQuestion == "attendance_confirm" {
+		var msg string
+		if isAffirmative(lower) {
+			// Persist a simple attendance marker for the day
+			dayKey := "attendance:" + userID + ":" + time.Now().Format("2006-01-02")
+			_ = p.API.KVSet(dayKey, []byte("present"))
+			msg = fmt.Sprintf("Great, %s! I've marked your attendance as present for today. Anything else I can help with?", name)
+		} else {
+			msg = "No problem. I won't mark attendance now. What can I help you with today?"
+		}
+		// Clear awaiting state
+		state.AwaitingInput = false
+		state.LastQuestion = ""
+		p.conversationState[userID] = state
+
+		if p.botID != "" {
+			resp := &model.Post{UserId: p.botID, ChannelId: post.ChannelId, Message: msg, RootId: post.Id}
+			if _, appErr := p.API.CreatePost(resp); appErr != nil {
+				p.API.LogError("Failed to post attendance reply", "error", appErr.Error())
+			}
+			p.conversationHistory[userID] = append(p.conversationHistory[userID], ConversationMessage{Role: "assistant", Content: msg, Timestamp: time.Now()})
+		}
+		return
+	}
+
+	// Analyze and compose default reply
 	ctx := p.getConversationContext(userID)
-	analysis := p.analyzeIntent(post.Message)
+	analysis := p.analyzeIntent(corrected)
 	reply := p.generateFriendlyReply(ctx, analysis)
 
 	// Create threaded reply from bot
@@ -364,9 +483,10 @@ func (p *Plugin) generateFriendlyReply(_ string, analysis IntentAnalysis) string
 	// Extract module and document from entities
 	var module, document string
 	for _, entity := range analysis.Entities {
-		if entity.Type == "module" {
+		switch entity.Type {
+case "module":
 			module = entity.Value
-		} else if entity.Type == "document" {
+		case "document":
 			document = entity.Value
 		}
 	}
@@ -444,183 +564,9 @@ func (p *Plugin) getConversationContext(userID string) string {
 
 // ✅ MAXIMUM CHAT CAPACITY: Advanced conversation features
 
-// detectFollowUp checks if message is a follow-up question
-func (p *Plugin) detectFollowUp(userID, message string) bool {
-	lowerMsg := strings.ToLower(message)
-	followUpPhrases := []string{
-		"more", "tell me more", "explain", "how about", "what about",
-		"can you", "also", "and", "details", "elaborate", "continue",
-		"yes", "okay", "sure", "go on", "next", "then what",
-	}
 
-	for _, phrase := range followUpPhrases {
-		if strings.Contains(lowerMsg, phrase) {
-			return true
-		}
-	}
 
-	// Check if message is very short (likely a follow-up)
-	words := strings.Fields(message)
-	if len(words) <= 3 && p.lastContext[userID] != "" {
-		return true
-	}
 
-	return false
-}
-
-// getDetailedExplanation provides in-depth explanations
-func (p *Plugin) getDetailedExplanation(topic string) string {
-	detailedResponses := map[string]string{
-		"invoice": `📝 **Complete Invoice Guide**
-
-**What is an Invoice?**
-An invoice is a commercial document that itemizes and records a transaction between a buyer and a seller. It's essentially a bill requesting payment.
-
-**Creating an Invoice:**
-1. Navigate to **Finance → Billing → New Invoice**
-2. Select customer from dropdown or create new
-3. Add invoice details:
-   - Invoice date (auto-filled with today)
-   - Due date (configurable: Net 30, Net 60, etc.)
-   - Payment terms
-4. Add line items:
-   - Product/Service name
-   - Description
-   - Quantity
-   - Unit price
-   - Tax rate (auto-calculated)
-5. Review totals:
-   - Subtotal
-   - Tax amount
-   - Discount (if applicable)
-   - Final total
-6. Click **Save & Send**
-
-**Advanced Features:**
-✨ **Templates** - Save frequently used invoice formats
-✨ **Recurring Invoices** - Auto-generate monthly/weekly invoices
-✨ **Multi-currency** - Bill in any currency with real-time rates
-✨ **Payment Integration** - Accept online payments directly
-✨ **Auto-reminders** - Send payment reminders automatically
-
-**Best Practices:**
-✅ Always add invoice notes for special instructions
-✅ Use clear item descriptions
-✅ Set realistic payment terms
-✅ Track payment status regularly
-✅ Follow up on overdue invoices promptly
-
-Need help with any specific part?`,
-
-		"leave": `🏖️ **Complete Leave Management Guide**
-
-**Types of Leave:**
-1. **Sick Leave** - Medical emergencies, illness
-2. **Casual Leave** - Personal reasons, family events
-3. **Annual Leave** - Vacation, planned time off
-4. **Unpaid Leave** - Extended absences
-5. **Compensatory Off** - For overtime work
-6. **Maternity/Paternity Leave** - New parents
-
-**Applying for Leave:**
-1. Go to **HR → Leave Management → Apply Leave**
-2. Select leave type from dropdown
-3. Choose dates:
-   - Start date
-   - End date
-   - Half day option available
-4. Calculate total days (auto-calculated)
-5. Add reason (be specific and professional)
-6. Attach documents if needed (medical certificate, etc.)
-7. Submit for approval
-
-**Approval Workflow:**
-Manager Review → HR Review → Final Approval
-
-**Leave Balance:**
-- View remaining leave in **My Profile → Leave Balance**
-- Different types have different quotas
-- Unused leave may roll over (depends on company policy)
-
-**Pro Tips:**
-✅ Apply well in advance (1 week minimum)
-✅ Plan leaves around project deadlines
-✅ Keep manager informed
-✅ Provide handover notes for extended leave
-✅ Check team calendar for conflicts
-
-**Emergency Leave:**
-For sudden emergencies, you can apply retrospectively with proper justification and documents.
-
-Want to know more about specific leave types?`,
-
-		"approval": `✅ **Complete Approval Workflow Guide**
-
-**What Gets Approved:**
-- Purchase Orders over threshold
-- Leave requests
-- Expense claims
-- Invoice payments
-- Budget allocations
-- Resource requests
-
-**Approval Levels:**
-1. **First Level** - Immediate manager/supervisor
-2. **Second Level** - Department head
-3. **Final Level** - Finance/Executive (for high-value items)
-
-**Approval Process:**
-1. Navigate to **Workflow → My Tasks** or **Approvals**
-2. See pending items with:
-   - Request type
-   - Requester name
-   - Amount (if applicable)
-   - Submitted date
-   - Priority
-3. Click on item to review:
-   - Full details
-   - Attachments
-   - Comments/notes
-   - History/audit trail
-4. Take action:
-   - **Approve** ✅ - Move to next level
-   - **Reject** ❌ - Send back with reason
-   - **Request Changes** 📝 - Ask for modifications
-   - **Defer** ⏸️ - Need more time/info
-
-**Email Notifications:**
-📧 Get instant emails for:
-- New approval requests
-- Status updates
-- Escalations (if delayed)
-- Final decisions
-
-**Mobile App:**
-📱 Approve on-the-go from mobile app
-
-**Best Practices:**
-✅ Review within 24-48 hours
-✅ Add clear comments if rejecting
-✅ Check attached documents thoroughly
-✅ Verify budget availability
-✅ Consider business impact
-✅ Maintain audit trail
-
-**Escalation:**
-If no action taken within SLA:
-- Auto-escalates to next level
-- Sends reminders
-- Flags in dashboard
-
-Need help with a specific approval type?`,
-	}
-
-	if detailed, exists := detailedResponses[topic]; exists {
-		return detailed
-	}
-
-	return "I can provide detailed information! What would you like to know more about? (invoice, leave, approval, purchase order, etc.)"
-}
 
 // generateContextualReply creates intelligent replies using conversation history and NLP
 // (removed unused generateContextualReply)
