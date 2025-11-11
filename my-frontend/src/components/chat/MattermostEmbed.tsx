@@ -28,6 +28,19 @@ export default function MattermostEmbed({ dmUsername }: { dmUsername?: string })
         const alt = demoPass === 'changeme-demo-only' ? 'Welcome@2025' : 'changeme-demo-only';
         lr = await fetch('/api/mattermost/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: user.email, password: alt }) });
       }
+      // If still unauthorized due to lockout, try admin unlock flow once
+      if (!lr.ok) {
+        const info = await lr.json().catch(async () => ({ status: lr.status, text: await lr.text().catch(()=> '') }));
+        const locked = (info?.error?.includes('mm_login_401') || lr.status === 401) && String(info?.snippet || info?.text || '').includes('too_many');
+        if (locked) {
+          try {
+            await fetch('/api/mattermost/admin/unlock', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: user.email }) });
+            // small delay before retry
+            await new Promise(r => setTimeout(r, 800));
+            lr = await fetch('/api/mattermost/login', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ email: user.email, password: demoPass }) });
+          } catch {}
+        }
+      }
       if (lr.ok) {
         // Touch the root to allow MM to set any additional cookies via the /chat proxy
         await fetch('/chat');
