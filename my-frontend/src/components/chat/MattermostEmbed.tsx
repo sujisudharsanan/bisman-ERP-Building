@@ -126,8 +126,16 @@ export default function MattermostEmbed({ dmUsername }: { dmUsername?: string })
           // Next.js rewrites /chat/* to MM_BASE_URL/* (Railway/local Mattermost)
           const initial = buildPath('team');
           
+          // CRITICAL: Ensure we never set src to empty or '/' which would load the dashboard
+          if (!initial || initial === '/' || initial === '') {
+            console.error('[MattermostEmbed] Invalid path generated:', initial);
+            setError('Chat configuration error');
+            setErrorDetail({ message: 'Invalid chat path. Check NEXT_PUBLIC_MM_TEAM_SLUG environment variable.' });
+            return;
+          }
+          
           if (process.env.NODE_ENV !== 'production') {
-            console.log('[MattermostEmbed] Login OK, loading iframe:', initial);
+            console.log('[MattermostEmbed] ✅ Login OK, loading iframe:', initial);
           }
           
           // Small delay to ensure cookies are fully set before iframe loads
@@ -188,23 +196,24 @@ export default function MattermostEmbed({ dmUsername }: { dmUsername?: string })
         )}
   <a href="/chat" target="_blank" rel="noreferrer" className="ml-auto text-xs text-indigo-600 hover:underline">Open chat ↗</a>
       </div>
-      {ready ? (
+      {ready && src && src !== '/' && src.startsWith('/chat') ? (
   <iframe ref={iframeRef} src={src} className="flex-1 w-full h-full" style={{ border:0 }} title="Team Chat" allow="clipboard-read; clipboard-write" onLoad={injectBranding} />
       ) : (
-        <div className="flex-1 flex flex-col items-center justify-center text-sm text-gray-600 dark:text-gray-400">
+        <div className="flex-1 flex flex-col items-center justify-center text-sm text-gray-600 dark:text-gray-400 p-4">
           {error ? (
             <>
               <div className="mb-2 text-center px-4">{error}</div>
               {process.env.NODE_ENV === 'development' && errorDetail && (
-                <pre className="text-xs max-w-[90%] whitespace-pre-wrap break-words bg-gray-100 dark:bg-gray-800 p-2 rounded mb-2">{JSON.stringify(errorDetail, null, 2)}</pre>
+                <pre className="text-xs max-w-[90%] whitespace-pre-wrap break-words bg-gray-100 dark:bg-gray-800 p-2 rounded mb-2 max-h-48 overflow-auto">{JSON.stringify(errorDetail, null, 2)}</pre>
               )}
               {process.env.NODE_ENV === 'development' && health && (
                 <div className="mb-2 text-xs opacity-80">Health: {health?.status} (team: {health?.team_slug})</div>
               )}
               {process.env.NODE_ENV === 'development' && (
-                <div className="mb-3 text-xs text-center px-4">
-                  If running locally: start Docker Desktop and run <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">npm run dev:mm</code>. 
-                  If using Railway, ensure MM_BASE_URL is correct and reachable.
+                <div className="mb-3 text-xs text-center px-4 bg-yellow-50 dark:bg-yellow-900/20 p-3 rounded border border-yellow-200 dark:border-yellow-800">
+                  <strong>Local Development:</strong><br/>
+                  Install Docker Desktop and run <code className="px-1 py-0.5 bg-gray-100 dark:bg-gray-800 rounded font-mono">npm run dev:mm</code><br/>
+                  <strong>OR</strong> use Railway Mattermost (already configured in .env.local)
                 </div>
               )}
               <button 
@@ -212,6 +221,7 @@ export default function MattermostEmbed({ dmUsername }: { dmUsername?: string })
                   if (retryCount < maxRetries) {
                     setReady(false); 
                     setError(null); 
+                    setErrorDetail(null);
                     setSrc(''); 
                     setTab('team');
                     setRetryCount(prev => prev + 1);
@@ -226,7 +236,8 @@ export default function MattermostEmbed({ dmUsername }: { dmUsername?: string })
           ) : (
             <div className="flex flex-col items-center gap-2">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
-              <div>Preparing chat…</div>
+              <div>Connecting to chat...</div>
+              <div className="text-xs opacity-60 mt-2">This may take a few seconds</div>
             </div>
           )}
         </div>
