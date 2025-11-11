@@ -68,7 +68,7 @@ export default function ERPChatWidget({ userName }: { userName?: string }) {
                 className={`w-full text-left px-2 py-2 rounded border text-sm ${
                   !selected ? 'bg-slate-800 border-slate-700' : 'bg-transparent border-slate-700'
                 }`}
-              >Mattermost Bot</button>
+              >Spark Assistant</button>
               {users.map(u => (
                 <button
                   key={u.id}
