@@ -14,6 +14,7 @@ import {
   FileText,
   MessageSquare,
   DollarSign,
+  Calendar,
   type LucideIcon 
 } from 'lucide-react';
 
@@ -151,6 +152,18 @@ export const COMMON_PAGES: CommonPageMetadata[] = [
     description: 'Submit and track payment requests',
     category: 'financial',
     order: 9,
+    isActive: true,
+    requiresAuth: true,
+    autoRegister: true,
+  },
+  {
+    id: 'common-calendar',
+    name: 'Calendar',
+    path: '/common/calendar',
+  icon: Calendar,
+    description: 'View personal and team events',
+    category: 'settings',
+    order: 10,
     isActive: true,
     requiresAuth: true,
     autoRegister: true,

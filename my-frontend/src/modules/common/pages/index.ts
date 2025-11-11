@@ -12,3 +12,4 @@ export { default as SecuritySettingsPage } from './security-settings';
 export { default as MessagesPage } from './messages';
 export { default as DocumentationPage } from './documentation';
 export { default as PaymentRequestPage } from './payment-request';
+export { default as CommonCalendarPage } from './calendar-common';
