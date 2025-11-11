@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
@@ -317,15 +318,43 @@ func (bot *ChatBot) handleHealth(w http.ResponseWriter, r *http.Request) {
 // RunStandalone starts the standalone chatbot server
 // To run: go run -tags standalone standalone.go
 func RunStandalone() {
-	// Backend URL from environment or default
-	backendURL := "http://localhost:3000"
+	// Backend URL and server port from environment
+	backendURL := os.Getenv("ERP_BACKEND_URL")
+	if backendURL == "" {
+		backendURL = "http://localhost:3000"
+	}
+
+	allowedOrigins := os.Getenv("CHAT_ALLOWED_ORIGINS")
+	if allowedOrigins == "" {
+		allowedOrigins = "*"
+	}
 
 	bot := NewChatBot(backendURL)
 
-	http.HandleFunc("/query", bot.handleQuery)
-	http.HandleFunc("/health", bot.handleHealth)
+	// CORS wrapper
+	withCORS := func(h http.HandlerFunc) http.HandlerFunc {
+		return func(w http.ResponseWriter, r *http.Request) {
+			w.Header().Set("Access-Control-Allow-Origin", allowedOrigins)
+			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
+			if r.Method == http.MethodOptions {
+				w.WriteHeader(http.StatusNoContent)
+				return
+			}
+			h.ServeHTTP(w, r)
+		}
+	}
 
-	port := ":8065"
-	fmt.Printf("ERP ChatBot server starting on %s\n", port)
+	http.HandleFunc("/query", withCORS(bot.handleQuery))
+	http.HandleFunc("/health", withCORS(bot.handleHealth))
+
+	port := os.Getenv("CHATBOT_PORT")
+	if port == "" {
+		port = ":8065"
+	} else if !strings.HasPrefix(port, ":") {
+		port = ":" + port
+	}
+	fmt.Printf("ERP ChatBot server starting on %s (backend: %s)\n", port, backendURL)
 	log.Fatal(http.ListenAndServe(port, nil))
 }

@@ -1,9 +1,23 @@
 {
+  "$schema": "https://json.schemastore.org/eslintrc",
   "root": true,
+  "env": {
+    "browser": true,
+    "es2021": true
+  },
+  "parser": "@typescript-eslint/parser",
+  "plugins": ["@typescript-eslint"],
   "extends": [
-    "plugin:@mattermost/react"
+    "eslint:recommended",
+    "plugin:@typescript-eslint/recommended"
   ],
   "rules": {
     "header/header": "off"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["*.config.js", "*.config.cjs", "babel.config.js", "webpack.config.js", "jest.config.js"],
+      "env": { "node": true }
+    }
+  ]
 }

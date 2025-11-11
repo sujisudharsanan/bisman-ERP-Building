@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 package main
 
 import (
@@ -14,96 +17,29 @@ const (
 	BOT_DESCRIPTION  = "Your friendly ERP assistant for invoices, leave, and approvals."
 )
 
-// Plugin implements the interface expected by the Mattermost server to communicate between the server and plugin.
-type Plugin struct {
+// SimplePlugin implements the interface expected by the Mattermost server to communicate between the server and plugin processes.
+type SimplePlugin struct {
 	plugin.MattermostPlugin
-
-	// BotId is the user id of the bot
-	BotId string
-
-	// Fuzzy model for spell correction
+	BotID      string
 	fuzzyModel *fuzzy.Model
 }
 
-// OnActivate sets up the bot and the fuzzy model
-func (p *Plugin) OnActivate() error {
-	// Ensure bot user exists
-	p.ensureBotUser()
+// correctSpelling corrects spelling in the input message
+func (p *SimplePlugin) correctSpelling(message string) string {
+	words := strings.Fields(message)
+	correctedWords := make([]string, len(words))
 
-	command := &model.Command{
-		Trigger:          "erp",
-		AutoComplete:     true,
-		AutoCompleteDesc: "Interact with the ERP Assistant",
-		AutoCompleteHint: "[command]",
+	for i, word := range words {
+		correctedWords[i] = p.fuzzyModel.SpellCheck(word)
 	}
 
-	if err := p.API.RegisterCommand(command); err != nil {
-		return err
-	}
-
-	// Setup the fuzzy model for spell correction
-	p.setupFuzzyModel()
-
-	p.API.LogInfo("✅ ERP Assistant Plugin activated successfully!")
-
-	return nil
-}
-
-// setupFuzzyModel initializes and trains the spell checker
-func (p *Plugin) setupFuzzyModel() {
-	p.fuzzyModel = fuzzy.NewModel()
-
-	// Train with common ERP terms, commands, and typical typos
-	// More words can be added for better accuracy
-	trainingData := []string{
-		"hello", "hi", "hey", "help", "thanks", "thank you", "bye",
-		"invoice", "invoices", "invocie", "incoive", "bill", "payment", "paid", "unpaid", "pending", "overdue", "status",
-		"leave", "lev", "vacation", "time off", "balance", "requests", "apply", "days",
-		"approval", "approvals", "approve", "pending", "requests",
-		"profile", "my info", "details", "employee id",
-		"dashboard", "overview", "summary",
-		"show", "list", "get", "find", "check", "what", "how many", "when",
-		// Expanded vocabulary
-		"account", "accounting", "asset", "assets", "audit", "balance sheet", "bank",
-		"budget", "cash flow", "chart of accounts", "compliance", "cost", "credit", "customer",
-		"debit", "debt", "department", "deposit", "depreciation", "discount", "document",
-		"employee", "expense", "financial", "fixed asset", "forecast", "general ledger",
-		"goods receipt", "hr", "human resources", "income", "inventory", "journal entry",
-		"liability", "loan", "logistics", "management", "margin", "material", "module",
-		"net income", "order", "payroll", "personnel", "po", "price", "procurement",
-		"product", "profit", "project", "purchase order", "purchasing", "receipt", "reconciliation",
-		"record", "report", "requisition", "revenue", "salary", "sales", "shipment",
-		"statement", "stock", "supplier", "supply chain", "tax", "timesheet", "transaction",
-		"trial balance", "vendor", "warehouse", "workflow", "workforce",
-		// Common typos
-		"invoce", "invoic", "pemding", "pendin", "balence", "balanc", "aproval", "aprov",
-		"profil", "detals", "sumary", "owervew", "hellp", "helo", "thnks", "thanku",
-	}
-
-	p.fuzzyModel.Train(trainingData)
-}
-
-// Ensure bot user exists
-func (p *Plugin) ensureBotUser() {
-	bot := &model.Bot{
-		Username:    "erpbot",
-		DisplayName: "ERP Assistant",
-		Description: "Internal ERP assistant for invoices, leaves, and approvals",
-	}
-	
-	if botUser, err := p.API.GetUserByUsername(bot.Username); err == nil {
-		p.BotId = botUser.Id
-	} else {
-		if createdBot, err := p.API.CreateBot(bot); err == nil {
-			p.BotId = createdBot.UserId
-		}
-	}
+	return strings.Join(correctedWords, " ")
 }
 
 // MessageHasBeenPosted is invoked when a message is posted to a channel
-func (p *Plugin) MessageHasBeenPosted(c *plugin.Context, post *model.Post) {
+func (p *SimplePlugin) MessageHasBeenPosted(c *plugin.Context, post *model.Post) {
 	// Ignore posts from the bot itself
-	if post.UserId == p.BotId {
+	if post.UserId == p.BotID {
 		return
 	}
 
@@ -121,35 +57,21 @@ func (p *Plugin) MessageHasBeenPosted(c *plugin.Context, post *model.Post) {
 	p.postBotResponse(post.ChannelId, response)
 }
 
-// correctSpelling uses the fuzzy model to fix typos in the message
-func (p *Plugin) correctSpelling(message string) string {
-	// Split message into words, correct each one, and rejoin
-	words := strings.Fields(message)
-	correctedWords := []string{}
-	for _, word := range words {
-		// Find the best match for the word.
-		// The second parameter is the maximum distance to search.
-		corrected := p.fuzzyModel.SpellCheck(word)
-		correctedWords = append(correctedWords, corrected)
-	}
-	return strings.Join(correctedWords, " ")
-}
-
 // postBotResponse sends a message from the bot to the specified channel
-func (p *Plugin) postBotResponse(channelId, message string) {
+func (p *SimplePlugin) postBotResponse(channelId, message string) {
 	replyPost := &model.Post{
 		ChannelId: channelId,
-		UserId:    p.BotId,
+		UserId:    p.BotID,
 		Message:   message,
 	}
 
-	if _, err := p.API.CreatePost(replyPost); err != nil {
-		p.API.LogError("Failed to create post", "error", err.Error())
+	if _, err := p.MattermostPlugin.API.CreatePost(replyPost); err != nil {
+		p.MattermostPlugin.API.LogError("Failed to create post", "error", err.Error())
 	}
 }
 
 // Generate response based on message content
-func (p *Plugin) generateResponse(message string) string {
+func (p *SimplePlugin) generateResponse(message string) string {
 	// Greetings - warm and friendly
 	greetings := []string{"hello", "hi", "hey"}
 	for _, greeting := range greetings {
@@ -198,7 +120,7 @@ func (p *Plugin) generateResponse(message string) string {
 			"• \"What's my employee ID?\"\n\n" +
 			"Just chat naturally - I'll understand! 😊"
 	}
-	
+
 	// Invoice queries
 	if strings.Contains(message, "invoice") || strings.Contains(message, "bill") {
 		if strings.Contains(message, "pending") || strings.Contains(message, "unpaid") || strings.Contains(message, "overdue") {
@@ -218,7 +140,7 @@ func (p *Plugin) generateResponse(message string) string {
 			"• \"Any overdue invoices?\"\n\n" +
 			"Just ask away!"
 	}
-	
+
 	// Leave queries
 	if strings.Contains(message, "leave") || strings.Contains(message, "vacation") || strings.Contains(message, "time off") {
 		if strings.Contains(message, "balance") || strings.Contains(message, "how many") || strings.Contains(message, "days") {
@@ -239,7 +161,7 @@ func (p *Plugin) generateResponse(message string) string {
 			"• \"When was my last vacation?\"\n\n" +
 			"What would you like to know?"
 	}
-	
+
 	// Approval queries
 	if strings.Contains(message, "approval") || strings.Contains(message, "approve") || (strings.Contains(message, "pending") && strings.Contains(message, "request")) {
 		return "Checking what needs your attention! ✅\n\n" +
@@ -254,14 +176,14 @@ func (p *Plugin) generateResponse(message string) string {
 			"I need to connect to the backend to get your latest info. Once that's ready, I'll show you everything! 📊\n\n" +
 			"_(Connecting to backend...)_"
 	}
-	
+
 	// Dashboard/overview
 	if strings.Contains(message, "dashboard") || strings.Contains(message, "overview") || strings.Contains(message, "summary") {
 		return "Getting your dashboard ready! 📊✨\n\n" +
 			"I'll compile all your key stats once the backend is connected. You'll see invoices, leave, approvals - the whole picture! 🎯\n\n" +
 			"_(Need backend connection first)_"
 	}
-	
+
 	// Confused/unclear queries
 	if strings.Contains(message, "?") || len(strings.Fields(message)) < 3 {
 		return "Hmm, I'm not quite sure what you're asking about! 🤔\n\n" +
@@ -287,5 +209,5 @@ func (p *Plugin) generateResponse(message string) string {
 }
 
 func main() {
-	plugin.ClientMain(&Plugin{})
+	plugin.ClientMain(&SimplePlugin{})
 }

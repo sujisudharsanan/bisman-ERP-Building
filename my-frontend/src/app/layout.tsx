@@ -11,6 +11,7 @@ import HealthBoot from '@/components/dev/HealthBoot';
 import RenderLogger from '@/components/debug/RenderLogger';
 import { ToastProvider } from '@/components/ui/toast';
 import ChatGuard from '@/components/ChatGuard';
+import React from 'react';
 
 const inter = Inter({ subsets: ['latin'] });
 
@@ -48,6 +49,7 @@ export default function RootLayout({
               <HealthBoot />
               {/* Chat widget guarded: hidden on public routes and when not authenticated */}
               <ChatGuard />
+              {/* Single-window chat removed; using existing ChatGuard integration */}
       </ToastProvider>
             </PermissionProvider>
           </AuthProvider>

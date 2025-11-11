@@ -85,5 +85,10 @@
     "plaintext": "html",
     "typescriptreact": "html",
     "javascriptreact": "html"
+  },
+  
+  // Ensure gopls includes files guarded by the 'standalone' build tag
+  "gopls": {
+    "buildFlags": ["-tags=standalone"]
   }
 }

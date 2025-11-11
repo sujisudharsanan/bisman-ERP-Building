@@ -226,7 +226,7 @@ func (p *Plugin) MessageHasBeenPosted(c *plugin.Context, post *model.Post) {
 	// First-time seen check (persisted)
 	seenKey := "seen:" + userID
 	firstTime := false
-	if b, gerr := p.API.KVGet(seenKey); gerr == nil && (b == nil || len(b) == 0) {
+	if b, gerr := p.API.KVGet(seenKey); gerr == nil && len(b) == 0 {
 		firstTime = true
 		_ = p.API.KVSet(seenKey, []byte("1"))
 	}
@@ -484,7 +484,7 @@ func (p *Plugin) generateFriendlyReply(_ string, analysis IntentAnalysis) string
 	var module, document string
 	for _, entity := range analysis.Entities {
 		switch entity.Type {
-case "module":
+		case "module":
 			module = entity.Value
 		case "document":
 			document = entity.Value
@@ -563,10 +563,6 @@ func (p *Plugin) getConversationContext(userID string) string {
 }
 
 // ✅ MAXIMUM CHAT CAPACITY: Advanced conversation features
-
-
-
-
 
 // generateContextualReply creates intelligent replies using conversation history and NLP
 // (removed unused generateContextualReply)

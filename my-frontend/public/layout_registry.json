@@ -1,12 +1,12 @@
 {
   "meta": {
     "version": "1.0.0",
-    "exportedAt": "2025-11-01T03:26:31.387Z",
+    "exportedAt": "2025-11-10T16:50:36.820Z",
     "source": "my-frontend/src/common/config/page-registry.ts",
     "generator": "scripts/export-page-registry.js"
   },
   "statistics": {
-    "totalPages": 84,
+    "totalPages": 86,
     "totalModules": 2,
     "pagesByModule": {
       "system": 15,
@@ -15,10 +15,10 @@
       "procurement": 5,
       "operations": 14,
       "compliance": 9,
-      "common": 9
+      "common": 11
     },
     "pagesByStatus": {
-      "active": 84,
+      "active": 86,
       "coming-soon": 0,
       "disabled": 0
     }
@@ -90,7 +90,7 @@
     },
     {
       "id": "roles-users-report",
-      "name": "Roles & Users Report",
+      "name": "Modules & Roles",
       "path": "/system/roles-users-report",
       "module": "system",
       "status": "active",
@@ -1381,6 +1381,36 @@
       "module": "common",
       "status": "active",
       "description": "Submit and track payment requests",
+      "order": 9,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
+      "id": "payment-requests-create",
+      "name": "Create Payment Request",
+      "path": "/common/payment-requests/create",
+      "module": "common",
+      "status": "active",
+      "description": "Create new payment request with line items",
+      "order": 9,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
+      "id": "task-approvals",
+      "name": "Task Approvals",
+      "path": "/common/task-approvals",
+      "module": "common",
+      "status": "active",
+      "description": "Manage and approve payment workflow tasks",
       "order": 9,
       "permissions": [
         "authenticated"
