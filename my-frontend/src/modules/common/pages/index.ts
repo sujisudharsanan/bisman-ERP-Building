@@ -13,3 +13,4 @@ export { default as MessagesPage } from './messages';
 export { default as DocumentationPage } from './documentation';
 export { default as PaymentRequestPage } from './payment-request';
 export { default as CommonCalendarPage } from './calendar-common';
+export { default as ModernCalendarPage } from './modern-calendar';

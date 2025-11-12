@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import dynamic from 'next/dynamic';
 
 const TawkInline = dynamic(() => import('./TawkInline'), { ssr: false });
-const MattermostEmbed = dynamic(() => import('./chat/MattermostEmbed'), { ssr: false });
+const CleanChatInterface = dynamic(() => import('./chat/CleanChatInterface'), { ssr: false });
 
 type ChatUser = { id: string; name: string; username?: string };
 
@@ -45,45 +45,28 @@ export default function ERPChatWidget({ userName }: { userName?: string }) {
       </button>
 
       {open && (
-        <div className="absolute bottom-16 right-0 w-[360px] sm:w-[520px] bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden">
+        <div className="absolute bottom-16 right-0 w-[360px] sm:w-[620px] lg:w-[800px] bg-white dark:bg-slate-900 border border-gray-200 dark:border-gray-700 rounded-2xl shadow-2xl overflow-hidden">
           {/* Header */}
-          <div className="px-4 py-3 bg-slate-50 dark:bg-slate-800 border-b border-gray-200 dark:border-gray-700">
+          <div className="px-4 py-3 bg-gradient-to-r from-blue-600 to-purple-600 border-b border-gray-200 dark:border-gray-700">
             <div className="flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-full bg-yellow-100 flex items-center justify-center">
-                  <Sparkles className="w-5 h-5 text-yellow-600" />
+                <div className="w-8 h-8 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                  <Sparkles className="w-5 h-5 text-white" />
                 </div>
-                <div className="font-semibold text-gray-900 dark:text-gray-100">Spark - Team Chat</div>
+                <div className="font-semibold text-white">Spark - Team Chat</div>
               </div>
-              <button onClick={() => setOpen(false)} className="text-sm text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white">Close</button>
+              <button 
+                onClick={() => setOpen(false)} 
+                className="text-sm text-white/80 hover:text-white transition-colors"
+              >
+                ✕
+              </button>
             </div>
           </div>
 
-          {/* Single-window layout: left users list, right chat */}
-          <div className="h-96 max-h-[70vh] flex">
-            {/* Users rail */}
-            <aside className="w-28 sm:w-36 border-r border-gray-200 dark:border-gray-700 bg-slate-900/70 text-slate-200 p-2 space-y-2">
-              <button
-                onClick={() => setSelected(null)}
-                className={`w-full text-left px-2 py-2 rounded border text-sm ${
-                  !selected ? 'bg-slate-800 border-slate-700' : 'bg-transparent border-slate-700'
-                }`}
-              >Spark Assistant</button>
-              {users.map(u => (
-                <button
-                  key={u.id}
-                  onClick={() => setSelected(u)}
-                  className={`w-full text-left px-2 py-2 rounded border text-sm truncate ${
-                    selected?.id === u.id ? 'bg-slate-800 border-slate-700' : 'bg-transparent border-slate-700'
-                  }`}
-                  title={u.name}
-                >{u.name}</button>
-              ))}
-            </aside>
-            {/* Chat area */}
-            <div className="flex-1">
-              <MattermostEmbed dmUsername={selected?.username} />
-            </div>
+          {/* Clean Chat Interface - No Mattermost branding */}
+          <div className="h-[500px] max-h-[70vh]">
+            <CleanChatInterface />
           </div>
         </div>
       )}

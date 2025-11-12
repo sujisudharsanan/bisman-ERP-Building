@@ -200,7 +200,7 @@ import {
   ShoppingCart, Package, Truck, ClipboardCheck, FileCheck, Scale,
   AlertTriangle, BookOpen, Archive, CreditCard, Wallet, Building,
   Calculator, Receipt, Banknote, FileSpreadsheet, Landmark, Globe,
-  Coins, FolderOpen, FileEdit, Upload, CheckCircle, Clock,
+  Coins, FolderOpen, FileEdit, Upload, CheckCircle, Clock, Calendar,
   Box, Boxes, ListChecks, Tag, Factory, Route, MapPin,
   Clipboard, FileSignature, Gavel, Folder, UserCheck, Bell, HelpCircle, MessageSquare,
   type LucideIcon
@@ -1432,6 +1432,18 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     description: 'Manage and approve payment workflow tasks',
     order: 9.2,
+  },
+  {
+    id: 'common-calendar',
+    name: 'Calendar',
+    path: '/common/calendar',
+    icon: Calendar,
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL'],
+    status: 'active',
+    description: 'View personal and team events',
+    order: 10,
   },
 ];
 

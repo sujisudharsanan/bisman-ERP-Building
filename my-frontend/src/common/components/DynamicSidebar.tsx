@@ -170,11 +170,11 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
       // Enterprise Admin: enterprise-specific pages only
       pages = pages.filter(p => p.path.startsWith('/enterprise') || p.roles.includes('ENTERPRISE_ADMIN'));
     } else if (isSuperAdmin) {
-      // Super Admin: ONLY System Administration pages
-      pages = pages.filter(p => p.module === 'system');
+      // Super Admin: System Administration pages + Common pages
+      pages = pages.filter(p => p.module === 'system' || p.module === 'common');
     } else {
-      // Regular users: only explicitly allowed pages from DB
-      pages = pages.filter(p => userAllowedPages.includes(p.id));
+      // Regular users: only explicitly allowed pages from DB + Common pages (available to all)
+      pages = pages.filter(p => userAllowedPages.includes(p.id) || p.module === 'common');
     }
 
     // Non-enterprise users should not see enterprise pages
