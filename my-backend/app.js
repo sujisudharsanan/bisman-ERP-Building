@@ -678,9 +678,9 @@ app.get('/api/me', async (req, res) => {
           username: true,
           role: true,
           profile_pic_url: true,
-          name: true,
         }
       });
+      console.log('📸 Database user profile_pic_url:', dbUser?.profile_pic_url || 'null');
     } catch (dbError) {
       console.warn('⚠️ Could not fetch user from database:', dbError.message);
     }
@@ -698,15 +698,15 @@ app.get('/api/me', async (req, res) => {
       role: roleValue,
       roleName: roleValue, // Frontend expects roleName
       username: dbUser?.username || payload.username || payload.email?.split('@')[0] || null,
-      name: dbUser?.name || payload.name || null,
       profile_pic_url: dbUser?.profile_pic_url || null,
     }
     
     console.log('✅ /api/me returning user:', { 
       email: user.email, 
+      username: user.username,
       role: user.role, 
       roleName: user.roleName,
-      profile_pic_url: user.profile_pic_url ? 'present' : 'null'
+      profile_pic_url: user.profile_pic_url
     });
     return res.json({ ok: true, user })
   } catch (e) {

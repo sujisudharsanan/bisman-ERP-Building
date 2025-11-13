@@ -1,6 +1,7 @@
 "use client";
 import React, { useState } from 'react';
 import { Search, Settings } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Contact {
   id: number;
@@ -26,6 +27,19 @@ interface ChatSidebarProps {
 
 export default function ChatSidebar({ contacts, activeContact, onSelectContact, wide = false, orientation = 'vertical', onOpenSettings }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const { user } = useAuth();
+
+  // Format username for display
+  const getDisplayName = () => {
+    if (!user) return 'User';
+    if (user.username) {
+      return user.username
+        .split('_')
+        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+        .join(' ');
+    }
+    return 'User';
+  };
 
   const filteredContacts = contacts.filter(contact => {
     // Exclude Super Admin and Enterprise Admin roles if present
@@ -112,15 +126,21 @@ export default function ChatSidebar({ contacts, activeContact, onSelectContact, 
       <div className="p-3 border-b border-slate-600">
         <div className="flex items-center gap-2">
           <div className="relative">
-            <img
-              src="https://i.pravatar.cc/150?img=33"
-              alt="Mike Ross"
-              className="w-9 h-9 rounded-full border-2 border-slate-500"
-            />
+            {user?.profile_pic_url ? (
+              <img
+                src={user.profile_pic_url.replace('/uploads/', '/api/secure-files/')}
+                alt={getDisplayName()}
+                className="w-9 h-9 rounded-full border-2 border-slate-500 object-cover"
+              />
+            ) : (
+              <div className="w-9 h-9 rounded-full border-2 border-slate-500 bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-sm font-bold">
+                {getDisplayName().charAt(0)}
+              </div>
+            )}
             <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full border border-slate-700"></div>
           </div>
           <div className="flex-1 min-w-0">
-            <p className="text-white text-xs font-medium truncate">Mike Ross</p>
+            <p className="text-white text-xs font-medium truncate">{getDisplayName()}</p>
           </div>
         </div>
       </div>

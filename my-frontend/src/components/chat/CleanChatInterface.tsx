@@ -700,13 +700,25 @@ export default function CleanChatInterface() {
                 messages.map((message) => (
                   <div key={message.id} className="flex gap-3">
                     {/* Avatar */}
-                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold flex-shrink-0 ${
-                      message.isBot 
-                        ? 'bg-gradient-to-br from-blue-500 to-purple-500'
-                        : 'bg-gradient-to-br from-green-400 to-blue-500'
-                    }`}>
-                      {message.isBot ? <Bot className="w-4 h-4" /> : getUserInitials(message.username)}
-                    </div>
+                    {message.isBot ? (
+                      <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white flex-shrink-0">
+                        <Bot className="w-4 h-4" />
+                      </div>
+                    ) : (
+                      <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden">
+                        {user?.profile_pic_url ? (
+                          <img 
+                            src={user.profile_pic_url.replace('/uploads/', '/api/secure-files/')} 
+                            alt={message.username || 'User'} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-full h-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                            {getUserInitials(message.username)}
+                          </div>
+                        )}
+                      </div>
+                    )}
 
                     {/* Message Content */}
                     <div className="flex-1">

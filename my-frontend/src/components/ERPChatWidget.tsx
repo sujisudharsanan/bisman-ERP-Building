@@ -46,6 +46,7 @@ export default function ERPChatWidget({ userName }: { userName?: string }) {
   if (!user) return null;
   
   const [open, setOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
   const [iconState, setIconState] = useState<'idle'|'attentive'|'listening'|'thinking'|'notify'>('idle');
   const [unreadCount, setUnreadCount] = useState(0);
   const [activeContact, setActiveContact] = useState(0); // Spark AI bot active by default
@@ -199,7 +200,7 @@ export default function ERPChatWidget({ userName }: { userName?: string }) {
       </button>
 
       {/* Professional Chat Interface */}
-      {open && (
+      {open && !isMinimized && (
         <div className="chat-window bg-white dark:bg-slate-900 rounded-lg shadow-2xl overflow-hidden animate-slide-in border border-gray-200 dark:border-slate-700">
           <div className="flex h-full w-full">
             <ChatSidebar
@@ -216,6 +217,7 @@ export default function ERPChatWidget({ userName }: { userName?: string }) {
               isFullScreen={false}
               onToggleFullScreen={toggleFullScreen}
               onFilesSelected={handleFilesSelected}
+              onMinimize={() => setIsMinimized(true)}
             />
           </div>
         </div>
@@ -248,6 +250,46 @@ export default function ERPChatWidget({ userName }: { userName?: string }) {
                 onFilesSelected={handleFilesSelected}
               />
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Minimized Chat Bar */}
+      {open && isMinimized && (
+        <div 
+          className="fixed bottom-0 right-4 bg-gradient-to-r from-indigo-600 to-purple-600 text-white rounded-t-lg shadow-2xl cursor-pointer hover:shadow-3xl transition-all duration-300 z-[9999] animate-slide-up"
+          onClick={() => setIsMinimized(false)}
+        >
+          <div className="flex items-center gap-3 px-6 py-3">
+            <div className="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center">
+              <img 
+                src="/brand/chat-bot-icon.png" 
+                alt="Chat" 
+                className="w-6 h-6 filter brightness-0 invert"
+              />
+            </div>
+            <div className="flex-1">
+              <h3 className="font-semibold text-sm">Spark Assistant</h3>
+              <p className="text-xs opacity-90">Click to expand chat</p>
+            </div>
+            {unreadCount > 0 && (
+              <div className="min-w-[24px] h-6 px-2 bg-red-500 text-white text-xs font-bold rounded-full flex items-center justify-center">
+                {unreadCount > 99 ? '99+' : unreadCount}
+              </div>
+            )}
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setOpen(false);
+                setIsMinimized(false);
+              }}
+              className="ml-2 p-1 hover:bg-white/20 rounded transition-colors"
+              aria-label="Close chat"
+            >
+              <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+              </svg>
+            </button>
           </div>
         </div>
       )}

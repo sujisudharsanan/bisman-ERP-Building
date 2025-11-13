@@ -11,7 +11,7 @@ import { useAuth } from '@/common/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { Shield, AlertTriangle, Menu, X, LogOut, User as UserIcon } from 'lucide-react';
 import TopNavbar from '@/components/layout/TopNavbar';
-import DynamicSidebar from '@/common/components/DynamicSidebar';
+import Sidebar from '@/components/layout/Sidebar';
 import DarkModeToggle from '@/components/ui/DarkModeToggle';
 
 interface SuperAdminLayoutProps {
@@ -27,7 +27,6 @@ export default function SuperAdminLayout({
 }: SuperAdminLayoutProps) {
   const { user, loading, isAuthenticated } = useAuth();
   const router = useRouter();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Show loading state
   if (loading) {
@@ -81,24 +80,9 @@ export default function SuperAdminLayout({
   >
       {/* Standard top navbar for common pages */}
       <TopNavbar showThemeToggle />
-      {/* Mobile Sidebar Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black bg-opacity-50 lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={`
-          fixed top-11 left-0 bottom-0 z-40 w-52 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800
-          overflow-y-auto transition-transform duration-200 ease-in-out
-          ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
-        `}
-      >
-        <DynamicSidebar />
-      </aside>
+      
+      {/* Use unified Sidebar component */}
+      <Sidebar isOpen={true} />
 
       {/* Main Content */}
   <div className="lg:pl-52 pt-11">

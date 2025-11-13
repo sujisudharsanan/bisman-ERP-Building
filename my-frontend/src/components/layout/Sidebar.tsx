@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
 import DynamicSidebar from '@/common/components/DynamicSidebar';
+import { useAuth } from '@/hooks/useAuth';
 
 interface SidebarProps {
   isOpen?: boolean;
@@ -10,6 +11,23 @@ interface SidebarProps {
 }
 
 export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
+  const { refreshUser } = useAuth();
+  
+  // Refresh user data when profile picture changes
+  useEffect(() => {
+    const handleProfileUpdate = () => {
+      console.log('[Sidebar] Profile picture updated, refreshing user data...');
+      refreshUser();
+    };
+
+    // Listen for profile picture update events
+    window.addEventListener('profilePictureUpdated', handleProfileUpdate);
+    
+    return () => {
+      window.removeEventListener('profilePictureUpdated', handleProfileUpdate);
+    };
+  }, [refreshUser]);
+  
   return (
     <>
       {/* Sidebar */}
@@ -39,13 +57,12 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           </button>
         )}
 
-        {/* Sidebar Content */}
-        <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
-          <nav className="p-2">
-            {/* Role-based, flat page list (no module headers) */}
+        {/* Sidebar Content - Use DynamicSidebar component */}
+        {isOpen && (
+          <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
             <DynamicSidebar />
-          </nav>
-        </div>
+          </div>
+        )}
 
         {/* Sidebar Footer */}
         {isOpen && (

@@ -30,11 +30,12 @@ interface ChatWindowProps {
   onClearChat?: () => void;
   onExportChat?: () => void;
   onOpenSettings?: () => void;
+  onMinimize?: () => void;
   // Optional: receive selected or dropped files for upload
   onFilesSelected?: (files: File[]) => Promise<void> | void;
 }
 
-export default function ChatWindow({ contact, messages, onSendMessage, isLoading, isFullScreen, onToggleFullScreen, onClearChat, onExportChat, onOpenSettings, onFilesSelected }: ChatWindowProps) {
+export default function ChatWindow({ contact, messages, onSendMessage, isLoading, isFullScreen, onToggleFullScreen, onClearChat, onExportChat, onOpenSettings, onMinimize, onFilesSelected }: ChatWindowProps) {
   const [inputMessage, setInputMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -237,6 +238,17 @@ export default function ChatWindow({ contact, messages, onSendMessage, isLoading
               <Maximize2 className="w-4 h-4 text-gray-600" />
             )}
           </button>
+          {!isFullScreen && onMinimize && (
+            <button
+              onClick={onMinimize}
+              title="Minimize to bottom"
+              className="p-1.5 hover:bg-gray-100 rounded-full transition-colors"
+            >
+              <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+              </svg>
+            </button>
+          )}
           <button className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">
             <MoreVertical className="w-4 h-4 text-gray-600" />
           </button>

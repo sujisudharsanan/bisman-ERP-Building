@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState, useEffect } from "react";
 import { useAuth } from "@/common/hooks/useAuth";
+import { useRouter } from 'next/navigation';
 import {
   Settings,
   Bell,
@@ -13,6 +14,7 @@ import {
   Upload,
   Trash2,
   Key,
+  HelpCircle,
 } from "lucide-react";
 import { uploadFiles } from "@/lib/attachments";
 
@@ -20,9 +22,10 @@ type Msg = { type: "success" | "error"; text: string } | null;
 
 export default function UserSettingsPage() {
   const { user, refreshUser } = useAuth();
+  const router = useRouter();
 
   // Left-nav tabs
-  const [activeTab, setActiveTab] = useState<"profile" | "preferences">(
+  const [activeTab, setActiveTab] = useState<"profile" | "preferences" | "help">(
     "profile"
   );
 
@@ -231,6 +234,17 @@ export default function UserSettingsPage() {
               <Settings className="w-4 h-4" />
               <span>Additional Settings</span>
             </button>
+            <button
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors border-b-2 ${
+                activeTab === "help"
+                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                  : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600"
+              }`}
+              onClick={() => setActiveTab("help")}
+            >
+              <HelpCircle className="w-4 h-4" />
+              <span>Help & Support</span>
+            </button>
           </nav>
         </div>
 
@@ -265,8 +279,9 @@ export default function UserSettingsPage() {
                       )}
                     </div>
                     <div className="mt-4 flex flex-col gap-2">
-                      <label className={`inline-flex items-center justify-center p-3 rounded-lg ${uploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'} text-white transition-colors`} title={uploading ? 'Uploading...' : 'Upload Photo'}>
-                        <Upload className="w-5 h-5" />
+                      <label className={`inline-flex items-center justify-center px-2.5 py-1.5 rounded-md text-xs ${uploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'} text-white transition-colors`} title={uploading ? 'Uploading...' : 'Upload Photo'}>
+                        <Upload className="w-3.5 h-3.5 mr-1.5" />
+                        <span>Upload</span>
                         <input
                           type="file"
                           accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
@@ -310,10 +325,11 @@ export default function UserSettingsPage() {
                       {avatarPreview && !uploading && (
                         <button
                           onClick={removeAvatar}
-                          className="inline-flex items-center justify-center p-3 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg"
+                          className="inline-flex items-center justify-center px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md text-xs"
                           title="Remove Photo"
                         >
-                          <Trash2 className="w-5 h-5" />
+                          <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+                          <span>Remove</span>
                         </button>
                       )}
                     </div>
@@ -513,6 +529,70 @@ export default function UserSettingsPage() {
                     <Settings className="w-4 h-4" />
                     <span>{saving ? "Saving..." : "Save Preferences"}</span>
                   </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "help" && (
+              <div className="space-y-6">
+                <div className="text-center py-12">
+                  <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                    <HelpCircle className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
+                    Need Help?
+                  </h2>
+                  <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+                    Get support for any issues or questions you have about the BISMAN ERP system.
+                  </p>
+                  <button
+                    onClick={() => router.push('/common/help-support')}
+                    className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-base font-medium transition-colors"
+                  >
+                    <HelpCircle className="w-5 h-5" />
+                    <span>Go to Help & Support Center</span>
+                  </button>
+                </div>
+
+                {/* Quick Links */}
+                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                    Quick Links
+                  </h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <a
+                      href="/common/help-support"
+                      className="flex items-start gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <HelpCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1">
+                          Create Ticket
+                        </h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          Submit a support ticket for technical issues
+                        </p>
+                      </div>
+                    </a>
+                    <a
+                      href="/common/help-support"
+                      className="flex items-start gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
+                    >
+                      <div className="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                        <Settings className="w-5 h-5 text-green-600 dark:text-green-400" />
+                      </div>
+                      <div>
+                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1">
+                          My Tickets
+                        </h4>
+                        <p className="text-sm text-gray-600 dark:text-gray-400">
+                          View and track your support requests
+                        </p>
+                      </div>
+                    </a>
+                  </div>
                 </div>
               </div>
             )}

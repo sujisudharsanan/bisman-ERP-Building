@@ -298,49 +298,77 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
 
   // Module rendering removed per requirement: no module names, flat page list
 
+  // Get profile picture URL
+  const getProfilePicUrl = () => {
+    if (!user) return null;
+    const rawUrl = (user as any)?.profile_pic_url || (user as any)?.profilePicUrl || (user as any)?.avatarUrl;
+    if (!rawUrl) return null;
+    if (rawUrl.startsWith('/api/')) return rawUrl;
+    if (rawUrl.startsWith('/uploads/')) {
+      return rawUrl.replace('/uploads/', '/api/secure-files/');
+    }
+    return rawUrl;
+  };
+
+  const profilePicUrl = getProfilePicUrl();
+
+  // Check if current page is a dashboard
+  const isDashboardPage = pathname === '/hub-incharge' || 
+                          pathname === '/super-admin' || 
+                          pathname === '/admin/dashboard' || 
+                          pathname === '/manager' ||
+                          pathname === '/enterprise-admin/dashboard' ||
+                          pathname === '/admin' ||
+                          pathname === '/enterprise-admin';
+
   return (
     <div className={`py-4 ${className}`}>
-      {/* Sidebar User Profile (replaces Dashboard/pages count) */}
-      <div className="px-3 mb-4">
-        <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push('/common/about-me')} title="View profile">
-          <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 text-sm">
-            {/* Avatar image with robust fallback */}
-      {(() => {
-        const profileUrl = (user as any)?.profile_pic_url || (user as any)?.avatarUrl || (user as any)?.profileImage;
-        const secureUrl = profileUrl?.replace('/uploads/', '/api/secure-files/');
-        return secureUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-        src={secureUrl}
-                alt={(user as any)?.name || (user as any)?.fullName || 'User'}
-                className="w-full h-full object-cover"
-                onError={(e) => {
-                  const img = e.currentTarget as HTMLImageElement;
-                  const fallbackName = String((user as any)?.name || (user as any)?.fullName || (user as any)?.username || 'User');
-                  img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=random`;
-                }}
-              />
-            ) : (
-              <span>
-                {String((user as any)?.name || (user as any)?.fullName || (user as any)?.username || 'U')
-                  .trim()
-                  .charAt(0)
-                  .toUpperCase()}
-              </span>
-            );
-      })()}
+      {/* User Profile Section - Only show on non-dashboard pages */}
+      {user && !isDashboardPage && (
+        <div className="px-2 mb-4">
+          <div 
+            className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            onClick={() => router.push('/common/about-me')}
+            title="View profile"
+          >
+            {/* Profile Picture */}
+            <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden relative">
+              {profilePicUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img 
+                  src={profilePicUrl} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const fallbackName = String(user?.name || user?.username || user?.email || 'User');
+                    e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=random`;
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">
+                    {(user?.name || user?.username || user?.email || 'U')[0].toUpperCase()}
+                  </span>
+                </div>
+              )}
+            </div>
+            
+            {/* User Info */}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                {user?.username 
+                  ? user.username.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+                  : user?.email?.split('@')[0] || 'User'}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                {user?.roleName?.replace(/_/g, ' ') || user?.role?.replace(/_/g, ' ') || 'User'}
+              </p>
+            </div>
           </div>
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
-              {String((user as any)?.name || (user as any)?.fullName || (user as any)?.username || 'User')}
-            </p>
-            {user?.roleName && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.roleName}</p>
-            )}
-          </div>
+          <div className="border-b border-gray-200 dark:border-gray-700 mt-2"></div>
         </div>
-      </div>
-
+      )}
+      
       {/* Loading State */}
       {isLoadingPermissions && (
         <div className="px-3 py-8 text-center">

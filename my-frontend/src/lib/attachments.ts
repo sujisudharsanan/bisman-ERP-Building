@@ -1,4 +1,4 @@
-export type AttachmentOwner = 'chat' | 'avatar' | 'kyc' | 'expense';
+export type AttachmentOwner = 'chat' | 'avatar' | 'kyc' | 'expense' | 'ticket' | 'ticket_comment';
 
 export type AttachmentMeta = {
   id: string;

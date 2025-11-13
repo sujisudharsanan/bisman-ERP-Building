@@ -40,6 +40,33 @@ const HeaderLogo: React.FC = () => {
 };
 
 const TopNavbar: React.FC<TopNavbarProps> = ({ showThemeToggle = false }) => {
+  const [currentPageName, setCurrentPageName] = useState<string>('Dashboard');
+
+  // Get current page name from URL
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      
+      // Extract page name from URL path
+      const segments = path.split('/').filter(Boolean);
+      
+      if (segments.length === 0) {
+        setCurrentPageName('Dashboard');
+      } else if (path.includes('/common/user-settings')) {
+        setCurrentPageName('User Settings');
+      } else if (path.includes('/common/help-support')) {
+        setCurrentPageName('Help & Support');
+      } else {
+        // Convert last segment to readable name (e.g., 'user-management' -> 'User Management')
+        const lastSegment = segments[segments.length - 1];
+        const readable = lastSegment
+          .split('-')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+        setCurrentPageName(readable);
+      }
+    }
+  }, []);
 
   return (
   <header
@@ -62,7 +89,7 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ showThemeToggle = false }) => {
               BISMAN ERP
             </h1>
             <p className="text-[10px] text-gray-500 dark:text-gray-400">
-              Dashboard
+              {currentPageName}
             </p>
           </div>
         </div>

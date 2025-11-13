@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import SuperAdminLayout from '@/common/layouts/superadmin-layout';
+import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/common/hooks/useAuth';
 import AboutMePage from '@/common/components/AboutMePage';
 
@@ -14,20 +14,20 @@ export default function CommonAboutMe() {
 
   if (loading) {
     return (
-      <SuperAdminLayout title="About Me">
+      <DashboardLayout role={user?.roleName || user?.role || 'User'}>
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
             <p className="text-gray-600 dark:text-gray-400">Loading profile...</p>
           </div>
         </div>
-      </SuperAdminLayout>
+      </DashboardLayout>
     );
   }
 
   if (!user) {
     return (
-      <SuperAdminLayout title="About Me">
+      <DashboardLayout role="Guest">
         <div className="flex items-center justify-center min-h-[400px]">
           <div className="text-center">
             <div className="text-6xl mb-4">🔒</div>
@@ -39,16 +39,18 @@ export default function CommonAboutMe() {
             </p>
           </div>
         </div>
-      </SuperAdminLayout>
+      </DashboardLayout>
     );
   }
 
   return (
-    <SuperAdminLayout
-      title="About Me"
-      description="View and manage your profile information"
-    >
-      <AboutMePage showTeamSidebar={false} />
-    </SuperAdminLayout>
+    <DashboardLayout role={user.roleName || user.role || 'User'}>
+      <div className="max-w-7xl mx-auto">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-6">
+          About Me
+        </h1>
+        <AboutMePage showTeamSidebar={false} />
+      </div>
+    </DashboardLayout>
   );
 }

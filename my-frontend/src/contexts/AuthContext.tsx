@@ -21,6 +21,7 @@ interface User {
   roleName?: string;
   role?: string; // Added for compatibility
   name?: string;
+  profile_pic_url?: string; // Profile picture URL
 }
 
 interface AuthContextType {
