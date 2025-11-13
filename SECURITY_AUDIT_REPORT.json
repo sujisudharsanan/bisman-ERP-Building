@@ -1,20 +1,9 @@
 {
-  "timestamp": "2025-10-20T09:22:36.232Z",
+  "timestamp": "2025-11-13T08:39:15.378Z",
   "security": {
     "vulnerabilities": [],
     "outdatedDeps": [],
-    "securityHeaders": [
-      {
-        "header": "Strict-Transport-Security",
-        "status": "missing",
-        "recommendation": "Add security header to next.config.js"
-      },
-      {
-        "header": "Content-Security-Policy",
-        "status": "missing",
-        "recommendation": "Add security header to next.config.js"
-      }
-    ],
+    "securityHeaders": [],
     "authIssues": [
       {
         "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/hooks/useAuth.ts",
@@ -39,6 +28,202 @@
     ],
     "apiSecurityIssues": [
       {
+        "file": "src/app/api/activity-logs/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/admin/audit/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/admin/modules/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected"
+        ]
+      },
+      {
+        "file": "src/app/api/admin/organizations/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/admin/rag/reindex/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/admin/rag/sources/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/admin/rag/upload/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/admin/roles/[id]/allowed-modules/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/admin/roles/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/admin/subscriptions/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/admin/users/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/ai/chat/route.pages.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/ai/chat/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/ai/health/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/ai/ollama/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/ai/relay/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/ai/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/ai/settings/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/ai/usage/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/attachments/complete/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/auth/[...nextauth]/route.ts",
+        "issues": [
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/chat-bot/search-users/route.ts",
+        "issues": [
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/chat-bot/send-notification/route.ts",
+        "issues": [
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/chat-bot/user-data/route.ts",
+        "issues": [
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/enterprise-admin/ai/metrics/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/enterprise-admin/ai/models/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
         "file": "src/app/api/login/route.ts",
         "issues": [
           "No rate limiting detected",
@@ -54,9 +239,101 @@
         ]
       },
       {
-        "file": "src/app/api/me/route.ts",
+        "file": "src/app/api/mattermost/admin/unlock/route.ts",
         "issues": [
           "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/mattermost/channels/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/mattermost/create-dm/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/mattermost/health/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/mattermost/login/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/mattermost/messages/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/mattermost/provision/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/mattermost/send-message/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/mattermost/team-members/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/mattermost/test-cookies/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/me/route.ts",
+        "issues": [
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/ollama/chat/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
+      },
+      {
+        "file": "src/app/api/permissions/route.ts",
+        "issues": [
           "No rate limiting detected",
           "No input validation detected"
         ]
@@ -66,6 +343,14 @@
         "issues": [
           "No authentication check detected",
           "No rate limiting detected"
+        ]
+      },
+      {
+        "file": "src/app/api/session/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
         ]
       },
       {
@@ -90,6 +375,14 @@
           "No rate limiting detected",
           "No input validation detected"
         ]
+      },
+      {
+        "file": "src/app/api/webhooks/tawk/route.ts",
+        "issues": [
+          "No authentication check detected",
+          "No rate limiting detected",
+          "No input validation detected"
+        ]
       }
     ]
   },
@@ -97,7 +390,7 @@
     "largeFiles": [
       {
         "file": "src/components/SuperAdminControlPanel.tsx",
-        "size": "59KB",
+        "size": "62KB",
         "recommendation": "Consider code splitting or optimization"
       },
       {
@@ -121,7 +414,7 @@
   },
   "buildHealth": {
     "canBuild": true,
-    "buildTime": 16150,
+    "buildTime": 12234,
     "buildSize": 0,
     "errors": []
   }

@@ -13,12 +13,17 @@ import {
   AlertCircle,
   CheckCircle,
   Clock,
-  Send
+  Send,
+  Plus,
+  Trash2,
+  Paperclip,
+  X
 } from 'lucide-react';
 
 interface PaymentRequest {
   id: string;
   requestDate: string;
+  // optional legacy single-amount fields (kept for compatibility)
   amount: number;
   currency: string;
   category: string;
@@ -28,6 +33,20 @@ interface PaymentRequest {
   accountNumber: string;
   bankName: string;
   status: 'draft' | 'pending' | 'approved' | 'rejected' | 'paid';
+  attachments: File[];
+  // optional client fields used by the form
+  clientName?: string;
+  clientEmail?: string;
+  clientPhone?: string;
+  invoiceNumber?: string;
+}
+
+interface CategoryItem {
+  id: string;
+  serial: number;
+  category: string;
+  amount: number;
+  note: string;
   attachments: File[];
 }
 
@@ -39,6 +58,7 @@ export default function PaymentRequestPage() {
   const { user, loading } = useAuth();
   const [activeTab, setActiveTab] = useState<'new' | 'history'>('new');
   const [formData, setFormData] = useState<Partial<PaymentRequest>>({
+    // top-level amount/category kept but not used; per-category rows below
     amount: 0,
     currency: 'USD',
     category: 'general',
@@ -47,8 +67,23 @@ export default function PaymentRequestPage() {
     beneficiary: '',
     accountNumber: '',
     bankName: '',
+    // additional fields per current UI
+    clientName: '' as any,
+    clientEmail: '' as any,
+    clientPhone: '' as any,
+    invoiceNumber: '' as any,
     attachments: [],
   });
+
+  // Dynamic payment items by category
+  const [items, setItems] = useState<CategoryItem[]>([
+    { id: 'item-1', serial: 1, category: 'general', amount: 0, note: '', attachments: [] }
+  ]);
+
+  // GST handling
+  const [gstBill, setGstBill] = useState(false);
+  const [gstRate, setGstRate] = useState<number | ''>('');
+  const [showGstModal, setShowGstModal] = useState(false);
 
   // Mock payment history
   const [paymentHistory] = useState<PaymentRequest[]>([
@@ -97,9 +132,45 @@ export default function PaymentRequestPage() {
     }
   };
 
+  const handleItemChange = (index: number, field: keyof CategoryItem, value: any) => {
+    setItems(prev => {
+      const next = [...prev];
+      next[index] = { ...next[index], [field]: value } as CategoryItem;
+      return next;
+    });
+  };
+
+  const handleItemFileUpload = (index: number, files: FileList | null) => {
+    if (!files) return;
+    const filesArray = Array.from(files);
+    setItems(prev => {
+      const next = [...prev];
+      const existing = next[index]?.attachments || [];
+      next[index] = { ...next[index], attachments: [...existing, ...filesArray] };
+      return next;
+    });
+  };
+
+  const addItem = () => {
+    setItems(prev => [
+      ...prev,
+      { id: `item-${prev.length + 1}`,
+        serial: prev.length + 1,
+        category: 'general',
+        amount: 0,
+        note: '',
+        attachments: [] }
+    ]);
+  };
+
+  const removeItem = (index: number) => {
+    setItems(prev => prev.filter((_, i) => i !== index).map((it, i2) => ({ ...it, serial: i2 + 1 })));
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log('Payment Request Submitted:', formData);
+    const total = items.reduce((sum, it) => sum + (Number(it.amount) || 0), 0);
+    console.log('Payment Request Submitted:', { formData, items, gstBill, gstRate, total });
     alert('Payment request submitted successfully!');
     // Reset form
     setFormData({
@@ -111,8 +182,15 @@ export default function PaymentRequestPage() {
       beneficiary: '',
       accountNumber: '',
       bankName: '',
+      clientName: '' as any,
+      clientEmail: '' as any,
+      clientPhone: '' as any,
+      invoiceNumber: '' as any,
       attachments: [],
     });
+    setItems([{ id: 'item-1', serial: 1, category: 'general', amount: 0, note: '', attachments: [] }]);
+    setGstBill(false);
+    setGstRate('');
   };
 
   const getStatusColor = (status: string) => {
@@ -178,10 +256,7 @@ export default function PaymentRequestPage() {
   }
 
   return (
-    <SuperAdminLayout
-      title="Payment Request"
-      description="Submit and track your payment requests"
-    >
+    <SuperAdminLayout>
       <div className="p-6 max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-6">
@@ -224,39 +299,77 @@ export default function PaymentRequestPage() {
         {activeTab === 'new' && (
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
             <form onSubmit={handleSubmit} className="space-y-6">
-              {/* Amount and Currency */}
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="md:col-span-2">
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Amount *
-                  </label>
-                  <div className="relative">
-                    <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                    <input
-                      type="number"
-                      name="amount"
-                      value={formData.amount}
-                      onChange={handleInputChange}
-                      className="w-full pl-10 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
-                               bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                               focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                      placeholder="0.00"
-                      step="0.01"
-                      required
-                    />
-                  </div>
+
+              {/* Client Information - left aligned grid; description on the right of client email */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Client Name *</label>
+                  <input
+                    type="text"
+                    name="clientName"
+                    value={(formData as any).clientName || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter client name"
+                    required
+                  />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Currency
-                  </label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Client Email *</label>
+                  <input
+                    type="email"
+                    name="clientEmail"
+                    value={(formData as any).clientEmail || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="client@example.com"
+                    required
+                  />
+                </div>
+
+                {/* Description placed to the right of client email (row 2, col 2) */}
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Client Phone</label>
+                  <input
+                    type="tel"
+                    name="clientPhone"
+                    value={(formData as any).clientPhone || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="+91 9876543210"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Description *</label>
+                  <textarea
+                    name="description"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    rows={3}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="Enter payment request description"
+                    required
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Invoice Number</label>
+                  <input
+                    type="text"
+                    name="invoiceNumber"
+                    value={(formData as any).invoiceNumber || ''}
+                    onChange={handleInputChange}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="INV-2024-001"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Currency</label>
                   <select
                     name="currency"
                     value={formData.currency}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
-                             bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                             focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="USD">USD</option>
                     <option value="EUR">EUR</option>
@@ -266,68 +379,121 @@ export default function PaymentRequestPage() {
                 </div>
               </div>
 
-              {/* Category and Priority */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Category *
-                  </label>
-                  <select
-                    name="category"
-                    value={formData.category}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
-                             bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                             focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  >
-                    <option value="general">General</option>
-                    <option value="travel">Travel</option>
-                    <option value="vendor">Vendor Payment</option>
-                    <option value="salary">Salary</option>
-                    <option value="utilities">Utilities</option>
-                    <option value="maintenance">Maintenance</option>
-                    <option value="other">Other</option>
-                  </select>
+              {/* Dynamic Category Items: left side category dropdown, right side amount + small note, per-row attachments */}
+              <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100">Payment Items by Category</h3>
+                  <button type="button" onClick={addItem} className="inline-flex items-center gap-1 px-3 py-1.5 text-sm rounded-md bg-blue-600 hover:bg-blue-700 text-white">
+                    <Plus className="w-4 h-4" /> Add Item
+                  </button>
                 </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                    Priority *
-                  </label>
-                  <select
-                    name="priority"
-                    value={formData.priority}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
-                             bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                             focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                    required
-                  >
-                    <option value="low">Low</option>
-                    <option value="medium">Medium</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
+
+                <div className="space-y-3">
+                  {items.map((it, index) => (
+                    <div key={it.id} className="grid grid-cols-1 md:grid-cols-12 gap-3 bg-gray-50 dark:bg-gray-700/40 p-3 rounded-lg">
+                      <div className="md:col-span-1">
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">S/N</label>
+                        <input disabled value={it.serial} className="w-full px-2 py-2 rounded-md bg-gray-100 dark:bg-gray-800 border border-gray-300 dark:border-gray-600 text-center" />
+                      </div>
+                      <div className="md:col-span-3">
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Category</label>
+                        <select
+                          value={it.category}
+                          onChange={(e) => handleItemChange(index, 'category', e.target.value)}
+                          className="w-full px-3 py-2 rounded-md border border-gray-300 dark:border-gray-600 bg-white dark:bg-gray-800"
+                        >
+                          <option value="general">General</option>
+                          <option value="travel">Travel</option>
+                          <option value="vendor">Vendor Payment</option>
+                          <option value="salary">Salary</option>
+                          <option value="utilities">Utilities</option>
+                          <option value="maintenance">Maintenance</option>
+                          <option value="other">Other</option>
+                        </select>
+                      </div>
+                      <div className="md:col-span-3">
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Amount</label>
+                        <div className="relative">
+                          <DollarSign className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                          <input
+                            type="number"
+                            value={it.amount}
+                            onChange={(e) => handleItemChange(index, 'amount', Number(e.target.value))}
+                            className="w-full pl-8 pr-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
+                            placeholder="0.00"
+                            step="0.01"
+                          />
+                        </div>
+                      </div>
+                      <div className="md:col-span-4">
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Small Note</label>
+                        <input
+                          type="text"
+                          value={it.note}
+                          onChange={(e) => handleItemChange(index, 'note', e.target.value)}
+                          className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800"
+                          placeholder="Optional note"
+                        />
+                      </div>
+                      <div className="md:col-span-10">
+                        <label className="block text-xs text-gray-500 dark:text-gray-400 mb-1">Attachments</label>
+                        <div className="flex items-center gap-2">
+                          <label className="inline-flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700">
+                            <Paperclip className="w-4 h-4" /> Upload
+                            <input type="file" className="hidden" onChange={(e) => handleItemFileUpload(index, e.target.files)} multiple accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" />
+                          </label>
+                          {it.attachments?.length ? (
+                            <span className="text-xs text-gray-600 dark:text-gray-400">{it.attachments.length} file(s) attached</span>
+                          ) : null}
+                        </div>
+                      </div>
+                      <div className="md:col-span-2 flex items-end">
+                        <button type="button" onClick={() => removeItem(index)} className="inline-flex items-center gap-1 px-3 py-2 text-sm rounded-md bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/30">
+                          <Trash2 className="w-4 h-4" /> Remove
+                        </button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
 
-              {/* Description */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  Description *
-                </label>
-                <textarea
-                  name="description"
-                  value={formData.description}
-                  onChange={handleInputChange}
-                  rows={4}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg 
-                           bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                           focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  placeholder="Provide details about this payment request..."
-                  required
+              {/* GST Bill checkbox and modal */}
+              <div className="flex items-center gap-2">
+                <input
+                  id="gstBill"
+                  type="checkbox"
+                  className="h-4 w-4"
+                  checked={gstBill}
+                  onChange={(e) => { setGstBill(e.target.checked); if (e.target.checked) setShowGstModal(true); }}
                 />
+                <label htmlFor="gstBill" className="text-sm text-gray-700 dark:text-gray-300">GST Bill</label>
               </div>
+
+              {showGstModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center">
+                  <div className="absolute inset-0 bg-black/40" onClick={() => setShowGstModal(false)} />
+                  <div className="relative bg-white dark:bg-gray-800 rounded-lg shadow-lg w-full max-w-sm p-5">
+                    <div className="flex items-center justify-between mb-3">
+                      <h4 className="text-base font-semibold text-gray-900 dark:text-gray-100">GST Details</h4>
+                      <button type="button" onClick={() => setShowGstModal(false)} className="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700">
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">GST Rate (%)</label>
+                    <input
+                      type="number"
+                      value={gstRate as any}
+                      onChange={(e) => setGstRate(e.target.value === '' ? '' : Number(e.target.value))}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100"
+                      placeholder="Enter GST rate, e.g., 18"
+                    />
+                    <div className="mt-4 flex justify-end gap-2">
+                      <button type="button" onClick={() => setShowGstModal(false)} className="px-3 py-1.5 text-sm rounded-md border border-gray-300 dark:border-gray-600">Close</button>
+                      <button type="button" onClick={() => setShowGstModal(false)} className="px-3 py-1.5 text-sm rounded-md bg-blue-600 text-white">Save</button>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Beneficiary Information */}
               <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
@@ -545,7 +711,7 @@ export default function PaymentRequestPage() {
             )}
           </div>
         )}
-      </div>
+  </div>
     </SuperAdminLayout>
   );
 }

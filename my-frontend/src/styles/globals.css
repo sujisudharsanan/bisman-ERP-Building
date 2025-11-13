@@ -34,6 +34,12 @@
 body {
   background: var(--bg);
   color: var(--text);
+  -webkit-transition: background-color 200ms ease, color 200ms ease;
+
+  -moz-transition: background-color 200ms ease, color 200ms ease;
+
+  -ms-transition: background-color 200ms ease, color 200ms ease;
+
   transition: background-color 200ms ease, color 200ms ease;
 }
 
@@ -46,7 +52,10 @@ body {
 .border-theme { border-color: var(--border) !important; }
 .accent { color: var(--accent) !important; }
 .badge-theme { background: var(--badge) !important; color: white !important; }
-.theme-transition { transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease; }
+.theme-transition { -webkit-transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+ -moz-transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+ -ms-transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease;
+ transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease; }
 
 /* Safe area support for iOS devices */
 .pb-safe {
@@ -258,4 +267,99 @@ h4 {
 .custom-scrollbar {
   scrollbar-width: thin;
   scrollbar-color: rgba(99, 102, 241, 0.5) rgba(31, 41, 55, 0.3);
+}
+
+/* Chat Widget Positioning - Ensures proper alignment and prevents overlap */
+@layer utilities {
+  .chat-widget-container {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 9999;
+    pointer-events: none;
+  }
+  
+  .chat-widget-container > * {
+    pointer-events: auto;
+  }
+
+  .chat-window {
+    position: fixed;
+    bottom: 5.5rem;
+    right: 1rem;
+    width: 367px;
+    max-width: calc(100vw - 2rem);
+    height: 500px;
+    max-height: calc(100vh - 7rem);
+    min-height: 400px;
+    z-index: 9998;
+    display: flex;
+    flex-direction: column;
+    /* Ensure window doesn't overflow on right side */
+    left: auto;
+    overflow: hidden;
+  }
+  
+  /* Ensure chat window fits within viewport on narrow screens */
+  @media (max-width: 400px) {
+    .chat-window {
+      right: 0.5rem;
+      width: calc(100vw - 1rem);
+      max-width: 100%;
+    }
+  }
+  
+  /* Ensure chat window fits within viewport */
+  @media (max-height: 600px) {
+    .chat-window {
+      height: calc(100vh - 7rem);
+      min-height: 300px;
+    }
+  }
+
+  /* Responsive chat positioning */
+  @media (max-width: 768px) {
+    .chat-window {
+      width: calc(100vw - 2rem);
+      right: 1rem;
+      left: 1rem;
+      margin: 0 auto;
+      bottom: 5.5rem;
+      max-height: calc(100vh - 7rem);
+    }
+  }
+
+  /* Smooth slide-in animation */
+  @keyframes slideInFromBottom {
+    from {
+      opacity: 0;
+      -webkit-transform: translateY(20px);
+
+      -moz-transform: translateY(20px);
+
+      -ms-transform: translateY(20px);
+
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      -webkit-transform: translateY(0);
+
+      -moz-transform: translateY(0);
+
+      -ms-transform: translateY(0);
+
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slide-in {
+    -webkit-animation: slideInFromBottom 0.2s ease-out;
+
+    -moz-animation: slideInFromBottom 0.2s ease-out;
+
+    -ms-animation: slideInFromBottom 0.2s ease-out;
+
+    animation: slideInFromBottom 0.2s ease-out;
+  }
 }

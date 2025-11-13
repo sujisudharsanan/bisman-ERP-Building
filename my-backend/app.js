@@ -579,6 +579,30 @@ try {
   console.warn('[app.js] Install dependencies: npm install langchain node-cron')
 }
 
+// Messages routes (protected - requires authentication)
+try {
+  const messagesRoute = require('./src/routes/messages')
+  
+  // Messages endpoints for unread counts and notifications
+  app.use('/api/messages', messagesRoute)
+  
+  console.log('[app.js] ✅ Messages routes loaded')
+} catch (e) {
+  console.warn('[app.js] Messages routes not loaded:', e && e.message)
+}
+
+// Copilate Smart Chat routes (protected - requires authentication)
+try {
+  const copilateRoute = require('./src/routes/copilate')
+  
+  // Copilate AI chat endpoints
+  app.use('/api/copilate', copilateRoute)
+  
+  console.log('[app.js] ✅ Copilate Smart Chat routes loaded')
+} catch (e) {
+  console.warn('[app.js] Copilate routes not loaded:', e && e.message)
+}
+
 // Mattermost Chatbot Integration routes (protected - requires authentication)
 try {
   const mattermostBotRoute = require('./routes/mattermostBot')
@@ -629,7 +653,7 @@ app.get('/health', async (req, res) => {
 })
 
 // Return the current authenticated user by verifying the access token cookie
-app.get('/api/me', (req, res) => {
+app.get('/api/me', async (req, res) => {
   try {
     const token = req.cookies?.access_token || req.cookies?.token || ''
     if (!token) {
@@ -643,22 +667,47 @@ app.get('/api/me', (req, res) => {
     const payload = jwt.verify(token, secret)
     console.log('🔍 /api/me JWT payload:', { id: payload.id, email: payload.email, role: payload.role });
     
-    // Shape a minimal user object; adapt as needed
-    const roleValue = payload.role || payload.roleName || 'MANAGER'
+    // Fetch user from database to get profile_pic_url and other fresh data
+    let dbUser = null;
+    try {
+      dbUser = await prisma.user.findUnique({
+        where: { id: payload.id },
+        select: {
+          id: true,
+          email: true,
+          username: true,
+          role: true,
+          profile_pic_url: true,
+          name: true,
+        }
+      });
+    } catch (dbError) {
+      console.warn('⚠️ Could not fetch user from database:', dbError.message);
+    }
     
-    if (!payload.role && !payload.roleName) {
-      console.warn('⚠️ Role missing in JWT payload — assigning fallback role: MANAGER');
+    // Shape a user object with database data if available, fallback to JWT
+    const roleValue = dbUser?.role || payload.role || payload.roleName || 'MANAGER'
+    
+    if (!payload.role && !payload.roleName && !dbUser?.role) {
+      console.warn('⚠️ Role missing in JWT payload and database — assigning fallback role: MANAGER');
     }
     
     const user = {
       id: payload.id || payload.userId || payload.sub || null,
-      email: payload.email || payload.username || null,
+      email: dbUser?.email || payload.email || payload.username || null,
       role: roleValue,
       roleName: roleValue, // Frontend expects roleName
-      username: payload.username || payload.email?.split('@')[0] || null,
+      username: dbUser?.username || payload.username || payload.email?.split('@')[0] || null,
+      name: dbUser?.name || payload.name || null,
+      profile_pic_url: dbUser?.profile_pic_url || null,
     }
     
-    console.log('✅ /api/me returning user:', { email: user.email, role: user.role, roleName: user.roleName });
+    console.log('✅ /api/me returning user:', { 
+      email: user.email, 
+      role: user.role, 
+      roleName: user.roleName,
+      profile_pic_url: user.profile_pic_url ? 'present' : 'null'
+    });
     return res.json({ ok: true, user })
   } catch (e) {
     console.error('❌ /api/me error:', e.message);

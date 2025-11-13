@@ -1,6 +1,6 @@
 # 🔍 CODEBASE AUDIT REPORT
 
-**Generated:** 10/25/2025, 5:32:49 PM  
+**Generated:** 11/13/2025, 2:08:43 PM  
 **Project:** Full-Stack TypeScript + JavaScript ERP System  
 **Tech Stack:** Next.js + Express.js + PostgreSQL + Prisma ORM  
 
@@ -10,20 +10,20 @@
 
 | Category | Count | Status |
 |----------|-------|--------|
-| 📁 Total Files Scanned | 3229 | ✅ |
-| 💻 Code Files | 499 | ✅ |
-| 📄 Documents | 341 | ✅ |
-| ⚠️ Incomplete Code | 2345 | 🔴 |
+| 📁 Total Files Scanned | 1694 | ✅ |
+| 💻 Code Files | 704 | ✅ |
+| 📄 Documents | 635 | ✅ |
+| ⚠️ Incomplete Code | 3349 | 🔴 |
 | 🌀 Exact Duplicates | 4 | 🟡 |
-| 🗑️ Unused Docs | 0 | ✅ |
-| 🗂️ Dump Files | 56 | 🔴 |
+| 🗑️ Unused Docs | 1 | 🟡 |
+| 🗂️ Dump Files | 53 | 🔴 |
 
 ---
 
 ## ⚠️ 1. INCOMPLETE / UNFINISHED CODE
 
 
-Found **2345** issues:
+Found **3349** issues:
 
 | File | Line | Type | Description | Fix |
 |------|------|------|-------------|-----|
@@ -108,28 +108,28 @@ Found **2345** issues:
 | `audit-fix.js` | 405 | Debug Statement | console.log( | Remove before production |
 | `audit-fix.js` | 406 | Debug Statement | console.log( | Remove before production |
 | `audit-fix.js` | 407 | Debug Statement | console.log( | Remove before production |
-| `check-hub-permissions.js` | 12 | Debug Statement | console.log( | Remove before production |
-| `check-hub-permissions.js` | 15 | Debug Statement | console.log( | Remove before production |
-| `check-hub-permissions.js` | 25 | Debug Statement | console.log( | Remove before production |
-| `check-hub-permissions.js` | 33 | Debug Statement | console.log( | Remove before production |
-| `check-hub-permissions.js` | 34 | Debug Statement | console.log( | Remove before production |
-| `check-hub-permissions.js` | 43 | Debug Statement | console.log( | Remove before production |
-| `check-hub-permissions.js` | 44 | Debug Statement | console.log( | Remove before production |
-| `check-hub-permissions.js` | 45 | Debug Statement | console.log( | Remove before production |
-| `check-hub-permissions.js` | 49 | Debug Statement | console.log( | Remove before production |
-| `check-hub-permissions.js` | 50 | Debug Statement | console.log( | Remove before production |
-| `check-hub-permissions.js` | 54 | Debug Statement | console.error( | Remove before production |
-| `check-roles.js` | 10 | Debug Statement | console.log( | Remove before production |
-| `check-roles.js` | 11 | Debug Statement | console.log( | Remove before production |
-| `check-roles.js` | 17 | Debug Statement | console.log( | Remove before production |
-| `check-roles.js` | 25 | Debug Statement | console.log( | Remove before production |
-| `check-roles.js` | 27 | Debug Statement | console.log( | Remove before production |
-| `check-roles.js` | 31 | Debug Statement | console.error( | Remove before production |
-| `check-users.js` | 10 | Debug Statement | console.log( | Remove before production |
-| `check-users.js` | 11 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 4 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 5 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 25 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 33 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 38 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 40 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 46 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 52 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 56 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 85 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 86 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 87 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 90 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 91 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 92 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 93 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 95 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 96 | Debug Statement | console.log( | Remove before production |
+| `check-frontend-api.js` | 97 | Debug Statement | console.log( | Remove before production |
 
 
-*Showing first 100 of 2345 issues*
+*Showing first 100 of 3349 issues*
 
 
 ---
@@ -151,21 +151,28 @@ Found **4** exact duplicates:
 
 ## 🗑️ 3. POTENTIALLY UNUSED DOCUMENTS
 
-✅ **All clean!**
+
+Found **1** documents:
+
+| File | Reason | Action |
+|------|--------|--------|
+| `OLD_UI_CLEANUP_COMPLETE.md` | Contains OLD/BACKUP/ARCHIVE in name | Review and delete if obsolete |
+
 
 ---
 
 ## 🗂️ 4. DUMP / LOG / BACKUP FILES
 
 
-Found **56** files to clean:
+Found **53** files to clean:
 
 | File | Type | Action |
 |------|------|--------|
-| `.env.bak` | Dump/Log/Backup | Delete - temporary file |
 | `.vercelignore.bak` | Dump/Log/Backup | Delete - temporary file |
+| `backend-startup.log` | Dump/Log/Backup | Delete - temporary file |
+| `backend.log` | Dump/Log/Backup | Delete - temporary file |
 | `bisman_local_dump.dump` | Dump/Log/Backup | Delete - temporary file |
-| `check-credentials.sql` | Dump/Log/Backup | Delete - temporary file |
+| `cleanup-logs/cleanup-20251102_092302.log` | Dump/Log/Backup | Delete - temporary file |
 | `database/migration.log` | Dump/Log/Backup | Delete - temporary file |
 | `database/migrations/001_complete_erp_schema.sql` | Dump/Log/Backup | Delete - temporary file |
 | `database/migrations/001_complete_erp_schema_rollback.sql` | Dump/Log/Backup | Delete - temporary file |
@@ -181,18 +188,16 @@ Found **56** files to clean:
 | `database/migrations/006_user_migration.sql` | Dump/Log/Backup | Delete - temporary file |
 | `database/migrations/007_activity_tracking.sql` | Dump/Log/Backup | Delete - temporary file |
 | `database/migrations/008_activity_simple.sql` | Dump/Log/Backup | Delete - temporary file |
-| `database/rbac_migration.sql` | Dump/Log/Backup | Delete - temporary file |
-| `database/rbac_schema_design.sql` | Dump/Log/Backup | Delete - temporary file |
-| `database/simple_rbac_enhancement.sql` | Dump/Log/Backup | Delete - temporary file |
-| `database/working_rbac_enhancement.sql` | Dump/Log/Backup | Delete - temporary file |
+| `db_backup_20251026_212752.dump` | Dump/Log/Backup | Delete - temporary file |
 | `docker-compose.override.yml.bak` | Dump/Log/Backup | Delete - temporary file |
 | `docker-compose.yml.bak` | Dump/Log/Backup | Delete - temporary file |
-| `my-backend/.env.bak` | Dump/Log/Backup | Delete - temporary file |
-| `my-backend/Dockerfile.backup` | Dump/Log/Backup | Delete - temporary file |
+| `my-backend/app.log` | Dump/Log/Backup | Delete - temporary file |
 | `my-backend/backend.log` | Dump/Log/Backup | Delete - temporary file |
 | `my-backend/bisman-db-dump-20251012-125515.dump` | Dump/Log/Backup | Delete - temporary file |
+| `my-backend/database/copilate-smart-chat-schema.sql` | Dump/Log/Backup | Delete - temporary file |
 | `my-backend/db-dump-20251012-130243.dump` | Dump/Log/Backup | Delete - temporary file |
-| `my-backend/migrations/multi-business-setup.sql` | Dump/Log/Backup | Delete - temporary file |
+| `my-backend/migrations/20251102_p0_smart_approver_selection.sql` | Dump/Log/Backup | Delete - temporary file |
+| `my-backend/migrations/copiolate_chat_schema.sql` | Dump/Log/Backup | Delete - temporary file |
 | `my-backend/server.log` | Dump/Log/Backup | Delete - temporary file |
 | `my-frontend/.format-check.log` | Dump/Log/Backup | Delete - temporary file |
 | `my-frontend/.syntax-guard.log` | Dump/Log/Backup | Delete - temporary file |
@@ -200,9 +205,8 @@ Found **56** files to clean:
 | `my-frontend/app_backup_conflicting/dashboard/page.tsx.backup` | Dump/Log/Backup | Delete - temporary file |
 | `my-frontend/complete-test-results.log` | Dump/Log/Backup | Delete - temporary file |
 | `my-frontend/frontend.log` | Dump/Log/Backup | Delete - temporary file |
-| `my-frontend/logs/frontend-err.log` | Dump/Log/Backup | Delete - temporary file |
-| `my-frontend/logs/next-dev.log` | Dump/Log/Backup | Delete - temporary file |
-| `my-frontend/logs/next.err.log` | Dump/Log/Backup | Delete - temporary file |
+| `my-frontend/src/app/enterprise-admin/dashboard/page.tsx.backup` | Dump/Log/Backup | Delete - temporary file |
+| `my-frontend/src/app/enterprise-admin/modules/page.backup.20251029_184228.tsx` | Dump/Log/Backup | Delete - temporary file |
 | `my-frontend/src/app/system/api-integration-config/page.tsx.backup` | Dump/Log/Backup | Delete - temporary file |
 | `my-frontend/src/app/system/audit-logs/page.tsx.backup` | Dump/Log/Backup | Delete - temporary file |
 | `my-frontend/src/app/system/backup-restore/page.tsx.backup` | Dump/Log/Backup | Delete - temporary file |
@@ -217,16 +221,15 @@ Found **56** files to clean:
 | `my-frontend/src/app/system/user-management/page.tsx.backup` | Dump/Log/Backup | Delete - temporary file |
 | `my-frontend/src/common/config/page-registry.ts.backup.1761235193181` | Dump/Log/Backup | Delete - temporary file |
 | `my-frontend/test-final-result.log` | Dump/Log/Backup | Delete - temporary file |
-| `simple-api/init.sql` | Dump/Log/Backup | Delete - temporary file |
 
 
 ---
 
 ## 🎯 TOP PRIORITY ACTIONS
 
-1. 🔴 **CRITICAL:** Remove 2021 debug statements (console.log, debugger)
-2. 🔴 **CRITICAL:** Delete 56 dump/backup/log files
-3. 🟡 **IMPORTANT:** Complete 324 TODO/FIXME markers
+1. 🔴 **CRITICAL:** Remove 2883 debug statements (console.log, debugger)
+2. 🔴 **CRITICAL:** Delete 53 dump/backup/log files
+3. 🟡 **IMPORTANT:** Complete 466 TODO/FIXME markers
 
 ---
 
@@ -234,16 +237,16 @@ Found **56** files to clean:
 
 ```bash
 # Remove dump/log files
-rm ".env.bak"
 rm ".vercelignore.bak"
+rm "backend-startup.log"
+rm "backend.log"
 rm "bisman_local_dump.dump"
-rm "check-credentials.sql"
+rm "cleanup-logs/cleanup-20251102_092302.log"
 rm "database/migration.log"
 rm "database/migrations/001_complete_erp_schema.sql"
 rm "database/migrations/001_complete_erp_schema_rollback.sql"
 rm "database/migrations/002_privilege_management_schema.sql"
 rm "database/migrations/002_security_rbac.sql"
-rm "database/migrations/002_security_rbac_rollback.sql"
 
 # Check for unused npm dependencies
 cd my-frontend && npx depcheck

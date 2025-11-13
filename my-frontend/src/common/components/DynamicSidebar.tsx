@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useMemo, useEffect, useState } from 'react';
+import { safeFetch } from '@/lib/safeFetch';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Circle, AlertCircle } from 'lucide-react';
@@ -56,8 +57,9 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
         try {
           // Use relative URL when NEXT_PUBLIC_API_URL is not set (same-origin in Railway)
           const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
-          const response = await fetch(`${baseURL}/api/auth/me/permissions`, {
+          const response = await safeFetch(`${baseURL}/api/auth/me/permissions`, {
             credentials: 'include',
+            timeoutMs: 8000,
           });
 
           if (response.ok) {
@@ -94,8 +96,9 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
       // Regular users: Fetch page permissions from database
       try {
         // Use relative URL to leverage Next.js API proxy
-        const response = await fetch(`/api/permissions?userId=${user.id}`, {
+        const response = await safeFetch(`/api/permissions?userId=${user.id}`, {
           credentials: 'include',
+          timeoutMs: 8000,
         });
 
         if (response.ok) {
@@ -205,6 +208,16 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
     return pathname === path || pathname?.startsWith(`${path}/`);
   };
 
+  // Determine user's primary dashboard path by role
+  const dashboardPath = useMemo(() => {
+    const role = String(user?.roleName || user?.role || '').toUpperCase();
+    if (role === 'SUPER_ADMIN' || role === 'SUPER ADMIN' || role === 'SUPERADMIN') return '/super-admin';
+    if (role === 'ENTERPRISE_ADMIN') return '/enterprise-admin/dashboard';
+    if (role === 'ADMIN') return '/admin/dashboard';
+    if (role === 'STAFF') return '/hub-incharge';
+    return '/manager';
+  }, [user?.roleName, user?.role]);
+
   // Get module color classes
   const getModuleColorClass = (color: string) => {
     const colorMap: Record<string, string> = {
@@ -287,19 +300,45 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
 
   return (
     <div className={`py-4 ${className}`}>
-      {/* Sidebar Header */}
+      {/* Sidebar User Profile (replaces Dashboard/pages count) */}
       <div className="px-3 mb-4">
-        <Link 
-          href="/super-admin"
-          className="block group cursor-pointer"
-        >
-          <h2 className="text-base font-semibold text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 uppercase tracking-wider transition-colors">
-            Dashboard
-          </h2>
-        </Link>
-        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-          {isLoadingPermissions ? 'Loading permissions...' : `${visiblePages.length} pages available`}
-        </p>
+        <div className="flex items-center gap-3 cursor-pointer" onClick={() => router.push('/common/about-me')} title="View profile">
+          <div className="relative w-10 h-10 rounded-full overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-gray-600 dark:text-gray-300 text-sm">
+            {/* Avatar image with robust fallback */}
+      {(() => {
+        const profileUrl = (user as any)?.profile_pic_url || (user as any)?.avatarUrl || (user as any)?.profileImage;
+        const secureUrl = profileUrl?.replace('/uploads/', '/api/secure-files/');
+        return secureUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img
+        src={secureUrl}
+                alt={(user as any)?.name || (user as any)?.fullName || 'User'}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const img = e.currentTarget as HTMLImageElement;
+                  const fallbackName = String((user as any)?.name || (user as any)?.fullName || (user as any)?.username || 'User');
+                  img.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=random`;
+                }}
+              />
+            ) : (
+              <span>
+                {String((user as any)?.name || (user as any)?.fullName || (user as any)?.username || 'U')
+                  .trim()
+                  .charAt(0)
+                  .toUpperCase()}
+              </span>
+            );
+      })()}
+          </div>
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">
+              {String((user as any)?.name || (user as any)?.fullName || (user as any)?.username || 'User')}
+            </p>
+            {user?.roleName && (
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.roleName}</p>
+            )}
+          </div>
+        </div>
       </div>
 
       {/* Loading State */}
@@ -315,6 +354,18 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
       {/* Flat page list (no module headers) */}
       {!isLoadingPermissions && (
         <div className="space-y-1 px-2">
+          {/* Dashboard shortcut as first item */}
+          <Link
+            href={dashboardPath}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+              isActivePath(dashboardPath)
+                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+            }`}
+            title="Dashboard"
+          >
+            <span className="flex-1 truncate">Dashboard</span>
+          </Link>
           {visiblePages.map(page => renderPageLink(page))}
         </div>
       )}

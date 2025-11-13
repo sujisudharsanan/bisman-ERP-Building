@@ -5,14 +5,14 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { requireAuthCookie } from '@/lib/apiGuard';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = cookies();
-    const authToken = cookieStore.get('authToken')?.value;
+  // Accept multiple cookie names for compatibility
+  const authToken = requireAuthCookie(['authToken', 'token', 'access_token']);
 
     if (!authToken) {
       return NextResponse.json(
@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Fetch all user data in parallel
-    const [pendingTasks, inProcessTasks, completedTasks, paymentRequests] = await Promise.allSettled([
+  const [pendingTasks, inProcessTasks, completedTasks, paymentRequests] = await Promise.allSettled([
       // Pending tasks
       fetch(`${BACKEND_URL}/api/common/tasks/dashboard/pending`, {
         headers: { Authorization: `Bearer ${authToken}` }

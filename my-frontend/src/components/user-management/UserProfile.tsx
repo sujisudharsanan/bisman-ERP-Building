@@ -42,13 +42,34 @@ function EditProfileModal({ user, isOpen, onClose, onUpdate }: EditProfileModalP
     first_name: user.first_name,
     last_name: user.last_name,
     email: user.email,
+    work_email: user.work_email || '',
+    secondary_email: user.secondary_email || '',
     phone: user.phone,
     alternate_phone: user.alternate_phone || '',
+    work_phone: user.work_phone || '',
+    mobile_phone: user.mobile_phone || '',
+    employee_id: user.employee_id || '',
+    external_id: user.external_id || '',
+    manager_id: user.manager_id || '',
     designation: user.designation || '',
     department: user.department || '',
+    language: user.language || 'en',
+    locale: user.locale || 'en-US',
+    date_of_birth: user.date_of_birth || '',
+    communication_address: user.communication_address || '',
+    permanent_address: user.permanent_address || '',
+    city: user.city || '',
+    state: user.state || '',
+    country: user.country || '',
+    postal_code: user.postal_code || '',
+    emergency_contact_name: user.emergency_contact_name || '',
+    emergency_contact_phone: user.emergency_contact_phone || '',
+    emergency_contact_relationship: user.emergency_contact_relationship || '',
+    is_profile_public: user.is_profile_public ?? true,
     status: user.status,
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeSection, setActiveSection] = useState<'basic' | 'contact' | 'personal' | 'emergency' | 'settings'>('basic');
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
@@ -66,7 +87,7 @@ function EditProfileModal({ user, isOpen, onClose, onUpdate }: EditProfileModalP
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-2xl mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-lg font-semibold text-gray-900">Edit Profile</h3>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -74,108 +95,440 @@ function EditProfileModal({ user, isOpen, onClose, onUpdate }: EditProfileModalP
           </button>
         </div>
 
-        <div className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                First Name
-              </label>
-              <input
-                type="text"
-                value={formData.first_name}
-                onChange={(e) => setFormData(prev => ({ ...prev, first_name: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Last Name
-              </label>
-              <input
-                type="text"
-                value={formData.last_name}
-                onChange={(e) => setFormData(prev => ({ ...prev, last_name: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Email
-            </label>
-            <input
-              type="email"
-              value={formData.email}
-              onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Phone
-              </label>
-              <input
-                type="tel"
-                value={formData.phone || ''}
-                onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Alternate Phone
-              </label>
-              <input
-                type="tel"
-                value={formData.alternate_phone}
-                onChange={(e) => setFormData(prev => ({ ...prev, alternate_phone: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Designation
-              </label>
-              <input
-                type="text"
-                value={formData.designation}
-                onChange={(e) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Department
-              </label>
-              <input
-                type="text"
-                value={formData.department}
-                onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-              />
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
-              Status
-            </label>
-            <select
-              value={formData.status}
-              onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
-              className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+        {/* Section Tabs */}
+        <div className="flex space-x-2 mb-6 border-b border-gray-200">
+          {[
+            { id: 'basic' as const, label: 'Basic Info' },
+            { id: 'contact' as const, label: 'Contact Details' },
+            { id: 'personal' as const, label: 'Personal Details' },
+            { id: 'emergency' as const, label: 'Emergency Contact' },
+            { id: 'settings' as const, label: 'Settings' },
+          ].map(section => (
+            <button
+              key={section.id}
+              onClick={() => setActiveSection(section.id)}
+              className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${
+                activeSection === section.id
+                  ? 'border-blue-500 text-blue-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700'
+              }`}
             >
-              <option value="active">Active</option>
-              <option value="inactive">Inactive</option>
-              <option value="suspended">Suspended</option>
-            </select>
-          </div>
+              {section.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="space-y-4">
+          {/* Basic Information Section */}
+          {activeSection === 'basic' && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    First Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.first_name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, first_name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Last Name <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.last_name}
+                    onChange={(e) => setFormData(prev => ({ ...prev, last_name: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Employee ID
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.employee_id}
+                    onChange={(e) => setFormData(prev => ({ ...prev, employee_id: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="EMP-001"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    External ID
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.external_id}
+                    onChange={(e) => setFormData(prev => ({ ...prev, external_id: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="External system ID"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Designation
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.designation}
+                    onChange={(e) => setFormData(prev => ({ ...prev, designation: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Department
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.department}
+                    onChange={(e) => setFormData(prev => ({ ...prev, department: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Manager / Reporting To
+                </label>
+                <input
+                  type="text"
+                  value={formData.manager_id}
+                  onChange={(e) => setFormData(prev => ({ ...prev, manager_id: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Manager User ID"
+                />
+                <p className="text-xs text-gray-500 mt-1">Enter the User ID of the reporting manager</p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Status
+                </label>
+                <select
+                  value={formData.status}
+                  onChange={(e) => setFormData(prev => ({ ...prev, status: e.target.value as any }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="active">Active</option>
+                  <option value="inactive">Inactive</option>
+                  <option value="suspended">Suspended</option>
+                </select>
+              </div>
+            </>
+          )}
+
+          {/* Contact Details Section */}
+          {activeSection === 'contact' && (
+            <>
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Work Email (Primary) <span className="text-red-500">*</span>
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.work_email || formData.email}
+                    disabled
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 cursor-not-allowed"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">Work email cannot be edited. Contact admin for changes.</p>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Secondary Email
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.secondary_email}
+                    onChange={(e) => setFormData(prev => ({ ...prev, secondary_email: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="secondary@example.com"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Work Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.work_phone}
+                      onChange={(e) => setFormData(prev => ({ ...prev, work_phone: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="+1 (555) 123-4567"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Mobile Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.mobile_phone}
+                      onChange={(e) => setFormData(prev => ({ ...prev, mobile_phone: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                      placeholder="+1 (555) 987-6543"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Alternate Phone
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.alternate_phone}
+                      onChange={(e) => setFormData(prev => ({ ...prev, alternate_phone: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
+                      Phone (Legacy)
+                    </label>
+                    <input
+                      type="tel"
+                      value={formData.phone || ''}
+                      onChange={(e) => setFormData(prev => ({ ...prev, phone: e.target.value }))}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    />
+                  </div>
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Personal Details Section */}
+          {activeSection === 'personal' && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Date of Birth
+                  </label>
+                  <input
+                    type="date"
+                    value={formData.date_of_birth}
+                    onChange={(e) => setFormData(prev => ({ ...prev, date_of_birth: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Language
+                  </label>
+                  <select
+                    value={formData.language}
+                    onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="en">English</option>
+                    <option value="es">Spanish</option>
+                    <option value="fr">French</option>
+                    <option value="de">German</option>
+                    <option value="hi">Hindi</option>
+                    <option value="zh">Chinese</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Locale
+                </label>
+                <select
+                  value={formData.locale}
+                  onChange={(e) => setFormData(prev => ({ ...prev, locale: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="en-US">English (United States)</option>
+                  <option value="en-GB">English (United Kingdom)</option>
+                  <option value="es-ES">Spanish (Spain)</option>
+                  <option value="fr-FR">French (France)</option>
+                  <option value="de-DE">German (Germany)</option>
+                  <option value="hi-IN">Hindi (India)</option>
+                  <option value="zh-CN">Chinese (China)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Communication Address
+                </label>
+                <textarea
+                  value={formData.communication_address}
+                  onChange={(e) => setFormData(prev => ({ ...prev, communication_address: e.target.value }))}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Street address, apartment, suite, etc."
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Permanent Address
+                </label>
+                <textarea
+                  value={formData.permanent_address}
+                  onChange={(e) => setFormData(prev => ({ ...prev, permanent_address: e.target.value }))}
+                  rows={2}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Street address, apartment, suite, etc."
+                />
+              </div>
+
+              <div className="grid grid-cols-3 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    City
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.city}
+                    onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    State
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.state}
+                    onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Postal Code
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.postal_code}
+                    onChange={(e) => setFormData(prev => ({ ...prev, postal_code: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Country
+                </label>
+                <input
+                  type="text"
+                  value={formData.country}
+                  onChange={(e) => setFormData(prev => ({ ...prev, country: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+            </>
+          )}
+
+          {/* Emergency Contact Section */}
+          {activeSection === 'emergency' && (
+            <>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Emergency Contact Name
+                </label>
+                <input
+                  type="text"
+                  value={formData.emergency_contact_name}
+                  onChange={(e) => setFormData(prev => ({ ...prev, emergency_contact_name: e.target.value }))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="Full name"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Emergency Contact Phone
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.emergency_contact_phone}
+                    onChange={(e) => setFormData(prev => ({ ...prev, emergency_contact_phone: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="+1 (555) 000-0000"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Relationship
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.emergency_contact_relationship}
+                    onChange={(e) => setFormData(prev => ({ ...prev, emergency_contact_relationship: e.target.value }))}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="e.g., Spouse, Parent, Sibling"
+                  />
+                </div>
+              </div>
+            </>
+          )}
+
+          {/* Settings Section */}
+          {activeSection === 'settings' && (
+            <>
+              <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
+                <div className="flex items-start space-x-3">
+                  <div className="flex-shrink-0">
+                    <Eye className="w-5 h-5 text-blue-600 mt-0.5" />
+                  </div>
+                  <div className="flex-1">
+                    <h4 className="text-sm font-semibold text-gray-900 mb-2">Public Profile Visibility</h4>
+                    <p className="text-sm text-gray-700 mb-4">
+                      When enabled, other users in the organization can view your profile information. 
+                      When disabled, only administrators can view your full profile.
+                    </p>
+                    <label className="flex items-center space-x-3 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={formData.is_profile_public}
+                        onChange={(e) => setFormData(prev => ({ ...prev, is_profile_public: e.target.checked }))}
+                        className="w-5 h-5 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="text-sm font-medium text-gray-900">
+                        Make my profile visible to other users
+                      </span>
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="bg-gray-50 border border-gray-200 rounded-lg p-4">
+                <h4 className="text-sm font-semibold text-gray-900 mb-2">Privacy Information</h4>
+                <ul className="text-sm text-gray-600 space-y-2">
+                  <li>• Your name, designation, and department are always visible to team members</li>
+                  <li>• Contact information is only visible when profile is public</li>
+                  <li>• Emergency contact details are only visible to HR and administrators</li>
+                  <li>• Sensitive data (salary, personal documents) is always restricted to authorized personnel</li>
+                </ul>
+              </div>
+            </>
+          )}
         </div>
 
         <div className="flex space-x-3 mt-6">
@@ -556,16 +909,12 @@ export function UserProfile({ userId, currentUser }: UserProfileProps) {
                     <p className="text-gray-900">{user.first_name} {user.last_name}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Email</label>
-                    <p className="text-gray-900">{user.email}</p>
+                    <label className="text-sm font-medium text-gray-700">Employee ID</label>
+                    <p className="text-gray-900">{user.employee_id || 'Not assigned'}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Phone</label>
-                    <p className="text-gray-900">{user.phone || 'Not provided'}</p>
-                  </div>
-                  <div>
-                    <label className="text-sm font-medium text-gray-700">Alternate Phone</label>
-                    <p className="text-gray-900">{user.alternate_phone || 'Not provided'}</p>
+                    <label className="text-sm font-medium text-gray-700">External ID</label>
+                    <p className="text-gray-900">{user.external_id || 'Not assigned'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700">Designation</label>
@@ -579,9 +928,162 @@ export function UserProfile({ userId, currentUser }: UserProfileProps) {
                     <label className="text-sm font-medium text-gray-700">Branch</label>
                     <p className="text-gray-900">{user.branch?.name || 'Not assigned'}</p>
                   </div>
+                  <div className="md:col-span-2">
+                    <label className="text-sm font-medium text-gray-700">Manager / Reporting To</label>
+                    <p className="text-gray-900">
+                      {user.manager ? `${user.manager.first_name} ${user.manager.last_name}` : 'No manager assigned'}
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Contact Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="md:col-span-2">
+                    <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
+                      <Mail className="w-4 h-4" />
+                      <span>Work Email (Primary)</span>
+                      {user.email_verified_at && (
+                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Verified</span>
+                      )}
+                    </label>
+                    <p className="text-gray-900 flex items-center space-x-2">
+                      <span>{user.work_email || user.email}</span>
+                      <span className="text-xs text-gray-500">(Non-editable)</span>
+                    </p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
+                      <Mail className="w-4 h-4" />
+                      <span>Secondary Email</span>
+                      {user.secondary_email_verified_at && (
+                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Verified</span>
+                      )}
+                    </label>
+                    <p className="text-gray-900">{user.secondary_email || 'Not provided'}</p>
+                  </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Employee ID</label>
-                    <p className="text-gray-900">{user.employee_id || 'Not assigned'}</p>
+                    <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
+                      <Phone className="w-4 h-4" />
+                      <span>Work Phone</span>
+                      {user.work_phone_verified_at && (
+                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Verified</span>
+                      )}
+                    </label>
+                    <p className="text-gray-900">{user.work_phone || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
+                      <Phone className="w-4 h-4" />
+                      <span>Mobile Phone</span>
+                      {user.mobile_phone_verified_at && (
+                        <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs rounded-full">Verified</span>
+                      )}
+                    </label>
+                    <p className="text-gray-900">{user.mobile_phone || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Alternate Phone</label>
+                    <p className="text-gray-900">{user.alternate_phone || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Phone (Legacy)</label>
+                    <p className="text-gray-900">{user.phone || 'Not provided'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Personal Details */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4">Personal Details</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
+                      <Calendar className="w-4 h-4" />
+                      <span>Date of Birth</span>
+                    </label>
+                    <p className="text-gray-900">
+                      {user.date_of_birth ? new Date(user.date_of_birth).toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                      }) : 'Not provided'}
+                    </p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Language</label>
+                    <p className="text-gray-900">{user.language || 'English (en)'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Locale</label>
+                    <p className="text-gray-900">{user.locale || 'en-US'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Profile Visibility</label>
+                    <p className="text-gray-900 flex items-center space-x-2">
+                      {user.is_profile_public ? (
+                        <>
+                          <Eye className="w-4 h-4 text-green-600" />
+                          <span className="text-green-600">Public</span>
+                        </>
+                      ) : (
+                        <>
+                          <EyeOff className="w-4 h-4 text-gray-600" />
+                          <span className="text-gray-600">Private</span>
+                        </>
+                      )}
+                    </p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-sm font-medium text-gray-700 flex items-center space-x-2">
+                      <MapPin className="w-4 h-4" />
+                      <span>Communication Address</span>
+                    </label>
+                    <p className="text-gray-900">{user.communication_address || 'Not provided'}</p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-sm font-medium text-gray-700">Permanent Address</label>
+                    <p className="text-gray-900">{user.permanent_address || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">City</label>
+                    <p className="text-gray-900">{user.city || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">State</label>
+                    <p className="text-gray-900">{user.state || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Country</label>
+                    <p className="text-gray-900">{user.country || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Postal Code</label>
+                    <p className="text-gray-900">{user.postal_code || 'Not provided'}</p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Emergency Contact */}
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+                  <AlertTriangle className="w-5 h-5 text-orange-600" />
+                  <span>Emergency Contact</span>
+                </h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Contact Name</label>
+                    <p className="text-gray-900">{user.emergency_contact_name || 'Not provided'}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">Contact Phone</label>
+                    <p className="text-gray-900">{user.emergency_contact_phone || 'Not provided'}</p>
+                  </div>
+                  <div className="md:col-span-2">
+                    <label className="text-sm font-medium text-gray-700">Relationship</label>
+                    <p className="text-gray-900">{user.emergency_contact_relationship || 'Not provided'}</p>
                   </div>
                 </div>
               </div>

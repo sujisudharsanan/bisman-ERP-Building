@@ -1,21 +1,21 @@
 {
-  "timestamp": "2025-10-20T09:18:38.616Z",
+  "timestamp": "2025-11-13T08:39:01.698Z",
   "summary": {
-    "totalPages": 78,
-    "pagesWithHooks": 78,
-    "pagesWithoutHooks": 0,
-    "totalHooks": 10,
-    "totalLayouts": 3,
+    "totalPages": 88,
+    "pagesWithHooks": 84,
+    "pagesWithoutHooks": 4,
+    "totalHooks": 12,
+    "totalLayouts": 4,
     "buildErrors": [],
     "warnings": []
   },
   "modules": {
-    "compliance": {
-      "totalPages": 10,
+    "common": {
+      "totalPages": 14,
       "pages": [
         {
           "fileName": "about-me.tsx",
-          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/about-me.tsx",
+          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/about-me.tsx",
           "hooks": [
             "useAuth"
           ],
@@ -27,9 +27,223 @@
           "issues": [
             "Missing ErrorBoundary wrapper"
           ],
-          "lineCount": 83,
-          "size": 3008
+          "lineCount": 55,
+          "size": 1629
         },
+        {
+          "fileName": "ai-assistant.tsx",
+          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/ai-assistant.tsx",
+          "hooks": [
+            "useState",
+            "useEffect"
+          ],
+          "layouts": [],
+          "hasHooks": true,
+          "hasLayout": false,
+          "issues": [
+            "Missing ErrorBoundary wrapper",
+            "Console statements found (should be removed in production)"
+          ],
+          "lineCount": 467,
+          "size": 17099
+        },
+        {
+          "fileName": "bank-accounts.tsx",
+          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/bank-accounts.tsx",
+          "hooks": [
+            "useAuth",
+            "useState",
+            "useEffect"
+          ],
+          "layouts": [
+            "SuperAdminLayout"
+          ],
+          "hasHooks": true,
+          "hasLayout": true,
+          "issues": [
+            "Missing ErrorBoundary wrapper",
+            "Console statements found (should be removed in production)",
+            "Found 4 TODO/FIXME comment(s)"
+          ],
+          "lineCount": 916,
+          "size": 38830
+        },
+        {
+          "fileName": "calendar-common.tsx",
+          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/calendar-common.tsx",
+          "hooks": [],
+          "layouts": [],
+          "hasHooks": false,
+          "hasLayout": false,
+          "issues": [
+            "Missing ErrorBoundary wrapper"
+          ],
+          "lineCount": 12,
+          "size": 301
+        },
+        {
+          "fileName": "change-password.tsx",
+          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/change-password.tsx",
+          "hooks": [
+            "useAuth",
+            "useState"
+          ],
+          "layouts": [],
+          "hasHooks": true,
+          "hasLayout": false,
+          "issues": [
+            "Missing ErrorBoundary wrapper"
+          ],
+          "lineCount": 262,
+          "size": 11478
+        },
+        {
+          "fileName": "documentation.tsx",
+          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/documentation.tsx",
+          "hooks": [],
+          "layouts": [],
+          "hasHooks": false,
+          "hasLayout": false,
+          "issues": [
+            "Missing ErrorBoundary wrapper"
+          ],
+          "lineCount": 76,
+          "size": 3290
+        },
+        {
+          "fileName": "help-center.tsx",
+          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/help-center.tsx",
+          "hooks": [
+            "useState"
+          ],
+          "layouts": [],
+          "hasHooks": true,
+          "hasLayout": false,
+          "issues": [
+            "Missing ErrorBoundary wrapper"
+          ],
+          "lineCount": 229,
+          "size": 9779
+        },
+        {
+          "fileName": "messages.tsx",
+          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/messages.tsx",
+          "hooks": [],
+          "layouts": [],
+          "hasHooks": false,
+          "hasLayout": false,
+          "issues": [
+            "Missing ErrorBoundary wrapper"
+          ],
+          "lineCount": 44,
+          "size": 1746
+        },
+        {
+          "fileName": "modern-calendar.tsx",
+          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/modern-calendar.tsx",
+          "hooks": [
+            "useState"
+          ],
+          "layouts": [
+            "SuperAdminLayout"
+          ],
+          "hasHooks": true,
+          "hasLayout": true,
+          "issues": [
+            "Missing ErrorBoundary wrapper"
+          ],
+          "lineCount": 422,
+          "size": 16274
+        },
+        {
+          "fileName": "notifications.tsx",
+          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/notifications.tsx",
+          "hooks": [
+            "useAuth",
+            "useState",
+            "useEffect"
+          ],
+          "layouts": [],
+          "hasHooks": true,
+          "hasLayout": false,
+          "issues": [
+            "Missing ErrorBoundary wrapper",
+            "Console statements found (should be removed in production)"
+          ],
+          "lineCount": 247,
+          "size": 9622
+        },
+        {
+          "fileName": "payment-request.tsx",
+          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/payment-request.tsx",
+          "hooks": [
+            "useAuth"
+          ],
+          "layouts": [
+            "SuperAdminLayout"
+          ],
+          "hasHooks": true,
+          "hasLayout": true,
+          "issues": [
+            "Missing ErrorBoundary wrapper",
+            "Console statements found (should be removed in production)"
+          ],
+          "lineCount": 552,
+          "size": 23401
+        },
+        {
+          "fileName": "security-settings.tsx",
+          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/security-settings.tsx",
+          "hooks": [],
+          "layouts": [],
+          "hasHooks": false,
+          "hasLayout": false,
+          "issues": [
+            "Missing ErrorBoundary wrapper"
+          ],
+          "lineCount": 67,
+          "size": 2835
+        },
+        {
+          "fileName": "user-creation.tsx",
+          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/user-creation.tsx",
+          "hooks": [
+            "useRouter",
+            "useState",
+            "useEffect"
+          ],
+          "layouts": [],
+          "hasHooks": true,
+          "hasLayout": false,
+          "issues": [
+            "Missing ErrorBoundary wrapper",
+            "Console statements found (should be removed in production)"
+          ],
+          "lineCount": 219,
+          "size": 8318
+        },
+        {
+          "fileName": "user-settings.tsx",
+          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/user-settings.tsx",
+          "hooks": [
+            "useAuth",
+            "useState",
+            "useMemo"
+          ],
+          "layouts": [],
+          "hasHooks": true,
+          "hasLayout": false,
+          "issues": [
+            "Missing ErrorBoundary wrapper"
+          ],
+          "lineCount": 531,
+          "size": 24159
+        }
+      ]
+    },
+    "compliance": {
+      "totalPages": 9,
+      "pages": [
         {
           "fileName": "approval-workflow-view.tsx",
           "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/approval-workflow-view.tsx",
@@ -195,25 +409,8 @@
       ]
     },
     "finance": {
-      "totalPages": 32,
+      "totalPages": 31,
       "pages": [
-        {
-          "fileName": "about-me.tsx",
-          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/finance/pages/about-me.tsx",
-          "hooks": [
-            "useAuth"
-          ],
-          "layouts": [
-            "SuperAdminLayout"
-          ],
-          "hasHooks": true,
-          "hasLayout": true,
-          "issues": [
-            "Missing ErrorBoundary wrapper"
-          ],
-          "lineCount": 89,
-          "size": 3100
-        },
         {
           "fileName": "bank-reconciliation-execute.tsx",
           "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/finance/pages/bank-reconciliation-execute.tsx",
@@ -355,8 +552,8 @@
           "issues": [
             "Missing ErrorBoundary wrapper"
           ],
-          "lineCount": 85,
-          "size": 3279
+          "lineCount": 89,
+          "size": 3370
         },
         {
           "fileName": "cost-center-analysis.tsx",
@@ -775,25 +972,8 @@
       ]
     },
     "operations": {
-      "totalPages": 14,
+      "totalPages": 13,
       "pages": [
-        {
-          "fileName": "about-me.tsx",
-          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/about-me.tsx",
-          "hooks": [
-            "useAuth"
-          ],
-          "layouts": [
-            "SuperAdminLayout"
-          ],
-          "hasHooks": true,
-          "hasLayout": true,
-          "issues": [
-            "Missing ErrorBoundary wrapper"
-          ],
-          "lineCount": 83,
-          "size": 3045
-        },
         {
           "fileName": "asset-register-hub.tsx",
           "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/asset-register-hub.tsx",
@@ -1031,25 +1211,8 @@
       ]
     },
     "procurement": {
-      "totalPages": 6,
+      "totalPages": 5,
       "pages": [
-        {
-          "fileName": "about-me.tsx",
-          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/procurement/pages/about-me.tsx",
-          "hooks": [
-            "useAuth"
-          ],
-          "layouts": [
-            "SuperAdminLayout"
-          ],
-          "hasHooks": true,
-          "hasLayout": true,
-          "issues": [
-            "Missing ErrorBoundary wrapper"
-          ],
-          "lineCount": 83,
-          "size": 3032
-        },
         {
           "fileName": "material-request.tsx",
           "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/procurement/pages/material-request.tsx",
@@ -1145,23 +1308,6 @@
     "system": {
       "totalPages": 16,
       "pages": [
-        {
-          "fileName": "about-me.tsx",
-          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/about-me.tsx",
-          "hooks": [
-            "useAuth"
-          ],
-          "layouts": [
-            "SuperAdminLayout"
-          ],
-          "hasHooks": true,
-          "hasLayout": true,
-          "issues": [
-            "Missing ErrorBoundary wrapper"
-          ],
-          "lineCount": 43,
-          "size": 1270
-        },
         {
           "fileName": "api-integration-config.tsx",
           "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/api-integration-config.tsx",
@@ -1357,8 +1503,8 @@
           "issues": [
             "Missing ErrorBoundary wrapper"
           ],
-          "lineCount": 85,
-          "size": 3267
+          "lineCount": 84,
+          "size": 3081
         },
         {
           "fileName": "system-health-dashboard.tsx",
@@ -1415,6 +1561,24 @@
           "size": 19270
         },
         {
+          "fileName": "user-creation.tsx",
+          "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/user-creation.tsx",
+          "hooks": [
+            "useRouter",
+            "useState",
+            "useEffect"
+          ],
+          "layouts": [],
+          "hasHooks": true,
+          "hasLayout": false,
+          "issues": [
+            "Missing ErrorBoundary wrapper",
+            "Console statements found (should be removed in production)"
+          ],
+          "lineCount": 219,
+          "size": 8318
+        },
+        {
           "fileName": "user-management.tsx",
           "filePath": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/user-management.tsx",
           "hooks": [
@@ -1444,6 +1608,13 @@
       "dependencies": 2
     },
     {
+      "name": "useAiChat",
+      "path": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/hooks/useAiChat.ts",
+      "exported": false,
+      "lineCount": 1,
+      "dependencies": 0
+    },
+    {
       "name": "useAuth",
       "path": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/hooks/useAuth.ts",
       "exported": true,
@@ -1463,6 +1634,13 @@
       "exported": true,
       "lineCount": 966,
       "dependencies": 2
+    },
+    {
+      "name": "useOllamaChat",
+      "path": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/hooks/useOllamaChat.ts",
+      "exported": true,
+      "lineCount": 76,
+      "dependencies": 1
     },
     {
       "name": "usePermission",
@@ -1531,12 +1709,46 @@
       "lineCount": 118,
       "hasErrorBoundary": false,
       "isResponsive": true
+    },
+    {
+      "name": "SuperAdminShell",
+      "path": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/components/layouts/SuperAdminShell.tsx",
+      "exported": true,
+      "lineCount": 140,
+      "hasErrorBoundary": false,
+      "isResponsive": false
     }
   ],
-  "pagesWithoutHooks": [],
+  "pagesWithoutHooks": [
+    {
+      "module": "common",
+      "file": "calendar-common.tsx",
+      "path": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/calendar-common.tsx"
+    },
+    {
+      "module": "common",
+      "file": "documentation.tsx",
+      "path": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/documentation.tsx"
+    },
+    {
+      "module": "common",
+      "file": "messages.tsx",
+      "path": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/messages.tsx"
+    },
+    {
+      "module": "common",
+      "file": "security-settings.tsx",
+      "path": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/security-settings.tsx"
+    }
+  ],
   "hookUsageMap": {
     "useAuth": [
-      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/about-me.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/about-me.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/bank-accounts.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/change-password.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/notifications.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/payment-request.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/user-settings.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/approval-workflow-view.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/audit-trail.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/compliance-dashboard.tsx",
@@ -1546,7 +1758,6 @@
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/policy-management.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/regulatory-report-templates.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/vendor-customer-master-legal.tsx",
-      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/finance/pages/about-me.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/finance/pages/bank-reconciliation-execute.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/finance/pages/bank-reconciliation.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/finance/pages/bank-statement-upload.tsx",
@@ -1578,7 +1789,6 @@
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/finance/pages/tax-reports.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/finance/pages/trial-balance.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/finance/pages/vendor-master.tsx",
-      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/about-me.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/asset-register-hub.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/bom-view.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/delivery-note.tsx",
@@ -1592,13 +1802,11 @@
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/stock-entry.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/stock-ledger.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/work-order.tsx",
-      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/procurement/pages/about-me.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/procurement/pages/material-request.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/procurement/pages/purchase-order.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/procurement/pages/purchase-request.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/procurement/pages/supplier-master.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/procurement/pages/supplier-quotation.tsx",
-      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/about-me.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/api-integration-config.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/audit-logs.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/backup-restore.tsx",
@@ -1616,6 +1824,14 @@
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/user-management.tsx"
     ],
     "useState": [
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/ai-assistant.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/bank-accounts.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/change-password.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/help-center.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/modern-calendar.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/notifications.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/user-creation.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/user-settings.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/approval-workflow-view.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/audit-trail.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/compliance-dashboard.tsx",
@@ -1688,12 +1904,30 @@
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/system-health-dashboard.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/system-settings-limited.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/system-settings.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/user-creation.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/user-management.tsx"
+    ],
+    "useEffect": [
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/ai-assistant.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/bank-accounts.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/notifications.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/user-creation.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/user-creation.tsx"
+    ],
+    "useRouter": [
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/user-creation.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/user-creation.tsx"
+    ],
+    "useMemo": [
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/user-settings.tsx"
     ]
   },
   "layoutUsageMap": {
     "SuperAdminLayout": [
-      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/about-me.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/about-me.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/bank-accounts.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/modern-calendar.tsx",
+      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/payment-request.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/approval-workflow-view.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/audit-trail.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/compliance-dashboard.tsx",
@@ -1703,7 +1937,6 @@
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/policy-management.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/regulatory-report-templates.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/vendor-customer-master-legal.tsx",
-      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/finance/pages/about-me.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/finance/pages/bank-reconciliation-execute.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/finance/pages/bank-reconciliation.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/finance/pages/bank-statement-upload.tsx",
@@ -1735,7 +1968,6 @@
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/finance/pages/tax-reports.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/finance/pages/trial-balance.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/finance/pages/vendor-master.tsx",
-      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/about-me.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/asset-register-hub.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/bom-view.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/delivery-note.tsx",
@@ -1749,13 +1981,11 @@
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/stock-entry.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/stock-ledger.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/work-order.tsx",
-      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/procurement/pages/about-me.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/procurement/pages/material-request.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/procurement/pages/purchase-order.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/procurement/pages/purchase-request.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/procurement/pages/supplier-master.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/procurement/pages/supplier-quotation.tsx",
-      "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/about-me.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/api-integration-config.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/audit-logs.tsx",
       "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/backup-restore.tsx",
@@ -1775,7 +2005,91 @@
   },
   "issues": [
     {
-      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/about-me.tsx",
+      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/about-me.tsx",
+      "issues": [
+        "Missing ErrorBoundary wrapper"
+      ]
+    },
+    {
+      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/ai-assistant.tsx",
+      "issues": [
+        "Missing ErrorBoundary wrapper",
+        "Console statements found (should be removed in production)"
+      ]
+    },
+    {
+      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/bank-accounts.tsx",
+      "issues": [
+        "Missing ErrorBoundary wrapper",
+        "Console statements found (should be removed in production)",
+        "Found 4 TODO/FIXME comment(s)"
+      ]
+    },
+    {
+      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/calendar-common.tsx",
+      "issues": [
+        "Missing ErrorBoundary wrapper"
+      ]
+    },
+    {
+      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/change-password.tsx",
+      "issues": [
+        "Missing ErrorBoundary wrapper"
+      ]
+    },
+    {
+      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/documentation.tsx",
+      "issues": [
+        "Missing ErrorBoundary wrapper"
+      ]
+    },
+    {
+      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/help-center.tsx",
+      "issues": [
+        "Missing ErrorBoundary wrapper"
+      ]
+    },
+    {
+      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/messages.tsx",
+      "issues": [
+        "Missing ErrorBoundary wrapper"
+      ]
+    },
+    {
+      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/modern-calendar.tsx",
+      "issues": [
+        "Missing ErrorBoundary wrapper"
+      ]
+    },
+    {
+      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/notifications.tsx",
+      "issues": [
+        "Missing ErrorBoundary wrapper",
+        "Console statements found (should be removed in production)"
+      ]
+    },
+    {
+      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/payment-request.tsx",
+      "issues": [
+        "Missing ErrorBoundary wrapper",
+        "Console statements found (should be removed in production)"
+      ]
+    },
+    {
+      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/security-settings.tsx",
+      "issues": [
+        "Missing ErrorBoundary wrapper"
+      ]
+    },
+    {
+      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/user-creation.tsx",
+      "issues": [
+        "Missing ErrorBoundary wrapper",
+        "Console statements found (should be removed in production)"
+      ]
+    },
+    {
+      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/user-settings.tsx",
       "issues": [
         "Missing ErrorBoundary wrapper"
       ]
@@ -1830,12 +2144,6 @@
     },
     {
       "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/compliance/pages/vendor-customer-master-legal.tsx",
-      "issues": [
-        "Missing ErrorBoundary wrapper"
-      ]
-    },
-    {
-      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/finance/pages/about-me.tsx",
       "issues": [
         "Missing ErrorBoundary wrapper"
       ]
@@ -2027,12 +2335,6 @@
       ]
     },
     {
-      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/about-me.tsx",
-      "issues": [
-        "Missing ErrorBoundary wrapper"
-      ]
-    },
-    {
       "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/operations/pages/asset-register-hub.tsx",
       "issues": [
         "Missing ErrorBoundary wrapper"
@@ -2111,12 +2413,6 @@
       ]
     },
     {
-      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/procurement/pages/about-me.tsx",
-      "issues": [
-        "Missing ErrorBoundary wrapper"
-      ]
-    },
-    {
       "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/procurement/pages/material-request.tsx",
       "issues": [
         "Missing ErrorBoundary wrapper"
@@ -2142,12 +2438,6 @@
     },
     {
       "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/procurement/pages/supplier-quotation.tsx",
-      "issues": [
-        "Missing ErrorBoundary wrapper"
-      ]
-    },
-    {
-      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/about-me.tsx",
       "issues": [
         "Missing ErrorBoundary wrapper"
       ]
@@ -2234,6 +2524,13 @@
       "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/system-settings.tsx",
       "issues": [
         "Missing ErrorBoundary wrapper"
+      ]
+    },
+    {
+      "file": "/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/system/pages/user-creation.tsx",
+      "issues": [
+        "Missing ErrorBoundary wrapper",
+        "Console statements found (should be removed in production)"
       ]
     },
     {

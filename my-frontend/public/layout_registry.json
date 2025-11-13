@@ -1,12 +1,12 @@
 {
   "meta": {
     "version": "1.0.0",
-    "exportedAt": "2025-11-10T16:50:36.820Z",
+    "exportedAt": "2025-11-12T14:42:11.169Z",
     "source": "my-frontend/src/common/config/page-registry.ts",
     "generator": "scripts/export-page-registry.js"
   },
   "statistics": {
-    "totalPages": 86,
+    "totalPages": 87,
     "totalModules": 2,
     "pagesByModule": {
       "system": 15,
@@ -15,10 +15,10 @@
       "procurement": 5,
       "operations": 14,
       "compliance": 9,
-      "common": 11
+      "common": 12
     },
     "pagesByStatus": {
-      "active": 86,
+      "active": 87,
       "coming-soon": 0,
       "disabled": 0
     }
@@ -1412,6 +1412,21 @@
       "status": "active",
       "description": "Manage and approve payment workflow tasks",
       "order": 9,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
+      "id": "common-calendar",
+      "name": "Calendar",
+      "path": "/common/calendar",
+      "module": "common",
+      "status": "active",
+      "description": "View personal and team events",
+      "order": 10,
       "permissions": [
         "authenticated"
       ],

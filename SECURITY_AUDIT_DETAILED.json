@@ -1,25 +1,30 @@
 {
-  "timestamp": "2025-10-20T10:07:13.863Z",
+  "timestamp": "2025-11-13T08:54:32.966Z",
   "critical": [
     {
       "severity": "critical",
       "type": "Hardcoded Credentials",
       "message": "Potential hardcoded credential found: password = 'Password is requir...",
       "file": "CreateFullUserModal.tsx"
+    },
+    {
+      "severity": "critical",
+      "type": "Hardcoded Credentials",
+      "message": "Potential hardcoded credential found: password = 'Password is requir...",
+      "file": "UserFormModal.tsx"
     }
   ],
   "high": [
+    {
+      "type": "Cookie Security",
+      "message": "middleware.ts - Cookies may not be secure",
+      "recommendation": "Use httpOnly and secure flags for cookies"
+    },
     {
       "severity": "high",
       "type": "Insecure Storage",
       "message": "Storing sensitive data in localStorage - use httpOnly cookies",
       "file": "page.tsx"
-    },
-    {
-      "severity": "high",
-      "type": "XSS Risk",
-      "message": "dangerouslySetInnerHTML usage - ensure input is sanitized",
-      "file": "AboutMePage.tsx"
     },
     {
       "severity": "high",
@@ -31,13 +36,25 @@
       "severity": "high",
       "type": "Weak Randomness",
       "message": "Math.random() used for security - use crypto.randomBytes",
+      "file": "CleanChatInterface.tsx"
+    },
+    {
+      "severity": "high",
+      "type": "Weak Randomness",
+      "message": "Math.random() used for security - use crypto.randomBytes",
       "file": "GridDashboard.tsx"
     },
     {
       "severity": "high",
-      "type": "XSS Risk",
-      "message": "dangerouslySetInnerHTML usage - ensure input is sanitized",
-      "file": "HubInchargeApp.tsx"
+      "type": "Weak Randomness",
+      "message": "Math.random() used for security - use crypto.randomBytes",
+      "file": "SystemLogViewer.tsx"
+    },
+    {
+      "severity": "high",
+      "type": "Weak Randomness",
+      "message": "Math.random() used for security - use crypto.randomBytes",
+      "file": "toast.tsx"
     },
     {
       "severity": "high",
@@ -54,6 +71,18 @@
   ],
   "medium": [],
   "low": [
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "usePermissions.ts"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "api.ts"
+    },
     {
       "severity": "low",
       "type": "Information Disclosure",
@@ -82,6 +111,12 @@
       "severity": "low",
       "type": "Information Disclosure",
       "message": "console.log found - may leak sensitive info in production",
+      "file": "[...slug].ts"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
       "file": "useAuth.ts"
     },
     {
@@ -100,13 +135,121 @@
       "severity": "low",
       "type": "Information Disclosure",
       "message": "console.log found - may leak sensitive info in production",
+      "file": "page.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "page.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "page.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "page.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "page.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "page.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "page.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "page.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "page.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "page.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "UserSearch.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "page.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "page.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "page.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "AboutMePage.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "DynamicSidebar.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
       "file": "LayoutRegistryDemo.tsx"
     },
     {
       "severity": "low",
       "type": "Information Disclosure",
       "message": "console.log found - may leak sensitive info in production",
+      "file": "ProtectedPage.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
       "file": "ProtectedRoute.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "MattermostEmbed.tsx"
     },
     {
       "severity": "low",
@@ -143,6 +286,18 @@
       "type": "Information Disclosure",
       "message": "console.log found - may leak sensitive info in production",
       "file": "LayoutProvider.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "bank-accounts.tsx"
+    },
+    {
+      "severity": "low",
+      "type": "Information Disclosure",
+      "message": "console.log found - may leak sensitive info in production",
+      "file": "payment-request.tsx"
     },
     {
       "severity": "low",

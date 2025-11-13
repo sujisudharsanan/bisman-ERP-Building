@@ -1,0 +1,338 @@
+/* stylelint-disable at-rule-no-unknown */
+@import 'tailwindcss/base';
+@import 'tailwindcss/components';
+@import 'tailwindcss/utilities';
+
+/* Theme tokens ------------------------------------------------------------ */
+:root {
+  --bg: #f8fafc; /* page background - light */
+  --panel: #ffffff; /* cards / panels */
+  --card: #ffffff;
+  --text: #0f172a; /* primary text */
+  --muted: #6b7280; /* secondary text */
+  --subtle: #94a3b8; /* subtle separators */
+  --accent: #6366f1; /* primary accent (indigo-500/600 family) */
+  --accent-2: #4f46e5;
+  --badge: #f59e0b; /* notification / badge */
+  --border: #e6e9ef;
+}
+
+[data-theme="dark"] {
+  --bg: #0f172a; /* slate-900 */
+  --panel: rgba(17, 24, 39, 0.6); /* translucent panels */
+  --card: rgba(17, 24, 39, 0.6);
+  --text: #e6eef8; /* near-white for text */
+  --muted: #9ca3af;
+  --subtle: #94a3b8;
+  --accent: #6366f1;
+  --accent-2: #4f46e5;
+  --badge: #f59e0b;
+  --border: rgba(255,255,255,0.06);
+}
+
+/* Base theme-aware elements */
+body {
+  background: var(--bg);
+  color: var(--text);
+  transition: background-color 200ms ease, color 200ms ease;
+}
+
+/* Small utilities to use theme tokens from CSS when needed */
+.bg-theme { background: var(--bg) !important; }
+.bg-panel { background: var(--panel) !important; }
+.bg-card { background: var(--card) !important; }
+.text-theme { color: var(--text) !important; }
+.text-muted { color: var(--muted) !important; }
+.border-theme { border-color: var(--border) !important; }
+.accent { color: var(--accent) !important; }
+.badge-theme { background: var(--badge) !important; color: white !important; }
+.theme-transition { transition: background-color 200ms ease, color 200ms ease, border-color 200ms ease; }
+
+/* Safe area support for iOS devices */
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Utility overrides for dark theme to ensure consistent colors */
+[data-theme="dark"] .text-gray-900,
+[data-theme="dark"] .text-gray-800,
+[data-theme="dark"] .text-slate-900,
+[data-theme="dark"] .text-slate-800,
+[data-theme="dark"] .text-gray-700,
+[data-theme="dark"] .text-gray-600,
+[data-theme="dark"] .text-gray-500,
+[data-theme="dark"] .text-gray-400,
+[data-theme="dark"] .text-gray-300,
+[data-theme="dark"] .text-slate-100,
+[data-theme="dark"] .text-slate-200,
+[data-theme="dark"] .text-white {
+  color: var(--text) !important;
+}
+
+[data-theme="dark"] .text-muted {
+  color: var(--muted) !important;
+}
+
+/* Border color overrides */
+[data-theme="dark"] .border-gray-200,
+[data-theme="dark"] .border-gray-100,
+[data-theme="dark"] .border-white,
+[data-theme="dark"] .border {
+  border-color: var(--border) !important;
+}
+
+/* Ensure card backgrounds follow panel token */
+[data-theme="dark"] .bg-card {
+  background: var(--card) !important;
+}
+
+/* Root responsive setup */
+html {
+  -webkit-text-size-adjust: 100%; /* iOS Safari compatibility */
+  text-size-adjust: 100%; /* Standard for Chrome, Edge, Firefox */
+  font-size: clamp(14px, 2.5vw, 16px); /* Responsive base font size */
+}
+
+html,
+body,
+#__next {
+  height: 100%;
+}
+
+/* Ensure the full viewport background uses the theme token so the outer frame follows dark mode */
+html, body, #__next {
+  background: var(--bg) !important;
+}
+
+body {
+  font-family: Inter, Roboto, sans-serif;
+  line-height: 1.6;
+  margin: 0;
+  padding: 0;
+}
+
+/* Responsive typography */
+h1 {
+  font-size: clamp(1.5rem, 4vw, 2.5rem);
+}
+h2 {
+  font-size: clamp(1.25rem, 3vw, 2rem);
+}
+h3 {
+  font-size: clamp(1.125rem, 2.5vw, 1.5rem);
+}
+h4 {
+  font-size: clamp(1rem, 2vw, 1.25rem);
+}
+
+/* Responsive containers */
+.container {
+  max-width: min(1200px, 90vw);
+  margin: 0 auto;
+  padding: clamp(0.5rem, 2vw, 1rem);
+}
+
+/* Enhanced responsive utilities */
+.flex {
+  display: flex;
+}
+.flex-col {
+  flex-direction: column;
+}
+.flex-wrap {
+  flex-wrap: wrap;
+}
+.items-center {
+  align-items: center;
+}
+.justify-center {
+  justify-content: center;
+}
+.justify-between {
+  justify-content: space-between;
+}
+.h-screen {
+  height: 100vh;
+}
+.min-h-screen {
+  min-height: 100vh;
+}
+.bg-white {
+  /* Use theme-aware panel token so components using bg-white follow dark/light themes */
+  background: var(--panel) !important;
+}
+.rounded {
+  -webkit-border-radius: 0.5rem;
+  -moz-border-radius: 0.5rem;
+  border-radius: 0.5rem;
+}
+.p-6 {
+  padding: clamp(1rem, 3vw, 1.5rem);
+}
+.shadow-xl {
+  -webkit-box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+  -moz-box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 10px 15px rgba(0, 0, 0, 0.1);
+}
+.text-red-500 {
+  color: #ef4444;
+}
+.mb-4 {
+  margin-bottom: 1rem;
+}
+.w-full {
+  width: 100%;
+}
+.rounded-xl {
+  -webkit-border-radius: 1rem;
+  -moz-border-radius: 1rem;
+  border-radius: 1rem;
+}
+
+/* Responsive grid system */
+.grid {
+  display: grid;
+}
+.grid-cols-1 {
+  grid-template-columns: repeat(1, 1fr);
+}
+.gap-4 {
+  gap: 1rem;
+}
+
+/* Mobile-first responsive breakpoints */
+@media (min-width: 768px) {
+  .md\:grid-cols-2 {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .md\:flex-row {
+    flex-direction: row;
+  }
+  .md\:p-8 {
+    padding: 2rem;
+  }
+}
+
+@media (min-width: 1024px) {
+  .lg\:grid-cols-3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+  .lg\:max-w-4xl {
+    max-width: 56rem;
+  }
+}
+
+@media (min-width: 1440px) {
+  .xl\:grid-cols-4 {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  .xl\:max-w-6xl {
+    max-width: 72rem;
+  }
+}
+
+/* Custom scrollbar for dark theme dashboard */
+.custom-scrollbar::-webkit-scrollbar {
+  width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+  background: rgba(31, 41, 55, 0.3);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(99, 102, 241, 0.5);
+  border-radius: 10px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(99, 102, 241, 0.8);
+}
+
+/* Firefox scrollbar */
+.custom-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(99, 102, 241, 0.5) rgba(31, 41, 55, 0.3);
+}
+
+/* Chat Widget Positioning - Ensures proper alignment and prevents overlap */
+@layer utilities {
+  .chat-widget-container {
+    position: fixed;
+    bottom: 1rem;
+    right: 1rem;
+    z-index: 9999;
+    pointer-events: none;
+  }
+  
+  .chat-widget-container > * {
+    pointer-events: auto;
+  }
+
+  .chat-window {
+    position: fixed;
+    bottom: 5.5rem;
+    right: 1rem;
+    width: 367px;
+    max-width: calc(100vw - 2rem);
+    height: 500px;
+    max-height: calc(100vh - 7rem);
+    min-height: 400px;
+    z-index: 9998;
+    display: flex;
+    flex-direction: column;
+    /* Ensure window doesn't overflow on right side */
+    left: auto;
+    overflow: hidden;
+  }
+  
+  /* Ensure chat window fits within viewport on narrow screens */
+  @media (max-width: 400px) {
+    .chat-window {
+      right: 0.5rem;
+      width: calc(100vw - 1rem);
+      max-width: 100%;
+    }
+  }
+  
+  /* Ensure chat window fits within viewport */
+  @media (max-height: 600px) {
+    .chat-window {
+      height: calc(100vh - 7rem);
+      min-height: 300px;
+    }
+  }
+
+  /* Responsive chat positioning */
+  @media (max-width: 768px) {
+    .chat-window {
+      width: calc(100vw - 2rem);
+      right: 1rem;
+      left: 1rem;
+      margin: 0 auto;
+      bottom: 5.5rem;
+      max-height: calc(100vh - 7rem);
+    }
+  }
+
+  /* Smooth slide-in animation */
+  @keyframes slideInFromBottom {
+    from {
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-slide-in {
+    animation: slideInFromBottom 0.2s ease-out;
+  }
+}

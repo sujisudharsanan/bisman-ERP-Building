@@ -104,9 +104,9 @@ export default function UserFormModal({
 
     // Password validation (only for create mode or if password is being changed)
     if (!existingUser && !formData.password) {
-      newErrors.password = 'Password is required';
+      newErrors['password'] = 'Password is required';
     } else if (formData.password && formData.password.length < 8) {
-      newErrors.password = 'Password must be at least 8 characters';
+      newErrors['password'] = 'Password must be at least 8 characters';
     }
 
     // Role validation

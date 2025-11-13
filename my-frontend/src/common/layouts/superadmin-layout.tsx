@@ -10,6 +10,7 @@ import React, { useState } from 'react';
 import { useAuth } from '@/common/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import { Shield, AlertTriangle, Menu, X, LogOut, User as UserIcon } from 'lucide-react';
+import TopNavbar from '@/components/layout/TopNavbar';
 import DynamicSidebar from '@/common/components/DynamicSidebar';
 import DarkModeToggle from '@/components/ui/DarkModeToggle';
 
@@ -74,112 +75,12 @@ export default function SuperAdminLayout({
   };
 
   return (
-  <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-      {/* Top Navigation Bar */}
-      <div className="fixed top-0 left-0 right-0 z-50 bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 shadow-sm">
-        <div className="px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            {/* Left: User Profile, Logo & Menu */}
-            <div className="flex items-center space-x-4">
-              <button
-                onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden p-2 rounded-lg text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800"
-              >
-                {sidebarOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
-              </button>
-              
-              {/* User Profile Section - Top Left */}
-              {user && (
-                <div className="flex items-center space-x-3 pr-4 border-r border-gray-300 dark:border-gray-700">
-                  {/* User Photo */}
-                  <div className="relative w-9 h-9 flex-shrink-0">
-                    {(user as any).profile_photo || (user as any).avatar ? (
-                      <img
-                        src={(user as any).profile_photo || (user as any).avatar}
-                        alt={user.name || user.username || 'User'}
-                        className="w-9 h-9 rounded-full object-cover ring-2 ring-blue-500 dark:ring-blue-400"
-                      />
-                    ) : (
-                      <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 dark:from-blue-600 dark:to-blue-700 flex items-center justify-center ring-2 ring-blue-500 dark:ring-blue-400">
-                        <span className="text-white text-sm font-semibold">
-                          {(user.name || user.username || 'U').charAt(0).toUpperCase()}
-                        </span>
-                      </div>
-                    )}
-                    {/* Online Status Indicator */}
-                    <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 border-2 border-white dark:border-gray-900 rounded-full"></div>
-                  </div>
-                  
-                  {/* User Info */}
-                  <div className="hidden sm:block min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
-                      {user.name || user.username || 'User'}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                      {(user as any).designation || user.roleName || user.role || 'User'}
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              {/* BISMAN Logo and Brand */}
-              <div className="flex items-center space-x-3">
-                {/* Logo Image */}
-                <div className="flex-shrink-0">
-                  <img
-                    src="/brand/bisman-logo.svg"
-                    alt="BISMAN Logo"
-                    className="h-8 w-auto"
-                    onError={(e) => {
-                      // Fallback to Shield icon if logo fails to load
-                      e.currentTarget.style.display = 'none';
-                      const fallback = e.currentTarget.nextElementSibling;
-                      if (fallback) (fallback as HTMLElement).style.display = 'block';
-                    }}
-                  />
-                  <Shield 
-                    className="w-6 h-6 text-blue-600 dark:text-blue-400 hidden" 
-                    style={{ display: 'none' }}
-                  />
-                </div>
-                
-                {/* Brand Name */}
-                <span className="hidden md:block text-lg font-bold text-gray-900 dark:text-gray-100">
-                  BISMAN ERP
-                </span>
-              </div>
-
-              {/* Page Title (Desktop) */}
-              {title && (
-                <div className="hidden lg:block pl-4 border-l border-gray-300 dark:border-gray-700">
-                  <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
-                    {title}
-                  </h1>
-                  {description && (
-                    <p className="text-xs text-gray-500 dark:text-gray-400">
-                      {description}
-                    </p>
-                  )}
-                </div>
-              )}
-            </div>
-
-            {/* Right: Dark Mode & Logout */}
-            <div className="flex items-center space-x-2">
-              <DarkModeToggle />
-
-              <button
-                onClick={handleLogout}
-                className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                title="Logout"
-              >
-                <LogOut className="w-5 h-5" />
-              </button>
-            </div>
-          </div>
-        </div>
-      </div>
-
+  <div
+    className="min-h-screen bg-gray-50 dark:bg-slate-900"
+    style={{ ['--sidebar-width' as any]: '13rem' }}
+  >
+      {/* Standard top navbar for common pages */}
+      <TopNavbar showThemeToggle />
       {/* Mobile Sidebar Overlay */}
       {sidebarOpen && (
         <div
@@ -191,7 +92,7 @@ export default function SuperAdminLayout({
       {/* Sidebar */}
       <aside
         className={`
-          fixed top-16 left-0 bottom-0 z-40 w-52 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800
+          fixed top-11 left-0 bottom-0 z-40 w-52 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-gray-800
           overflow-y-auto transition-transform duration-200 ease-in-out
           ${sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
         `}
@@ -200,15 +101,15 @@ export default function SuperAdminLayout({
       </aside>
 
       {/* Main Content */}
-      <div className="pt-16 lg:pl-52">
+  <div className="lg:pl-52 pt-11">
         {/* Page Header (Mobile) */}
         {(title || description) && (
-          <div className="md:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-4">
+  <div className="md:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-3 sticky top-11 z-30">
             <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">
               {title}
             </h1>
             {description && (
-              <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+        <p className="text-[13px] text-gray-600 dark:text-gray-400 mt-1">
                 {description}
               </p>
             )}
@@ -216,7 +117,7 @@ export default function SuperAdminLayout({
         )}
 
         {/* Content Area */}
-        <div className="p-4 sm:p-6 lg:p-8">
+  <div className="p-3 sm:p-5 lg:p-6">
           {children}
         </div>
       </div>

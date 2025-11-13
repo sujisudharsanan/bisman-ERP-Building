@@ -5,14 +5,13 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { cookies } from 'next/headers';
+import { requireAuthCookie } from '@/lib/apiGuard';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 
 export async function GET(request: NextRequest) {
   try {
-    const cookieStore = cookies();
-    const authToken = cookieStore.get('authToken')?.value;
+  const authToken = requireAuthCookie(['authToken', 'token']);
 
     if (!authToken) {
       return NextResponse.json(
@@ -38,7 +37,7 @@ export async function GET(request: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${cookieStore.get('mattermostToken')?.value}`,
+  'Authorization': `Bearer ${requireAuthCookie(['mattermostToken']) || ''}`,
       },
       body: JSON.stringify({
         term: query,

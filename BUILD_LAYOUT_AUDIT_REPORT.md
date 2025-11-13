@@ -1,6 +1,6 @@
 # 🔍 Build & Layout Audit Report
 
-**Generated:** 2025-10-20T09:18:38.616Z
+**Generated:** 2025-11-13T08:39:01.698Z
 
 ---
 
@@ -8,21 +8,33 @@
 
 | Metric | Count |
 |--------|-------|
-| Total Modules | 5 |
-| Total Pages | 78 |
-| Total Hooks | 10 |
-| Total Layouts | 3 |
-| Pages with Hooks | 78 (100%) |
-| Pages without Hooks | 0 (0%) |
+| Total Modules | 6 |
+| Total Pages | 88 |
+| Total Hooks | 12 |
+| Total Layouts | 4 |
+| Pages with Hooks | 84 (95%) |
+| Pages without Hooks | 4 (5%) |
 
 ## 🎯 Hook Coverage Analysis
+
+### ⚠️ Pages Without Hooks (4)
+
+| Module | Page | Path |
+|--------|------|------|
+| common | calendar-common.tsx | `/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/calendar-common.tsx` |
+| common | documentation.tsx | `/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/documentation.tsx` |
+| common | messages.tsx | `/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/messages.tsx` |
+| common | security-settings.tsx | `/Users/abhi/Desktop/BISMAN ERP/my-frontend/src/modules/common/pages/security-settings.tsx` |
 
 ### 📚 Hook Usage Statistics
 
 | Hook Name | Usage Count |
 |-----------|-------------|
-| useAuth | 78 |
-| useState | 73 |
+| useState | 82 |
+| useAuth | 79 |
+| useEffect | 5 |
+| useRouter | 2 |
+| useMemo | 1 |
 
 ## 🎨 Layout Analysis
 
@@ -43,32 +55,48 @@
   - Has Error Boundary: ❌
   - Responsive: ✅
 
+- **SuperAdminShell**
+  - Lines: 140
+  - Has Error Boundary: ❌
+  - Responsive: ❌
+
 ### Layout Usage
 
 | Layout | Usage Count |
 |--------|-------------|
-| SuperAdminLayout | 78 |
+| SuperAdminLayout | 77 |
 
 ## 📦 Module Breakdown
 
-### compliance (10 pages)
+### common (14 pages)
 
 - Pages with hooks: 10
+- Pages without hooks: 4
+
+**Pages needing hooks:**
+- calendar-common.tsx
+- documentation.tsx
+- messages.tsx
+- security-settings.tsx
+
+### compliance (9 pages)
+
+- Pages with hooks: 9
 - Pages without hooks: 0
 
-### finance (32 pages)
+### finance (31 pages)
 
-- Pages with hooks: 32
+- Pages with hooks: 31
 - Pages without hooks: 0
 
-### operations (14 pages)
+### operations (13 pages)
 
-- Pages with hooks: 14
+- Pages with hooks: 13
 - Pages without hooks: 0
 
-### procurement (6 pages)
+### procurement (5 pages)
 
-- Pages with hooks: 6
+- Pages with hooks: 5
 - Pages without hooks: 0
 
 ### system (16 pages)
@@ -78,9 +106,67 @@
 
 ## ⚠️ Issues & Recommendations
 
-Found 78 files with potential issues:
+Found 88 files with potential issues:
 
 ### about-me.tsx
+
+- ⚠️ Missing ErrorBoundary wrapper
+
+### ai-assistant.tsx
+
+- ⚠️ Missing ErrorBoundary wrapper
+- ⚠️ Console statements found (should be removed in production)
+
+### bank-accounts.tsx
+
+- ⚠️ Missing ErrorBoundary wrapper
+- ⚠️ Console statements found (should be removed in production)
+- ⚠️ Found 4 TODO/FIXME comment(s)
+
+### calendar-common.tsx
+
+- ⚠️ Missing ErrorBoundary wrapper
+
+### change-password.tsx
+
+- ⚠️ Missing ErrorBoundary wrapper
+
+### documentation.tsx
+
+- ⚠️ Missing ErrorBoundary wrapper
+
+### help-center.tsx
+
+- ⚠️ Missing ErrorBoundary wrapper
+
+### messages.tsx
+
+- ⚠️ Missing ErrorBoundary wrapper
+
+### modern-calendar.tsx
+
+- ⚠️ Missing ErrorBoundary wrapper
+
+### notifications.tsx
+
+- ⚠️ Missing ErrorBoundary wrapper
+- ⚠️ Console statements found (should be removed in production)
+
+### payment-request.tsx
+
+- ⚠️ Missing ErrorBoundary wrapper
+- ⚠️ Console statements found (should be removed in production)
+
+### security-settings.tsx
+
+- ⚠️ Missing ErrorBoundary wrapper
+
+### user-creation.tsx
+
+- ⚠️ Missing ErrorBoundary wrapper
+- ⚠️ Console statements found (should be removed in production)
+
+### user-settings.tsx
 
 - ⚠️ Missing ErrorBoundary wrapper
 
@@ -117,10 +203,6 @@ Found 78 files with potential issues:
 - ⚠️ Missing ErrorBoundary wrapper
 
 ### vendor-customer-master-legal.tsx
-
-- ⚠️ Missing ErrorBoundary wrapper
-
-### about-me.tsx
 
 - ⚠️ Missing ErrorBoundary wrapper
 
@@ -248,10 +330,6 @@ Found 78 files with potential issues:
 
 - ⚠️ Missing ErrorBoundary wrapper
 
-### about-me.tsx
-
-- ⚠️ Missing ErrorBoundary wrapper
-
 ### asset-register-hub.tsx
 
 - ⚠️ Missing ErrorBoundary wrapper
@@ -304,10 +382,6 @@ Found 78 files with potential issues:
 
 - ⚠️ Missing ErrorBoundary wrapper
 
-### about-me.tsx
-
-- ⚠️ Missing ErrorBoundary wrapper
-
 ### material-request.tsx
 
 - ⚠️ Missing ErrorBoundary wrapper
@@ -325,10 +399,6 @@ Found 78 files with potential issues:
 - ⚠️ Missing ErrorBoundary wrapper
 
 ### supplier-quotation.tsx
-
-- ⚠️ Missing ErrorBoundary wrapper
-
-### about-me.tsx
 
 - ⚠️ Missing ErrorBoundary wrapper
 
@@ -388,15 +458,20 @@ Found 78 files with potential issues:
 
 - ⚠️ Missing ErrorBoundary wrapper
 
+### user-creation.tsx
+
+- ⚠️ Missing ErrorBoundary wrapper
+- ⚠️ Console statements found (should be removed in production)
+
 ### user-management.tsx
 
 - ⚠️ Missing ErrorBoundary wrapper
 
 ## 🚀 Recommendations
 
-1. **Hook Integration**: 0 pages need hook integration
+1. **Hook Integration**: 4 pages need hook integration
 2. **Error Boundaries**: Ensure all pages have proper error handling
-3. **Code Quality**: Address 78 potential issues
+3. **Code Quality**: Address 88 potential issues
 4. **Performance**: Review pages with multiple inline styles
 5. **Consistency**: Standardize layout usage across modules
 

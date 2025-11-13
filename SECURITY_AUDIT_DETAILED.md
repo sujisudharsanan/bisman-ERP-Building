@@ -1,6 +1,6 @@
 # 🔒 Security Audit Report
 
-**Generated:** 2025-10-20T10:07:13.863Z
+**Generated:** 2025-11-13T08:54:32.966Z
 
 ---
 
@@ -12,10 +12,10 @@
 
 | Severity | Count | Status |
 |----------|-------|--------|
-| 🔴 Critical | 1 | 🚨 |
-| 🟠 High | 7 | ⚠️ |
+| 🔴 Critical | 2 | 🚨 |
+| 🟠 High | 9 | ⚠️ |
 | 🟡 Medium | 0 | ✅ |
-| 🔵 Low | 16 | ℹ️ |
+| 🔵 Low | 39 | ℹ️ |
 
 ## 🚨 Critical Issues
 
@@ -24,17 +24,22 @@
 - **Message:** Potential hardcoded credential found: password = 'Password is requir...
 - **File:** `CreateFullUserModal.tsx`
 
+### 2. Hardcoded Credentials
+
+- **Message:** Potential hardcoded credential found: password = 'Password is requir...
+- **File:** `UserFormModal.tsx`
+
 ## ⚠️ High Priority Issues
 
-### 1. Insecure Storage
+### 1. Cookie Security
+
+- **Message:** middleware.ts - Cookies may not be secure
+- **Fix:** Use httpOnly and secure flags for cookies
+
+### 2. Insecure Storage
 
 - **Message:** Storing sensitive data in localStorage - use httpOnly cookies
 - **File:** `page.tsx`
-
-### 2. XSS Risk
-
-- **Message:** dangerouslySetInnerHTML usage - ensure input is sanitized
-- **File:** `AboutMePage.tsx`
 
 ### 3. Weak Randomness
 
@@ -44,19 +49,29 @@
 ### 4. Weak Randomness
 
 - **Message:** Math.random() used for security - use crypto.randomBytes
+- **File:** `CleanChatInterface.tsx`
+
+### 5. Weak Randomness
+
+- **Message:** Math.random() used for security - use crypto.randomBytes
 - **File:** `GridDashboard.tsx`
-
-### 5. XSS Risk
-
-- **Message:** dangerouslySetInnerHTML usage - ensure input is sanitized
-- **File:** `HubInchargeApp.tsx`
 
 ### 6. Weak Randomness
 
 - **Message:** Math.random() used for security - use crypto.randomBytes
-- **File:** `executive-dashboard.tsx`
+- **File:** `SystemLogViewer.tsx`
 
 ### 7. Weak Randomness
+
+- **Message:** Math.random() used for security - use crypto.randomBytes
+- **File:** `toast.tsx`
+
+### 8. Weak Randomness
+
+- **Message:** Math.random() used for security - use crypto.randomBytes
+- **File:** `executive-dashboard.tsx`
+
+### 9. Weak Randomness
 
 - **Message:** Math.random() used for security - use crypto.randomBytes
 - **File:** `NotificationsProvider.tsx`

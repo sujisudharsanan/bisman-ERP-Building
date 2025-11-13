@@ -1,6 +1,7 @@
 /**
  * Copilate Smart Chat API Routes
- * Webhook endpoint for Mattermost integration
+ * AI-powered chat assistant for BISMAN ERP
+ * Now integrated with Ollama AI backend for intelligent responses
  */
 
 import { Router, Request, Response } from 'express';
@@ -11,7 +12,8 @@ const router = Router();
 
 /**
  * POST /api/copilate/message
- * Main webhook endpoint for processing messages
+ * Main endpoint for AI-powered intelligent chat with spell checking
+ * Features: RBAC enforcement, confidence checking, self-learning, clarification
  */
 router.post('/message', authMiddleware, async (req: Request, res: Response) => {
   try {

@@ -254,10 +254,11 @@ func (bot *ChatBot) processQuery(query string, userID string, token string) stri
 			response = backendResp
 		} else {
 			// Fallback to local response
-			response = bot.generateLocalResponse(intent, context)
+			response = bot.generateLocalResponse(intent)
 		}
 	} else {
-		response = bot.generateLocalResponse(intent, context)
+		var _ []Message = context
+		response = bot.generateLocalResponse(intent)
 	}
 
 	// Add response to history
@@ -267,7 +268,7 @@ func (bot *ChatBot) processQuery(query string, userID string, token string) stri
 }
 
 // Generate local response (fallback)
-func (bot *ChatBot) generateLocalResponse(intent string, context []Message) string {
+func (bot *ChatBot) generateLocalResponse(intent string) string {
 	responses := map[string]string{
 		"invoice_pending":  "I can help you check pending invoices. Please connect to the backend for real-time data.",
 		"invoice_paid":     "I can show you paid invoices. Please connect to the backend for real-time data.",

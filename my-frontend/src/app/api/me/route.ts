@@ -25,9 +25,18 @@ export async function GET(req: NextRequest) {
     const headers = new Headers();
     const setCookies = (res.headers as any).getSetCookie?.() || res.headers.get('set-cookie');
     if (Array.isArray(setCookies)) {
-      for (const c of setCookies) headers.append('set-cookie', c);
+      for (let c of setCookies) {
+        if (!c.includes('HttpOnly')) c += '; HttpOnly';
+        if (process.env.NODE_ENV === 'production' && !c.includes('Secure')) c += '; Secure';
+        if (!c.includes('SameSite')) c += '; SameSite=Lax';
+        headers.append('set-cookie', c);
+      }
     } else if (typeof setCookies === 'string') {
-      headers.set('set-cookie', setCookies);
+      let c = setCookies;
+      if (!c.includes('HttpOnly')) c += '; HttpOnly';
+      if (process.env.NODE_ENV === 'production' && !c.includes('Secure')) c += '; Secure';
+      if (!c.includes('SameSite')) c += '; SameSite=Lax';
+      headers.set('set-cookie', c);
     }
     headers.set('content-type', res.headers.get('content-type') || 'application/json');
 

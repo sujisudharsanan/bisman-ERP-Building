@@ -1,9 +1,16 @@
 /**
  * Copilate Smart Chat Agent Service
  * Handles NLP, confidence checking, RBAC, and self-learning
+ * NOW WITH AI BACKEND INTEGRATION for smarter responses!
  */
 
 import { PrismaClient } from '@prisma/client';
+import {
+  checkAIHealth,
+  enhanceNLPWithAI,
+  generateAIReply,
+  generateClarifyingQuestionWithAI
+} from './aiIntegration';
 
 const prisma = new PrismaClient();
 
@@ -41,6 +48,7 @@ interface Config {
   autoPromoteEnabled: boolean;
   learningEnabled: boolean;
   rbacEnabled: boolean;
+  aiEnabled: boolean; // NEW: AI backend integration toggle
 }
 
 // =====================
@@ -54,7 +62,13 @@ let config: Config = {
   autoPromoteEnabled: false,
   learningEnabled: true,
   rbacEnabled: true,
+  aiEnabled: true, // NEW: Enable AI by default
 };
+
+// Track AI availability
+let aiServerAvailable = false;
+let lastAICheck = 0;
+const AI_CHECK_INTERVAL = 60000; // Check every minute
 
 export async function loadConfig(): Promise<Config> {
   try {
@@ -114,9 +128,9 @@ export async function hasPermission(userId: string, permission: string): Promise
   
   try {
     const result = await prisma.$queryRaw<Array<{ has_permission: boolean }>>`
-      SELECT has_permission(${userId}::uuid, ${permission}) as has_perm
+      SELECT has_permission(${userId}::uuid, ${permission}) as has_permission
     `;
-    return result[0]?.has_perm || false;
+    return result[0]?.has_permission || false;
   } catch (error) {
     console.error('Permission check failed:', error);
     return false;
@@ -128,24 +142,141 @@ export async function hasPermission(userId: string, permission: string): Promise
 // =====================
 
 /**
- * Simple intent detection using keyword matching
- * In production, replace with proper NLP service (OpenAI, Hugging Face, etc.)
+ * Check AI server health periodically
+ */
+async function checkAIAvailability(): Promise<boolean> {
+  const now = Date.now();
+  
+  // Only check if enough time has passed
+  if (now - lastAICheck < AI_CHECK_INTERVAL && lastAICheck > 0) {
+    return aiServerAvailable;
+  }
+  
+  lastAICheck = now;
+  aiServerAvailable = await checkAIHealth();
+  
+  if (aiServerAvailable) {
+    console.log('[Copilate] AI server is available and healthy ✓');
+  } else {
+    console.warn('[Copilate] AI server unavailable, using keyword matching fallback');
+  }
+  
+  return aiServerAvailable;
+}
+
+/**
+ * HYBRID NLP: Keyword matching + AI enhancement
+ * Fast keyword matching for common queries, AI for complex/ambiguous ones
  */
 export async function analyzeMessage(text: string): Promise<NLPAnalysis> {
   const lowerText = text.toLowerCase().trim();
   const words = lowerText.split(/\s+/);
   
-  // Load knowledge base
-  const knowledgeBase = await prisma.$queryRaw<Array<{
-    intent: string;
-    keywords: string[];
-    priority: number;
-  }>>`
-    SELECT intent, keywords, priority
-    FROM knowledge_base
-    WHERE active = true
-    ORDER BY priority DESC
-  `;
+  // STEP 1: Quick keyword matching (always runs, very fast)
+  const quickMatch = await performKeywordMatching(lowerText);
+  
+  // STEP 2: AI Enhancement (only if needed and available)
+  const shouldUseAI = config.aiEnabled 
+    && (quickMatch.confidence < config.confidenceHighThreshold || quickMatch.intent === 'unknown');
+  
+  if (shouldUseAI && await checkAIAvailability()) {
+    try {
+      console.log(`[Copilate] Using AI to enhance NLP (quick match confidence: ${quickMatch.confidence.toFixed(2)})`);
+      
+      const aiEnhanced = await enhanceNLPWithAI(text, {
+        intent: quickMatch.intent,
+        confidence: quickMatch.confidence,
+        keywords: quickMatch.matchedKeywords
+      });
+      
+      // Use AI result if it's more confident
+      if (aiEnhanced.confidence > quickMatch.confidence) {
+        console.log(`[Copilate] AI improved confidence: ${quickMatch.confidence.toFixed(2)} → ${aiEnhanced.confidence.toFixed(2)}`);
+        
+        const unknownTerms = await detectUnknownTerms(words);
+        
+        return {
+          intent: aiEnhanced.intent,
+          entities: aiEnhanced.entities,
+          confidence: aiEnhanced.confidence,
+          unknownTerms,
+          keywords: quickMatch.matchedKeywords
+        };
+      }
+    } catch (error) {
+      console.error('[Copilate] AI enhancement failed, using keyword match:', error);
+    }
+  }
+  
+  // STEP 3: Return keyword match (fallback or high confidence)
+  const entities = extractEntities(text);
+  const unknownTerms = await detectUnknownTerms(words);
+  
+  // Adjust confidence based on unknown terms
+  let finalConfidence = quickMatch.confidence;
+  if (unknownTerms.length > 0) {
+    finalConfidence = Math.min(finalConfidence, 0.70);
+  }
+  
+  return {
+    intent: quickMatch.intent,
+    entities,
+    confidence: finalConfidence,
+    unknownTerms,
+    keywords: quickMatch.matchedKeywords
+  };
+}
+
+/**
+ * Perform fast keyword matching against knowledge base
+ */
+async function performKeywordMatching(lowerText: string): Promise<{
+  intent: string;
+  confidence: number;
+  matchedKeywords: string[];
+}> {
+  // Built-in intents (always available)
+  const builtInIntents = [
+    {
+      intent: 'search_user',
+      keywords: ['find', 'search', 'lookup', 'locate', 'who is'],
+      priority: 10
+    },
+    {
+      intent: 'greeting',
+      keywords: ['hello', 'hi', 'hey', 'good morning', 'good afternoon'],
+      priority: 5
+    },
+    {
+      intent: 'help',
+      keywords: ['help', 'assist', 'support', 'what can you'],
+      priority: 5
+    }
+  ];
+
+  let knowledgeBase = builtInIntents;
+
+  // Try to load from database (if table exists)
+  try {
+    const dbKnowledge = await prisma.$queryRaw<Array<{
+      intent: string;
+      keywords: string[];
+      priority: number;
+    }>>`
+      SELECT intent, keywords, priority
+      FROM knowledge_base
+      WHERE active = true
+      ORDER BY priority DESC
+    `;
+    
+    // Merge DB knowledge with built-in (DB takes precedence)
+    if (dbKnowledge && dbKnowledge.length > 0) {
+      knowledgeBase = [...dbKnowledge, ...builtInIntents];
+    }
+  } catch (error) {
+    // Table doesn't exist or query failed, use built-in intents
+    console.log('[Copilate] Using built-in intents (knowledge_base table not available)');
+  }
   
   let bestMatch = {
     intent: 'unknown',
@@ -170,24 +301,7 @@ export async function analyzeMessage(text: string): Promise<NLPAnalysis> {
     }
   }
   
-  // Extract entities (simple pattern matching)
-  const entities = extractEntities(text);
-  
-  // Detect unknown terms
-  const unknownTerms = await detectUnknownTerms(words);
-  
-  // Adjust confidence based on unknown terms
-  if (unknownTerms.length > 0) {
-    bestMatch.confidence = Math.min(bestMatch.confidence, 0.70);
-  }
-  
-  return {
-    intent: bestMatch.intent,
-    entities,
-    confidence: bestMatch.confidence,
-    unknownTerms,
-    keywords: bestMatch.matchedKeywords
-  };
+  return bestMatch;
 }
 
 function extractEntities(text: string): Array<{ type: string; value: string; confidence: number }> {
@@ -384,17 +498,54 @@ async function handleUnknownTerms(terms: string[], messageId: string): Promise<v
 // =====================
 
 async function generateClarifyingQuestion(analysis: NLPAnalysis, messageId: string): Promise<BotReply> {
+  // Try AI-generated clarifying question for more natural conversation
+  if (config.aiEnabled && aiServerAvailable && analysis.unknownTerms.length > 0) {
+    try {
+      const spellCorrections = (analysis as any).spellCorrections || [];
+      const aiQuestion = await generateClarifyingQuestionWithAI(
+        analysis.unknownTerms.join(', '),
+        analysis.unknownTerms,
+        spellCorrections
+      );
+      
+      console.log('[Copilate] Generated AI clarifying question with Unknown-Term Handler');
+      
+      return {
+        text: aiQuestion,
+        type: 'clarifying',
+        confidence: analysis.confidence,
+        requiresConfirmation: false,
+        metadata: {
+          unknownTerms: analysis.unknownTerms,
+          spellCorrections,
+          messageId,
+          aiGenerated: true,
+          candidateReplyOffered: true // Signal that user can save their clarification
+        }
+      };
+    } catch (error) {
+      console.error('[Copilate] AI clarifying question failed, using fallback');
+    }
+  }
+  
+  // Fallback: Use programmatic question builder
   if (analysis.unknownTerms.length > 0) {
     const term = analysis.unknownTerms[0];
+    const spellCorrections = (analysis as any).spellCorrections || [];
+    const { buildClarifyingQuestion } = require('./aiIntegration');
+    
+    const question = buildClarifyingQuestion(term, spellCorrections);
     
     return {
-      text: `I'm not sure what you mean by "${term}". Could you explain in one sentence, or would you like me to try something else?`,
+      text: question,
       type: 'clarifying',
       confidence: analysis.confidence,
       requiresConfirmation: false,
       metadata: {
-        unknownTerm: term,
-        messageId
+        unknownTerms: analysis.unknownTerms,
+        spellCorrections,
+        messageId,
+        candidateReplyOffered: true
       }
     };
   }
@@ -451,6 +602,77 @@ async function generateSuggestionWithConfirmation(analysis: NLPAnalysis, userId:
 }
 
 async function generateConfidentReply(analysis: NLPAnalysis, userId: string): Promise<BotReply> {
+  // Handle built-in intents directly (without knowledge_base lookup)
+  const builtInIntents = ['search_user', 'find_user', 'greeting', 'help'];
+  
+  if (builtInIntents.includes(analysis.intent)) {
+    // Fetch user data for personalized response
+    const userData = await fetchUserData(analysis.intent, userId, analysis.entities);
+    
+    // Handle built-in intents with AI
+    if (config.aiEnabled && aiServerAvailable) {
+      try {
+        const context = analysis.intent === 'search_user' || analysis.intent === 'find_user'
+          ? `User is searching for someone. Search results: ${JSON.stringify(userData)}`
+          : `Intent: ${analysis.intent}. User data: ${JSON.stringify(userData)}`;
+        
+        const aiReply = await generateAIReply(
+          analysis.intent,
+          userData,
+          '', // No template for built-in intents
+          context
+        );
+        
+        if (aiReply.natural) {
+          console.log(`[Copilate] Using AI-generated reply for built-in intent: ${analysis.intent}`);
+          
+          return {
+            text: aiReply.text,
+            type: 'standard',
+            confidence: aiReply.confidence,
+            requiresConfirmation: false,
+            metadata: {
+              intent: analysis.intent,
+              aiGenerated: true,
+              builtIn: true
+            }
+          };
+        }
+      } catch (error) {
+        console.error('[Copilate] AI reply generation failed for built-in intent, using fallback:', error);
+      }
+    }
+    
+    // Fallback for built-in intents
+    let fallbackText = "I'm here to help!";
+    if (analysis.intent === 'search_user' || analysis.intent === 'find_user') {
+      if (userData && userData.users && userData.users.length > 0) {
+        const userList = userData.users.map((u: any) => `• ${u.username} (${u.email})`).join('\n');
+        fallbackText = `I found ${userData.users.length} user(s) matching "${userData.searchTerm}":\n\n${userList}`;
+      } else if (userData && userData.error) {
+        fallbackText = userData.error;
+      } else {
+        fallbackText = `I couldn't find any users matching "${userData?.searchTerm || 'your search'}"`;
+      }
+    } else if (analysis.intent === 'greeting') {
+      fallbackText = userData && userData[0] ? `Hello ${userData[0].username}! How can I help you today?` : "Hello! How can I assist you?";
+    } else if (analysis.intent === 'help') {
+      fallbackText = "I can help you with:\n• Find users (e.g., 'find admin')\n• Show pending tasks\n• Show dashboard\n• And more!";
+    }
+    
+    return {
+      text: fallbackText,
+      type: 'standard',
+      confidence: analysis.confidence,
+      requiresConfirmation: false,
+      metadata: {
+        intent: analysis.intent,
+        builtIn: true
+      }
+    };
+  }
+  
+  // For other intents, look up in knowledge_base
   const kb = await getKnowledgeBase(analysis.intent);
   
   if (!kb) {
@@ -475,6 +697,45 @@ async function generateConfidentReply(analysis: NLPAnalysis, userId: string): Pr
     }
   }
   
+  // Fetch user data for personalized response
+  const userData = await fetchUserData(analysis.intent, userId, analysis.entities);
+  
+  // Try AI-generated natural reply for better chat experience
+  if (config.aiEnabled && aiServerAvailable && userData) {
+    try {
+      const aiReply = await generateAIReply(
+        analysis.intent,
+        userData,
+        kb.reply_template, // Use template as context
+        `User entities: ${JSON.stringify(analysis.entities)}`
+      );
+      
+      if (aiReply.natural) {
+        console.log('[Copilate] Using AI-generated natural reply');
+        
+        // Update usage
+        await prisma.$queryRaw`
+          SELECT update_knowledge_usage(${kb.id}::uuid)
+        `;
+        
+        return {
+          text: aiReply.text,
+          type: 'standard',
+          confidence: aiReply.confidence,
+          requiresConfirmation: kb.requires_confirmation,
+          metadata: {
+            intent: analysis.intent,
+            knowledgeBaseId: kb.id,
+            aiGenerated: true
+          }
+        };
+      }
+    } catch (error) {
+      console.error('[Copilate] AI reply generation failed, using template fallback:', error);
+    }
+  }
+  
+  // Fallback: Template-based reply
   const reply = await renderTemplate(kb.reply_template, analysis);
   
   // Update usage
@@ -512,6 +773,71 @@ async function checkPermissions(userId: string, requiredPermissions: string[]): 
   if (userPerms.includes('all')) return true;
   
   return requiredPermissions.every(perm => userPerms.includes(perm));
+}
+
+/**
+ * Fetch user-specific data based on intent
+ * Used for generating personalized AI replies
+ */
+async function fetchUserData(intent: string, userId: string, entities?: any[]): Promise<any> {
+  try {
+    switch (intent) {
+      case 'show_pending_tasks':
+        return await prisma.$queryRaw`
+          SELECT COUNT(*) as count FROM payment_requests
+          WHERE approver_id = ${userId}::uuid
+          AND status = 'pending'
+        `;
+      
+      case 'show_payment_requests':
+        return await prisma.$queryRaw`
+          SELECT COUNT(*) as total,
+                 SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending,
+                 SUM(CASE WHEN status = 'approved' THEN 1 ELSE 0 END) as approved
+          FROM payment_requests
+          WHERE requester_id = ${userId}::uuid
+        `;
+      
+      case 'show_notifications':
+        return await prisma.$queryRaw`
+          SELECT COUNT(*) as count FROM notifications
+          WHERE user_id = ${userId}::uuid
+          AND read_at IS NULL
+        `;
+      
+      case 'greeting':
+        return await prisma.$queryRaw`
+          SELECT username, email FROM users
+          WHERE id = ${userId}::uuid
+          LIMIT 1
+        `;
+      
+      case 'search_user':
+      case 'find_user':
+        // Extract name from entities
+        const nameEntity = entities?.find(e => e.type === 'name' || e.type === 'person' || e.type === 'query');
+        if (!nameEntity) {
+          return { error: 'No name provided' };
+        }
+        
+        const searchTerm = `%${nameEntity.value}%`;
+        const users = await prisma.$queryRaw`
+          SELECT id, username, email, created_at
+          FROM users
+          WHERE username ILIKE ${searchTerm}
+             OR email ILIKE ${searchTerm}
+          LIMIT 10
+        `;
+        
+        return { users, searchTerm: nameEntity.value };
+      
+      default:
+        return null;
+    }
+  } catch (error) {
+    console.error(`[Copilate] Failed to fetch user data for intent ${intent}:`, error);
+    return null;
+  }
 }
 
 async function renderTemplate(template: string, analysis: NLPAnalysis): Promise<string> {
