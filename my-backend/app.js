@@ -603,38 +603,6 @@ try {
   console.warn('[app.js] Copilate routes not loaded:', e && e.message)
 }
 
-// Mattermost Chatbot Integration routes (protected - requires authentication)
-try {
-  const mattermostBotRoute = require('./routes/mattermostBot')
-  
-  // Mattermost bot integration endpoints
-  app.use('/api/mattermost', mattermostBotRoute)
-  
-  console.log('[app.js] ✅ Mattermost Bot Integration routes loaded')
-  console.log('[app.js] 🤖 Chatbot can now query real ERP data!')
-} catch (e) {
-  console.warn('[app.js] Mattermost Bot routes not loaded:', e && e.message)
-}
-
-// Reverse proxy /chat -> Mattermost (for embedded UI)
-try {
-  const mmBase = (process.env.MM_URL || process.env.MATTERMOST_URL || '').replace(/\/$/, '')
-  if (mmBase) {
-    app.use('/chat', createProxyMiddleware({
-      target: mmBase,
-      changeOrigin: true,
-      ws: true,
-      pathRewrite: (path) => path.replace(/^\/chat/, ''),
-      logLevel: 'warn'
-    }))
-    console.log('[app.js] ✅ Mattermost proxy enabled at /chat →', mmBase)
-  } else {
-    console.warn('[app.js] Mattermost proxy disabled: MM_URL not set')
-  }
-} catch (e) {
-  console.warn('[app.js] Mattermost proxy error:', e && e.message)
-}
-
 // prisma initialized above
 
 // Health check endpoint - relies on global CORS middleware
