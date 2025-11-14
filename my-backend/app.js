@@ -633,21 +633,60 @@ app.get('/api/me', async (req, res) => {
     if (!secret) return res.status(500).json({ error: 'Server misconfigured: missing token secret' })
 
     const payload = jwt.verify(token, secret)
-    console.log('🔍 /api/me JWT payload:', { id: payload.id, email: payload.email, role: payload.role });
+    console.log('🔍 /api/me JWT payload:', { id: payload.id, email: payload.email, role: payload.role, userType: payload.userType });
     
-    // Fetch user from database to get profile_pic_url and other fresh data
+    // Fetch user from database based on userType to get profile_pic_url and other fresh data
     let dbUser = null;
     try {
-      dbUser = await prisma.user.findUnique({
-        where: { id: payload.id },
-        select: {
-          id: true,
-          email: true,
-          username: true,
-          role: true,
-          profile_pic_url: true,
+      if (payload.userType === 'ENTERPRISE_ADMIN') {
+        dbUser = await prisma.enterpriseAdmin.findUnique({
+          where: { id: payload.id },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            profile_pic_url: true,
+          }
+        });
+        if (dbUser) {
+          dbUser.username = dbUser.name;
+          dbUser.role = 'ENTERPRISE_ADMIN';
         }
-      });
+      } else if (payload.userType === 'SUPER_ADMIN') {
+        dbUser = await prisma.superAdmin.findUnique({
+          where: { id: payload.id },
+          select: {
+            id: true,
+            email: true,
+            name: true,
+            productType: true,
+            profile_pic_url: true,
+          }
+        });
+        if (dbUser) {
+          dbUser.username = dbUser.name;
+          dbUser.role = 'SUPER_ADMIN';
+          // Get assigned modules
+          const moduleAssignments = await prisma.moduleAssignment.findMany({
+            where: { super_admin_id: dbUser.id },
+            include: { module: true }
+          });
+          dbUser.assignedModules = moduleAssignments.map(ma => ma.module.module_name);
+        }
+      } else {
+        dbUser = await prisma.user.findUnique({
+          where: { id: payload.id },
+          select: {
+            id: true,
+            email: true,
+            username: true,
+            role: true,
+            productType: true,
+            profile_pic_url: true,
+            assignedModules: true,
+          }
+        });
+      }
       console.log('📸 Database user profile_pic_url:', dbUser?.profile_pic_url || 'null');
     } catch (dbError) {
       console.warn('⚠️ Could not fetch user from database:', dbError.message);
@@ -666,7 +705,11 @@ app.get('/api/me', async (req, res) => {
       role: roleValue,
       roleName: roleValue, // Frontend expects roleName
       username: dbUser?.username || payload.username || payload.email?.split('@')[0] || null,
+      name: dbUser?.username || dbUser?.name || payload.username || payload.email?.split('@')[0] || null,
       profile_pic_url: dbUser?.profile_pic_url || null,
+      productType: dbUser?.productType || payload.productType || null,
+      assignedModules: dbUser?.assignedModules || [],
+      userType: payload.userType || 'USER',
     }
     
     console.log('✅ /api/me returning user:', { 
@@ -674,6 +717,7 @@ app.get('/api/me', async (req, res) => {
       username: user.username,
       role: user.role, 
       roleName: user.roleName,
+      userType: user.userType,
       profile_pic_url: user.profile_pic_url
     });
     return res.json({ ok: true, user })
