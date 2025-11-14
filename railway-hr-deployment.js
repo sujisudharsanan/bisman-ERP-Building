@@ -109,12 +109,26 @@ async function deployHRUpdates() {
     `);
     
     if (roleCheck.rows[0].table_exists) {
-      await pool.query(`
-        INSERT INTO roles (role_name, description)
-        VALUES ('HR', 'Human Resources Manager')
-        ON CONFLICT (role_name) DO NOTHING
-      `);
-      console.log('✅ HR role ensured in roles table\n');
+      try {
+        // Check if HR role already exists
+        const hrRoleExists = await pool.query(`
+          SELECT * FROM roles WHERE name = 'HR' OR display_name = 'HR'
+        `);
+        
+        if (hrRoleExists.rows.length === 0) {
+          // Insert HR role - adapt to the actual schema
+          await pool.query(`
+            INSERT INTO roles (name, display_name)
+            VALUES ('HR', 'HR Manager')
+            ON CONFLICT (name) DO NOTHING
+          `);
+          console.log('✅ HR role ensured in roles table\n');
+        } else {
+          console.log('✅ HR role already exists in roles table\n');
+        }
+      } catch (err) {
+        console.log('ℹ️  Could not update roles table (may not be needed):', err.message, '\n');
+      }
     } else {
       console.log('ℹ️  Roles table not found - skipping\n');
     }
