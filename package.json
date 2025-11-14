@@ -23,7 +23,7 @@
     "dev:mm": "(command -v docker >/dev/null 2>&1 && docker compose -f devops/mattermost/docker-compose.yml up -d) || echo 'Docker not found; skipping Mattermost dev stack'",
     "dev:mm:down": "docker compose -f devops/mattermost/docker-compose.yml down",
     "dev:ai": "bash scripts/dev-ai.sh",
-    "dev:both": "concurrently -n mm,backend,frontend,ai -c yellow,green,cyan,magenta \"npm:dev:mm\" \"npm:dev:my-backend\" \"npm:dev:frontend:3000\" \"npm:dev:ai\"",
+    "dev:both": "concurrently -n backend,frontend,ai -c green,cyan,magenta \"npm:dev:my-backend\" \"npm:dev:frontend:3000\" \"npm:dev:ai\"",
     "dev:all": "npx concurrently \"npm:dev:api\" \"npm:dev:worker\"",
     "start:dev:watch": "nodemon --watch apps/api --watch libs --exec \"ts-node -r tsconfig-paths/register apps/api/src/main.ts\"",
     "start:dry-run": "node -r ts-node/register apps/api/src/main.ts --dry-run",

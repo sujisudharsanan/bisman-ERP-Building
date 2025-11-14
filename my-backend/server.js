@@ -3,6 +3,8 @@ try { require('dotenv').config(); } catch (_) {}
 
 const path = require('path');
 const express = require('express');
+const http = require('http');
+const { Server } = require('socket.io');
 
 // Load Next.js from production node_modules (not standalone)
 const frontendDir = path.resolve(__dirname, 'frontend');
@@ -28,14 +30,62 @@ const handle = nextApp ? nextApp.getRequestHandler() : null;
 
 async function start() {
   // Create Express server first, before Next preparation
-  const server = express();
-  server.set('trust proxy', 1);
+  const app = express();
+  const server = http.createServer(app);
+  
+  // Initialize Socket.IO with CORS
+  const io = new Server(server, {
+    cors: {
+      origin: [
+        process.env.FRONTEND_URL || 'http://localhost:3000',
+        'http://localhost:3001',
+        process.env.PRODUCTION_URL || 'https://bisman.erp',
+        'https://bisman-erp-frontend.vercel.app',
+        'https://bisman-erp-frontend-production.up.railway.app',
+        'https://bisman-erp-backend-production.up.railway.app'
+      ].filter(Boolean),
+      credentials: true,
+      methods: ['GET', 'POST']
+    }
+  });
+
+  // Socket.IO connection handler
+  io.on('connection', (socket) => {
+    console.log('[socket.io] Client connected:', socket.id);
+    
+    // Send welcome message
+    socket.emit('connected', { 
+      message: 'Connected to BISMAN ERP realtime server',
+      socketId: socket.id 
+    });
+
+    // Handle disconnection
+    socket.on('disconnect', (reason) => {
+      console.log('[socket.io] Client disconnected:', socket.id, '- Reason:', reason);
+    });
+
+    // Handle errors
+    socket.on('error', (error) => {
+      console.error('[socket.io] Socket error:', socket.id, error);
+    });
+  });
+
+  // Inject Socket.IO into task routes
+  try {
+    const { setIO } = require('./routes/taskRoutes');
+    setIO(io);
+    console.log('[startup] ✅ Socket.IO integrated with task routes');
+  } catch (err) {
+    console.warn('[startup] Warning: Task routes not found, Socket.IO not injected');
+  }
+  
+  app.set('trust proxy', 1);
   
   // ============================================================================
   // CRITICAL: Health Check Endpoint - Must be BEFORE app.js middleware
   // ============================================================================
   // This ensures /api/health is always available even if app.js has issues
-  server.get('/api/health', (req, res) => {
+  app.get('/api/health', (req, res) => {
     const origin = req.headers.origin;
     const isProd = process.env.NODE_ENV === 'production';
     
@@ -69,7 +119,7 @@ async function start() {
   });
   
   // Handle OPTIONS preflight for /api/health
-  server.options('/api/health', (req, res) => {
+  app.options('/api/health', (req, res) => {
     const origin = req.headers.origin;
     const isProd = process.env.NODE_ENV === 'production';
     const allowedOrigins = [
@@ -92,7 +142,7 @@ async function start() {
 
   // Mount API routes (may have issues, but healthcheck is already registered)
   try {
-    server.use(apiApp);
+    app.use(apiApp);
     console.log('[startup] API routes mounted');
   } catch (apiError) {
     console.error('[startup] Warning: API routes failed to mount:', apiError.message);
@@ -121,10 +171,10 @@ async function start() {
 
   if (handle) {
     // Let Next handle everything else
-    server.all('*', (req, res) => handle(req, res));
+    app.all('*', (req, res) => handle(req, res));
   } else {
     // Fallback: minimal root route for API-only mode
-    server.get('/', (_req, res) => res.status(200).send('BISMAN ERP API')); 
+    app.get('/', (_req, res) => res.status(200).send('BISMAN ERP API')); 
   }
 
   const port = process.env.PORT || 8080;
@@ -140,6 +190,7 @@ async function start() {
     console.log('='.repeat(70));
     console.log(`📡 Server URL:        http://0.0.0.0:${port}`);
     console.log(`🏥 Health Check:      http://0.0.0.0:${port}/api/health`);
+    console.log(`🔌 Socket.IO:         ENABLED (Realtime updates)`);
     console.log(`🌍 Environment:       ${isProd ? 'PRODUCTION' : 'DEVELOPMENT'}`);
     console.log(`🔒 CORS Enabled:      YES`);
     console.log(`🌐 Allowed Origins:   ${allowedOrigins.join(', ')}`);

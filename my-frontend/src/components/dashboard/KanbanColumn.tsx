@@ -8,9 +8,10 @@ interface KanbanColumnProps {
   tasks: any[];
   showCreate?: boolean;
   onCreate?: () => void;
+  onTaskClick?: (task: any) => void;
 }
 
-const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = false, onCreate }) => {
+const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = false, onCreate, onTaskClick }) => {
   const getTitleColor = (title: string) => {
     const colors: Record<string, string> = {
       'DRAFT': 'text-gray-400',
@@ -54,6 +55,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = 
             comments={task.comments}
             attachments={task.attachments}
             color={task.color}
+            onClick={() => onTaskClick?.(task)}
+            taskData={task}
           />
         ))}
       </div>

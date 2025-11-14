@@ -1,5 +1,6 @@
 "use client";
 import React from 'react';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Message {
   id: number;
@@ -16,6 +17,7 @@ interface ChatMessageProps {
 }
 
 export default function ChatMessage({ message, avatar }: ChatMessageProps) {
+  const { user } = useAuth();
   // Use message.avatar if provided, otherwise use the contact avatar
   const messageAvatar = message.avatar || avatar;
   
@@ -64,23 +66,28 @@ export default function ChatMessage({ message, avatar }: ChatMessageProps) {
       {/* Avatar for sent messages */}
       {message.isMine && (
         <div className="w-6 h-6 rounded-full flex-shrink-0 overflow-hidden bg-blue-100 flex items-center justify-center">
-          <img
-            src="https://i.pravatar.cc/150?img=33"
-            alt="Me"
-            className="w-full h-full object-cover"
-            onError={(e) => {
-              // Fallback to emoji if image fails to load
-              const target = e.currentTarget;
-              target.style.display = 'none';
-              const parent = target.parentElement;
-              if (parent) {
-                const span = document.createElement('span');
-                span.className = 'text-xs';
-                span.textContent = '👤';
-                parent.replaceChildren(span);
-              }
-            }}
-          />
+          {user?.profile_pic_url ? (
+            <img
+              src={user.profile_pic_url.replace('/uploads/', '/api/secure-files/')}
+              alt="Me"
+              className="w-full h-full object-cover"
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.style.display = 'none';
+                const parent = target.parentElement;
+                if (parent) {
+                  const span = document.createElement('span');
+                  span.className = 'text-xs font-bold text-blue-600';
+                  span.textContent = (user.username || user.name || 'U').charAt(0).toUpperCase();
+                  parent.replaceChildren(span);
+                }
+              }}
+            />
+          ) : (
+            <span className="text-xs font-bold text-blue-600">
+              {(user?.username || user?.name || 'U').charAt(0).toUpperCase()}
+            </span>
+          )}
         </div>
       )}
     </div>

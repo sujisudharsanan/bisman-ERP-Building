@@ -126,7 +126,7 @@ export default function HelpSupportPage() {
     { value: 'data_mismatch', label: 'Data mismatch' },
     { value: 'payment_billing', label: 'Payment / Billing' },
     { value: 'approvals_workflow', label: 'Approvals & Workflow' },
-    { value: 'mattermost_chatbot', label: 'Mattermost / Chat bot' },
+    { value: 'ai_assistant', label: 'AI Assistant / Chat' },
     { value: 'calendar_scheduling', label: 'Calendar & Scheduling' },
     { value: 'erp_performance', label: 'ERP performance / lag' },
     { value: 'request_feature', label: 'Request new feature' },

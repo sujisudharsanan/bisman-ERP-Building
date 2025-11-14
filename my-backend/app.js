@@ -35,6 +35,7 @@ const crypto = require('crypto')
 const { logSanitizer } = require('./middleware/logSanitizer')
 const privilegeService = require('./services/privilegeService')
 const TenantGuard = require('./middleware/tenantGuard') // ✅ SECURITY: Multi-tenant isolation
+const { authenticate, requireRole } = require('./middleware/auth') // ✅ Authentication middleware
 
 const app = express()
 
@@ -440,6 +441,17 @@ try {
   }
 }
 
+// Intelligent Chat Engine routes (no external AI, pattern matching + NLP)
+try {
+  const chatRoutes = require('./routes/chatRoutes')
+  app.use('/api/chat', chatRoutes)
+  console.log('✅ Intelligent Chat Engine routes loaded at /api/chat')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Intelligent Chat Engine routes not loaded:', e && e.message)
+  }
+}
+
 // Security monitoring routes (versioned)
 try {
   const securityRoutes = require('./routes/securityRoutes')
@@ -510,6 +522,19 @@ try {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Enterprise Admin Management routes not loaded:', e && e.message)
   }
+}
+
+// Task Workflow System routes (NEW - with Socket.IO realtime updates)
+try {
+  const { router: taskRoutes } = require('./routes/taskRoutes');
+  const approverRoutes = require('./routes/approverRoutes');
+  
+  app.use('/api/tasks', authenticate, taskRoutes);
+  app.use('/api/approvers', authenticate, approverRoutes);
+  
+  console.log('✅ Task Workflow System routes loaded (with Socket.IO realtime)');
+} catch (e) {
+  console.warn('Task Workflow System routes not loaded:', e && e.message);
 }
 
 // Payment Approval System routes (protected)
@@ -823,8 +848,6 @@ if (databaseUrl) {
   // keep pool null so DB routes are disabled
   pool = null
 }
-
-const { authenticate, requireRole } = require('./middleware/auth')
 
 // ✅ SECURITY: Secure file serving with authentication and tenant isolation
 app.get('/api/secure-files/:category/:filename', authenticate, async (req, res) => {

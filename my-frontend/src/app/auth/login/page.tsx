@@ -224,6 +224,18 @@ const DEMO_USERS: DemoUser[] = [
     redirectPath: '/hub-incharge'
   },
   {
+    id: 'hr',
+    name: 'HR Manager',
+    email: 'demo_hr@bisman.demo',
+    password: 'hr123',
+    role: 'HR',
+    department: 'Human Resources',
+    category: 'Operations',
+    icon: <Users className="w-5 h-5" />, 
+    description: 'Employee management, recruitment, payroll',
+    redirectPath: '/hr-dashboard'
+  },
+  {
     id: 'compliance',
     name: 'Compliance',
     email: 'demo_compliance@bisman.demo',

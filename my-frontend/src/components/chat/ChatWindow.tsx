@@ -1,6 +1,6 @@
 "use client";
 import React, { useState, useRef, useEffect } from 'react';
-import { MoreVertical, Send, Smile, Maximize2, Minimize2, Settings, Trash2, Download, Paperclip } from 'lucide-react';
+import { MoreVertical, Send, Smile, Maximize2, Minimize2, Settings, Trash2, Download, Paperclip, X } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
 
@@ -31,11 +31,11 @@ interface ChatWindowProps {
   onExportChat?: () => void;
   onOpenSettings?: () => void;
   onMinimize?: () => void;
+  onClose?: () => void;
   // Optional: receive selected or dropped files for upload
   onFilesSelected?: (files: File[]) => Promise<void> | void;
 }
-
-export default function ChatWindow({ contact, messages, onSendMessage, isLoading, isFullScreen, onToggleFullScreen, onClearChat, onExportChat, onOpenSettings, onMinimize, onFilesSelected }: ChatWindowProps) {
+export default function ChatWindow({ contact, messages, onSendMessage, isLoading, isFullScreen, onToggleFullScreen, onClearChat, onExportChat, onOpenSettings, onMinimize, onClose, onFilesSelected }: ChatWindowProps) {
   const [inputMessage, setInputMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -247,6 +247,15 @@ export default function ChatWindow({ contact, messages, onSendMessage, isLoading
               <svg className="w-4 h-4 text-gray-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
               </svg>
+            </button>
+          )}
+          {!isFullScreen && onClose && (
+            <button
+              onClick={onClose}
+              title="Close chat"
+              className="p-1.5 hover:bg-red-100 rounded-full transition-colors group"
+            >
+              <X className="w-4 h-4 text-gray-600 group-hover:text-red-600" />
             </button>
           )}
           <button className="p-1.5 hover:bg-gray-100 rounded-full transition-colors">

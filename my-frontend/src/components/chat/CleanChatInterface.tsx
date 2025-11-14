@@ -245,50 +245,79 @@ export default function CleanChatInterface() {
   const sendMessage = async () => {
     if (!newMessage.trim()) return;
 
-    // If no user selected, show bot response
+    // If no user selected, use intelligent chat backend
     if (!selectedUser) {
-      const botMessage: Message = {
-        id: `bot-${Date.now()}`,
-        message: getBotResponse(newMessage),
-        user_id: 'bot',
-        create_at: Date.now(),
-        username: 'Spark Assistant',
-        isBot: true
-      };
-      
-      setMessages(prev => [...prev, {
+      // Add user message immediately
+      const userMsg: Message = {
         id: `user-${Date.now()}`,
         message: newMessage,
         user_id: (user as any)?.id || 'current-user',
         create_at: Date.now(),
         username: 'You'
-      }, botMessage]);
+      };
+      setMessages(prev => [...prev, userMsg]);
       
+      const messageToSend = newMessage;
       setNewMessage('');
+
+      try {
+        // Call intelligent chat backend
+        const response = await fetch('/api/chat/message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            message: messageToSend,
+            userId: (user as any)?.id || 'guest',
+            userName: (user as any)?.name || (user as any)?.fullName || 'User',
+            context: {
+              role: (user as any)?.role || (user as any)?.roleName,
+              email: (user as any)?.email
+            }
+          })
+        });
+
+        if (response.ok) {
+          const data = await response.json();
+          const botMessage: Message = {
+            id: `bot-${Date.now()}`,
+            message: data.reply || data.message || "I'm here to help! Could you rephrase that?",
+            user_id: 'bot',
+            create_at: Date.now(),
+            username: 'Spark Assistant',
+            isBot: true
+          };
+          setMessages(prev => [...prev, botMessage]);
+        } else {
+          // Fallback to local response on error
+          const botMessage: Message = {
+            id: `bot-${Date.now()}`,
+            message: getBotResponse(messageToSend),
+            user_id: 'bot',
+            create_at: Date.now(),
+            username: 'Spark Assistant',
+            isBot: true
+          };
+          setMessages(prev => [...prev, botMessage]);
+        }
+      } catch (error) {
+        console.error('[CleanChat] Failed to get intelligent response, using fallback:', error);
+        // Fallback to local response on error
+        const botMessage: Message = {
+          id: `bot-${Date.now()}`,
+          message: getBotResponse(messageToSend),
+          user_id: 'bot',
+          create_at: Date.now(),
+          username: 'Spark Assistant',
+          isBot: true
+        };
+        setMessages(prev => [...prev, botMessage]);
+      }
       return;
     }
 
-    // Send to Mattermost if user is selected
-    if (!activeChannel) return;
-
-    try {
-      const response = await fetch('/api/mattermost/send-message', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          channelId: activeChannel.id,
-          message: newMessage
-        })
-      });
-
-      if (response.ok) {
-        setNewMessage('');
-        // Reload messages to show the new one
-        await loadMessages(activeChannel.id);
-      }
-    } catch (error) {
-      console.error('[CleanChat] Failed to send message:', error);
-    }
+    // Team chat disabled - only Spark Assistant bot available
+    // If you want to enable team chat, integrate a different messaging system
+    console.log('[CleanChat] Team member chat not available. Use Spark Assistant instead.');
   };
 
   // Friendly bot conversation database
