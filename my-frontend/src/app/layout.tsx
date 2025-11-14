@@ -6,7 +6,6 @@ import { AuthProvider } from '../contexts/AuthContext';
 import { PermissionProvider } from '../contexts/PermissionContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import GlobalRouteLoader from '@/components/loading/GlobalRouteLoader';
-import FloatingBottomNav from '@/components/ui/FloatingBottomNav';
 import HealthBoot from '@/components/dev/HealthBoot';
 import RenderLogger from '@/components/debug/RenderLogger';
 import { ToastProvider } from '@/components/ui/toast';
@@ -44,8 +43,6 @@ export default function RootLayout({
               </div>
               {/* Global route change loader shown on every page */}
               <GlobalRouteLoader />
-              {/* Auth-only floating bottom navigation */}
-              <FloatingBottomNav />
               {/* Health check bootstraper (client-only) */}
               <HealthBoot />
               {/* Chat widget guarded: hidden on public routes and when not authenticated */}

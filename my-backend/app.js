@@ -441,7 +441,10 @@ try {
   }
 }
 
+// ===== OLD CHAT SYSTEMS - DISABLED IN FAVOR OF UNIFIED CHAT =====
 // Intelligent Chat Engine routes (no external AI, pattern matching + NLP)
+// DISABLED: Consolidated into Unified Chat System
+/*
 try {
   const chatRoutes = require('./routes/chatRoutes')
   app.use('/api/chat', chatRoutes)
@@ -449,6 +452,33 @@ try {
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Intelligent Chat Engine routes not loaded:', e && e.message)
+  }
+}
+*/
+
+// Enhanced AI Training routes (self-learning, spelling, guidance)
+// DISABLED: Consolidated into Unified Chat System (now database-driven)
+/*
+try {
+  const aiTrainingRoutes = require('./routes/ai-training')
+  app.use('/api/ai', aiTrainingRoutes)
+  console.log('✅ AI Training & Enhanced Chat routes loaded at /api/ai')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('AI Training routes not loaded:', e && e.message)
+  }
+}
+*/
+// ===== END OLD CHAT SYSTEMS =====
+
+// Unified Chat System (Database-driven with RBAC + HumanizeService)
+try {
+  const unifiedChatRoutes = require('./routes/unified-chat')
+  app.use('/api/unified-chat', unifiedChatRoutes)
+  console.log('✅ Unified Chat System routes loaded at /api/unified-chat')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Unified Chat routes not loaded:', e && e.message)
   }
 }
 
@@ -588,17 +618,19 @@ try {
 }
 
 // AI Module routes (protected - requires authentication)
+// NOTE: Previously had duplicate route conflict with Enhanced AI Training at /api/ai
+// If LangChain features needed, consider integrating into Unified Chat or use different endpoint
 try {
   const aiRoute = require('./routes/aiRoute')
   const aiAnalyticsRoute = require('./routes/aiAnalyticsRoute')
   
-  // AI query endpoints
-  app.use('/api/ai', aiRoute)
+  // AI query endpoints - Changed to /api/langchain to avoid conflicts
+  app.use('/api/langchain', aiRoute)
   
   // AI analytics endpoints
   app.use('/api/ai/analytics', aiAnalyticsRoute)
   
-  console.log('[app.js] ✅ AI Module routes loaded')
+  console.log('[app.js] ✅ AI Module routes loaded at /api/langchain')
 } catch (e) {
   console.warn('[app.js] AI Module routes not loaded:', e && e.message)
   console.warn('[app.js] Install dependencies: npm install langchain node-cron')

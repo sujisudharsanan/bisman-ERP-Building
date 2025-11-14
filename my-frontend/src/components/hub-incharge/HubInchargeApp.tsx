@@ -1780,7 +1780,8 @@ export default function HubInchargeApp() {
       {/* Active Page */}
       <main className="flex-1 overflow-y-auto">{pages[activeTab]}</main>
 
-      {/* Bottom Navigation (hidden on small screens to avoid overlap with FloatingBottomNav) */}
+      {/* Bottom Navigation - DISABLED: Using top navigation bar only */}
+      {/* 
       <nav className="bg-white dark:bg-gray-900 shadow-inner border-t border-gray-100 dark:border-gray-800 hidden md:block">
         <div className="flex justify-around py-2 overflow-x-auto">
           {navItems.map(tab => (
@@ -1799,6 +1800,7 @@ export default function HubInchargeApp() {
           ))}
         </div>
       </nav>
+      */}
     </div>
   );
 }
