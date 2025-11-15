@@ -5,7 +5,7 @@ import Link from 'next/link';
 import SuperAdminShell from '@/components/layouts/SuperAdminShell';
 import { 
   FileText, Download, Search, Filter, AlertTriangle, 
-  CheckCircle, Users, Package, TrendingUp, Eye, EyeOff
+  CheckCircle, Users, Package, TrendingUp, Eye, EyeOff, ExternalLink
 } from 'lucide-react';
 
 interface Role {
@@ -272,9 +272,20 @@ export default function PagesRolesReportPage() {
               </h3>
               <div className="space-y-2">
                 {reportData.mostUsedPages.map((page, index) => (
-                  <div key={index} className="flex items-center justify-between text-sm">
+                  <div key={index} className="flex items-center justify-between text-sm group">
                     <span className="text-gray-700 dark:text-gray-300 truncate">{page.name}</span>
-                    <span className="text-gray-500 dark:text-gray-400 ml-2">{page.roleCount} roles</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500 dark:text-gray-400">{page.roleCount} roles</span>
+                      <Link
+                        href={page.path}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded"
+                        title={`Open ${page.name}`}
+                      >
+                        <ExternalLink className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                      </Link>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -287,9 +298,20 @@ export default function PagesRolesReportPage() {
               </h3>
               <div className="space-y-2">
                 {reportData.leastUsedPages.map((page, index) => (
-                  <div key={index} className="flex items-center justify-between text-sm">
+                  <div key={index} className="flex items-center justify-between text-sm group">
                     <span className="text-gray-700 dark:text-gray-300 truncate">{page.name}</span>
-                    <span className="text-gray-500 dark:text-gray-400 ml-2">{page.roleCount} role{page.roleCount !== 1 ? 's' : ''}</span>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500 dark:text-gray-400">{page.roleCount} role{page.roleCount !== 1 ? 's' : ''}</span>
+                      <Link
+                        href={page.path}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded"
+                        title={`Open ${page.name}`}
+                      >
+                        <ExternalLink className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                      </Link>
+                    </div>
                   </div>
                 ))}
               </div>
@@ -418,15 +440,29 @@ export default function PagesRolesReportPage() {
                       )}
                     </div>
                     
-                    <div className="flex items-center gap-4">
+                    <div className="flex items-center gap-3">
                       <div className="text-right">
                         <p className="text-sm font-medium text-gray-900 dark:text-gray-100">
                           {page.roleCount} {page.roleCount === 1 ? 'Role' : 'Roles'}
                         </p>
                       </div>
+                      
+                      {/* Open Page Link */}
+                      <Link
+                        href={page.path}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors group"
+                        title={`Open ${page.name}`}
+                      >
+                        <ExternalLink className="w-4 h-4 text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300" />
+                      </Link>
+                      
+                      {/* Toggle Details Button */}
                       <button
                         onClick={() => togglePageExpanded(page.id)}
                         className="p-2 hover:bg-gray-200 dark:hover:bg-gray-600 rounded transition-colors"
+                        title={expandedPages.has(page.id) ? 'Hide details' : 'Show details'}
                       >
                         {expandedPages.has(page.id) ? (
                           <EyeOff className="w-4 h-4 text-gray-600 dark:text-gray-400" />

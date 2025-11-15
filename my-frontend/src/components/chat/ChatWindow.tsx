@@ -180,22 +180,15 @@ export default function ChatWindow({ contact, messages, onSendMessage, isLoading
       {/* Header */}
       <div className="bg-white border-b border-gray-200 px-3 py-2.5 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
-          {contact.id === 0 ? (
-            // Bot avatar with gradient background and guaranteed visibility
-            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-xl">🤖</span>
-            </div>
-          ) : (
-            <img
-              src={contact.avatar}
-              alt={contact.name}
-              className="w-8 h-8 rounded-full object-cover"
-              onError={(e) => {
-                const target = e.currentTarget;
-                target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random`;
-              }}
-            />
-          )}
+          <img
+            src={contact.avatar}
+            alt={contact.name}
+            className="w-8 h-8 rounded-full object-cover"
+            onError={(e) => {
+              const target = e.currentTarget;
+              target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random`;
+            }}
+          />
           <div>
             <h3 className="text-sm font-semibold text-gray-900">{contact.name}</h3>
             <p className="text-[10px] text-green-500">{contact.online ? 'Online' : 'Offline'}</p>
@@ -273,9 +266,11 @@ export default function ChatWindow({ contact, messages, onSendMessage, isLoading
         {/* Loading indicator */}
         {isLoading && (
           <div className="flex items-start gap-2">
-            <div className="w-6 h-6 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center flex-shrink-0">
-              <span className="text-white text-sm">🤖</span>
-            </div>
+            <img
+              src={contact.avatar}
+              alt={contact.name}
+              className="w-6 h-6 rounded-full object-cover flex-shrink-0"
+            />
             <div className="bg-white px-3 py-2 rounded-2xl shadow-sm">
               <div className="flex gap-1">
                 <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>

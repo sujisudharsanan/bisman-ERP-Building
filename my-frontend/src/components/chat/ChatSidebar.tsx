@@ -86,21 +86,15 @@ export default function ChatSidebar({ contacts, activeContact, onSelectContact, 
                 title={contact.name}
               >
                 <div className="relative">
-                  {contact.id === 0 ? (
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                      <span className="text-white text-xl">🤖</span>
-                    </div>
-                  ) : (
-                    <img
-                      src={contact.avatar}
-                      alt={contact.name}
-                      className="w-8 h-8 rounded-full object-cover"
-                      onError={(e) => {
-                        const target = e.currentTarget as HTMLImageElement;
-                        target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random`;
-                      }}
-                    />
-                  )}
+                  <img
+                    src={contact.avatar}
+                    alt={contact.name}
+                    className="w-8 h-8 rounded-full object-cover"
+                    onError={(e) => {
+                      const target = e.currentTarget as HTMLImageElement;
+                      target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random`;
+                    }}
+                  />
                   {contact.online && (
                     <div className="absolute bottom-0 right-0 w-2 h-2 bg-green-400 rounded-full border border-slate-700"></div>
                   )}
@@ -173,22 +167,15 @@ export default function ChatSidebar({ contacts, activeContact, onSelectContact, 
           >
             <div className="flex items-start gap-2">
               <div className="relative flex-shrink-0">
-                {contact.id === 0 ? (
-                  // Special bot avatar with gradient background and guaranteed visibility
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                    <span className="text-white text-xl">🤖</span>
-                  </div>
-                ) : (
-                  <img
-                    src={contact.avatar}
-                    alt={contact.name}
-                    className="w-8 h-8 rounded-full object-cover"
-                    onError={(e) => {
-                      const target = e.currentTarget;
-                      target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random`;
-                    }}
-                  />
-                )}
+                <img
+                  src={contact.avatar}
+                  alt={contact.name}
+                  className="w-8 h-8 rounded-full object-cover"
+                  onError={(e) => {
+                    const target = e.currentTarget;
+                    target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random`;
+                  }}
+                />
                 {contact.online && (
                   <div className="absolute bottom-0 right-0 w-2 h-2 bg-green-400 rounded-full border border-slate-700"></div>
                 )}

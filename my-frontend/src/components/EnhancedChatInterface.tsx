@@ -63,8 +63,8 @@ export default function EnhancedChatInterface({
   const sendGreeting = async () => {
     setLoading(true);
     try {
-      // Use new unified chat greeting endpoint
-      const response = await fetch('/api/unified-chat/greeting', {
+      // Use new ULTIMATE chat greeting endpoint (all features combined!)
+      const response = await fetch('/api/chat/greeting', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -120,8 +120,8 @@ export default function EnhancedChatInterface({
     setLoading(true);
 
     try {
-      // Use new unified chat message endpoint
-      const response = await fetch('/api/unified-chat/message', {
+      // Use new ULTIMATE chat message endpoint (NLP + Self-learning + Human-like!)
+      const response = await fetch('/api/chat/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -160,14 +160,15 @@ export default function EnhancedChatInterface({
 
   const sendFeedback = async (messageId: string, helpful: boolean) => {
     try {
-      // Use new unified chat feedback endpoint
-      await fetch('/api/unified-chat/feedback', {
+      // Use new ULTIMATE chat feedback endpoint (feeds into self-learning!)
+      await fetch('/api/chat/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           userId: parseInt(userId),
-          messageId: parseInt(messageId),
-          feedbackType: helpful ? 'positive' : 'negative'
+          interactionId: parseInt(messageId), // Changed to match new API
+          feedbackType: helpful ? 'thumbs_up' : 'thumbs_down', // New format
+          comment: helpful ? 'helpful' : 'not helpful'
         })
       });
       
@@ -453,7 +454,7 @@ export default function EnhancedChatInterface({
             onChange={(e) => setInput(e.target.value)}
             onKeyPress={(e) => e.key === 'Enter' && sendMessage()}
             placeholder="Type your message..."
-            className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none"
+            className="flex-1 px-4 py-3 border border-gray-300 rounded-xl focus:ring-2 focus:ring-purple-500 focus:border-transparent outline-none text-black"
           />
           <button
             onClick={() => sendMessage()}

@@ -195,19 +195,23 @@ router.get('/', authenticate, async (req, res) => {
       });
     }
 
-    // Regular users
-    const userPages = await prisma.userPage.findMany({
-      where: {
-        user_id: userId
-      },
-      select: {
-        page_key: true
-      }
-    });
+    // Regular users - Query rbac_user_permissions table (raw SQL)
+    const result = await prisma.$queryRaw`
+      SELECT allowed_pages 
+      FROM rbac_user_permissions 
+      WHERE user_id = ${userId}
+    `;
 
-    const allowedPages = userPages.map(up => up.page_key);
+    let allowedPages = [];
+    if (result && result.length > 0 && result[0].allowed_pages) {
+      allowedPages = result[0].allowed_pages;
+    }
+
     // Add common pages
-    allowedPages.push('about-me', 'common-profile');
+    if (!allowedPages.includes('about-me')) allowedPages.push('about-me');
+    if (!allowedPages.includes('common-profile')) allowedPages.push('common-profile');
+
+    console.log(`✅ [PERMISSIONS] User ${userId} has ${allowedPages.length} pages:`, allowedPages);
 
     return res.json({
       success: true,
@@ -222,6 +226,89 @@ router.get('/', authenticate, async (req, res) => {
     return res.status(500).json({
       success: false,
       error: 'Failed to fetch permissions',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/permissions
+ * Save page permissions for a user or role
+ */
+router.post('/', authenticate, async (req, res) => {
+  try {
+    const { userId, roleId, roleName, moduleName, allowedPages } = req.body;
+    const userRole = (req.user.role || '').toUpperCase();
+
+    console.log(`💾 [SAVE PERMISSIONS] Request:`, { userId, roleId, roleName, moduleName, allowedPages: allowedPages?.length });
+
+    // Validate input
+    if (!allowedPages || !Array.isArray(allowedPages)) {
+      return res.status(400).json({
+        success: false,
+        error: 'allowedPages must be an array'
+      });
+    }
+
+    if (!userId && !roleId && !roleName) {
+      return res.status(400).json({
+        success: false,
+        error: 'userId, roleId, or roleName is required'
+      });
+    }
+
+    // Determine target user ID
+    let targetUserId = userId;
+    
+    if (!targetUserId && (roleId || roleName)) {
+      // If roleId/roleName provided, find a user with that role
+      const roleQuery = roleId 
+        ? await prisma.user.findFirst({ where: { role: roleId } })
+        : await prisma.user.findFirst({ where: { role: roleName } });
+      
+      if (roleQuery) {
+        targetUserId = roleQuery.id;
+      } else {
+        return res.status(404).json({
+          success: false,
+          error: `No user found with role: ${roleId || roleName}`
+        });
+      }
+    }
+
+    // Save to rbac_user_permissions table
+    await prisma.$executeRaw`
+      INSERT INTO rbac_user_permissions (user_id, role_name, allowed_pages, created_at, updated_at)
+      VALUES (
+        ${targetUserId},
+        ${roleName || 'CUSTOM'},
+        ${allowedPages}::text[],
+        NOW(),
+        NOW()
+      )
+      ON CONFLICT (user_id)
+      DO UPDATE SET
+        allowed_pages = EXCLUDED.allowed_pages,
+        role_name = EXCLUDED.role_name,
+        updated_at = NOW()
+    `;
+
+    console.log(`✅ [PERMISSIONS SAVED] User ${targetUserId}: ${allowedPages.length} pages`);
+
+    return res.json({
+      success: true,
+      message: 'Permissions saved successfully',
+      data: {
+        userId: targetUserId,
+        allowedPages
+      }
+    });
+
+  } catch (error) {
+    console.error('❌ [SAVE PERMISSIONS ERROR]:', error);
+    return res.status(500).json({
+      success: false,
+      error: 'Failed to save permissions',
       message: error.message
     });
   }

@@ -160,6 +160,9 @@ export default function CleanChatInterface() {
 
         // Step 4: Load user's ERP data (tasks, payments, notifications)
         await loadUserData();
+
+        // Step 5: Load personalized greeting with user's name and tasks
+        await loadPersonalizedGreeting();
         
       } catch (error) {
         console.error('[CleanChat] Initialization error:', error);
@@ -207,6 +210,38 @@ export default function CleanChatInterface() {
       }
     } catch (error) {
       console.error('[CleanChat] Failed to load user data:', error);
+    }
+  };
+
+  // Load personalized greeting from backend
+  const loadPersonalizedGreeting = async () => {
+    try {
+      const userId = (user as any)?.id;
+      if (!userId) return;
+
+      const response = await fetch('/api/chat/greeting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: parseInt(userId) })
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        if (data.success && data.greeting) {
+          // Add personalized greeting as first message
+          const greetingMessage: Message = {
+            id: `greeting-${Date.now()}`,
+            message: data.greeting,
+            user_id: 'bot',
+            create_at: Date.now(),
+            username: 'Spark Assistant',
+            isBot: true
+          };
+          setMessages([greetingMessage]);
+        }
+      }
+    } catch (error) {
+      console.error('[CleanChat] Failed to load personalized greeting:', error);
     }
   };
 
@@ -799,7 +834,7 @@ export default function CleanChatInterface() {
                     }}
                     placeholder={selectedUser ? `Message ${selectedUser.name}...` : "Chat with Spark Assistant..."}
                     rows={1}
-                    className="w-full px-4 py-3 bg-transparent resize-none focus:outline-none text-gray-900 dark:text-white max-h-32 overflow-y-auto"
+                    className="w-full px-4 py-3 bg-transparent resize-none focus:outline-none text-gray-900 dark:text-white placeholder-gray-400 dark:placeholder-gray-500 max-h-32 overflow-y-auto"
                     style={{ minHeight: '44px' }}
                   />
                   <div className="flex items-center gap-2 px-3 pb-2">

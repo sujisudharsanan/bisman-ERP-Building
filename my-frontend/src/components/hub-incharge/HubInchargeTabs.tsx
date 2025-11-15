@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { useSearchParams, useRouter } from 'next/navigation';
-import dynamic from 'next/dynamic';
+// import dynamic from 'next/dynamic'; // DISABLED: No longer needed since DashboardApp is disabled
 import { useAuth } from '@/common/hooks/useAuth';
 import {
   Home,
@@ -149,20 +149,31 @@ export default function HubInchargeTabs() {
         </div>
       </nav>
 
-      {/* Embedded HubInchargeApp content (header/nav hidden) */}
+      {/* DISABLED: Embedded DashboardApp content (no longer needed) */}
+      {/* 
       <div className="hub-incharge-embed mt-3">
         <EmbeddedHubIncharge />
       </div>
       <style>{`.hub-incharge-embed header, .hub-incharge-embed nav { display:none !important; } .hub-incharge-embed main { padding: 0 !important; }`}</style>
+      */}
+      
+      {/* Placeholder message */}
+      <div className="mt-6 p-8 bg-gray-50 dark:bg-gray-800 rounded-lg text-center">
+        <p className="text-gray-600 dark:text-gray-400">
+          DashboardApp has been disabled. Use the sidebar navigation or /hub-incharge route for task management.
+        </p>
+      </div>
     </div>
   );
 }
 
+/* DISABLED: DashboardApp component
 const EmbeddedHubIncharge = dynamic(
-  // load the full HubInchargeApp but render only its main content (we hide its header/nav)
-  () => import('@/components/hub-incharge/HubInchargeApp').then(mod => mod.default),
+  // load the full DashboardApp but render only its main content (we hide its header/nav)
+  () => import('@/components/hub-incharge/DashboardApp').then(mod => mod.default),
   { ssr: false, loading: () => <div className="py-6 text-sm text-muted">Loading hub content...</div> }
 );
+*/
 
 // Static bottom bar to mimic Excel-like sheet tabs
 export function HubInchargeBottomBar() {

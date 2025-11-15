@@ -1,8 +1,9 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { safeFetch } from '@/lib/safeFetch';
 import { useAuth } from '@/contexts/AuthContext';
 import dynamic from 'next/dynamic';
+import { motion, AnimatePresence } from 'framer-motion';
 
 // Import Spark AI logic
 import { getSparkAIResponse, loadUserERPData } from '@/utils/sparkAI';
@@ -11,6 +12,7 @@ import { getSparkAIResponse, loadUserERPData } from '@/utils/sparkAI';
 import ChatSidebar from './chat/ChatSidebar';
 import ChatWindow from './chat/ChatWindow';
 import { uploadFiles } from '@/lib/attachments';
+import BismanFloatingWidget from './BismanFloatingWidget';
 
 const TawkInline = dynamic(() => import('./TawkInline'), { ssr: false });
 
@@ -45,6 +47,9 @@ export default function ERPChatWidget({ userName }: { userName?: string }) {
   const { user } = useAuth();
   if (!user) return null;
   
+  const chatWindowRef = useRef<HTMLDivElement>(null);
+  const chatButtonRef = useRef<HTMLButtonElement>(null);
+  
   const [open, setOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
   const [iconState, setIconState] = useState<'idle'|'attentive'|'listening'|'thinking'|'notify'>('idle');
@@ -64,6 +69,33 @@ export default function ERPChatWidget({ userName }: { userName?: string }) {
   useEffect(() => {
     loadUserERPData().then(data => setUserData(data));
   }, []);
+
+  // Handle click outside to close chat
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      // Don't close if clicking the chat button or if chat is in fullscreen
+      if (isFullScreen) return;
+      
+      const target = event.target as Node;
+      if (
+        open &&
+        chatWindowRef.current &&
+        chatButtonRef.current &&
+        !chatWindowRef.current.contains(target) &&
+        !chatButtonRef.current.contains(target)
+      ) {
+        setOpen(false);
+        setIconState('idle');
+      }
+    };
+
+    if (open && !isFullScreen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      return () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }
+  }, [open, isFullScreen]);
 
   // Internal messages feature removed: keep unread at 0 and avoid polling
   useEffect(() => {
@@ -162,48 +194,22 @@ export default function ERPChatWidget({ userName }: { userName?: string }) {
     <div className="chat-widget-container">
       {/* Floating Chat Button - Hidden when chat is open */}
       {!open && (
-        <button
-          onMouseEnter={() => setIconState('attentive')}
-          onMouseLeave={() => unreadCount > 0 ? setIconState('notify') : setIconState('idle')}
-          onClick={() => { setOpen(true); setIconState('listening'); }}
-          className={`rounded-full transition-all duration-300 relative ${
-            iconState === 'attentive' ? 'scale-110 shadow-2xl' : 'shadow-xl'
-          } ${iconState === 'notify' ? 'animate-bounce' : ''} hover:scale-110`}
-          aria-label="Open Chat"
-        >
-        <div className={`relative w-16 h-16 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 p-3 ${
-          iconState === 'thinking' ? 'animate-spin' : ''
-        } ${iconState === 'listening' ? 'animate-pulse' : ''}`}>
-          <img 
-            src="/brand/chat-bot-icon.png" 
-            alt="Chat Bot" 
-            className="w-full h-full object-contain filter brightness-0 invert"
-            onError={(e) => {
-              const target = e.currentTarget;
-              target.style.display = 'none';
-              const parent = target.parentElement;
-              if (parent) {
-                const fallback = document.createElement('div');
-                fallback.className = 'w-full h-full flex items-center justify-center text-white text-2xl';
-                fallback.textContent = '💬';
-                parent.replaceChildren(fallback);
-              }
-            }}
-          />
-        </div>
-        
-        {/* Unread Badge */}
-        {unreadCount > 0 && (
-          <div className="absolute -top-1 -right-1 min-w-[24px] h-6 px-1.5 bg-red-600 text-white text-xs font-bold rounded-full flex items-center justify-center shadow-lg border-2 border-white animate-pulse">
-            {unreadCount > 99 ? '99+' : unreadCount}
-          </div>
-        )}
-      </button>
+        <BismanFloatingWidget
+          onOpen={() => { setOpen(true); setIconState('listening'); }}
+          position="bottom-right"
+          primaryColor="#0A3A63"
+          accentColor="#FFC20A"
+          hasNotification={unreadCount > 0 || iconState === 'notify'}
+          size={72}
+        />
       )}
 
       {/* Chat Window - Normal floating or Docked at bottom */}
       {open && !isFullScreen && (
-        <div className={isMinimized ? "chat-window-docked bg-white dark:bg-slate-900" : "chat-window bg-white dark:bg-slate-900 rounded-lg shadow-2xl overflow-hidden animate-slide-in border border-gray-200 dark:border-slate-700"}>
+        <div 
+          ref={chatWindowRef}
+          className={isMinimized ? "chat-window-docked bg-white dark:bg-slate-900" : "chat-window bg-white dark:bg-slate-900 rounded-lg shadow-2xl overflow-hidden animate-slide-in border border-gray-200 dark:border-slate-700"}
+        >
           <div className="flex h-full w-full">
             <ChatSidebar
               contacts={contacts}

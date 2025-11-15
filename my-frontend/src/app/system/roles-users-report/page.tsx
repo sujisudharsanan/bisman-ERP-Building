@@ -268,30 +268,40 @@ export default function RolesUsersReportPage() {
     const loadRolePerms = async () => {
       if (!selectedModuleName) return;
       if (!selectedRoleId && !selectedUserId) return;
+      
+      // Clear permissions while loading
+      setPagePermissions({});
+      
       try {
         const query = selectedUserId
-          ? `/api/permissions?userId=${selectedUserId}&moduleName=${encodeURIComponent(selectedModuleName)}`
-          : `/api/permissions?roleId=${selectedRoleId}&moduleName=${encodeURIComponent(selectedModuleName)}`;
+          ? `/api/permissions?userId=${selectedUserId}`
+          : `/api/permissions?roleId=${selectedRoleId}`;
         const res = await fetch(query, { credentials: 'include' });
         const data = await res.json().catch(() => ({}));
         const allowed: string[] = data?.data?.allowedPages || data?.allowedPages || [];
-        if (Array.isArray(allowed) && allowed.length > 0) {
-          const state: Record<string, boolean> = {};
-          (modulePages || []).forEach(p => { state[p.key] = allowed.includes(p.key) || allowed.includes(p.label); });
-          setPagePermissions(state);
-          toast({ variant: 'success', title: 'Permissions loaded', description: 'Existing permissions applied.' });
-        } else {
-          // Default to allowed for listed pages
-          const state: Record<string, boolean> = {};
-          (modulePages || []).forEach(p => { state[p.key] = true; });
-          setPagePermissions(state);
-          toast({ title: 'Defaults applied', description: 'No saved permissions found.' });
-        }
-      } catch {
+        
+        console.log('[RolesUsersReport] Loaded permissions:', { userId: selectedUserId, roleId: selectedRoleId, allowed });
+        
+        // Set permissions based on what's in database
         const state: Record<string, boolean> = {};
-        (modulePages || []).forEach(p => { state[p.key] = true; });
+        (modulePages || []).forEach(p => { 
+          // Only mark as allowed if it's in the database
+          state[p.key] = allowed.includes(p.key) || allowed.includes(p.label);
+        });
         setPagePermissions(state);
-        toast({ title: 'Using defaults', description: 'Failed to load; using default allowed.' });
+        
+        if (allowed.length > 0) {
+          toast({ title: 'Permissions loaded', description: `Loaded ${allowed.length} permissions from database.` });
+        } else {
+          toast({ title: 'No permissions', description: 'User has no permissions yet. Toggle pages to grant access.' });
+        }
+      } catch (error) {
+        console.error('[RolesUsersReport] Error loading permissions:', error);
+        // On error, set all to false (no permissions)
+        const state: Record<string, boolean> = {};
+        (modulePages || []).forEach(p => { state[p.key] = false; });
+        setPagePermissions(state);
+        toast({ variant: 'destructive', title: 'Load failed', description: 'Failed to load permissions from database.' });
       }
     };
     loadRolePerms();
@@ -302,15 +312,19 @@ export default function RolesUsersReportPage() {
     if (!selectedRoleId && !selectedUserId) return;
     try {
       const query = selectedUserId
-        ? `/api/permissions?userId=${selectedUserId}&moduleName=${encodeURIComponent(selectedModuleName)}`
-        : `/api/permissions?roleId=${selectedRoleId}&moduleName=${encodeURIComponent(selectedModuleName)}`;
+        ? `/api/permissions?userId=${selectedUserId}`
+        : `/api/permissions?roleId=${selectedRoleId}`;
       const res = await fetch(query, { credentials: 'include' });
       const data = await res.json().catch(() => ({}));
       const allowed: string[] = data?.data?.allowedPages || data?.allowedPages || [];
+      
       const state: Record<string, boolean> = {};
-    (modulePages || []).forEach(p => { state[p.key] = allowed.length ? (allowed.includes(p.key) || allowed.includes(p.label)) : true; });
+      (modulePages || []).forEach(p => { 
+        // Only mark as allowed if it's in the database
+        state[p.key] = allowed.includes(p.key) || allowed.includes(p.label);
+      });
       setPagePermissions(state);
-      toast({ title: 'Reloaded', description: 'Permissions refreshed from server.' });
+      toast({ title: 'Reloaded', description: `Refreshed ${allowed.length} permissions from server.` });
     } catch {
       toast({ variant: 'destructive', title: 'Reload failed', description: 'Could not fetch from server.' });
     }
@@ -329,29 +343,54 @@ export default function RolesUsersReportPage() {
     setSaveError(null);
     setSaveSuccess(null);
     try {
-      const allowedPages = (modulePages || [])
+      // Get current allowed pages from this module
+      const currentModulePages = (modulePages || [])
         .filter(p => pagePermissions[p.key] !== false)
         .map(p => p.key);
-      const res = await fetch('/api/permissions', {
+      
+      // Load existing permissions from database to merge
+      const query = selectedUserId
+        ? `/api/permissions?userId=${selectedUserId}`
+        : `/api/permissions?roleId=${selectedRoleId}`;
+      const res = await fetch(query, { credentials: 'include' });
+      const data = await res.json().catch(() => ({}));
+      const existingAllowed: string[] = data?.data?.allowedPages || data?.allowedPages || [];
+      
+      // Remove this module's pages from existing, then add current selections
+      const otherModulesPages = existingAllowed.filter(page => {
+        // Keep pages that aren't in current module
+        return !modulePages.some(mp => mp.key === page || mp.label === page);
+      });
+      
+      const finalAllowedPages = [...new Set([...otherModulesPages, ...currentModulePages])];
+      
+      console.log('[RolesUsersReport] Saving:', {
+        currentModulePages,
+        existingAllowed,
+        otherModulesPages,
+        finalAllowedPages
+      });
+      
+      const saveRes = await fetch('/api/permissions/update', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify(
           selectedUserId
-            ? { userId: selectedUserId, moduleName: selectedModuleName, allowedPages }
-            : { roleId: selectedRoleId, moduleName: selectedModuleName, allowedPages }
+            ? { userId: selectedUserId, allowedPages: finalAllowedPages }
+            : { roleId: selectedRoleId, allowedPages: finalAllowedPages }
         ),
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data?.success === false) {
-        throw new Error(data?.error || 'Failed to save');
+      const saveData = await saveRes.json().catch(() => ({}));
+      if (!saveRes.ok || saveData?.success === false) {
+        throw new Error(saveData?.error || 'Failed to save');
       }
       setSaveSuccess('Permissions saved');
-  toast({ variant: 'success', title: 'Saved', description: 'Permissions updated successfully.' });
+      toast({ variant: 'success', title: 'Saved', description: `Updated ${finalAllowedPages.length} total permissions.` });
     } catch (e: unknown) {
       const msg = e instanceof Error ? e.message : String(e);
       setSaveError(msg);
-  toast({ variant: 'destructive', title: 'Save failed', description: String(msg) });
+      toast({ variant: 'destructive', title: 'Save failed', description: String(msg) });
     } finally {
       setSaving(false);
       setTimeout(() => { setSaveSuccess(null); setSaveError(null); }, 2500);
@@ -595,7 +634,7 @@ export default function RolesUsersReportPage() {
                           </div>
                         )}
                         {modulePages.map((page, idx) => {
-                          const isAllowed = pagePermissions[page.key] !== false; // Default to true
+                          const isAllowed = pagePermissions[page.key] === true; // Default to false
                           return (
                             <div key={page.key} className={`relative pl-2 flex items-center justify-between p-3 rounded-lg border transition-all ${isAllowed ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20' : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'}`}>
                               <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${colorForIndex(idx)}`} />

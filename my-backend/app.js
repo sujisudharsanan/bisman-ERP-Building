@@ -441,46 +441,33 @@ try {
   }
 }
 
-// ===== OLD CHAT SYSTEMS - DISABLED IN FAVOR OF UNIFIED CHAT =====
-// Intelligent Chat Engine routes (no external AI, pattern matching + NLP)
-// DISABLED: Consolidated into Unified Chat System
-/*
+// ===================================================================
+// ULTIMATE CHAT SYSTEM - All Features Combined! 🚀
+// ===================================================================
+// Combines:
+// - Unified Chat: Database-driven, RBAC, production-ready
+// - Intelligent Chat: NLP, intent detection, entity extraction
+// - Enhanced Chat: Self-learning, human-like responses, metrics
+//
+// Single endpoint: /api/chat/*
+// Features: ALL the features from all 3 systems!
+// ===================================================================
 try {
-  const chatRoutes = require('./routes/chatRoutes')
-  app.use('/api/chat', chatRoutes)
-  console.log('✅ Intelligent Chat Engine routes loaded at /api/chat')
+  const ultimateChatRoutes = require('./routes/ultimate-chat')
+  app.use('/api/chat', ultimateChatRoutes)
+  console.log('✅ 🎯 ULTIMATE CHAT SYSTEM loaded at /api/chat - All features combined!')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
-    console.warn('Intelligent Chat Engine routes not loaded:', e && e.message)
+    console.warn('❌ Ultimate Chat System not loaded:', e && e.message)
   }
 }
-*/
 
-// Enhanced AI Training routes (self-learning, spelling, guidance)
-// DISABLED: Consolidated into Unified Chat System (now database-driven)
-/*
-try {
-  const aiTrainingRoutes = require('./routes/ai-training')
-  app.use('/api/ai', aiTrainingRoutes)
-  console.log('✅ AI Training & Enhanced Chat routes loaded at /api/ai')
-} catch (e) {
-  if (process.env.NODE_ENV !== 'production') {
-    console.warn('AI Training routes not loaded:', e && e.message)
-  }
-}
-*/
+// ===== OLD CHAT SYSTEMS - NOW REMOVED =====
+// All 3 chat systems have been consolidated into ONE ultimate system above:
+// - Unified Chat (/api/unified-chat/*) - REMOVED
+// - Intelligent Chat (/api/chat/*) - REMOVED
+// - Enhanced Chat (new) - INTEGRATED above
 // ===== END OLD CHAT SYSTEMS =====
-
-// Unified Chat System (Database-driven with RBAC + HumanizeService)
-try {
-  const unifiedChatRoutes = require('./routes/unified-chat')
-  app.use('/api/unified-chat', unifiedChatRoutes)
-  console.log('✅ Unified Chat System routes loaded at /api/unified-chat')
-} catch (e) {
-  if (process.env.NODE_ENV !== 'production') {
-    console.warn('Unified Chat routes not loaded:', e && e.message)
-  }
-}
 
 // Security monitoring routes (versioned)
 try {

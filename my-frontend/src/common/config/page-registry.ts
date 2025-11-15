@@ -215,7 +215,7 @@ export interface PageMetadata {
   name: string;
   path: string;
   icon: LucideIcon;
-  module: 'system' | 'finance' | 'procurement' | 'operations' | 'compliance' | 'common' | 'pump-management';
+  module: 'system' | 'finance' | 'procurement' | 'operations' | 'compliance' | 'common' | 'pump-management' | 'hr';
   permissions: string[]; // Required permissions (OR logic)
   roles: string[]; // Recommended roles
   status: PageStatus;
@@ -286,6 +286,14 @@ export const MODULES: Record<string, ModuleMetadata> = {
     color: 'amber',
     order: 6,
   },
+  hr: {
+    id: 'hr',
+    name: 'Human Resources',
+    icon: Users,
+    description: 'HR management and employee operations',
+    color: 'teal',
+    order: 7,
+  },
   common: {
     id: 'common',
     name: 'Common',
@@ -331,7 +339,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     name: 'Create New User',
     path: '/hr/user-creation',
     icon: UserPlus,
-    module: 'system',
+    module: 'hr',
     permissions: ['user-management', 'hr-management'],
     roles: ['SUPER_ADMIN', 'ADMIN', 'HR', 'HR_MANAGER'],
     status: 'active',

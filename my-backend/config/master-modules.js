@@ -68,6 +68,7 @@ const MASTER_MODULES = [
     businessCategory: 'Business ERP',
     pages: [
       { id: 'dashboard', name: 'HR Dashboard', path: '/hr' },
+      { id: 'user-creation', name: 'Create New User', path: '/hr/user-creation' },
       { id: 'employees', name: 'Employees', path: '/hr/employees' },
       { id: 'attendance', name: 'Attendance', path: '/hr/attendance' },
       { id: 'leave-management', name: 'Leave Management', path: '/hr/leave-management' },
