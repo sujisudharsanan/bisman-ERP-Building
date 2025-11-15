@@ -6,7 +6,7 @@
 
 # Allow root Dockerfile, startup script, and backend/frontend directories
 !Dockerfile
-!start-railway.sh
+!scripts/start-railway.sh
 !my-backend/**
 !my-frontend/**
 
