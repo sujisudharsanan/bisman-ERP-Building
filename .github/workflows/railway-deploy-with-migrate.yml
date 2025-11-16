@@ -38,20 +38,24 @@ jobs:
 
       - name: Apply demo password/data fixes
         env:
-          DATABASE_URL: postgresql://${{ secrets.RAILWAY_USER }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST }}:${{ secrets.RAILWAY_PORT }}/${{ secrets.RAILWAY_DB }}
+          DATABASE_URL: postgresql://${{ secrets.RAILWAY_USER }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST }}:${{ secrets.RAILWAY_PORT }}/${{ secrets.RAILWAY_DB }}?sslmode=require
+          PGSSLMODE: require
         run: |
+          set -euo pipefail
           echo "Applying fix-railway-passwords.sql (if present)"
           if [ -f fix-railway-passwords.sql ]; then
-            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f fix-railway-passwords.sql || echo "Password fix script failed"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f fix-railway-passwords.sql
           else
             echo "fix-railway-passwords.sql not found, skipping"
           fi
           echo "Applying fix-hub-incharge-password.sql (if present)"
           if [ -f fix-hub-incharge-password.sql ]; then
-            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f fix-hub-incharge-password.sql || echo "Hub incharge fix script failed"
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f fix-hub-incharge-password.sql
           else
             echo "fix-hub-incharge-password.sql not found, skipping"
           fi
+          echo "Verifying hub incharge user exists and active..."
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT email, role, is_active FROM users WHERE email='demo_hub_incharge@bisman.demo';"
 
       - name: Optional restart via Railway CLI
         if: ${{ secrets.RAILWAY_TOKEN != '' }}
