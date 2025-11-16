@@ -29,9 +29,9 @@ WHERE email IN (
     'admin@bisman.demo'
 );
 
--- Update Hub Incharge password to demo123
+-- Standardized hash (demo123) to match other scripts
 UPDATE users
-SET password = '$2a$10$FUc/5qCjRpKudr9nqmP5h.iJTb7bHV05D.gtVAvaAy.CM9/MhTWhu',
+SET password = '$2a$10$sSOb5fx4sIgiJNq6.OfIU.q0aFJlRgIbOfTu4k6lpV0yhJxFMHbWm',
     updated_at = NOW()
 WHERE email = 'demo_hub_incharge@bisman.demo';
 

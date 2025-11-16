@@ -2,7 +2,7 @@
 -- Hub Incharge: demo_hub_incharge@bisman.demo -> demo123
 
 -- bcrypt hash for demo123 (from repo fixes)
--- Note: keep consistent with fix-hub-incharge-password.sql
+-- Note: keep consistent with fix-hub-incharge-password.sql and fix-railway-passwords.sql
 DO $$
 BEGIN
   INSERT INTO users (email, username, password, role, is_active, productType, tenant_id, super_admin_id, created_at, updated_at)
