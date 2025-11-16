@@ -33,6 +33,26 @@ jobs:
           npx prisma migrate deploy || npx prisma db push
           npm run -s deploy:post || true
 
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Apply demo password/data fixes
+        env:
+          DATABASE_URL: postgresql://${{ secrets.RAILWAY_USER }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST }}:${{ secrets.RAILWAY_PORT }}/${{ secrets.RAILWAY_DB }}
+        run: |
+          echo "Applying fix-railway-passwords.sql (if present)"
+          if [ -f fix-railway-passwords.sql ]; then
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f fix-railway-passwords.sql || echo "Password fix script failed"
+          else
+            echo "fix-railway-passwords.sql not found, skipping"
+          fi
+          echo "Applying fix-hub-incharge-password.sql (if present)"
+          if [ -f fix-hub-incharge-password.sql ]; then
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f fix-hub-incharge-password.sql || echo "Hub incharge fix script failed"
+          else
+            echo "fix-hub-incharge-password.sql not found, skipping"
+          fi
+
       - name: Optional restart via Railway CLI
         if: ${{ secrets.RAILWAY_TOKEN != '' }}
         run: |
