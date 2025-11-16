@@ -167,6 +167,54 @@ router.get('/roles-users', authenticate, async (req, res) => {
 });
 
 /**
+ * GET /api/reports/roles-users-report
+ * Lightweight aggregated role statistics (distinct roles, user counts, CRUD coverage)
+ */
+router.get('/roles-users-report', authenticate, async (req, res) => {
+  const prisma = getPrisma();
+  try {
+    const tenantFilter = TenantGuard.getTenantFilter(req);
+    // Distinct roles from users
+    const distinctRoles = await prisma.User.findMany({
+      where: tenantFilter,
+      select: { role: true },
+      distinct: ['role']
+    });
+    const roles = distinctRoles.map(r => r.role).filter(Boolean);
+    if (!roles.includes('SUPER_ADMIN')) roles.push('SUPER_ADMIN');
+    if (!roles.includes('ENTERPRISE_ADMIN')) roles.push('ENTERPRISE_ADMIN');
+
+    const report = [];
+    for (const role of roles) {
+      const userCount = await prisma.User.count({ where: { ...tenantFilter, role } });
+      // Permissions coverage (module-level)
+      let permRows = [];
+      try {
+        permRows = await prisma.permission.findMany({
+          where: { role },
+          select: { module_id: true, can_view: true, can_create: true, can_edit: true, can_delete: true }
+        });
+      } catch (_) { /* permissions table may differ */ }
+      const modules = new Set(permRows.map(p => p.module_id));
+      const crudAggregate = permRows.reduce((acc, p) => {
+        acc.view += p.can_view ? 1 : 0;
+        acc.create += p.can_create ? 1 : 0;
+        acc.edit += p.can_edit ? 1 : 0;
+        acc.delete += p.can_delete ? 1 : 0;
+        return acc;
+      }, { view:0, create:0, edit:0, delete:0 });
+      report.push({ role, userCount, modules: modules.size, crud: crudAggregate });
+    }
+    // Sort by userCount desc then role
+    report.sort((a,b) => b.userCount - a.userCount || a.role.localeCompare(b.role));
+    res.json({ success: true, totalRoles: report.length, data: report, generatedAt: new Date().toISOString() });
+  } catch (e) {
+    console.error('[RolesUsersReportLite] Error:', e);
+    res.status(500).json({ success:false, error:'Failed to generate role summary', message: e.message });
+  }
+});
+
+/**
  * GET /api/reports/roles-users/csv
  * Download roles and users report as CSV
  */

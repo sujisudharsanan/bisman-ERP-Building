@@ -1,0 +1,201 @@
+{
+  "generatedAt": "2025-11-15T20:01:33.237Z",
+  "summary": [
+    {
+      "file": "aiAnalyticsRoute.js",
+      "module": "ai-analytics",
+      "endpoints": 8
+    },
+    {
+      "file": "aiRoute.js",
+      "module": "ai",
+      "endpoints": 6
+    },
+    {
+      "file": "approverRoutes.js",
+      "module": "approvers",
+      "endpoints": 7
+    },
+    {
+      "file": "auth.js",
+      "module": "auth",
+      "endpoints": 3
+    },
+    {
+      "file": "calendar.js",
+      "module": "calendar",
+      "endpoints": 10
+    },
+    {
+      "file": "enterprise.js",
+      "module": "enterprise",
+      "endpoints": 9
+    },
+    {
+      "file": "enterpriseAdminAI.js",
+      "module": "enterprise-admin",
+      "endpoints": 4
+    },
+    {
+      "file": "enterpriseAdminAudit.js",
+      "module": "enterprise-admin",
+      "endpoints": 3
+    },
+    {
+      "file": "enterpriseAdminBilling.js",
+      "module": "enterprise-admin",
+      "endpoints": 3
+    },
+    {
+      "file": "enterpriseAdminDashboard.js",
+      "module": "enterprise-admin",
+      "endpoints": 5
+    },
+    {
+      "file": "enterpriseAdminIntegrations.js",
+      "module": "enterprise-admin",
+      "endpoints": 12
+    },
+    {
+      "file": "enterpriseAdminLogs.js",
+      "module": "enterprise-admin",
+      "endpoints": 4
+    },
+    {
+      "file": "enterpriseAdminModules.js",
+      "module": "enterprise-admin",
+      "endpoints": 3
+    },
+    {
+      "file": "enterpriseAdminNotifications.js",
+      "module": "enterprise-admin",
+      "endpoints": 10
+    },
+    {
+      "file": "enterpriseAdminOrganizations.js",
+      "module": "enterprise-admin",
+      "endpoints": 5
+    },
+    {
+      "file": "enterpriseAdminReports.js",
+      "module": "enterprise-admin",
+      "endpoints": 5
+    },
+    {
+      "file": "enterpriseAdminSettings.js",
+      "module": "enterprise-admin",
+      "endpoints": 10
+    },
+    {
+      "file": "enterpriseAdminSuperAdmins.js",
+      "module": "enterprise-admin",
+      "endpoints": 9
+    },
+    {
+      "file": "enterpriseAdminSupport.js",
+      "module": "enterprise-admin",
+      "endpoints": 8
+    },
+    {
+      "file": "enterpriseAdminUsers.js",
+      "module": "enterprise-admin",
+      "endpoints": 8
+    },
+    {
+      "file": "pagesRoutes.js",
+      "module": "pages",
+      "endpoints": 2
+    },
+    {
+      "file": "password-reset.js",
+      "module": "misc",
+      "endpoints": 3
+    },
+    {
+      "file": "permissions.js",
+      "module": "permissions",
+      "endpoints": 3
+    },
+    {
+      "file": "permissionsRoutes.js",
+      "module": "permissions",
+      "endpoints": 2
+    },
+    {
+      "file": "privilegeRoutes.js",
+      "module": "privileges",
+      "endpoints": 12
+    },
+    {
+      "file": "reportsRoutes.js",
+      "module": "reports",
+      "endpoints": 4
+    },
+    {
+      "file": "securityRoutes.js",
+      "module": "security",
+      "endpoints": 6
+    },
+    {
+      "file": "superAdmin.js",
+      "module": "super-admin",
+      "endpoints": 17
+    },
+    {
+      "file": "system.js",
+      "module": "system",
+      "endpoints": 2
+    },
+    {
+      "file": "taskRoutes.js",
+      "module": "tasks",
+      "endpoints": 9
+    },
+    {
+      "file": "testCors.js",
+      "module": "misc",
+      "endpoints": 1
+    },
+    {
+      "file": "ultimate-chat.js",
+      "module": "chat",
+      "endpoints": 5
+    },
+    {
+      "file": "unified-chat.js",
+      "module": "chat",
+      "endpoints": 11
+    },
+    {
+      "file": "upload.js",
+      "module": "upload",
+      "endpoints": 2
+    },
+    {
+      "file": "userReport.js",
+      "module": "user-report",
+      "endpoints": 1
+    }
+  ],
+  "moduleTotals": {
+    "ai-analytics": 8,
+    "ai": 6,
+    "approvers": 7,
+    "auth": 3,
+    "calendar": 10,
+    "enterprise": 9,
+    "enterprise-admin": 89,
+    "pages": 2,
+    "misc": 4,
+    "permissions": 5,
+    "privileges": 12,
+    "reports": 4,
+    "security": 6,
+    "super-admin": 17,
+    "system": 2,
+    "tasks": 9,
+    "chat": 16,
+    "upload": 2,
+    "user-report": 1
+  }
+}
