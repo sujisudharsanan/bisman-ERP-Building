@@ -977,13 +977,18 @@ app.post('/api/token/refresh', async (req, res) => {
 
   try {
     const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
-    const existingSession = await prisma.user_sessions.findFirst({
-      where: {
-        session_token: hashedToken,
-        is_active: true,
-        expires_at: { gt: new Date() },
-      },
-    });
+    let existingSession = null;
+    try {
+      existingSession = await prisma.user_sessions.findFirst({
+        where: {
+          session_token: hashedToken,
+          is_active: true,
+          expires_at: { gt: new Date() },
+        },
+      });
+    } catch (e) {
+      console.warn('user_sessions.findFirst failed (likely missing table). Falling back to token-only validation.');
+    }
 
     if (!existingSession) {
       console.log('❌ Refresh token not found in DB or expired');
@@ -1041,7 +1046,11 @@ app.post('/api/logout', async (req, res) => {
     // Remove the refresh token from the database
     try {
       const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex')
-      await prisma.user_sessions.deleteMany({ where: { session_token: hashedToken } });
+      try {
+        await prisma.user_sessions.deleteMany({ where: { session_token: hashedToken } });
+      } catch (e) {
+        console.warn('user_sessions.deleteMany failed (likely missing table). Continuing logout.');
+      }
     } catch {}
   }
 

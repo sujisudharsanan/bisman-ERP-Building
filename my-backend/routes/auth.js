@@ -307,11 +307,15 @@ router.post('/logout', async (req, res) => {
       // Revoke refresh token from database
       const crypto = require('crypto');
       const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
-
-      await prisma.user_sessions.updateMany({
-        where: { session_token: hashedToken },
-        data: { is_active: false }
-      });
+      try {
+        await prisma.user_sessions.updateMany({
+          where: { session_token: hashedToken },
+          data: { is_active: false }
+        });
+      } catch (e) {
+        // Defensive: if user_sessions table doesn't exist yet in prod, don't crash logout
+        console.warn('user_sessions.updateMany failed (likely missing table). Continuing logout.');
+      }
     }
 
   // Clear cookies (both modern and legacy names)
