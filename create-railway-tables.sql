@@ -201,11 +201,37 @@ BEGIN
     END IF;
 END $$;
 
--- Create indexes on users table if they don't exist
-CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id);
-CREATE INDEX IF NOT EXISTS idx_users_product_type ON users("productType");
-CREATE INDEX IF NOT EXISTS idx_users_super_admin ON users(super_admin_id);
-CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active);
+-- Create indexes on users table only if relevant columns exist
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema='public' AND table_name='users' AND column_name='tenant_id'
+    ) THEN
+        EXECUTE 'CREATE INDEX IF NOT EXISTS idx_users_tenant ON users(tenant_id)';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema='public' AND table_name='users' AND column_name='productType'
+    ) THEN
+        EXECUTE 'CREATE INDEX IF NOT EXISTS idx_users_product_type ON users("productType")';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema='public' AND table_name='users' AND column_name='super_admin_id'
+    ) THEN
+        EXECUTE 'CREATE INDEX IF NOT EXISTS idx_users_super_admin ON users(super_admin_id)';
+    END IF;
+
+    IF EXISTS (
+        SELECT 1 FROM information_schema.columns 
+        WHERE table_schema='public' AND table_name='users' AND column_name='is_active'
+    ) THEN
+        EXECUTE 'CREATE INDEX IF NOT EXISTS idx_users_active ON users(is_active)';
+    END IF;
+END $$;
 
 -- ==========================================
 -- GRANT PERMISSIONS

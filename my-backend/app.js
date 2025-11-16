@@ -100,6 +100,15 @@ app.use(compression({
 console.log('[app.js] ✅ Maximum response compression enabled (Level 9 GZIP/Brotli)');
 console.log('[app.js] 🚀 Optimized for AI chat responses - expect 80-90% size reduction');
 
+// Mount email/OTP routes (rate-limited at router level)
+try {
+  const otpRoutes = require('./routes/otp');
+  app.use('/api/security', otpRoutes);
+  console.log('[app.js] ✅ Mounted /api/security (OTP & notifications)');
+} catch (e) {
+  console.warn('[app.js] OTP routes not mounted:', e?.message);
+}
+
 // Rate limiting for authentication endpoints
 const loginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
@@ -592,6 +601,37 @@ try {
   }
 }
 
+// Client Management & Permissions routes
+try {
+  // Prefer JS routes; fallback to dist/src when present
+  const clientManagementRoutes = require('./routes/clientManagement') || (require('./dist/routes/clientManagement').default) || (require('./src/routes/clientManagement').default)
+  if (clientManagementRoutes) {
+    app.use('/api/system', clientManagementRoutes) // endpoints: /clients, /clients/:id/permissions, etc.
+    console.log('✅ Client Management routes loaded')
+  } else {
+    console.warn('⚠️ Client Management routes failed to load')
+  }
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Client Management routes not loaded:', e && e.message)
+  }
+}
+
+// Usage Events routes
+try {
+  const usageEventsRoutes = require('./routes/usageEvents') || (require('./dist/routes/usageEvents').default) || (require('./src/routes/usageEvents').default)
+  if (usageEventsRoutes) {
+    app.use('/api/system/usage-events', usageEventsRoutes)
+    console.log('✅ Usage Events routes loaded')
+  } else {
+    console.warn('⚠️ Usage Events routes failed to load')
+  }
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Usage Events routes not loaded:', e && e.message)
+  }
+}
+
 // Super Admin routes (protected)
 try {
   const superAdminRoutes = require('./routes/superAdmin')
@@ -1055,12 +1095,12 @@ app.get('/api/admin', authenticate, requireRole('ADMIN'), async (req, res) => {
 
 // Enterprise Admin API endpoints
 // Get master modules configuration
-app.get('/api/enterprise-admin/master-modules', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN']), async (req, res) => {
+app.get('/api/enterprise-admin/master-modules', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     // ✅ SECURITY FIX: Filter modules based on user role
     let dbModules;
     
-    if (req.user.userType === 'SUPER_ADMIN') {
+  if (req.user.userType === 'SUPER_ADMIN') {
       // Super Admin should only see modules assigned by Enterprise Admin
       console.log('[master-modules] Super Admin access - filtering by assigned modules');
       console.log('[master-modules] Super Admin ID:', req.user.id);
@@ -1087,8 +1127,8 @@ app.get('/api/enterprise-admin/master-modules', authenticate, requireRole(['ENTE
         }
       });
     } else {
-      // Enterprise Admin can see all modules
-      console.log('[master-modules] Enterprise Admin access - showing all modules');
+      // Enterprise Admin and Admin can see all modules
+      console.log('[master-modules] Admin/Enterprise Admin access - showing all modules');
       dbModules = await prisma.module.findMany({
         orderBy: {
           id: 'asc'

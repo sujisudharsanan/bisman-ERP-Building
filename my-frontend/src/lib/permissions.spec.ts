@@ -9,6 +9,16 @@ describe('permissions helper', () => {
     expect(can(user, PERMISSIONS.AUDIT_VIEW)).toBe(true);
   });
 
+  it('SYSTEM_ADMIN bypasses permission checks', () => {
+    const user: SessionUser = { ...base, roles: ['SYSTEM_ADMIN'] };
+    expect(can(user, PERMISSIONS.APIKEY_MANAGE)).toBe(true);
+  });
+
+  it('ADMIN bypasses permission checks', () => {
+    const user: SessionUser = { ...base, roles: ['ADMIN'] };
+    expect(can(user, PERMISSIONS.SETTINGS_MANAGE)).toBe(true);
+  });
+
   it('ORG_USER lacks manage permissions', () => {
     const user: SessionUser = { ...base, roles: ['ORG_USER'] };
     expect(can(user, PERMISSIONS.USER_MANAGE)).toBe(false);

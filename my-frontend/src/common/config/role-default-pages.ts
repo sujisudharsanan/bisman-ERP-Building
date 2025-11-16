@@ -14,9 +14,9 @@ export interface RoleDefaultPages {
  * Maps role names to their default accessible pages
  */
 export const ROLE_DEFAULT_PAGES: RoleDefaultPages[] = [
-  // ==================== SUPER ADMIN ====================
+  // ==================== PLATFORM ADMIN ====================
   {
-    role: 'SUPER_ADMIN',
+    role: 'SYSTEM_ADMIN',
     description: 'Full system access - all pages',
     defaultPages: ['*'], // Wildcard means all pages
   },
@@ -26,8 +26,8 @@ export const ROLE_DEFAULT_PAGES: RoleDefaultPages[] = [
     role: 'ADMIN',
     description: 'System administrator with broad access',
     defaultPages: [
-      'dashboard',
-      'admin',
+  'dashboard',
+  'super-admin',
       'system-settings',
       'user-management',
       'permission-manager',

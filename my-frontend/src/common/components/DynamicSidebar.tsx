@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useMemo, useEffect, useState } from 'react';
+import { hasFullAdmin } from '../../constants/roles';
 import { safeFetch } from '@/lib/safeFetch';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
@@ -31,7 +32,7 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
   // Check if user is Super Admin
   const isSuperAdmin = useMemo(() => {
     const roleName = String(user?.roleName || user?.role || '').toUpperCase();
-    return roleName === 'SUPER_ADMIN' || roleName === 'SUPER ADMIN' || roleName === 'SUPERADMIN';
+    return hasFullAdmin(roleName);
   }, [user?.roleName, user?.role]);
 
   // Fetch user permissions from database
@@ -210,8 +211,8 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
 
   // Determine user's primary dashboard path by role
   const dashboardPath = useMemo(() => {
-    const role = String(user?.roleName || user?.role || '').toUpperCase();
-    if (role === 'SUPER_ADMIN' || role === 'SUPER ADMIN' || role === 'SUPERADMIN') return '/super-admin';
+  const role = String(user?.roleName || user?.role || '').toUpperCase();
+  if (hasFullAdmin(role)) return '/admin';
     if (role === 'ENTERPRISE_ADMIN') return '/enterprise-admin/dashboard';
     if (role === 'ADMIN') return '/admin/dashboard';
     if (role === 'STAFF') return '/hub-incharge';

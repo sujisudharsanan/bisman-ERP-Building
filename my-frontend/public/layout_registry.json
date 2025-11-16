@@ -1,24 +1,25 @@
 {
   "meta": {
     "version": "1.0.0",
-    "exportedAt": "2025-11-12T14:42:11.169Z",
+    "exportedAt": "2025-11-16T13:37:11.008Z",
     "source": "my-frontend/src/common/config/page-registry.ts",
     "generator": "scripts/export-page-registry.js"
   },
   "statistics": {
-    "totalPages": 87,
+    "totalPages": 78,
     "totalModules": 2,
     "pagesByModule": {
       "system": 15,
+      "hr": 1,
       "pump-management": 1,
       "finance": 31,
       "procurement": 5,
       "operations": 14,
       "compliance": 9,
-      "common": 12
+      "common": 2
     },
     "pagesByStatus": {
-      "active": 87,
+      "active": 78,
       "coming-soon": 0,
       "disabled": 0
     }
@@ -50,7 +51,8 @@
         "system-settings"
       ],
       "roles": [
-        "SUPER_ADMIN",
+        "SYSTEM_ADMIN",
+        "ADMIN",
         "SYSTEM ADMINISTRATOR",
         "IT ADMIN"
       ]
@@ -67,9 +69,28 @@
         "user-management"
       ],
       "roles": [
-        "SUPER_ADMIN",
+        "SYSTEM_ADMIN",
         "ADMIN",
         "SYSTEM ADMINISTRATOR"
+      ]
+    },
+    {
+      "id": "user-creation",
+      "name": "Create New User",
+      "path": "/hr/user-creation",
+      "module": "hr",
+      "status": "active",
+      "description": "Two-stage user creation with KYC workflow - HR creates request and sends KYC link or creates user immediately",
+      "order": 2,
+      "permissions": [
+        "user-management",
+        "hr-management"
+      ],
+      "roles": [
+        "SYSTEM_ADMIN",
+        "ADMIN",
+        "HR",
+        "HR_MANAGER"
       ]
     },
     {
@@ -84,8 +105,9 @@
         "user-management"
       ],
       "roles": [
-        "SUPER_ADMIN",
-        "SYSTEM ADMINISTRATOR"
+        "SYSTEM_ADMIN",
+        "SYSTEM ADMINISTRATOR",
+        "ADMIN"
       ]
     },
     {
@@ -100,8 +122,9 @@
         "user-management"
       ],
       "roles": [
-        "SUPER_ADMIN",
-        "SYSTEM ADMINISTRATOR"
+        "SYSTEM_ADMIN",
+        "SYSTEM ADMINISTRATOR",
+        "ADMIN"
       ]
     },
     {
@@ -117,8 +140,9 @@
         "system-settings"
       ],
       "roles": [
-        "SUPER_ADMIN",
-        "SYSTEM ADMINISTRATOR"
+        "SYSTEM_ADMIN",
+        "SYSTEM ADMINISTRATOR",
+        "ADMIN"
       ]
     },
     {
@@ -133,7 +157,8 @@
         "system-settings"
       ],
       "roles": [
-        "SUPER_ADMIN",
+        "SYSTEM_ADMIN",
+        "ADMIN",
         "SYSTEM ADMINISTRATOR",
         "IT ADMIN"
       ]
@@ -154,8 +179,9 @@
         "pump-management"
       ],
       "roles": [
-        "SUPER_ADMIN",
-        "SYSTEM ADMINISTRATOR"
+        "SYSTEM_ADMIN",
+        "SYSTEM ADMINISTRATOR",
+        "ADMIN"
       ]
     },
     {
@@ -170,8 +196,9 @@
         "system-settings"
       ],
       "roles": [
-        "SUPER_ADMIN",
-        "SYSTEM ADMINISTRATOR"
+        "SYSTEM_ADMIN",
+        "SYSTEM ADMINISTRATOR",
+        "ADMIN"
       ]
     },
     {
@@ -186,7 +213,8 @@
         "system-settings"
       ],
       "roles": [
-        "SUPER_ADMIN",
+        "SYSTEM_ADMIN",
+        "ADMIN",
         "SYSTEM ADMINISTRATOR",
         "IT ADMIN"
       ]
@@ -203,8 +231,9 @@
         "system-settings"
       ],
       "roles": [
-        "SUPER_ADMIN",
-        "SYSTEM ADMINISTRATOR"
+        "SYSTEM_ADMIN",
+        "SYSTEM ADMINISTRATOR",
+        "ADMIN"
       ]
     },
     {
@@ -219,7 +248,8 @@
         "system-settings"
       ],
       "roles": [
-        "SUPER_ADMIN",
+        "SYSTEM_ADMIN",
+        "ADMIN",
         "SYSTEM ADMINISTRATOR",
         "IT ADMIN"
       ]
@@ -240,8 +270,9 @@
         "pump-management"
       ],
       "roles": [
-        "SUPER_ADMIN",
-        "SYSTEM ADMINISTRATOR"
+        "SYSTEM_ADMIN",
+        "SYSTEM ADMINISTRATOR",
+        "ADMIN"
       ]
     },
     {
@@ -256,8 +287,9 @@
         "system-settings"
       ],
       "roles": [
-        "SUPER_ADMIN",
-        "SYSTEM ADMINISTRATOR"
+        "SYSTEM_ADMIN",
+        "SYSTEM ADMINISTRATOR",
+        "ADMIN"
       ]
     },
     {
@@ -288,7 +320,7 @@
         "system-settings"
       ],
       "roles": [
-        "SUPER_ADMIN",
+        "SYSTEM_ADMIN",
         "ADMIN"
       ]
     },
@@ -304,7 +336,7 @@
         "system-settings"
       ],
       "roles": [
-        "SUPER_ADMIN",
+        "SYSTEM_ADMIN",
         "ADMIN"
       ]
     },
@@ -1255,111 +1287,6 @@
       ]
     },
     {
-      "id": "common-about-me",
-      "name": "About Me",
-      "path": "/common/about-me",
-      "module": "common",
-      "status": "active",
-      "description": "View and manage your profile information",
-      "order": 1,
-      "permissions": [
-        "authenticated"
-      ],
-      "roles": [
-        "ALL"
-      ]
-    },
-    {
-      "id": "common-change-password",
-      "name": "Change Password",
-      "path": "/common/change-password",
-      "module": "common",
-      "status": "active",
-      "description": "Update your account password",
-      "order": 2,
-      "permissions": [
-        "authenticated"
-      ],
-      "roles": [
-        "ALL"
-      ]
-    },
-    {
-      "id": "common-security-settings",
-      "name": "Security Settings",
-      "path": "/common/security-settings",
-      "module": "common",
-      "status": "active",
-      "description": "Manage your account security preferences",
-      "order": 3,
-      "permissions": [
-        "authenticated"
-      ],
-      "roles": [
-        "ALL"
-      ]
-    },
-    {
-      "id": "common-notifications",
-      "name": "Notifications",
-      "path": "/common/notifications",
-      "module": "common",
-      "status": "active",
-      "description": "View and manage your notifications",
-      "order": 4,
-      "permissions": [
-        "authenticated"
-      ],
-      "roles": [
-        "ALL"
-      ]
-    },
-    {
-      "id": "common-messages",
-      "name": "Messages",
-      "path": "/common/messages",
-      "module": "common",
-      "status": "active",
-      "description": "Internal messaging system",
-      "order": 5,
-      "permissions": [
-        "authenticated"
-      ],
-      "roles": [
-        "ALL"
-      ]
-    },
-    {
-      "id": "common-help-center",
-      "name": "Help Center",
-      "path": "/common/help-center",
-      "module": "common",
-      "status": "active",
-      "description": "Get help and support resources",
-      "order": 6,
-      "permissions": [
-        "authenticated"
-      ],
-      "roles": [
-        "ALL"
-      ]
-    },
-    {
-      "id": "common-documentation",
-      "name": "Documentation",
-      "path": "/common/documentation",
-      "module": "common",
-      "status": "active",
-      "description": "System documentation and guides",
-      "order": 7,
-      "permissions": [
-        "authenticated"
-      ],
-      "roles": [
-        "ALL"
-      ]
-    },
-    {
       "id": "common-user-settings",
       "name": "User Settings",
       "path": "/common/user-settings",
@@ -1382,51 +1309,6 @@
       "status": "active",
       "description": "Submit and track payment requests",
       "order": 9,
-      "permissions": [
-        "authenticated"
-      ],
-      "roles": [
-        "ALL"
-      ]
-    },
-    {
-      "id": "payment-requests-create",
-      "name": "Create Payment Request",
-      "path": "/common/payment-requests/create",
-      "module": "common",
-      "status": "active",
-      "description": "Create new payment request with line items",
-      "order": 9,
-      "permissions": [
-        "authenticated"
-      ],
-      "roles": [
-        "ALL"
-      ]
-    },
-    {
-      "id": "task-approvals",
-      "name": "Task Approvals",
-      "path": "/common/task-approvals",
-      "module": "common",
-      "status": "active",
-      "description": "Manage and approve payment workflow tasks",
-      "order": 9,
-      "permissions": [
-        "authenticated"
-      ],
-      "roles": [
-        "ALL"
-      ]
-    },
-    {
-      "id": "common-calendar",
-      "name": "Calendar",
-      "path": "/common/calendar",
-      "module": "common",
-      "status": "active",
-      "description": "View personal and team events",
-      "order": 10,
       "permissions": [
         "authenticated"
       ],

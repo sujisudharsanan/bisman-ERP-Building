@@ -369,8 +369,9 @@ export default function AITrainingPage() {
   );
 }
 
-function StatCard({ icon, label, value, color }: any) {
-  const colorClasses = {
+type StatColor = 'blue' | 'green' | 'purple' | 'pink';
+function StatCard({ icon, label, value, color }: { icon: React.ReactNode; label: string; value: string | number; color: StatColor }) {
+  const colorClasses: Record<StatColor, string> = {
     blue: 'from-blue-500 to-cyan-500',
     green: 'from-green-500 to-emerald-500',
     purple: 'from-purple-500 to-pink-500',

@@ -1,21 +1,32 @@
 const express = require('express');
 const router = express.Router();
 const { getPrisma } = require('../lib/prisma');
-const { authenticate } = require('../middleware/auth'); // ✅ SECURITY: Add authentication
+const { authenticate, requireRole } = require('../middleware/auth'); // ✅ SECURITY: Add authentication
 const TenantGuard = require('../middleware/tenantGuard'); // ✅ SECURITY: Multi-tenant isolation
 
 /**
  * GET /api/reports/roles-users
  * Generate a comprehensive report of all roles with their assigned users and email IDs
  */
-router.get('/roles-users', authenticate, async (req, res) => {
+router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN']), async (req, res) => {
   const prisma = getPrisma();
   
   try {
     console.log('[RolesUsersReport] Generating roles and users report...');
     
     // ✅ SECURITY FIX: Define tenant filter at the beginning
-    const tenantFilter = TenantGuard.getTenantFilter(req);
+    // For ADMIN in non-tenant demo contexts, gracefully fallback to no filter
+    let tenantFilter = {};
+    try {
+      tenantFilter = TenantGuard.getTenantFilter(req);
+    } catch (err) {
+      if ((req.user?.role || req.user?.roleName) === 'ADMIN') {
+        console.warn('[RolesUsersReport] Tenant filter not available for ADMIN; using no filter');
+        tenantFilter = {};
+      } else {
+        throw err;
+      }
+    }
     
     // Try to fetch from rbac_roles table first
     let roles = [];
@@ -170,10 +181,17 @@ router.get('/roles-users', authenticate, async (req, res) => {
  * GET /api/reports/roles-users-report
  * Lightweight aggregated role statistics (distinct roles, user counts, CRUD coverage)
  */
-router.get('/roles-users-report', authenticate, async (req, res) => {
+router.get('/roles-users-report', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN']), async (req, res) => {
   const prisma = getPrisma();
   try {
-    const tenantFilter = TenantGuard.getTenantFilter(req);
+    let tenantFilter = {};
+    try {
+      tenantFilter = TenantGuard.getTenantFilter(req);
+    } catch (err) {
+      if ((req.user?.role || req.user?.roleName) === 'ADMIN') {
+        tenantFilter = {};
+      } else { throw err; }
+    }
     // Distinct roles from users
     const distinctRoles = await prisma.User.findMany({
       where: tenantFilter,
@@ -218,12 +236,19 @@ router.get('/roles-users-report', authenticate, async (req, res) => {
  * GET /api/reports/roles-users/csv
  * Download roles and users report as CSV
  */
-router.get('/roles-users/csv', authenticate, async (req, res) => {
+router.get('/roles-users/csv', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN']), async (req, res) => {
   const prisma = getPrisma();
   
   try {
     // ✅ SECURITY FIX: Add tenant filter
-    const tenantFilter = TenantGuard.getTenantFilter(req);
+    let tenantFilter = {};
+    try {
+      tenantFilter = TenantGuard.getTenantFilter(req);
+    } catch (err) {
+      if ((req.user?.role || req.user?.roleName) === 'ADMIN') {
+        tenantFilter = {};
+      } else { throw err; }
+    }
     console.log('[RolesUsersReport] Generating CSV export...');
     
     // Try to fetch from rbac_roles table first

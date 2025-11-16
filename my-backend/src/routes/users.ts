@@ -16,6 +16,7 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { authMiddleware } from '../../middleware/auth';
+import { CORE_ROLES } from '../constants/roles';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -193,7 +194,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
     const currentUserRole = (req as any).user?.role;
 
     // Only admins can create users
-    if (!['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMIN'].includes(currentUserRole)) {
+  if (!CORE_ROLES.includes(currentUserRole)) {
       return res.status(403).json({ error: 'Insufficient permissions to create users' });
     }
 
@@ -320,8 +321,8 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
 
     // Permission check: users can edit themselves, admins can edit anyone
     if (
-      currentUserId !== Number(id) &&
-      !['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMIN'].includes(currentUserRole)
+  currentUserId !== Number(id) &&
+  !CORE_ROLES.includes(currentUserRole)
     ) {
       return res.status(403).json({ error: 'Insufficient permissions to edit this user' });
     }
@@ -376,7 +377,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
     }
 
     // Only admins can change roles and product types
-    if (['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMIN'].includes(currentUserRole)) {
+  if (CORE_ROLES.includes(currentUserRole)) {
       if (role !== undefined) updateData.role = role;
       if (productType !== undefined) updateData.productType = productType;
       if (tenant_id !== undefined) updateData.tenant_id = tenant_id;
@@ -446,7 +447,7 @@ router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
     const { id } = req.params;
 
     // Only admins can delete users
-    if (!['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMIN'].includes(currentUserRole)) {
+  if (!CORE_ROLES.includes(currentUserRole)) {
       return res.status(403).json({ error: 'Insufficient permissions to delete users' });
     }
 
@@ -506,7 +507,7 @@ router.get('/export/csv', authMiddleware, async (req: Request, res: Response) =>
     const currentUserRole = (req as any).user?.role;
 
     // Only admins can export
-    if (!['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMIN'].includes(currentUserRole)) {
+  if (!CORE_ROLES.includes(currentUserRole)) {
       return res.status(403).json({ error: 'Insufficient permissions to export users' });
     }
 
@@ -588,7 +589,7 @@ router.put('/:id/status', authMiddleware, async (req: Request, res: Response) =>
     const { status } = req.body; // 'active' or 'inactive'
 
     // Only admins can change status
-    if (!['SUPER_ADMIN', 'ADMIN', 'SYSTEM_ADMIN'].includes(currentUserRole)) {
+  if (!CORE_ROLES.includes(currentUserRole)) {
       return res.status(403).json({ error: 'Insufficient permissions' });
     }
 

@@ -230,14 +230,14 @@ async function seedMultiTenantData() {
     // ==========================================
     console.log('6️⃣  Creating Permissions...');
     
-    const roles = ['SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF', 'CFO', 'FINANCE_CONTROLLER', 'HUB_INCHARGE'];
+  const roles = ['SYSTEM_ADMIN', 'ADMIN', 'MANAGER', 'STAFF', 'CFO', 'FINANCE_CONTROLLER', 'HUB_INCHARGE'];
     const allModules = await prisma.module.findMany();
     
     let permissionCount = 0;
     for (const role of roles) {
       for (const module of allModules) {
-        // Super admins get full access
-        const isFullAccess = role === 'SUPER_ADMIN' || role === 'ADMIN';
+  // Platform + tenant admins get full access
+  const isFullAccess = role === 'SYSTEM_ADMIN' || role === 'ADMIN';
         
         await prisma.permission.upsert({
           where: {

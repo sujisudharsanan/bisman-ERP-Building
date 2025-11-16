@@ -38,11 +38,11 @@ export default function SuperAdminPage() {
       return;
     }
 
-    // Role-based access control - only SUPER_ADMIN can access
-    if (user.roleName !== 'SUPER_ADMIN') {
-      router.push('/dashboard');
-      return;
-    }
+      // Role-based access control - SUPER_ADMIN or ADMIN can access (unified dashboard)
+      if (user.roleName !== 'SUPER_ADMIN' && user.roleName !== 'ADMIN') {
+        router.push('/dashboard');
+        return;
+      }
   }, [user, loading, router]);
 
   if (loading) {
@@ -56,7 +56,7 @@ export default function SuperAdminPage() {
     );
   }
 
-  if (!user || user.roleName !== 'SUPER_ADMIN') {
+  if (!user || (user.roleName !== 'SUPER_ADMIN' && user.roleName !== 'ADMIN')) {
     // Fallback UI for environments where router push may be blocked (e.g., embedded Simple Browser)
     if (typeof window !== 'undefined') {
       setTimeout(() => {

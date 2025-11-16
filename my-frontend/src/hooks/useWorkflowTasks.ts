@@ -152,9 +152,7 @@ export function useWorkflowTasks(): UseWorkflowTasksReturn {
       urgent: 'pink'
     };
 
-    return {
-      id: task.id,
-      title: task.title,
+  const base = {
       subItems: [
         {
           id: `${task.id}-desc`,
@@ -167,9 +165,9 @@ export function useWorkflowTasks(): UseWorkflowTasksReturn {
       comments: 0, // Will be populated by API if needed
       attachments: 0, // Will be populated by API if needed
       color: priorityColors[task.priority || 'medium'],
-      // Keep original task data for drawer
-      ...task
-    };
+  } as const;
+  // Keep original task data for drawer; avoid overwriting id/title explicitly
+  return { ...base, ...task };
   };
 
   // Group tasks by status and transform for Kanban

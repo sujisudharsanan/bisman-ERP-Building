@@ -22,10 +22,12 @@ export const PERMISSIONS = {
   ENTERPRISE_NOTIFICATIONS_MANAGE: 'enterprise.notifications.manage',
 } as const;
 
-export type RoleKey = 'SUPER_ADMIN' | 'ENTERPRISE_ADMIN' | 'ORG_ADMIN' | 'ORG_USER';
+export type RoleKey = 'SYSTEM_ADMIN' | 'ENTERPRISE_ADMIN' | 'ORG_ADMIN' | 'ORG_USER' | 'ADMIN' | 'SUPER_ADMIN';
 
 const ROLE_PERMISSIONS: Record<RoleKey, string[]> = {
-  SUPER_ADMIN: Object.values(PERMISSIONS),
+  SYSTEM_ADMIN: Object.values(PERMISSIONS),
+  ADMIN: Object.values(PERMISSIONS),
+  SUPER_ADMIN: Object.values(PERMISSIONS), // legacy compatibility
   ENTERPRISE_ADMIN: [
     PERMISSIONS.ORGANIZATION_READ,
     PERMISSIONS.ORGANIZATION_WRITE,
@@ -68,7 +70,7 @@ export interface SessionUser {
 
 export function hasPermission(user: SessionUser | null | undefined, permission: string, orgId?: string) {
   if (!user) return false;
-  if (user.roles?.includes('SUPER_ADMIN')) return true;
+  if (user.roles?.includes('SYSTEM_ADMIN') || user.roles?.includes('ADMIN') || user.roles?.includes('SUPER_ADMIN')) return true;
   const granted = new Set<string>();
   (user.roles || []).forEach((r) => ROLE_PERMISSIONS[r].forEach((p) => granted.add(p)));
   if (!granted.has(permission)) return false;

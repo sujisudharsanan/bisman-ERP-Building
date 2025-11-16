@@ -7,6 +7,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { hasFullAdmin } from '../../constants/roles';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/common/hooks/useAuth';
 
@@ -27,7 +28,7 @@ export default function PermissionGuard({
   // Check if user is Super Admin
   const isSuperAdmin = React.useMemo(() => {
     const roleName = String(user?.roleName || user?.role || '').toUpperCase();
-    return roleName === 'SUPER_ADMIN' || roleName === 'SUPER ADMIN' || roleName === 'SUPERADMIN';
+    return hasFullAdmin(roleName);
   }, [user?.roleName, user?.role]);
 
   useEffect(() => {
