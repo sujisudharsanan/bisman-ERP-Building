@@ -54,6 +54,12 @@ jobs:
           else
             echo "fix-hub-incharge-password.sql not found, skipping"
           fi
+          echo "Ensuring demo users exist (idempotent upsert)"
+          if [ -f ensure-demo-users.sql ]; then
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f ensure-demo-users.sql
+          else
+            echo "ensure-demo-users.sql not found, skipping"
+          fi
           echo "Verifying hub incharge user exists and active..."
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT email, role, is_active FROM users WHERE email='demo_hub_incharge@bisman.demo';"
 
