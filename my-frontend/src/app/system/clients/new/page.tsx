@@ -1,3 +1,4 @@
+"use client";
 import React from 'react';
 import SuperAdminShell from '@/components/layouts/SuperAdminShell';
 import ClientForm from '@/components/clients/ClientForm';
