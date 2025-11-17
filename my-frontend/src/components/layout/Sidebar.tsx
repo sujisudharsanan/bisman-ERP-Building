@@ -33,11 +33,12 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={`
-          fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white dark:bg-gray-800 
-          border-r border-gray-200 dark:border-gray-700 shadow-lg
+          fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white dark:bg-[#0c111b] 
+          border-r border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-none
           transition-all duration-300 ease-in-out z-40
           ${isOpen ? 'w-52' : 'w-16'}
         `}
+        aria-label="Main sidebar"
       >
         {/* Toggle Button */}
         {onToggle && (
@@ -59,15 +60,15 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
 
         {/* Sidebar Content - Use DynamicSidebar component */}
         {isOpen && (
-          <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600">
+          <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
             <DynamicSidebar />
           </div>
         )}
 
         {/* Sidebar Footer */}
         {isOpen && (
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
-            <div className="text-xs text-gray-500 dark:text-gray-400 text-center">
+          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0c111b]">
+            <div className="text-xs text-gray-400 dark:text-gray-300 text-center">
               BISMAN ERP v1.0
             </div>
           </div>

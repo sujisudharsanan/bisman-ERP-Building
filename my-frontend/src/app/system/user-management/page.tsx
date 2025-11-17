@@ -5,6 +5,7 @@ import SuperAdminShell from '@/components/layouts/SuperAdminShell';
 import API_BASE from '@/config/api';
 import { Search, RefreshCw, Plus, Edit, XCircle } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import Link from 'next/link';
 
 // Minimal types used locally
 type Address = { line1: string; line2?: string; city: string; state: string; country: string; pincode: string };
@@ -28,11 +29,30 @@ export default function ClientManagementPage() {
   const [loading, setLoading] = useState<boolean>(true);
   const [search, setSearch] = useState<string>('');
   const [isOpen, setIsOpen] = useState<boolean>(false);
+  const [isEditOpen, setIsEditOpen] = useState<boolean>(false);
+  const [editClient, setEditClient] = useState<Client | null>(null);
+  const [lastCreatedClientId, setLastCreatedClientId] = useState<string | null>(null);
   const [form, setForm] = useState({
     legal_name: '',
     trade_name: '',
     client_type: 'Company',
     tax_id: '',
+    client_code: '',
+    registration_number: '',
+    business_size: '',
+    industry: '',
+    sales_representative: '',
+  currency: 'INR',
+  payment_terms: 'Net 30',
+  credit_limit: '',
+  billing_cycle: 'Monthly',
+  preferred_payment_method: '',
+  bank_details: { account_name: '', bank_name: '', branch: '', account_number: '', swift: '', ifsc: '', iban: '' },
+  documents: [],
+  user_access: { username: '', role: 'Client', modules: [] as string[] },
+  operational: { service_area: '', category: '', preferred_delivery: '', sla: '' },
+  compliance: { risk_category: 'Low', aml_status: 'Pending', verification_date: '', approved_by: '', blacklist: false },
+  status: 'Active',
     primary_address: { line1: '', line2: '', city: '', state: '', country: '', pincode: '' } as Address,
     primary_contact: { name: '', role: '', phone: '', email: '' } as Contact,
     secondary_contact: { name: '', role: '', phone: '', email: '' } as Contact,
@@ -84,14 +104,36 @@ export default function ClientManagementPage() {
         body.ensurePermissions = true;
         body.defaultViewAll = true;
       }
+      // Optionally request server-generated client id from a dedicated service
+      const clientIdService = (window as any).__env?.CLIENT_ID_SERVICE || process?.env?.NEXT_PUBLIC_CLIENT_ID_SERVICE || null;
+      if (clientIdService) {
+        try {
+          const idResp = await fetch(`${clientIdService}/api/client-ids`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'x-api-key': (window as any).__env?.CLIENT_ID_SERVICE_KEY },
+            body: JSON.stringify({ region: form.primary_address?.country || undefined, format: 'uuid', signed: false }),
+          });
+          const idJson = await idResp.json();
+          if (idResp.ok && idJson.client_id) {
+            body.client_id = idJson.client_id;
+          }
+        } catch (e) {
+          // ignore and continue with server-side generation
+          console.warn('client id service unavailable', e);
+        }
+      }
+
       const res = await fetch(`${API_BASE}/api/system/clients`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const json = await res.json();
+  const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Failed to create client');
+  // capture client id/code if returned
+  const createdId = json.client_id || (json.client && (json.client.client_id || json.client.client_code)) || json.client_code || null;
+  if (createdId) setLastCreatedClientId(createdId);
       // Success feedback including admin creds if generated
       if (json?.admin) {
         const parts = [
@@ -108,6 +150,22 @@ export default function ClientManagementPage() {
         trade_name: '',
         client_type: 'Company',
         tax_id: '',
+        client_code: '',
+        registration_number: '',
+        business_size: '',
+        industry: '',
+        sales_representative: '',
+        currency: 'INR',
+        payment_terms: 'Net 30',
+        credit_limit: '',
+        billing_cycle: 'Monthly',
+        preferred_payment_method: '',
+        bank_details: { account_name: '', bank_name: '', branch: '', account_number: '', swift: '', ifsc: '', iban: '' },
+        documents: [],
+        user_access: { username: '', role: 'Client', modules: [] },
+        operational: { service_area: '', category: '', preferred_delivery: '', sla: '' },
+        compliance: { risk_category: 'Low', aml_status: 'Pending', verification_date: '', approved_by: '', blacklist: false },
+        status: 'Active',
         primary_address: { line1: '', line2: '', city: '', state: '', country: '', pincode: '' },
         primary_contact: { name: '', role: '', phone: '', email: '' },
         secondary_contact: { name: '', role: '', phone: '', email: '' },
@@ -119,6 +177,54 @@ export default function ClientManagementPage() {
     } catch (e: any) {
       console.error(e);
       alert(e.message || 'Failed to create client');
+    }
+  }
+
+  function openEdit(c: Client) {
+    setEditClient(c);
+    setIsEditOpen(true);
+  }
+
+  const [editForm, setEditForm] = useState<any>({});
+  useEffect(() => {
+    if (editClient) {
+      setEditForm({
+        legal_name: editClient.legal_name || editClient.name || '',
+        trade_name: editClient.trade_name || '',
+        client_type: editClient.client_type || 'Company',
+        tax_id: editClient.tax_id || '',
+        client_code: editClient.client_code || editClient.client_id || '',
+        registration_number: editClient.registration_number || '',
+        industry: editClient.industry || '',
+        business_size: editClient.business_size || '',
+        sales_representative: editClient.sales_representative || '',
+        primary_address: editClient.primary_address || { line1: '', line2: '', city: '', state: '', country: '', pincode: '' },
+        primary_contact: editClient.primary_contact || { name: '', role: '', phone: '', email: '' },
+      });
+    } else {
+      setEditForm({});
+    }
+  }, [editClient]);
+
+  async function updateClient() {
+    if (!editClient) return;
+    try {
+      const body: any = { ...editForm };
+      const res = await fetch(`${API_BASE}/api/system/clients/${encodeURIComponent(editClient.id)}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'Failed to update client');
+      setIsEditOpen(false);
+      setEditClient(null);
+      fetchClients();
+      alert('Client updated');
+    } catch (e: any) {
+      console.error(e);
+      alert(e.message || 'Failed to update client');
     }
   }
 
@@ -148,6 +254,22 @@ export default function ClientManagementPage() {
         trade_name: '',
         client_type: 'Company',
         tax_id: '',
+        client_code: '',
+        registration_number: '',
+        business_size: '',
+        industry: '',
+        sales_representative: '',
+        currency: 'INR',
+        payment_terms: 'Net 30',
+        credit_limit: '',
+        billing_cycle: 'Monthly',
+        preferred_payment_method: '',
+        bank_details: { account_name: '', bank_name: '', branch: '', account_number: '', swift: '', ifsc: '', iban: '' },
+        documents: [],
+        user_access: { username: '', role: 'Client', modules: [] },
+        operational: { service_area: '', category: '', preferred_delivery: '', sla: '' },
+        compliance: { risk_category: 'Low', aml_status: 'Pending', verification_date: '', approved_by: '', blacklist: false },
+        status: 'Active',
         primary_address: { line1: '', line2: '', city: '', state: '', country: '', pincode: '' },
         primary_contact: { name: '', role: '', phone: '', email: '' },
         secondary_contact: { name: '', role: '', phone: '', email: '' },
@@ -181,42 +303,39 @@ export default function ClientManagementPage() {
             <button onClick={fetchClients} className="inline-flex items-center px-3 py-2 border rounded-md text-sm">
               <RefreshCw className="w-4 h-4 mr-2" /> Refresh
             </button>
-            <button onClick={() => setIsOpen(true)} className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md text-sm">
+            <Link href="/clients/create" className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md text-sm">
               <Plus className="w-4 h-4 mr-2" /> Create New Client
-            </button>
+            </Link>
           </div>
         </div>
 
-        {isOpen && (
+        {isEditOpen && editClient && (
           <div className="fixed inset-0 z-50 flex items-center justify-center">
-            {/* Backdrop */}
-            <div className="absolute inset-0 bg-black/50" onClick={() => setIsOpen(false)} />
-
-            {/* Modal container - responsive width and max height */}
+            <div className="absolute inset-0 bg-black/50" onClick={() => setIsEditOpen(false)} />
             <div className="relative bg-white w-[95vw] max-w-2xl md:max-w-3xl lg:max-w-4xl rounded-lg shadow-lg flex flex-col max-h-[90vh]">
-              {/* Header */}
               <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b sticky top-0 bg-white z-10 rounded-t-lg">
-                <h2 className="text-lg sm:text-xl font-semibold">Create Client</h2>
-                <button onClick={() => setIsOpen(false)} className="p-2 rounded hover:bg-gray-100">
+                <h2 className="text-lg sm:text-xl font-semibold">Edit Client</h2>
+                <button onClick={() => setIsEditOpen(false)} className="p-2 rounded hover:bg-gray-100">
                   <XCircle className="w-5 h-5" />
                 </button>
               </div>
-
-              {/* Scrollable body */}
               <div className="px-4 sm:px-6 py-4 overflow-y-auto">
-                {/* Basics */}
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
                     <label className="block text-sm text-gray-600">Legal Name*</label>
-                    <input value={form.legal_name} onChange={(e) => setForm({ ...form, legal_name: e.target.value })} className="w-full border rounded p-2" />
+                    <input value={editForm.legal_name} onChange={(e) => setEditForm({ ...editForm, legal_name: e.target.value })} className="w-full border rounded p-2" />
                   </div>
                   <div>
                     <label className="block text-sm text-gray-600">Trade Name</label>
-                    <input value={form.trade_name} onChange={(e) => setForm({ ...form, trade_name: e.target.value })} className="w-full border rounded p-2" />
+                    <input value={editForm.trade_name} onChange={(e) => setEditForm({ ...editForm, trade_name: e.target.value })} className="w-full border rounded p-2" />
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600">Client Code / ID</label>
+                    <input value={editForm.client_code} onChange={(e) => setEditForm({ ...editForm, client_code: e.target.value })} className="w-full border rounded p-2" />
                   </div>
                   <div>
                     <label className="block text-sm text-gray-600">Client Type</label>
-                    <select value={form.client_type} onChange={(e) => setForm({ ...form, client_type: e.target.value })} className="w-full border rounded p-2">
+                    <select value={editForm.client_type} onChange={(e) => setEditForm({ ...editForm, client_type: e.target.value })} className="w-full border rounded p-2">
                       <option>Company</option>
                       <option>Individual</option>
                       <option>Distributor</option>
@@ -227,139 +346,58 @@ export default function ClientManagementPage() {
                   </div>
                   <div>
                     <label className="block text-sm text-gray-600">Tax ID (GSTIN/VAT/PAN)</label>
-                    <input value={form.tax_id} onChange={(e) => setForm({ ...form, tax_id: e.target.value })} className="w-full border rounded p-2" />
+                    <input value={editForm.tax_id} onChange={(e) => setEditForm({ ...editForm, tax_id: e.target.value })} className="w-full border rounded p-2" />
                   </div>
                 </div>
 
-                {/* Primary Address */}
                 <div className="mt-4">
                   <h3 className="font-semibold mb-2">Primary Address</h3>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <input placeholder="Line 1" value={form.primary_address.line1} onChange={(e) => setForm({
-                      ...form,
-                      primary_address: { ...form.primary_address, line1: e.target.value },
-                    })} className="w-full border rounded p-2" />
-                    <input placeholder="Line 2" value={form.primary_address.line2} onChange={(e) => setForm({
-                      ...form,
-                      primary_address: { ...form.primary_address, line2: e.target.value },
-                    })} className="w-full border rounded p-2" />
-                    <input placeholder="City" value={form.primary_address.city} onChange={(e) => setForm({
-                      ...form,
-                      primary_address: { ...form.primary_address, city: e.target.value },
-                    })} className="w-full border rounded p-2" />
-                    <input placeholder="State" value={form.primary_address.state} onChange={(e) => setForm({
-                      ...form,
-                      primary_address: { ...form.primary_address, state: e.target.value },
-                    })} className="w-full border rounded p-2" />
-                    <input placeholder="Country" value={form.primary_address.country} onChange={(e) => setForm({
-                      ...form,
-                      primary_address: { ...form.primary_address, country: e.target.value },
-                    })} className="w-full border rounded p-2" />
-                    <input placeholder="PIN/ZIP" value={form.primary_address.pincode} onChange={(e) => setForm({
-                      ...form,
-                      primary_address: { ...form.primary_address, pincode: e.target.value },
-                    })} className="w-full border rounded p-2" />
+                    <input placeholder="Line 1" value={editForm.primary_address?.line1 || ''} onChange={(e) => setEditForm({ ...editForm, primary_address: { ...(editForm.primary_address || {}), line1: e.target.value } })} className="w-full border rounded p-2" />
+                    <input placeholder="Line 2" value={editForm.primary_address?.line2 || ''} onChange={(e) => setEditForm({ ...editForm, primary_address: { ...(editForm.primary_address || {}), line2: e.target.value } })} className="w-full border rounded p-2" />
+                    <input placeholder="City" value={editForm.primary_address?.city || ''} onChange={(e) => setEditForm({ ...editForm, primary_address: { ...(editForm.primary_address || {}), city: e.target.value } })} className="w-full border rounded p-2" />
+                    <input placeholder="State" value={editForm.primary_address?.state || ''} onChange={(e) => setEditForm({ ...editForm, primary_address: { ...(editForm.primary_address || {}), state: e.target.value } })} className="w-full border rounded p-2" />
+                    <input placeholder="Country" value={editForm.primary_address?.country || ''} onChange={(e) => setEditForm({ ...editForm, primary_address: { ...(editForm.primary_address || {}), country: e.target.value } })} className="w-full border rounded p-2" />
+                    <input placeholder="PIN/ZIP" value={editForm.primary_address?.pincode || ''} onChange={(e) => setEditForm({ ...editForm, primary_address: { ...(editForm.primary_address || {}), pincode: e.target.value } })} className="w-full border rounded p-2" />
                   </div>
                 </div>
 
-                {/* Contacts */}
                 <div className="mt-4 grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div>
                     <h3 className="font-semibold mb-2">Primary Contact</h3>
-                    <input placeholder="Name" className="w-full border rounded p-2 mb-2" value={form.primary_contact.name} onChange={(e) => setForm({
-                      ...form,
-                      primary_contact: { ...form.primary_contact, name: e.target.value },
-                    })} />
-                    <input placeholder="Role/Designation" className="w-full border rounded p-2 mb-2" value={form.primary_contact.role} onChange={(e) => setForm({
-                      ...form,
-                      primary_contact: { ...form.primary_contact, role: e.target.value },
-                    })} />
-                    <input placeholder="Phone" className="w-full border rounded p-2 mb-2" value={form.primary_contact.phone} onChange={(e) => setForm({
-                      ...form,
-                      primary_contact: { ...form.primary_contact, phone: e.target.value },
-                    })} />
-                    <input placeholder="Email" className="w-full border rounded p-2" value={form.primary_contact.email} onChange={(e) => setForm({
-                      ...form,
-                      primary_contact: { ...form.primary_contact, email: e.target.value },
-                    })} />
+                    <input placeholder="Name" className="w-full border rounded p-2 mb-2" value={editForm.primary_contact?.name || ''} onChange={(e) => setEditForm({ ...editForm, primary_contact: { ...(editForm.primary_contact || {}), name: e.target.value } })} />
+                    <input placeholder="Role/Designation" className="w-full border rounded p-2 mb-2" value={editForm.primary_contact?.role || ''} onChange={(e) => setEditForm({ ...editForm, primary_contact: { ...(editForm.primary_contact || {}), role: e.target.value } })} />
+                    <input placeholder="Phone" className="w-full border rounded p-2 mb-2" value={editForm.primary_contact?.phone || ''} onChange={(e) => setEditForm({ ...editForm, primary_contact: { ...(editForm.primary_contact || {}), phone: e.target.value } })} />
+                    <input placeholder="Email" className="w-full border rounded p-2" value={editForm.primary_contact?.email || ''} onChange={(e) => setEditForm({ ...editForm, primary_contact: { ...(editForm.primary_contact || {}), email: e.target.value } })} />
                   </div>
                   <div>
-                    <h3 className="font-semibold mb-2">Secondary Contact</h3>
-                    <input placeholder="Name" className="w-full border rounded p-2 mb-2" value={form.secondary_contact.name} onChange={(e) => setForm({
-                      ...form,
-                      secondary_contact: { ...form.secondary_contact, name: e.target.value },
-                    })} />
-                    <input placeholder="Role/Designation" className="w-full border rounded p-2 mb-2" value={form.secondary_contact.role} onChange={(e) => setForm({
-                      ...form,
-                      secondary_contact: { ...form.secondary_contact, role: e.target.value },
-                    })} />
-                    <input placeholder="Phone" className="w-full border rounded p-2 mb-2" value={form.secondary_contact.phone} onChange={(e) => setForm({
-                      ...form,
-                      secondary_contact: { ...form.secondary_contact, phone: e.target.value },
-                    })} />
-                    <input placeholder="Email" className="w-full border rounded p-2" value={form.secondary_contact.email} onChange={(e) => setForm({
-                      ...form,
-                      secondary_contact: { ...form.secondary_contact, email: e.target.value },
-                    })} />
+                    <h3 className="font-semibold mb-2">Operational & Sales</h3>
+                    <input placeholder="Industry / Business Category" className="w-full border rounded p-2 mb-2" value={editForm.industry || ''} onChange={(e) => setEditForm({ ...editForm, industry: e.target.value })} />
+                    <input placeholder="Business Size" className="w-full border rounded p-2 mb-2" value={editForm.business_size || ''} onChange={(e) => setEditForm({ ...editForm, business_size: e.target.value })} />
+                    <input placeholder="Sales Representative" className="w-full border rounded p-2" value={editForm.sales_representative || ''} onChange={(e) => setEditForm({ ...editForm, sales_representative: e.target.value })} />
                   </div>
                 </div>
-
-                {/* Admin provisioning */}
-                <div className="mt-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="font-semibold">Provision Admin User</h3>
-                    <label className="flex items-center gap-2 text-sm">
-                      <input type="checkbox" checked={createAdminNow} onChange={(e) => setCreateAdminNow(e.target.checked)} />
-                      Create admin now
-                    </label>
-                  </div>
-                  {createAdminNow && (
-                    <div className="mt-3 grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="md:col-span-1">
-                        <label className="block text-sm text-gray-600">Admin Email*</label>
-                        <input type="email" className="w-full border rounded p-2" value={adminUser.email} onChange={(e) => setAdminUser({ ...adminUser, email: e.target.value })} />
-                      </div>
-                      <div className="md:col-span-1">
-                        <label className="block text-sm text-gray-600">Username (optional)</label>
-                        <input className="w-full border rounded p-2" value={adminUser.username || ''} onChange={(e) => setAdminUser({ ...adminUser, username: e.target.value })} />
-                      </div>
-                      <div className="md:col-span-1">
-                        <label className="block text-sm text-gray-600">Password (optional)</label>
-                        <input className="w-full border rounded p-2" type="password" value={adminUser.password || ''} onChange={(e) => setAdminUser({ ...adminUser, password: e.target.value })} />
-                        <p className="text-xs text-gray-500 mt-1">Leave blank to auto-generate a secure password.</p>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Save as draft option removed; use the Save Draft button below */}
               </div>
-
-              {/* Sticky footer actions */}
               <div className="px-4 sm:px-6 py-3 border-t bg-white sticky bottom-0 z-10 rounded-b-lg flex justify-end gap-2">
-                <button onClick={() => setIsOpen(false)} className="px-4 py-2 border rounded">
-                  Cancel
-                </button>
-                <button onClick={saveDraft} className="px-4 py-2 bg-blue-600 text-white rounded">
-                  Save Draft
-                </button>
+                <button onClick={() => setIsEditOpen(false)} className="px-4 py-2 border rounded">Cancel</button>
+                <button onClick={updateClient} className="px-4 py-2 bg-blue-600 text-white rounded">Save Changes</button>
               </div>
             </div>
           </div>
         )}
 
-        <div className="bg-white rounded-lg shadow overflow-hidden">
-          <div className="p-4 border-b flex items-center justify-between">
+        <div className="bg-white dark:bg-[#0c111b] rounded-lg shadow overflow-hidden border border-gray-200 dark:border-gray-700">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
             <div className="flex items-center gap-2">
-              <div className="relative">
+                <div className="relative">
                 <input
                   type="text"
                   placeholder="Search clients..."
-                  className="pl-10 pr-4 py-2 border rounded-md w-64"
+                  className="pl-10 pr-4 py-2 border rounded-md w-64 bg-white dark:bg-[#071018] text-gray-900 dark:text-gray-200 border-gray-300 dark:border-gray-600 placeholder-gray-400 dark:placeholder-gray-500"
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
-                <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400" />
+                <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400 dark:text-gray-400" />
               </div>
               <button onClick={fetchClients} className="inline-flex items-center px-3 py-2 border rounded-md text-sm">
                 Refresh
@@ -367,23 +405,23 @@ export default function ClientManagementPage() {
             </div>
           </div>
 
-          <div className="divide-y">
+          <div className="divide-y divide-gray-200 dark:divide-gray-700">
             {loading ? (
-              <div className="p-8 text-center text-gray-500">Loading...</div>
+              <div className="p-8 text-center text-gray-500 dark:text-gray-300">Loading...</div>
             ) : filtered.length === 0 ? (
               <div className="p-8 text-center text-gray-500">No records found</div>
             ) : (
-      filtered.map((item) => (
-                <div key={item.id} className="p-4 flex items-center justify-between">
+  filtered.map((item) => (
+        <div key={item.id} className="p-4 flex items-center justify-between border-b border-gray-200 dark:border-gray-700">
                   <div>
-                    <div className="font-medium">{item.legal_name || item.name}</div>
+                    <div className="font-medium">{item.legal_name || item.name} {item.client_code ? (<span className="ml-2 text-xs text-gray-400">{item.client_code}</span>) : (item.client_id ? <span className="ml-2 text-xs text-gray-400">{item.client_id}</span> : null)}</div>
                     <div className="text-sm text-gray-500">
-                      {item.client_code || item.client_type} {item.tax_id ? `• ${item.tax_id}` : ''}
+                      {item.client_type || item.client_code} {item.tax_id ? `• ${item.tax_id}` : ''} {item.sales_representative ? `• Sales: ${item.sales_representative}` : ''}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
-        <span className="text-xs px-2 py-1 rounded bg-gray-100">{(item as any)?.settings?.enterprise?.status || item.status || 'Active'}</span>
-                    <button onClick={() => alert('Edit soon')} className="inline-flex items-center px-2 py-1 border rounded-md text-xs">
+  <span className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-[#071018] text-gray-800 dark:text-gray-200">{(item as any)?.settings?.enterprise?.status || item.status || 'Active'}</span>
+                    <button onClick={() => openEdit(item)} className="inline-flex items-center px-2 py-1 border rounded-md text-xs">
                       <Edit className="w-3 h-3 mr-1" /> Edit
                     </button>
                   </div>

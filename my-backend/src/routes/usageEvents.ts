@@ -13,7 +13,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
     const { event_type, module_id, meta } = req.body;
     if (!event_type) return res.status(400).json({ error: 'event_type required' });
     if (!user?.tenant_id) return res.status(400).json({ error: 'tenant_id missing on user' });
-    const created = await prisma.clientUsageEvent.create({
+    const created = await prisma.UsageEvent.create({
       data: {
         event_type,
         module_id: module_id ? Number(module_id) : null,
@@ -35,7 +35,7 @@ router.get('/summary', authMiddleware, async (req: Request, res: Response) => {
     const user = (req as any).user;
     if (!user?.tenant_id) return res.status(400).json({ error: 'tenant_id missing on user' });
     const since = new Date(Date.now() - 24 * 3600 * 1000);
-    const raw = await prisma.clientUsageEvent.findMany({
+    const raw = await prisma.UsageEvent.findMany({
       where: { client_id: user.tenant_id, occurred_at: { gte: since } },
       select: { event_type: true },
     });

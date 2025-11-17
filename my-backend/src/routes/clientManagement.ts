@@ -53,12 +53,30 @@ router.get('/clients', authMiddleware, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
     const where: any = {};
+    const status = String(req.query.status || '').trim();
+  const q = String(req.query.q || '').trim().toLowerCase();
+    // Status filter uses JSON field inside settings.enterprise.status OR top-level status column fallback
+    if (status) {
+      // We'll fetch all then filter in-memory if status is stored in JSON enterprise settings
+      where.status = undefined; // avoid accidental mismatch, use post-filter
+    }
     if (!isPlatformAdmin(user?.role)) {
-      // limit to clients under the user's super_admin_id if present
       if (user?.super_admin_id) where.super_admin_id = user.super_admin_id;
     }
-    const clients = await prisma.client.findMany({ where, orderBy: { created_at: 'desc' } });
-    res.json({ success: true, data: clients });
+    const clientsRaw = await prisma.client.findMany({ where, orderBy: { created_at: 'desc' } });
+    const clients = clientsRaw.filter((c: any) => {
+      if (!status) return true;
+      const s1 = c.status || '';
+      const s2 = c.settings?.enterprise?.status || '';
+      return s1 === status || s2 === status;
+    });
+    const filtered = q ? clients.filter((c: any) => {
+      const name = (c.name || '').toLowerCase();
+      const legal = (c.settings?.enterprise?.legal_name || '').toLowerCase();
+      const trade = (c.settings?.enterprise?.trade_name || '').toLowerCase();
+      return name.includes(q) || legal.includes(q) || trade.includes(q);
+    }) : clients;
+    res.json({ success: true, count: filtered.length, data: filtered });
   } catch (e: any) {
     console.error('List clients error', e);
     res.status(500).json({ error: 'Failed to list clients', details: e.message });
@@ -66,10 +84,68 @@ router.get('/clients', authMiddleware, async (req: Request, res: Response) => {
 });
 
 // Create client (tenant owner or platform)
+// Helper: server-side client-id-service integration (returns string or null)
+async function fetchServerClientId(country?: string): Promise<string | null> {
+  const base = process.env.CLIENT_ID_SERVICE_URL;
+  if (!base) return null;
+  try {
+    const body: any = { region: country || undefined, format: 'uuid', signed: false };
+    const headers: any = { 'Content-Type': 'application/json' };
+    if (process.env.CLIENT_ID_SERVICE_KEY) headers['x-api-key'] = process.env.CLIENT_ID_SERVICE_KEY;
+    const resp = await fetch(`${base.replace(/\/$/, '')}/api/client-ids`, { method: 'POST', headers, body: JSON.stringify(body) });
+    if (!resp.ok) {
+      console.warn('client-id-service responded non-200', resp.status);
+      return null;
+    }
+  const json: any = await resp.json().catch(() => ({}));
+  return typeof json.client_id === 'string' ? json.client_id : null;
+  } catch (e) {
+    console.warn('client-id-service fetch failed', (e as any)?.message || e);
+    return null;
+  }
+}
+
+// Public code generator using ClientSequence model (per client_type + year)
+async function generatePublicCode(clientType: string): Promise<{ public_code: string; client_number: bigint }> {
+  const year = new Date().getUTCFullYear();
+  const ct = clientType.toLowerCase();
+  const seq = await (prisma as any).clientSequence.upsert({
+    where: { client_type_year: { client_type: ct, year } },
+    update: { last_number: { increment: 1 } },
+    create: { client_type: ct, year, last_number: 1 },
+  });
+  const num: bigint = seq.last_number;
+  const padded = num.toString().padStart(6, '0');
+  const prefixMap: Record<string, string> = { trial: 'TRIAL', temporary: 'TRIAL', free: 'FREE', paid: 'PAID', enterprise: 'ENT', company: 'CLT' };
+  const prefix = prefixMap[ct] || 'CLT';
+  return { public_code: `${prefix}-${year}-${padded}`, client_number: num };
+}
+
+// Get single client (basic details + enterprise settings unpack)
+router.get('/clients/:id', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { id } = req.params;
+    const clientId = String(id);
+    const existing = await prisma.client.findUnique({ where: { id: clientId } });
+    if (!existing) return res.status(404).json({ error: 'Client not found' });
+    // Authorization: same as update rules
+    const role = user?.role;
+    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
+    if (!allowed || (!isPlatformAdmin(role) && user?.super_admin_id !== existing.super_admin_id)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    res.json({ success: true, data: existing });
+  } catch (e: any) {
+    console.error('Get client error', e);
+    res.status(500).json({ error: 'Failed to get client', details: e.message });
+  }
+});
+
+// Create client (tenant owner or platform) with optional server-side client-id-service persistence
 router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
   try {
     const user = (req as any).user;
-    // Permit platform admin, tenant admin, and super admin roles to create clients
     const role = user?.role;
     const isAllowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
     if (!isAllowed) return res.status(403).json({ error: 'Admin only' });
@@ -79,12 +155,11 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
       productType = 'BUSINESS_ERP',
       subscriptionPlan = 'free',
       super_admin_id,
-  saveAsDraft,
-  adminUser,
+      saveAsDraft,
+      adminUser,
       ensurePermissions,
       defaultViewAll,
-      // Enterprise fields (packed under settings.enterprise)
-      client_code,
+      client_code: clientCodeFromBody,
       legal_name,
       trade_name,
       client_type,
@@ -106,35 +181,43 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
       operational,
       risk,
       status,
+  // Extended meta fields (flatted by frontend as body.meta or top-level)
+  meta,
+  segment,
+  tier,
+  lifecycle_stage,
+  source_channel,
+  tags,
+  sales_team,
+  external_reference,
+  public_code,
+  type_sequence_code,
+  kyc_documents,
+  kyc_status,
+  risk_score,
     } = (req.body || {}) as any;
 
     if (!name && !legal_name && !trade_name) return res.status(400).json({ error: 'name or legal_name/trade_name required' });
     let sid = super_admin_id || user?.super_admin_id;
-    // Robust fallback resolution for super_admin_id
     if (!sid) {
       try {
-        // 1) If SUPER_ADMIN (or tenant admin), try SuperAdmin by email
         if ((role === 'SUPER_ADMIN' || isTenantAdmin(role)) && user?.email) {
           const sa = await prisma.superAdmin.findUnique({ where: { email: user.email } });
           if (sa?.id) sid = sa.id;
         }
-        // 2) If still not found, try Users table by email
         if (!sid && user?.email) {
           const u = await prisma.user.findUnique({ where: { email: user.email } }).catch(() => null);
           if (u?.super_admin_id) sid = u.super_admin_id;
         }
-        // 3) Try Users table by id (id or userId)
         if (!sid && (user?.id || (user as any)?.userId)) {
           const uid = user?.id ?? (user as any)?.userId;
           const u = await prisma.user.findUnique({ where: { id: Number(uid) } }).catch(() => null);
           if (u?.super_admin_id) sid = u.super_admin_id;
         }
-        // 4) Try Users table by username if available
         if (!sid && user?.username) {
           const u = await prisma.user.findFirst({ where: { username: user.username } }).catch(() => null);
           if (u?.super_admin_id) sid = u.super_admin_id;
         }
-        // 5) Dev-friendly fallback: if exactly one SuperAdmin exists, use it
         if (!sid) {
           const count = await prisma.superAdmin.count();
           if (count === 1) {
@@ -146,8 +229,15 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
     }
     if (!sid) return res.status(400).json({ error: 'super_admin_id missing' });
 
-    const enterprise = {
-      client_code,
+    // Produce client_code: prefer body, else server-side generated, else fallback UUID
+    let effectiveClientCode: string | undefined = clientCodeFromBody;
+    if (!effectiveClientCode) {
+      const generated = await fetchServerClientId(primary_address?.country);
+      effectiveClientCode = generated || require('crypto').randomUUID();
+    }
+
+  const enterprise = {
+      client_code: effectiveClientCode,
       legal_name,
       trade_name,
       client_type,
@@ -176,11 +266,32 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
       system_access,
       operational,
       risk,
-      status,
+  status: status || 'Active',
+      meta: {
+        server_generated_code: !clientCodeFromBody,
+        ...(meta || {}),
+        segment: segment ?? meta?.segment,
+        tier: tier ?? meta?.tier,
+        lifecycle_stage: lifecycle_stage ?? meta?.lifecycle_stage,
+        source_channel: source_channel ?? meta?.source_channel,
+        tags: Array.isArray(tags) ? tags : (Array.isArray(meta?.tags) ? meta.tags : []),
+        sales_team: Array.isArray(sales_team) ? sales_team : (Array.isArray(meta?.sales_team) ? meta.sales_team : []),
+        external_reference: external_reference ?? meta?.external_reference,
+        public_code: public_code ?? meta?.public_code,
+        type_sequence_code: type_sequence_code ?? meta?.type_sequence_code,
+        kyc_status: kyc_status ?? meta?.kyc_status,
+        risk_score: typeof risk_score === 'number' ? risk_score : (typeof meta?.risk_score === 'number' ? meta.risk_score : undefined),
+        kyc_documents: Array.isArray(kyc_documents) ? kyc_documents : (Array.isArray(meta?.kyc_documents) ? meta.kyc_documents : []),
+      }
     };
 
-    // Create client first (optionally inside a transaction when we also provision admin/permissions)
     let created: any;
+    // Generate public_code/client_number for full create (store inside enterprise.meta)
+    let publicCodeData: { public_code: string; client_number: bigint } | null = null;
+    try { publicCodeData = await generatePublicCode((client_type || 'company').toString()); } catch (e) { console.warn('Public code gen failed', (e as any)?.message); }
+    if (publicCodeData) {
+      (enterprise as any).meta = { ...(enterprise as any).meta, public_code: publicCodeData.public_code, client_number: publicCodeData.client_number };
+    }
     if (adminUser || ensurePermissions) {
       await prisma.$transaction(async (tx) => {
         created = await tx.client.create({
@@ -203,7 +314,7 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
           }
         }
       });
-    } else {
+  } else {
       created = await prisma.client.create({
         data: {
           name: name || legal_name || trade_name,
@@ -215,34 +326,29 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
       });
     }
 
-    // If saveAsDraft requested (and no admin yet), mark inactive/draft
     if (saveAsDraft && !adminUser) {
       created = await prisma.client.update({
         where: { id: created.id },
         data: {
           is_active: false,
-          // Persist draft status inside enterprise JSON to avoid schema drift issues
           settings: { enterprise: { ...enterprise, status: 'Draft' } } as any,
         },
       });
     }
 
-    // Optionally create a default Admin user for this client
     let adminCreated: any = null;
     let generatedPassword: string | undefined;
     if (adminUser && adminUser.email) {
-      // Validate uniqueness by email
       const existingUser = await prisma.user.findUnique({ where: { email: adminUser.email } }).catch(() => null);
       if (existingUser) {
-        // Roll back client if it was created just now? Safer to keep client and report conflict.
         return res.status(409).json({ error: 'Admin email already exists', client: created });
       }
       const bcrypt = require('bcryptjs');
       const password = adminUser.password || generateTempPassword(12);
       generatedPassword = adminUser.password ? undefined : password;
       const hashed = await bcrypt.hash(password, 10);
-  const emailPrefix = (adminUser.email && adminUser.email.split('@')[0]) || 'admin';
-  const username = adminUser.username || emailPrefix;
+      const emailPrefix = (adminUser.email && adminUser.email.split('@')[0]) || 'admin';
+      const username = adminUser.username || emailPrefix;
       adminCreated = await prisma.user.create({
         data: {
           username,
@@ -257,9 +363,14 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
         },
       });
     }
-    res.status(201).json({ success: true, data: created, admin: adminCreated ? { id: adminCreated.id, email: adminCreated.email, username: adminCreated.username } : null, tempPassword: generatedPassword });
+  // Include effectiveClientCode separately for frontend even if underlying schema auto-populated differently.
+  res.status(201).json({ success: true, client_code: effectiveClientCode, public_code: (enterprise as any).meta?.public_code, data: created, admin: adminCreated ? { id: adminCreated.id, email: adminCreated.email, username: adminCreated.username } : null, tempPassword: generatedPassword });
   } catch (e: any) {
     console.error('Create client error', e);
+    // Handle unique constraint on client_code gracefully
+    if (e.code === 'P2002' && e.meta?.target?.includes('client_code')) {
+      return res.status(409).json({ error: 'Client code already exists (race condition). Retry.' });
+    }
     res.status(500).json({ error: 'Failed to create client', details: e.message });
   }
 });
@@ -480,3 +591,157 @@ router.get('/clients/:id/usage/daily', authMiddleware, async (req: Request, res:
 });
 
 export default router;
+
+// --- Documents Management (append metadata into enterprise.documents array) ---
+router.post('/clients/:id/documents', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { id } = req.params;
+    const clientId = String(id);
+    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    if (!client) return res.status(404).json({ error: 'Client not found' });
+    const role = user?.role;
+    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
+    if (!allowed || (!isPlatformAdmin(role) && user?.super_admin_id !== client.super_admin_id)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const { filename, url, size_bytes, content_type, doc_type } = req.body || {};
+    if (!filename || !url) return res.status(400).json({ error: 'filename and url required' });
+    const settings: any = client.settings || {};
+    const enterprise: any = settings.enterprise || {};
+    const docs: any[] = Array.isArray(enterprise.documents) ? enterprise.documents.slice() : [];
+    const meta = {
+      id: require('crypto').randomUUID(),
+      filename,
+      url,
+      size_bytes: size_bytes || null,
+      content_type: content_type || null,
+      doc_type: doc_type || 'GENERAL',
+      uploaded_at: new Date().toISOString(),
+      uploaded_by: user?.email || user?.username || null,
+    };
+    docs.push(meta);
+    enterprise.documents = docs;
+    const updated = await prisma.client.update({ where: { id: clientId }, data: { settings: { enterprise } as any } });
+    res.status(201).json({ success: true, data: meta, count: docs.length });
+  } catch (e: any) {
+    console.error('Add client document error', e);
+    res.status(500).json({ error: 'Failed to add document', details: e.message });
+  }
+});
+
+// Public temporary client registration (minimal onboarding) - no auth required
+// Creates a client with status 'Temporary' and is_active=false
+router.post('/public/clients/register', async (req: Request, res: Response) => {
+  try {
+    const { legal_name, trade_name, email, phone, country } = req.body || {};
+    if (!legal_name && !trade_name) return res.status(400).json({ error: 'legal_name or trade_name required' });
+    // Resolve a default super_admin_id: choose single SuperAdmin if only one exists
+    let sid: number | undefined;
+    try {
+      const count = await prisma.superAdmin.count();
+      if (count === 1) {
+        const only = await prisma.superAdmin.findFirst();
+        if (only?.id) sid = only.id;
+      }
+    } catch {}
+    if (!sid) return res.status(503).json({ error: 'super_admin_id unavailable for temporary registration' });
+    const clientCode = await fetchServerClientId(country) || require('crypto').randomUUID();
+  const enterprise: any = {
+      legal_name,
+      trade_name,
+      status: 'trial',
+      contacts: email || phone ? [{ name: legal_name || trade_name || 'Trial', email, phone, primary: true }] : [],
+      addresses: country ? [{ type: 'registered', country }] : [],
+    };
+  let publicCodeData: { public_code: string; client_number: bigint } | null = null;
+  try { publicCodeData = await generatePublicCode('trial'); } catch (e) { console.warn('Public code gen failed (trial)', (e as any)?.message); }
+  if (publicCodeData) enterprise.meta = { ...(enterprise.meta || {}), public_code: publicCodeData.public_code, client_number: publicCodeData.client_number };
+    const created = await prisma.client.create({
+      data: {
+        name: legal_name || trade_name,
+        productType: 'BUSINESS_ERP',
+        subscriptionPlan: 'free',
+        super_admin_id: sid,
+        is_active: false,
+        // client_code field may be absent in Prisma model; included in enterprise JSON only.
+        settings: { enterprise: { ...enterprise, client_code: clientCode } } as any,
+    // Store public code only inside enterprise meta until migration applied
+      },
+    });
+  res.status(201).json({ success: true, data: { id: created.id, client_code: clientCode, public_code: enterprise.meta?.public_code, status: 'trial' } });
+  } catch (e: any) {
+    console.error('Temporary registration error', e);
+    res.status(500).json({ error: 'Failed temporary registration', details: e.message });
+  }
+});
+
+// Promote temporary client to active
+router.post('/clients/:id/promote', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { id } = req.params;
+    const clientId = String(id);
+    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    if (!client) return res.status(404).json({ error: 'Client not found' });
+    const role = user?.role;
+    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
+    if (!allowed || (!isPlatformAdmin(role) && user?.super_admin_id !== client.super_admin_id)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    // Update status inside enterprise settings
+    let enterprise: any = {};
+    try {
+      const raw: any = client.settings;
+      // settings may be an object with enterprise key or already structured; handle both.
+      if (raw && typeof raw === 'object') {
+        enterprise = (raw as any).enterprise || raw;
+      }
+    } catch {}
+    enterprise.status = 'active';
+    let publicCodeData: { public_code: string; client_number: bigint } | null = null;
+    // Generate only if not already in enterprise meta
+    const existingPublic = enterprise.meta?.public_code;
+    if (!existingPublic) {
+      try { publicCodeData = await generatePublicCode('paid'); } catch (e) { console.warn('Public code gen failed (promote)', (e as any)?.message); }
+      if (publicCodeData) enterprise.meta = { ...(enterprise.meta || {}), public_code: publicCodeData.public_code, client_number: publicCodeData.client_number };
+    }
+    const updated = await prisma.client.update({
+      where: { id: clientId },
+      data: { is_active: true, settings: { enterprise } as any },
+    });
+    res.json({ success: true, data: { id: updated.id, status: 'active', public_code: enterprise.meta?.public_code } });
+  } catch (e: any) {
+    console.error('Promote client error', e);
+    res.status(500).json({ error: 'Failed to promote client', details: e.message });
+  }
+});
+
+// Delete client (soft by default). Soft: set is_active=false and enterprise.meta.deleted_at timestamp.
+// Hard delete with query param ?hard=true
+router.delete('/clients/:id', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { id } = req.params;
+    const clientId = String(id);
+    const hard = String(req.query.hard || '').toLowerCase() === 'true';
+    const existing: any = await prisma.client.findUnique({ where: { id: clientId } });
+    if (!existing) return res.status(404).json({ error: 'Client not found' });
+    const role = user?.role;
+    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN';
+    if (!allowed || (!isPlatformAdmin(role) && user?.super_admin_id !== existing.super_admin_id)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    if (hard) {
+      await prisma.client.delete({ where: { id: clientId } });
+      return res.json({ success: true, hard: true, id: clientId });
+    }
+    const settings: any = existing.settings || {}; const enterprise: any = settings.enterprise || settings;
+    enterprise.meta = { ...(enterprise.meta || {}), deleted_at: new Date().toISOString() };
+    const updated = await prisma.client.update({ where: { id: clientId }, data: { is_active: false, settings: { enterprise } as any } });
+    res.json({ success: true, hard: false, id: clientId, deleted_at: enterprise.meta.deleted_at });
+  } catch (e: any) {
+    console.error('Delete client error', e);
+    res.status(500).json({ error: 'Failed to delete client', details: e.message });
+  }
+});

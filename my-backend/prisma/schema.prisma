@@ -288,6 +288,8 @@ model Client {
   name               String    @db.VarChar(200)
   // Enterprise client master fields
   client_code        String?   @unique @db.VarChar(50)
+  public_code        String?   @unique @db.VarChar(50) // Human friendly external identifier (e.g. TRIAL-2025-000123)
+  client_number      BigInt?   @unique // Monotonic sequence per type (optional)
   legal_name         String?   @db.VarChar(200)
   trade_name         String?   @db.VarChar(200)
   client_type        String?   @db.VarChar(50)
@@ -332,11 +334,25 @@ model Client {
   clientModulePermissions ClientModulePermission[]
   usageEvents        ClientUsageEvent[]
   dailyUsage         ClientDailyUsage[]
+  sequences          ClientSequence[]
 
   @@index([super_admin_id], map: "idx_clients_super_admin")
   @@index([productType], map: "idx_clients_product_type")
   @@index([client_code], map: "idx_clients_code")
   @@map("clients")
+}
+
+// Tracks per client_type sequence counters for generating new public codes.
+model ClientSequence {
+  id           Int      @id @default(autoincrement())
+  client_type  String   @db.VarChar(50)
+  year         Int
+  last_number  BigInt   @default(0)
+  updated_at   DateTime @default(now()) @updatedAt @db.Timestamp(6)
+  clients      Client[]
+
+  @@unique([client_type, year])
+  @@map("client_sequences")
 }
 
 model Module {

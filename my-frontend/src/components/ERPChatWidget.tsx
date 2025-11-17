@@ -193,7 +193,7 @@ export default function ERPChatWidget({ userName }: { userName?: string }) {
   return (
     <div className="chat-widget-container">
       {/* Floating Chat Button - Hidden when chat is open */}
-      {!open && (
+  {!open && (
         <BismanFloatingWidget
           onOpen={() => { setOpen(true); setIconState('listening'); }}
           position="bottom-right"
@@ -208,7 +208,7 @@ export default function ERPChatWidget({ userName }: { userName?: string }) {
       {open && !isFullScreen && (
         <div 
           ref={chatWindowRef}
-          className={isMinimized ? "chat-window-docked bg-white dark:bg-slate-900" : "chat-window bg-white dark:bg-slate-900 rounded-lg shadow-2xl overflow-hidden animate-slide-in border border-gray-200 dark:border-slate-700"}
+          className={isMinimized ? "chat-window-docked bg-white dark:bg-[#071018]" : "chat-window bg-white dark:bg-[#071018] rounded-lg shadow-2xl overflow-hidden animate-slide-in border border-gray-200 dark:border-slate-700"}
         >
           <div className="flex h-full w-full">
             <ChatSidebar

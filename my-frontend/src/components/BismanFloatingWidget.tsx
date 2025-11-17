@@ -135,7 +135,8 @@ export default function BismanFloatingWidget({
         initial={false}
         animate={hover ? { scale: 1.06, rotate: [0, -4, 4, -2, 0] } : { scale: 1, rotate: 0 }}
         transition={{ duration: 0.35, rotate: { type: 'tween' } }}
-        style={{ width: size, height: size, borderRadius: '999px', overflow: 'visible', position: 'relative', background: 'transparent' }}
+        className="rounded-full overflow-hidden relative bg-white dark:bg-[#071018]"
+        style={{ width: size, height: size, borderRadius: '999px', overflow: 'visible', position: 'relative' }}
       >
         {/* base avatar image */}
         <img

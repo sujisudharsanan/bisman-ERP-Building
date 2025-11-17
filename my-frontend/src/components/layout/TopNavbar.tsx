@@ -9,6 +9,7 @@ import { Calendar as CalendarIcon } from 'lucide-react';
 
 interface TopNavbarProps {
   showThemeToggle?: boolean;
+  fixed?: boolean;
 }
 
 /**
@@ -39,7 +40,7 @@ const HeaderLogo: React.FC = () => {
   );
 };
 
-const TopNavbar: React.FC<TopNavbarProps> = ({ showThemeToggle = false }) => {
+const TopNavbar: React.FC<TopNavbarProps> = ({ showThemeToggle = false, fixed = true }) => {
   const [currentPageName, setCurrentPageName] = useState<string>('Dashboard');
 
   // Get current page name from URL
@@ -70,7 +71,7 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ showThemeToggle = false }) => {
 
   return (
   <header
-    className="fixed top-0 left-0 right-0 z-50 px-3 py-2 flex justify-between items-center bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-transparent shadow-sm theme-transition"
+    className={`${fixed ? 'fixed top-0 left-0 right-0 z-50' : 'relative'} px-3 py-2 flex justify-between items-center bg-white dark:bg-[#0f1520] border-b border-gray-200 dark:border-transparent shadow-sm theme-transition`}
     data-component="top-navbar"
   >
       {/* Left rail aligned with sidebar */}
@@ -85,10 +86,10 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ showThemeToggle = false }) => {
         <div className="flex items-center gap-2">
           <HeaderLogo />
           <div>
-            <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+            <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-200">
               BISMAN ERP
             </h1>
-            <p className="text-[10px] text-gray-500 dark:text-gray-400">
+              <p className="text-[10px] text-gray-500 dark:text-gray-300">
               {currentPageName}
             </p>
           </div>

@@ -35,7 +35,7 @@ export default function ChatMessage({ message, avatar }: ChatMessageProps) {
           </div>
         ) : (
           // Regular user avatar
-          <div className="w-6 h-6 rounded-full flex-shrink-0 overflow-hidden bg-gray-200 flex items-center justify-center">
+          <div className="w-6 h-6 rounded-full flex-shrink-0 overflow-hidden bg-gray-200 dark:bg-gray-700 flex items-center justify-center">
             <img
               src={messageAvatar}
               alt={message.sender}
@@ -55,17 +55,17 @@ export default function ChatMessage({ message, avatar }: ChatMessageProps) {
           className={`px-3 py-2 rounded-2xl shadow-sm ${
             message.isMine
               ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white rounded-br-none'
-              : 'bg-white text-gray-800 rounded-bl-none'
+              : 'bg-white text-gray-800 rounded-bl-none dark:bg-[#071018] dark:text-gray-200'
           }`}
         >
           <p className="text-xs leading-relaxed break-words">{message.text}</p>
         </div>
-        <span className="text-[9px] text-gray-400 mt-1 px-1">{message.time}</span>
+        <span className="text-[9px] text-gray-400 dark:text-gray-500 mt-1 px-1">{message.time}</span>
       </div>
 
       {/* Avatar for sent messages */}
       {message.isMine && (
-        <div className="w-6 h-6 rounded-full flex-shrink-0 overflow-hidden bg-blue-100 flex items-center justify-center">
+        <div className="w-6 h-6 rounded-full flex-shrink-0 overflow-hidden bg-blue-100 dark:bg-blue-900 flex items-center justify-center">
           {user?.profile_pic_url ? (
             <img
               src={user.profile_pic_url.replace('/uploads/', '/api/secure-files/')}
@@ -84,7 +84,7 @@ export default function ChatMessage({ message, avatar }: ChatMessageProps) {
               }}
             />
           ) : (
-            <span className="text-xs font-bold text-blue-600">
+            <span className="text-xs font-bold text-blue-600 dark:text-blue-300">
               {(user?.username || user?.name || 'U').charAt(0).toUpperCase()}
             </span>
           )}

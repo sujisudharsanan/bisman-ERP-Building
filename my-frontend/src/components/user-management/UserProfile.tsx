@@ -87,16 +87,16 @@ function EditProfileModal({ user, isOpen, onClose, onUpdate }: EditProfileModalP
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
+      <div className="bg-white dark:bg-[#0c111b] rounded-lg p-6 w-full max-w-4xl mx-4 max-h-[90vh] overflow-y-auto">
         <div className="flex justify-between items-center mb-6">
-          <h3 className="text-lg font-semibold text-gray-900">Edit Profile</h3>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-200">Edit Profile</h3>
+          <button onClick={onClose} className="text-gray-400 dark:text-gray-300 hover:text-gray-600 dark:hover:text-gray-100">
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Section Tabs */}
-        <div className="flex space-x-2 mb-6 border-b border-gray-200">
+  <div className="flex space-x-2 mb-6 border-b border-gray-200 dark:border-gray-700">
           {[
             { id: 'basic' as const, label: 'Basic Info' },
             { id: 'contact' as const, label: 'Contact Details' },
@@ -109,8 +109,8 @@ function EditProfileModal({ user, isOpen, onClose, onUpdate }: EditProfileModalP
               onClick={() => setActiveSection(section.id)}
               className={`px-4 py-2 font-medium text-sm transition-colors border-b-2 ${
                 activeSection === section.id
-                  ? 'border-blue-500 text-blue-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+            ? 'border-blue-500 text-blue-600'
+              : 'border-transparent text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200'
               }`}
             >
               {section.label}
@@ -124,14 +124,14 @@ function EditProfileModal({ user, isOpen, onClose, onUpdate }: EditProfileModalP
             <>
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                     First Name <span className="text-red-500">*</span>
                   </label>
                   <input
                     type="text"
                     value={formData.first_name}
                     onChange={(e) => setFormData(prev => ({ ...prev, first_name: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#071018] focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
                 <div>
@@ -210,7 +210,7 @@ function EditProfileModal({ user, isOpen, onClose, onUpdate }: EditProfileModalP
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Manager User ID"
                 />
-                <p className="text-xs text-gray-500 mt-1">Enter the User ID of the reporting manager</p>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Enter the User ID of the reporting manager</p>
               </div>
 
               <div>

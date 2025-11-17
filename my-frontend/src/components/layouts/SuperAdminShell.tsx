@@ -62,7 +62,7 @@ export default function SuperAdminShell({ title = 'Super Admin', children }: Sup
       style={{ ['--sidebar-width' as any]: '13rem' }}
     >
       {/* Top Bar */}
-      <div className="fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-transparent z-50 shadow-sm relative">
+  <div className="fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-transparent z-50 shadow-sm">
         {/* Left rail aligned with sidebar */}
         <div
           aria-hidden
@@ -126,6 +126,7 @@ export default function SuperAdminShell({ title = 'Super Admin', children }: Sup
         className={`fixed top-14 left-0 bottom-0 w-52 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-transparent overflow-y-auto z-40 transform transition-transform duration-200 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0`}
+        style={{ top: '3.5rem' }}
       >
         <DynamicSidebar className="h-full" />
       </aside>

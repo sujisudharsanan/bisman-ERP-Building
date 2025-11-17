@@ -25,6 +25,7 @@ export default function SuperAdminLayout({
   title,
   description,
 }: SuperAdminLayoutProps) {
+  // header remains fixed across pages
   const { user, loading, isAuthenticated } = useAuth();
   const router = useRouter();
 
@@ -78,8 +79,8 @@ export default function SuperAdminLayout({
     className="min-h-screen bg-gray-50 dark:bg-slate-900"
     style={{ ['--sidebar-width' as any]: '13rem' }}
   >
-      {/* Standard top navbar for common pages */}
-      <TopNavbar showThemeToggle />
+  {/* Standard top navbar for common pages */}
+  <TopNavbar showThemeToggle fixed />
       
       {/* Use unified Sidebar component */}
       <Sidebar isOpen={true} />
