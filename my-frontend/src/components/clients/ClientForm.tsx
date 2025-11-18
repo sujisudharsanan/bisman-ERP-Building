@@ -7,7 +7,10 @@ import { RefreshCw } from 'lucide-react';
 export interface ClientFormValues {
   legal_name: string;
   trade_name: string;
+  // Client Type now means legal entity type (e.g., Pvt Ltd, Partnership, Proprietorship, Not Registered)
   client_type: string;
+  // ERP Registration type within our system (trial, temporary, registered)
+  erp_registration_type?: string;
   tax_id: string;
   client_code: string;
   public_code?: string; // human friendly generated code (meta)
@@ -50,7 +53,9 @@ export interface ClientFormProps {
 const defaultValues: ClientFormValues = {
   legal_name: '',
   trade_name: '',
-  client_type: 'Company',
+  // Default legal entity type
+  client_type: 'Not Registered',
+  erp_registration_type: 'registered',
   tax_id: '',
   client_code: '',
   public_code: '',
@@ -107,6 +112,7 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
         public_code: form.public_code || undefined,
         type_sequence_code: form.type_sequence_code || undefined,
         external_reference: form.external_reference || undefined,
+  erp_registration_type: form.erp_registration_type || undefined,
         segment: form.segment,
         tier: form.tier,
         lifecycle_stage: form.lifecycle_stage,
@@ -147,7 +153,7 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
     <div className="space-y-6">
       {/* Identification Section */}
       <div className="border rounded p-4 space-y-4 bg-gray-50">
-        <h3 className="font-semibold">Identification</h3>
+  <h3 className="font-semibold">Identification</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm text-gray-600">Public Code</label>
@@ -174,21 +180,32 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
           <input value={form.trade_name} onChange={(e) => setForm({ ...form, trade_name: e.target.value })} className="w-full border rounded p-2" />
         </div>
         <div>
-          <label className="block text-sm text-gray-600">Client Type</label>
+          <label className="block text-sm text-gray-600">Entity Type (Company Registration)</label>
           <select value={form.client_type} onChange={(e) => setForm({ ...form, client_type: e.target.value })} className="w-full border rounded p-2">
-            <option>Company</option>
-            <option>Individual</option>
-            <option>Distributor</option>
-            <option>Franchise</option>
-            <option>Vendor</option>
-            <option>Customer</option>
-            <option>Temporary</option>
-            <option>Trial</option>
+            <option>Private Limited</option>
+            <option>Partnership</option>
+            <option>Proprietorship</option>
+            <option>Not Registered</option>
           </select>
         </div>
         <div>
           <label className="block text-sm text-gray-600">Tax ID (GSTIN/VAT/PAN)</label>
           <input value={form.tax_id} onChange={(e) => setForm({ ...form, tax_id: e.target.value })} className="w-full border rounded p-2" />
+        </div>
+      </div>
+
+      {/* ERP Registration Type */}
+      <div className="border rounded p-4 space-y-4">
+        <h3 className="font-semibold">ERP Registration</h3>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className="block text-sm text-gray-600">Registration Type</label>
+            <select value={form.erp_registration_type} onChange={(e) => setForm({ ...form, erp_registration_type: e.target.value })} className="w-full border rounded p-2">
+              <option value="trial">Trial</option>
+              <option value="temporary">Temporary</option>
+              <option value="registered">Registered</option>
+            </select>
+          </div>
         </div>
       </div>
 

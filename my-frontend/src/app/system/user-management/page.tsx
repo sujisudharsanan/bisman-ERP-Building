@@ -35,7 +35,9 @@ export default function ClientManagementPage() {
   const [form, setForm] = useState({
     legal_name: '',
     trade_name: '',
-    client_type: 'Company',
+    // Legal entity type selector
+    client_type: 'Not Registered',
+    erp_registration_type: 'registered',
     tax_id: '',
     client_code: '',
     registration_number: '',
@@ -148,7 +150,8 @@ export default function ClientManagementPage() {
       setForm({
         legal_name: '',
         trade_name: '',
-        client_type: 'Company',
+        client_type: 'Not Registered',
+        erp_registration_type: 'registered',
         tax_id: '',
         client_code: '',
         registration_number: '',
@@ -191,7 +194,8 @@ export default function ClientManagementPage() {
       setEditForm({
         legal_name: editClient.legal_name || editClient.name || '',
         trade_name: editClient.trade_name || '',
-        client_type: editClient.client_type || 'Company',
+        client_type: editClient.client_type || editClient.settings?.enterprise?.client_type || 'Not Registered',
+        erp_registration_type: editClient.settings?.enterprise?.meta?.erp_registration_type || 'registered',
         tax_id: editClient.tax_id || '',
         client_code: editClient.client_code || editClient.client_id || '',
         registration_number: editClient.registration_number || '',
@@ -210,6 +214,9 @@ export default function ClientManagementPage() {
     if (!editClient) return;
     try {
       const body: any = { ...editForm };
+      if (body.erp_registration_type) {
+        body.meta = { ...(body.meta || {}), erp_registration_type: body.erp_registration_type };
+      }
       const res = await fetch(`${API_BASE}/api/system/clients/${encodeURIComponent(editClient.id)}`, {
         method: 'PUT',
         credentials: 'include',
@@ -236,6 +243,9 @@ export default function ClientManagementPage() {
     }
     try {
   const body: any = { ...form, name: form.legal_name || form.trade_name };
+      if ((body as any).erp_registration_type) {
+        body.meta = { ...(body.meta || {}), erp_registration_type: (body as any).erp_registration_type };
+      }
   const sid = (user as any)?.super_admin_id ?? (user as any)?.superAdminId ?? (((user as any)?.role === 'SUPER_ADMIN' || (user as any)?.roleName === 'SUPER_ADMIN') ? (user as any)?.id : undefined);
   if (sid) body.super_admin_id = sid;
       body.saveAsDraft = true;
@@ -252,7 +262,8 @@ export default function ClientManagementPage() {
       setForm({
         legal_name: '',
         trade_name: '',
-        client_type: 'Company',
+        client_type: 'Not Registered',
+        erp_registration_type: 'registered',
         tax_id: '',
         client_code: '',
         registration_number: '',
@@ -334,14 +345,20 @@ export default function ClientManagementPage() {
                     <input value={editForm.client_code} onChange={(e) => setEditForm({ ...editForm, client_code: e.target.value })} className="w-full border rounded p-2" />
                   </div>
                   <div>
-                    <label className="block text-sm text-gray-600">Client Type</label>
+                    <label className="block text-sm text-gray-600">Entity Type (Company Registration)</label>
                     <select value={editForm.client_type} onChange={(e) => setEditForm({ ...editForm, client_type: e.target.value })} className="w-full border rounded p-2">
-                      <option>Company</option>
-                      <option>Individual</option>
-                      <option>Distributor</option>
-                      <option>Franchise</option>
-                      <option>Vendor</option>
-                      <option>Customer</option>
+                      <option>Private Limited</option>
+                      <option>Partnership</option>
+                      <option>Proprietorship</option>
+                      <option>Not Registered</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm text-gray-600">ERP Registration Type</label>
+                    <select value={editForm.erp_registration_type || 'registered'} onChange={(e) => setEditForm({ ...editForm, erp_registration_type: e.target.value })} className="w-full border rounded p-2">
+                      <option value="trial">Trial</option>
+                      <option value="temporary">Temporary</option>
+                      <option value="registered">Registered</option>
                     </select>
                   </div>
                   <div>

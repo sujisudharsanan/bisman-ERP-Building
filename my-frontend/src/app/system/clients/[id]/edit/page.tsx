@@ -23,7 +23,9 @@ export default function EditClientPage() {
         setInitial({
           legal_name: c.legal_name || c.name || '',
           trade_name: c.trade_name || '',
-          client_type: c.client_type || 'Company',
+          // Map backend to new entity type and erp registration type
+          client_type: c.client_type || c.settings?.enterprise?.client_type || 'Not Registered',
+          erp_registration_type: c.settings?.enterprise?.meta?.erp_registration_type || 'registered',
           tax_id: c.tax_id || '',
           client_code: c.client_code || '',
           registration_number: c.registration_number || '',
