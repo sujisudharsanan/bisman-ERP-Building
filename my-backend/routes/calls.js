@@ -165,16 +165,38 @@ router.post('/:id/end', authenticate, async (req, res) => {
   try {
     const rec = calls.getCall(req.params.id)
     if (!rec) return res.status(404).json({ ok: false, error: 'not_found' })
-  const isInitiator = String(rec.initiator_id) === String(req.user.id)
-  const isAdmin = ['ADMIN','SUPER_ADMIN','ENTERPRISE_ADMIN'].includes(req.user.roleName)
-  if (!isInitiator && !isAdmin) {
+    const isInitiator = String(rec.initiator_id) === String(req.user.id)
+    const isAdmin = ['ADMIN','SUPER_ADMIN','ENTERPRISE_ADMIN'].includes(req.user.roleName)
+    if (!isInitiator && !isAdmin) {
       return res.status(403).json({ ok: false, error: 'forbidden' })
     }
+
+    // Capture end time & duration
+    const endedAt = new Date()
+    if (!rec.started_at) rec.started_at = endedAt // fallback
+    const durationSeconds = Math.max(0, Math.floor((endedAt - new Date(rec.started_at)) / 1000))
+
     calls.endCall(rec.id)
-    if (req.io && typeof req.io.to === 'function') {
-      try { req.io.to(rec.thread_id).emit('call.ended', { call_id: rec.id, duration_seconds: rec.duration_seconds || 0 }) } catch {}
+    rec.ended_at = endedAt.toISOString()
+    rec.duration_seconds = durationSeconds
+
+    // Persist if DB available
+    if (canUseDB()) {
+      try {
+        await prisma.callLog.update({
+          where: { id: String(rec.id) },
+          data: { status: 'ended', ended_at: endedAt, duration_seconds: durationSeconds }
+        })
+      } catch (e) {
+        // swallow DB persistence error to avoid disrupting response
+        console.error('[calls.end] DB persistence failed', e.message)
+      }
     }
-    return res.json({ ok: true })
+
+    if (req.io && typeof req.io.to === 'function') {
+      try { req.io.to(rec.thread_id).emit('call.ended', { call_id: rec.id, duration_seconds: durationSeconds }) } catch {}
+    }
+    return res.json({ ok: true, call_id: rec.id, duration_seconds: durationSeconds })
   } catch (e) {
     return res.status(400).json({ ok: false, error: e.message })
   }
@@ -201,7 +223,12 @@ router.get('/:id/log', authenticate, async (req, res) => {
 // Health checks
 router.get('/health/jitsi', async (_req, res) => {
   const domain = process.env.JITSI_DOMAIN || 'jitsi.internal'
-  const hasSecret = !!(process.env.JITSI_JWT_SECRET || process.env.JWT_APP_SECRET)
+  const secret = process.env.JITSI_JWT_SECRET || ''
+  const isProd = process.env.NODE_ENV === 'production'
+  const hasSecret = secret.length >= 32 // arbitrary minimum length
+  if (isProd && !hasSecret) {
+    return res.status(500).json({ ok: false, domain, error: 'missing_jitsi_jwt_secret' })
+  }
   return res.json({ ok: true, domain, jwt: hasSecret ? 'configured' : 'missing' })
 })
 router.get('/health/coturn', async (_req, res) => {

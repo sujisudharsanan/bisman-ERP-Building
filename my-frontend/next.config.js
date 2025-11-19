@@ -57,58 +57,47 @@ const nextConfig = {
   },
   async headers() {
     const isProd = process.env.NODE_ENV === 'production';
-    if (!isProd) {
-      // In development, avoid strict headers that can interfere with HMR and chunk loading.
-      return [];
-    }
+    if (!isProd) { return []; }
+    const jitsi = process.env.JITSI_PUBLIC_HOST || 'jitsi.internal.example';
+    const turn = process.env.TURN_PUBLIC_HOST || 'turn.internal.example';
+    const baseDirectives = [
+      "default-src 'self'",
+      `script-src 'self' https://${jitsi}`,
+      // Avoid unsafe-inline; allow hashed/nonce styles via CSP nonce injection (placeholder nonce replaced at runtime if needed)
+      "style-src 'self' 'unsafe-inline'", // TODO: replace with nonce-based safe style once critical inline removed
+      `img-src 'self' data: https://${jitsi}`,
+      "font-src 'self' data:",
+      `connect-src 'self' wss://${jitsi} https://${jitsi} https://${turn}`,
+      `media-src 'self' https://${jitsi}`,
+      `frame-src 'self' https://${jitsi}`,
+      "frame-ancestors 'none'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "upgrade-insecure-requests"
+    ]
     return [
-      // Relaxed headers ONLY for the /chat proxy so Mattermost can be embedded
       {
         source: '/chat/:path*',
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-          { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
-          { key: 'Content-Security-Policy', value: [
-              "default-src 'self'",
-              "script-src 'self' https://jitsi.internal.example",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: https://jitsi.internal.example",
-              "font-src 'self' data:",
-              "connect-src 'self' wss://jitsi.internal.example https://jitsi.internal.example https://turn.internal.example",
-              "frame-src 'self' https://jitsi.internal.example",
-              "frame-ancestors 'self'",
-              "base-uri 'self'",
-              "form-action 'self'"
-            ].join('; ') },
+          { key: 'Content-Security-Policy', value: baseDirectives.join('; ') },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-        ],
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), fullscreen=(), payment=()' }
+        ]
       },
       {
         source: '/((?!chat/).*)',
         headers: [
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },
-          { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
-          { key: 'Content-Security-Policy', value: [
-              "default-src 'self'",
-              "script-src 'self' https://jitsi.internal.example",
-              "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: https://jitsi.internal.example",
-              "font-src 'self' data:",
-              "connect-src 'self' wss://jitsi.internal.example https://jitsi.internal.example https://turn.internal.example",
-              "frame-src 'self' https://jitsi.internal.example",
-              "frame-ancestors 'none'",
-              "base-uri 'self'",
-              "form-action 'self'"
-            ].join('; ') },
+          { key: 'Content-Security-Policy', value: baseDirectives.join('; ') },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
-        ],
-      },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), fullscreen=(), payment=()' }
+        ]
+      }
     ];
   },
   async redirects() {
