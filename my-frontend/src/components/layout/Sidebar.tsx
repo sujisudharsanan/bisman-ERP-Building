@@ -33,11 +33,12 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
       {/* Sidebar */}
       <aside
         className={`
-          fixed left-0 top-16 h-[calc(100vh-4rem)] bg-white dark:bg-[#0c111b] 
+          fixed left-0 bg-white dark:bg-[#0c111b]
           border-r border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-none
           transition-all duration-300 ease-in-out z-40
           ${isOpen ? 'w-52' : 'w-16'}
         `}
+        style={{ top: 'var(--navbar-height)', height: 'calc(100vh - var(--navbar-height))' }}
         aria-label="Main sidebar"
       >
         {/* Toggle Button */}

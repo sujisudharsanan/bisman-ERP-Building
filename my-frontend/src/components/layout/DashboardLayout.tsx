@@ -34,8 +34,8 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
           <TopNavbar showThemeToggle />
         </ErrorBoundary>
 
-        {/* Content Area with Sidebar - Add top padding for fixed navbar */}
-        <div className="flex flex-1 overflow-hidden pt-[52px]">{/* Navbar height: py-2 (~8px) + content (~36px) = ~52px */}
+  {/* Content Area with Sidebar - Add top padding for fixed navbar (global var) */}
+  <div className="flex flex-1 overflow-hidden content-under-navbar">{/* Uses --navbar-height */}
           {/* Sidebar - Beneath navbar */}
           <ErrorBoundary fallback={<div className="w-16 bg-red-100 dark:bg-red-900/20 flex items-center justify-center"><p className="text-red-600 text-xs">Sidebar Error</p></div>}>
             <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />

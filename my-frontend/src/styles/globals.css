@@ -15,6 +15,8 @@
   --accent-2: #4f46e5;
   --badge: #f59e0b; /* notification / badge */
   --border: #e6e9ef;
+  /* Unified fixed navbar height used for page top offset */
+  --navbar-height: 52px;
 }
 
 [data-theme="dark"] {
@@ -84,6 +86,21 @@ body {
 
 [data-theme="dark"] .text-muted {
   color: var(--muted) !important;
+}
+
+/* Dark mode: normalize common light backgrounds that create white blocks */
+[data-theme="dark"] .bg-slate-50,
+[data-theme="dark"] .bg-slate-100,
+[data-theme="dark"] .bg-gray-50,
+[data-theme="dark"] .bg-gray-100,
+[data-theme="dark"] .bg-neutral-50,
+[data-theme="dark"] .bg-zinc-50,
+[data-theme="dark"] .bg-white\/50,
+[data-theme="dark"] .bg-white\/60,
+[data-theme="dark"] .bg-white\/70,
+[data-theme="dark"] .hover\:bg-slate-100:hover,
+[data-theme="dark"] .hover\:bg-gray-100:hover {
+  background: var(--panel) !important;
 }
 
 /* Border color overrides */
@@ -173,6 +190,28 @@ h4 {
 .bg-white {
   /* Use theme-aware panel token so components using bg-white follow dark/light themes */
   background: var(--panel) !important;
+}
+
+/* Form controls: ensure dark backgrounds and visible text/borders in dark theme */
+[data-theme="dark"] input:not([type="checkbox"]):not([type="radio"]),
+[data-theme="dark"] select,
+[data-theme="dark"] textarea {
+  background-color: var(--panel) !important;
+  color: var(--text) !important;
+  border-color: var(--border) !important;
+  caret-color: var(--text) !important;
+}
+
+[data-theme="dark"] input::placeholder,
+[data-theme="dark"] textarea::placeholder {
+  color: var(--muted) !important;
+  opacity: 1;
+}
+
+/* Neutralize default white button backgrounds in dark when unstyled */
+[data-theme="dark"] button:not([class*="bg-"]):not(.btn) {
+  background-color: transparent;
+  color: var(--text);
 }
 .rounded {
   -webkit-border-radius: 0.5rem;
@@ -271,6 +310,44 @@ h4 {
 
 /* Chat Widget Positioning - Ensures proper alignment and prevents overlap */
 @layer utilities {
+  /* Global design tokens */
+  :root {
+    --color-primary: #2563eb; /* blue-600 */
+    --color-secondary: #64748b; /* slate-500 */
+    --color-accent: #22c55e; /* green-500 */
+    --color-neutral: #0f172a; /* slate-900 */
+    --color-background: #ffffff;
+    --color-surface: #f8fafc; /* slate-50 */
+    --color-border: #e5e7eb; /* gray-200 */
+
+    --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+    --shadow-md: 0 4px 6px -1px rgba(0,0,0,0.1), 0 2px 4px -1px rgba(0,0,0,0.06);
+    --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.1), 0 4px 6px -2px rgba(0,0,0,0.05);
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 18px;
+    --radius-2xl: 22px;
+
+    --space-1: 0.25rem;
+    --space-2: 0.5rem;
+    --space-3: 0.75rem;
+    --space-4: 1rem;
+    --space-6: 1.5rem;
+    --space-8: 2rem;
+
+    --font-sans: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Inter, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji";
+  }
+  /* Utility to consistently offset content below fixed navbar */
+  .content-under-navbar { padding-top: var(--navbar-height); }
+  .sticky-below-navbar { top: var(--navbar-height); }
+  .dark {
+    --color-background: #0b1220;
+    --color-surface: #071018;
+    --color-border: #1f2937;
+    --color-neutral: #e2e8f0;
+  }
   .chat-widget-container {
     position: fixed;
     bottom: 1rem;
@@ -288,15 +365,18 @@ h4 {
     position: fixed;
     bottom: 6rem;
     right: 1rem;
-    width: 550px;
+  width: 520px; /* slightly smaller */
     max-width: calc(100vw - 2rem);
-    height: 600px;
+  height: 560px; /* slightly smaller */
     max-height: calc(100vh - 8rem);
     min-height: 400px;
     z-index: 10000;
     display: flex;
     flex-direction: column;
     overflow: hidden;
+  border-radius: var(--radius-2xl); /* rounder edges */
+  box-shadow: var(--shadow-lg);
+  background: var(--color-background);
   }
   
   /* Docked Chat Window at Bottom - Full Width */
@@ -314,6 +394,8 @@ h4 {
     overflow: hidden;
     border-top: 2px solid #e5e7eb;
     box-shadow: 0 -4px 6px -1px rgba(0, 0, 0, 0.1), 0 -2px 4px -1px rgba(0, 0, 0, 0.06);
+  border-top-left-radius: var(--radius-lg);
+  border-top-right-radius: var(--radius-lg);
   }
   
   /* Responsive adjustments for normal window */
@@ -381,13 +463,10 @@ h4 {
   }
 
   .animate-slide-in {
-    -webkit-animation: slideInFromBottom 0.2s ease-out;
-
-    -moz-animation: slideInFromBottom 0.2s ease-out;
-
-    -ms-animation: slideInFromBottom 0.2s ease-out;
-
-    animation: slideInFromBottom 0.2s ease-out;
+  -webkit-animation: slideInFromBottom 0.2s ease-out;
+  -moz-animation: slideInFromBottom 0.2s ease-out;
+  -ms-animation: slideInFromBottom 0.2s ease-out;
+  animation: slideInFromBottom 0.2s ease-out;
   }
 
   /* Slide up animation for minimized chat bar */
@@ -404,6 +483,25 @@ h4 {
 
   .animate-slide-up {
     animation: slideUpFromBottom 0.3s ease-out;
+  }
+
+  /* Message enter animation */
+  @keyframes msgFadeInUp {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  .chat-msg-enter {
+    animation: msgFadeInUp 160ms ease-out;
+  }
+
+  /* Respect reduced motion preferences */
+  @media (prefers-reduced-motion: reduce) {
+    .animate-slide-in,
+    .animate-slide-up,
+    .chat-msg-enter {
+      animation: none !important;
+    }
+    html:focus-within { scroll-behavior: auto; }
   }
 }
 

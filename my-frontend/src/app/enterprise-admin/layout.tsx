@@ -36,8 +36,8 @@ export default function EnterpriseAdminLayout({
           onRefresh={handleRefresh}
         />
 
-        {/* Content starts below navbar height (h-14) */}
-        <div className="pt-14 flex">
+  {/* Content starts below navbar height (global var) */}
+  <div className="content-under-navbar flex">
           {/* Sidebar: hidden on mobile unless toggled; always visible on lg+ */}
           <div
             className={

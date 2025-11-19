@@ -85,11 +85,11 @@ export default function SuperAdminLayout({
       {/* Use unified Sidebar component */}
       <Sidebar isOpen={true} />
 
-      {/* Main Content */}
-  <div className="lg:pl-52 pt-11">
+    {/* Main Content - offset for fixed navbar via global variable */}
+  <div className="lg:pl-52 content-under-navbar">
         {/* Page Header (Mobile) */}
         {(title || description) && (
-  <div className="md:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-3 sticky top-11 z-30">
+  <div className="md:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-3 sticky sticky-below-navbar z-30">
             <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">
               {title}
             </h1>

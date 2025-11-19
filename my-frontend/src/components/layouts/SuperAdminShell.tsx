@@ -61,8 +61,8 @@ export default function SuperAdminShell({ title = 'Super Admin', children }: Sup
       className="min-h-screen w-full bg-gray-50 dark:bg-slate-900"
       style={{ ['--sidebar-width' as any]: '13rem' }}
     >
-      {/* Top Bar */}
-  <div className="fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-transparent z-50 shadow-sm">
+    {/* Top Bar */}
+  <div className="fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-transparent z-50 shadow-sm" style={{ height: 'var(--navbar-height)' }}>
         {/* Left rail aligned with sidebar */}
         <div
           aria-hidden
@@ -70,7 +70,7 @@ export default function SuperAdminShell({ title = 'Super Admin', children }: Sup
           style={{ width: 'var(--sidebar-width, 13rem)' }}
         />
         <div className="max-w-screen-2xl mx-auto px-3 sm:px-4 lg:px-6">
-          <div className="flex items-center justify-between h-14">
+          <div className="flex items-center justify-between" style={{ height: 'var(--navbar-height)' }}>
             <div className="flex items-center gap-3">
               {/* Mobile menu button */}
               <button
@@ -123,16 +123,16 @@ export default function SuperAdminShell({ title = 'Super Admin', children }: Sup
 
       {/* Sidebar */}
       <aside
-        className={`fixed top-14 left-0 bottom-0 w-52 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-transparent overflow-y-auto z-40 transform transition-transform duration-200 ease-in-out ${
+        className={`fixed left-0 bottom-0 w-52 bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-transparent overflow-y-auto z-40 transform transition-transform duration-200 ease-in-out ${
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         } lg:translate-x-0`}
-        style={{ top: '3.5rem' }}
+        style={{ top: 'var(--navbar-height)' }}
       >
         <DynamicSidebar className="h-full" />
       </aside>
 
       {/* Main content */}
-      <div className="pt-14 lg:pl-52 min-h-screen">
+  <div className="content-under-navbar lg:pl-52 min-h-screen">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">{children}</div>
       </div>
     </div>

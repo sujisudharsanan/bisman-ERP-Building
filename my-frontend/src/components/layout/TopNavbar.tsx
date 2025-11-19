@@ -72,6 +72,7 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ showThemeToggle = false, fixed = 
   return (
   <header
     className={`${fixed ? 'fixed top-0 left-0 right-0 z-50' : 'relative'} px-3 py-2 flex justify-between items-center bg-white dark:bg-[#0f1520] border-b border-gray-200 dark:border-transparent shadow-sm theme-transition`}
+    style={{ height: 'var(--navbar-height)' }}
     data-component="top-navbar"
   >
       {/* Left rail aligned with sidebar */}

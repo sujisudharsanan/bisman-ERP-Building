@@ -86,9 +86,9 @@ export default function EnterpriseAdminNavbar({ onMenuToggle, onRefresh }: Enter
   };
 
   return (
-    <div className="fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-transparent z-50 shadow-sm">
+    <div className="fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-transparent z-50 shadow-sm" style={{ height: 'var(--navbar-height)' }}>
       <div className="max-w-screen-2xl mx-auto px-3 sm:px-4 lg:px-6">
-        <div className="flex items-center justify-between h-14">
+        <div className="flex items-center justify-between" style={{ height: 'var(--navbar-height)' }}>
           <div className="flex items-center gap-3">
             {/* Mobile menu button */}
             {onMenuToggle && (
