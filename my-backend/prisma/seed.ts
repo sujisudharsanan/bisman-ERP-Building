@@ -6,12 +6,12 @@ async function main() {
   const alice = await prisma.user.upsert({
     where: { email: 'alice@example.internal' },
     update: {},
-    create: { email: 'alice@example.internal', name: 'Alice', role: 'admin' },
+    create: { email: 'alice@example.internal', username: 'alice', password: 'password123', role: 'admin' },
   })
   const bob = await prisma.user.upsert({
     where: { email: 'bob@example.internal' },
     update: {},
-    create: { email: 'bob@example.internal', name: 'Bob', role: 'member' },
+    create: { email: 'bob@example.internal', username: 'bob', password: 'password123', role: 'member' },
   })
 
   const threadId = 'thread-demo-1'
