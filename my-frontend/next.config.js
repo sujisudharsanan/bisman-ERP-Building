@@ -60,9 +60,10 @@ const nextConfig = {
     if (!isProd) { return []; }
     const jitsi = process.env.JITSI_PUBLIC_HOST || 'jitsi.internal.example';
     const turn = process.env.TURN_PUBLIC_HOST || 'turn.internal.example';
-    const baseDirectives = [
-      "default-src 'self'",
-      `script-src 'self' https://${jitsi}`,
+  const baseDirectives = [
+  "default-src 'self'",
+  // Allow inline/eval for runtime scripts in builds; TODO: replace with nonce/hash-based CSP for stricter security
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://${jitsi}`,
       // Avoid unsafe-inline; allow hashed/nonce styles via CSP nonce injection (placeholder nonce replaced at runtime if needed)
       "style-src 'self' 'unsafe-inline'", // TODO: replace with nonce-based safe style once critical inline removed
       `img-src 'self' data: https://${jitsi}`,
