@@ -12,6 +12,8 @@ export class SecurityHeadersMiddleware implements NestMiddleware {
     res.setHeader('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
     
     // CSP for XSS protection
+    // Note: temporarily allowing 'unsafe-inline' and 'unsafe-eval' to avoid blocking runtime/preload scripts.
+    // Plan: replace with nonce/hash-based CSP in a subsequent change.
     res.setHeader('Content-Security-Policy', [
       "default-src 'self'",
       "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
