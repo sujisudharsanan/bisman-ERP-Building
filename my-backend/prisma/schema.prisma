@@ -875,3 +875,70 @@ model OtpToken {
   @@index([created_at], map: "idx_otp_created")
   @@map("otp_tokens")
 }
+
+// ==========================================
+// CHAT THREADS, MEMBERSHIP, AND CALL LOGS
+// ==========================================
+
+model Thread {
+  id          String        @id @default(cuid())
+  title       String?       @db.VarChar(200)
+  createdById Int
+  createdAt   DateTime      @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime      @default(now()) @updatedAt @db.Timestamp(6)
+
+  createdBy   User          @relation(fields: [createdById], references: [id], onDelete: Cascade)
+  members     ThreadMember[]
+  callLogs    CallLog[]
+
+  @@index([createdById], map: "idx_threads_creator")
+  @@map("threads")
+}
+
+model ThreadMember {
+  id         String   @id @default(cuid())
+  threadId   String
+  userId     Int
+  role       String   @default("member") @db.VarChar(50) // member | moderator | admin
+  joinedAt   DateTime @default(now()) @db.Timestamp(6)
+  leftAt     DateTime?
+  isActive   Boolean  @default(true)
+
+  thread     Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([threadId, userId])
+  @@index([userId], map: "idx_thread_members_user")
+  @@index([threadId], map: "idx_thread_members_thread")
+  @@index([role], map: "idx_thread_members_role")
+  @@map("thread_members")
+}
+
+model CallLog {
+  id               String   @id @default(cuid())
+  room_name        String   @db.VarChar(255)
+  thread_id        String
+  initiator_id     Int
+  call_type        String   @default("audio") @db.VarChar(20) // audio | video
+  status           String   @default("ringing") @db.VarChar(30) // ringing | active | ended | missed | failed
+  started_at       DateTime @default(now()) @db.Timestamp(6)
+  ended_at         DateTime?
+  duration_seconds Int?     @default(0)
+  participants     Json?    // [{user_id, joined_at, left_at}]
+  recording_url    String?
+  transcript_url   String?
+  quality_metrics  Json?
+  consent_recorded Boolean  @default(false)
+  created_at       DateTime @default(now()) @db.Timestamp(6)
+  updated_at       DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
+  thread           Thread   @relation(fields: [thread_id], references: [id], onDelete: Cascade)
+  initiator        User     @relation(fields: [initiator_id], references: [id], onDelete: SetNull)
+
+  @@index([thread_id], map: "idx_call_logs_thread")
+  @@index([initiator_id], map: "idx_call_logs_initiator")
+  @@index([room_name], map: "idx_call_logs_room")
+  @@index([status], map: "idx_call_logs_status")
+  @@index([started_at], map: "idx_call_logs_started")
+  @@map("call_logs")
+}

@@ -1,0 +1,17 @@
+Content-Security-Policy: default-src 'self'; script-src 'self' https://jitsi.internal.example; connect-src 'self' wss://jitsi.internal.example https://jitsi.internal.example https://turn.internal.example; frame-src 'self' https://jitsi.internal.example; img-src 'self' data: https://jitsi.internal.example; media-src 'self' https://jitsi.internal.example blob:; object-src 'none'; base-uri 'self'; form-action 'self';
+
+# How to verify (staging)
+# 1) Ensure your staging reverse proxy/app sets the header above on all relevant routes.
+# 2) Curl to confirm header is present:
+#    (Replace HOST with your staging host)
+#
+#    curl -s -D - https://staging.example.internal/ | grep -i "content-security-policy"
+#
+# 3) In browser devtools, watch for CSP blocks. Paste this snippet into Console to list blocked resources (if any):
+#
+#    (performance.getEntriesByType('resource')||[]).forEach(e=>{ if(e.name.includes('jitsi')||e.name.includes('turn')) console.log('[RESOURCE]', e.name) });
+#    window.addEventListener('securitypolicyviolation', (e)=>{
+#      console.warn('[CSP VIOLATION]', { directive: e.violatedDirective, blocked: e.blockedURI, line: e.lineNumber, col: e.columnNumber });
+#    });
+#
+# Expected: Jitsi external_api.js loads, iframe renders, websocket connects to wss://jitsi.internal.example, media loads from https://jitsi.internal.example, TURN reachable at https://turn.internal.example when needed.

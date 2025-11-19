@@ -72,11 +72,12 @@ const nextConfig = {
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
           { key: 'Content-Security-Policy', value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+              "script-src 'self' https://jitsi.internal.example",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: https: blob:",
+              "img-src 'self' data: https://jitsi.internal.example",
               "font-src 'self' data:",
-              "connect-src 'self' https: wss:",
+              "connect-src 'self' wss://jitsi.internal.example https://jitsi.internal.example https://turn.internal.example",
+              "frame-src 'self' https://jitsi.internal.example",
               "frame-ancestors 'self'",
               "base-uri 'self'",
               "form-action 'self'"
@@ -94,11 +95,12 @@ const nextConfig = {
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
           { key: 'Content-Security-Policy', value: [
               "default-src 'self'",
-              "script-src 'self' 'unsafe-eval' 'unsafe-inline'",
+              "script-src 'self' https://jitsi.internal.example",
               "style-src 'self' 'unsafe-inline'",
-              "img-src 'self' data: https: blob:",
+              "img-src 'self' data: https://jitsi.internal.example",
               "font-src 'self' data:",
-              "connect-src 'self' https: wss:",
+              "connect-src 'self' wss://jitsi.internal.example https://jitsi.internal.example https://turn.internal.example",
+              "frame-src 'self' https://jitsi.internal.example",
               "frame-ancestors 'none'",
               "base-uri 'self'",
               "form-action 'self'"

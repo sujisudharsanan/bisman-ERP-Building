@@ -16,6 +16,9 @@ describe('Calls API', () => {
     // Dev token for authenticate(): uses JWT_SECRET or 'dev-secret'
     token = jwt.sign({ sub: 303, email: 'demo_super@bisman.demo' }, process.env.JWT_SECRET || 'dev-secret', { algorithm: 'HS256' })
   })
+  afterAll(async () => {
+    await new Promise(r => setTimeout(r, 10))
+  })
   afterAll(() => { process.env = OLD_ENV })
 
   it('starts and joins a call', async () => {
