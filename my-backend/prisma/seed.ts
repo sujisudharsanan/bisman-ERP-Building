@@ -18,23 +18,26 @@ async function main() {
   const demoPasswordRaw = process.env.DEMO_USER_PASSWORD || 'changeMe!Demo123'
   const passwordHash = await bcrypt.hash(demoPasswordRaw, 10)
 
-  await prisma.threadMembers.upsert({
-    where: { threadId_userId: { threadId, userId: alice.id } },
-    update: { role: 'moderator', isActive: true },
-    create: { threadId, userId: alice.id, role: 'moderator' },
+  // Create or update users
+  const alice = await prisma.user.upsert({
+    where: { email: aliceEmail },
+    update: { password: passwordHash },
+    create: { email: aliceEmail, username: 'alice', password: passwordHash, role: 'admin' },
   })
-  await prisma.threadMembers.upsert({
-    where: { threadId_userId: { threadId, userId: bob.id } },
-    update: { role: 'member', isActive: true },
-    create: { threadId, userId: bob.id, role: 'member' },
-  })
+  const bob = await prisma.user.upsert({
+    where: { email: bobEmail },
+    update: { password: passwordHash },
+    create: { email: bobEmail, username: 'bob', password: passwordHash, role: 'member' },
   })
 
   const threadId = process.env.DEMO_THREAD_ID || 'thread-demo-1'
-  const exists = await prisma.thread.findUnique({ where: { id: threadId } })
-  const thread = exists || await prisma.thread.create({ data: { id: threadId, title: 'Demo Thread', createdById: alice.id } })
+  const thread = await prisma.thread.upsert({
+    where: { id: threadId },
+    update: { title: 'Demo Thread' },
+    create: { id: threadId, title: 'Demo Thread', createdById: alice.id }
+  })
 
-  // Assign roles within the thread
+  // Assign roles within the thread (deduplicated)
   await prisma.threadMember.upsert({
     where: { threadId_userId: { threadId, userId: alice.id } },
     update: { role: 'moderator', isActive: true },
@@ -47,7 +50,6 @@ async function main() {
   })
 
   console.log('Seed complete:', { alice: alice.id, bob: bob.id, thread: thread.id })
-  console.log('[seed] Demo credentials (hashed):', { aliceEmail, bobEmail })
 }
 
 main().catch(e => { console.error(e); process.exit(1) })
