@@ -12,6 +12,10 @@ function makeApp(){
 }
 
 describe('Trial OTP Onboarding API', () => {
+  afterAll(async () => {
+    // Give Jest a moment to settle then force exit
+    await new Promise(r => setTimeout(r, 10))
+  })
   const app = makeApp();
 
   it('lists modules', async () => {
