@@ -197,6 +197,48 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
   risk_score,
     } = (req.body || {}) as any;
 
+    // --- Duplicate Detection & Validation ---
+    const normName = (name || legal_name || trade_name || '').trim().toLowerCase();
+    const normTax = (tax_id || '').trim().toUpperCase();
+    if (normTax && !/^[A-Z0-9]{10,15}$/.test(normTax)) {
+      return res.status(400).json({ error: 'invalid_tax_id_format' });
+    }
+    // Query potential duplicates by legal_name/trade_name/tax_id
+        // Note: legal_name/trade_name/tax_id are stored inside settings.enterprise JSON, so select settings
+        const rawDuplicates = await prisma.client.findMany({
+          where: {
+            OR: [
+              normName ? { settings: { contains: { enterprise: { legal_name } } } } : undefined,
+              normName ? { settings: { contains: { enterprise: { trade_name } } } } : undefined,
+              normTax ? { settings: { contains: { enterprise: { tax_id: normTax } } } } : undefined,
+            ].filter(Boolean) as any,
+          },
+          take: 5,
+          select: { id: true, settings: true }
+        }).catch(() => []);
+    
+        // Normalize results to a shape expected by downstream code (id, legal_name, trade_name, tax_id, status)
+        const duplicates = (rawDuplicates || []).map((r: any) => {
+          const ent = (r.settings && (r.settings.enterprise || r.settings)) || {};
+          return {
+            id: r.id,
+            legal_name: ent.legal_name || null,
+            trade_name: ent.trade_name || null,
+            tax_id: ent.tax_id || null,
+            status: ent.status || null,
+          };
+        });
+    
+        if (duplicates && duplicates.length > 0) {
+          // Return structured duplicate info (not blocking create unless exact critical match)
+          const exactTax = normTax && duplicates.find(d => (d.tax_id || '').toUpperCase() === normTax);
+          if (exactTax) {
+            return res.status(409).json({ error: 'duplicate_tax_id', duplicates });
+          }
+          // Soft warning via header; proceed but include list
+          res.setHeader('X-Duplicate-Warning', 'similar_client_detected');
+        }
+
     if (!name && !legal_name && !trade_name) return res.status(400).json({ error: 'name or legal_name/trade_name required' });
     let sid = super_admin_id || user?.super_admin_id;
     if (!sid) {
@@ -282,6 +324,12 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
         kyc_status: kyc_status ?? meta?.kyc_status,
         risk_score: typeof risk_score === 'number' ? risk_score : (typeof meta?.risk_score === 'number' ? meta.risk_score : undefined),
         kyc_documents: Array.isArray(kyc_documents) ? kyc_documents : (Array.isArray(meta?.kyc_documents) ? meta.kyc_documents : []),
+        duplicate_check: {
+          input: { legal_name, trade_name, tax_id: normTax || null },
+          matches: duplicates?.map(d => ({ id: d.id, legal_name: d.legal_name, trade_name: d.trade_name, tax_id: d.tax_id, status: d.status })) || [],
+          exact_tax_conflict: !!(normTax && duplicates.find(d => (d.tax_id || '').toUpperCase() === normTax)),
+          timestamp: new Date().toISOString()
+        }
       }
     };
 
@@ -714,6 +762,59 @@ router.post('/clients/:id/promote', authMiddleware, async (req: Request, res: Re
   } catch (e: any) {
     console.error('Promote client error', e);
     res.status(500).json({ error: 'Failed to promote client', details: e.message });
+  }
+});
+
+// --- Onboarding activity logging for registered wizard ---
+router.post('/clients/:id/onboarding/activity', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { id } = req.params; const clientId = String(id);
+    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    if (!client) return res.status(404).json({ error: 'Client not found' });
+    const role = user?.role;
+    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
+    if (!allowed || (!isPlatformAdmin(role) && user?.super_admin_id !== client.super_admin_id)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const { step_key, action, meta } = req.body || {};
+    if (!step_key || !action) return res.status(400).json({ error: 'step_key and action required' });
+  const created = await (prismaAny as any).clientOnboardingActivity.create({ data: { client_id: clientId, step_key, action, meta, actor_email: user?.email || undefined } });
+  // Recent activity retrieval (not cached since field not yet migrated)
+  const recent = await (prismaAny as any).clientOnboardingActivity.findMany({ where: { client_id: clientId }, orderBy: { created_at: 'desc' }, take: 5 });
+    res.status(201).json({ success: true, data: created });
+  } catch (e: any) {
+    console.error('Onboarding activity error', e);
+    res.status(500).json({ error: 'Failed to log activity', details: e.message });
+  }
+});
+
+// Autosave partial onboarding draft (stores subset fields + updates onboarding_status)
+router.patch('/clients/:id/onboarding/draft', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const user = (req as any).user;
+    const { id } = req.params; const clientId = String(id);
+    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    if (!client) return res.status(404).json({ error: 'Client not found' });
+    const role = user?.role;
+    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
+    if (!allowed || (!isPlatformAdmin(role) && user?.super_admin_id !== client.super_admin_id)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    const { state, step_key } = req.body || {};
+    // Merge minimal fields (legal_name, trade_name, tax_id) if present
+    const patch: any = {};
+    if (state?.identification?.legal_name) patch.legal_name = state.identification.legal_name;
+    if (state?.identification?.trade_name) patch.trade_name = state.identification.trade_name;
+    if (state?.identification?.tax_id) patch.tax_id = state.identification.tax_id;
+    patch.onboarding_status = 'in_progress';
+  const updated = await prisma.client.update({ where: { id: clientId }, data: patch });
+    // log activity
+  try { await (prismaAny as any).clientOnboardingActivity.create({ data: { client_id: clientId, step_key: step_key || 'unknown', action: 'autosaved', meta: { fields: Object.keys(patch) }, actor_email: user?.email || undefined } }); } catch {}
+  res.json({ success: true, data: { id: updated.id } });
+  } catch (e: any) {
+    console.error('Onboarding draft autosave error', e);
+    res.status(500).json({ error: 'Failed to autosave draft', details: e.message });
   }
 });
 

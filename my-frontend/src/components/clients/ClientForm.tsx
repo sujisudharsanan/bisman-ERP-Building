@@ -94,15 +94,26 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
   const [creatingAdmin, setCreatingAdmin] = useState<boolean>(mode === 'create');
   const [adminUser, setAdminUser] = useState<{ email: string; username?: string; password?: string }>({ email: '' });
   const [loading, setLoading] = useState(false);
+  // Two-segment registration flow for create: Quick vs Permanent
+  const [registrationMode, setRegistrationMode] = useState<'quick' | 'permanent'>(mode === 'create' ? 'quick' : 'permanent');
 
   async function submit() {
     if (!form.legal_name && !form.trade_name) {
       alert('Legal or Trade Name required');
       return;
     }
-    if (mode === 'create' && (!form.primary_contact.name || !form.primary_contact.email || !form.primary_contact.phone)) {
-      alert('Primary contact details required');
-      return;
+    // Quick mode: minimal requirements
+    if (mode === 'create' && registrationMode === 'quick') {
+      if (!adminUser.email) {
+        alert('Admin email required to start a trial');
+        return;
+      }
+    } else if (mode === 'create') {
+      // Permanent: require full primary contact
+      if (!form.primary_contact.name || !form.primary_contact.email || !form.primary_contact.phone) {
+        alert('Primary contact details required');
+        return;
+      }
     }
     setLoading(true);
     try {
@@ -112,7 +123,8 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
         public_code: form.public_code || undefined,
         type_sequence_code: form.type_sequence_code || undefined,
         external_reference: form.external_reference || undefined,
-  erp_registration_type: form.erp_registration_type || undefined,
+        // Force trial for Quick mode create, otherwise use selected
+        erp_registration_type: (mode === 'create' && registrationMode === 'quick') ? 'trial' : (form.erp_registration_type || undefined),
         segment: form.segment,
         tier: form.tier,
         lifecycle_stage: form.lifecycle_stage,
@@ -125,7 +137,9 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
       };
       const sid = (user as any)?.super_admin_id ?? (user as any)?.superAdminId ?? (((user as any)?.role === 'SUPER_ADMIN' || (user as any)?.roleName === 'SUPER_ADMIN') ? (user as any)?.id : undefined);
       if (sid) body.super_admin_id = sid;
-      if (creatingAdmin && adminUser.email) {
+      // Quick mode always provisions an admin; Permanent follows the toggle
+      const shouldProvision = (mode === 'create' && registrationMode === 'quick') ? true : creatingAdmin;
+      if (shouldProvision && adminUser.email) {
         body.adminUser = adminUser;
         body.ensurePermissions = true;
         body.defaultViewAll = true;
@@ -140,7 +154,7 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Request failed');
       if (onSuccess) onSuccess(json);
-      alert(mode === 'create' ? 'Client created' : 'Client updated');
+      alert(mode === 'create' ? (registrationMode === 'quick' ? 'Trial started' : 'Client created') : 'Client updated');
     } catch (e: any) {
       console.error(e);
       alert(e.message || 'Failed');
@@ -151,8 +165,24 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
 
   return (
     <div className="space-y-6">
-      {/* Identification Section */}
-      <div className="border rounded p-4 space-y-4 bg-gray-50">
+      {/* Registration Mode Toggle (Create only) */}
+      {mode === 'create' && (
+        <div className="border rounded p-3 bg-white flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-gray-600">Registration:</span>
+            <div className="inline-flex rounded-md overflow-hidden border">
+              <button type="button" onClick={() => setRegistrationMode('quick')} className={`px-3 py-1.5 ${registrationMode==='quick' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}>Quick</button>
+              <button type="button" onClick={() => setRegistrationMode('permanent')} className={`px-3 py-1.5 ${registrationMode==='permanent' ? 'bg-blue-600 text-white' : 'bg-gray-100'}`}>Permanent</button>
+            </div>
+          </div>
+          {registrationMode==='quick' && (
+            <p className="text-xs text-gray-500">Quick creates a trial tenant with minimal details so you can start immediately.</p>
+          )}
+        </div>
+      )}
+  {/* Identification Section (hidden in Quick) */}
+  {registrationMode === 'permanent' && (
+  <div className="border rounded p-4 space-y-4 bg-gray-50">
   <h3 className="font-semibold">Identification</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -169,6 +199,7 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
           </div>
         </div>
       </div>
+  )}
 
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
@@ -200,11 +231,15 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
             <label className="block text-sm text-gray-600">Registration Type</label>
-            <select value={form.erp_registration_type} onChange={(e) => setForm({ ...form, erp_registration_type: e.target.value })} className="w-full border rounded p-2">
-              <option value="trial">Trial</option>
-              <option value="temporary">Temporary</option>
-              <option value="registered">Registered</option>
-            </select>
+            {registrationMode === 'quick' ? (
+              <input value="Trial" disabled className="w-full border rounded p-2 bg-gray-100 text-gray-600" />
+            ) : (
+              <select value={form.erp_registration_type} onChange={(e) => setForm({ ...form, erp_registration_type: e.target.value })} className="w-full border rounded p-2">
+                <option value="trial">Trial</option>
+                <option value="temporary">Temporary</option>
+                <option value="registered">Registered</option>
+              </select>
+            )}
           </div>
         </div>
       </div>
@@ -221,8 +256,9 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
         </div>
       </div>
 
-      {/* Lifecycle & Segmentation */}
-      <div className="border rounded p-4 space-y-4 bg-gray-50">
+  {/* Lifecycle & Segmentation (hidden in Quick) */}
+  {registrationMode === 'permanent' && (
+  <div className="border rounded p-4 space-y-4 bg-gray-50">
         <h3 className="font-semibold">Lifecycle & Segmentation</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
@@ -258,9 +294,11 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
           </div>
         </div>
       </div>
+  )}
 
-      {/* Sales Assignment */}
-      <div className="border rounded p-4 space-y-4">
+  {/* Sales Assignment (hidden in Quick) */}
+  {registrationMode === 'permanent' && (
+  <div className="border rounded p-4 space-y-4">
         <h3 className="font-semibold">Sales Assignment</h3>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
@@ -282,9 +320,11 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
           </div>
         </div>
       </div>
+  )}
 
-      {/* Compliance & Risk */}
-      <div className="border rounded p-4 space-y-4 bg-gray-50">
+  {/* Compliance & Risk (hidden in Quick) */}
+  {registrationMode === 'permanent' && (
+  <div className="border rounded p-4 space-y-4 bg-gray-50">
         <h3 className="font-semibold">Compliance & Risk</h3>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
@@ -319,32 +359,40 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
           </div>
         </div>
       </div>
+  )}
 
-      {/* KYC Documents */}
-      <div className="border rounded p-4 space-y-4">
+  {/* KYC Documents (hidden in Quick) */}
+  {registrationMode === 'permanent' && (
+  <div className="border rounded p-4 space-y-4">
         <h3 className="font-semibold">KYC Documents</h3>
         <p className="text-xs text-gray-500">Upload identity, address proof, registration certificates. Select type KYC in document uploader.</p>
         {/* Lazy import avoidance: we assume ClientDocuments globally available path */}
         {/* Using dynamic require to avoid Next SSR mismatch if needed */}
         {React.createElement(require('./ClientDocuments')?.default || (()=> <div className="text-xs text-red-600">Document component missing</div>), { clientId: clientId || 'new-temp', onAdded: (doc:any)=> setForm({ ...form, kyc_documents: [...(form.kyc_documents||[]), doc] }) })}
       </div>
+  )}
 
-      <div>
-        <h3 className="font-semibold mb-2">Primary Contact</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <input placeholder="Name" value={form.primary_contact.name} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, name: e.target.value } })} className="border rounded p-2" />
-          <input placeholder="Role" value={form.primary_contact.role} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, role: e.target.value } })} className="border rounded p-2" />
-          <input placeholder="Phone" value={form.primary_contact.phone} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, phone: e.target.value } })} className="border rounded p-2" />
-          <input placeholder="Email" value={form.primary_contact.email} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, email: e.target.value } })} className="border rounded p-2" />
+      {registrationMode === 'permanent' && (
+        <div>
+          <h3 className="font-semibold mb-2">Primary Contact</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <input placeholder="Name" value={form.primary_contact.name} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, name: e.target.value } })} className="border rounded p-2" />
+            <input placeholder="Role" value={form.primary_contact.role} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, role: e.target.value } })} className="border rounded p-2" />
+            <input placeholder="Phone" value={form.primary_contact.phone} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, phone: e.target.value } })} className="border rounded p-2" />
+            <input placeholder="Email" value={form.primary_contact.email} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, email: e.target.value } })} className="border rounded p-2" />
+          </div>
         </div>
-      </div>
+      )}
 
       {mode === 'create' && (
         <div className="space-y-2">
-          <label className="inline-flex items-center gap-2 text-sm">
-            <input type="checkbox" checked={creatingAdmin} onChange={(e) => setCreatingAdmin(e.target.checked)} /> Provision Admin Now
-          </label>
-          {creatingAdmin && (
+          {/* In Quick mode, always require/provision admin. In Permanent mode, show toggle */}
+          {registrationMode === 'permanent' && (
+            <label className="inline-flex items-center gap-2 text-sm">
+              <input type="checkbox" checked={creatingAdmin} onChange={(e) => setCreatingAdmin(e.target.checked)} /> Provision Admin Now
+            </label>
+          )}
+          {(registrationMode === 'quick' || creatingAdmin) && (
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <input placeholder="Admin Email" value={adminUser.email} onChange={(e) => setAdminUser({ ...adminUser, email: e.target.value })} className="border rounded p-2" />
               <input placeholder="Username (optional)" value={adminUser.username || ''} onChange={(e) => setAdminUser({ ...adminUser, username: e.target.value })} className="border rounded p-2" />
@@ -356,7 +404,7 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
 
       <div className="flex justify-end gap-2">
         <button onClick={submit} disabled={loading} className="px-4 py-2 bg-blue-600 text-white rounded text-sm flex items-center">
-          {loading && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />} {mode === 'create' ? 'Save Client' : 'Update Client'}
+          {loading && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />} {mode === 'create' ? (registrationMode === 'quick' ? 'Start Trial' : 'Save Client') : 'Update Client'}
         </button>
       </div>
     </div>

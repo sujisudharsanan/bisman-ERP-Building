@@ -100,13 +100,16 @@ app.use(compression({
 console.log('[app.js] ✅ Maximum response compression enabled (Level 9 GZIP/Brotli)');
 console.log('[app.js] 🚀 Optimized for AI chat responses - expect 80-90% size reduction');
 
-// Mount email/OTP routes (rate-limited at router level)
-try {
-  const otpRoutes = require('./routes/otp');
-  app.use('/api/security', otpRoutes);
-  console.log('[app.js] ✅ Mounted /api/security (OTP & notifications)');
-} catch (e) {
-  console.warn('[app.js] OTP routes not mounted:', e?.message);
+// Legacy mail-based OTP routes (disabled by default)
+// Enable only if you explicitly set ENABLE_LEGACY_MAIL_OTP=1
+if (process.env.ENABLE_LEGACY_MAIL_OTP === '1') {
+  try {
+    const otpRoutes = require('./routes/otp');
+    app.use('/api/security', otpRoutes);
+    console.log('[app.js] ✅ Mounted /api/security (legacy mail OTP)');
+  } catch (e) {
+    console.warn('[app.js] Legacy mail OTP not mounted:', e?.message);
+  }
 }
 
 // Rate limiting for authentication endpoints
@@ -254,6 +257,15 @@ try {
   app.use('/api', userReportRoutes);
 } catch (e) {
   console.warn('[app.js] userReport routes not loaded:', e?.message || e);
+}
+
+// Trial OTP onboarding routes (Redis-backed)
+try {
+  const trialOtpRoutes = require('./routes/trialOtpOnboarding');
+  app.use('/api/trial', trialOtpRoutes);
+  console.log('[app.js] ✅ Mounted /api/trial (OTP onboarding)');
+} catch (e) {
+  console.warn('[app.js] trialOtp routes not loaded:', e?.message || e);
 }
 
 // ✅ SECURITY FIX: Protected database health endpoint (Enterprise Admin only)
@@ -614,6 +626,21 @@ try {
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Client Management routes not loaded:', e && e.message)
+  }
+}
+
+// Public Trial Onboarding routes
+try {
+  const trialOnboardingRoutes = require('./routes/trialOnboarding') || (require('./dist/routes/trialOnboarding').default) || (require('./src/routes/trialOnboarding').default)
+  if (trialOnboardingRoutes) {
+    app.use('/api', trialOnboardingRoutes)
+    console.log('✅ Trial Onboarding routes loaded')
+  } else {
+    console.warn('⚠️ Trial Onboarding routes failed to load')
+  }
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Trial Onboarding routes not loaded:', e && e.message)
   }
 }
 

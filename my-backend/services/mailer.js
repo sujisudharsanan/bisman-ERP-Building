@@ -1,6 +1,12 @@
 /*
  Enterprise Mailer (Bluehost SMTP) - RFC/GDPR compliant
 */
+if (process.env.ENABLE_LEGACY_MAIL_OTP !== '1') {
+  module.exports = {
+    sendMail: async () => ({ ok: false, skipped: true, reason: 'legacy_mail_disabled' })
+  }
+  return;
+}
 const nodemailer = require('nodemailer');
 const os = require('os');
 const crypto = require('crypto');

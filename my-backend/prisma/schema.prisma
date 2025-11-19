@@ -309,6 +309,17 @@ model Client {
   operational        Json?
   risk               Json?
   status             String?   @default("Active") @db.VarChar(30)
+  // Onboarding metadata
+  onboarding_status  String?   @default("pending") @db.VarChar(30) // pending|in_progress|completed|draft|trial
+  trial_start_date   DateTime? @db.Timestamp(6)
+  trial_end_date     DateTime? @db.Timestamp(6)
+  modules_enabled    Json?     // list of enabled modules at provisioning time
+  notification_prefs Json?     // { email: bool, sms: bool, whatsapp: bool, daily_summary: bool }
+  preferred_language String?   @db.VarChar(10)
+  timezone           String?   @db.VarChar(100)
+  mfa_enabled        Boolean?  @default(false)
+  duplicate_check    Json?     // snapshot of duplicate detection evaluation
+  onboarding_activity Json?     // cached last few activity events for quick display
   onboarding_date    DateTime? @db.Timestamp(6)
   first_invoice_date DateTime? @db.Timestamp(6)
   last_activity_date DateTime? @db.Timestamp(6)
@@ -335,6 +346,8 @@ model Client {
   usageEvents        ClientUsageEvent[]
   dailyUsage         ClientDailyUsage[]
   sequences          ClientSequence[]
+  onboardingMagicLinks OnboardingMagicLink[]
+  onboardingActivities ClientOnboardingActivity[]
 
   @@index([super_admin_id], map: "idx_clients_super_admin")
   @@index([productType], map: "idx_clients_product_type")
@@ -353,6 +366,40 @@ model ClientSequence {
 
   @@unique([client_type, year])
   @@map("client_sequences")
+}
+
+// Stores secure magic links for resuming trial onboarding drafts
+model OnboardingMagicLink {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id   String?   @db.Uuid
+  email       String?   @db.VarChar(150)
+  token_hash  String    @db.VarChar(255) // store hash, never the raw token
+  expires_at  DateTime  @db.Timestamp(6)
+  used_at     DateTime? @db.Timestamp(6)
+  created_at  DateTime  @default(now()) @db.Timestamp(6)
+  created_ip  String?   @db.Inet
+  user_agent  String?   @db.VarChar(255)
+  client      Client?   @relation(fields: [client_id], references: [id], onDelete: Cascade)
+
+  @@index([client_id], map: "idx_onboarding_magic_link_client")
+  @@index([expires_at], map: "idx_onboarding_magic_link_expires")
+  @@map("onboarding_magic_links")
+}
+
+// Detailed activity log for onboarding steps (lightweight separate from audit logs)
+model ClientOnboardingActivity {
+  id          String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id   String   @db.Uuid
+  step_key    String   @db.VarChar(100) // e.g. identity, business_info, security, compliance
+  action      String   @db.VarChar(50) // started|completed|autosaved|validated|error
+  meta        Json?
+  actor_email String?  @db.VarChar(150)
+  created_at  DateTime @default(now()) @db.Timestamp(6)
+  client      Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
+
+  @@index([client_id], map: "idx_onboarding_activity_client")
+  @@index([step_key], map: "idx_onboarding_activity_step")
+  @@map("client_onboarding_activity")
 }
 
 model Module {
