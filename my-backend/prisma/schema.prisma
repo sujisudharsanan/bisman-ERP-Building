@@ -18,45 +18,49 @@ model Role {
 }
 
 model User {
-  id              Int             @id @default(autoincrement())
-  username        String          @map("username") @db.VarChar(100)
-  email           String          @unique @db.VarChar(150)
-  password        String          @db.VarChar(255)
-  role            String?         @db.VarChar(50)
-  is_active       Boolean         @default(true) // P0 FIX: Track active status
-  
+  id        Int     @id @default(autoincrement())
+  username  String  @map("username") @db.VarChar(100)
+  email     String  @unique @db.VarChar(150)
+  password  String  @db.VarChar(255)
+  role      String? @db.VarChar(50)
+  is_active Boolean @default(true) // P0 FIX: Track active status
+
   // Multi-tenant fields
-  productType     String?         @default("BUSINESS_ERP") @db.VarChar(50) // "PUMP_ERP" | "BUSINESS_ERP" | "ALL"
-  tenant_id       String?         @db.Uuid // For client-level users
-  super_admin_id  Int?            // Reference to SuperAdmin managing this user
-  
-  createdAt       DateTime?       @default(now()) @map("created_at") @db.Timestamp(6)
-  profile_pic_url String?         @map("profile_pic_url")
-  updatedAt       DateTime?       @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
+  productType    String? @default("BUSINESS_ERP") @db.VarChar(50) // "PUMP_ERP" | "BUSINESS_ERP" | "ALL"
+  tenant_id      String? @db.Uuid // For client-level users
+  super_admin_id Int? // Reference to SuperAdmin managing this user
+
+  createdAt       DateTime? @default(now()) @map("created_at") @db.Timestamp(6)
+  profile_pic_url String?   @map("profile_pic_url")
+  updatedAt       DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
   assignedModules Json?
   pagePermissions Json?
-  
+
   // Relations
-  client          Client?         @relation("ClientUsers", fields: [tenant_id], references: [id], onDelete: Cascade)
-  superAdmin      SuperAdmin?     @relation("SuperAdminUsers", fields: [super_admin_id], references: [id], onDelete: SetNull)
-  auditLogs       AuditLog[]
-  user_sessions   user_sessions[]
-  
+  client        Client?         @relation("ClientUsers", fields: [tenant_id], references: [id], onDelete: Cascade)
+  superAdmin    SuperAdmin?     @relation("SuperAdminUsers", fields: [super_admin_id], references: [id], onDelete: SetNull)
+  auditLogs     AuditLog[]
+  user_sessions user_sessions[]
+
   // Payment system relations
-  paymentRequestsCreated  PaymentRequest[]      @relation("PaymentRequestCreator")
-  expensesCreated         Expense[]             @relation("ExpenseCreator")
-  tasksCreated            Task[]                @relation("TaskCreator")
-  tasksAssigned           Task[]                @relation("TaskAssignee")
-  approvals               Approval[]            @relation("TaskApprovals")
-  messages                Message[]             @relation("TaskMessages")
-  paymentRecords          PaymentRecord[]       @relation("PaymentRecords")
-  paymentActivityLogs     PaymentActivityLog[]  @relation("PaymentActivityLogs")
-  
+  paymentRequestsCreated PaymentRequest[]     @relation("PaymentRequestCreator")
+  expensesCreated        Expense[]            @relation("ExpenseCreator")
+  tasksCreated           Task[]               @relation("TaskCreator")
+  tasksAssigned          Task[]               @relation("TaskAssignee")
+  approvals              Approval[]           @relation("TaskApprovals")
+  messages               Message[]            @relation("TaskMessages")
+  paymentRecords         PaymentRecord[]      @relation("PaymentRecords")
+  paymentActivityLogs    PaymentActivityLog[] @relation("PaymentActivityLogs")
+
   // P0 FIX: Approver selection relations
-  approverConfigurations  ApproverConfiguration[] @relation("ApproverConfigurations")
-  approverSelectionLogs   ApproverSelectionLog[]  @relation("ApproverSelectionLogs")
+  approverConfigurations ApproverConfiguration[] @relation("ApproverConfigurations")
+  approverSelectionLogs  ApproverSelectionLog[]  @relation("ApproverSelectionLogs")
   // Usage events relation (optional)
-  usageEvents             ClientUsageEvent[]
+  usageEvents            ClientUsageEvent[]
+  // Chat & Calls relations (added for thread/call logs)
+  threadsCreated         Thread[]                @relation("ThreadCreatedBy")
+  threadMembers          ThreadMember[]          @relation("ThreadMemberUser")
+  initiatedCallLogs      CallLog[]               @relation("CallLogInitiator")
 
   @@index([tenant_id], map: "idx_users_tenant")
   @@index([productType], map: "idx_users_product_type")
@@ -245,37 +249,37 @@ model user_sessions {
 // ==========================================
 
 model EnterpriseAdmin {
-  id              Int          @id @default(autoincrement())
-  name            String       @db.VarChar(100)
-  email           String       @unique @db.VarChar(150)
-  password        String       @db.VarChar(255)
+  id              Int      @id @default(autoincrement())
+  name            String   @db.VarChar(100)
+  email           String   @unique @db.VarChar(150)
+  password        String   @db.VarChar(255)
   profile_pic_url String?
-  is_active       Boolean      @default(true)
-  created_at      DateTime     @default(now()) @db.Timestamp(6)
-  updated_at      DateTime     @default(now()) @updatedAt @db.Timestamp(6)
-  
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now()) @db.Timestamp(6)
+  updated_at      DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
   // Relations
-  superAdmins     SuperAdmin[] @relation("CreatedSuperAdmins")
+  superAdmins SuperAdmin[] @relation("CreatedSuperAdmins")
 
   @@map("enterprise_admins")
 }
 
 model SuperAdmin {
-  id              Int              @id @default(autoincrement())
-  name            String           @db.VarChar(100)
-  email           String           @unique @db.VarChar(150)
-  password        String           @db.VarChar(255)
-  productType     String           @db.VarChar(50) // "PUMP_ERP" | "BUSINESS_ERP"
+  id              Int      @id @default(autoincrement())
+  name            String   @db.VarChar(100)
+  email           String   @unique @db.VarChar(150)
+  password        String   @db.VarChar(255)
+  productType     String   @db.VarChar(50) // "PUMP_ERP" | "BUSINESS_ERP"
   profile_pic_url String?
-  is_active       Boolean          @default(true)
-  created_at      DateTime         @default(now()) @db.Timestamp(6)
-  updated_at      DateTime         @default(now()) @updatedAt @db.Timestamp(6)
-  
+  is_active       Boolean  @default(true)
+  created_at      DateTime @default(now()) @db.Timestamp(6)
+  updated_at      DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
   // Relations
-  created_by      Int
-  enterpriseAdmin EnterpriseAdmin  @relation("CreatedSuperAdmins", fields: [created_by], references: [id], onDelete: Cascade)
-  clients         Client[]         @relation("SuperAdminClients")
-  users           User[]           @relation("SuperAdminUsers")
+  created_by        Int
+  enterpriseAdmin   EnterpriseAdmin    @relation("CreatedSuperAdmins", fields: [created_by], references: [id], onDelete: Cascade)
+  clients           Client[]           @relation("SuperAdminClients")
+  users             User[]             @relation("SuperAdminUsers")
   moduleAssignments ModuleAssignment[]
 
   @@index([productType], map: "idx_super_admins_product_type")
@@ -284,70 +288,70 @@ model SuperAdmin {
 }
 
 model Client {
-  id                 String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name               String    @db.VarChar(200)
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                String    @db.VarChar(200)
   // Enterprise client master fields
-  client_code        String?   @unique @db.VarChar(50)
-  public_code        String?   @unique @db.VarChar(50) // Human friendly external identifier (e.g. TRIAL-2025-000123)
-  client_number      BigInt?   @unique // Monotonic sequence per type (optional)
-  legal_name         String?   @db.VarChar(200)
-  trade_name         String?   @db.VarChar(200)
-  client_type        String?   @db.VarChar(50)
-  industry           String?   @db.VarChar(100)
-  business_size      String?   @db.VarChar(50)
-  registration_number String?  @db.VarChar(100)
-  tax_id             String?   @db.VarChar(50)
-  legal_status       String?   @db.VarChar(50)
-  import_export_code String?   @db.VarChar(50)
-  registration_year  Int?
-  addresses          Json?
-  contact_persons    Json?
-  financial_details  Json?
-  bank_details       Json?
-  documents          Json?
-  system_access      Json?
-  operational        Json?
-  risk               Json?
-  status             String?   @default("Active") @db.VarChar(30)
+  client_code         String?   @unique @db.VarChar(50)
+  public_code         String?   @unique @db.VarChar(50) // Human friendly external identifier (e.g. TRIAL-2025-000123)
+  client_number       BigInt?   @unique // Monotonic sequence per type (optional)
+  legal_name          String?   @db.VarChar(200)
+  trade_name          String?   @db.VarChar(200)
+  client_type         String?   @db.VarChar(50)
+  industry            String?   @db.VarChar(100)
+  business_size       String?   @db.VarChar(50)
+  registration_number String?   @db.VarChar(100)
+  tax_id              String?   @db.VarChar(50)
+  legal_status        String?   @db.VarChar(50)
+  import_export_code  String?   @db.VarChar(50)
+  registration_year   Int?
+  addresses           Json?
+  contact_persons     Json?
+  financial_details   Json?
+  bank_details        Json?
+  documents           Json?
+  system_access       Json?
+  operational         Json?
+  risk                Json?
+  status              String?   @default("Active") @db.VarChar(30)
   // Onboarding metadata
-  onboarding_status  String?   @default("pending") @db.VarChar(30) // pending|in_progress|completed|draft|trial
-  trial_start_date   DateTime? @db.Timestamp(6)
-  trial_end_date     DateTime? @db.Timestamp(6)
-  modules_enabled    Json?     // list of enabled modules at provisioning time
-  notification_prefs Json?     // { email: bool, sms: bool, whatsapp: bool, daily_summary: bool }
-  preferred_language String?   @db.VarChar(10)
-  timezone           String?   @db.VarChar(100)
-  mfa_enabled        Boolean?  @default(false)
-  duplicate_check    Json?     // snapshot of duplicate detection evaluation
-  onboarding_activity Json?     // cached last few activity events for quick display
-  onboarding_date    DateTime? @db.Timestamp(6)
-  first_invoice_date DateTime? @db.Timestamp(6)
-  last_activity_date DateTime? @db.Timestamp(6)
-  auto_disable_rules Json?
-  productType        String    @db.VarChar(50) // "PUMP_ERP" | "BUSINESS_ERP"
-  super_admin_id     Int
-  
+  onboarding_status   String?   @default("pending") @db.VarChar(30) // pending|in_progress|completed|draft|trial
+  trial_start_date    DateTime? @db.Timestamp(6)
+  trial_end_date      DateTime? @db.Timestamp(6)
+  modules_enabled     Json? // list of enabled modules at provisioning time
+  notification_prefs  Json? // { email: bool, sms: bool, whatsapp: bool, daily_summary: bool }
+  preferred_language  String?   @db.VarChar(10)
+  timezone            String?   @db.VarChar(100)
+  mfa_enabled         Boolean?  @default(false)
+  duplicate_check     Json? // snapshot of duplicate detection evaluation
+  onboarding_activity Json? // cached last few activity events for quick display
+  onboarding_date     DateTime? @db.Timestamp(6)
+  first_invoice_date  DateTime? @db.Timestamp(6)
+  last_activity_date  DateTime? @db.Timestamp(6)
+  auto_disable_rules  Json?
+  productType         String    @db.VarChar(50) // "PUMP_ERP" | "BUSINESS_ERP"
+  super_admin_id      Int
+
   // Subscription & Settings
-  subscriptionPlan   String    @default("free") @db.VarChar(50)
-  subscriptionStatus String    @default("active") @db.VarChar(50)
-  is_active          Boolean   @default(true)
+  subscriptionPlan   String  @default("free") @db.VarChar(50)
+  subscriptionStatus String  @default("active") @db.VarChar(50)
+  is_active          Boolean @default(true)
   settings           Json?
   logo               String?
-  
+
   // Metadata
-  created_at         DateTime  @default(now()) @db.Timestamp(6)
-  updated_at         DateTime  @default(now()) @updatedAt @db.Timestamp(6)
-  
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
   // Relations
-  superAdmin         SuperAdmin @relation("SuperAdminClients", fields: [super_admin_id], references: [id], onDelete: Cascade)
-  users              User[]     @relation("ClientUsers")
-  paymentRequests    PaymentRequest[] @relation("ClientPaymentRequests")
+  superAdmin              SuperAdmin                 @relation("SuperAdminClients", fields: [super_admin_id], references: [id], onDelete: Cascade)
+  users                   User[]                     @relation("ClientUsers")
+  paymentRequests         PaymentRequest[]           @relation("ClientPaymentRequests")
   clientModulePermissions ClientModulePermission[]
-  usageEvents        ClientUsageEvent[]
-  dailyUsage         ClientDailyUsage[]
-  sequences          ClientSequence[]
-  onboardingMagicLinks OnboardingMagicLink[]
-  onboardingActivities ClientOnboardingActivity[]
+  usageEvents             ClientUsageEvent[]
+  dailyUsage              ClientDailyUsage[]
+  sequences               ClientSequence[]
+  onboardingMagicLinks    OnboardingMagicLink[]
+  onboardingActivities    ClientOnboardingActivity[]
 
   @@index([super_admin_id], map: "idx_clients_super_admin")
   @@index([productType], map: "idx_clients_product_type")
@@ -357,12 +361,12 @@ model Client {
 
 // Tracks per client_type sequence counters for generating new public codes.
 model ClientSequence {
-  id           Int      @id @default(autoincrement())
-  client_type  String   @db.VarChar(50)
-  year         Int
-  last_number  BigInt   @default(0)
-  updated_at   DateTime @default(now()) @updatedAt @db.Timestamp(6)
-  clients      Client[]
+  id          Int      @id @default(autoincrement())
+  client_type String   @db.VarChar(50)
+  year        Int
+  last_number BigInt   @default(0)
+  updated_at  DateTime @default(now()) @updatedAt @db.Timestamp(6)
+  clients     Client[]
 
   @@unique([client_type, year])
   @@map("client_sequences")
@@ -370,16 +374,16 @@ model ClientSequence {
 
 // Stores secure magic links for resuming trial onboarding drafts
 model OnboardingMagicLink {
-  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  client_id   String?   @db.Uuid
-  email       String?   @db.VarChar(150)
-  token_hash  String    @db.VarChar(255) // store hash, never the raw token
-  expires_at  DateTime  @db.Timestamp(6)
-  used_at     DateTime? @db.Timestamp(6)
-  created_at  DateTime  @default(now()) @db.Timestamp(6)
-  created_ip  String?   @db.Inet
-  user_agent  String?   @db.VarChar(255)
-  client      Client?   @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  id         String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  client_id  String?   @db.Uuid
+  email      String?   @db.VarChar(150)
+  token_hash String    @db.VarChar(255) // store hash, never the raw token
+  expires_at DateTime  @db.Timestamp(6)
+  used_at    DateTime? @db.Timestamp(6)
+  created_at DateTime  @default(now()) @db.Timestamp(6)
+  created_ip String?   @db.Inet
+  user_agent String?   @db.VarChar(255)
+  client     Client?   @relation(fields: [client_id], references: [id], onDelete: Cascade)
 
   @@index([client_id], map: "idx_onboarding_magic_link_client")
   @@index([expires_at], map: "idx_onboarding_magic_link_expires")
@@ -403,24 +407,24 @@ model ClientOnboardingActivity {
 }
 
 model Module {
-  id             Int        @id @default(autoincrement())
-  module_name    String     @unique @db.VarChar(100)
-  display_name   String     @db.VarChar(150)
-  description    String?
-  route          String     @db.VarChar(255)
-  icon           String?    @db.VarChar(100)
-  productType    String     @db.VarChar(50) // "PUMP_ERP" | "BUSINESS_ERP" | "ALL"
-  is_active      Boolean    @default(true)
-  sort_order     Int?       @default(0)
-  created_at     DateTime   @default(now()) @db.Timestamp(6)
-  updated_at     DateTime   @default(now()) @updatedAt @db.Timestamp(6)
-  
+  id           Int      @id @default(autoincrement())
+  module_name  String   @unique @db.VarChar(100)
+  display_name String   @db.VarChar(150)
+  description  String?
+  route        String   @db.VarChar(255)
+  icon         String?  @db.VarChar(100)
+  productType  String   @db.VarChar(50) // "PUMP_ERP" | "BUSINESS_ERP" | "ALL"
+  is_active    Boolean  @default(true)
+  sort_order   Int?     @default(0)
+  created_at   DateTime @default(now()) @db.Timestamp(6)
+  updated_at   DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
   // Relations
-  permissions    Permission[]
+  permissions             Permission[]
   clientModulePermissions ClientModulePermission[]
-  usageEvents    ClientUsageEvent[]
-  dailyUsage     ClientDailyUsage[]
-  moduleAssignments ModuleAssignment[]
+  usageEvents             ClientUsageEvent[]
+  dailyUsage              ClientDailyUsage[]
+  moduleAssignments       ModuleAssignment[]
 
   @@index([productType], map: "idx_modules_product_type")
   @@index([is_active], map: "idx_modules_active")
@@ -428,18 +432,18 @@ model Module {
 }
 
 model Permission {
-  id          Int      @id @default(autoincrement())
-  role        String   @db.VarChar(50) // Role name
-  module_id   Int
-  can_view    Boolean  @default(false)
-  can_create  Boolean  @default(false)
-  can_edit    Boolean  @default(false)
-  can_delete  Boolean  @default(false)
-  created_at  DateTime @default(now()) @db.Timestamp(6)
-  updated_at  DateTime @default(now()) @updatedAt @db.Timestamp(6)
-  
+  id         Int      @id @default(autoincrement())
+  role       String   @db.VarChar(50) // Role name
+  module_id  Int
+  can_view   Boolean  @default(false)
+  can_create Boolean  @default(false)
+  can_edit   Boolean  @default(false)
+  can_delete Boolean  @default(false)
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
   // Relations
-  module      Module   @relation(fields: [module_id], references: [id], onDelete: Cascade)
+  module Module @relation(fields: [module_id], references: [id], onDelete: Cascade)
 
   @@unique([role, module_id])
   @@index([role], map: "idx_permissions_role")
@@ -448,39 +452,38 @@ model Permission {
 }
 
 model ModuleAssignment {
-  id              Int        @id @default(autoincrement())
-  super_admin_id  Int
-  module_id       Int
-  assigned_at     DateTime   @default(now()) @db.Timestamp(6)
-  page_permissions Json?     // Array of page IDs that are assigned
-  
+  id               Int      @id @default(autoincrement())
+  super_admin_id   Int
+  module_id        Int
+  assigned_at      DateTime @default(now()) @db.Timestamp(6)
+  page_permissions Json? // Array of page IDs that are assigned
+
   // Relations
-  superAdmin      SuperAdmin @relation(fields: [super_admin_id], references: [id], onDelete: Cascade)
-  module          Module     @relation(fields: [module_id], references: [id], onDelete: Cascade)
+  superAdmin SuperAdmin @relation(fields: [super_admin_id], references: [id], onDelete: Cascade)
+  module     Module     @relation(fields: [module_id], references: [id], onDelete: Cascade)
 
   @@unique([super_admin_id, module_id])
   @@index([super_admin_id], map: "idx_module_assignments_super_admin")
   @@index([module_id], map: "idx_module_assignments_module")
   @@map("module_assignments")
-
 }
 
 // ==========================================
 // CLIENT-LEVEL MODULE PERMISSIONS (Overrides)
 // ==========================================
 model ClientModulePermission {
-  id          Int      @id @default(autoincrement())
-  client_id   String   @db.Uuid
-  module_id   Int
-  can_view    Boolean  @default(true)
-  can_create  Boolean  @default(false)
-  can_edit    Boolean  @default(false)
-  can_delete  Boolean  @default(false)
-  created_at  DateTime @default(now()) @db.Timestamp(6)
-  updated_at  DateTime @default(now()) @updatedAt @db.Timestamp(6)
+  id         Int      @id @default(autoincrement())
+  client_id  String   @db.Uuid
+  module_id  Int
+  can_view   Boolean  @default(true)
+  can_create Boolean  @default(false)
+  can_edit   Boolean  @default(false)
+  can_delete Boolean  @default(false)
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamp(6)
 
-  client      Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
-  module      Module   @relation(fields: [module_id], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  module Module @relation(fields: [module_id], references: [id], onDelete: Cascade)
 
   @@unique([client_id, module_id])
   @@index([client_id], map: "idx_client_module_permissions_client")
@@ -500,9 +503,9 @@ model ClientUsageEvent {
   meta        Json?
   occurred_at DateTime @default(now()) @db.Timestamp(6)
 
-  client      Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
-  user        User?    @relation(fields: [user_id], references: [id], onDelete: SetNull)
-  module      Module?  @relation(fields: [module_id], references: [id], onDelete: SetNull)
+  client Client  @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  user   User?   @relation(fields: [user_id], references: [id], onDelete: SetNull)
+  module Module? @relation(fields: [module_id], references: [id], onDelete: SetNull)
 
   @@index([client_id], map: "idx_client_usage_events_client")
   @@index([module_id], map: "idx_client_usage_events_module")
@@ -524,8 +527,8 @@ model ClientDailyUsage {
   active_users Int      @default(0)
   updated_at   DateTime @default(now()) @updatedAt @db.Timestamp(6)
 
-  client       Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
-  module       Module   @relation(fields: [module_id], references: [id], onDelete: Cascade)
+  client Client @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  module Module @relation(fields: [module_id], references: [id], onDelete: Cascade)
 
   @@id([date, client_id, module_id])
   @@index([client_id], map: "idx_client_daily_usage_client")
@@ -538,50 +541,50 @@ model ClientDailyUsage {
 // ==========================================
 
 model PaymentRequest {
-  id                String              @id @default(cuid())
-  requestId         String              @unique // Auto-generated: PR-YYYY-MM-DD-XXXX
-  clientId          String?             @db.Uuid
-  clientName        String              @db.VarChar(200)
-  clientEmail       String?             @db.VarChar(150)
-  clientPhone       String?             @db.VarChar(50)
-  
+  id          String  @id @default(cuid())
+  requestId   String  @unique // Auto-generated: PR-YYYY-MM-DD-XXXX
+  clientId    String? @db.Uuid
+  clientName  String  @db.VarChar(200)
+  clientEmail String? @db.VarChar(150)
+  clientPhone String? @db.VarChar(50)
+
   // Amount details
-  subtotal          Decimal             @db.Decimal(18, 2)
-  taxAmount         Decimal             @default(0) @db.Decimal(18, 2)
-  discountAmount    Decimal             @default(0) @db.Decimal(18, 2)
-  totalAmount       Decimal             @db.Decimal(18, 2)
-  currency          String              @default("INR") @db.VarChar(10)
-  
+  subtotal       Decimal @db.Decimal(18, 2)
+  taxAmount      Decimal @default(0) @db.Decimal(18, 2)
+  discountAmount Decimal @default(0) @db.Decimal(18, 2)
+  totalAmount    Decimal @db.Decimal(18, 2)
+  currency       String  @default("INR") @db.VarChar(10)
+
   // Metadata
-  description       String?             @db.Text
-  notes             String?             @db.Text
-  dueDate           DateTime?           @db.Timestamp(6)
-  invoiceNumber     String?             @db.VarChar(100)
-  
+  description   String?   @db.Text
+  notes         String?   @db.Text
+  dueDate       DateTime? @db.Timestamp(6)
+  invoiceNumber String?   @db.VarChar(100)
+
   // Workflow status
-  status            String              @default("DRAFT") @db.VarChar(50)
+  status String @default("DRAFT") @db.VarChar(50)
   // DRAFT → SUBMITTED → L1_PENDING → L2_PENDING → FINANCE_PENDING → SENT_TO_CLIENT → PAID → CLOSED
-  
+
   // Attachments and documents
-  attachments       Json?               // [{name, url, type, size}]
-  
+  attachments Json? // [{name, url, type, size}]
+
   // Public payment link
-  paymentToken      String?             @unique // Secure token for public payment page
-  paymentLinkSentAt DateTime?           @db.Timestamp(6)
-  
+  paymentToken      String?   @unique // Secure token for public payment page
+  paymentLinkSentAt DateTime? @db.Timestamp(6)
+
   // Relations
-  createdById       Int
-  createdBy         User                @relation("PaymentRequestCreator", fields: [createdById], references: [id])
-  client            Client?             @relation("ClientPaymentRequests", fields: [clientId], references: [id], onDelete: SetNull)
-  
+  createdById Int
+  createdBy   User    @relation("PaymentRequestCreator", fields: [createdById], references: [id])
+  client      Client? @relation("ClientPaymentRequests", fields: [clientId], references: [id], onDelete: SetNull)
+
   // Related records
-  lineItems         PaymentRequestLineItem[]
-  task              Task?
-  expense           Expense?
-  activityLogs      PaymentActivityLog[]
-  
-  createdAt         DateTime            @default(now()) @db.Timestamp(6)
-  updatedAt         DateTime            @default(now()) @updatedAt @db.Timestamp(6)
+  lineItems    PaymentRequestLineItem[]
+  task         Task?
+  expense      Expense?
+  activityLogs PaymentActivityLog[]
+
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamp(6)
 
   @@index([requestId], map: "idx_payment_requests_request_id")
   @@index([clientId], map: "idx_payment_requests_client")
@@ -592,48 +595,48 @@ model PaymentRequest {
 }
 
 model PaymentRequestLineItem {
-  id                Int             @id @default(autoincrement())
-  paymentRequestId  String
-  
-  description       String          @db.VarChar(500)
-  quantity          Decimal         @default(1) @db.Decimal(10, 2)
-  unit              String?         @default("unit") @db.VarChar(50)
-  rate              Decimal         @db.Decimal(18, 2)
-  taxRate           Decimal         @default(0) @db.Decimal(5, 2) // percentage
-  discountRate      Decimal         @default(0) @db.Decimal(5, 2) // percentage
-  lineTotal         Decimal         @db.Decimal(18, 2)
-  
-  sortOrder         Int             @default(0)
-  
-  paymentRequest    PaymentRequest  @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
-  
+  id               Int    @id @default(autoincrement())
+  paymentRequestId String
+
+  description  String  @db.VarChar(500)
+  quantity     Decimal @default(1) @db.Decimal(10, 2)
+  unit         String? @default("unit") @db.VarChar(50)
+  rate         Decimal @db.Decimal(18, 2)
+  taxRate      Decimal @default(0) @db.Decimal(5, 2) // percentage
+  discountRate Decimal @default(0) @db.Decimal(5, 2) // percentage
+  lineTotal    Decimal @db.Decimal(18, 2)
+
+  sortOrder Int @default(0)
+
+  paymentRequest PaymentRequest @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
+
   @@index([paymentRequestId], map: "idx_line_items_payment_request")
   @@map("payment_request_line_items")
 }
 
 model Expense {
-  id                String          @id @default(cuid())
-  requestId         String          @unique // Links to PaymentRequest.requestId
-  paymentRequestId  String          @unique
-  
-  createdById       Int
-  clientId          String?         @db.Uuid
-  description       String?         @db.Text
-  amount            Decimal         @db.Decimal(18, 2)
-  currency          String          @default("INR") @db.VarChar(10)
-  dueDate           DateTime?       @db.Timestamp(6)
-  status            String          @default("DRAFT") @db.VarChar(50)
+  id               String @id @default(cuid())
+  requestId        String @unique // Links to PaymentRequest.requestId
+  paymentRequestId String @unique
+
+  createdById Int
+  clientId    String?   @db.Uuid
+  description String?   @db.Text
+  amount      Decimal   @db.Decimal(18, 2)
+  currency    String    @default("INR") @db.VarChar(10)
+  dueDate     DateTime? @db.Timestamp(6)
+  status      String    @default("DRAFT") @db.VarChar(50)
   // DRAFT → SUBMITTED → IN_PROGRESS → COMPLETED → CANCELLED
-  
-  attachments       Json?           // [{name, url, type}]
-  
-  createdAt         DateTime        @default(now()) @db.Timestamp(6)
-  updatedAt         DateTime        @default(now()) @updatedAt @db.Timestamp(6)
-  
+
+  attachments Json? // [{name, url, type}]
+
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
   // Relations
-  createdBy         User            @relation("ExpenseCreator", fields: [createdById], references: [id])
-  paymentRequest    PaymentRequest  @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
-  task              Task?
+  createdBy      User           @relation("ExpenseCreator", fields: [createdById], references: [id])
+  paymentRequest PaymentRequest @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
+  task           Task?
 
   @@index([requestId], map: "idx_expenses_request_id")
   @@index([paymentRequestId], map: "idx_expenses_payment_request")
@@ -643,32 +646,32 @@ model Expense {
 }
 
 model Task {
-  id                String          @id @default(cuid())
-  expenseId         String          @unique
-  paymentRequestId  String          @unique
-  
-  title             String          @db.VarChar(300)
-  description       String?         @db.Text
-  currentLevel      Int             @default(0) // 0=L1, 1=L2, 2=Finance, 3=Banker
-  status            String          @default("PENDING") @db.VarChar(50)
+  id               String @id @default(cuid())
+  expenseId        String @unique
+  paymentRequestId String @unique
+
+  title        String  @db.VarChar(300)
+  description  String? @db.Text
+  currentLevel Int     @default(0) // 0=L1, 1=L2, 2=Finance, 3=Banker
+  status       String  @default("PENDING") @db.VarChar(50)
   // PENDING → APPROVED → REJECTED → IN_PROCESS → COMPLETED → RETURNED
-  
-  createdById       Int
-  assigneeId        Int?            // Current approver user id
-  
-  createdAt         DateTime        @default(now()) @db.Timestamp(6)
-  updatedAt         DateTime        @default(now()) @updatedAt @db.Timestamp(6)
-  
+
+  createdById Int
+  assigneeId  Int? // Current approver user id
+
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
   // Relations
-  createdBy         User            @relation("TaskCreator", fields: [createdById], references: [id])
-  assignee          User?           @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
-  expense           Expense         @relation(fields: [expenseId], references: [id], onDelete: Cascade)
-  paymentRequest    PaymentRequest  @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
-  
-  approvals         Approval[]
-  messages          Message[]
-  paymentRecords    PaymentRecord[]
-  
+  createdBy      User           @relation("TaskCreator", fields: [createdById], references: [id])
+  assignee       User?          @relation("TaskAssignee", fields: [assigneeId], references: [id], onDelete: SetNull)
+  expense        Expense        @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  paymentRequest PaymentRequest @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
+
+  approvals      Approval[]
+  messages       Message[]
+  paymentRecords PaymentRecord[]
+
   // P0 FIX: Approver selection audit logs
   approverSelectionLogs ApproverSelectionLog[] @relation("ApproverSelectionLogs")
 
@@ -681,21 +684,21 @@ model Task {
 }
 
 model Approval {
-  id                String          @id @default(cuid())
-  taskId            String
-  level             Int             // 0=L1, 1=L2, 2=Finance, 3=Banker
-  levelName         String          @db.VarChar(100) // "L1 Manager", "L2 Senior Manager", etc.
-  
-  approverId        Int
-  action            String          @db.VarChar(50) // APPROVED | REJECTED | RETURNED
-  comment           String?         @db.Text
-  attachments       Json?           // [{name, url, type}]
-  
-  createdAt         DateTime        @default(now()) @db.Timestamp(6)
-  
+  id        String @id @default(cuid())
+  taskId    String
+  level     Int // 0=L1, 1=L2, 2=Finance, 3=Banker
+  levelName String @db.VarChar(100) // "L1 Manager", "L2 Senior Manager", etc.
+
+  approverId  Int
+  action      String  @db.VarChar(50) // APPROVED | REJECTED | RETURNED
+  comment     String? @db.Text
+  attachments Json? // [{name, url, type}]
+
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
   // Relations
-  task              Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  approver          User            @relation("TaskApprovals", fields: [approverId], references: [id])
+  task     Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  approver User @relation("TaskApprovals", fields: [approverId], references: [id])
 
   @@index([taskId], map: "idx_approvals_task")
   @@index([approverId], map: "idx_approvals_approver")
@@ -704,22 +707,22 @@ model Approval {
 }
 
 model Message {
-  id                String          @id @default(cuid())
-  taskId            String
-  senderId          Int
-  
-  body              String?         @db.Text
-  attachments       Json?           // [{name, url, type, size}]
-  type              String          @default("TEXT") @db.VarChar(50)
+  id       String @id @default(cuid())
+  taskId   String
+  senderId Int
+
+  body        String? @db.Text
+  attachments Json? // [{name, url, type, size}]
+  type        String  @default("TEXT") @db.VarChar(50)
   // TEXT | APPROVAL | SYSTEM | PAYMENT
-  
-  meta              Json?           // {approveAction: "APPROVED", level: 1, amount: 1000, etc.}
-  
-  createdAt         DateTime        @default(now()) @db.Timestamp(6)
-  
+
+  meta Json? // {approveAction: "APPROVED", level: 1, amount: 1000, etc.}
+
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
   // Relations
-  task              Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  sender            User            @relation("TaskMessages", fields: [senderId], references: [id])
+  task   Task @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  sender User @relation("TaskMessages", fields: [senderId], references: [id])
 
   @@index([taskId], map: "idx_messages_task")
   @@index([senderId], map: "idx_messages_sender")
@@ -728,33 +731,33 @@ model Message {
 }
 
 model PaymentRecord {
-  id                String          @id @default(cuid())
-  taskId            String
-  paymentRequestId  String
-  
+  id               String @id @default(cuid())
+  taskId           String
+  paymentRequestId String
+
   // Banker details
-  paidById          Int?            // Banker user id
-  paymentMode       String?         @db.VarChar(100) // BankTransfer | Cheque | Online | Cash | Razorpay | Stripe
-  paymentGateway    String?         @db.VarChar(100) // Razorpay, Stripe, PayPal, etc.
-  transactionId     String?         @db.VarChar(255)
-  
+  paidById       Int? // Banker user id
+  paymentMode    String? @db.VarChar(100) // BankTransfer | Cheque | Online | Cash | Razorpay | Stripe
+  paymentGateway String? @db.VarChar(100) // Razorpay, Stripe, PayPal, etc.
+  transactionId  String? @db.VarChar(255)
+
   // Bank transfer details
-  details           Json?           // {bankName, accountNumber, ifsc, reference, chequeNumber, etc.}
-  
+  details Json? // {bankName, accountNumber, ifsc, reference, chequeNumber, etc.}
+
   // Payment amounts
-  amount            Decimal         @db.Decimal(18, 2)
-  currency          String          @default("INR") @db.VarChar(10)
-  
-  paidAt            DateTime?       @db.Timestamp(6)
-  receiptUrl        String?         // Receipt/proof of payment
-  
-  notes             String?         @db.Text
-  
-  createdAt         DateTime        @default(now()) @db.Timestamp(6)
-  
+  amount   Decimal @db.Decimal(18, 2)
+  currency String  @default("INR") @db.VarChar(10)
+
+  paidAt     DateTime? @db.Timestamp(6)
+  receiptUrl String? // Receipt/proof of payment
+
+  notes String? @db.Text
+
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
   // Relations
-  task              Task            @relation(fields: [taskId], references: [id], onDelete: Cascade)
-  paidBy            User?           @relation("PaymentRecords", fields: [paidById], references: [id], onDelete: SetNull)
+  task   Task  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  paidBy User? @relation("PaymentRecords", fields: [paidById], references: [id], onDelete: SetNull)
 
   @@index([taskId], map: "idx_payment_records_task")
   @@index([paymentRequestId], map: "idx_payment_records_payment_request")
@@ -764,16 +767,16 @@ model PaymentRecord {
 }
 
 model ApprovalLevel {
-  id                Int             @id @default(autoincrement())
-  level             Int             @unique // 0, 1, 2, 3
-  levelName         String          @db.VarChar(100) // "L1 Manager", "L2 Senior Manager", etc.
-  roleName          String          @db.VarChar(100) // Role that can approve at this level
-  sortOrder         Int             @default(0)
-  isActive          Boolean         @default(true)
-  approvalLimit     Decimal?        @db.Decimal(15, 2) // Maximum amount approvable at this level
-  
-  createdAt         DateTime        @default(now()) @db.Timestamp(6)
-  updatedAt         DateTime        @default(now()) @updatedAt @db.Timestamp(6)
+  id            Int      @id @default(autoincrement())
+  level         Int      @unique // 0, 1, 2, 3
+  levelName     String   @db.VarChar(100) // "L1 Manager", "L2 Senior Manager", etc.
+  roleName      String   @db.VarChar(100) // Role that can approve at this level
+  sortOrder     Int      @default(0)
+  isActive      Boolean  @default(true)
+  approvalLimit Decimal? @db.Decimal(15, 2) // Maximum amount approvable at this level
+
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamp(6)
 
   @@index([level], map: "idx_approval_levels_level")
   @@map("approval_levels")
@@ -781,21 +784,21 @@ model ApprovalLevel {
 
 // P0 FIX: Smart Approver Selection Configuration
 model ApproverConfiguration {
-  id                String          @id @default(cuid())
-  userId            Int
-  level             Int             // 0-3 (L1-L4)
-  approvalLimit     Decimal?        @db.Decimal(15, 2) // Maximum amount this approver can handle
-  isActive          Boolean         @default(true)
-  isAvailable       Boolean         @default(true) // For leave/unavailability tracking
-  autoAssign        Boolean         @default(true) // Include in auto-assignment pool
-  priority          Int             @default(0)    // Higher priority gets assigned first
-  maxConcurrentTasks Int?          @default(10)   // Max pending tasks before excluding
-  
-  createdAt         DateTime        @default(now()) @db.Timestamp(6)
-  updatedAt         DateTime        @default(now()) @updatedAt @db.Timestamp(6)
-  
+  id                 String   @id @default(cuid())
+  userId             Int
+  level              Int // 0-3 (L1-L4)
+  approvalLimit      Decimal? @db.Decimal(15, 2) // Maximum amount this approver can handle
+  isActive           Boolean  @default(true)
+  isAvailable        Boolean  @default(true) // For leave/unavailability tracking
+  autoAssign         Boolean  @default(true) // Include in auto-assignment pool
+  priority           Int      @default(0) // Higher priority gets assigned first
+  maxConcurrentTasks Int?     @default(10) // Max pending tasks before excluding
+
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+  updatedAt DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
   // Relations
-  user              User            @relation("ApproverConfigurations", fields: [userId], references: [id], onDelete: Cascade)
+  user User @relation("ApproverConfigurations", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, level])
   @@index([userId], map: "idx_approver_config_user")
@@ -806,24 +809,24 @@ model ApproverConfiguration {
 
 // P0 FIX: Approver Selection Audit Trail
 model ApproverSelectionLog {
-  id                    String          @id @default(cuid())
-  taskId                String?
-  paymentRequestId      String?
-  level                 Int             // 0-3 (L1-L4)
-  selectedApproverId    Int
-  requestedApprovers    Json?           // Array of requested approver IDs
-  availableApprovers    Json?           // Array of all available approver IDs
-  selectionMethod       String          @db.VarChar(50) // REQUESTED | WORKLOAD_BALANCED | APPROVAL_LIMIT | ESCALATED | FALLBACK
-  paymentAmount         Decimal?        @db.Decimal(15, 2)
-  approverWorkload      Int?            // Pending tasks at time of assignment
-  metadata              Json?           // Additional selection criteria/context
-  
-  createdAt             DateTime        @default(now()) @db.Timestamp(6)
-  
+  id                 String   @id @default(cuid())
+  taskId             String?
+  paymentRequestId   String?
+  level              Int // 0-3 (L1-L4)
+  selectedApproverId Int
+  requestedApprovers Json? // Array of requested approver IDs
+  availableApprovers Json? // Array of all available approver IDs
+  selectionMethod    String   @db.VarChar(50) // REQUESTED | WORKLOAD_BALANCED | APPROVAL_LIMIT | ESCALATED | FALLBACK
+  paymentAmount      Decimal? @db.Decimal(15, 2)
+  approverWorkload   Int? // Pending tasks at time of assignment
+  metadata           Json? // Additional selection criteria/context
+
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
   // Relations
-  task                  Task?           @relation("ApproverSelectionLogs", fields: [taskId], references: [id], onDelete: SetNull)
-  selectedApprover      User            @relation("ApproverSelectionLogs", fields: [selectedApproverId], references: [id], onDelete: Cascade)
-  
+  task             Task? @relation("ApproverSelectionLogs", fields: [taskId], references: [id], onDelete: SetNull)
+  selectedApprover User  @relation("ApproverSelectionLogs", fields: [selectedApproverId], references: [id], onDelete: Cascade)
+
   @@index([taskId], map: "idx_selection_log_task")
   @@index([selectedApproverId], map: "idx_selection_log_approver")
   @@index([level, createdAt], map: "idx_selection_log_level_created")
@@ -831,20 +834,20 @@ model ApproverSelectionLog {
 }
 
 model PaymentActivityLog {
-  id                Int             @id @default(autoincrement())
-  paymentRequestId  String
-  userId            Int?
-  action            String          @db.VarChar(100) // CREATED | SUBMITTED | APPROVED | REJECTED | SENT_TO_CLIENT | PAID | etc.
-  oldStatus         String?         @db.VarChar(50)
-  newStatus         String?         @db.VarChar(50)
-  comment           String?         @db.Text
-  metadata          Json?           // Additional context data
-  
-  createdAt         DateTime        @default(now()) @db.Timestamp(6)
-  
+  id               Int     @id @default(autoincrement())
+  paymentRequestId String
+  userId           Int?
+  action           String  @db.VarChar(100) // CREATED | SUBMITTED | APPROVED | REJECTED | SENT_TO_CLIENT | PAID | etc.
+  oldStatus        String? @db.VarChar(50)
+  newStatus        String? @db.VarChar(50)
+  comment          String? @db.Text
+  metadata         Json? // Additional context data
+
+  createdAt DateTime @default(now()) @db.Timestamp(6)
+
   // Relations
-  paymentRequest    PaymentRequest  @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
-  user              User?           @relation("PaymentActivityLogs", fields: [userId], references: [id], onDelete: SetNull)
+  paymentRequest PaymentRequest @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
+  user           User?          @relation("PaymentActivityLogs", fields: [userId], references: [id], onDelete: SetNull)
 
   @@index([paymentRequestId], map: "idx_activity_logs_payment_request")
   @@index([userId], map: "idx_activity_logs_user")
@@ -856,17 +859,17 @@ model PaymentActivityLog {
 // OTP TOKENS (Secure, single-use)
 // ==========================================
 model OtpToken {
-  id           String   @id @default(cuid())
-  email        String   @db.VarChar(150)
-  purpose      String   @db.VarChar(50) // login | 2FA | reset | onboarding
-  otp_hash     String   @db.VarChar(128) // HMAC-SHA256 hex
-  expires_at   DateTime @db.Timestamp(6)
-  attempts     Int      @default(0)
-  verified     Boolean  @default(false)
-  ip_address   String?  @db.Inet
-  user_agent   String?
-  created_at   DateTime @default(now()) @db.Timestamp(6)
-  last_sent_at DateTime @default(now()) @db.Timestamp(6)
+  id            String    @id @default(cuid())
+  email         String    @db.VarChar(150)
+  purpose       String    @db.VarChar(50) // login | 2FA | reset | onboarding
+  otp_hash      String    @db.VarChar(128) // HMAC-SHA256 hex
+  expires_at    DateTime  @db.Timestamp(6)
+  attempts      Int       @default(0)
+  verified      Boolean   @default(false)
+  ip_address    String?   @db.Inet
+  user_agent    String?
+  created_at    DateTime  @default(now()) @db.Timestamp(6)
+  last_sent_at  DateTime  @default(now()) @db.Timestamp(6)
   blocked_until DateTime?
 
   @@index([email], map: "idx_otp_email")
@@ -881,31 +884,31 @@ model OtpToken {
 // ==========================================
 
 model Thread {
-  id          String        @id @default(cuid())
-  title       String?       @db.VarChar(200)
+  id          String   @id @default(cuid())
+  title       String?  @db.VarChar(200)
   createdById Int
-  createdAt   DateTime      @default(now()) @db.Timestamp(6)
-  updatedAt   DateTime      @default(now()) @updatedAt @db.Timestamp(6)
+  createdAt   DateTime @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime @default(now()) @updatedAt @db.Timestamp(6)
 
-  createdBy   User          @relation(fields: [createdById], references: [id], onDelete: Cascade)
-  members     ThreadMember[]
-  callLogs    CallLog[]
+  createdBy User           @relation("ThreadCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  members   ThreadMember[]
+  callLogs  CallLog[]
 
   @@index([createdById], map: "idx_threads_creator")
   @@map("threads")
 }
 
 model ThreadMember {
-  id         String   @id @default(cuid())
-  threadId   String
-  userId     Int
-  role       String   @default("member") @db.VarChar(50) // member | moderator | admin
-  joinedAt   DateTime @default(now()) @db.Timestamp(6)
-  leftAt     DateTime?
-  isActive   Boolean  @default(true)
+  id       String    @id @default(cuid())
+  threadId String
+  userId   Int
+  role     String    @default("member") @db.VarChar(50) // member | moderator | admin
+  joinedAt DateTime  @default(now()) @db.Timestamp(6)
+  leftAt   DateTime?
+  isActive Boolean   @default(true)
 
-  thread     Thread   @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  user       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  thread Thread @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  user   User   @relation("ThreadMemberUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([threadId, userId])
   @@index([userId], map: "idx_thread_members_user")
@@ -915,25 +918,25 @@ model ThreadMember {
 }
 
 model CallLog {
-  id               String   @id @default(cuid())
-  room_name        String   @db.VarChar(255)
+  id               String    @id @default(cuid())
+  room_name        String    @db.VarChar(255)
   thread_id        String
   initiator_id     Int
-  call_type        String   @default("audio") @db.VarChar(20) // audio | video
-  status           String   @default("ringing") @db.VarChar(30) // ringing | active | ended | missed | failed
-  started_at       DateTime @default(now()) @db.Timestamp(6)
+  call_type        String    @default("audio") @db.VarChar(20) // audio | video
+  status           String    @default("ringing") @db.VarChar(30) // ringing | active | ended | missed | failed
+  started_at       DateTime  @default(now()) @db.Timestamp(6)
   ended_at         DateTime?
-  duration_seconds Int?     @default(0)
-  participants     Json?    // [{user_id, joined_at, left_at}]
+  duration_seconds Int?      @default(0)
+  participants     Json? // [{user_id, joined_at, left_at}]
   recording_url    String?
   transcript_url   String?
   quality_metrics  Json?
-  consent_recorded Boolean  @default(false)
-  created_at       DateTime @default(now()) @db.Timestamp(6)
-  updated_at       DateTime @default(now()) @updatedAt @db.Timestamp(6)
+  consent_recorded Boolean   @default(false)
+  created_at       DateTime  @default(now()) @db.Timestamp(6)
+  updated_at       DateTime  @default(now()) @updatedAt @db.Timestamp(6)
 
-  thread           Thread   @relation(fields: [thread_id], references: [id], onDelete: Cascade)
-  initiator        User     @relation(fields: [initiator_id], references: [id], onDelete: SetNull)
+  thread    Thread @relation(fields: [thread_id], references: [id], onDelete: Cascade)
+  initiator User   @relation("CallLogInitiator", fields: [initiator_id], references: [id], onDelete: SetNull)
 
   @@index([thread_id], map: "idx_call_logs_thread")
   @@index([initiator_id], map: "idx_call_logs_initiator")
