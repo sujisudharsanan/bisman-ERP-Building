@@ -268,6 +268,15 @@ try {
   console.warn('[app.js] trialOtp routes not loaded:', e?.message || e);
 }
 
+// Calls (Jitsi) routes
+try {
+  const callsRoutes = require('./routes/calls');
+  app.use('/api/calls', callsRoutes);
+  console.log('[app.js] ✅ Mounted /api/calls (Jitsi calls)');
+} catch (e) {
+  console.warn('[app.js] calls routes not loaded:', e?.message || e);
+}
+
 // ✅ SECURITY FIX: Protected database health endpoint (Enterprise Admin only)
 // Exposes sensitive database information, must be protected
 // MOVED AFTER MIDDLEWARE IMPORT (line ~750)

@@ -13,6 +13,8 @@ import ChatSidebar from './chat/ChatSidebar';
 import ChatWindow from './chat/ChatWindow';
 import { uploadFiles } from '@/lib/attachments';
 import BismanFloatingWidget from './BismanFloatingWidget';
+import JitsiFrame from './calls/JitsiFrame';
+import CallBanner from './calls/CallBanner';
 
 const TawkInline = dynamic(() => import('./TawkInline'), { ssr: false });
 
@@ -60,6 +62,8 @@ export default function ERPChatWidget({ userName }: { userName?: string }) {
   const [isAiLoading, setIsAiLoading] = useState(false);
   const [userData, setUserData] = useState<any>(null); // ERP user data for Spark AI
   const [isFullScreen, setIsFullScreen] = useState(false);
+  const [activeCall, setActiveCall] = useState<null | { id: string; room: string; token?: string; domain?: string; status: 'ringing' | 'live' }>(null);
+  const [showCall, setShowCall] = useState(false);
 
   const currentContact = contacts.find(c => c.id === activeContact);
   // Use AI messages for bot (ID: 0)
@@ -153,6 +157,35 @@ export default function ERPChatWidget({ userName }: { userName?: string }) {
     }
   };
 
+  // Call controls
+  const startCall = async () => {
+    try {
+      // For MVP, create a synthetic thread_id for bot chat
+      const r1 = await fetch('/api/calls/start', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ thread_id: 'spark' }) });
+      const j1 = await r1.json();
+      if (!j1.ok) throw new Error(j1.error || 'start_failed');
+      const callId = j1.call_id;
+      setActiveCall({ id: callId, room: j1.room_name, status: 'ringing' });
+      // Immediately join as participant
+      const r2 = await fetch(`/api/calls/${callId}/join`, { method: 'POST' });
+      const j2 = await r2.json();
+      if (!j2.ok) throw new Error(j2.error || 'join_failed');
+      setActiveCall({ id: callId, room: j2.room, token: j2.token, domain: j2.domain, status: 'live' });
+      setShowCall(true);
+    } catch (e) {
+      console.error('Call flow failed', e);
+    }
+  };
+
+  const endCall = async () => {
+    if (!activeCall) return;
+    try {
+      await fetch(`/api/calls/${activeCall.id}/end`, { method: 'POST' });
+    } catch {}
+    setShowCall(false);
+    setActiveCall(null);
+  };
+
   // Fullscreen controls
   const toggleFullScreen = () => {
     setIsFullScreen(prev => {
@@ -217,17 +250,25 @@ export default function ERPChatWidget({ userName }: { userName?: string }) {
               onSelectContact={setActiveContact}
               onOpenSettings={handleOpenSettings}
             />
-            <ChatWindow
-              contact={currentContact}
-              messages={currentMessages}
-              onSendMessage={activeContact === 0 ? handleSendMessage : undefined}
-              isLoading={activeContact === 0 ? isAiLoading : false}
-              isFullScreen={false}
-              onToggleFullScreen={toggleFullScreen}
-              onFilesSelected={handleFilesSelected}
-              onMinimize={() => setIsMinimized(!isMinimized)}
-              onClose={() => setOpen(false)}
-            />
+            <div className="flex-1 min-w-0 flex flex-col">
+              {activeCall && (
+                <div className="p-2 border-b border-gray-200 dark:border-slate-700">
+                  <CallBanner status={activeCall.status} onJoin={() => setShowCall(true)} onEnd={endCall} participants={1} />
+                </div>
+              )}
+              <ChatWindow
+                contact={currentContact}
+                messages={currentMessages}
+                onSendMessage={activeContact === 0 ? handleSendMessage : undefined}
+                isLoading={activeContact === 0 ? isAiLoading : false}
+                isFullScreen={false}
+                onToggleFullScreen={toggleFullScreen}
+                onFilesSelected={handleFilesSelected}
+                onMinimize={() => setIsMinimized(!isMinimized)}
+                onClose={() => setOpen(false)}
+                onStartCall={startCall}
+              />
+            </div>
           </div>
         </div>
       )}
@@ -260,6 +301,19 @@ export default function ERPChatWidget({ userName }: { userName?: string }) {
                 onClose={() => setOpen(false)}
               />
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Call modal */}
+      {showCall && activeCall && (
+        <div className="fixed inset-0 z-[1100] bg-black/60 flex items-center justify-center" role="dialog" aria-label="Call">
+          <div className="bg-white dark:bg-slate-900 rounded-lg shadow-xl w-full max-w-5xl p-2">
+            <div className="flex justify-between items-center mb-2">
+              <h3 className="text-sm font-semibold">Group Call</h3>
+              <button onClick={endCall} className="px-2 py-1 text-xs bg-red-600 text-white rounded-md">End</button>
+            </div>
+            <JitsiFrame domain={activeCall.domain || (process.env.NEXT_PUBLIC_JITSI_DOMAIN as any) || 'jitsi.internal'} room={activeCall.room} jwt={activeCall.token} onReady={() => {}} onEnded={endCall} height={560} />
           </div>
         </div>
       )}

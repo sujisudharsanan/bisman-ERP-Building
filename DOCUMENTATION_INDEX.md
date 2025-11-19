@@ -341,6 +341,7 @@ All historical documentation has been organized into:
 ### Chat System
 - CHAT_MINIMIZE_FEATURE.md
 - MATTERMOST_REMOVAL_SUMMARY.md
+- CALLS_INTEGRATION_PLAN.md
 
 ### Database
 - database-migration.sh

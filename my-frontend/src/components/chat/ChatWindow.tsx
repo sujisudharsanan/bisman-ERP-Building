@@ -34,8 +34,10 @@ interface ChatWindowProps {
   onClose?: () => void;
   // Optional: receive selected or dropped files for upload
   onFilesSelected?: (files: File[]) => Promise<void> | void;
+  // NEW: optional call controls
+  onStartCall?: () => void;
 }
-export default function ChatWindow({ contact, messages, onSendMessage, isLoading, isFullScreen, onToggleFullScreen, onClearChat, onExportChat, onOpenSettings, onMinimize, onClose, onFilesSelected }: ChatWindowProps) {
+export default function ChatWindow({ contact, messages, onSendMessage, isLoading, isFullScreen, onToggleFullScreen, onClearChat, onExportChat, onOpenSettings, onMinimize, onClose, onFilesSelected, onStartCall }: ChatWindowProps) {
   const [inputMessage, setInputMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -195,6 +197,17 @@ export default function ChatWindow({ contact, messages, onSendMessage, isLoading
           </div>
         </div>
         <div className="flex items-center gap-1.5">
+          {/* NEW: Start Call button (hidden in fullscreen for now) */}
+          {!isFullScreen && onStartCall && (
+            <button
+              onClick={onStartCall}
+              title="Start call"
+              className="px-2 py-1 text-xs bg-blue-600 text-white rounded-md"
+              aria-label="Start voice or video call"
+            >
+              Call
+            </button>
+          )}
           {isFullScreen && (
             <>
               <button
