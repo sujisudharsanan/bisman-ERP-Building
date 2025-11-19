@@ -1,7 +1,7 @@
 /**
  * ═══════════════════════════════════════════════════════════════════════════════
  * CENTRALIZED PAGE REGISTRY - BISMAN ERP
- * ═══════════════════════════════════════════════════════════════════════════════
+  path: '/pump-management/server-logs',
  * 
  * This file is the SINGLE SOURCE OF TRUTH for all ERP pages, routes, and navigation.
  * It maps all pages to their routes, permissions, roles, icons, and metadata.
@@ -82,7 +82,7 @@
  * 
  * Step 3: Run consistency check
  * ────────────────────────────────────────────────────────────────────────────
- *   ```bash
+  module: 'pump-management',
  *   cd my-backend
  *   node check-modules-consistency.js
  *   ```
@@ -200,9 +200,9 @@ import {
   ShoppingCart, Package, Truck, ClipboardCheck, FileCheck, Scale,
   AlertTriangle, BookOpen, Archive, CreditCard, Wallet, Building,
   Calculator, Receipt, Banknote, FileSpreadsheet, Landmark, Globe,
-  Coins, FolderOpen, FileEdit, Upload, CheckCircle, Clock,
+  Coins, FolderOpen, FileEdit, Upload, CheckCircle, Clock, Calendar,
   Box, Boxes, ListChecks, Tag, Factory, Route, MapPin,
-  Clipboard, FileSignature, Gavel, Folder, UserCheck, Bell, HelpCircle, MessageSquare,
+  Clipboard, FileSignature, Gavel, Folder, UserCheck, Bell, HelpCircle,
   type LucideIcon
 } from 'lucide-react';
 
@@ -215,7 +215,7 @@ export interface PageMetadata {
   name: string;
   path: string;
   icon: LucideIcon;
-  module: 'system' | 'finance' | 'procurement' | 'operations' | 'compliance' | 'common';
+  module: 'system' | 'finance' | 'procurement' | 'operations' | 'compliance' | 'common' | 'pump-management' | 'hr';
   permissions: string[]; // Required permissions (OR logic)
   roles: string[]; // Recommended roles
   status: PageStatus;
@@ -278,6 +278,22 @@ export const MODULES: Record<string, ModuleMetadata> = {
     color: 'red',
     order: 5,
   },
+  'pump-management': {
+    id: 'pump-management',
+    name: 'Pump Management',
+    icon: Factory,
+    description: 'Pump operations, diagnostics, and common tools',
+    color: 'amber',
+    order: 6,
+  },
+  hr: {
+    id: 'hr',
+    name: 'Human Resources',
+    icon: Users,
+    description: 'HR management and employee operations',
+    color: 'teal',
+    order: 7,
+  },
   common: {
     id: 'common',
     name: 'Common',
@@ -301,22 +317,35 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     icon: Settings,
     module: 'system',
     permissions: ['system-settings'],
-    roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR', 'IT ADMIN'],
+  roles: ['SYSTEM_ADMIN', 'ADMIN', 'SYSTEM ADMINISTRATOR', 'IT ADMIN'],
     status: 'active',
     description: 'Configure system-wide settings',
     order: 1,
   },
   {
     id: 'user-management',
-    name: 'User Management',
+  name: 'Client Management',
     path: '/system/user-management',
     icon: Users,
     module: 'system',
     permissions: ['user-management'],
-    roles: ['SUPER_ADMIN', 'ADMIN', 'SYSTEM ADMINISTRATOR'],
+  roles: ['SYSTEM_ADMIN', 'ADMIN', 'SYSTEM ADMINISTRATOR'],
     status: 'active',
-    description: 'Manage users and permissions',
+  description: 'Manage ERP clients and quick-access their Admin login',
     order: 2,
+  },
+  {
+    id: 'user-creation',
+    name: 'Create New User',
+    path: '/hr/user-creation',
+    icon: UserPlus,
+    module: 'hr',
+    permissions: ['user-management', 'hr-management'],
+  roles: ['SYSTEM_ADMIN', 'ADMIN', 'HR', 'HR_MANAGER'],
+    status: 'active',
+    description: 'Two-stage user creation with KYC workflow - HR creates request and sends KYC link or creates user immediately',
+    badge: 'New',
+    order: 2.5,
   },
   {
     id: 'permission-manager',
@@ -325,19 +354,19 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     icon: Key,
     module: 'system',
     permissions: ['user-management'],
-    roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
+  roles: ['SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR', 'ADMIN'],
     status: 'active',
     description: 'Manage system permissions',
     order: 3,
   },
   {
     id: 'roles-users-report',
-    name: 'Roles & Users Report',
+    name: 'Modules & Roles',
     path: '/system/roles-users-report',
     icon: FileText,
     module: 'system',
     permissions: ['user-management'],
-    roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
+  roles: ['SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR', 'ADMIN'],
     status: 'active',
     description: 'View comprehensive report of all roles and assigned users',
     order: 4,
@@ -349,7 +378,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     icon: FileText,
     module: 'system',
     permissions: ['user-management', 'system-settings'],
-    roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
+  roles: ['SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR', 'ADMIN'],
     status: 'active',
     description: 'View all pages and their assigned roles, identify orphan pages',
     order: 5,
@@ -361,7 +390,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     icon: Activity,
     module: 'system',
     permissions: ['system-settings'],
-    roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR', 'IT ADMIN'],
+  roles: ['SYSTEM_ADMIN', 'ADMIN', 'SYSTEM ADMINISTRATOR', 'IT ADMIN'],
     status: 'active',
     description: 'View system activity and audit trails',
     order: 5,
@@ -372,8 +401,15 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     path: '/system/backup-restore',
     icon: Database,
     module: 'system',
-    permissions: ['system-settings'],
-    roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
+    // Allow via either system settings or pump management common permissions
+    permissions: [
+      'system-settings',
+      'pump-management:common',
+      'pump:common',
+      'pump-management-common',
+      'pump-management'
+    ],
+  roles: ['SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR', 'ADMIN'],
     status: 'active',
     description: 'Manage system backups and restoration',
     order: 6,
@@ -385,7 +421,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     icon: Clock,
     module: 'system',
     permissions: ['system-settings'],
-    roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
+  roles: ['SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR', 'ADMIN'],
     status: 'active',
     description: 'Configure automated tasks and schedules',
     order: 7,
@@ -397,7 +433,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     icon: Activity,
     module: 'system',
     permissions: ['system-settings'],
-    roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR', 'IT ADMIN'],
+  roles: ['SYSTEM_ADMIN', 'ADMIN', 'SYSTEM ADMINISTRATOR', 'IT ADMIN'],
     status: 'active',
     description: 'Monitor system performance and health',
     order: 8,
@@ -409,7 +445,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     icon: Route,
     module: 'system',
     permissions: ['system-settings'],
-    roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
+  roles: ['SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR', 'ADMIN'],
     status: 'active',
     description: 'Configure third-party integrations',
     order: 9,
@@ -421,7 +457,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     icon: AlertTriangle,
     module: 'system',
     permissions: ['system-settings'],
-    roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR', 'IT ADMIN'],
+  roles: ['SYSTEM_ADMIN', 'ADMIN', 'SYSTEM ADMINISTRATOR', 'IT ADMIN'],
     status: 'active',
     description: 'View and manage system error logs',
     order: 10,
@@ -429,14 +465,21 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   {
     id: 'server-logs',
     name: 'Server Logs',
-    path: '/system/server-logs',
+    path: '/pump-management/server-logs',
     icon: Server,
-    module: 'system',
-    permissions: ['system-settings'],
-    roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
+    module: 'pump-management',
+    // Allow via System Settings OR Pump Management (common module)
+    permissions: [
+      'system-settings',
+      'pump-management:common',
+      'pump:common',
+      'pump-management-common',
+      'pump-management'
+    ],
+  roles: ['SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR', 'ADMIN'],
     status: 'active',
     description: 'Access server logs and diagnostics',
-    order: 11,
+    order: 1,
   },
   {
     id: 'deployment-tools',
@@ -445,7 +488,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     icon: Upload,
     module: 'system',
     permissions: ['system-settings'],
-    roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
+  roles: ['SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR', 'ADMIN'],
     status: 'active',
     description: 'Manage deployments and releases',
     order: 12,
@@ -469,7 +512,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     icon: Building,
     module: 'system',
     permissions: ['system-settings'],
-    roles: ['SUPER_ADMIN', 'ADMIN'],
+  roles: ['SYSTEM_ADMIN', 'ADMIN'],
     status: 'active',
     description: 'Configure company information',
     order: 14,
@@ -481,7 +524,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     icon: Database,
     module: 'system',
     permissions: ['system-settings'],
-    roles: ['SUPER_ADMIN', 'ADMIN'],
+  roles: ['SYSTEM_ADMIN', 'ADMIN'],
     status: 'active',
     description: 'Manage master data entities',
     order: 15,
@@ -1267,102 +1310,47 @@ export const PAGE_REGISTRY: PageMetadata[] = [
 
   // ==================== COMMON MODULE (9 pages) ====================
   // These pages are accessible to ALL authenticated users regardless of role
-  {
-    id: 'user-creation',
-    name: 'Create User',
-    path: '/common/user-creation',
-    icon: UserPlus,
-    module: 'common',
-    permissions: ['authenticated'],
-    roles: ['SUPER_ADMIN', 'ADMIN', 'SYSTEM ADMINISTRATOR', 'MANAGER', 'HUB INCHARGE'],
-    status: 'active',
-    description: 'Create and register new users',
-    order: 0.5,
-  },
-  {
-    id: 'common-about-me',
-    name: 'About Me',
-    path: '/common/about-me',
-    icon: User,
-    module: 'common',
-    permissions: ['authenticated'], // Special permission - all logged-in users
-    roles: ['ALL'], // Available to all roles
-    status: 'active',
-    description: 'View and manage your profile information',
-    order: 1,
-  },
-  {
-    id: 'common-change-password',
-    name: 'Change Password',
-    path: '/common/change-password',
-    icon: Key,
-    module: 'common',
-    permissions: ['authenticated'],
-    roles: ['ALL'],
-    status: 'active',
-    description: 'Update your account password',
-    order: 2,
-  },
-  {
-    id: 'common-security-settings',
-    name: 'Security Settings',
-    path: '/common/security-settings',
-    icon: Shield,
-    module: 'common',
-    permissions: ['authenticated'],
-    roles: ['ALL'],
-    status: 'active',
-    description: 'Manage your account security preferences',
-    order: 3,
-  },
-  {
-    id: 'common-notifications',
-    name: 'Notifications',
-    path: '/common/notifications',
-    icon: Bell,
-    module: 'common',
-    permissions: ['authenticated'],
-    roles: ['ALL'],
-    status: 'active',
-    description: 'View and manage your notifications',
-    order: 4,
-  },
+  // Create User removed per request
+  // Change Password removed per request
+  // Notifications page removed per request
   {
     id: 'common-messages',
     name: 'Messages',
     path: '/common/messages',
-    icon: MessageSquare,
+  icon: HelpCircle,
     module: 'common',
     permissions: ['authenticated'],
     roles: ['ALL'],
-    status: 'active',
+  status: 'disabled',
     description: 'Internal messaging system',
     order: 5,
   },
-  {
-    id: 'common-help-center',
-    name: 'Help Center',
-    path: '/common/help-center',
-    icon: HelpCircle,
-    module: 'common',
-    permissions: ['authenticated'],
-    roles: ['ALL'],
-    status: 'active',
-    description: 'Get help and support resources',
-    order: 6,
-  },
-  {
-    id: 'common-documentation',
-    name: 'Documentation',
-    path: '/common/documentation',
-    icon: FileText,
-    module: 'common',
-    permissions: ['authenticated'],
-    roles: ['ALL'],
-    status: 'active',
-    description: 'System documentation and guides',
-    order: 7,
-  },
+  // Help Center removed per request
+  // {
+  //   id: 'common-help-center',
+  //   name: 'Help Center',
+  //   path: '/common/help-center',
+  //   icon: HelpCircle,
+  //   module: 'common',
+  //   permissions: ['authenticated'],
+  //   roles: ['ALL'],
+  //   status: 'active',
+  //   description: 'Get help and support resources',
+  //   order: 6,
+  // },
+  // Documentation removed per request
+  // {
+  //   id: 'common-documentation',
+  //   name: 'Documentation',
+  //   path: '/common/documentation',
+  //   icon: FileText,
+  //   module: 'common',
+  //   permissions: ['authenticated'],
+  //   roles: ['ALL'],
+  //   status: 'active',
+  //   description: 'System documentation and guides',
+  //   order: 7,
+  // },
   {
     id: 'common-user-settings',
     name: 'User Settings',
@@ -1387,6 +1375,8 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'Submit and track payment requests',
     order: 9,
   },
+  // Task Approvals removed per request
+  // Calendar removed from sidebar per request
 ];
 
 /**

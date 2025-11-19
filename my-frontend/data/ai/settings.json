@@ -1,0 +1,70 @@
+{
+  "enabled": true,
+  "provider": "local",
+  "model": "llama3:8b",
+  "temperature": 0.2,
+  "tools": [
+    "query-data",
+    "export-csv",
+    "create-task",
+    "raise-ticket"
+  ],
+  "domains": {
+    "finance": true,
+    "hr": true,
+    "inventory": true,
+    "procurement": true,
+    "pump": true,
+    "compliance": true
+  },
+  "rag": {
+    "sources": [],
+    "topK": 6,
+    "reRank": true
+  },
+  "nlq": {
+    "maxWindowDays": 365,
+    "readOnly": true
+  },
+  "forecasting": {
+    "horizonDays": 30,
+    "seasonality": "auto"
+  },
+  "anomalies": {
+    "sensitivity": "medium",
+    "channels": [
+      "in-app",
+      "email"
+    ]
+  },
+  "security": {
+    "rls": true,
+    "redactPII": false,
+    "promptLogging": "hashed",
+    "retentionDays": 180,
+    "modelAllow": [
+      "llama3:8b"
+    ]
+  },
+  "allowedModules": [
+    "1",
+    "4",
+    "7",
+    "10",
+    "13",
+    "16",
+    "19",
+    "2",
+    "5",
+    "8",
+    "11",
+    "14",
+    "17",
+    "18",
+    "15",
+    "12",
+    "9",
+    "6",
+    "3"
+  ]
+}

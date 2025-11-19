@@ -8,9 +8,10 @@ interface KanbanColumnProps {
   tasks: any[];
   showCreate?: boolean;
   onCreate?: () => void;
+  onTaskClick?: (task: any) => void;
 }
 
-const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = false, onCreate }) => {
+const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = false, onCreate, onTaskClick }) => {
   const getTitleColor = (title: string) => {
     const colors: Record<string, string> = {
       'DRAFT': 'text-gray-400',
@@ -22,17 +23,17 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = 
   };
 
   return (
-    <div className="relative flex flex-col flex-1 min-w-[13rem] max-w-[17rem] p-2 bg-panel/60 backdrop-blur-sm rounded-2xl border border-theme">
-      {/* top-right count badge */}
+    <div className="relative flex flex-col flex-1 min-w-[13rem] max-w-[17rem] p-3 bg-panel/60 backdrop-blur-sm rounded-2xl border border-theme">
+    <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center gap-2 flex-1">
+      <h2 className={`font-bold text-sm uppercase tracking-wider ${getTitleColor(title)}`}>{title}</h2>
+      {/* count badge next to title */}
       <span
-        className="absolute right-3 top-3 text-white text-xs font-medium px-2 py-0.5 rounded-full"
+        className="text-white text-xs font-medium px-2 py-0.5 rounded-full"
         style={{ backgroundColor: '#f59e0b' }}
       >
         {tasks.length}
       </span>
-    <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2">
-      <h2 className={`font-bold text-xs uppercase tracking-wider ${getTitleColor(title)}`}>{title}</h2>
         </div>
         {showCreate && (
           <button
@@ -54,6 +55,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = 
             comments={task.comments}
             attachments={task.attachments}
             color={task.color}
+            onClick={() => onTaskClick?.(task)}
+            taskData={task}
           />
         ))}
       </div>

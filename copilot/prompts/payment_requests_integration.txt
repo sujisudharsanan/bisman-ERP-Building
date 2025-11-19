@@ -1,0 +1,12 @@
+You are coding assistant for my ERP. I have a React frontend and a backend API. Create integration code (frontend service, hooks, and example usage) that wires an existing Payment Request React component (UI already built) to my ERP endpoints. DO NOT hardcode URLs, tokens, role names, or field names — use environment variables and a small config provider so everything is configurable.
+
+Requirements:
+- Provide an axios-based API client factory that reads base URL from env (REACT_APP_API_BASE or VITE_API_BASE) and reads the auth token from a configurable getter (no direct localStorage access inside service by default).
+- Provide an Auth/Config React context skeleton that exposes: currentUser { id, name, role }, getAuthToken(), and apiConfig object for endpoints mapping (optional overrides).
+- Provide a `services/paymentRequests.js` file exporting CRUD + workflow functions: list, create, update, approve, returnToCreator, sendToAccounts, accountsApprove, adminApprove, sendToBank, recordBankTransfer. Each should accept a `client` (axios instance) or read a default client from factory.
+- Provide a `hooks/usePaymentRequests.js` React hook that uses the service functions and returns: requests, loading, error, createRequest(form), approve(id), returnRequest(id, reason), markPaid(id, txId), refresh(), and optimistic UI guidance.
+- Show how to plug the hook into the existing PaymentRequestPage component: replace localStorage usage and inline state with the hook and context. Show minimal changes only.
+- Supply sample request/response shapes (JSON) for each API function so backend engineers know the contract.
+- Include brief instructions to secure endpoints (CSRF / Bearer token) and to test the flow locally using env overrides.
+
+Output code only — no secrets, no hardcoded strings.

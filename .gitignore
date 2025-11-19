@@ -16,6 +16,11 @@ my-frontend/screenshots/
 # Ignore build artifacts
 dist/
 my-frontend/.next/
+bundle/
+erp-assistant/bundle/
+erp-assistant/server/erp-assistant
+*.tar.gz
+*.tsbuildinfo
 
 # Runtime PID files
 server.pid

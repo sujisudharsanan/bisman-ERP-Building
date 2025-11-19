@@ -6,16 +6,15 @@
 'use client';
 
 import React, { useMemo, useEffect, useState } from 'react';
+import { hasFullAdmin } from '../../constants/roles';
+import { safeFetch } from '@/lib/safeFetch';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Circle, AlertCircle } from 'lucide-react';
 import { useAuth } from '@/common/hooks/useAuth';
 import {
   PAGE_REGISTRY,
-  MODULES,
-  getNavigationStructure,
   type PageMetadata,
-  type ModuleMetadata,
 } from '@/common/config/page-registry';
 
 interface DynamicSidebarProps {
@@ -33,7 +32,7 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
   // Check if user is Super Admin
   const isSuperAdmin = useMemo(() => {
     const roleName = String(user?.roleName || user?.role || '').toUpperCase();
-    return roleName === 'SUPER_ADMIN' || roleName === 'SUPER ADMIN' || roleName === 'SUPERADMIN';
+    return hasFullAdmin(roleName);
   }, [user?.roleName, user?.role]);
 
   // Fetch user permissions from database
@@ -44,13 +43,24 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
         return;
       }
 
+      // Enterprise Admin: Set enterprise modules directly
+      if (user.role === 'ENTERPRISE_ADMIN' || user?.roleName === 'ENTERPRISE_ADMIN') {
+        console.log('[Sidebar] Enterprise Admin detected - setting enterprise modules');
+        setSuperAdminModules(['enterprise-management']);
+        setUserAllowedPages([]); // Enterprise admin doesn't use page-level permissions
+        setIsLoadingPermissions(false);
+        return;
+      }
+
       // Super Admin: Fetch assigned modules from backend
       if (isSuperAdmin) {
         console.log('[Sidebar] Super Admin detected - fetching assigned modules');
         try {
-          const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-          const response = await fetch(`${baseURL}/api/auth/me/permissions`, {
+          // Use relative URL when NEXT_PUBLIC_API_URL is not set (same-origin in Railway)
+          const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
+          const response = await safeFetch(`${baseURL}/api/auth/me/permissions`, {
             credentials: 'include',
+            timeoutMs: 8000,
           });
 
           if (response.ok) {
@@ -87,8 +97,9 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
       // Regular users: Fetch page permissions from database
       try {
         // Use relative URL to leverage Next.js API proxy
-        const response = await fetch(`/api/permissions?userId=${user.id}`, {
+        const response = await safeFetch(`/api/permissions?userId=${user.id}`, {
           credentials: 'include',
+          timeoutMs: 8000,
         });
 
         if (response.ok) {
@@ -151,46 +162,34 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
     }
   }, [isLoadingPermissions, userPermissions, user?.id, pathname, router, isSuperAdmin]);
 
-  // Get navigation structure based on user's allowed pages (from database)
-  // Filter by page IDs, not by permissions, to show only explicitly granted pages
-  const navigation = useMemo(() => {
-    if (!user) return {};
-    
-    // For Super Admin, show only modules they're assigned to
-    if (isSuperAdmin) {
-      const grouped: Record<string, PageMetadata[]> = {};
-      
-      // Filter modules based on assigned modules
-      Object.keys(MODULES).forEach(moduleId => {
-        // Only include modules in assignedModules
-        if (superAdminModules.includes(moduleId)) {
-          grouped[moduleId] = PAGE_REGISTRY
-            .filter(page => page.module === moduleId)
-            .sort((a, b) => (a.order || 0) - (b.order || 0));
-        }
-      });
-      
-      console.log('[Sidebar] Super Admin filtered modules:', Object.keys(grouped));
-      return grouped;
+  // Compute a FLAT list of visible pages (no module headers), per requirements
+  const visiblePages = useMemo<PageMetadata[]>(() => {
+    if (!user) return [];
+
+    const isEnterprise = user.role === 'ENTERPRISE_ADMIN' || user.roleName === 'ENTERPRISE_ADMIN';
+
+    let pages = PAGE_REGISTRY.filter(p => p.status === 'active');
+
+    if (isEnterprise) {
+      // Enterprise Admin: enterprise-specific pages only
+      pages = pages.filter(p => p.path.startsWith('/enterprise') || p.roles.includes('ENTERPRISE_ADMIN'));
+    } else if (isSuperAdmin) {
+      // Super Admin: System Administration pages + Common pages
+      pages = pages.filter(p => p.module === 'system' || p.module === 'common');
+    } else {
+      // Regular users: only explicitly allowed pages from DB + Common pages (available to all)
+      pages = pages.filter(p => userAllowedPages.includes(p.id) || p.module === 'common');
     }
-    
-    // For regular users, filter by allowed page IDs from database
-    const grouped: Record<string, PageMetadata[]> = {};
-    
-    Object.keys(MODULES).forEach(moduleId => {
-      grouped[moduleId] = PAGE_REGISTRY
-        .filter(page => {
-          // Include if page ID is in user's allowed pages
-          // OR if page has 'authenticated' permission (common pages)
-          return userAllowedPages.includes(page.id) || 
-                 page.permissions.includes('authenticated');
-        })
-        .filter(page => page.module === moduleId)
-        .sort((a, b) => (a.order || 0) - (b.order || 0));
-    });
-    
-    return grouped;
-  }, [user, userAllowedPages, isSuperAdmin, superAdminModules]);
+
+    // Non-enterprise users should not see enterprise pages
+    if (!isEnterprise) {
+      pages = pages.filter(p => !p.path.startsWith('/enterprise'));
+    }
+
+    // Sort by explicit order then name
+    pages.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name));
+    return pages;
+  }, [user, userAllowedPages, isSuperAdmin]);
 
   // Remove toggle function - modules will always be expanded
   // const toggleModule = (moduleId: string) => {
@@ -209,6 +208,16 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
   const isActivePath = (path: string) => {
     return pathname === path || pathname?.startsWith(`${path}/`);
   };
+
+  // Determine user's primary dashboard path by role
+  const dashboardPath = useMemo(() => {
+  const role = String(user?.roleName || user?.role || '').toUpperCase();
+  if (hasFullAdmin(role)) return '/admin';
+    if (role === 'ENTERPRISE_ADMIN') return '/enterprise-admin/dashboard';
+    if (role === 'ADMIN') return '/admin/dashboard';
+    if (role === 'STAFF') return '/hub-incharge';
+    return '/manager';
+  }, [user?.roleName, user?.role]);
 
   // Get module color classes
   const getModuleColorClass = (color: string) => {
@@ -288,56 +297,79 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
     );
   };
 
-  // Render module section
-  const renderModule = (moduleId: string, module: ModuleMetadata, pages: PageMetadata[]) => {
-    if (pages.length === 0) return null;
+  // Module rendering removed per requirement: no module names, flat page list
 
-    // Always expanded - no toggle state needed
-    const ModuleIcon = module.icon;
-    const hasActiveChild = pages.some(page => isActivePath(page.path));
-
-    return (
-      <div key={moduleId} className="mb-2">
-        {/* Module Header - Not clickable, just displays the module name */}
-        <div
-          className={`
-            w-full flex items-center space-x-2 px-3 py-2 rounded-lg text-sm font-medium
-            ${hasActiveChild
-              ? getModuleColorClass(module.color)
-              : 'text-gray-900 dark:text-gray-100'
-            }
-          `}
-        >
-          <ModuleIcon className="w-5 h-5 flex-shrink-0" />
-          <span className="flex-1 text-left truncate">{module.name}</span>
-          <span className="text-xs text-gray-500 dark:text-gray-400">{pages.length}</span>
-        </div>
-
-        {/* Module Pages - Always visible */}
-        <div className="ml-3 mt-1 space-y-1 pl-4 border-l border-gray-200 dark:border-gray-700">
-          {pages.map(page => renderPageLink(page))}
-        </div>
-      </div>
-    );
+  // Get profile picture URL
+  const getProfilePicUrl = () => {
+    if (!user) return null;
+    const rawUrl = (user as any)?.profile_pic_url || (user as any)?.profilePicUrl || (user as any)?.avatarUrl;
+    if (!rawUrl) return null;
+    if (rawUrl.startsWith('/api/')) return rawUrl;
+    if (rawUrl.startsWith('/uploads/')) {
+      return rawUrl.replace('/uploads/', '/api/secure-files/');
+    }
+    return rawUrl;
   };
+
+  const profilePicUrl = getProfilePicUrl();
+
+  // Check if current page is a dashboard
+  const isDashboardPage = pathname === '/hub-incharge' || 
+                          pathname === '/super-admin' || 
+                          pathname === '/admin/dashboard' || 
+                          pathname === '/manager' ||
+                          pathname === '/enterprise-admin/dashboard' ||
+                          pathname === '/admin' ||
+                          pathname === '/enterprise-admin';
 
   return (
     <div className={`py-4 ${className}`}>
-      {/* Sidebar Header */}
-      <div className="px-3 mb-4">
-        <Link 
-          href="/super-admin"
-          className="block group cursor-pointer"
-        >
-          <h2 className="text-base font-semibold text-gray-500 dark:text-gray-400 group-hover:text-blue-600 dark:group-hover:text-blue-400 uppercase tracking-wider transition-colors">
-            Dashboard
-          </h2>
-        </Link>
-        <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-          {isLoadingPermissions ? 'Loading permissions...' : `${Object.values(navigation).flat().length} pages available`}
-        </p>
-      </div>
-
+      {/* User Profile Section - Only show on non-dashboard pages */}
+      {user && !isDashboardPage && (
+        <div className="px-2 mb-4">
+          <div 
+            className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            onClick={() => router.push('/common/about-me')}
+            title="View profile"
+          >
+            {/* Profile Picture */}
+            <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden relative">
+              {profilePicUrl ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img 
+                  src={profilePicUrl} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const fallbackName = String(user?.name || user?.username || user?.email || 'User');
+                    e.currentTarget.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(fallbackName)}&background=random`;
+                  }}
+                />
+              ) : (
+                <div className="w-full h-full rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                  <span className="text-white font-bold text-sm">
+                    {(user?.name || user?.username || user?.email || 'U')[0].toUpperCase()}
+                  </span>
+                </div>
+              )}
+            </div>
+            
+            {/* User Info */}
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold text-gray-900 dark:text-gray-100 truncate">
+                {user?.username 
+                  ? user.username.split('_').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+                  : user?.email?.split('@')[0] || 'User'}
+              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                {user?.roleName?.replace(/_/g, ' ') || user?.role?.replace(/_/g, ' ') || 'User'}
+              </p>
+            </div>
+          </div>
+          <div className="border-b border-gray-200 dark:border-gray-700 mt-2"></div>
+        </div>
+      )}
+      
       {/* Loading State */}
       {isLoadingPermissions && (
         <div className="px-3 py-8 text-center">
@@ -348,17 +380,27 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
         </div>
       )}
 
-      {/* Module Navigation */}
+      {/* Flat page list (no module headers) */}
       {!isLoadingPermissions && (
         <div className="space-y-1 px-2">
-          {Object.entries(MODULES)
-            .sort(([, a], [, b]) => a.order - b.order)
-            .map(([moduleId, module]) => renderModule(moduleId, module, navigation[moduleId] || []))}
+          {/* Dashboard shortcut as first item */}
+          <Link
+            href={dashboardPath}
+            className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
+              isActivePath(dashboardPath)
+                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+            }`}
+            title="Dashboard"
+          >
+            <span className="flex-1 truncate">Dashboard</span>
+          </Link>
+          {visiblePages.map(page => renderPageLink(page))}
         </div>
       )}
 
       {/* Empty State */}
-      {!isLoadingPermissions && Object.values(navigation).flat().length === 0 && (
+  {!isLoadingPermissions && visiblePages.length === 0 && (
         <div className="px-3 py-8 text-center">
           <Circle className="w-12 h-12 text-gray-300 dark:text-gray-700 mx-auto mb-3" />
           <p className="text-sm text-gray-500 dark:text-gray-400">

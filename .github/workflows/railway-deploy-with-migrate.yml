@@ -1,0 +1,71 @@
+name: railway-deploy-with-migrate
+
+on:
+  push:
+    branches:
+      - deployment
+  workflow_dispatch: {}
+
+concurrency:
+  group: railway-deploy-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install backend deps
+        working-directory: my-backend
+        run: npm ci --no-audit --no-fund
+
+      - name: Prisma migrate deploy (against Railway)
+        env:
+          DATABASE_URL: postgresql://${{ secrets.RAILWAY_USER }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST }}:${{ secrets.RAILWAY_PORT }}/${{ secrets.RAILWAY_DB }}?sslmode=require
+        working-directory: my-backend
+        run: |
+          npx prisma migrate deploy || npx prisma db push
+          npm run -s deploy:post || true
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Apply demo password/data fixes
+        env:
+          DATABASE_URL: postgresql://${{ secrets.RAILWAY_USER }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST }}:${{ secrets.RAILWAY_PORT }}/${{ secrets.RAILWAY_DB }}?sslmode=require
+          PGSSLMODE: require
+        run: |
+          set -euo pipefail
+          echo "Applying fix-railway-passwords.sql (if present)"
+          if [ -f fix-railway-passwords.sql ]; then
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f fix-railway-passwords.sql
+          else
+            echo "fix-railway-passwords.sql not found, skipping"
+          fi
+          echo "Applying fix-hub-incharge-password.sql (if present)"
+          if [ -f fix-hub-incharge-password.sql ]; then
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f fix-hub-incharge-password.sql
+          else
+            echo "fix-hub-incharge-password.sql not found, skipping"
+          fi
+          echo "Ensuring demo users exist (idempotent upsert)"
+          if [ -f ensure-demo-users.sql ]; then
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f ensure-demo-users.sql
+          else
+            echo "ensure-demo-users.sql not found, skipping"
+          fi
+          echo "Verifying hub incharge user exists and active..."
+          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT email, role, is_active FROM users WHERE email='demo_hub_incharge@bisman.demo';"
+
+      - name: Optional restart via Railway CLI
+        if: ${{ secrets.RAILWAY_TOKEN != '' }}
+        run: |
+          npm i -g @railway/cli
+          railway login --token ${{ secrets.RAILWAY_TOKEN }}
+          railway up || true

@@ -49,7 +49,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function login(email: string, password: string) {
     // Server will set HttpOnly cookie on successful login
-    await api.post('/api/login', { email, password });
+  await api.post('/api/auth/login', { email, password });
     const me = await api.get('/api/me');
     const user = me.data.user || null;
     setUser(user);

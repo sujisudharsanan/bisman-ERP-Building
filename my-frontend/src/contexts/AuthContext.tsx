@@ -21,6 +21,7 @@ interface User {
   roleName?: string;
   role?: string; // Added for compatibility
   name?: string;
+  profile_pic_url?: string; // Profile picture URL
 }
 
 interface AuthContextType {
@@ -48,8 +49,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const checkAuth = useCallback(async () => {
     try {
-      const baseURL = API_BASE;
-      const response = await fetch(`${baseURL}/api/me`, {
+      // Use same-origin proxy for auth to ensure cookies match
+      const response = await fetch(`/api/me`, {
         method: 'GET',
         credentials: 'include',
         headers: {
@@ -90,8 +91,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async (email: string, password: string): Promise<User | null> => {
     setLoading(true);
     try {
-      const baseURL = API_BASE;
-      const response = await fetch(`${baseURL}/api/auth/login`, {
+      // Same-origin proxy for login
+      const response = await fetch(`/api/auth/login`, {
         method: 'POST',
         credentials: 'include',
         headers: {
@@ -107,7 +108,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
         // Ensure cookies are persisted by validating with /api/me.
         // Try a quick whoami, and if needed, refresh then whoami again.
         const probeMe = async () => {
-          const me1 = await fetch(`${baseURL}/api/me`, { 
+          const me1 = await fetch(`/api/me`, { 
             credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
@@ -115,14 +116,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
           });
           if (me1.ok) return me1.json();
           // Attempt refresh once
-          await fetch(`${baseURL}/api/token/refresh`, { 
+          await fetch(`/api/token/refresh`, { 
             method: 'POST', 
             credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
             },
           }).catch(() => {});
-          const me2 = await fetch(`${baseURL}/api/me`, { 
+          const me2 = await fetch(`/api/me`, { 
             credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
@@ -184,8 +185,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const logout = async (): Promise<void> => {
     try {
-      const baseURL = API_BASE;
-      await fetch(`${baseURL}/api/logout`, {
+  // Same-origin proxy for logout
+  await fetch(`/api/logout`, {
         method: 'POST',
         credentials: 'include',
         headers: {

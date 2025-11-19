@@ -7,11 +7,8 @@
 
 import { useAuth } from '@/hooks/useAuth';
 import { usePermission } from '@/hooks/usePermission';
-import {
-  ACTIONS,
-  type ActionType,
-  type FeatureKey,
-} from '@/config/permissions';
+import { ACTIONS, type ActionType, type FeatureKey } from '@/config/permissions';
+import { hasFullAdmin } from '../constants/roles';
 
 export function useActionChecker() {
   const { user } = useAuth();
@@ -27,8 +24,8 @@ export function useActionChecker() {
     if (loading) return false;
     if (!user) return false;
 
-    // Super admin has all permissions
-    if (user.roleName === 'SUPER_ADMIN') return true;
+  // Full platform/tenant admin (including legacy super) bypasses checks
+  if (hasFullAdmin(user.roleName)) return true;
 
     return hasPermission(featureKey, action);
   };
@@ -52,8 +49,8 @@ export function useActionChecker() {
 
     return {
       role: user.roleName,
-      isAdmin: user.roleName === 'ADMIN',
-      isSuperAdmin: user.roleName === 'SUPER_ADMIN',
+      isAdmin: user.roleName === 'ADMIN' || user.roleName === 'SYSTEM_ADMIN',
+      isSuperAdmin: hasFullAdmin(user.roleName),
       isManager: user.roleName === 'MANAGER',
       isStaff: user.roleName === 'STAFF',
     };

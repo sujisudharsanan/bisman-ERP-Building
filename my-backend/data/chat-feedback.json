@@ -1,0 +1,10 @@
+[
+  {
+    "userId": "test-user-5",
+    "messageId": "msg-123",
+    "timestamp": "2025-11-14T17:34:08.678Z",
+    "helpful": true,
+    "originalWord": "taks",
+    "correctedWord": "task"
+  }
+]

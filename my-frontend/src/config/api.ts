@@ -1,40 +1,34 @@
 // Centralized API base URL for frontend
 
 /**
- * Automatically detects if running on localhost or production.
- * - Production (Railway): Prefer same-origin API
- * - Development: Defaults to http://localhost:3001
+ * NEW APPROACH: Use Next.js API routes as proxy (eliminates CORS)
+ * 
+ * Instead of calling backend directly from browser (CORS issues),
+ * we use Next.js API routes which proxy to backend server-side.
+ * 
+ * - Browser → Next.js API routes (/api/*) → Express backend
+ * - This makes all requests same-origin, no CORS needed!
  */
 function getApiBaseUrl(): string {
-  // 1. Check for explicit environment variable (highest priority)
-  if (process.env.NEXT_PUBLIC_API_URL) {
-    console.log('🔧 Using NEXT_PUBLIC_API_URL:', process.env.NEXT_PUBLIC_API_URL);
+  // 1. Check if we need direct backend access (for SSR or special cases)
+  const directBackend = process.env.NEXT_PUBLIC_DIRECT_BACKEND === 'true';
+  
+  if (directBackend && process.env.NEXT_PUBLIC_API_URL) {
+    console.log('🔧 Direct backend mode:', process.env.NEXT_PUBLIC_API_URL);
     return process.env.NEXT_PUBLIC_API_URL;
   }
 
-  // 2. Detect if we're in browser and check hostname
+  // 2. Use same-origin (Next.js API routes will proxy to backend)
   if (typeof window !== 'undefined') {
-    const hostname = window.location.hostname;
-    
-    // If running on managed hosting domain (Railway), prefer same-origin API
-    if (hostname.includes('railway.app')) {
-      const sameOrigin = `${window.location.protocol}//${window.location.host}`;
-      console.log('🌐 Managed hosting detected, using same-origin API base:', sameOrigin);
-      return sameOrigin;
-    }
-    
-    // If on localhost, use local backend
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      console.log('🏠 Localhost detected, using local backend');
-      return 'http://localhost:3001';
-    }
+    const sameOrigin = `${window.location.protocol}//${window.location.host}`;
+    console.log('🔄 Using Next.js API proxy (same-origin):', sameOrigin);
+    return sameOrigin;
   }
 
-  // 3. Server-side default (SSR/SSG): prefer same-process via 127.0.0.1:PORT
-  const defaultUrl = process.env.NEXT_PUBLIC_API_URL 
-    || (process.env.PORT ? `http://127.0.0.1:${process.env.PORT}` : 'http://localhost:3001');
-  console.log('🔄 SSR/SSG fallback, using:', defaultUrl);
-  return defaultUrl;
+  // 3. Server-side: use localhost (Next.js internal)
+  const ssrUrl = 'http://localhost:3000';
+  console.log('�️  SSR mode, using:', ssrUrl);
+  return ssrUrl;
 }
 
 const apiBase = getApiBaseUrl();

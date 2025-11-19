@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Image from 'next/image';
-import { useRouter } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, RefreshCw, Menu } from 'lucide-react';
 import DarkModeToggle from '@/components/ui/DarkModeToggle';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,11 +34,38 @@ const HeaderLogo: React.FC = () => {
 
 interface EnterpriseAdminNavbarProps {
   onMenuToggle?: () => void;
+  onRefresh?: () => void;
 }
 
-export default function EnterpriseAdminNavbar({ onMenuToggle }: EnterpriseAdminNavbarProps) {
+// Get page name from pathname
+const getPageName = (pathname: string): string => {
+  const segments = pathname.split('/').filter(Boolean);
+  const lastSegment = segments[segments.length - 1] || 'dashboard';
+  
+  const pageNames: Record<string, string> = {
+    'dashboard': 'Dashboard',
+    'modules': 'Module Management',
+    'users': 'User Management',
+    'organizations': 'Organizations',
+    'billing': 'Billing',
+    'audit': 'Audit Logs',
+    'reports': 'Reports',
+    'settings': 'Settings',
+    'support': 'Support',
+    'notifications': 'Notifications',
+    'integrations': 'Integrations',
+    'ai': 'AI Assistant',
+    'logs': 'System Logs',
+  };
+  
+  return pageNames[lastSegment] || lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1);
+};
+
+export default function EnterpriseAdminNavbar({ onMenuToggle, onRefresh }: EnterpriseAdminNavbarProps) {
   const router = useRouter();
+  const pathname = usePathname();
   const { logout } = useAuth();
+  const pageName = getPageName(pathname || '');
 
   const handleLogout = async () => {
     try {
@@ -51,7 +78,11 @@ export default function EnterpriseAdminNavbar({ onMenuToggle }: EnterpriseAdminN
   };
 
   const handleRefresh = () => {
-    window.location.reload();
+    if (onRefresh) {
+      onRefresh();
+    } else {
+      window.location.reload();
+    }
   };
 
   return (
@@ -69,9 +100,14 @@ export default function EnterpriseAdminNavbar({ onMenuToggle }: EnterpriseAdminN
               </button>
             )}
             <HeaderLogo />
-            <h1 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
-              Enterprise Admin Control Panel
-            </h1>
+            <div className="flex flex-col">
+              <h1 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
+                Enterprise Admin
+              </h1>
+              <span className="text-xs text-gray-500 dark:text-gray-400">
+                {pageName}
+              </span>
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button

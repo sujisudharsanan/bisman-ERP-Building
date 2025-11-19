@@ -93,7 +93,7 @@ export default function StandardLoginPage() {
     setSuccess('');
 
     try {
-      const response = await fetch(`${API_BASE}/api/login`, {
+  const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -165,7 +165,7 @@ export default function StandardLoginPage() {
     setSuccess(`Logging in as ${user.name}...`);
 
     try {
-      const response = await fetch(`${API_BASE}/api/login`, {
+  const response = await fetch(`${API_BASE}/api/auth/login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

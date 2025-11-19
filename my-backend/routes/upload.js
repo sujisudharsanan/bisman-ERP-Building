@@ -3,6 +3,7 @@ const router = express.Router();
 const upload = require('../middleware/upload');
 const { getPrisma } = require('../lib/prisma');
 const { authenticate } = require('../middleware/auth');
+const TenantGuard = require('../middleware/tenantGuard');
 const path = require('path');
 const fs = require('fs');
 
@@ -45,6 +46,7 @@ router.post('/profile-pic', authenticate, (req, res) => {
       }
 
       const userId = req.user.id;
+      const tenantId = req.user.tenant_id || 'shared'; // Shared for admins without tenant
       const filename = req.file.filename;
       const profilePicUrl = `/uploads/profile_pics/${filename}`;
 
@@ -52,12 +54,19 @@ router.post('/profile-pic', authenticate, (req, res) => {
         originalName: req.file.originalname,
         filename: filename,
         size: req.file.size,
-        userId: userId
+        userId: userId,
+        tenantId: tenantId // ✅ Log tenant for audit
       });
 
       // Get current user to check for existing profile picture
+      // ✅ SECURITY FIX: Add tenant_id filter to prevent cross-tenant access
+      const whereClause = { id: userId };
+      if (tenantId !== 'shared') {
+        whereClause.tenant_id = tenantId;
+      }
+      
       const currentUser = await prisma.user.findUnique({
-        where: { id: userId },
+        where: whereClause,
         select: { profile_pic_url: true }
       });
 
@@ -75,8 +84,14 @@ router.post('/profile-pic', authenticate, (req, res) => {
       }
 
       // Update user's profile picture URL in database
+      // ✅ SECURITY FIX: Add tenant_id filter to prevent cross-tenant updates
+      const updateWhereClause = { id: userId };
+      if (tenantId !== 'shared') {
+        updateWhereClause.tenant_id = tenantId;
+      }
+      
       const updatedUser = await prisma.user.update({
-        where: { id: userId },
+        where: updateWhereClause,
         data: { profile_pic_url: profilePicUrl },
         select: {
           id: true,
@@ -118,9 +133,16 @@ router.post('/profile-pic', authenticate, (req, res) => {
 router.get('/profile-pic', authenticate, async (req, res) => {
   try {
     const userId = req.user.id;
+    const tenantId = req.user.tenant_id || 'shared';
+    
+    // ✅ SECURITY FIX: Add tenant_id filter
+    const whereClause = { id: userId };
+    if (tenantId !== 'shared') {
+      whereClause.tenant_id = tenantId;
+    }
     
     const user = await prisma.user.findUnique({
-      where: { id: userId },
+      where: whereClause,
       select: { 
         profile_pic_url: true,
         username: true,

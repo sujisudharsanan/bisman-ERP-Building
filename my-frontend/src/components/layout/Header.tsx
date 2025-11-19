@@ -16,7 +16,7 @@ import React from 'react';
 import Link from 'next/link';
 import { useUser } from '@/hooks/useUser';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { User } from 'lucide-react';
+import { User, Calendar } from 'lucide-react';
 
 interface HeaderProps {
   onMenuToggle?: () => void;
@@ -68,17 +68,17 @@ export default function Header({ onMenuToggle }: HeaderProps) {
 
   return (
     <header 
-      className="bg-panel shadow-sm border-b border-theme"
+      className="fixed top-0 left-0 right-0 z-50 bg-panel shadow-sm border-b border-theme"
       role="banner"
       aria-label="Main header"
     >
-      <div className="px-4 sm:px-6 lg:px-8">
-        <div className="flex justify-between items-center h-16">
+      <div className="px-3 sm:px-4 lg:px-6">
+        <div className="flex justify-between items-center h-11">
           {/* Left side - User info and Menu toggle */}
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
             {loading ? (
               <span 
-                className="text-sm text-gray-500"
+                className="text-xs text-gray-500"
                 role="status"
                 aria-live="polite"
               >
@@ -87,33 +87,37 @@ export default function Header({ onMenuToggle }: HeaderProps) {
             ) : user ? (
               <Link 
                 href="/profile"
-                className="flex items-center space-x-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg p-2 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex items-center space-x-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg p-1.5 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label={t('header.go_to_profile')}
               >
                 {/* User Avatar - Circular, clickable */}
                 <Avatar 
-                  className="w-10 h-10 ring-2 ring-blue-500/20"
+                  className="w-7 h-7 ring-2 ring-blue-500/20"
                   aria-hidden="true"
                 >
-                  {user.profilePhotoUrl ? (
+                  {(() => {
+                    const profileUrl = (user as any)?.profile_pic_url || user.profilePhotoUrl;
+                    const secureUrl = profileUrl?.replace('/uploads/', '/api/secure-files/');
+                    return secureUrl ? (
                     <AvatarImage 
-                      src={user.profilePhotoUrl} 
+                      src={secureUrl} 
                       alt={t('header.profile_alt')}
                     />
                   ) : (
                     <AvatarFallback className="bg-blue-600 text-white">
-                      <User className="w-5 h-5" aria-hidden="true" />
+                      <User className="w-3.5 h-3.5" aria-hidden="true" />
                     </AvatarFallback>
-                  )}
+                  );
+                  })()}
                 </Avatar>
 
                 {/* User Name and Role */}
                 <div className="flex flex-col items-start">
-                  <span className="text-sm font-semibold text-gray-900 dark:text-white">
+                  <span className="text-xs font-semibold text-gray-900 dark:text-white">
                     {user.name}
                   </span>
                   <span 
-                    className="text-xs text-gray-500 dark:text-gray-400"
+                    className="text-[10px] text-gray-500 dark:text-gray-400"
                     aria-label={`Role: ${getRoleDisplayName(user.role || 'USER')}`}
                   >
                     {getRoleDisplayName(user.role || 'USER')}
@@ -123,18 +127,28 @@ export default function Header({ onMenuToggle }: HeaderProps) {
             ) : null}
           </div>
 
-          {/* Right side - Additional actions or menu toggle */}
-          <div className="flex items-center">
+          {/* Right side - Calendar icon and menu toggle */}
+          <div className="flex items-center space-x-1.5">
+            {/* Calendar Icon */}
+            <Link
+              href="/calendar"
+              className="p-1.5 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              aria-label="Go to calendar"
+              title="Calendar"
+            >
+              <Calendar className="w-4 h-4" />
+            </Link>
+
             {onMenuToggle && (
               <button 
                 onClick={onMenuToggle}
-                className="p-2 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="p-1.5 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label="Open main menu"
                 aria-expanded="false"
               >
                 <span className="sr-only">Open main menu</span>
                 <svg 
-                  className="h-6 w-6" 
+                  className="h-5 w-5" 
                   fill="none" 
                   viewBox="0 0 24 24" 
                   stroke="currentColor"

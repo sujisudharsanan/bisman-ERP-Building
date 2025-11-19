@@ -2,7 +2,7 @@
 ## Fullstack Dockerfile (backend + frontend) for Railway
 
 # ---- deps: install and prepare backend with Prisma ----
-FROM node:18-alpine AS deps
+FROM node:20-alpine AS deps
 WORKDIR /app
 RUN apk add --no-cache postgresql-client openssl libc6-compat
 COPY my-backend/package*.json ./
@@ -12,19 +12,24 @@ COPY my-backend/ ./
 RUN npx prisma generate
 
 # ---- build-frontend: install, build, export Next.js ----
-FROM node:18-alpine AS build-frontend
+FROM node:20-alpine AS build-frontend
 WORKDIR /app
+RUN apk add --no-cache postgresql-client openssl libc6-compat
 COPY my-frontend/package*.json ./frontend/
 RUN npm install --prefix frontend
 COPY my-frontend/ ./frontend
+# Generate Prisma client for frontend before build
+RUN cd frontend && npx prisma generate
 # In CI, skip lint/type-check prebuild and Next telemetry; build Next app
 ENV CI=true
 ENV RAILWAY=1
 ENV NEXT_TELEMETRY_DISABLED=1
+# Set API URL for frontend build - Railway will use internal service communication
+ENV NEXT_PUBLIC_API_URL=""
 RUN npm run build --prefix frontend
 
 # ---- runner: minimal runtime with dumb-init; copy pruned node_modules later ----
-FROM node:18-alpine AS runner
+FROM node:20-alpine AS runner
 RUN apk add --no-cache dumb-init libc6-compat
 WORKDIR /app
 
@@ -47,7 +52,7 @@ ENV PORT=8080
 EXPOSE 8080
 
 # Copy startup script that runs migrations
-COPY start-railway.sh /app/start-railway.sh
+COPY scripts/start-railway.sh /app/start-railway.sh
 RUN chmod +x /app/start-railway.sh
 
 ENTRYPOINT ["dumb-init", "--"]

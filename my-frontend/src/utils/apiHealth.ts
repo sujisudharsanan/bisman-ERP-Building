@@ -9,20 +9,21 @@ function safeLog(...args: any[]) {
 }
 
 async function checkApiConnection() {
-  const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  // Use Next.js API proxy (same-origin) instead of direct backend
+  const baseUrl = typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000';
   const hostname = typeof window !== 'undefined' ? window.location.hostname : 'server';
   
   safeLog('%c🔍 API Health Check', 'font-weight:bold; color: #4CAF50; font-size: 14px;');
   safeLog(`📍 Frontend running on: ${hostname}`);
-  safeLog(`🌐 API Base URL: ${baseUrl}`);
+  safeLog(`🌐 API Base URL (Next.js proxy): ${baseUrl}`);
 
-  // Test critical health endpoint first
+  // Test critical health endpoint first (via Next.js proxy - no CORS!)
   const healthUrl = `${baseUrl}/api/health`;
   try {
     safeLog(`🧪 Testing connection to ${healthUrl}`);
     const res = await fetch(healthUrl, { 
       credentials: 'include',
-      mode: 'cors',
+      // No need for 'mode: cors' - it's same-origin!
       headers: {
         'Accept': 'application/json'
       }
@@ -45,14 +46,14 @@ async function checkApiConnection() {
   }
 
   // Test auth endpoints
-  const endpoints = ['/api/me', '/api/login'];
+  const endpoints = ['/api/me', '/api/auth/login'];
   for (const path of endpoints) {
     const url = `${baseUrl}${path}`;
     try {
       const res = await fetch(url, { 
         credentials: 'include',
         mode: 'cors',
-        method: path === '/api/login' ? 'OPTIONS' : 'GET'
+  method: path === '/api/auth/login' ? 'OPTIONS' : 'GET'
       });
       safeLog(`${res.ok ? '✅' : '⚠️'} ${path}: ${res.status}`);
     } catch (err: any) {

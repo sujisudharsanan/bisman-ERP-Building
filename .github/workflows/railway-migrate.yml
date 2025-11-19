@@ -1,0 +1,109 @@
+name: railway-migrate
+
+on:
+  workflow_dispatch:
+    inputs:
+      no_drop:
+        description: "Skip dropping existing tables (merge only)"
+        required: false
+        default: "false"
+      dry_run:
+        description: "Perform dump only, skip import"
+        required: false
+        default: "false"
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Validate secrets
+        run: |
+          for v in RAILWAY_HOST RAILWAY_PORT RAILWAY_DB RAILWAY_USER RAILWAY_PASSWORD; do
+            if [ -z "${!v}" ]; then echo "Missing secret: $v"; exit 1; fi
+          done
+        env:
+          RAILWAY_HOST: ${{ secrets.RAILWAY_HOST }}
+          RAILWAY_PORT: ${{ secrets.RAILWAY_PORT }}
+          RAILWAY_DB: ${{ secrets.RAILWAY_DB }}
+          RAILWAY_USER: ${{ secrets.RAILWAY_USER }}
+          RAILWAY_PASSWORD: ${{ secrets.RAILWAY_PASSWORD }}
+
+      - name: Dry run notice
+        if: ${{ inputs.dry_run == 'true' }}
+        run: echo "Dry run enabled: will create local dump only."
+
+      - name: Perform migration
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          RAILWAY_HOST: ${{ secrets.RAILWAY_HOST }}
+          RAILWAY_PORT: ${{ secrets.RAILWAY_PORT }}
+          RAILWAY_DB: ${{ secrets.RAILWAY_DB }}
+          RAILWAY_USER: ${{ secrets.RAILWAY_USER }}
+          RAILWAY_PASSWORD: ${{ secrets.RAILWAY_PASSWORD }}
+          MIGRATION_NO_DROP: ${{ inputs.no_drop == 'true' && '1' || '0' }}
+          AUTO_CONFIRM: 1
+        run: bash ./scripts/migrate_to_railway_ci.sh
+
+      - name: Prisma migrate deploy (optional)
+        if: ${{ inputs.dry_run != 'true' }}
+        working-directory: my-backend
+        env:
+          DATABASE_URL: postgresql://${{ secrets.RAILWAY_USER }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST }}:${{ secrets.RAILWAY_PORT }}/${{ secrets.RAILWAY_DB }}
+        run: |
+          if [ -f package.json ]; then
+            npm ci --no-audit --no-fund
+            npx prisma migrate deploy || echo "Prisma migrate deploy failed (check migrations folder)"
+          else
+            echo "package.json missing; skipping prisma migrate deploy"
+          fi
+
+      - name: Dump only (dry run)
+        if: ${{ inputs.dry_run == 'true' }}
+        env:
+          RAILWAY_HOST: dummy
+          RAILWAY_PORT: 0000
+          RAILWAY_DB: dummy
+          RAILWAY_USER: dummy
+          RAILWAY_PASSWORD: dummy
+        run: |
+          echo "Skipping import; executing pg_dump manually."
+          sudo apt-get install -y postgresql-client || true
+          pg_dump -h localhost -U erp_admin -d erp_main --no-owner --no-privileges --format=plain | gzip > migration-dry-run.sql.gz
+          ls -lh migration-dry-run.sql.gz
+
+      - name: Post verification (non-dry)
+        if: ${{ inputs.dry_run != 'true' }}
+        env:
+          DATABASE_URL: postgresql://${{ secrets.RAILWAY_USER }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST }}:${{ secrets.RAILWAY_PORT }}/${{ secrets.RAILWAY_DB }}
+        run: psql "$DATABASE_URL" -f verify-railway-db.sql || true
+
+      - name: Artifact upload (dump or logs)
+        uses: actions/upload-artifact@v4
+        with:
+          name: railway-migration-outputs
+          path: |
+            migration-dry-run.sql.gz
+            /tmp/*erp_main*.sql.gz
+            /tmp/*row_diff_*.json
+            verify-railway-db.sql
+        if-no-files-found: warn
+
+      - name: Slack notify (optional)
+        if: ${{ always() }}
+        env:
+          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        run: |
+          if [ -n "$SLACK_WEBHOOK_URL" ]; then
+            STATUS="${{ job.status }}"
+            MSG="Railway migration workflow finished with status: $STATUS"
+            curl -X POST -H 'Content-type: application/json' --data "{\"text\":\"$MSG\"}" "$SLACK_WEBHOOK_URL" || echo "Slack notify failed"
+          else
+            echo "Slack webhook not configured; skipping notification"
+          fi

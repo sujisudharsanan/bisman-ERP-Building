@@ -2,17 +2,16 @@
 
 import React from 'react';
 import { useRouter } from 'next/navigation';
-import DashboardLayout from '@/components/layout/DashboardLayout';
-import KanbanColumn from '@/components/dashboard/KanbanColumn';
-import RightPanel from '@/components/dashboard/RightPanel';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/hooks/useAuth';
-import { useDashboardData } from '@/hooks/useDashboardData';
+import { useEffect } from 'react';
 
 export default function AdminPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   
-  const { dashboardData, loading: dataLoading } = useDashboardData(user?.roleName || 'ADMIN');
+  // Lazy load heavy unified dashboard (SuperAdminControlPanel)
+  const SuperAdminControlPanel = React.useMemo(() => dynamic(() => import('@/components/SuperAdminControlPanel'), { ssr: false }), []);
 
   // Redirect if user is not authenticated or doesn't have ADMIN access
   React.useEffect(() => {
@@ -31,7 +30,7 @@ export default function AdminPage() {
     }
   }, [user, authLoading, router]);
 
-  if (authLoading || dataLoading) {
+  if (authLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 flex items-center justify-center">
         <div className="text-center">
@@ -42,38 +41,20 @@ export default function AdminPage() {
     );
   }
 
-  if (!user || !user.roleName || (user.roleName === 'SUPER_ADMIN') || !['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {
-    return null;
-  }
+  // If unified dashboard lives at /super-admin, redirect /admin there for both roles
+  useEffect(() => {
+    const role = user?.roleName || '';
+    if (role && ['ADMIN','SUPER_ADMIN'].includes(role)) {
+      // Avoid infinite loop if already at /super-admin
+      if (window.location.pathname === '/admin') {
+        window.location.replace('/super-admin');
+      }
+    }
+  }, [user?.roleName]);
 
-  return (
-    <DashboardLayout role={user.roleName || 'ADMIN'}>
-      <div className="h-full max-w-full min-h-0">
-  <div className="w-full">
-          <div className="flex justify-between gap-3 md:gap-5 pb-6 ml-3 md:ml-4 mr-3 md:mr-4">
-            <div className="flex-1 min-w-0 overflow-x-auto">
-              <div className="grid gap-3 md:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 auto-rows-fr">
-                <div>
-                  <KanbanColumn title="DRAFT" tasks={dashboardData.DRAFT} />
-                </div>
-                <div>
-                  <KanbanColumn title="IN PROGRESS" tasks={dashboardData.IN_PROGRESS} />
-                </div>
-                <div>
-                  <KanbanColumn title="EDITING" tasks={dashboardData.EDITING} />
-                </div>
-                <div>
-                  <KanbanColumn title="DONE" tasks={dashboardData.DONE} />
-                </div>
-              </div>
-            </div>
-            <div className="flex-none hidden lg:block">
-              <RightPanel mode="dock" />
-            </div>
-          </div>
-          {/* No inline grid when using dock */}
-        </div>
-      </div>
-    </DashboardLayout>
-  );
+  // Render nothing; redirect will happen client-side
+  return null;
+
+  // Previously returned unified dashboard directly
+  // Now handled via redirect to /super-admin
 }

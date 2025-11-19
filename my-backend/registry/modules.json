@@ -1,0 +1,29 @@
+[
+  {
+    "module_name": "common",
+    "display_name": "Common",
+    "route": "/common",
+    "icon": "layers",
+    "productType": "ALL",
+    "is_active": true,
+    "sort_order": 5
+  },
+  {
+    "module_name": "super-admin",
+    "display_name": "Super Admin",
+    "route": "/super-admin",
+    "icon": "shield",
+    "productType": "ALL",
+    "is_active": true,
+    "sort_order": 99
+  },
+  {
+    "module_name": "enterprise-admin",
+    "display_name": "Enterprise Admin",
+    "route": "/enterprise-admin",
+    "icon": "building",
+    "productType": "ALL",
+    "is_active": true,
+    "sort_order": 90
+  }
+]

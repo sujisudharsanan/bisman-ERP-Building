@@ -33,9 +33,12 @@ WORKDIR /usr/src/app
 RUN addgroup -g 1001 -S nodejs && adduser -S nestjs -u 1001
 
 # Copy built application
+# App runtime files
 COPY --from=deps /usr/src/app/node_modules ./node_modules
 COPY --from=build /usr/src/app/dist ./dist
 COPY --from=build /usr/src/app/package*.json ./
+COPY --from=build /usr/src/app/prisma ./prisma
+COPY --from=build /usr/src/app/scripts ./scripts
 
 # Security: don't run as root
 USER nestjs
@@ -48,4 +51,5 @@ EXPOSE 3001
 
 # Use dumb-init to handle signals properly
 ENTRYPOINT ["dumb-init", "--"]
-CMD ["node", "dist/apps/api/src/main.js"]
+# Run Prisma migrations (or db push) before starting the API
+CMD ["node", "scripts/start-with-migrate.js"]

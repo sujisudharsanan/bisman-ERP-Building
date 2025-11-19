@@ -1,0 +1,16 @@
+{
+  "seq": 2,
+  "calls": [
+    {
+      "id": "1",
+      "thread_id": "spark",
+      "room_name": "erp-spark-1",
+      "call_type": "audio",
+      "status": "completed",
+      "initiator_id": "1",
+      "started_at": "2025-11-19T03:24:15.184Z",
+      "ended_at": "2025-11-19T03:24:40.278Z",
+      "participants": []
+    }
+  ]
+}
