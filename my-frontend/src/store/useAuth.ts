@@ -13,7 +13,7 @@ export const useAuthStore = create<AuthState>(set => ({
   // Use the configured axios client which points to the backend on port 3001
   login: async (email, password) => {
     // console.log('Auth store: attempting login for', email);
-    const res = await api.post('/api/login', { email, password });
+  const res = await api.post('/api/auth/login', { email, password });
     // console.log('Auth store: login response', res.data);
     // axios automatically throws on 4xx/5xx, so if we get here, login was successful
     // Prefer server-provided user info; fall back to email
@@ -29,7 +29,7 @@ export const useAuthStore = create<AuthState>(set => ({
   },
   logout: async () => {
     try {
-      await api.post('/api/logout');
+  await api.post('/api/logout');
     } catch (e) {
       /* ignore */
     }

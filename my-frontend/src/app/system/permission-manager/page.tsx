@@ -119,17 +119,6 @@ export default function PermissionManagerPage() {
   return (
     <SuperAdminShell title="Permission Manager">
       <div className="space-y-4">
-        {/* Header Info */}
-        <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-3">
-          <h2 className="text-sm font-semibold text-blue-900 dark:text-blue-100 mb-1">
-            Role + User Hybrid Permission System
-          </h2>
-          <p className="text-xs text-blue-700 dark:text-blue-300">
-            Permissions are primarily controlled by <strong>Role</strong>, with optional <strong>User-level overrides</strong>. 
-            Final permissions = Role Permissions ∪ User Overrides.
-          </p>
-        </div>
-
         {/* Search Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>

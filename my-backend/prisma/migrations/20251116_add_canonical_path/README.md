@@ -1,0 +1,1 @@
+Adds canonical_path (normalized without parameter names) and param_names (JSON array) columns to routes and rbac_routes.

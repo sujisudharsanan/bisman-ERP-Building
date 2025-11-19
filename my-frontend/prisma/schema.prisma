@@ -1,0 +1,162 @@
+// Prisma schema for multi-tenant ERP admin
+// datasource and generator
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id          String       @id @default(cuid())
+  email       String       @unique
+  name        String?
+  password    String?
+  theme       String       @default("light")
+  roles       UserRole[]
+  memberships Membership[]
+  apiKeys     ApiKey[]     @relation("UserApiKeys")
+  createdAt   DateTime     @default(now())
+}
+
+model Role {
+  id          String       @id @default(cuid())
+  key         String       @unique // SUPER_ADMIN, ENTERPRISE_ADMIN, ORG_ADMIN, ORG_USER
+  name        String
+  users       UserRole[]
+  memberships Membership[]
+  allowed     AllowedModule[]
+}
+
+model UserRole {
+  id     String @id @default(cuid())
+  user   User   @relation(fields: [userId], references: [id])
+  userId String
+  role   Role   @relation(fields: [roleId], references: [id])
+  roleId String
+}
+
+model Organization {
+  id           String        @id @default(cuid())
+  name         String
+  slug         String        @unique
+  description  String?
+  subscription Subscription?
+  memberships  Membership[]
+  modules      OrgsEnabled[]
+  tickets      Ticket[]
+  apiKeys      ApiKey[]
+  createdAt    DateTime      @default(now())
+}
+
+model Membership {
+  id             String       @id @default(cuid())
+  user           User         @relation(fields: [userId], references: [id])
+  userId         String
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  role           Role         @relation(fields: [roleId], references: [id])
+  roleId         String
+  createdAt      DateTime     @default(now())
+}
+
+model Module {
+  id      String        @id @default(cuid())
+  key     String        @unique
+  name    String
+  enabled OrgsEnabled[]
+}
+
+model OrgsEnabled {
+  id       String       @id @default(cuid())
+  org      Organization @relation(fields: [orgId], references: [id])
+  orgId    String
+  module   Module       @relation(fields: [moduleId], references: [id])
+  moduleId String
+  enabled  Boolean      @default(true)
+}
+
+model Subscription {
+  id             String       @id @default(cuid())
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String       @unique
+  plan           String
+  status         String       @default("active")
+  startsAt       DateTime     @default(now())
+  endsAt         DateTime?
+}
+
+model AuditLog {
+  id        String   @id @default(cuid())
+  action    String
+  actorId   String?
+  orgId     String?
+  meta      Json?
+  createdAt DateTime @default(now())
+}
+
+model ApiKey {
+  id             String        @id @default(cuid())
+  key            String        @unique
+  name           String
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String?
+  createdByUser  User          @relation("UserApiKeys", fields: [createdBy], references: [id])
+  createdBy      String
+  revoked        Boolean       @default(false)
+  createdAt      DateTime      @default(now())
+}
+
+model Ticket {
+  id             String       @id @default(cuid())
+  organization   Organization @relation(fields: [organizationId], references: [id])
+  organizationId String
+  title          String
+  status         String       @default("open")
+  createdAt      DateTime     @default(now())
+}
+
+// AI Co-Pilot additions
+model AllowedModule {
+  id        String @id @default(cuid())
+  role      Role   @relation(fields: [roleId], references: [id])
+  roleId    String
+  moduleKey String
+  @@unique([roleId, moduleKey])
+}
+
+model RagSource {
+  id              String   @id @default(cuid())
+  fileName        String
+  path            String
+  tags            String[]
+  uploadedBy      String
+  embeddingStatus String   @default("pending") // pending|ready|failed
+  createdAt       DateTime @default(now())
+  embeddings      Embedding[]
+}
+
+model AiUsageLog {
+  id              String   @id @default(cuid())
+  timestamp       DateTime @default(now())
+  userId          String
+  role            String
+  moduleRequested String?
+  prompt          String
+  responseLen     Int
+  mode            String
+  latencyMs       Int
+  authorized      Boolean
+}
+
+model Embedding {
+  id         String     @id @default(cuid())
+  source     RagSource  @relation(fields: [sourceId], references: [id])
+  sourceId   String
+  chunkIndex Int
+  vector     Json
+  createdAt  DateTime   @default(now())
+  @@unique([sourceId, chunkIndex])
+}

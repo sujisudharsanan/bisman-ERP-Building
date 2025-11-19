@@ -1,21 +1,24 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import KanbanColumn from '@/components/dashboard/KanbanColumn';
 import RightPanel from '@/components/dashboard/RightPanel';
+import TaskChatDrawer from '@/components/tasks/TaskChatDrawer';
 import { useAuth } from '@/hooks/useAuth';
-import { useDashboardData } from '@/hooks/useDashboardData';
+import { useSocket } from '@/hooks/useSocket';
+import { useWorkflowTasks } from '@/hooks/useWorkflowTasks';
 
 export default function HubInchargePage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const { connected } = useSocket();
+  const { tasks, groupedTasks, loading: tasksLoading, createTask } = useWorkflowTasks();
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   
   // Get user role, normalize it for comparison
   const userRole = (user?.roleName || user?.role || '').toUpperCase().replace(/[_\s-]/g, '_');
-  
-  const { dashboardData, loading: dataLoading } = useDashboardData(user?.roleName || 'Hub Incharge');
 
   // Redirect if user is not authenticated
   React.useEffect(() => {
@@ -25,12 +28,13 @@ export default function HubInchargePage() {
     }
   }, [user, authLoading, router]);
 
-  if (authLoading || dataLoading) {
+  if (authLoading || tasksLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-500 mx-auto mb-4"></div>
           <p className="text-white text-lg">Loading Hub Incharge Dashboard...</p>
+          {connected && <p className="text-green-400 text-sm mt-2">✓ Connected to server</p>}
         </div>
       </div>
     );
@@ -55,16 +59,34 @@ export default function HubInchargePage() {
                   <div className="flex-1 min-w-0 overflow-hidden">
                     <div className="grid gap-3 md:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 auto-rows-fr h-full overflow-y-auto pr-1 pb-0 mb-0 custom-scrollbar min-h-0">
                       <div>
-                        <KanbanColumn title="DRAFT" tasks={dashboardData.DRAFT} showCreate onCreate={() => { window.location.href = '/tasks/create'; }} />
+                        <KanbanColumn 
+                          title="DRAFT" 
+                          tasks={groupedTasks.draft} 
+                          showCreate 
+                          onCreate={() => { window.location.href = '/tasks/create'; }}
+                          onTaskClick={(task) => setSelectedTaskId(task.id)}
+                        />
                       </div>
                       <div>
-                        <KanbanColumn title="IN PROGRESS" tasks={dashboardData.IN_PROGRESS} />
+                        <KanbanColumn 
+                          title="CONFIRMED" 
+                          tasks={groupedTasks.confirmed}
+                          onTaskClick={(task) => setSelectedTaskId(task.id)}
+                        />
                       </div>
                       <div>
-                        <KanbanColumn title="EDITING" tasks={dashboardData.EDITING} />
+                        <KanbanColumn 
+                          title="IN PROGRESS" 
+                          tasks={groupedTasks.in_progress}
+                          onTaskClick={(task) => setSelectedTaskId(task.id)}
+                        />
                       </div>
                       <div>
-                        <KanbanColumn title="DONE" tasks={dashboardData.DONE} />
+                        <KanbanColumn 
+                          title="DONE" 
+                          tasks={groupedTasks.done}
+                          onTaskClick={(task) => setSelectedTaskId(task.id)}
+                        />
                       </div>
                     </div>
                   </div>
@@ -79,6 +101,20 @@ export default function HubInchargePage() {
           {/* No inline grid when using dock */}
         </div>
       </div>
+
+      {/* Task Chat Drawer */}
+      {selectedTaskId && user && (
+        <TaskChatDrawer
+          taskId={selectedTaskId}
+          onClose={() => setSelectedTaskId(null)}
+          currentUserId={user.id?.toString() || ''}
+          currentUserType={user.roleName || user.role || 'USER'}
+          onTaskUpdate={(updatedTask) => {
+            console.log('Task updated:', updatedTask);
+            // The useWorkflowTasks hook will automatically update via Socket.IO
+          }}
+        />
+      )}
     </DashboardLayout>
   );
 }

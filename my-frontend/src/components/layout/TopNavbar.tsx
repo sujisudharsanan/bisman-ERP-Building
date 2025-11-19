@@ -3,13 +3,13 @@
 import React, { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import { useAuth } from '@/common/hooks/useAuth';
 import DarkModeToggle from '../ui/DarkModeToggle';
 import LogoutButton from '../ui/LogoutButton';
-import { User } from 'lucide-react';
+import { Calendar as CalendarIcon } from 'lucide-react';
 
 interface TopNavbarProps {
   showThemeToggle?: boolean;
+  fixed?: boolean;
 }
 
 /**
@@ -20,7 +20,7 @@ const HeaderLogo: React.FC = () => {
 
   if (logoError) {
     return (
-      <div className="w-8 h-8 rounded bg-yellow-400 dark:bg-yellow-500 flex items-center justify-center text-sm font-bold text-gray-900 dark:text-gray-800 shadow-md">
+      <div className="w-6 h-6 rounded bg-yellow-400 dark:bg-yellow-500 flex items-center justify-center text-xs font-bold text-gray-900 dark:text-gray-800 shadow-md">
         B
       </div>
     );
@@ -31,96 +31,78 @@ const HeaderLogo: React.FC = () => {
       src="/brand/logo.svg"
       alt="BISMAN ERP"
       title="BISMAN ERP"
-      width={80}
-      height={80}
-      className="h-10 w-auto object-contain shrink-0"
+      width={56}
+      height={56}
+      className="h-7 w-auto object-contain shrink-0"
       priority
       onError={() => setLogoError(true)}
     />
   );
 };
 
-const TopNavbar: React.FC<TopNavbarProps> = ({ showThemeToggle = false }) => {
-  const { user } = useAuth();
+const TopNavbar: React.FC<TopNavbarProps> = ({ showThemeToggle = false, fixed = true }) => {
+  const [currentPageName, setCurrentPageName] = useState<string>('Dashboard');
 
-  /**
-   * Get role display name
-   */
-  const getRoleDisplayName = (role: string): string => {
-    const roleMap: Record<string, string> = {
-      'SUPER_ADMIN': 'Super Admin',
-      'ADMIN': 'Admin',
-      'MANAGER': 'Manager',
-      'STAFF': 'Staff',
-      'USER': 'User',
-      'HUB_INCHARGE': 'Hub Incharge',
-      'STORE_INCHARGE': 'Store Incharge',
-    };
-    
-    return roleMap[role] || role;
-  };
+  // Get current page name from URL
+  React.useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const path = window.location.pathname;
+      
+      // Extract page name from URL path
+      const segments = path.split('/').filter(Boolean);
+      
+      if (segments.length === 0) {
+        setCurrentPageName('Dashboard');
+      } else if (path.includes('/common/user-settings')) {
+        setCurrentPageName('User Settings');
+      } else if (path.includes('/common/help-support')) {
+        setCurrentPageName('Help & Support');
+      } else {
+        // Convert last segment to readable name (e.g., 'user-management' -> 'User Management')
+        const lastSegment = segments[segments.length - 1];
+        const readable = lastSegment
+          .split('-')
+          .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+          .join(' ');
+        setCurrentPageName(readable);
+      }
+    }
+  }, []);
 
   return (
-  <header className="px-4 py-3 flex justify-between items-center bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-transparent shadow-sm theme-transition" data-component="top-navbar">
-      {/* Left side - User Photo, Name, Role and Logo */}
-      <div className="flex items-center gap-4">
-        {/* User Info Section */}
-        {user ? (
-          <Link 
-            href="/profile"
-            className="flex items-center gap-3 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg p-2 transition-colors"
-          >
-            {/* User Avatar */}
-            <div className="relative w-10 h-10 rounded-full overflow-hidden bg-blue-600 flex items-center justify-center ring-2 ring-blue-500/20">
-              {/* TODO: Add profilePhotoUrl to User interface when available */}
-              <User className="w-5 h-5 text-white" />
-            </div>
-            
-            {/* User Name and Role */}
-            <div className="flex flex-col items-start">
-              <span className="text-sm font-semibold text-gray-900 dark:text-white">
-                {user.name || user.username || 'User'}
-              </span>
-              <span className="text-xs text-gray-500 dark:text-gray-400">
-                {getRoleDisplayName(user.role || user.roleName || 'USER')}
-              </span>
-            </div>
-          </Link>
-        ) : null}
-
-        {/* Divider */}
-        {user && (
-          <div className="h-10 w-px bg-gray-200 dark:bg-gray-700"></div>
-        )}
-        
+  <header
+    className={`${fixed ? 'fixed top-0 left-0 right-0 z-50' : 'relative'} px-3 py-2 flex justify-between items-center bg-white dark:bg-[#0f1520] border-b border-gray-200 dark:border-transparent shadow-sm theme-transition`}
+    data-component="top-navbar"
+  >
+      {/* Left rail aligned with sidebar */}
+      <div
+        aria-hidden
+        className="absolute left-0 top-0 bottom-0 border-r border-gray-200 dark:border-gray-800"
+        style={{ width: 'var(--sidebar-width, 13rem)' }}
+      />
+      {/* Left side - Logo and Title only */}
+      <div className="flex items-center gap-3">
         {/* Logo and Title */}
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <HeaderLogo />
           <div>
-            <h1 className="text-base font-semibold text-gray-900 dark:text-gray-100">
+            <h1 className="text-sm font-semibold text-gray-900 dark:text-gray-200">
               BISMAN ERP
             </h1>
-            <p className="text-xs text-gray-500 dark:text-gray-400">
-              Dashboard
+              <p className="text-[10px] text-gray-500 dark:text-gray-300">
+              {currentPageName}
             </p>
           </div>
         </div>
       </div>
 
       {/* Right side - Actions */}
-      <div className="flex items-center gap-3">
-        <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 text-xs hidden sm:inline">
-          Pricing
-        </a>
-        <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 text-xs hidden sm:inline">
-          About
-        </a>
-        <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 text-xs hidden md:inline">
-          Language
-        </a>
-        <a href="#" className="text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 text-xs hidden md:inline">
-          Conditions
-        </a>
+      <div className="flex items-center gap-2">
+        {/* Calendar is available for every user (independent calendars) */}
+        <Link href="/calendar" className="inline-flex items-center gap-1 text-xs text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">
+          <CalendarIcon className="w-3.5 h-3.5" />
+          <span>Calendar</span>
+        </Link>
         <LogoutButton position="inline" variant="danger" compact />
         {showThemeToggle && <DarkModeToggle />}
       </div>

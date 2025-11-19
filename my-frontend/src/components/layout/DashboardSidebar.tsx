@@ -40,7 +40,7 @@ const DashboardSidebar: React.FC = () => {
       <aside
         className={`
           fixed lg:static inset-y-0 left-0 z-40
-          w-64 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-transparent
+          w-52 bg-white dark:bg-gray-900 border-r border-gray-200 dark:border-transparent
           transform transition-transform duration-300 ease-in-out
           ${isOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0'}
           flex flex-col overflow-hidden
@@ -53,9 +53,7 @@ const DashboardSidebar: React.FC = () => {
               <h2 className="text-lg font-bold text-gray-900 dark:text-white">
                 BISMAN ERP
               </h2>
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                {user?.roleName || 'Dashboard'}
-              </p>
+              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">Dashboard</p>
             </div>
             {/* Close button for mobile */}
             <button
@@ -69,7 +67,7 @@ const DashboardSidebar: React.FC = () => {
         </div>
 
         {/* Dynamic Sidebar Navigation */}
-        <div className="flex-1 overflow-y-auto">
+        <div className="flex-1 overflow-y-auto pt-2">
           <DynamicSidebar />
         </div>
 

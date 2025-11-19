@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { safeFetch } from '@/lib/safeFetch';
 import { useRouter } from 'next/navigation';
 import { AlertTriangle, Shield } from 'lucide-react';
 import { API_BASE } from '@/config/api';
@@ -27,24 +28,12 @@ export const RequirePermission: React.FC<RequirePermissionProps> = ({
 
   const checkPermission = async () => {
     try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        router.push('/auth/login');
-        return;
-      }
-
-    const response = await fetch(
+      const response = await safeFetch(
         `${API_BASE}/api/v1/check-permission?permission=${permission}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-      credentials: 'include',
-        }
+        { timeoutMs: 8000 }
       );
 
       if (response.status === 401) {
-        localStorage.removeItem('token');
         router.push('/auth/login');
         return;
       }
@@ -53,8 +42,8 @@ export const RequirePermission: React.FC<RequirePermissionProps> = ({
         const data = await response.json();
         setHasPermission(data.hasPermission);
       } else {
-        setHasPermission(false);
-        setError('Failed to check permissions');
+  setHasPermission(false);
+  setError('Failed to check permissions');
       }
     } catch (err) {
       // console.error('Permission check error:', err);

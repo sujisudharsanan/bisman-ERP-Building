@@ -47,30 +47,66 @@ export interface User {
   email: string; // Main email field for compatibility
   personal_email: string;
   company_email?: string;
+  
+  // Employee Information
+  employee_id?: string;
+  external_id?: string; // External system ID
+  manager_id?: string; // Reporting manager user ID
+  
+  // Contact Information
   phone?: string;
   alternate_phone?: string;
-  status: UserStatus;
-  role_id?: string;
-  branch_id?: string;
-  employee_id?: string;
-  designation?: string;
-  department?: string; // Add department field
-  salary?: number;
+  work_email?: string; // Primary work email (non-editable)
+  secondary_email?: string; // Secondary email
+  work_phone?: string; // Work phone number
+  mobile_phone?: string; // Mobile phone number
+  
+  // Verification Status
+  phone_verified_at?: string;
+  work_phone_verified_at?: string;
+  mobile_phone_verified_at?: string;
+  email_verified_at?: string;
+  secondary_email_verified_at?: string;
+  
+  // Localization
+  language?: string; // Preferred language (e.g., 'en', 'es', 'fr')
+  locale?: string; // Locale setting (e.g., 'en-US', 'en-GB')
+  
+  // Personal Details
   date_of_birth?: string;
   blood_group?: string;
   aadhaar_number?: string; // Encrypted
   license_number?: string;
   about_me?: string;
-  profile_picture_url?: string;
+  
+  // Address Information
   communication_address?: string;
   permanent_address?: string;
   city?: string;
   state?: string;
   country?: string;
   postal_code?: string;
+  
+  // Emergency Contact
+  emergency_contact_name?: string;
+  emergency_contact_phone?: string;
+  emergency_contact_relationship?: string;
+  
+  // Privacy Settings
+  is_profile_public?: boolean; // Controls visibility to other users
+  
+  // Organization Details
+  status: UserStatus;
+  role_id?: string;
+  branch_id?: string;
+  designation?: string;
+  department?: string;
+  salary?: number;
+  
+  // Profile & Authentication
+  profile_picture_url?: string;
   last_login?: string;
   password_changed_at?: string;
-  email_verified_at?: string;
   is_first_login: boolean;
   meta: Record<string, any>;
   created_at: string;
@@ -81,6 +117,7 @@ export interface User {
   role?: Role;
   roles: Role[]; // Support multiple roles
   branch?: Branch;
+  manager?: User; // Reporting manager
   kyc_submission?: KycSubmission;
 }
 

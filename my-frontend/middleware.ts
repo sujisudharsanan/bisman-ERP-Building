@@ -1,3 +1,32 @@
+import { NextResponse, type NextRequest } from 'next/server';
+
+// Basic Content Security Policy (adjust domains as backend/CDN evolve)
+const csp = [
+  "default-src 'self'",
+  "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // replace inline/eval as you harden
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob: https:",
+  "font-src 'self' data:",
+  "connect-src 'self' https: wss:",
+  "object-src 'none'",
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+].join('; ');
+
+export function middleware(req: NextRequest) {
+  const res = NextResponse.next();
+  res.headers.set('Content-Security-Policy', csp);
+  res.headers.set('X-Frame-Options', 'DENY');
+  res.headers.set('X-Content-Type-Options', 'nosniff');
+  res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
+  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.headers.set('X-DNS-Prefetch-Control', 'off');
+  return res;
+}
+
+export const config = {
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/health).*)'],
+};
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
@@ -18,10 +47,8 @@ export function middleware(req: NextRequest) {
   }
 
   // Accept either cookie name the client or server might set (access_token or token)
-  const token =
-    req.cookies.get('access_token')?.value || 
-    req.cookies.get('token')?.value || 
-    req.cookies.get('refresh_token')?.value;
+  const accessToken = req.cookies.get('access_token')?.value || req.cookies.get('token')?.value;
+  const refreshToken = req.cookies.get('refresh_token')?.value;
 
   // Allow access to debug page for troubleshooting
   if (pathname === '/debug-auth') {
@@ -34,46 +61,13 @@ export function middleware(req: NextRequest) {
   }
 
   // Require an auth token for all other pages (except the allowed public ones above)
-  if (!token) {
+  if (!accessToken && !refreshToken) {
     const url = req.nextUrl.clone();
     // Redirect to the actual login route used by the app
     url.pathname = '/auth/login';
     return NextResponse.redirect(url);
   }
-
-  // Token exists - add validation if needed
-  // Note: Full JWT validation would require jose or jsonwebtoken
-  // For now, we trust the backend API to validate tokens on each request
-  try {
-    // Basic token format check (should be JWT format: xxx.yyy.zzz)
-    const parts = token.split('.');
-    if (parts.length !== 3) {
-      throw new Error('Invalid token format');
-    }
-  } catch (error) {
-    // Invalid token format - redirect to login
-    const url = req.nextUrl.clone();
-    url.pathname = '/auth/login';
-    const response = NextResponse.redirect(url);
-    
-    // Clear invalid cookies with secure flags
-    response.cookies.set('access_token', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/'
-    });
-    response.cookies.set('token', '', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      maxAge: 0,
-      path: '/'
-    });
-    
-    return response;
-  }
+  // Do not perform structural validation in middleware; backend will validate
   
   return NextResponse.next();
 }

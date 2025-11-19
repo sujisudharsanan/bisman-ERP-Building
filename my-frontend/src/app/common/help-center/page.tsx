@@ -1,1 +1,8 @@
-export { default } from '@/modules/common/pages/help-center';
+/**
+ * Help Center & Support Ticket System
+ */
+import HelpSupport from '@/modules/common/pages/help-support';
+
+export default function Page() {
+  return <HelpSupport />;
+}

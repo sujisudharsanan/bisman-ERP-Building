@@ -1,0 +1,1652 @@
+{
+  "generated_at": "2025-11-16T06:17:58.798Z",
+  "count": 173,
+  "endpoints": [
+    {
+      "file": "aiAnalyticsRoute.js",
+      "method": "GET",
+      "path": "/api/ai/analytics/generate-report",
+      "canonical_path": "/api/ai/analytics/generate-report",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "aiAnalyticsRoute.js",
+      "method": "GET",
+      "path": "/api/ai/analytics/sales-insights",
+      "canonical_path": "/api/ai/analytics/sales-insights",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "aiAnalyticsRoute.js",
+      "method": "GET",
+      "path": "/api/ai/analytics/inventory-insights",
+      "canonical_path": "/api/ai/analytics/inventory-insights",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "aiAnalyticsRoute.js",
+      "method": "GET",
+      "path": "/api/ai/analytics/predict-sales",
+      "canonical_path": "/api/ai/analytics/predict-sales",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "aiAnalyticsRoute.js",
+      "method": "GET",
+      "path": "/api/ai/analytics/reports",
+      "canonical_path": "/api/ai/analytics/reports",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "aiAnalyticsRoute.js",
+      "method": "GET",
+      "path": "/api/ai/analytics/reports/:id",
+      "canonical_path": "/api/ai/analytics/reports/:param",
+      "params": [
+        "id"
+      ],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "aiAnalyticsRoute.js",
+      "method": "DELETE",
+      "path": "/api/ai/analytics/reports/:id",
+      "canonical_path": "/api/ai/analytics/reports/:param",
+      "params": [
+        "id"
+      ],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "aiAnalyticsRoute.js",
+      "method": "POST",
+      "path": "/api/ai/analytics/custom",
+      "canonical_path": "/api/ai/analytics/custom",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "aiRoute.js",
+      "method": "GET",
+      "path": "/api/langchain/health",
+      "canonical_path": "/api/langchain/health",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "aiRoute.js",
+      "method": "POST",
+      "path": "/api/langchain/query",
+      "canonical_path": "/api/langchain/query",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "aiRoute.js",
+      "method": "POST",
+      "path": "/api/langchain/query-data",
+      "canonical_path": "/api/langchain/query-data",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "aiRoute.js",
+      "method": "POST",
+      "path": "/api/langchain/summarize",
+      "canonical_path": "/api/langchain/summarize",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "aiRoute.js",
+      "method": "GET",
+      "path": "/api/langchain/conversations",
+      "canonical_path": "/api/langchain/conversations",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "aiRoute.js",
+      "method": "DELETE",
+      "path": "/api/langchain/conversations/:id",
+      "canonical_path": "/api/langchain/conversations/:param",
+      "params": [
+        "id"
+      ],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "auth.js",
+      "method": "POST",
+      "path": "/api/auth/login",
+      "canonical_path": "/api/auth/login",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "auth.js",
+      "method": "POST",
+      "path": "/api/auth/logout",
+      "canonical_path": "/api/auth/logout",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "auth.js",
+      "method": "GET",
+      "path": "/api/auth/me",
+      "canonical_path": "/api/auth/me",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "calendar.js",
+      "method": "GET",
+      "path": "/api/calendar/calendars",
+      "canonical_path": "/api/calendar/calendars",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "calendar.js",
+      "method": "POST",
+      "path": "/api/calendar/calendars",
+      "canonical_path": "/api/calendar/calendars",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "calendar.js",
+      "method": "PUT",
+      "path": "/api/calendar/calendars/:id",
+      "canonical_path": "/api/calendar/calendars/:param",
+      "params": [
+        "id"
+      ],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "calendar.js",
+      "method": "DELETE",
+      "path": "/api/calendar/calendars/:id",
+      "canonical_path": "/api/calendar/calendars/:param",
+      "params": [
+        "id"
+      ],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "calendar.js",
+      "method": "GET",
+      "path": "/api/calendar/events",
+      "canonical_path": "/api/calendar/events",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "calendar.js",
+      "method": "POST",
+      "path": "/api/calendar/calendars/:calendarId/events",
+      "canonical_path": "/api/calendar/calendars/:param/events",
+      "params": [
+        "calendarId"
+      ],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "calendar.js",
+      "method": "PUT",
+      "path": "/api/calendar/events/:id",
+      "canonical_path": "/api/calendar/events/:param",
+      "params": [
+        "id"
+      ],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "calendar.js",
+      "method": "DELETE",
+      "path": "/api/calendar/events/:id",
+      "canonical_path": "/api/calendar/events/:param",
+      "params": [
+        "id"
+      ],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "calendar.js",
+      "method": "POST",
+      "path": "/api/calendar/events/:id/attendees",
+      "canonical_path": "/api/calendar/events/:param/attendees",
+      "params": [
+        "id"
+      ],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "calendar.js",
+      "method": "DELETE",
+      "path": "/api/calendar/events/:id/attendees/:userId",
+      "canonical_path": "/api/calendar/events/:param/attendees/:param",
+      "params": [
+        "id",
+        "userId"
+      ],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "enterprise-admin-AI.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/ai/metrics",
+      "canonical_path": "/api/enterprise-admin/ai/metrics",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-AI.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/ai/models",
+      "canonical_path": "/api/enterprise-admin/ai/models",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-AI.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/ai/analytics",
+      "canonical_path": "/api/enterprise-admin/ai/analytics",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-AI.js",
+      "method": "POST",
+      "path": "/api/enterprise-admin/ai/models/:id/toggle",
+      "canonical_path": "/api/enterprise-admin/ai/models/:param/toggle",
+      "params": [
+        "id"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Audit.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/audit",
+      "canonical_path": "/api/enterprise-admin/audit",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Audit.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/audit/summary",
+      "canonical_path": "/api/enterprise-admin/audit/summary",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Audit.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/audit/export",
+      "canonical_path": "/api/enterprise-admin/audit/export",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Billing.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/billing/overview",
+      "canonical_path": "/api/enterprise-admin/billing/overview",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Billing.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/billing/revenue-trends",
+      "canonical_path": "/api/enterprise-admin/billing/revenue-trends",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Billing.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/billing/subscription-analytics",
+      "canonical_path": "/api/enterprise-admin/billing/subscription-analytics",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Dashboard.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/dashboard/stats",
+      "canonical_path": "/api/enterprise-admin/dashboard/stats",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Dashboard.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/dashboard/super-admin-distribution",
+      "canonical_path": "/api/enterprise-admin/dashboard/super-admin-distribution",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Dashboard.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/dashboard/activity",
+      "canonical_path": "/api/enterprise-admin/dashboard/activity",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Dashboard.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/dashboard/insights",
+      "canonical_path": "/api/enterprise-admin/dashboard/insights",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Dashboard.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/dashboard/module-usage-trends",
+      "canonical_path": "/api/enterprise-admin/dashboard/module-usage-trends",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Integrations.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/integrations",
+      "canonical_path": "/api/enterprise-admin/integrations",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Integrations.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/integrations/sso",
+      "canonical_path": "/api/enterprise-admin/integrations/sso",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Integrations.js",
+      "method": "PUT",
+      "path": "/api/enterprise-admin/integrations/sso",
+      "canonical_path": "/api/enterprise-admin/integrations/sso",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Integrations.js",
+      "method": "POST",
+      "path": "/api/enterprise-admin/integrations/sso/test",
+      "canonical_path": "/api/enterprise-admin/integrations/sso/test",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Integrations.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/integrations/api-keys",
+      "canonical_path": "/api/enterprise-admin/integrations/api-keys",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Integrations.js",
+      "method": "POST",
+      "path": "/api/enterprise-admin/integrations/api-keys",
+      "canonical_path": "/api/enterprise-admin/integrations/api-keys",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Integrations.js",
+      "method": "DELETE",
+      "path": "/api/enterprise-admin/integrations/api-keys/:keyId",
+      "canonical_path": "/api/enterprise-admin/integrations/api-keys/:param",
+      "params": [
+        "keyId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Integrations.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/integrations/webhooks",
+      "canonical_path": "/api/enterprise-admin/integrations/webhooks",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Integrations.js",
+      "method": "POST",
+      "path": "/api/enterprise-admin/integrations/webhooks",
+      "canonical_path": "/api/enterprise-admin/integrations/webhooks",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Integrations.js",
+      "method": "POST",
+      "path": "/api/enterprise-admin/integrations/webhooks/:webhookId/test",
+      "canonical_path": "/api/enterprise-admin/integrations/webhooks/:param/test",
+      "params": [
+        "webhookId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Integrations.js",
+      "method": "PUT",
+      "path": "/api/enterprise-admin/integrations/webhooks/:webhookId",
+      "canonical_path": "/api/enterprise-admin/integrations/webhooks/:param",
+      "params": [
+        "webhookId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Integrations.js",
+      "method": "DELETE",
+      "path": "/api/enterprise-admin/integrations/webhooks/:webhookId",
+      "canonical_path": "/api/enterprise-admin/integrations/webhooks/:param",
+      "params": [
+        "webhookId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Logs.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/logs",
+      "canonical_path": "/api/enterprise-admin/logs",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Logs.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/logs/by-module",
+      "canonical_path": "/api/enterprise-admin/logs/by-module",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Logs.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/logs/by-user",
+      "canonical_path": "/api/enterprise-admin/logs/by-user",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Logs.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/logs/export",
+      "canonical_path": "/api/enterprise-admin/logs/export",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Modules.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/modules",
+      "canonical_path": "/api/enterprise-admin/modules",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Modules.js",
+      "method": "POST",
+      "path": "/api/enterprise-admin/modules/:id/toggle",
+      "canonical_path": "/api/enterprise-admin/modules/:param/toggle",
+      "params": [
+        "id"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Modules.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/modules/usage-stats",
+      "canonical_path": "/api/enterprise-admin/modules/usage-stats",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Notifications.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/notifications/rules",
+      "canonical_path": "/api/enterprise-admin/notifications/rules",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Notifications.js",
+      "method": "PUT",
+      "path": "/api/enterprise-admin/notifications/rules/:ruleId",
+      "canonical_path": "/api/enterprise-admin/notifications/rules/:param",
+      "params": [
+        "ruleId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Notifications.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/notifications/recipients",
+      "canonical_path": "/api/enterprise-admin/notifications/recipients",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Notifications.js",
+      "method": "PUT",
+      "path": "/api/enterprise-admin/notifications/recipients",
+      "canonical_path": "/api/enterprise-admin/notifications/recipients",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Notifications.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/notifications/templates",
+      "canonical_path": "/api/enterprise-admin/notifications/templates",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Notifications.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/notifications/templates/:templateId",
+      "canonical_path": "/api/enterprise-admin/notifications/templates/:param",
+      "params": [
+        "templateId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Notifications.js",
+      "method": "PUT",
+      "path": "/api/enterprise-admin/notifications/templates/:templateId",
+      "canonical_path": "/api/enterprise-admin/notifications/templates/:param",
+      "params": [
+        "templateId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Notifications.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/notifications/history",
+      "canonical_path": "/api/enterprise-admin/notifications/history",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Notifications.js",
+      "method": "POST",
+      "path": "/api/enterprise-admin/notifications/test",
+      "canonical_path": "/api/enterprise-admin/notifications/test",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Notifications.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/notifications/stats",
+      "canonical_path": "/api/enterprise-admin/notifications/stats",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Organizations.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/organizations",
+      "canonical_path": "/api/enterprise-admin/organizations",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Organizations.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/organizations/:id",
+      "canonical_path": "/api/enterprise-admin/organizations/:param",
+      "params": [
+        "id"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Organizations.js",
+      "method": "PATCH",
+      "path": "/api/enterprise-admin/organizations/:id",
+      "canonical_path": "/api/enterprise-admin/organizations/:param",
+      "params": [
+        "id"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Organizations.js",
+      "method": "POST",
+      "path": "/api/enterprise-admin/organizations/:id/toggle-status",
+      "canonical_path": "/api/enterprise-admin/organizations/:param/toggle-status",
+      "params": [
+        "id"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Organizations.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/organizations/:id/stats",
+      "canonical_path": "/api/enterprise-admin/organizations/:param/stats",
+      "params": [
+        "id"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Reports.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/reports/system-overview",
+      "canonical_path": "/api/enterprise-admin/reports/system-overview",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Reports.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/reports/user-growth",
+      "canonical_path": "/api/enterprise-admin/reports/user-growth",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Reports.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/reports/client-activity",
+      "canonical_path": "/api/enterprise-admin/reports/client-activity",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Reports.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/reports/module-adoption",
+      "canonical_path": "/api/enterprise-admin/reports/module-adoption",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Reports.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/reports/performance",
+      "canonical_path": "/api/enterprise-admin/reports/performance",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Settings.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/settings/general",
+      "canonical_path": "/api/enterprise-admin/settings/general",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Settings.js",
+      "method": "PUT",
+      "path": "/api/enterprise-admin/settings/general",
+      "canonical_path": "/api/enterprise-admin/settings/general",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Settings.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/settings/security",
+      "canonical_path": "/api/enterprise-admin/settings/security",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Settings.js",
+      "method": "PUT",
+      "path": "/api/enterprise-admin/settings/security",
+      "canonical_path": "/api/enterprise-admin/settings/security",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Settings.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/settings/usage",
+      "canonical_path": "/api/enterprise-admin/settings/usage",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Settings.js",
+      "method": "PUT",
+      "path": "/api/enterprise-admin/settings/usage",
+      "canonical_path": "/api/enterprise-admin/settings/usage",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Settings.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/settings/maintenance",
+      "canonical_path": "/api/enterprise-admin/settings/maintenance",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Settings.js",
+      "method": "POST",
+      "path": "/api/enterprise-admin/settings/maintenance",
+      "canonical_path": "/api/enterprise-admin/settings/maintenance",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Settings.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/settings/localization",
+      "canonical_path": "/api/enterprise-admin/settings/localization",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Settings.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/settings/overview",
+      "canonical_path": "/api/enterprise-admin/settings/overview",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-SuperAdmins.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/super-admins",
+      "canonical_path": "/api/enterprise-admin/super-admins",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "enterprise-admin-SuperAdmins.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/super-admins/:adminId",
+      "canonical_path": "/api/enterprise-admin/super-admins/:param",
+      "params": [
+        "adminId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-SuperAdmins.js",
+      "method": "POST",
+      "path": "/api/enterprise-admin/super-admins",
+      "canonical_path": "/api/enterprise-admin/super-admins",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-SuperAdmins.js",
+      "method": "PUT",
+      "path": "/api/enterprise-admin/super-admins/:adminId",
+      "canonical_path": "/api/enterprise-admin/super-admins/:param",
+      "params": [
+        "adminId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-SuperAdmins.js",
+      "method": "DELETE",
+      "path": "/api/enterprise-admin/super-admins/:adminId",
+      "canonical_path": "/api/enterprise-admin/super-admins/:param",
+      "params": [
+        "adminId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-SuperAdmins.js",
+      "method": "POST",
+      "path": "/api/enterprise-admin/super-admins/:adminId/mfa-reset",
+      "canonical_path": "/api/enterprise-admin/super-admins/:param/mfa-reset",
+      "params": [
+        "adminId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-SuperAdmins.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/super-admins/roles/mapping",
+      "canonical_path": "/api/enterprise-admin/super-admins/roles/mapping",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-SuperAdmins.js",
+      "method": "PUT",
+      "path": "/api/enterprise-admin/super-admins/roles/mapping",
+      "canonical_path": "/api/enterprise-admin/super-admins/roles/mapping",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-SuperAdmins.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/super-admins/stats/overview",
+      "canonical_path": "/api/enterprise-admin/super-admins/stats/overview",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Support.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/support/tickets",
+      "canonical_path": "/api/enterprise-admin/support/tickets",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Support.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/support/tickets/:ticketId",
+      "canonical_path": "/api/enterprise-admin/support/tickets/:param",
+      "params": [
+        "ticketId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Support.js",
+      "method": "PUT",
+      "path": "/api/enterprise-admin/support/tickets/:ticketId",
+      "canonical_path": "/api/enterprise-admin/support/tickets/:param",
+      "params": [
+        "ticketId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Support.js",
+      "method": "POST",
+      "path": "/api/enterprise-admin/support/tickets/:ticketId/comments",
+      "canonical_path": "/api/enterprise-admin/support/tickets/:param/comments",
+      "params": [
+        "ticketId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Support.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/support/metrics",
+      "canonical_path": "/api/enterprise-admin/support/metrics",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Support.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/support/stats",
+      "canonical_path": "/api/enterprise-admin/support/stats",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Support.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/support/agents",
+      "canonical_path": "/api/enterprise-admin/support/agents",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Support.js",
+      "method": "POST",
+      "path": "/api/enterprise-admin/support/tickets/bulk-assign",
+      "canonical_path": "/api/enterprise-admin/support/tickets/bulk-assign",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Users.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/users",
+      "canonical_path": "/api/enterprise-admin/users",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Users.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/users/:userId",
+      "canonical_path": "/api/enterprise-admin/users/:param",
+      "params": [
+        "userId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Users.js",
+      "method": "PUT",
+      "path": "/api/enterprise-admin/users/:userId",
+      "canonical_path": "/api/enterprise-admin/users/:param",
+      "params": [
+        "userId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Users.js",
+      "method": "DELETE",
+      "path": "/api/enterprise-admin/users/:userId",
+      "canonical_path": "/api/enterprise-admin/users/:param",
+      "params": [
+        "userId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Users.js",
+      "method": "PUT",
+      "path": "/api/enterprise-admin/users/bulk/update",
+      "canonical_path": "/api/enterprise-admin/users/bulk/update",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Users.js",
+      "method": "POST",
+      "path": "/api/enterprise-admin/users/bulk/import",
+      "canonical_path": "/api/enterprise-admin/users/bulk/import",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Users.js",
+      "method": "POST",
+      "path": "/api/enterprise-admin/users/:userId/force-logout",
+      "canonical_path": "/api/enterprise-admin/users/:param/force-logout",
+      "params": [
+        "userId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "enterprise-admin-Users.js",
+      "method": "GET",
+      "path": "/api/enterprise-admin/users/stats/overview",
+      "canonical_path": "/api/enterprise-admin/users/stats/overview",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "pagesRoutes.js",
+      "method": "GET",
+      "path": "/api/pages",
+      "canonical_path": "/api/pages",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "pagesRoutes.js",
+      "method": "GET",
+      "path": "/api/pages/by-module",
+      "canonical_path": "/api/pages/by-module",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "permissions.js",
+      "method": "GET",
+      "path": "/api/permissions/check-page",
+      "canonical_path": "/api/permissions/check-page",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "permissions.js",
+      "method": "GET",
+      "path": "/api/permissions",
+      "canonical_path": "/api/permissions",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "permissions.js",
+      "method": "POST",
+      "path": "/api/permissions",
+      "canonical_path": "/api/permissions",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "permissionsRoutes.js",
+      "method": "GET",
+      "path": "/api/permissions",
+      "canonical_path": "/api/permissions",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "permissionsRoutes.js",
+      "method": "POST",
+      "path": "/api/permissions/update",
+      "canonical_path": "/api/permissions/update",
+      "params": [],
+      "handler_count": 3,
+      "middleware_count": 2
+    },
+    {
+      "file": "privilegeRoutes.js",
+      "method": "GET",
+      "path": "/api/privileges/roles",
+      "canonical_path": "/api/privileges/roles",
+      "params": [],
+      "handler_count": 3,
+      "middleware_count": 2
+    },
+    {
+      "file": "privilegeRoutes.js",
+      "method": "PATCH",
+      "path": "/api/privileges/roles/:roleId/status",
+      "canonical_path": "/api/privileges/roles/:param/status",
+      "params": [
+        "roleId"
+      ],
+      "handler_count": 3,
+      "middleware_count": 2
+    },
+    {
+      "file": "privilegeRoutes.js",
+      "method": "GET",
+      "path": "/api/privileges/users",
+      "canonical_path": "/api/privileges/users",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "privilegeRoutes.js",
+      "method": "GET",
+      "path": "/api/privileges/privileges",
+      "canonical_path": "/api/privileges/privileges",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "privilegeRoutes.js",
+      "method": "PUT",
+      "path": "/api/privileges/privileges/update",
+      "canonical_path": "/api/privileges/privileges/update",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "privilegeRoutes.js",
+      "method": "POST",
+      "path": "/api/privileges/privileges/sync-schema",
+      "canonical_path": "/api/privileges/privileges/sync-schema",
+      "params": [],
+      "handler_count": 3,
+      "middleware_count": 2
+    },
+    {
+      "file": "privilegeRoutes.js",
+      "method": "GET",
+      "path": "/api/privileges/health/database",
+      "canonical_path": "/api/privileges/health/database",
+      "params": [],
+      "handler_count": 3,
+      "middleware_count": 2
+    },
+    {
+      "file": "privilegeRoutes.js",
+      "method": "GET",
+      "path": "/api/privileges/audit-logs",
+      "canonical_path": "/api/privileges/audit-logs",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "privilegeRoutes.js",
+      "method": "POST",
+      "path": "/api/privileges/privileges/export",
+      "canonical_path": "/api/privileges/privileges/export",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "privilegeRoutes.js",
+      "method": "POST",
+      "path": "/api/privileges/assign-user",
+      "canonical_path": "/api/privileges/assign-user",
+      "params": [],
+      "handler_count": 5,
+      "middleware_count": 4
+    },
+    {
+      "file": "privilegeRoutes.js",
+      "method": "DELETE",
+      "path": "/api/privileges/unassign-user",
+      "canonical_path": "/api/privileges/unassign-user",
+      "params": [],
+      "handler_count": 5,
+      "middleware_count": 4
+    },
+    {
+      "file": "privilegeRoutes.js",
+      "method": "GET",
+      "path": "/api/privileges/available-users",
+      "canonical_path": "/api/privileges/available-users",
+      "params": [],
+      "handler_count": 3,
+      "middleware_count": 2
+    },
+    {
+      "file": "reportsRoutes.js",
+      "method": "GET",
+      "path": "/api/reports/roles-users",
+      "canonical_path": "/api/reports/roles-users",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "reportsRoutes.js",
+      "method": "GET",
+      "path": "/api/reports/roles-users/csv",
+      "canonical_path": "/api/reports/roles-users/csv",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "reportsRoutes.js",
+      "method": "GET",
+      "path": "/api/reports/pages-roles",
+      "canonical_path": "/api/reports/pages-roles",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "reportsRoutes.js",
+      "method": "GET",
+      "path": "/api/reports/pages-roles/csv",
+      "canonical_path": "/api/reports/pages-roles/csv",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "securityRoutes.js",
+      "method": "POST",
+      "path": "/api/v1/security/events",
+      "canonical_path": "/api/v1/security/events",
+      "params": [],
+      "handler_count": 3,
+      "middleware_count": 2
+    },
+    {
+      "file": "securityRoutes.js",
+      "method": "GET",
+      "path": "/api/v1/security/events",
+      "canonical_path": "/api/v1/security/events",
+      "params": [],
+      "handler_count": 3,
+      "middleware_count": 2
+    },
+    {
+      "file": "securityRoutes.js",
+      "method": "GET",
+      "path": "/api/v1/security/metrics",
+      "canonical_path": "/api/v1/security/metrics",
+      "params": [],
+      "handler_count": 3,
+      "middleware_count": 2
+    },
+    {
+      "file": "securityRoutes.js",
+      "method": "POST",
+      "path": "/api/v1/security/events/:id/resolutions",
+      "canonical_path": "/api/v1/security/events/:param/resolutions",
+      "params": [
+        "id"
+      ],
+      "handler_count": 3,
+      "middleware_count": 2
+    },
+    {
+      "file": "securityRoutes.js",
+      "method": "POST",
+      "path": "/api/v1/security/events/:id/close",
+      "canonical_path": "/api/v1/security/events/:param/close",
+      "params": [
+        "id"
+      ],
+      "handler_count": 3,
+      "middleware_count": 2
+    },
+    {
+      "file": "securityRoutes.js",
+      "method": "GET",
+      "path": "/api/v1/audit",
+      "canonical_path": "/api/v1/audit",
+      "params": [],
+      "handler_count": 3,
+      "middleware_count": 2
+    },
+    {
+      "file": "super-admin.js",
+      "method": "GET",
+      "path": "/api/v1/super-admin/activity",
+      "canonical_path": "/api/v1/super-admin/activity",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "super-admin.js",
+      "method": "GET",
+      "path": "/api/v1/super-admin/users",
+      "canonical_path": "/api/v1/super-admin/users",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "super-admin.js",
+      "method": "POST",
+      "path": "/api/v1/super-admin/users",
+      "canonical_path": "/api/v1/super-admin/users",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "super-admin.js",
+      "method": "PUT",
+      "path": "/api/v1/super-admin/users/:userId",
+      "canonical_path": "/api/v1/super-admin/users/:param",
+      "params": [
+        "userId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "super-admin.js",
+      "method": "DELETE",
+      "path": "/api/v1/super-admin/users/:userId",
+      "canonical_path": "/api/v1/super-admin/users/:param",
+      "params": [
+        "userId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "super-admin.js",
+      "method": "POST",
+      "path": "/api/v1/super-admin/roles",
+      "canonical_path": "/api/v1/super-admin/roles",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "super-admin.js",
+      "method": "PUT",
+      "path": "/api/v1/super-admin/roles/:roleId",
+      "canonical_path": "/api/v1/super-admin/roles/:param",
+      "params": [
+        "roleId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "super-admin.js",
+      "method": "DELETE",
+      "path": "/api/v1/super-admin/roles/:roleId",
+      "canonical_path": "/api/v1/super-admin/roles/:param",
+      "params": [
+        "roleId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "super-admin.js",
+      "method": "GET",
+      "path": "/api/v1/super-admin/roles",
+      "canonical_path": "/api/v1/super-admin/roles",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "super-admin.js",
+      "method": "POST",
+      "path": "/api/v1/super-admin/routes",
+      "canonical_path": "/api/v1/super-admin/routes",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "super-admin.js",
+      "method": "PUT",
+      "path": "/api/v1/super-admin/routes/:routeId",
+      "canonical_path": "/api/v1/super-admin/routes/:param",
+      "params": [
+        "routeId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "super-admin.js",
+      "method": "DELETE",
+      "path": "/api/v1/super-admin/routes/:routeId",
+      "canonical_path": "/api/v1/super-admin/routes/:param",
+      "params": [
+        "routeId"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "super-admin.js",
+      "method": "POST",
+      "path": "/api/v1/super-admin/permissions/batch",
+      "canonical_path": "/api/v1/super-admin/permissions/batch",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "super-admin.js",
+      "method": "GET",
+      "path": "/api/v1/super-admin/tables",
+      "canonical_path": "/api/v1/super-admin/tables",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "super-admin.js",
+      "method": "GET",
+      "path": "/api/v1/super-admin/tables/:tableName",
+      "canonical_path": "/api/v1/super-admin/tables/:param",
+      "params": [
+        "tableName"
+      ],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "super-admin.js",
+      "method": "GET",
+      "path": "/api/v1/super-admin/dashboard/stats",
+      "canonical_path": "/api/v1/super-admin/dashboard/stats",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "super-admin.js",
+      "method": "GET",
+      "path": "/api/v1/super-admin/system/info",
+      "canonical_path": "/api/v1/super-admin/system/info",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "system.js",
+      "method": "GET",
+      "path": "/api/memory-usage",
+      "canonical_path": "/api/memory-usage",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "system.js",
+      "method": "GET",
+      "path": "/api/cpu-usage",
+      "canonical_path": "/api/cpu-usage",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "testCors.js",
+      "method": "GET",
+      "path": "/api/test-cors",
+      "canonical_path": "/api/test-cors",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "ultimate-chat.js",
+      "method": "POST",
+      "path": "/api/chat/message",
+      "canonical_path": "/api/chat/message",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "ultimate-chat.js",
+      "method": "POST",
+      "path": "/api/chat/greeting",
+      "canonical_path": "/api/chat/greeting",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "ultimate-chat.js",
+      "method": "GET",
+      "path": "/api/chat/history",
+      "canonical_path": "/api/chat/history",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "ultimate-chat.js",
+      "method": "POST",
+      "path": "/api/chat/feedback",
+      "canonical_path": "/api/chat/feedback",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "ultimate-chat.js",
+      "method": "GET",
+      "path": "/api/chat/metrics",
+      "canonical_path": "/api/chat/metrics",
+      "params": [],
+      "handler_count": 1,
+      "middleware_count": 0
+    },
+    {
+      "file": "upload.js",
+      "method": "POST",
+      "path": "/api/upload/profile-pic",
+      "canonical_path": "/api/upload/profile-pic",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "upload.js",
+      "method": "GET",
+      "path": "/api/upload/profile-pic",
+      "canonical_path": "/api/upload/profile-pic",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    },
+    {
+      "file": "userReport.js",
+      "method": "GET",
+      "path": "/api/users/report",
+      "canonical_path": "/api/users/report",
+      "params": [],
+      "handler_count": 2,
+      "middleware_count": 1
+    }
+  ]
+}

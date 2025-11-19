@@ -1,0 +1,30 @@
+name: sequence-check
+on:
+  push:
+    branches: [ deployment ]
+  pull_request:
+    branches: [ deployment ]
+
+jobs:
+  seq:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Install backend deps (production optional)
+        working-directory: my-backend
+        run: npm install --no-audit --no-fund
+      - name: Sequence check
+        working-directory: my-backend
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          node scripts/check-sequences.js | tee sequence-check.log
+      - name: Upload sequence check log
+        uses: actions/upload-artifact@v4
+        with:
+          name: sequence-check-log
+          path: my-backend/sequence-check.log

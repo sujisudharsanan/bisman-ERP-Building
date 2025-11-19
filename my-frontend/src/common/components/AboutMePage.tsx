@@ -84,7 +84,7 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
   apiBaseUrl = API_BASE,
   showTeamSidebar = true,
 }) => {
-  const { user } = useAuth();
+  const { user, refreshUser } = useAuth();
 
   // Default employee data based on logged-in user
   const defaultEmployees: Employee[] = useMemo(
@@ -93,8 +93,11 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
         id: 1,
         name: user?.name || user?.username || 'User',
         role: user?.roleName || 'Staff Member',
-        photo:
-          'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?ixlib=rb-4.0.3&auto=format&fit=crop&w=200&h=200&q=80',
+        photo: user?.profile_pic_url 
+          ? (user.profile_pic_url.startsWith('/api/') 
+              ? user.profile_pic_url 
+              : user.profile_pic_url.replace('/uploads/', '/api/secure-files/'))
+          : '', // Empty string, will use initials fallback
         about: `Experienced ${user?.roleName || 'professional'} at BISMAN ERP. Dedicated to excellence in ${user?.roleName?.toLowerCase() || 'operations'} management and team collaboration.`,
         details: [
           { label: 'Employee ID', value: user?.id?.toString() || 'N/A' },
@@ -177,7 +180,9 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
         if (response.ok) {
           const result = await response.json();
           if (result.success && result.profile_pic_url) {
-            setSelectedPhoto(`${baseURL}${result.profile_pic_url}`);
+            // ✅ SECURITY FIX: Convert /uploads/ URL to /api/secure-files/
+            const secureUrl = result.profile_pic_url.replace('/uploads/', '/api/secure-files/');
+            setSelectedPhoto(`${baseURL}${secureUrl}`);
           }
         }
       } catch {
@@ -263,8 +268,19 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
       const result = await response.json();
 
       if (response.ok && result.success) {
-        const fullImageUrl = `${baseURL}${result.url}`;
+        // ✅ SECURITY FIX: Convert /uploads/ URL to /api/secure-files/
+        const secureUrl = result.url.replace('/uploads/', '/api/secure-files/');
+        const fullImageUrl = `${baseURL}${secureUrl}`;
         setSelectedPhoto(fullImageUrl);
+        
+        // Dispatch event to notify sidebar and other components
+        window.dispatchEvent(new CustomEvent('profilePictureUpdated', { detail: { url: fullImageUrl } }));
+        
+        // Refresh user context to update profile picture everywhere
+        if (refreshUser) {
+          await refreshUser();
+        }
+        
         alert('Profile picture updated successfully!');
       } else {
         throw new Error(result.message || 'Upload failed');
@@ -742,11 +758,32 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
             <div className="profile-left-column">
               <div className="profile-card">
                 <div className="profile-photo-container">
-                  <img
-                    src={selectedPhoto || activeEmployee.photo}
-                    alt={activeEmployee.name}
-                    className="profile-photo"
-                  />
+                  {(selectedPhoto || activeEmployee.photo) ? (
+                    <img
+                      src={selectedPhoto || activeEmployee.photo}
+                      alt={activeEmployee.name}
+                      className="profile-photo"
+                      onError={(e) => {
+                        // Hide image if it fails to load, show initials instead
+                        e.currentTarget.style.display = 'none';
+                      }}
+                    />
+                  ) : (
+                    <div 
+                      className="profile-photo"
+                      style={{
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
+                        color: 'white',
+                        fontSize: '48px',
+                        fontWeight: 'bold',
+                      }}
+                    >
+                      {(activeEmployee.name || 'U')[0].toUpperCase()}
+                    </div>
+                  )}
                   <input
                     type="file"
                     id="photo-upload-input"
@@ -1044,7 +1081,7 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
                   <h3>{activeEmployee.experience.title}</h3>
                   <ul>
                     {activeEmployee.experience.items.map((item, index) => (
-                      <li key={index} dangerouslySetInnerHTML={{ __html: item }} />
+                      <li key={index}>{item}</li>
                     ))}
                   </ul>
                 </div>

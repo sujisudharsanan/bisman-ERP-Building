@@ -190,7 +190,7 @@ export function CreateFullUserModal({
         if (!formData.first_name.trim()) newErrors.first_name = 'First name is required';
         if (!formData.last_name.trim()) newErrors.last_name = 'Last name is required';
         if (!formData.email.trim()) newErrors.email = 'Email is required';
-        if (!formData.password) newErrors.password = 'Password is required';
+  if (!formData.password) newErrors['password'] = 'Password is required';
         if (formData.password !== formData.confirm_password) {
           newErrors.confirm_password = 'Passwords do not match';
         }

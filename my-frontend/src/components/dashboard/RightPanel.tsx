@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useEffect, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import ConnectedCard from './ConnectedCard';
 import { dashboardConnections } from '@/config/dashboardConnections';
 import { Bar, Doughnut } from 'react-chartjs-2';
+import { useAuth } from '@/hooks/useAuth';
 import { 
   Chart as ChartJS, 
   CategoryScale, 
@@ -22,6 +24,23 @@ type RightPanelProps = {
 };
 
 const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar' }) => {
+  const { user } = useAuth();
+  const router = useRouter();
+  
+  // Convert profile_pic_url to secure endpoint if needed
+  const getProfilePicUrl = (url: string | undefined) => {
+    if (!url) return null;
+    // If it's already an /api path, return as-is
+    if (url.startsWith('/api/')) return url;
+    // Convert /uploads/ to /api/secure-files/
+    if (url.startsWith('/uploads/')) {
+      return url.replace('/uploads/', '/api/secure-files/');
+    }
+    return url;
+  };
+  
+  const profilePicUrl = getProfilePicUrl(user?.profile_pic_url);
+  
   const [chartColors, setChartColors] = useState<string[]>(['#3b82f6', '#a855f7', '#ec4899', '#f59e0b']);
   const [completedTasksData, setCompletedTasksData] = useState(() => ({
     labels: ['Author A', 'Author B', 'Author C', 'Author D'],
@@ -114,8 +133,8 @@ const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar' }) => {
   const containerClass = isInline
     ? 'w-full bg-transparent border-0 backdrop-blur-0 overflow-visible h-auto min-h-0'
     : isDock
-  ? 'w-56 sm:w-60 md:w-64 lg:w-64 xl:w-64 bg-transparent border-0 backdrop-blur-0 h-full overflow-y-auto -ml-2 min-h-0'
-  : 'w-full lg:w-64 xl:w-72 2xl:w-80 bg-panel/60 backdrop-blur-sm border-l border-theme overflow-y-auto flex flex-col h-full min-h-0 px-0.5';
+  ? 'w-44 sm:w-48 md:w-52 lg:w-52 xl:w-52 bg-transparent border-0 backdrop-blur-0 h-full overflow-y-auto -ml-2 min-h-0'
+  : 'w-full lg:w-52 xl:w-56 2xl:w-64 bg-panel/60 backdrop-blur-sm border-l border-theme overflow-y-auto flex flex-col h-full min-h-0 px-0.5';
   const wrapperClass = isInline
     ? 'grid grid-cols-1 gap-3 sm:gap-4 md:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 max-w-[960px] xl:max-w-[1000px]'
     : isDock
@@ -129,13 +148,50 @@ const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar' }) => {
        <div className={wrapperClass}>
     {/* User Profile Section */}
   <ConnectedCard type="profile" className={`p-1 sm:p-1 ${cardGap} order-1 xl:col-span-1 xl:col-start-1`}>
-  <div className="flex items-center justify-between pr-0 flex-shrink-0">
+  <div 
+    className="flex items-center justify-between pr-0 flex-shrink-0 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/30 rounded-lg transition-colors -m-1 p-1"
+    onClick={(e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      console.log('[RightPanel] Navigating to /common/about-me');
+      router.push('/common/about-me');
+    }}
+    title="View profile"
+  >
         <div className="flex-1 min-w-0">
-          <h3 className="text-base sm:text-lg font-bold text-theme truncate">Name Surname</h3>
-          <p className="text-xs sm:text-sm text-muted truncate">Adipiscing elit sed do eiusmod</p>
+          <h3 className="text-sm font-bold text-theme truncate">
+            {user?.username 
+              ? user.username.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+              : user?.email?.split('@')[0] || 'User'}
+          </h3>
+          <p className="text-xs text-muted truncate">
+            {user?.roleName?.replace(/_/g, ' ') || user?.role?.replace(/_/g, ' ') || 'User'}
+          </p>
         </div>
-        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 ml-2">
-          <span className="text-white font-bold text-sm sm:text-base">NS</span>
+        <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 ml-2 overflow-hidden relative">
+          {profilePicUrl ? (
+            <>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img 
+                src={profilePicUrl} 
+                alt="Profile" 
+                className="w-full h-full object-cover absolute inset-0 z-10"
+                onError={(e) => {
+                  // Fallback to initials if image fails to load
+                  console.error('Failed to load profile picture:', profilePicUrl);
+                  e.currentTarget.style.display = 'none';
+                }}
+              />
+              {/* Fallback initial shown behind image */}
+              <span className="text-white font-bold text-sm sm:text-base">
+                {(user?.name || user?.username || user?.email || 'U')[0].toUpperCase()}
+              </span>
+            </>
+          ) : (
+            <span className="text-white font-bold text-sm sm:text-base">
+              {(user?.name || user?.username || user?.email || 'U')[0].toUpperCase()}
+            </span>
+          )}
         </div>
       </div>
     </ConnectedCard>

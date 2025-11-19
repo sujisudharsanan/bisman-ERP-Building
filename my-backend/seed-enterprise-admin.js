@@ -10,37 +10,38 @@ async function main() {
     // Hash the password
     const hashedPassword = await bcrypt.hash('enterprise123', 10);
 
-    // Create or update Enterprise Admin
-    const enterpriseAdmin = await prisma.user.upsert({
+    // Create or update Enterprise Admin in the enterpriseAdmin table
+    const enterpriseAdmin = await prisma.enterpriseAdmin.upsert({
       where: { email: 'enterprise@bisman.erp' },
       update: {
         password: hashedPassword,
-        role: 'ENTERPRISE_ADMIN',
-        username: 'enterprise_admin'
+        name: 'Enterprise Administrator',
+        is_active: true
       },
       create: {
         email: 'enterprise@bisman.erp',
         password: hashedPassword,
-        role: 'ENTERPRISE_ADMIN',
-        username: 'enterprise_admin',
-        createdAt: new Date(),
-        updatedAt: new Date()
+        name: 'Enterprise Administrator',
+        is_active: true,
+        created_at: new Date(),
+        updated_at: new Date()
       }
     });
 
     console.log('✅ Enterprise Admin created successfully!');
     console.log('📧 Email:', enterpriseAdmin.email);
     console.log('🔑 Password: enterprise123');
-    console.log('👤 Role:', enterpriseAdmin.role);
+    console.log('👤 Name:', enterpriseAdmin.name);
     console.log('🆔 ID:', enterpriseAdmin.id);
+    console.log('✅ Active:', enterpriseAdmin.is_active);
     
-    // Verify the user was created
-    const verifyUser = await prisma.user.findUnique({
+    // Verify the user was created in the correct table
+    const verifyUser = await prisma.enterpriseAdmin.findUnique({
       where: { email: 'enterprise@bisman.erp' }
     });
     
     if (verifyUser) {
-      console.log('\n✅ Verification successful - User exists in database');
+      console.log('\n✅ Verification successful - Enterprise Admin exists in enterpriseAdmin table');
     }
 
   } catch (error) {

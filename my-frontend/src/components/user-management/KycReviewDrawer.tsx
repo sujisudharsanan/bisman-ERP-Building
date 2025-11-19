@@ -43,39 +43,38 @@ function ApprovalModal({ isOpen, onClose, onConfirm, type, isSubmitting }: Appro
     onConfirm(notes);
     setNotes('');
   };
-
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg p-6 w-full max-w-md mx-4">
+      <div className="bg-white dark:bg-[#0c111b] rounded-lg p-6 w-full max-w-md mx-4">
         <div className="flex justify-between items-center mb-4">
-          <h3 className="text-lg font-semibold text-gray-900">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-200">
             {type === 'approve' ? 'Approve KYC' : 'Reject KYC'}
           </h3>
           <button
             onClick={onClose}
-            className="text-gray-400 hover:text-gray-600"
+            className="text-gray-400 dark:text-gray-300 hover:text-gray-600 dark:hover:text-gray-100"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <p className="text-gray-600 mb-4">
-          {type === 'approve' 
+        <p className="text-gray-600 dark:text-gray-300 mb-4">
+          {type === 'approve'
             ? 'Are you sure you want to approve this KYC submission? The user will be notified and their account will be activated.'
             : 'Please provide a reason for rejecting this KYC submission. The user will be notified with your feedback.'
           }
         </p>
 
         <div className="mb-6">
-          <label className="block text-sm font-medium text-gray-700 mb-2">
+          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
             {type === 'approve' ? 'Notes (optional)' : 'Rejection Reason *'}
           </label>
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             rows={4}
-            className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-            placeholder={type === 'approve' 
+            className="w-full px-3 py-2 border border-gray-300 dark:border-gray-700 rounded-md bg-white dark:bg-[#071018] focus:outline-none focus:ring-2 focus:ring-blue-500"
+            placeholder={type === 'approve'
               ? 'Add any additional notes for this approval...'
               : 'Please specify what needs to be corrected or resubmitted...'
             }
@@ -86,7 +85,7 @@ function ApprovalModal({ isOpen, onClose, onConfirm, type, isSubmitting }: Appro
         <div className="flex space-x-3">
           <button
             onClick={onClose}
-            className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 transition-colors"
+            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-700 text-gray-700 dark:text-gray-300 rounded-md hover:bg-gray-50 dark:hover:bg-[#071018] transition-colors"
           >
             Cancel
           </button>
@@ -94,8 +93,8 @@ function ApprovalModal({ isOpen, onClose, onConfirm, type, isSubmitting }: Appro
             onClick={handleSubmit}
             disabled={isSubmitting || (type === 'reject' && !notes.trim())}
             className={`flex-1 px-4 py-2 text-white rounded-md transition-colors disabled:opacity-50 disabled:cursor-not-allowed ${
-              type === 'approve' 
-                ? 'bg-green-600 hover:bg-green-700' 
+              type === 'approve'
+                ? 'bg-green-600 hover:bg-green-700'
                 : 'bg-red-600 hover:bg-red-700'
             }`}
           >
@@ -207,13 +206,13 @@ export function KycReviewDrawer({
     <>
       <div className="fixed inset-0 bg-black bg-opacity-50 z-40" onClick={onClose} />
       
-      <div className="fixed right-0 top-0 h-full w-full max-w-4xl bg-panel shadow-xl z-50 overflow-y-auto border-l border-theme">
+  <div className="fixed right-0 top-0 h-full w-full max-w-4xl bg-panel dark:bg-[#0f1720] shadow-xl z-50 overflow-y-auto border-l border-theme dark:border-gray-700">
         {/* Header */}
-        <div className="sticky top-0 bg-panel border-b border-theme px-6 py-4">
+  <div className="sticky top-0 bg-panel dark:bg-[#0f1720] border-b border-theme dark:border-gray-700 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-theme">KYC Review</h2>
-              <p className="text-sm text-muted">
+              <h2 className="text-xl font-semibold text-theme dark:text-gray-200">KYC Review</h2>
+              <p className="text-sm text-muted dark:text-gray-300">
                 Submitted by {submission.user.first_name} {submission.user.last_name}
               </p>
             </div>
@@ -264,7 +263,7 @@ export function KycReviewDrawer({
             >
               <div className="flex items-center space-x-3">
                 <User className="w-5 h-5 text-blue-600" />
-                <h3 className="font-medium text-gray-900">Personal Information</h3>
+                <h3 className="font-medium text-gray-900 dark:text-gray-200">Personal Information</h3>
               </div>
               {expandedSections.has('personal') ? (
                 <ChevronDown className="w-5 h-5 text-gray-400" />
@@ -277,20 +276,20 @@ export function KycReviewDrawer({
               <div className="px-4 pb-4 border-t border-gray-100">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Full Name</label>
-                    <p className="text-gray-900">{submission.first_name} {submission.last_name}</p>
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Full Name</label>
+                    <p className="text-gray-900 dark:text-gray-200">{submission.first_name} {submission.last_name}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Email</label>
-                    <p className="text-gray-900">{submission.personal_email}</p>
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Email</label>
+                    <p className="text-gray-900 dark:text-gray-200">{submission.personal_email}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Phone</label>
-                    <p className="text-gray-900">{submission.phone}</p>
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Phone</label>
+                    <p className="text-gray-900 dark:text-gray-200">{submission.phone}</p>
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Alternate Phone</label>
-                    <p className="text-gray-900">{submission.alternate_phone || 'Not provided'}</p>
+                    <label className="text-sm font-medium text-gray-700 dark:text-gray-300">Alternate Phone</label>
+                    <p className="text-gray-900 dark:text-gray-200">{submission.alternate_phone || 'Not provided'}</p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700">Date of Birth</label>
@@ -317,7 +316,7 @@ export function KycReviewDrawer({
           </div>
 
           {/* Address Information */}
-          <div className="bg-white border border-gray-200 rounded-lg">
+          <div className="bg-white dark:bg-[#0c111b] border border-gray-200 dark:border-gray-700 rounded-lg">
             <button
               onClick={() => toggleSection('address')}
               className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50"
@@ -334,7 +333,7 @@ export function KycReviewDrawer({
             </button>
 
             {expandedSections.has('address') && (
-              <div className="px-4 pb-4 border-t border-gray-100">
+              <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700">
                 <div className="space-y-4 mt-4">
                   <div>
                     <label className="text-sm font-medium text-gray-700">Communication Address</label>
@@ -372,7 +371,7 @@ export function KycReviewDrawer({
           </div>
 
           {/* Identity Documents */}
-          <div className="bg-white border border-gray-200 rounded-lg">
+          <div className="bg-white dark:bg-[#0c111b] border border-gray-200 dark:border-gray-700 rounded-lg">
             <button
               onClick={() => toggleSection('identity')}
               className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50"
@@ -389,7 +388,7 @@ export function KycReviewDrawer({
             </button>
 
             {expandedSections.has('identity') && (
-              <div className="px-4 pb-4 border-t border-gray-100">
+              <div className="px-4 pb-4 border-t border-gray-100 dark:border-gray-700">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                   <div>
                     <label className="text-sm font-medium text-gray-700">Aadhaar Number</label>
@@ -410,7 +409,7 @@ export function KycReviewDrawer({
           </div>
 
           {/* Education */}
-          <div className="bg-white border border-gray-200 rounded-lg">
+          <div className="bg-white dark:bg-[#0c111b] border border-gray-200 dark:border-gray-700 rounded-lg">
             <button
               onClick={() => toggleSection('education')}
               className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50"
@@ -590,8 +589,8 @@ export function KycReviewDrawer({
           </div>
 
           {/* Approval History */}
-          {submission.approval_logs.length > 0 && (
-            <div className="bg-white border border-gray-200 rounded-lg">
+            {submission.approval_logs.length > 0 && (
+            <div className="bg-white dark:bg-[#0c111b] border border-gray-200 dark:border-gray-700 rounded-lg">
               <button
                 onClick={() => toggleSection('history')}
                 className="w-full px-4 py-3 flex items-center justify-between text-left hover:bg-gray-50"

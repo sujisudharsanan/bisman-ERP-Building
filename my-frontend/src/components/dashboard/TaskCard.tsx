@@ -10,9 +10,11 @@ interface TaskCardProps {
   comments: number;
   attachments: number;
   color: string;
+  onClick?: () => void;
+  taskData?: any; // Full task object for onClick handler
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments, attachments, color }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments, attachments, color, onClick }) => {
   // Fixed: Pre-defined Tailwind classes instead of dynamic interpolation
   const colorClasses: Record<string, string> = {
     blue: 'from-blue-500 to-blue-600/70',
@@ -26,8 +28,19 @@ const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments
   };
 
   return (
-    <div className="bg-panel/60 backdrop-blur-sm rounded-2xl p-2.5 mb-2.5 shadow-lg hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 border border-theme">
-      <h3 className="font-bold mb-1.5 text-theme text-[0.9rem]">{title}</h3>
+    <div 
+      className="bg-panel/60 backdrop-blur-sm rounded-2xl p-3 mb-2.5 shadow-lg hover:-translate-y-1 hover:shadow-2xl transition-all duration-300 border border-theme cursor-pointer"
+      onClick={onClick}
+      role="button"
+      tabIndex={0}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick?.();
+        }
+      }}
+    >
+      <h3 className="font-bold mb-2 text-theme text-sm leading-tight">{title}</h3>
       <div className="space-y-2">
         {subItems.map(item => (
           <div 

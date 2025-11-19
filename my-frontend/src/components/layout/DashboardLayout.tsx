@@ -25,14 +25,17 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
 
   return (
     <ErrorBoundary>
-      <div className="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col theme-transition">
+      <div
+        className="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col theme-transition"
+        style={{ ['--sidebar-width' as any]: sidebarOpen ? '13rem' : '4rem' }}
+      >
         {/* Top Navbar - Fixed at top */}
         <ErrorBoundary fallback={<div className="h-16 bg-red-100 dark:bg-red-900/20 flex items-center justify-center"><p className="text-red-600 text-sm">TopNavbar Error</p></div>}>
           <TopNavbar showThemeToggle />
         </ErrorBoundary>
 
-        {/* Content Area with Sidebar */}
-        <div className="flex flex-1 overflow-hidden">
+        {/* Content Area with Sidebar - Add top padding for fixed navbar */}
+        <div className="flex flex-1 overflow-hidden pt-[52px]">{/* Navbar height: py-2 (~8px) + content (~36px) = ~52px */}
           {/* Sidebar - Beneath navbar */}
           <ErrorBoundary fallback={<div className="w-16 bg-red-100 dark:bg-red-900/20 flex items-center justify-center"><p className="text-red-600 text-xs">Sidebar Error</p></div>}>
             <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
@@ -42,7 +45,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
           <main 
             className={`
               flex-1 overflow-auto transition-all duration-300
-              ${sidebarOpen ? 'ml-64' : 'ml-20'}
+              ${sidebarOpen ? 'ml-52' : 'ml-16'}
               p-6
             `}
           >

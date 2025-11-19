@@ -1,0 +1,31 @@
+name: nightly-backup
+on:
+  schedule:
+    - cron: '0 2 * * *'
+  workflow_dispatch: {}
+
+jobs:
+  backup:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Prepare backup dir
+        run: mkdir -p my-backend/backups/nightly
+      - name: Run pg_dump
+        env:
+          DATABASE_URL: ${{ secrets.DATABASE_URL }}
+        run: |
+          sudo apt-get update && sudo apt-get install -y postgresql-client
+          bash my-backend/scripts/backup-nightly-example.sh
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bisman-db-nightly
+          path: my-backend/backups/nightly/*.dump
+      - name: List backups
+        run: ls -lh my-backend/backups/nightly

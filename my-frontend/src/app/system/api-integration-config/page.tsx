@@ -154,44 +154,6 @@ export default function ApiIntegrationConfigPage() {
     <SuperAdminShell title="Api Integration Config">
       <div className="space-y-6">
 
-        {/* Breadcrumb Navigation */}
-        <Breadcrumb items={[
-          { label: 'System', href: '/system' },
-          { label: 'Api Integration Config' }
-        ]} />
-
-
-        {/* Quick Links */}
-        <QuickLinks links={[{"label":"User Management","href":"/system/user-management"},{"label":"System Settings","href":"/system/system-settings"},{"label":"Audit Logs","href":"/system/audit-logs"},{"label":"Roles & Users Report","href":"/system/roles-users-report"}]} />
-
-        {/* Page Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">
-              Api Integration Config
-            </h2>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-              Manage and monitor api integration config
-            </p>
-          </div>
-          <div className="flex gap-2">
-            <button
-              onClick={handleExport}
-              className="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md shadow-sm text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700"
-            >
-              <Download className="w-4 h-4 mr-2" />
-              Export
-            </button>
-            <button
-              onClick={handleCreate}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-            >
-              <Plus className="w-4 h-4 mr-2" />
-              Create New
-            </button>
-          </div>
-        </div>
-
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg p-4">

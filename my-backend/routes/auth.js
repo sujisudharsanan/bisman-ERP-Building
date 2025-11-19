@@ -300,22 +300,29 @@ function getRedirectPath(role) {
  */
 router.post('/logout', async (req, res) => {
   try {
-    const refreshToken = req.cookies?.refreshToken;
+  // Prefer modern snake_case cookie names; keep legacy camelCase fallback
+  const refreshToken = req.cookies?.refresh_token || req.cookies?.refreshToken;
 
     if (refreshToken) {
       // Revoke refresh token from database
       const crypto = require('crypto');
       const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
-
-      await prisma.user_sessions.updateMany({
-        where: { session_token: hashedToken },
-        data: { is_active: false }
-      });
+      try {
+        await prisma.user_sessions.updateMany({
+          where: { session_token: hashedToken },
+          data: { is_active: false }
+        });
+      } catch (e) {
+        // Defensive: if user_sessions table doesn't exist yet in prod, don't crash logout
+        console.warn('user_sessions.updateMany failed (likely missing table). Continuing logout.');
+      }
     }
 
-    // Clear cookies
-    res.clearCookie('accessToken');
-    res.clearCookie('refreshToken');
+  // Clear cookies (both modern and legacy names)
+  try { res.clearCookie('access_token', { path: '/' }); } catch (e) {}
+  try { res.clearCookie('refresh_token', { path: '/' }); } catch (e) {}
+  try { res.clearCookie('accessToken', { path: '/' }); } catch (e) {}
+  try { res.clearCookie('refreshToken', { path: '/' }); } catch (e) {}
 
     res.json({ message: 'Logout successful' });
   } catch (error) {

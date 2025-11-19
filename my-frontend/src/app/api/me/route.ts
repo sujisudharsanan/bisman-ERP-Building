@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 
 // Proxy to backend /api/me and forward cookies bidirectionally
 const BACKEND_BASE =
@@ -11,12 +11,13 @@ const BACKEND_BASE =
       'http://localhost:3001'
     );
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
-    const res = await fetch(`${BACKEND_BASE}/api/me`, {
+  const res = await fetch(`${BACKEND_BASE}/api/me`, {
       method: 'GET',
       headers: {
-        // In an edge/runtime without request context, let backend read cookies directly if same origin
+    // Forward incoming cookies so backend can authenticate
+    cookie: req.headers.get('cookie') || '',
       },
       cache: 'no-store'
     });
@@ -24,9 +25,18 @@ export async function GET() {
     const headers = new Headers();
     const setCookies = (res.headers as any).getSetCookie?.() || res.headers.get('set-cookie');
     if (Array.isArray(setCookies)) {
-      for (const c of setCookies) headers.append('set-cookie', c);
+      for (let c of setCookies) {
+        if (!c.includes('HttpOnly')) c += '; HttpOnly';
+        if (process.env.NODE_ENV === 'production' && !c.includes('Secure')) c += '; Secure';
+        if (!c.includes('SameSite')) c += '; SameSite=Lax';
+        headers.append('set-cookie', c);
+      }
     } else if (typeof setCookies === 'string') {
-      headers.set('set-cookie', setCookies);
+      let c = setCookies;
+      if (!c.includes('HttpOnly')) c += '; HttpOnly';
+      if (process.env.NODE_ENV === 'production' && !c.includes('Secure')) c += '; Secure';
+      if (!c.includes('SameSite')) c += '; SameSite=Lax';
+      headers.set('set-cookie', c);
     }
     headers.set('content-type', res.headers.get('content-type') || 'application/json');
 

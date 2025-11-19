@@ -16,12 +16,12 @@ const BACKEND_BASE =
 export async function POST(req: NextRequest) {
   try {
     const body = await req.text();
-    const res = await fetch(`${BACKEND_BASE}/api/login`, {
+  const res = await fetch(`${BACKEND_BASE}/api/auth/login`, {
       method: 'POST',
       headers: {
         'content-type': req.headers.get('content-type') || 'application/json',
         // Forward incoming cookies to backend for consistency
-        cookie: req.headers.get('cookie') || '',
+  cookie: req.headers.get('cookie') || '',
       },
       body,
       // Do not cache auth calls
