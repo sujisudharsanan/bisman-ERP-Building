@@ -1,0 +1,18 @@
+{
+  "common": {
+    "chat": {
+      "placeholder": "Écrivez votre message...",
+      "start_call": "Démarrer l'appel",
+      "join_call": "Rejoindre",
+      "end_call": "Terminer l'appel",
+      "attach_files": "Joindre des fichiers",
+      "insert_emoji": "Insérer un emoji",
+      "send_message": "Envoyer le message",
+      "new_messages": "Nouveaux messages",
+      "drop_files": "Déposer les fichiers pour joindre"
+    },
+    "status": { "online": "En ligne", "offline": "Hors ligne" },
+    "sidebar": { "search": "Rechercher des contacts...", "settings": "Paramètres" },
+    "call": { "start_audio": "Audio", "start_video": "Vidéo", "join": "Rejoindre", "end": "Fin", "share": "Partager le lien", "status_ringing": "Sonnerie", "status_active": "Active", "status_ended": "Terminée" }
+  }
+}

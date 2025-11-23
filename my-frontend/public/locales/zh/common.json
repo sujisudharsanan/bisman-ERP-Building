@@ -1,0 +1,18 @@
+{
+  "common": {
+    "chat": {
+      "placeholder": "输入你的消息...",
+      "start_call": "开始通话",
+      "join_call": "加入",
+      "end_call": "结束通话",
+      "attach_files": "附件",
+      "insert_emoji": "插入表情",
+      "send_message": "发送消息",
+      "new_messages": "新消息",
+      "drop_files": "拖放文件以添加"
+    },
+    "status": { "online": "在线", "offline": "离线" },
+    "sidebar": { "search": "搜索联系人...", "settings": "设置" },
+    "call": { "start_audio": "音频", "start_video": "视频", "join": "加入", "end": "结束", "share": "分享链接", "status_ringing": "响铃", "status_active": "进行中", "status_ended": "已结束" }
+  }
+}

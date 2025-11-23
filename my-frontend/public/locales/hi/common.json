@@ -1,0 +1,18 @@
+{
+  "common": {
+    "chat": {
+      "placeholder": "अपना संदेश लिखें...",
+      "start_call": "कॉल शुरू करें",
+      "join_call": "कॉल जुड़ें",
+      "end_call": "कॉल समाप्त करें",
+      "attach_files": "फ़ाइलें संलग्न करें",
+      "insert_emoji": "इमोजी जोड़ें",
+      "send_message": "संदेश भेजें",
+      "new_messages": "नए संदेश",
+      "drop_files": "फ़ाइलें यहाँ छोड़ें"
+    },
+    "status": { "online": "ऑनलाइन", "offline": "ऑफ़लाइन" },
+    "sidebar": { "search": "संपर्क खोजें...", "settings": "सेटिंग्स" },
+    "call": { "start_audio": "ऑडियो", "start_video": "वीडियो", "join": "जुड़ें", "end": "समाप्त", "share": "लिंक साझा करें", "status_ringing": "रिंग हो रही है", "status_active": "सक्रिय", "status_ended": "समाप्त" }
+  }
+}
