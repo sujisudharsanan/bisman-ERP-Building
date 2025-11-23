@@ -16,7 +16,8 @@ FROM node:20-alpine AS build-frontend
 WORKDIR /app
 RUN apk add --no-cache postgresql-client openssl libc6-compat
 COPY my-frontend/package*.json ./frontend/
-RUN npm install --prefix frontend
+# Use npm ci for deterministic builds and clean cache
+RUN cd frontend && npm ci --ignore-scripts && npm cache clean --force
 COPY my-frontend/ ./frontend
 # Generate Prisma client for frontend before build
 RUN cd frontend && npx prisma generate
