@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Database, Wifi, WifiOff, Activity } from 'lucide-react';
 
 interface DatabaseStatus {
   connected: boolean;
@@ -17,6 +16,7 @@ export function TopNavDbIndicator() {
     lastChecked: new Date()
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [icons, setIcons] = useState<{ Database?: any; Wifi?: any; WifiOff?: any; Activity?: any }>({});
 
   const checkDatabaseStatus = async () => {
     setIsLoading(true);
@@ -95,6 +95,21 @@ export function TopNavDbIndicator() {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (typeof window === 'undefined') return;
+      try {
+        const mod = await import('lucide-react');
+        if (!mounted) return;
+        setIcons({ Database: mod.Database, Wifi: mod.Wifi, WifiOff: mod.WifiOff, Activity: mod.Activity });
+      } catch (e) {
+        // ignore
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   const getStatusColor = () => {
     if (isLoading) return 'text-yellow-500';
     if (dbStatus.connected) return 'text-green-500';
@@ -122,10 +137,29 @@ export function TopNavDbIndicator() {
   };
 
   const StatusIcon = () => {
-    if (isLoading) return <Activity className="h-4 w-4 animate-spin" />;
-    if (dbStatus.connected) return <Database className="h-4 w-4" />;
-    if (dbStatus.reason === 'UNAUTHORIZED' || dbStatus.reason === 'FORBIDDEN') return <Wifi className="h-4 w-4" />;
-    return <WifiOff className="h-4 w-4" />;
+    if (isLoading)
+      return icons.Activity ? (
+        <icons.Activity className="h-4 w-4 animate-spin" />
+      ) : (
+        <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="12" cy="12" r="10" strokeWidth="2" strokeOpacity="0.2"/><path d="M22 12a10 10 0 0 0-10-10" strokeWidth="2"/></svg>
+      );
+    if (dbStatus.connected)
+      return icons.Database ? (
+        <icons.Database className="h-4 w-4" />
+      ) : (
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><ellipse cx="12" cy="5" rx="9" ry="3" strokeWidth="2"/><path d="M3 5v6c0 1.7 4 3 9 3s9-1.3 9-3V5" strokeWidth="2"/></svg>
+      );
+    if (dbStatus.reason === 'UNAUTHORIZED' || dbStatus.reason === 'FORBIDDEN')
+      return icons.Wifi ? (
+        <icons.Wifi className="h-4 w-4" />
+      ) : (
+        <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 8c4-4 8-6 10-6s6 2 10 6" strokeWidth="2"/><path d="M5 11a10 10 0 0 1 14 0" strokeWidth="2"/><circle cx="12" cy="17" r="1" strokeWidth="2"/></svg>
+      );
+    return icons.WifiOff ? (
+      <icons.WifiOff className="h-4 w-4" />
+    ) : (
+      <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M2 8c4-4 8-6 10-6s6 2 10 6" strokeWidth="2" strokeOpacity="0.4"/><path d="M5 11a10 10 0 0 1 14 0" strokeWidth="2" strokeOpacity="0.4"/><line x1="2" y1="22" x2="22" y2="2" strokeWidth="2"/></svg>
+    );
   };
 
   return (

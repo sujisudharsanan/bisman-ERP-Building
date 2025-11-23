@@ -5,7 +5,6 @@ import {
   PlayCircle,
   PauseCircle,
   RefreshCw,
-  Search,
   Download,
   Clock,
   Calendar,
@@ -18,6 +17,7 @@ import {
   Copy,
   Check,
 } from 'lucide-react';
+import { Search } from '@/lib/ssr-safe-icons';
 import { ResponsiveContainer, BarChart, Bar, XAxis, YAxis, Tooltip as ReTooltip } from 'recharts';
 import Input from '@/components/ui/Input';
 import Badge from '@/components/ui/Badge';

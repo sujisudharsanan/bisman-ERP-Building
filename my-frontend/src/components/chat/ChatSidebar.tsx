@@ -1,7 +1,9 @@
 "use client";
 import React, { useState } from 'react';
 import { Search, Settings } from 'lucide-react';
+import { useTranslation } from 'next-i18next';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePresence, usePresenceStore, isOnline } from '@/hooks/usePresence';
 
 interface Contact {
   id: number;
@@ -25,9 +27,25 @@ interface ChatSidebarProps {
   onOpenSettings?: () => void;
 }
 
+// Use next-i18next common namespace
+// Keys: sidebar.search, sidebar.settings, sidebar.contacts
+
+function normalizeRole(role?: string) {
+  return (role || '')
+    .trim()
+    .toLowerCase()
+    .replace(/[-_]+/g, ' ');
+}
+
 export default function ChatSidebar({ contacts, activeContact, onSelectContact, wide = false, orientation = 'vertical', onOpenSettings }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
+  const { t } = useTranslation('common');
   const { user } = useAuth();
+  usePresence();
+  const presenceMap = usePresenceStore(s => s.map);
+
+  // Current user normalized role
+  const userRole = normalizeRole(user?.roleName || user?.role);
 
   // Format username for display
   const getDisplayName = () => {
@@ -41,15 +59,20 @@ export default function ChatSidebar({ contacts, activeContact, onSelectContact, 
     return 'User';
   };
 
+  // RBAC: hide Super/Enterprise Admin for non-admins only
   const filteredContacts = contacts.filter(contact => {
-    // Exclude Super Admin and Enterprise Admin roles if present
-    const roleNorm = (contact.role || '')
-      .trim()
-      .toLowerCase()
-      .replace(/[-_]+/g, ' ');
-    if (roleNorm === 'super admin' || roleNorm === 'enterprise admin') {
-      return false;
+    const contactRole = normalizeRole(contact.role);
+
+    // Apply RBAC visibility
+    const isSuper = userRole === 'super admin';
+    const isEnterprise = userRole === 'enterprise admin';
+
+    // For non-admins: exclude Super Admin and Enterprise Admin
+    if (!isSuper && !isEnterprise) {
+      if (contactRole === 'super admin' || contactRole === 'enterprise admin') return false;
     }
+    // Admins can see everyone
+
     // Apply search query on name (case-insensitive)
     const q = searchQuery.trim().toLowerCase();
     if (!q) return true;
@@ -63,10 +86,11 @@ export default function ChatSidebar({ contacts, activeContact, onSelectContact, 
         {/* Compact search row */}
         <div className="px-3 pt-2">
           <div className="relative max-w-md mx-auto">
-            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-slate-400" />
+            <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-slate-400" aria-hidden />
             <input
               type="text"
-              placeholder="Search contacts..."
+              placeholder={t('sidebar.search')}
+              aria-label={t('sidebar.search')}
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-7 pr-2 py-1.5 bg-slate-600 text-white text-xs rounded-md placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -74,7 +98,7 @@ export default function ChatSidebar({ contacts, activeContact, onSelectContact, 
           </div>
         </div>
         {/* Horizontal contacts scroller */}
-        <div className="h-24 overflow-x-auto overflow-y-hidden mt-2 px-2 pb-2 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-700">
+        <div className="h-24 overflow-x-auto overflow-y-hidden mt-2 px-2 pb-2 scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-700" role="list" aria-label="Contacts">
           <div className="flex items-stretch gap-2 min-w-max">
             {filteredContacts.map(contact => (
               <button
@@ -84,6 +108,7 @@ export default function ChatSidebar({ contacts, activeContact, onSelectContact, 
                   activeContact === contact.id ? 'bg-slate-600 border-blue-500' : 'bg-slate-700/60 border-transparent hover:bg-slate-700'
                 }`}
                 title={contact.name}
+                aria-label={`Open chat with ${contact.name}`}
               >
                 <div className="relative">
                   <img
@@ -95,8 +120,8 @@ export default function ChatSidebar({ contacts, activeContact, onSelectContact, 
                       target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random`;
                     }}
                   />
-                  {contact.online && (
-                    <div className="absolute bottom-0 right-0 w-2 h-2 bg-green-400 rounded-full border border-slate-700"></div>
+                  {isOnline(contact.id, presenceMap) && (
+                    <div className="absolute bottom-0 right-0 w-2 h-2 bg-green-400 rounded-full border border-slate-700" aria-hidden></div>
                   )}
                 </div>
                 <span className="mt-1 text-[11px] text-white truncate max-w-[6rem]">{contact.name}</span>
@@ -131,7 +156,7 @@ export default function ChatSidebar({ contacts, activeContact, onSelectContact, 
                 {getDisplayName().charAt(0)}
               </div>
             )}
-            <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full border border-slate-700"></div>
+            <div className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full border border-slate-700" aria-hidden></div>
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-white text-xs font-medium truncate">{getDisplayName()}</p>
@@ -142,10 +167,11 @@ export default function ChatSidebar({ contacts, activeContact, onSelectContact, 
       {/* Search Bar */}
       <div className="p-2">
         <div className="relative">
-          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-slate-400" />
+          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 w-3 h-3 text-slate-400" aria-hidden />
           <input
             type="text"
-            placeholder="Search contacts..."
+            placeholder={t('sidebar.search')}
+            aria-label={t('sidebar.search')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full pl-7 pr-2 py-1.5 bg-slate-600 text-white text-xs rounded-md placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-blue-500"
@@ -154,7 +180,7 @@ export default function ChatSidebar({ contacts, activeContact, onSelectContact, 
       </div>
 
       {/* Contacts List */}
-      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-700">
+      <div className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-slate-600 scrollbar-track-slate-700" role="list" aria-label="Contacts">
         {filteredContacts.map(contact => (
           <div
             key={contact.id}
@@ -164,6 +190,9 @@ export default function ChatSidebar({ contacts, activeContact, onSelectContact, 
                 ? 'bg-slate-600 border-blue-500'
                 : 'border-transparent hover:bg-slate-700'
             }`}
+            title={`Open chat with ${contact.name}`}
+            role="listitem"
+            aria-label={`Contact ${contact.name}${contact.unread > 0 ? `, ${contact.unread} unread` : ''}`}
           >
             <div className="flex items-start gap-2">
               <div className="relative flex-shrink-0">
@@ -176,8 +205,8 @@ export default function ChatSidebar({ contacts, activeContact, onSelectContact, 
                     target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random`;
                   }}
                 />
-                {contact.online && (
-                  <div className="absolute bottom-0 right-0 w-2 h-2 bg-green-400 rounded-full border border-slate-700"></div>
+                {isOnline(contact.id, presenceMap) && (
+                  <div className="absolute bottom-0 right-0 w-2 h-2 bg-green-400 rounded-full border border-slate-700" aria-hidden></div>
                 )}
               </div>
               <div className="flex-1 min-w-0">
@@ -198,9 +227,9 @@ export default function ChatSidebar({ contacts, activeContact, onSelectContact, 
 
       {/* Settings Button at very bottom */}
       <div className="p-2 border-t border-slate-600 mt-auto">
-        <button onClick={onOpenSettings} className="w-full flex items-center gap-2 px-2 py-1.5 text-slate-300 hover:bg-slate-700 rounded-md transition-colors text-xs">
+  <button onClick={onOpenSettings} className="w-full flex items-center gap-2 px-2 py-1.5 text-slate-300 hover:bg-slate-700 rounded-md transition-colors text-xs" aria-label={t('sidebar.settings')}>
           <Settings className="w-3 h-3" />
-          <span>Settings</span>
+          <span>{t('sidebar.settings')}</span>
         </button>
       </div>
     </div>

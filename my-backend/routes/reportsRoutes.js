@@ -439,6 +439,22 @@ router.get('/pages-roles', async (req, res) => {
     }
     
     console.log(`[PagesRolesReport] Found ${pages.length} pages in registry`);
+
+    // Enterprise Admin approved pages filter
+    // Only include pages that are listed in MASTER_MODULES (approved by Enterprise Admin)
+    try {
+      const { MASTER_MODULES } = require('../config/master-modules');
+      const approvedPages = (MASTER_MODULES || []).flatMap(m => Array.isArray(m.pages) ? m.pages : []);
+      const approvedIds = new Set(approvedPages.map(p => p.id));
+      const approvedPaths = new Set(approvedPages.map(p => p.path));
+
+      const beforeCount = pages.length;
+      pages = pages.filter(p => approvedIds.has(p.id) || approvedPaths.has(p.path));
+      const afterCount = pages.length;
+      console.log(`[PagesRolesReport] EA filter applied: ${beforeCount} -> ${afterCount} pages`);
+    } catch (e) {
+      console.warn('[PagesRolesReport] MASTER_MODULES not available, skipping EA approval filter');
+    }
     
     // Fetch all roles from database
     const roles = await prisma.rbac_roles.findMany({
@@ -623,6 +639,19 @@ router.get('/pages-roles/csv', async (req, res) => {
       }
     }
     
+    // Enterprise Admin approved pages filter
+    try {
+      const { MASTER_MODULES } = require('../config/master-modules');
+      const approvedPages = (MASTER_MODULES || []).flatMap(m => Array.isArray(m.pages) ? m.pages : []);
+      const approvedIds = new Set(approvedPages.map(p => p.id));
+      const approvedPaths = new Set(approvedPages.map(p => p.path));
+      const before = pages.length;
+      pages = pages.filter(p => approvedIds.has(p.id) || approvedPaths.has(p.path));
+      console.log(`[PagesRolesReport CSV] EA filter applied: ${before} -> ${pages.length}`);
+    } catch (e) {
+      console.warn('[PagesRolesReport CSV] MASTER_MODULES not available, skipping EA approval filter');
+    }
+
     // Build CSV
     let csv = 'Page ID,Page Name,Path,Module,Status,Role Count,Roles,Is Orphan\n';
     

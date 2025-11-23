@@ -8,18 +8,18 @@
 import React, { useState } from 'react';
 import SuperAdminLayout from '@/common/layouts/superadmin-layout';
 import { useAuth } from '@/common/hooks/useAuth';
+
 import {
   TrendingUp,
   TrendingDown,
-  DollarSign,
-  CreditCard,
-  BarChart3,
   PieChart,
   Calendar,
   Download,
   Filter,
   AlertCircle,
+  BarChart3,
 } from 'lucide-react';
+import { getIcon } from '@/components/layout/BaseSidebar';
 
 export default function ExecutiveDashboardPage() {
   const { hasAccess } = useAuth();
@@ -77,7 +77,7 @@ export default function ExecutiveDashboardPage() {
               value: '₹12.5M',
               change: '+12.5%',
               trend: 'up',
-              icon: DollarSign,
+              icon: 'DollarSign',
               color: 'green',
             },
             {
@@ -85,7 +85,7 @@ export default function ExecutiveDashboardPage() {
               value: '₹8.2M',
               change: '+3.2%',
               trend: 'up',
-              icon: CreditCard,
+              icon: 'CreditCard',
               color: 'red',
             },
             {
@@ -93,7 +93,7 @@ export default function ExecutiveDashboardPage() {
               value: '₹4.3M',
               change: '+18.7%',
               trend: 'up',
-              icon: TrendingUp,
+              icon: 'TrendingUp',
               color: 'blue',
             },
             {
@@ -101,7 +101,7 @@ export default function ExecutiveDashboardPage() {
               value: '₹6.8M',
               change: '-2.1%',
               trend: 'down',
-              icon: BarChart3,
+              icon: 'BarChart3',
               color: 'yellow',
             },
           ].map((metric, index) => (
@@ -110,7 +110,10 @@ export default function ExecutiveDashboardPage() {
               className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-6 border-l-4 border-l-blue-500"
             >
               <div className="flex items-center justify-between mb-4">
-                <metric.icon className={`w-8 h-8 text-${metric.color}-600 dark:text-${metric.color}-400`} />
+                {(() => {
+                  const IconComp = getIcon(metric.icon);
+                  return <IconComp className={`w-8 h-8 text-${metric.color}-600 dark:text-${metric.color}-400`} />;
+                })()}
                 <span
                   className={`flex items-center text-sm font-semibold ${
                     metric.trend === 'up'

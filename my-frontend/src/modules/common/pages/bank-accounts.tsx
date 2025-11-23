@@ -6,7 +6,7 @@ import { useAuth } from '@/hooks/useAuth';
 import {
   Building2,
   Plus,
-  Edit3,
+  Edit,
   Trash2,
   Check,
   X,
@@ -603,7 +603,7 @@ export default function BankAccountsPage() {
                         className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors"
                         title="Edit account"
                       >
-                        <Edit3 className="w-5 h-5" />
+                        <Edit className="w-5 h-5" />
                       </button>
                       <button
                         onClick={() => handleDeleteAccount(account.id)}

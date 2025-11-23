@@ -1,13 +1,5 @@
 'use client';
-import { useContext } from 'react';
-import { AuthContext } from '@/contexts/AuthContext';
-
-export function useAuth() {
-  const context = useContext(AuthContext);
-
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
-
-  return context;
-}
+// Re-export the canonical, server-safe hook from the AuthContext implementation.
+// This ensures there is only one source of truth for `useAuth` and avoids
+// SSR-time throws when React context is not available during prerender.
+export { useAuth } from '@/contexts/AuthContext';

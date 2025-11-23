@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import { getIcon } from '@/components/layout/BaseSidebar';
 import { 
   Shield, 
   Users, 
@@ -14,22 +15,22 @@ import {
   Lock,
   AlertTriangle,
   Briefcase,
-  CheckCircle2,
+  CheckCircle,
   Globe
-} from 'lucide-react';
+} from '@/lib/ssr-safe-icons';
 
 export default function HRPolicyPage() {
   const sections = [
     {
       id: 'introduction',
       title: '1. Introduction',
-      icon: <FileText className="w-5 h-5" />,
+  icon: "FileText",
       content: `Welcome to the HR Policy Manual. This document outlines standardized, internationally aligned policies that ensure fairness, transparency, and compliance within the organization. It applies to all employees, departments, and management teams.`
     },
     {
       id: 'code-of-conduct',
       title: '2. Code of Conduct & Ethics',
-      icon: <Shield className="w-5 h-5" />,
+  icon: "Shield",
       content: [
         'Employees must maintain professionalism, integrity, and respect at all times.',
         'Zero tolerance for harassment, discrimination, or bullying.',
@@ -40,7 +41,7 @@ export default function HRPolicyPage() {
     {
       id: 'recruitment',
       title: '3. Recruitment & Hiring Policy',
-      icon: <Users className="w-5 h-5" />,
+  icon: "Users",
       content: [
         'All job openings must follow a standardized hiring workflow.',
         'Equal Opportunity Employment (EOE) principles apply to all candidates.',
@@ -51,7 +52,7 @@ export default function HRPolicyPage() {
     {
       id: 'onboarding',
       title: '4. Employee Onboarding & Orientation',
-      icon: <Briefcase className="w-5 h-5" />,
+  icon: "Briefcase",
       content: [
         'New hires must complete the onboarding checklist.',
         'Mandatory orientation sessions include:',
@@ -64,7 +65,7 @@ export default function HRPolicyPage() {
     {
       id: 'attendance',
       title: '5. Attendance & Working Hours',
-      icon: <Clock className="w-5 h-5" />,
+  icon: "Clock",
       content: [
         'Standard working hours: 8 hours per day / 40 hours per week (subject to regional laws).',
         'Attendance must be recorded via the official system.',
@@ -75,7 +76,7 @@ export default function HRPolicyPage() {
     {
       id: 'leave',
       title: '6. Leave Policy',
-      icon: <Heart className="w-5 h-5" />,
+  icon: "Heart",
       subsections: [
         {
           title: '6.1 Annual Leave',
@@ -104,7 +105,7 @@ export default function HRPolicyPage() {
     {
       id: 'performance',
       title: '7. Performance Management',
-      icon: <TrendingUp className="w-5 h-5" />,
+  icon: "TrendingUp",
       content: [
         'Annual performance appraisal cycle.',
         'KPI-driven evaluation.',
@@ -118,7 +119,7 @@ export default function HRPolicyPage() {
     {
       id: 'compensation',
       title: '8. Salary, Compensation & Payroll',
-      icon: <DollarSign className="w-5 h-5" />,
+  icon: "DollarSign",
       content: [
         'Transparent compensation structure.',
         'Payroll is processed monthly.',
@@ -129,7 +130,7 @@ export default function HRPolicyPage() {
     {
       id: 'learning',
       title: '9. Learning & Development (L&D)',
-      icon: <BookOpen className="w-5 h-5" />,
+  icon: "BookOpen",
       content: [
         'Mandatory compliance training for all employees.',
         'Skill-development programs.',
@@ -139,7 +140,7 @@ export default function HRPolicyPage() {
     {
       id: 'health-safety',
       title: '10. Workplace Health & Safety',
-      icon: <Award className="w-5 h-5" />,
+  icon: "Award",
       content: [
         'The company ensures a safe and hazard-free work environment.',
         'Fire drill, emergency plan, and first-aid availability.',
@@ -149,7 +150,7 @@ export default function HRPolicyPage() {
     {
       id: 'it-security',
       title: '11. IT & Data Security Policy',
-      icon: <Lock className="w-5 h-5" />,
+  icon: "Lock",
       content: [
         'Employees must use official company systems only.',
         'Strong password policy applies to all accounts.',
@@ -160,7 +161,7 @@ export default function HRPolicyPage() {
     {
       id: 'anti-harassment',
       title: '12. Anti-Harassment & Anti-Discrimination Policy',
-      icon: <AlertTriangle className="w-5 h-5" />,
+  icon: "AlertTriangle",
       content: [
         'Zero-tolerance policy.',
         'Complaints handled confidentially.',
@@ -171,7 +172,7 @@ export default function HRPolicyPage() {
     {
       id: 'disciplinary',
       title: '13. Disciplinary Policy',
-      icon: <Shield className="w-5 h-5" />,
+  icon: "Shield",
       content: [
         'Dedicated process for misconduct:',
         '  1. Warning (verbal or written)',
@@ -184,7 +185,7 @@ export default function HRPolicyPage() {
     {
       id: 'exit',
       title: '14. Exit, Resignation & Termination Policy',
-      icon: <Briefcase className="w-5 h-5" />,
+  icon: "Briefcase",
       content: [
         'Minimum notice period applies (as per contract/law).',
         'Exit interviews are mandatory.',
@@ -195,7 +196,7 @@ export default function HRPolicyPage() {
     {
       id: 'confidentiality',
       title: '15. Confidentiality & Non-Disclosure',
-      icon: <Lock className="w-5 h-5" />,
+  icon: "Lock",
       content: [
         'NDA applies to all employees.',
         'Confidential data must not be shared externally.',
@@ -205,7 +206,7 @@ export default function HRPolicyPage() {
     {
       id: 'compliance',
       title: '16. Global Compliance & Legal Standards',
-      icon: <Globe className="w-5 h-5" />,
+  icon: "Globe",
       content: [
         'This policy adheres to international HR frameworks including:',
         '  • ISO 30400 HR Standards',
@@ -216,7 +217,7 @@ export default function HRPolicyPage() {
     {
       id: 'review',
       title: '17. Policy Review',
-      icon: <CheckCircle2 className="w-5 h-5" />,
+  icon: "CheckCircle",
       content: [
         'Policies are reviewed annually by HR.',
         'Any updates will be communicated to all employees.'
@@ -276,7 +277,10 @@ export default function HRPolicyPage() {
               <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-gray-700 dark:to-gray-700 px-6 py-4 border-b border-gray-200 dark:border-gray-600">
                 <div className="flex items-center gap-3">
                   <div className="p-2 bg-blue-600 text-white rounded-lg">
-                    {section.icon}
+                    {(() => {
+                      const IconComp = getIcon(section.icon);
+                      return <IconComp className="w-5 h-5" />;
+                    })()}
                   </div>
                   <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
                     {section.title}
@@ -299,7 +303,7 @@ export default function HRPolicyPage() {
                         }`}
                       >
                         {!item.startsWith(' ') && (
-                          <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
+                          <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400 flex-shrink-0 mt-0.5" />
                         )}
                         <span className="leading-relaxed">{item}</span>
                       </li>
@@ -315,7 +319,7 @@ export default function HRPolicyPage() {
                         <ul className="space-y-2">
                           {subsection.points.map((point, pointIdx) => (
                             <li key={pointIdx} className="flex items-start gap-3 text-gray-700 dark:text-gray-300">
-                              <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
+                              <CheckCircle className="w-4 h-4 text-blue-600 dark:text-blue-400 flex-shrink-0 mt-0.5" />
                               <span className="leading-relaxed">{point}</span>
                             </li>
                           ))}
@@ -344,19 +348,19 @@ export default function HRPolicyPage() {
               </p>
               <ul className="grid grid-cols-1 md:grid-cols-2 gap-2 text-sm text-gray-600 dark:text-gray-400">
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <CheckCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   Travel & Expense Policy
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <CheckCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   Grievance Redressal Mechanism
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <CheckCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   Probation Period Rules
                 </li>
                 <li className="flex items-center gap-2">
-                  <CheckCircle2 className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                  <CheckCircle className="w-4 h-4 text-blue-600 dark:text-blue-400" />
                   Employee Benefits & Perks
                 </li>
               </ul>

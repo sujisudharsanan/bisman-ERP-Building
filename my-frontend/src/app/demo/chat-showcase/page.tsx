@@ -1,4 +1,5 @@
-import ChatApp from '@/components/chat/ChatApp';
+import dynamic from 'next/dynamic';
+const ChatApp = dynamic(() => import('@/components/chat/ChatApp'), { ssr: false });
 
 export default function ChatComparisonPage() {
   return (

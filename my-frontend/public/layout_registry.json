@@ -1,15 +1,15 @@
 {
   "meta": {
     "version": "1.0.0",
-    "exportedAt": "2025-11-16T13:37:11.008Z",
+    "exportedAt": "2025-11-23T19:51:34.932Z",
     "source": "my-frontend/src/common/config/page-registry.ts",
     "generator": "scripts/export-page-registry.js"
   },
   "statistics": {
-    "totalPages": 78,
+    "totalPages": 79,
     "totalModules": 2,
     "pagesByModule": {
-      "system": 15,
+      "system": 16,
       "hr": 1,
       "pump-management": 1,
       "finance": 31,
@@ -19,7 +19,7 @@
       "common": 2
     },
     "pagesByStatus": {
-      "active": 78,
+      "active": 79,
       "coming-soon": 0,
       "disabled": 0
     }
@@ -59,11 +59,11 @@
     },
     {
       "id": "user-management",
-      "name": "User Management",
+      "name": "Client Management",
       "path": "/system/user-management",
       "module": "system",
       "status": "active",
-      "description": "Manage users and permissions",
+      "description": "Manage ERP clients and quick-access their Admin login",
       "order": 2,
       "permissions": [
         "user-management"
@@ -134,6 +134,24 @@
       "module": "system",
       "status": "active",
       "description": "View all pages and their assigned roles, identify orphan pages",
+      "order": 5,
+      "permissions": [
+        "user-management",
+        "system-settings"
+      ],
+      "roles": [
+        "SYSTEM_ADMIN",
+        "SYSTEM ADMINISTRATOR",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "role-access-explorer",
+      "name": "Role & Access Explorer",
+      "path": "/system/role-access-explorer",
+      "module": "system",
+      "status": "active",
+      "description": "Interactive matrix and visual explorer for roles, workflows, and test scenarios",
       "order": 5,
       "permissions": [
         "user-management",

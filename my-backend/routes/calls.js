@@ -35,6 +35,12 @@ router.post('/start', authenticate, async (req, res) => {
         try {
           member = await prisma.threadMember.findUnique({ where: { threadId_userId: { threadId: thread_id, userId: req.user.id } } })
           if (!member) return res.status(403).json({ error: 'not a thread member' })
+          // Optional role gating: restrict who can START a call (initiators)
+          const roleNorm = String(member.role || '').toLowerCase()
+          const allowedInitiatorRoles = ['super_admin','enterprise_admin','admin','manager']
+          if (!allowedInitiatorRoles.includes(roleNorm)) {
+            return res.status(403).json({ error: 'role_not_allowed_to_start_call' })
+          }
         } catch (e) {
           // DB not usable in this context; fall back to in-memory behavior
           useDB = false
@@ -125,6 +131,12 @@ router.post('/:id/join', authenticate, async (req, res) => {
       try {
         member = await prisma.threadMember.findUnique({ where: { threadId_userId: { threadId: call.thread_id, userId: req.user.id } } })
         if (!member) return res.status(403).json({ error: 'not_a_thread_member' })
+        // Optional role gating for JOIN (allow all roles except maybe banned)
+        const roleNorm = String(member.role || '').toLowerCase()
+        const disallowedJoinRoles = ['banned','suspended']
+        if (disallowedJoinRoles.includes(roleNorm)) {
+          return res.status(403).json({ error: 'role_not_allowed_to_join_call' })
+        }
       } catch (e) {
         // proceed with default member
         member = { role: 'member' }

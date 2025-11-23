@@ -30,6 +30,18 @@ export default function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const debugMinimal = process.env.DEBUG_MINIMAL_LAYOUT === '1';
+
+  if (debugMinimal) {
+    // Render minimal layout to isolate provider/AppShell issues during build
+    return (
+      <html lang="en">
+        <body className={`${inter.className} bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100`}>
+          {children}
+        </body>
+      </html>
+    );
+  }
   return (
     <html lang="en">
   <body className={`${inter.className} bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 transition-colors duration-300`}>

@@ -31,6 +31,9 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
 export function useToast() {
   const ctx = useContext(ToastContext);
-  if (!ctx) throw new Error('useToast must be used within ToastProvider');
+  if (!ctx) {
+    // Return a no-op toast on server to avoid prerender exceptions.
+    return { toast: () => {} };
+  }
   return ctx;
 }

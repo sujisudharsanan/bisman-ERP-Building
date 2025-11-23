@@ -9,7 +9,6 @@
 import React, { useState } from 'react';
 import { useAuth } from '@/common/hooks/useAuth';
 import { useRouter } from 'next/navigation';
-import { Shield, AlertTriangle, Menu, X, LogOut, User as UserIcon } from 'lucide-react';
 import TopNavbar from '@/components/layout/TopNavbar';
 import Sidebar from '@/components/layout/Sidebar';
 import DarkModeToggle from '@/components/ui/DarkModeToggle';
@@ -47,7 +46,11 @@ export default function SuperAdminLayout({
   <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="max-w-md w-full mx-auto p-6">
           <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-8 text-center">
-            <AlertTriangle className="w-16 h-16 text-red-500 dark:text-red-400 mx-auto mb-4" />
+            <svg className="w-16 h-16 text-red-500 dark:text-red-400 mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 9v4" />
+              <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 17h.01" />
+            </svg>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
               Authentication Required
             </h2>

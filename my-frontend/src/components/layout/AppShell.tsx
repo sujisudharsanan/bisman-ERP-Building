@@ -2,9 +2,15 @@
 
 import React, { useEffect, useState, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
-import TopNavbar from './TopNavbar';
-import Sidebar from './Sidebar';
+import dynamic from 'next/dynamic';
 import ErrorBoundary from '@/components/ErrorBoundary';
+
+// Use dynamic imports for TopNavbar and Sidebar so we can debug SSR prerender errors
+// that may be caused by their static module evaluation. These are still client
+// components, but loading them dynamically prevents Next from evaluating their
+// modules at build-time when diagnosing the originating undefined JSX element.
+const TopNavbar = dynamic(() => import('./TopNavbar'), { ssr: false, loading: () => <div style={{ height: 'var(--navbar-height)' }} /> });
+const Sidebar = dynamic(() => import('./Sidebar'), { ssr: false, loading: () => <div /> });
 
 /**
  * Global AppShell
@@ -14,6 +20,8 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
+
+  
 
   const excludedPrefixes = useMemo(
     () => [

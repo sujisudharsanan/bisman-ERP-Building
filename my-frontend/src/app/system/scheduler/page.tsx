@@ -15,7 +15,7 @@ import {
   AlertCircle,
   CheckCircle,
   XCircle,
-} from 'lucide-react';
+} from '@/lib/ssr-safe-icons';
 
 interface SchedulerData {
   id: string;

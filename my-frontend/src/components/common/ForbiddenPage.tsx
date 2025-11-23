@@ -7,7 +7,6 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { Shield, ArrowLeft, Home } from 'lucide-react';
 
 interface ForbiddenPageProps {
   title?: string;
@@ -29,7 +28,11 @@ export function ForbiddenPage({
           <div className="text-center">
             {/* Icon */}
             <div className="mx-auto flex items-center justify-center h-20 w-20 rounded-full bg-red-100 mb-6">
-              <Shield className="h-10 w-10 text-red-600" />
+              <svg className="h-10 w-10 text-red-600" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 2l7 4v6c0 5-3.58 9-7 10-3.42-1-7-5-7-10V6l7-4z" />
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 11v4" />
+                <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 17h.01" />
+              </svg>
             </div>
 
             {/* Title */}
@@ -45,7 +48,9 @@ export function ForbiddenPage({
                   href={backHref}
                   className="w-full flex justify-center items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
                 >
-                  <Home className="h-4 w-4 mr-2" />
+                  <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+                    <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M3 9.5L12 3l9 6.5V21a1 1 0 01-1 1h-5v-7H9v7H4a1 1 0 01-1-1V9.5z" />
+                  </svg>
                   Go to Dashboard
                 </Link>
               )}
@@ -54,7 +59,9 @@ export function ForbiddenPage({
                 onClick={() => window.history.back()}
                 className="w-full flex justify-center items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
               >
-                <ArrowLeft className="h-4 w-4 mr-2" />
+                <svg className="h-4 w-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+                  <path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M15 19l-7-7 7-7" />
+                </svg>
                 Go Back
               </button>
             </div>

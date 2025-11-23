@@ -3,19 +3,37 @@
 import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import SuperAdminShell from '@/components/layouts/SuperAdminShell';
-import { 
-  Search,
-  Download,
-  Plus,
-  Filter,
-  RefreshCw,
-  FileText,
-  Calendar,
-  TrendingUp,
-  AlertCircle,
-  CheckCircle,
-  XCircle,
-} from 'lucide-react';
+
+// Load lucide-react icons on client only to avoid SSR/runtime undefined elements
+const useLucideIcons = () => {
+  const [icons, setIcons] = useState<Record<string, any>>({});
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const mod = await import('lucide-react');
+        if (!mounted) return;
+        setIcons({
+          Search: mod.Search,
+          Download: mod.Download,
+          Plus: mod.Plus,
+          Filter: mod.Filter,
+          RefreshCw: mod.RefreshCw,
+          FileText: mod.FileText,
+          Calendar: mod.Calendar,
+          TrendingUp: mod.TrendingUp,
+          AlertCircle: mod.AlertCircle,
+          CheckCircle: mod.CheckCircle,
+          XCircle: mod.XCircle,
+        });
+      } catch (e) {
+        // ignore — we'll render simple SVG fallbacks
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+  return icons;
+};
 
 interface MasterDataManagementData {
   id: string;
@@ -96,6 +114,8 @@ export default function MasterDataManagementPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [filterStatus, setFilterStatus] = useState<'all' | 'active' | 'pending' | 'inactive'>('all');
 
+  const icons = useLucideIcons();
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -162,7 +182,11 @@ export default function MasterDataManagementPage() {
                 <p className="text-sm text-gray-600 dark:text-gray-400">Total</p>
                 <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{data.length}</p>
               </div>
-              <FileText className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                {icons.FileText ? (
+                  <icons.FileText className="w-8 h-8 text-blue-600 dark:text-blue-400" />
+                ) : (
+                  <svg className="w-8 h-8 text-blue-600 dark:text-blue-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M7 7h10v10H7z"/></svg>
+                )}
             </div>
           </div>
           
@@ -174,7 +198,11 @@ export default function MasterDataManagementPage() {
                   {data.filter(item => item.status === 'active').length}
                 </p>
               </div>
-              <CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+              {icons.CheckCircle ? (
+                <icons.CheckCircle className="w-8 h-8 text-green-600 dark:text-green-400" />
+              ) : (
+                <svg className="w-8 h-8 text-green-600 dark:text-green-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+              )}
             </div>
           </div>
           
@@ -186,7 +214,11 @@ export default function MasterDataManagementPage() {
                   {data.filter(item => item.status === 'pending').length}
                 </p>
               </div>
-              <AlertCircle className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />
+              {icons.AlertCircle ? (
+                <icons.AlertCircle className="w-8 h-8 text-yellow-600 dark:text-yellow-400" />
+              ) : (
+                <svg className="w-8 h-8 text-yellow-600 dark:text-yellow-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 9v4"/><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 17h.01"/><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+              )}
             </div>
           </div>
           
@@ -198,7 +230,11 @@ export default function MasterDataManagementPage() {
                   {data.filter(item => item.status === 'inactive').length}
                 </p>
               </div>
-              <XCircle className="w-8 h-8 text-gray-600 dark:text-gray-400" />
+              {icons.XCircle ? (
+                <icons.XCircle className="w-8 h-8 text-gray-600 dark:text-gray-400" />
+              ) : (
+                <svg className="w-8 h-8 text-gray-600 dark:text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M18 6L6 18M6 6l12 12"/></svg>
+              )}
             </div>
           </div>
         </div>
@@ -208,7 +244,11 @@ export default function MasterDataManagementPage() {
           <div className="flex flex-col md:flex-row gap-4">
             <div className="flex-1">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                {icons.Search ? (
+                  <icons.Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" />
+                ) : (
+                  <svg className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" viewBox="0 0 24 24" fill="none" stroke="currentColor"><circle cx="11" cy="11" r="6" strokeWidth="2"/><path strokeWidth="2" d="M21 21l-4.35-4.35"/></svg>
+                )}
                 <input
                   type="text"
                   placeholder="Search..."
@@ -235,7 +275,11 @@ export default function MasterDataManagementPage() {
                 onClick={fetchData}
                 className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-md text-gray-700 dark:text-gray-300 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700"
               >
-                <RefreshCw className="w-5 h-5" />
+                {icons.RefreshCw ? (
+                  <icons.RefreshCw className="w-5 h-5" />
+                ) : (
+                  <svg className="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" d="M4 4v6h6"/><path strokeWidth="2" d="M20 20v-6h-6"/></svg>
+                )}
               </button>
             </div>
           </div>
@@ -250,7 +294,11 @@ export default function MasterDataManagementPage() {
             </div>
           ) : filteredData.length === 0 ? (
             <div className="p-12 text-center">
-              <FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              {icons.FileText ? (
+                <icons.FileText className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+              ) : (
+                <svg className="w-12 h-12 text-gray-400 mx-auto mb-4" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" d="M7 7h10v10H7z"/></svg>
+              )}
               <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
                 No Data Found
               </h3>
@@ -260,13 +308,17 @@ export default function MasterDataManagementPage() {
                   : 'Get started by creating your first item'}
               </p>
               {!searchTerm && filterStatus === 'all' && (
-                <button
-                  onClick={handleCreate}
-                  className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
-                >
-                  <Plus className="w-4 h-4 mr-2" />
-                  Create New
-                </button>
+                  <button
+                    onClick={handleCreate}
+                    className="inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+                  >
+                    {icons.Plus ? (
+                      <icons.Plus className="w-4 h-4 mr-2" />
+                    ) : (
+                      <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" d="M12 5v14M5 12h14"/></svg>
+                    )}
+                    Create New
+                  </button>
               )}
             </div>
           ) : (
@@ -335,7 +387,11 @@ export default function MasterDataManagementPage() {
         {/* Feature Implementation Notice */}
         <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
           <div className="flex">
-            <AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-3 flex-shrink-0 mt-0.5" />
+            {icons.AlertCircle ? (
+              <icons.AlertCircle className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-3 flex-shrink-0 mt-0.5" />
+            ) : (
+              <svg className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-3 flex-shrink-0 mt-0.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 9v4"/><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M12 17h.01"/><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+            )}
             <div>
               <h3 className="text-sm font-medium text-blue-900 dark:text-blue-100">
                 Implementation Required

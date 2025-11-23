@@ -14,6 +14,8 @@ interface DashboardLayoutProps {
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  
+
   useEffect(() => {
     console.log('🎨 DashboardLayout mounted for role:', role);
     return () => console.log('🎨 DashboardLayout unmounted');

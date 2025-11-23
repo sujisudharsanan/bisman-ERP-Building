@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { getIcon } from "@/components/layout/BaseSidebar";
 import SuperAdminLayout from '@/common/layouts/superadmin-layout';
 import { useAuth } from '@/common/hooks/useAuth';
 import {
@@ -20,7 +21,7 @@ import {
   Clock,
   AlertCircle,
   CheckCircle,
-} from 'lucide-react';
+} from '@/lib/ssr-safe-icons';
 
 export default function SystemSettingsPage() {
   const { hasAccess } = useAuth();
@@ -55,12 +56,12 @@ export default function SystemSettingsPage() {
   };
 
   const tabs = [
-    { id: 'general', label: 'General', icon: Globe },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'email', label: 'Email', icon: Mail },
-    { id: 'security', label: 'Security', icon: Lock },
-    { id: 'database', label: 'Database', icon: Database },
-    { id: 'maintenance', label: 'Maintenance', icon: Clock },
+  { id: 'general', label: 'General', icon: 'Globe' },
+  { id: 'notifications', label: 'Notifications', icon: 'Bell' },
+  { id: 'email', label: 'Email', icon: 'Mail' },
+  { id: 'security', label: 'Security', icon: 'Lock' },
+  { id: 'database', label: 'Database', icon: 'Database' },
+  { id: 'maintenance', label: 'Maintenance', icon: 'Clock' },
   ];
 
   return (
@@ -94,7 +95,10 @@ export default function SystemSettingsPage() {
                     }
                   `}
                 >
-                  <tab.icon className="w-4 h-4" />
+                  {(() => {
+                    const Icon = getIcon(tab.icon);
+                    return <Icon className="w-4 h-4" />;
+                  })()}
                   <span>{tab.label}</span>
                 </button>
               ))}

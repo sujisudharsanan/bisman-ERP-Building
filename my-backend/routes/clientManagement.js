@@ -1,9 +1,10 @@
 const { Router } = require('express');
-const { PrismaClient } = require('@prisma/client');
 const { authMiddleware } = require('../middleware/auth');
+const { getPrisma } = require('../lib/prisma');
 
 const router = Router();
-const prisma = new PrismaClient();
+// Use shared Prisma singleton; may be null if DB not available
+const prisma = getPrisma();
 
 function isPlatformAdmin(role) { return role === 'SYSTEM_ADMIN'; }
 function isTenantAdmin(role) { return role === 'ADMIN' || role === 'SYSTEM_ADMIN'; }
@@ -30,9 +31,21 @@ router.get('/clients', authMiddleware, async (req, res) => {
     const user = req.user;
     const where = {};
     if (!isPlatformAdmin(user?.role) && user?.super_admin_id) where.super_admin_id = user.super_admin_id;
+
+    if (!prisma) {
+      // Database not available (dev mode fallback) — return empty list instead of 500
+      return res.json({ success: true, count: 0, data: [] });
+    }
+
     const clients = await prisma.client.findMany({ where, orderBy: { created_at: 'desc' } });
-    res.json({ success: true, data: clients });
-  } catch (e) { res.status(500).json({ error: 'Failed to list clients', details: e.message }); }
+    res.json({ success: true, count: clients.length, data: clients });
+  } catch (e) {
+    console.error('List clients error:', e?.message || e);
+    // Graceful fallback: avoid blocking UI in dev if DB hiccups
+    const isDev = process.env.NODE_ENV !== 'production';
+    if (isDev) return res.json({ success: true, count: 0, data: [], warning: 'db_unavailable' });
+    res.status(500).json({ error: 'Failed to list clients', details: e.message });
+  }
 });
 
 router.post('/clients', authMiddleware, async (req, res) => {

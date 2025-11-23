@@ -1,4 +1,4 @@
-import { ThemeProvider } from '@/components/ThemeProvider';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import type { ReactNode } from 'react';
 
 export default function EnterpriseLayout({ children }: { children: ReactNode }) {

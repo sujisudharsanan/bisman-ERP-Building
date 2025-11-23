@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { UserPlus, Users, ArrowLeft, Loader2 } from 'lucide-react';
+import { UserPlus, Users, ArrowLeft, Loader2 } from '@/lib/ssr-safe-icons';
 import { useRouter } from 'next/navigation';
 import { CreateFullUserModal } from '@/components/user-management/CreateFullUserModal';
 import type { UserRole, Branch } from '@/types/user-management';
@@ -75,7 +75,7 @@ export default function UserCreationPage() {
     return (
       <div className="max-w-7xl mx-auto">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12">
-          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="flex flex-col items-center justify-center space-y-4">
             <Loader2 className="w-12 h-12 text-blue-600 dark:text-blue-400 animate-spin" />
             <p className="text-gray-600 dark:text-gray-400">Loading user creation form...</p>
           </div>
@@ -113,7 +113,7 @@ export default function UserCreationPage() {
     <div className="max-w-7xl mx-auto">
       {/* Header */}
       <div className="mb-6">
-        <button
+          <button
           onClick={() => router.push('/system/user-management')}
           className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 mb-4 transition-colors"
         >
@@ -123,7 +123,7 @@ export default function UserCreationPage() {
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
           <div className="flex items-center space-x-3">
-            <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
               <UserPlus className="w-6 h-6 text-blue-600 dark:text-blue-400" />
             </div>
             <div>
@@ -140,7 +140,7 @@ export default function UserCreationPage() {
 
       {/* Info Card */}
       <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4 mb-6">
-        <div className="flex items-start space-x-3">
+          <div className="flex items-start space-x-3">
           <Users className="w-5 h-5 text-blue-600 dark:text-blue-400 mt-0.5 flex-shrink-0" />
           <div>
             <h3 className="font-medium text-blue-900 dark:text-blue-300 mb-1">

@@ -1,5 +1,5 @@
 import DynamicSidebar from '@/common/components/DynamicSidebar';
-import { ThemeProvider } from '@/components/ThemeProvider';
+import { ThemeProvider } from '@/contexts/ThemeContext';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import type { SessionUser } from '@/lib/permissions';

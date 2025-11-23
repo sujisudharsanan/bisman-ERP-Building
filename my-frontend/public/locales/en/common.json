@@ -13,6 +13,47 @@
       "USER": "User",
       "HUB_INCHARGE": "Hub Incharge",
       "STORE_INCHARGE": "Store Incharge"
+    },
+    "chat": {
+      "placeholder": "Write your message...",
+      "start_call": "Start call",
+      "join_call": "Join call",
+      "end_call": "End call",
+      "attach_files": "Attach files",
+      "insert_emoji": "Insert emoji",
+      "send_message": "Send message",
+      "new_messages": "New messages",
+      "clear": "Clear",
+      "add": "Add",
+      "attachments": "Attachments",
+      "drop_files": "Drop files to attach",
+      "close_chat": "Close chat",
+      "minimize": "Minimize",
+      "fullscreen_enter": "Enter Fullscreen",
+      "fullscreen_exit": "Exit Fullscreen"
+    },
+    "status": {
+      "online": "Online",
+      "offline": "Offline"
+    },
+    "call": {
+      "start_audio": "Start Audio",
+      "start_video": "Start Video",
+      "join": "Join",
+      "end": "End",
+      "share": "Share Link",
+      "status_ringing": "Ringing",
+      "status_active": "Active",
+  "status_ended": "Ended"
+    },
+    "sidebar": {
+      "search": "Search contacts...",
+      "settings": "Settings",
+      "contacts": "Contacts"
+    },
+    "message": {
+      "you": "You",
+      "assistant": "Assistant"
     }
   }
 }

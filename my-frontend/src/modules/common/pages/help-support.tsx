@@ -22,7 +22,7 @@ import {
   Activity,
   Download,
   Trash2,
-  Edit3,
+  Edit,
 } from 'lucide-react';
 import { uploadFiles } from '@/lib/attachments';
 import { useAuth } from '@/common/hooks/useAuth';

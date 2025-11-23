@@ -1,19 +1,8 @@
 import React, { useEffect, useRef, useState } from 'react'
-
-// Lightweight i18n function (replace with your i18n lib)
-const t = (k) => ({
-  'call.start_audio': 'Start Audio',
-  'call.start_video': 'Start Video',
-  'call.join': 'Join',
-  'call.end': 'End',
-  'call.missed': 'Missed',
-  'call.share': 'Share Link',
-  'call.status.ringing': 'Ringing',
-  'call.status.active': 'Active',
-  'call.status.ended': 'Ended',
-}[k] || k)
+import { useTranslation } from 'next-i18next'
 
 export default function ChatCallControls({ apiBase = '/api', threadId, token, onError }) {
+  const { t } = useTranslation('common')
   const [call, setCall] = useState(null)
   const [joining, setJoining] = useState(false)
   const [jitsiApi, setJitsiApi] = useState(null)
@@ -86,13 +75,13 @@ export default function ChatCallControls({ apiBase = '/api', threadId, token, on
   return (
     <div className="chat-call-controls">
       <div className="header-icons" role="toolbar" aria-label="Call controls">
-        <button aria-label={t('call.start_audio')} onClick={() => startCall('audio')}>📞</button>
-        <button aria-label={t('call.start_video')} onClick={() => startCall('video')}>🎥</button>
+  <button aria-label={t('call.start_audio')} title={t('call.start_audio')} onClick={() => startCall('audio')}>📞</button>
+  <button aria-label={t('call.start_video')} title={t('call.start_video')} onClick={() => startCall('video')}>🎥</button>
       </div>
 
       {call && (
         <div className="call-banner" role="region" aria-live="polite">
-          <span className={`status status-${call.status}`}>{t(`call.status.${call.status}`)}</span>
+          <span className={`status status-${call.status}`}>{t(`call.status_${call.status}`)}</span>
           <div className="actions">
             {call.status !== 'ended' && <button onClick={joinCall} disabled={joining}>{t('call.join')}</button>}
             {call.status !== 'ended' && <button onClick={endCall}>{t('call.end')}</button>}

@@ -10,7 +10,7 @@
 
 import React from 'react';
 import BaseLayout from '@/components/layout/BaseLayout';
-import { BarChart3, Users, DollarSign, TrendingUp } from 'lucide-react';
+import { BarChart3, Users, DollarSign, TrendingUp } from '@/lib/ssr-safe-icons';
 
 export default function ExamplePage() {
   // Sample dashboard data

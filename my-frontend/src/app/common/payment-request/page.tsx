@@ -12,7 +12,7 @@ import { useRouter } from 'next/navigation';
 import SuperAdminLayout from '@/common/layouts/superadmin-layout';
 import PaymentRequestForm from '@/components/payment-approval/PaymentRequestForm';
 import { safeFetch } from '@/lib/safeFetch';
-import { DollarSign, Calendar, User, Building2, FileText, CheckCircle, AlertCircle, Clock, Send } from 'lucide-react';
+import { DollarSign, Calendar, User, Building2, FileText, CheckCircle, AlertCircle, Clock, Send } from '@/lib/ssr-safe-icons';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
 

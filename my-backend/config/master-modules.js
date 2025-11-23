@@ -105,6 +105,8 @@ const MASTER_MODULES = [
       { id: 'legal', name: 'Legal Dashboard', path: '/legal' },
       { id: 'legal-cases', name: 'Legal Case Management', path: '/compliance/legal-case-management' },
       { id: 'regulations', name: 'Regulations Tracker', path: '/compliance/regulations' },
+  // Agreements & Contracts (view-only)
+  { id: 'legal-agreements', name: 'Agreements & Contracts', path: '/compliance/agreements' },
     ],
   },
   {
@@ -120,6 +122,7 @@ const MASTER_MODULES = [
       { id: 'user-creation', name: 'User Creation', path: '/system/user-creation' },
       { id: 'roles-users', name: 'Roles & Users Report', path: '/system/roles-users-report' },
       { id: 'pages-roles', name: 'Pages & Roles Report', path: '/system/pages-roles-report' },
+  { id: 'role-access-explorer', name: 'Role & Access Explorer', path: '/system/role-access-explorer' },
       { id: 'permission-manager', name: 'Permission Manager', path: '/system/permission-manager' },
       { id: 'company-setup', name: 'Company Setup', path: '/system/company-setup' },
       { id: 'system-settings', name: 'System Settings', path: '/system/system-settings' },

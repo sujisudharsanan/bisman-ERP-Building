@@ -1,11 +1,12 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Suspense } from 'react';
+import dynamic from 'next/dynamic';
 import Image from 'next/image';
-import DynamicSidebar from '@/common/components/DynamicSidebar';
+// Load DynamicSidebar client-side only to avoid importing icons/permissions during server prerender
+const DynamicSidebar = dynamic(() => import('@/common/components/DynamicSidebar'), { ssr: false });
 import DarkModeToggle from '@/components/ui/DarkModeToggle';
 import { TopNavDbIndicator } from '@/components/user-management';
-import { LogOut, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 type SuperAdminShellProps = {
@@ -39,6 +40,7 @@ const HeaderLogo: React.FC = () => {
 export default function SuperAdminShell({ title = 'Super Admin', children }: SuperAdminShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuth();
+  const [icons, setIcons] = useState<{ RefreshCw?: any; LogOut?: any }>({});
 
   // Format role name for display
   const formatRoleName = (role: string | undefined) => {
@@ -50,6 +52,22 @@ export default function SuperAdminShell({ title = 'Super Admin', children }: Sup
   };
 
   const roleName = formatRoleName(user?.roleName || user?.role);
+
+  useEffect(() => {
+    // Load lucide icons on client only
+    let mounted = true;
+    (async () => {
+      if (typeof window === 'undefined') return;
+      try {
+        const mod = await import('lucide-react');
+        if (!mounted) return;
+        setIcons({ RefreshCw: mod.RefreshCw, LogOut: mod.LogOut });
+      } catch (e) {
+        // ignore — icons will remain undefined and fallbacks used
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   const handleLogout = async () => {
     try { await fetch('/api/logout', { method: 'POST', credentials: 'include' }); } catch {}
@@ -95,7 +113,12 @@ export default function SuperAdminShell({ title = 'Super Admin', children }: Sup
                 aria-label="Refresh"
                 title="Refresh"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
+                  {/* Guard icon rendering - lazy-load lucide icon, fallback to simple SVG if undefined */}
+                  {icons.RefreshCw ? (
+                    <icons.RefreshCw className="w-3.5 h-3.5" />
+                  ) : (
+                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M23 4v6h-6"/><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M1 20v-6h6"/></svg>
+                  )}
                 <span className="hidden sm:inline">Refresh</span>
               </button>
               <button
@@ -104,7 +127,11 @@ export default function SuperAdminShell({ title = 'Super Admin', children }: Sup
                 aria-label="Logout"
                 title="Logout"
               >
-                <LogOut className="w-3.5 h-3.5" />
+                {icons.LogOut ? (
+                  <icons.LogOut className="w-3.5 h-3.5" />
+                ) : (
+                  <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M16 17l5-5-5-5"/><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M21 12H9"/></svg>
+                )}
                 <span className="hidden sm:inline">Logout</span>
               </button>
               <DarkModeToggle />
@@ -128,7 +155,9 @@ export default function SuperAdminShell({ title = 'Super Admin', children }: Sup
         } lg:translate-x-0`}
         style={{ top: 'var(--navbar-height)' }}
       >
-        <DynamicSidebar className="h-full" />
+        <Suspense fallback={<div className="h-full" />}>
+          <DynamicSidebar className="h-full" />
+        </Suspense>
       </aside>
 
       {/* Main content */}

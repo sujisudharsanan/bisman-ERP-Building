@@ -1,7 +1,7 @@
 'use client';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useTheme } from './ThemeProvider';
+import { useTheme } from '@/contexts/ThemeContext';
 import { PERMISSIONS, can, type SessionUser } from '@/lib/permissions';
 import * as React from 'react';
 

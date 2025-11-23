@@ -3,6 +3,7 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useAuth } from "@/common/hooks/useAuth";
 import { useRouter } from 'next/navigation';
+import { getIcon } from "@/components/layout/BaseSidebar";
 import {
   Settings,
   Bell,
@@ -386,9 +387,9 @@ export default function UserSettingsPage() {
                   <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Appearance</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {[
-                      { value: "light", label: "Light", icon: Sun },
-                      { value: "dark", label: "Dark", icon: Moon },
-                      { value: "system", label: "System", icon: Monitor },
+                      { value: "light", label: "Light", icon: 'Sun' },
+                      { value: "dark", label: "Dark", icon: 'Moon' },
+                      { value: "system", label: "System", icon: 'Monitor' },
                     ].map(({ value, label, icon: Icon }) => (
                       <button
                         key={value}
@@ -399,13 +400,18 @@ export default function UserSettingsPage() {
                             : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
                         }`}
                       >
-                        <Icon
-                          className={`w-6 h-6 mb-2 ${
-                            settings.theme === value
-                              ? "text-blue-600 dark:text-blue-400"
-                              : "text-gray-600 dark:text-gray-400"
-                          }`}
-                        />
+                        {(() => {
+                          const IconComp = getIcon(Icon);
+                          return (
+                            <IconComp
+                              className={`w-6 h-6 mb-2 ${
+                                settings.theme === value
+                                  ? "text-blue-600 dark:text-blue-400"
+                                  : "text-gray-600 dark:text-gray-400"
+                              }`}
+                            />
+                          );
+                        })()}
                         <span
                           className={`text-sm font-medium ${
                             settings.theme === value

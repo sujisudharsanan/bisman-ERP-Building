@@ -3,7 +3,12 @@
 import React, { useState } from 'react';
 import SuperAdminLayout from '@/common/layouts/superadmin-layout';
 import { useAuth } from '@/common/hooks/useAuth';
-import { Search, Plus, RefreshCw } from 'lucide-react';
+import { Search, Plus, RefreshCw } from '@/lib/ssr-safe-icons';
+// SSR-safe icon: Search
+
+// SSR-safe icon: Plus
+
+// SSR-safe icon: RefreshCw
 import SystemLogViewer from '@/components/system/SystemLogViewer';
 
 export default function ServerLogs() {
@@ -66,7 +71,7 @@ export default function ServerLogs() {
         </div>
 
         {/* Search Bar */}
-        <div className="relative">
+          <div className="relative">
           <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"

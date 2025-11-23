@@ -1,5 +1,5 @@
 {
-  "seq": 2,
+  "seq": 4,
   "calls": [
     {
       "id": "1",
@@ -10,6 +10,28 @@
       "initiator_id": "1",
       "started_at": "2025-11-19T03:24:15.184Z",
       "ended_at": "2025-11-19T03:24:40.278Z",
+      "participants": []
+    },
+    {
+      "id": "2",
+      "thread_id": "spark",
+      "room_name": "erp-spark-2",
+      "call_type": "audio",
+      "status": "ringing",
+      "initiator_id": "1",
+      "started_at": "2025-11-19T05:19:24.652Z",
+      "ended_at": null,
+      "participants": []
+    },
+    {
+      "id": "3",
+      "thread_id": "spark",
+      "room_name": "erp-spark-3",
+      "call_type": "audio",
+      "status": "completed",
+      "initiator_id": "1",
+      "started_at": "2025-11-19T05:19:39.420Z",
+      "ended_at": "2025-11-19T05:20:02.463Z",
       "participants": []
     }
   ]

@@ -24,7 +24,7 @@ import {
   Lock
 } from 'lucide-react';
 
-import { LucideIcon } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import BaseLayout from '@/components/layout/BaseLayout';
 import PageDirectory from '@/components/settings/PageDirectory';
 

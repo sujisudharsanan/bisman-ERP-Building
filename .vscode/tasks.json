@@ -73,6 +73,12 @@
 			"type": "shell",
 			"command": "bash -lc 'cd \"my-backend\" && npx jest -c jest.config.cjs tests/calls.test.js --runInBand'",
 			"group": "build"
+		},
+		{
+			"label": "frontend type-check",
+			"type": "shell",
+			"command": "bash -lc 'cd \"my-frontend\" && npm run -s type-check'",
+			"group": "build"
 		}
 	]
 }

@@ -26,7 +26,7 @@ import {
   MapPin,
   Users,
   Bell
-} from 'lucide-react';
+} from '@/lib/ssr-safe-icons';
 import axios from 'axios';
 
 // Types

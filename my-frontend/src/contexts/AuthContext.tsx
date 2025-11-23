@@ -275,6 +275,19 @@ export function AuthProvider({ children }: AuthProviderProps) {
 }
 
 export function useAuth() {
+  // During server-side rendering there is no React context/provider available.
+  // Return a safe fallback to avoid throwing during prerender.
+  if (typeof window === 'undefined') {
+    return {
+      user: null,
+      loading: false,
+      login: async () => null,
+      logout: async () => {},
+      refreshUser: async () => {},
+      isAuthenticated: false,
+    } as AuthContextType;
+  }
+
   const context = useContext(AuthContext);
 
   if (!context) {

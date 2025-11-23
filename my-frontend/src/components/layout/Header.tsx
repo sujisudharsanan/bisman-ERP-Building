@@ -16,7 +16,25 @@ import React from 'react';
 import Link from 'next/link';
 import { useUser } from '@/hooks/useUser';
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar';
-import { User, Calendar } from 'lucide-react';
+
+// Inline icons to avoid importing lucide-react at module scope during SSR
+function UserIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path d="M16 21v-2a4 4 0 00-4-4H6a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <circle cx="9" cy="7" r="4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CalendarIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <rect x="3" y="4" width="18" height="18" rx="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M16 2v4M8 2v4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 interface HeaderProps {
   onMenuToggle?: () => void;
@@ -104,8 +122,8 @@ export default function Header({ onMenuToggle }: HeaderProps) {
                       alt={t('header.profile_alt')}
                     />
                   ) : (
-                    <AvatarFallback className="bg-blue-600 text-white">
-                      <User className="w-3.5 h-3.5" aria-hidden="true" />
+                      <AvatarFallback className="bg-blue-600 text-white">
+                      <UserIcon className="w-3.5 h-3.5" aria-hidden="true" />
                     </AvatarFallback>
                   );
                   })()}
@@ -130,13 +148,13 @@ export default function Header({ onMenuToggle }: HeaderProps) {
           {/* Right side - Calendar icon and menu toggle */}
           <div className="flex items-center space-x-1.5">
             {/* Calendar Icon */}
-            <Link
+              <Link
               href="/calendar"
               className="p-1.5 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label="Go to calendar"
               title="Calendar"
             >
-              <Calendar className="w-4 h-4" />
+              <CalendarIcon className="w-4 h-4" />
             </Link>
 
             {onMenuToggle && (

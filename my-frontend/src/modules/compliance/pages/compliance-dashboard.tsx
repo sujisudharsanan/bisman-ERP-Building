@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { getIcon } from "@/components/layout/BaseSidebar";
 import SuperAdminLayout from '@/common/layouts/superadmin-layout';
 import { useAuth } from '@/common/hooks/useAuth';
 import {
@@ -42,10 +43,10 @@ export default function ComplianceDashboardPage() {
   }
 
   const complianceMetrics = [
-    { label: 'Overall Compliance', value: '94.5%', status: 'good', icon: Shield },
-    { label: 'Active Policies', value: '42', status: 'info', icon: FileText },
-    { label: 'Open Issues', value: '8', status: 'warning', icon: AlertTriangle },
-    { label: 'Resolved This Month', value: '23', status: 'success', icon: CheckCircle },
+  { label: 'Overall Compliance', value: '94.5%', status: 'good', icon: 'Shield' },
+  { label: 'Active Policies', value: '42', status: 'info', icon: 'FileText' },
+  { label: 'Open Issues', value: '8', status: 'warning', icon: 'AlertTriangle' },
+  { label: 'Resolved This Month', value: '23', status: 'success', icon: 'CheckCircle' },
   ];
 
   const recentAudits = [
@@ -123,7 +124,10 @@ export default function ComplianceDashboardPage() {
                     {metric.value}
                   </p>
                 </div>
-                <metric.icon className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+                {(() => {
+                  const Icon = getIcon(metric.icon);
+                  return <Icon className="w-10 h-10 text-blue-600 dark:text-blue-400" />;
+                })()}
               </div>
             </div>
           ))}

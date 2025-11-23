@@ -6,6 +6,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { getIcon } from "@/components/layout/BaseSidebar";
 import SuperAdminLayout from '@/common/layouts/superadmin-layout';
 import { useAuth } from '@/common/hooks/useAuth';
 import {
@@ -48,7 +49,7 @@ export default function KPIDashboardPage() {
       target: '95%',
       trend: '+2.3%',
       status: 'good',
-      icon: Package,
+  icon: 'Package',
     },
     {
       label: 'On-Time Delivery',
@@ -56,7 +57,7 @@ export default function KPIDashboardPage() {
       target: '90%',
       trend: '+1.8%',
       status: 'excellent',
-      icon: Truck,
+  icon: 'Truck',
     },
     {
       label: 'Customer Satisfaction',
@@ -64,7 +65,7 @@ export default function KPIDashboardPage() {
       target: '4.5',
       trend: '+0.2',
       status: 'excellent',
-      icon: Users,
+  icon: 'Users',
     },
     {
       label: 'Revenue per Order',
@@ -72,7 +73,7 @@ export default function KPIDashboardPage() {
       target: '₹8,000',
       trend: '+5.3%',
       status: 'excellent',
-      icon: DollarSign,
+  icon: 'DollarSign',
     },
     {
       label: 'Avg. Processing Time',
@@ -80,7 +81,7 @@ export default function KPIDashboardPage() {
       target: '3 hrs',
       trend: '-0.3 hrs',
       status: 'excellent',
-      icon: Clock,
+  icon: 'Clock',
     },
     {
       label: 'Operational Efficiency',
@@ -88,7 +89,7 @@ export default function KPIDashboardPage() {
       target: '85%',
       trend: '+3.2%',
       status: 'excellent',
-      icon: Activity,
+  icon: 'Activity',
     },
   ];
 
@@ -143,7 +144,10 @@ export default function KPIDashboardPage() {
               <div className="flex items-start justify-between mb-4">
                 <div className="flex items-center space-x-3">
                   <div className="p-2 bg-white dark:bg-gray-800 rounded-lg">
-                    <kpi.icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+                    {(() => {
+                      const Icon = getIcon(kpi.icon);
+                      return <Icon className="w-6 h-6 text-blue-600 dark:text-blue-400" />;
+                    })()}
                   </div>
                   <div>
                     <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300">

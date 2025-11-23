@@ -3,6 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { MoreVertical, Send, Smile, Maximize2, Minimize2, Settings, Trash2, Download, Paperclip, X } from 'lucide-react';
 import ChatMessage from './ChatMessage';
 import EmojiPicker, { EmojiClickData } from 'emoji-picker-react';
+import { useTranslation } from 'next-i18next';
 
 interface Message {
   id: number;
@@ -24,7 +25,6 @@ interface ChatWindowProps {
   messages: Message[];
   onSendMessage?: (message: string) => Promise<void>;
   isLoading?: boolean;
-  // Fullscreen controls and extra actions
   isFullScreen?: boolean;
   onToggleFullScreen?: () => void;
   onClearChat?: () => void;
@@ -32,12 +32,12 @@ interface ChatWindowProps {
   onOpenSettings?: () => void;
   onMinimize?: () => void;
   onClose?: () => void;
-  // Optional: receive selected or dropped files for upload
   onFilesSelected?: (files: File[]) => Promise<void> | void;
-  // NEW: optional call controls
   onStartCall?: () => void;
 }
-export default function ChatWindow({ contact, messages, onSendMessage, isLoading, isFullScreen, onToggleFullScreen, onClearChat, onExportChat, onOpenSettings, onMinimize, onClose, onFilesSelected, onStartCall }: ChatWindowProps) {
+export default function ChatWindow(props: ChatWindowProps) {
+  const { t } = useTranslation('common');
+  const { contact, messages, onSendMessage, isLoading, isFullScreen, onToggleFullScreen, onClearChat, onExportChat, onOpenSettings, onMinimize, onClose, onFilesSelected, onStartCall } = props;
   const [inputMessage, setInputMessage] = useState('');
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
@@ -48,33 +48,37 @@ export default function ChatWindow({ contact, messages, onSendMessage, isLoading
   const emojiButtonRef = useRef<HTMLButtonElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
+  // Scroll behavior: auto-scroll only if near bottom
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isUserScrolledUp, setIsUserScrolledUp] = useState(false);
+  const [unseenCount, setUnseenCount] = useState(0);
   useEffect(() => {
-    scrollToBottom();
-  }, [messages]);
-
-  // Click outside handler to close emoji picker
+    const el = containerRef.current;
+    if (!el) return;
+    const onScroll = () => {
+      const threshold = 80; // px from bottom
+      const atBottom = el.scrollHeight - el.scrollTop - el.clientHeight < threshold;
+      setIsUserScrolledUp(!atBottom);
+    };
+    el.addEventListener('scroll', onScroll);
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
   useEffect(() => {
-    const handleClickOutside = (event: MouseEvent) => {
-      if (
-        showEmojiPicker &&
-        emojiPickerRef.current &&
-        !emojiPickerRef.current.contains(event.target as Node) &&
-        emojiButtonRef.current &&
-        !emojiButtonRef.current.contains(event.target as Node)
-      ) {
-        setShowEmojiPicker(false);
-      }
-    };
+    if (!isUserScrolledUp) {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+      setUnseenCount(0);
+    } else {
+      // Increment unseen when scrolled up
+      if (messages.length > 0) setUnseenCount(c => c + 1);
+    }
+  }, [messages, isUserScrolledUp]);
 
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [showEmojiPicker]);
+  // a11y: close emoji picker with Esc
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setShowEmojiPicker(false); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const handleSend = async () => {
     if (inputMessage.trim() && onSendMessage) {
@@ -83,12 +87,6 @@ export default function ChatWindow({ contact, messages, onSendMessage, isLoading
     }
   };
 
-  const handleKeyPress = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      handleSend();
-    }
-  };
 
   const handleEmojiClick = (emojiData: EmojiClickData) => {
     const input = inputRef.current;
@@ -98,10 +96,7 @@ export default function ChatWindow({ contact, messages, onSendMessage, isLoading
       const textBefore = inputMessage.substring(0, start);
       const textAfter = inputMessage.substring(end);
       const newText = textBefore + emojiData.emoji + textAfter;
-      
       setInputMessage(newText);
-      
-      // Set cursor position after emoji
       setTimeout(() => {
         const newCursorPos = start + emojiData.emoji.length;
         input.setSelectionRange(newCursorPos, newCursorPos);
@@ -110,9 +105,6 @@ export default function ChatWindow({ contact, messages, onSendMessage, isLoading
     }
   };
 
-  const toggleEmojiPicker = () => {
-    setShowEmojiPicker(!showEmojiPicker);
-  };
 
   // Drag and drop handlers
   useEffect(() => {
@@ -171,41 +163,43 @@ export default function ChatWindow({ contact, messages, onSendMessage, isLoading
 
   if (!contact) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-[#071018]">
+      <div className="flex-1 flex items-center justify-center bg-gray-50 dark:bg-[#071018]" role="region" aria-label="Chat window">
         <p className="text-gray-400 dark:text-gray-400 text-sm">Select a contact to start chatting</p>
       </div>
     );
   }
 
   return (
-    <div className="flex-1 flex flex-col bg-gray-50 dark:bg-[#071018] min-w-0 overflow-hidden relative">
+    <div className="flex-1 flex flex-col bg-gray-50 dark:bg-[#071018] min-w-0 overflow-hidden relative" role="region" aria-label={`Conversation with ${contact.name}`}>
       {/* Header */}
       <div className="bg-white dark:bg-[#071018] border-b border-gray-200 dark:border-gray-700 px-3 py-2.5 flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-2">
-          <img
-            src={contact.avatar}
-            alt={contact.name}
-            className="w-8 h-8 rounded-full object-cover"
-            onError={(e) => {
-              const target = e.currentTarget;
-              target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random`;
-            }}
-          />
+          <div className="relative">
+            <img
+              src={contact.avatar}
+              alt={contact.name}
+              className="w-8 h-8 rounded-full object-cover"
+              onError={(e) => {
+                const target = e.currentTarget;
+                target.src = `https://ui-avatars.com/api/?name=${encodeURIComponent(contact.name)}&background=random`;
+              }}
+            />
+            {contact.online && <span className="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-500 rounded-full border border-white" aria-label="Online" />}
+          </div>
           <div>
             <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">{contact.name}</h3>
-            <p className="text-[10px] text-green-500">{contact.online ? 'Online' : 'Offline'}</p>
+            <p className="text-[10px] text-green-500" aria-live="polite">{contact.online ? t('status.online') : t('status.offline')}</p>
           </div>
         </div>
         <div className="flex items-center gap-1.5">
-          {/* NEW: Start Call button (hidden in fullscreen for now) */}
           {!isFullScreen && onStartCall && (
             <button
               onClick={onStartCall}
-              title="Start call"
-              className="px-2 py-1 text-xs bg-blue-600 text-white rounded-md"
-              aria-label="Start voice or video call"
+              title={t('chat.start_call')}
+              aria-label={t('chat.start_call')}
+              className="px-2 py-1 text-xs bg-blue-600 text-white rounded-md focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-blue-400"
             >
-              Call
+              {t('chat.start_call')}
             </button>
           )}
           {isFullScreen && (
@@ -271,21 +265,15 @@ export default function ChatWindow({ contact, messages, onSendMessage, isLoading
       </div>
 
       {/* Messages Area */}
-  <div className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
+      <div ref={containerRef} className="flex-1 overflow-y-auto p-3 space-y-3 scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent" role="list" aria-label="Message list">
         {messages.map(message => (
           <ChatMessage key={message.id} message={message} avatar={contact.avatar} />
         ))}
-        
-        {/* Loading indicator */}
         {isLoading && (
-          <div className="flex items-start gap-2">
-            <img
-              src={contact.avatar}
-              alt={contact.name}
-              className="w-6 h-6 rounded-full object-cover flex-shrink-0"
-            />
+          <div className="flex items-start gap-2" role="status" aria-live="polite">
+            <img src={contact.avatar} alt="" className="w-6 h-6 rounded-full object-cover flex-shrink-0" />
             <div className="bg-white dark:bg-[#0b1220] px-3 py-2 rounded-2xl shadow-sm">
-              <div className="flex gap-1">
+              <div className="flex gap-1" aria-hidden>
                 <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
                 <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
                 <div className="w-2 h-2 bg-gray-400 dark:bg-gray-500 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
@@ -293,12 +281,20 @@ export default function ChatWindow({ contact, messages, onSendMessage, isLoading
             </div>
           </div>
         )}
-        
         <div ref={messagesEndRef} />
       </div>
+      {unseenCount > 0 && isUserScrolledUp && (
+        <button
+          onClick={() => { messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' }); setUnseenCount(0); setIsUserScrolledUp(false); }}
+          className="absolute bottom-20 left-1/2 -translate-x-1/2 bg-blue-600 text-white text-xs px-3 py-1 rounded-full shadow focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-blue-400"
+          aria-label={t('chat.new_messages')}
+        >
+          {t('chat.new_messages')} • {unseenCount}
+        </button>
+      )}
 
       {/* Input Area pinned at bottom */}
-  <div className="bg-white dark:bg-[#071018] border-t border-gray-200 dark:border-gray-700 p-2.5 relative">
+      <div className="bg-white dark:bg-[#071018] border-t border-gray-200 dark:border-gray-700 p-2.5 relative">
         {/* Drag overlay */}
         {isDragging && pendingFiles.length === 0 && (
           <div className="absolute inset-0 z-40 bg-slate-900/40 flex items-center justify-center pointer-events-none">
@@ -362,32 +358,36 @@ export default function ChatWindow({ contact, messages, onSendMessage, isLoading
           />
           <button
             onClick={() => fileInputRef.current?.click()}
-            className="p-1.5 hover:bg-gray-100 dark:hover:bg-[#0b1220] rounded-full transition-colors flex-shrink-0"
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-[#0b1220] rounded-full transition-colors flex-shrink-0 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-blue-400"
             title="Attach files"
+            aria-label="Attach files"
           >
             <Paperclip className="w-4 h-4 text-gray-500 dark:text-gray-300" />
           </button>
           <button 
             ref={emojiButtonRef}
-            onClick={toggleEmojiPicker}
-            className="p-1.5 hover:bg-gray-100 dark:hover:bg-[#0b1220] rounded-full transition-colors flex-shrink-0"
+            onClick={() => setShowEmojiPicker(s=>!s)}
+            className="p-1.5 hover:bg-gray-100 dark:hover:bg-[#0b1220] rounded-full transition-colors flex-shrink-0 focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-blue-400"
+            aria-label="Insert emoji"
           >
             <Smile className="w-4 h-4 text-gray-500" />
           </button>
           <input
             ref={inputRef}
             type="text"
-            placeholder="Write your message…"
+            placeholder={t('chat.placeholder')}
             value={inputMessage}
             onChange={(e) => setInputMessage(e.target.value)}
-            onKeyPress={handleKeyPress}
+            onKeyPress={(e)=>{ if(e.key==='Enter'&&!e.shiftKey){ e.preventDefault(); handleSend(); } }}
             disabled={isLoading}
             className="flex-1 px-3 py-1.5 bg-gray-100 dark:bg-[#071018] rounded-full text-sm text-gray-900 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 disabled:opacity-50 disabled:cursor-not-allowed"
+            aria-label="Message input"
           />
           <button
             onClick={handleSend}
             disabled={isLoading || !inputMessage.trim()}
-            className="p-2 bg-blue-500 hover:bg-blue-600 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed"
+            className="p-2 bg-blue-500 hover:bg-blue-600 rounded-full transition-colors flex-shrink-0 disabled:opacity-50 disabled:cursor-not-allowed focus:outline focus:outline-2 focus:outline-offset-2 focus:outline-blue-400"
+            aria-label="Send message"
           >
             <Send className="w-4 h-4 text-white" />
           </button>

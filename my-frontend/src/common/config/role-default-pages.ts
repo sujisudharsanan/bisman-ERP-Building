@@ -296,6 +296,7 @@ export const ROLE_DEFAULT_PAGES: RoleDefaultPages[] = [
     defaultPages: [
       'dashboard',
       'compliance-officer',
+  'legal-agreements',
       'compliance/compliance-dashboard',
       'compliance/regulatory-filings',
       'compliance/audit-management',
@@ -308,6 +309,7 @@ export const ROLE_DEFAULT_PAGES: RoleDefaultPages[] = [
     defaultPages: [
       'dashboard',
       'compliance-officer',
+  'legal-agreements',
       'compliance/compliance-dashboard',
       'compliance/regulatory-filings',
       'compliance/audit-management',
@@ -321,6 +323,7 @@ export const ROLE_DEFAULT_PAGES: RoleDefaultPages[] = [
     defaultPages: [
       'dashboard',
       'legal',
+  'legal-agreements',
       'compliance/legal-case-management',
       'compliance/contract-management',
       'compliance/document-management',
@@ -332,6 +335,7 @@ export const ROLE_DEFAULT_PAGES: RoleDefaultPages[] = [
     defaultPages: [
       'dashboard',
       'legal',
+  'legal-agreements',
       'compliance/legal-case-management',
       'compliance/contract-management',
       'compliance/compliance-dashboard',

@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import SuperAdminLayout from '@/common/layouts/superadmin-layout';
 import { useAuth } from '@/common/hooks/useAuth';
-import { Search, Plus, RefreshCw } from 'lucide-react';
+import { Search, Plus, RefreshCw } from '@/lib/ssr-safe-icons';
 import AiHealthCard from '@/components/ai/AiHealthCard';
 
 export default function CompanyDashboard() {

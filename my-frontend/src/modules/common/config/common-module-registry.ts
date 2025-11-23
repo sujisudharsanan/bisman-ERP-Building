@@ -15,8 +15,8 @@ import {
   MessageSquare,
   DollarSign,
   Calendar,
-  type LucideIcon 
-} from 'lucide-react';
+} from '@/lib/ssr-safe-icons';
+import type { LucideIcon } from 'lucide-react';
 
 export interface CommonPageMetadata {
   id: string;

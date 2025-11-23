@@ -3,16 +3,78 @@
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import { 
-  DollarSign, 
-  TrendingUp, 
-  TrendingDown, 
-  CreditCard, 
-  Receipt, 
-  Calculator,
-  BarChart3,
-  AlertCircle
-} from 'lucide-react';
+// Inline SVG icon components to avoid importing lucide-react at module scope
+function DollarSignIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path d="M12 1v22" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M17 5H9.5a3.5 3.5 0 000 7H14a3.5 3.5 0 010 7H6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TrendingUpIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path d="M3 17l6-6 4 4 8-8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TrendingDownIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path d="M21 7l-6 6-4-4-8 8" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CreditCardIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <rect x="2" y="5" width="20" height="14" rx="2" strokeWidth="2" />
+      <path d="M2 10h20" strokeWidth="2" />
+    </svg>
+  );
+}
+
+function ReceiptIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path d="M21 8V6a2 2 0 00-2-2H5a2 2 0 00-2 2v14l3-2 3 2 3-2 3 2 3-2V8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function CalculatorIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <rect x="3" y="2" width="18" height="20" rx="2" strokeWidth="2" />
+      <path d="M7 7h10" strokeWidth="2" />
+      <path d="M7 12h2M11 12h2M15 12h2M7 16h2M11 16h2M15 16h2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function BarChartIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path d="M12 20v-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M18 20v-10" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M6 20v-4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function AlertCircleIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 9v4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 17h.01" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
 
 export default function FinancePage() {
   const { user, loading } = useAuth();
@@ -72,7 +134,7 @@ export default function FinancePage() {
       value: '₹2,45,890',
       change: '+12.5%',
       trend: 'up',
-      icon: DollarSign,
+      icon: DollarSignIcon,
       color: 'text-green-600'
     },
     {
@@ -80,7 +142,7 @@ export default function FinancePage() {
       value: '₹1,89,320',
       change: '+8.2%',
       trend: 'up',
-      icon: CreditCard,
+      icon: CreditCardIcon,
       color: 'text-red-600'
     },
     {
@@ -88,7 +150,7 @@ export default function FinancePage() {
       value: '₹56,570',
       change: '+18.3%',
       trend: 'up',
-      icon: TrendingUp,
+      icon: TrendingUpIcon,
       color: 'text-blue-600'
     },
     {
@@ -96,7 +158,7 @@ export default function FinancePage() {
       value: '₹34,200',
       change: '-5.1%',
       trend: 'down',
-      icon: Receipt,
+      icon: ReceiptIcon,
       color: 'text-orange-600'
     }
   ];
@@ -124,9 +186,9 @@ export default function FinancePage() {
                     <p className="text-2xl font-bold text-gray-900 mt-2">{stat.value}</p>
                     <div className="flex items-center mt-2">
                       {stat.trend === 'up' ? (
-                        <TrendingUp className="h-4 w-4 text-green-600" />
+                        <TrendingUpIcon className="h-4 w-4 text-green-600" />
                       ) : (
-                        <TrendingDown className="h-4 w-4 text-red-600" />
+                        <TrendingDownIcon className="h-4 w-4 text-red-600" />
                       )}
                       <span className={`ml-1 text-sm font-medium ${
                         stat.trend === 'up' ? 'text-green-600' : 'text-red-600'
@@ -149,7 +211,7 @@ export default function FinancePage() {
           {/* Financial Reports */}
           <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <BarChart3 className="h-5 w-5 mr-2 text-blue-600" />
+              <BarChartIcon className="h-5 w-5 mr-2 text-blue-600" />
               Financial Reports
             </h3>
             <div className="space-y-3">
@@ -177,7 +239,7 @@ export default function FinancePage() {
           {/* Quick Actions */}
           <div className="bg-white rounded-lg shadow-sm p-6 border border-gray-200">
             <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center">
-              <Calculator className="h-5 w-5 mr-2 text-green-600" />
+              <CalculatorIcon className="h-5 w-5 mr-2 text-green-600" />
               Quick Actions
             </h3>
             <div className="space-y-3">
@@ -205,8 +267,8 @@ export default function FinancePage() {
 
         {/* Under Development Notice */}
         <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
-          <div className="flex items-center">
-            <AlertCircle className="h-6 w-6 text-yellow-600 mr-3" />
+            <div className="flex items-center">
+            <AlertCircleIcon className="h-6 w-6 text-yellow-600 mr-3" />
             <div>
               <h3 className="text-lg font-semibold text-yellow-800">
                 Feature Under Development

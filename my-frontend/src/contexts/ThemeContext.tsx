@@ -67,7 +67,14 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
 export function useTheme() {
   const context = useContext(ThemeContext);
   if (!context) {
-    throw new Error('useTheme must be used within a ThemeProvider');
+    // Return a safe default so server-side prerender doesn't throw when
+    // ThemeProvider is temporarily not present (e.g. during build isolation).
+    return {
+      theme: 'light' as Theme,
+      toggleTheme: () => {},
+      toggle: () => {},
+      setTheme: () => {},
+    } as ThemeContextType;
   }
   return context;
 }

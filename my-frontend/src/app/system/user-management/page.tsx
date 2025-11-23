@@ -1,9 +1,54 @@
-'use client';
+"use client";
 
 import React, { useEffect, useState } from 'react';
 import SuperAdminShell from '@/components/layouts/SuperAdminShell';
 import API_BASE from '@/config/api';
-import { Search, RefreshCw, Plus, Edit, XCircle } from 'lucide-react';
+
+// Inline icons (module-local) to avoid lucide-react SSR import
+function Icon(props: React.SVGProps<SVGSVGElement> & { children?: any }) {
+  return (
+    <svg {...props} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" xmlns="http://www.w3.org/2000/svg">
+      {props.children}
+    </svg>
+  );
+}
+
+const SearchIcon = (p: React.SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <circle cx="11" cy="11" r="7" />
+    <line x1="21" y1="21" x2="16.65" y2="16.65" />
+  </Icon>
+);
+
+const RefreshIcon = (p: React.SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <polyline points="23 4 23 10 17 10" />
+    <polyline points="1 20 1 14 7 14" />
+    <path d="M3.51 9a9 9 0 0 1 14.13-3.36L23 10" />
+    <path d="M20.49 15a9 9 0 0 1-14.13 3.36L1 14" />
+  </Icon>
+);
+
+const PlusIcon = (p: React.SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <line x1="12" y1="5" x2="12" y2="19" />
+    <line x1="5" y1="12" x2="19" y2="12" />
+  </Icon>
+);
+
+const EditIcon = (p: React.SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <path d="M11 4h-1a2 2 0 0 0-2 2v1" />
+    <path d="M21 11l-8 8-4 1 1-4 8-8" />
+  </Icon>
+);
+
+const XIcon = (p: React.SVGProps<SVGSVGElement>) => (
+  <Icon {...p}>
+    <line x1="18" y1="6" x2="6" y2="18" />
+    <line x1="6" y1="6" x2="18" y2="18" />
+  </Icon>
+);
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
 
@@ -312,10 +357,10 @@ export default function ClientManagementPage() {
           </div>
           <div className="flex gap-2">
             <button onClick={fetchClients} className="inline-flex items-center px-3 py-2 border rounded-md text-sm">
-              <RefreshCw className="w-4 h-4 mr-2" /> Refresh
+              <RefreshIcon className="w-4 h-4 mr-2" /> Refresh
             </button>
             <Link href="/clients/create" className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md text-sm">
-              <Plus className="w-4 h-4 mr-2" /> Create New Client
+              <PlusIcon className="w-4 h-4 mr-2" /> Create New Client
             </Link>
           </div>
         </div>
@@ -326,8 +371,8 @@ export default function ClientManagementPage() {
             <div className="relative bg-white w-[95vw] max-w-2xl md:max-w-3xl lg:max-w-4xl rounded-lg shadow-lg flex flex-col max-h-[90vh]">
               <div className="flex items-center justify-between px-4 sm:px-6 py-3 border-b sticky top-0 bg-white z-10 rounded-t-lg">
                 <h2 className="text-lg sm:text-xl font-semibold">Edit Client</h2>
-                <button onClick={() => setIsEditOpen(false)} className="p-2 rounded hover:bg-gray-100">
-                  <XCircle className="w-5 h-5" />
+                <button onClick={() => setIsEditOpen(false)} className="p-2 rounded hover:bg.gray-100">
+                  <XIcon className="w-5 h-5" />
                 </button>
               </div>
               <div className="px-4 sm:px-6 py-4 overflow-y-auto">
@@ -414,7 +459,7 @@ export default function ClientManagementPage() {
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
                 />
-                <Search className="w-4 h-4 absolute left-3 top-2.5 text-gray-400 dark:text-gray-400" />
+                <SearchIcon className="w-4 h-4 absolute left-3 top-2.5 text-gray-400 dark:text-gray-400" />
               </div>
               <button onClick={fetchClients} className="inline-flex items-center px-3 py-2 border rounded-md text-sm">
                 Refresh
@@ -438,8 +483,8 @@ export default function ClientManagementPage() {
                   </div>
                   <div className="flex items-center gap-2">
   <span className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-[#071018] text-gray-800 dark:text-gray-200">{(item as any)?.settings?.enterprise?.status || item.status || 'Active'}</span>
-                    <button onClick={() => openEdit(item)} className="inline-flex items-center px-2 py-1 border rounded-md text-xs">
-                      <Edit className="w-3 h-3 mr-1" /> Edit
+                      <button onClick={() => openEdit(item)} className="inline-flex items-center px-2 py-1 border rounded-md text-xs">
+                      <EditIcon className="w-3 h-3 mr-1" /> Edit
                     </button>
                   </div>
                 </div>

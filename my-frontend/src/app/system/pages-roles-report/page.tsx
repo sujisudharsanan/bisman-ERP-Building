@@ -3,10 +3,120 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import SuperAdminShell from '@/components/layouts/SuperAdminShell';
-import { 
-  FileText, Download, Search, Filter, AlertTriangle, 
-  CheckCircle, Users, Package, TrendingUp, Eye, EyeOff, ExternalLink
-} from 'lucide-react';
+
+// Inline SVG icon components to avoid importing lucide-react during SSR
+function FileTextIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path strokeWidth="2" d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" />
+      <path strokeWidth="2" d="M14 2v6h6" />
+      <path strokeWidth="2" d="M8 13h8" />
+      <path strokeWidth="2" d="M8 17h8" />
+    </svg>
+  );
+}
+
+function DownloadIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path strokeWidth="2" d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4" />
+      <path strokeWidth="2" d="M7 10l5 5 5-5" />
+      <path strokeWidth="2" d="M12 15V3" />
+    </svg>
+  );
+}
+
+function SearchIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path strokeWidth="2" d="M21 21l-4.35-4.35" />
+      <circle cx="11" cy="11" r="6" strokeWidth="2" />
+    </svg>
+  );
+}
+
+function FilterIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path strokeWidth="2" d="M22 3H2l8 9v5l4 2v-7l8-9z" />
+    </svg>
+  );
+}
+
+function AlertTriangleIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path strokeWidth="2" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+      <path strokeWidth="2" d="M12 9v4" />
+      <path strokeWidth="2" d="M12 17h.01" />
+    </svg>
+  );
+}
+
+function CheckCircleIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path strokeWidth="2" d="M9 12l2 2 4-4" />
+      <circle cx="12" cy="12" r="9" strokeWidth="2" />
+    </svg>
+  );
+}
+
+function UsersIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path strokeWidth="2" d="M17 21v-2a4 4 0 00-4-4H7a4 4 0 00-4 4v2" />
+      <circle cx="9" cy="7" r="4" strokeWidth="2" />
+      <path strokeWidth="2" d="M23 21v-2a4 4 0 00-3-3.87" />
+      <path strokeWidth="2" d="M16 3.13a4 4 0 010 7.75" />
+    </svg>
+  );
+}
+
+function PackageIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path strokeWidth="2" d="M21 16V8a2 2 0 00-1-1.73L12 3 4 6.27A2 2 0 003 8v8a2 2 0 001 1.73L12 21l8-4.27A2 2 0 0021 16z" />
+      <path strokeWidth="2" d="M12 3v9" />
+    </svg>
+  );
+}
+
+function TrendingUpIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path strokeWidth="2" d="M3 17l6-6 4 4 8-8" />
+    </svg>
+  );
+}
+
+function EyeIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path strokeWidth="2" d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12z" />
+      <circle cx="12" cy="12" r="3" strokeWidth="2" />
+    </svg>
+  );
+}
+
+function EyeOffIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path strokeWidth="2" d="M17.94 17.94A10 10 0 013 12" />
+      <path strokeWidth="2" d="M1 1l22 22" />
+    </svg>
+  );
+}
+
+function ExternalLinkIcon({ className = '' }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+      <path strokeWidth="2" d="M18 13v6a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2h6" />
+      <path strokeWidth="2" d="M15 3h6v6" />
+      <path strokeWidth="2" d="M10 14L21 3" />
+    </svg>
+  );
+}
 
 interface Role {
   id: number;
@@ -200,9 +310,9 @@ export default function PagesRolesReportPage() {
   if (error) {
     return (
       <SuperAdminShell title="Pages & Roles Report">
-        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
+          <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6">
           <div className="flex items-center gap-3">
-            <AlertTriangle className="w-6 h-6 text-red-600 dark:text-red-400" />
+            <AlertTriangleIcon className="w-6 h-6 text-red-600 dark:text-red-400" />
             <div>
               <h3 className="font-semibold text-red-900 dark:text-red-100">Error Loading Report</h3>
               <p className="text-red-700 dark:text-red-300">{error}</p>
@@ -226,7 +336,7 @@ export default function PagesRolesReportPage() {
                   <p className="text-sm text-gray-600 dark:text-gray-400">Total Pages</p>
                   <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{reportData.statistics.totalPages}</p>
                 </div>
-                <FileText className="w-8 h-8 text-blue-500" />
+                <FileTextIcon className="w-8 h-8 text-blue-500" />
               </div>
             </div>
             
@@ -236,7 +346,7 @@ export default function PagesRolesReportPage() {
                   <p className="text-sm text-gray-600 dark:text-gray-400">Active Pages</p>
                   <p className="text-2xl font-bold text-green-600 dark:text-green-400">{reportData.statistics.activePages}</p>
                 </div>
-                <CheckCircle className="w-8 h-8 text-green-500" />
+                <CheckCircleIcon className="w-8 h-8 text-green-500" />
               </div>
             </div>
             
@@ -246,7 +356,7 @@ export default function PagesRolesReportPage() {
                   <p className="text-sm text-gray-600 dark:text-gray-400">Orphan Pages</p>
                   <p className="text-2xl font-bold text-orange-600 dark:text-orange-400">{reportData.statistics.orphanPages}</p>
                 </div>
-                <AlertTriangle className="w-8 h-8 text-orange-500" />
+                <AlertTriangleIcon className="w-8 h-8 text-orange-500" />
               </div>
             </div>
             
@@ -256,7 +366,7 @@ export default function PagesRolesReportPage() {
                   <p className="text-sm text-gray-600 dark:text-gray-400">Modules</p>
                   <p className="text-2xl font-bold text-purple-600 dark:text-purple-400">{modules.length}</p>
                 </div>
-                <Package className="w-8 h-8 text-purple-500" />
+                <PackageIcon className="w-8 h-8 text-purple-500" />
               </div>
             </div>
           </div>
@@ -267,7 +377,7 @@ export default function PagesRolesReportPage() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
             <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                <TrendingUp className="w-4 h-4" />
+                <TrendingUpIcon className="w-4 h-4" />
                 Most Used Pages
               </h3>
               <div className="space-y-2">
@@ -283,7 +393,7 @@ export default function PagesRolesReportPage() {
                         className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded"
                         title={`Open ${page.name}`}
                       >
-                        <ExternalLink className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                        <ExternalLinkIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                       </Link>
                     </div>
                   </div>
@@ -293,7 +403,7 @@ export default function PagesRolesReportPage() {
             
             <div className="bg-white dark:bg-gray-800 rounded-lg p-4 border border-gray-200 dark:border-gray-700">
               <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-3 flex items-center gap-2">
-                <Eye className="w-4 h-4" />
+                <EyeIcon className="w-4 h-4" />
                 Least Used Pages
               </h3>
               <div className="space-y-2">
@@ -309,7 +419,7 @@ export default function PagesRolesReportPage() {
                         className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded"
                         title={`Open ${page.name}`}
                       >
-                        <ExternalLink className="w-3 h-3 text-blue-600 dark:text-blue-400" />
+                        <ExternalLinkIcon className="w-3 h-3 text-blue-600 dark:text-blue-400" />
                       </Link>
                     </div>
                   </div>
@@ -328,7 +438,7 @@ export default function PagesRolesReportPage() {
                 Search Pages
               </label>
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
                 <input
                   type="text"
                   value={searchTerm}
@@ -455,7 +565,7 @@ export default function PagesRolesReportPage() {
                         className="p-2 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded transition-colors group"
                         title={`Open ${page.name}`}
                       >
-                        <ExternalLink className="w-4 h-4 text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300" />
+                        <ExternalLinkIcon className="w-4 h-4 text-blue-600 dark:text-blue-400 group-hover:text-blue-700 dark:group-hover:text-blue-300" />
                       </Link>
                       
                       {/* Toggle Details Button */}
@@ -465,9 +575,9 @@ export default function PagesRolesReportPage() {
                         title={expandedPages.has(page.id) ? 'Hide details' : 'Show details'}
                       >
                         {expandedPages.has(page.id) ? (
-                          <EyeOff className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                          <EyeOffIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                         ) : (
-                          <Eye className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                          <EyeIcon className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                         )}
                       </button>
                     </div>
@@ -491,7 +601,7 @@ export default function PagesRolesReportPage() {
                                 key={role.id}
                                 className="flex items-center gap-2 px-3 py-2 bg-gray-50 dark:bg-gray-700 rounded-lg"
                               >
-                                <Users className="w-4 h-4 text-gray-500 dark:text-gray-400" />
+                                <UsersIcon className="w-4 h-4 text-gray-500 dark:text-gray-400" />
                                 <span className="text-sm text-gray-900 dark:text-gray-100">
                                   {role.displayName}
                                 </span>

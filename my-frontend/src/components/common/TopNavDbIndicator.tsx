@@ -1,8 +1,26 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Database, AlertCircle, CheckCircle } from 'lucide-react';
 import type { DatabaseStatus } from '@/types/user-management';
+
+// Client-only loader for lucide-react icons to avoid SSR-time imports
+const useLucideIcons = () => {
+  const [icons, setIcons] = useState<Record<string, any>>({});
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        const mod = await import('lucide-react');
+        if (!mounted) return;
+        setIcons({ Database: mod.Database, AlertCircle: mod.AlertCircle, CheckCircle: mod.CheckCircle });
+      } catch (e) {
+        // ignore — fallbacks used
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+  return icons;
+};
 
 interface TopNavDbIndicatorProps {
   className?: string;
@@ -76,20 +94,19 @@ export function TopNavDbIndicator({ className = '' }: TopNavDbIndicatorProps) {
   }, [status.connected, retryCount]);
 
   // For theme-awareness: use panel background and theme text, render a small colored status dot
-  const getStatusColor = () => {
-    return 'bg-panel border border-theme text-theme';
-  };
+  const getStatusColor = () => 'bg-panel border border-theme text-theme';
+  const getStatusDotStyle = () => ({ background: status.connected ? '#10B981' : '#EF4444' });
 
-  const getStatusDotStyle = () => {
-    if (status.connected) return { background: '#10B981' }; // green-500
-    return { background: '#EF4444' }; // red-500
-  };
-
+  const icons = useLucideIcons();
   const getStatusIcon = () => {
     if (status.connected) {
-      return <CheckCircle className="w-3 h-3 text-theme" />;
+      return icons.CheckCircle ? <icons.CheckCircle className="w-3 h-3 text-theme" /> : (
+        <svg className="w-3 h-3 text-theme" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7"/></svg>
+      );
     }
-    return <AlertCircle className="w-3 h-3 text-theme" />;
+    return icons.AlertCircle ? <icons.AlertCircle className="w-3 h-3 text-theme" /> : (
+      <svg className="w-3 h-3 text-theme" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/></svg>
+    );
   };
 
   const getTooltipText = () => {
@@ -124,7 +141,19 @@ export function TopNavDbIndicator({ className = '' }: TopNavDbIndicatorProps) {
     >
       {/* Database indicator */}
       <div className={`flex items-center space-x-2 px-2 py-1 rounded-full text-xs font-medium ${getStatusColor()}`}>
-        <Database className="w-3 h-3 text-theme" />
+        {icons.Database ? (
+          // Use client-loaded icon when available
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore - icons is a runtime-loaded module
+          <icons.Database className="w-3 h-3 text-theme" />
+        ) : (
+          // Fallback inline SVG for server-rendered builds
+          <svg className="w-3 h-3 text-theme" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+            <ellipse cx="12" cy="5" rx="7" ry="2" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M5 5v7c0 1.1 3.13 2 7 2s7-.9 7-2V5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+            <path d="M5 12v5c0 1.1 3.13 2 7 2s7-.9 7-2v-5" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
         <span className="w-2 h-2 rounded-full" style={getStatusDotStyle()} aria-hidden />
         <span className="hidden sm:inline">DB</span>
       </div>

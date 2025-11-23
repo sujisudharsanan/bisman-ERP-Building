@@ -13,7 +13,7 @@ import {
   XCircle,
   Clock,
   Lock,
-} from 'lucide-react';
+} from '@/lib/ssr-safe-icons';
 
 interface SecurityMetric {
   category: string;

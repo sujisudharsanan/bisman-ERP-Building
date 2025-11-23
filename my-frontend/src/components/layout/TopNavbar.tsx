@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import DarkModeToggle from '../ui/DarkModeToggle';
 import LogoutButton from '../ui/LogoutButton';
-import { Calendar as CalendarIcon } from 'lucide-react';
+
 
 interface TopNavbarProps {
   showThemeToggle?: boolean;
@@ -42,6 +42,22 @@ const HeaderLogo: React.FC = () => {
 
 const TopNavbar: React.FC<TopNavbarProps> = ({ showThemeToggle = false, fixed = true }) => {
   const [currentPageName, setCurrentPageName] = useState<string>('Dashboard');
+  const [icons, setIcons] = useState<{ Calendar?: any }>({});
+
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (typeof window === 'undefined') return;
+      try {
+        const mod = await import('lucide-react');
+        if (!mounted) return;
+        setIcons({ Calendar: mod.Calendar });
+      } catch (e) {
+        // ignore and rely on inline fallback
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   // Get current page name from URL
   React.useEffect(() => {
@@ -101,7 +117,11 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ showThemeToggle = false, fixed = 
       <div className="flex items-center gap-2">
         {/* Calendar is available for every user (independent calendars) */}
         <Link href="/calendar" className="inline-flex items-center gap-1 text-xs text-gray-700 dark:text-gray-300 hover:text-blue-600 dark:hover:text-blue-400 px-2 py-1 rounded-md hover:bg-gray-100 dark:hover:bg-gray-800">
-          <CalendarIcon className="w-3.5 h-3.5" />
+          {icons.Calendar ? (
+            <icons.Calendar className="w-3.5 h-3.5" />
+          ) : (
+            <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><rect x="3" y="4" width="18" height="18" rx="2" ry="2" strokeWidth="2"/><path strokeWidth="2" d="M16 2v4M8 2v4"/></svg>
+          )}
           <span>Calendar</span>
         </Link>
         <LogoutButton position="inline" variant="danger" compact />

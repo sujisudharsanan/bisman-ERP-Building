@@ -3,7 +3,26 @@
 import React, { useState } from 'react';
 import SuperAdminLayout from '@/common/layouts/superadmin-layout';
 import { useAuth } from '@/common/hooks/useAuth';
-import { Shield, Plus, Edit3, Trash2, Search } from 'lucide-react';
+import { Shield, Plus, Edit, Trash2, Search } from '@/lib/ssr-safe-icons';
+function ShieldIcon({ className = '' }: { className?: string }) {
+  return <Shield className={className} aria-hidden />;
+}
+
+function PlusIcon({ className = '' }: { className?: string }) {
+  return <Plus className={className} aria-hidden />;
+}
+
+function Edit3Icon({ className = '' }: { className?: string }) {
+  return <Edit className={className} aria-hidden />;
+}
+
+function Trash2Icon({ className = '' }: { className?: string }) {
+  return <Trash2 className={className} aria-hidden />;
+}
+
+function SearchIcon({ className = '' }: { className?: string }) {
+  return <Search className={className} aria-hidden />;
+}
 
 export default function PermissionManager() {
   const { hasAccess } = useAuth();
@@ -34,20 +53,20 @@ export default function PermissionManager() {
     <SuperAdminLayout title="Permission Manager" description="Manage system permissions and access control">
       <div className="space-y-6">
         {/* Header */}
-        <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between">
           <div>
             <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100">Permissions</h2>
             <p className="text-gray-600 dark:text-gray-400">Define and manage access permissions</p>
           </div>
           <button className="bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 flex items-center space-x-2">
-            <Plus className="w-4 h-4" />
+            <PlusIcon className="w-4 h-4" />
             <span>Add Permission</span>
           </button>
         </div>
 
         {/* Search */}
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+          <SearchIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
           <input
             type="text"
             placeholder="Search permissions..."
@@ -72,8 +91,8 @@ export default function PermissionManager() {
               {permissions.map((permission) => (
                 <tr key={permission.id} className="hover:bg-gray-50 dark:hover:bg-gray-700">
                   <td className="px-6 py-4">
-                    <div className="flex items-center">
-                      <Shield className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
+                      <div className="flex items-center">
+                      <ShieldIcon className="w-5 h-5 text-blue-600 dark:text-blue-400 mr-2" />
                       <span className="text-sm font-medium text-gray-900 dark:text-gray-100">{permission.name}</span>
                     </div>
                   </td>
@@ -84,12 +103,12 @@ export default function PermissionManager() {
                     </span>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex items-center space-x-2">
+                      <div className="flex items-center space-x-2">
                       <button className="text-green-600 dark:text-green-400 hover:text-green-900 dark:hover:text-green-300">
-                        <Edit3 className="w-4 h-4" />
+                        <Edit className="w-4 h-4" />
                       </button>
                       <button className="text-red-600 dark:text-red-400 hover:text-red-900 dark:hover:text-red-300">
-                        <Trash2 className="w-4 h-4" />
+                        <Trash2Icon className="w-4 h-4" />
                       </button>
                     </div>
                   </td>
