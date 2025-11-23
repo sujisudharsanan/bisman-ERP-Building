@@ -100,6 +100,26 @@ app.use(compression({
 console.log('[app.js] ✅ Maximum response compression enabled (Level 9 GZIP/Brotli)');
 console.log('[app.js] 🚀 Optimized for AI chat responses - expect 80-90% size reduction');
 
+// --- Redis Cache Integration (health & metrics) ---
+try {
+  const { isEnabled, ping } = require('./cache/redisClient');
+  const { snapshot, reset } = require('./cache/metrics/redisMetrics');
+  app.get('/internal/cache-health', async (req, res) => {
+    const status = await ping();
+    res.json({ cacheEnabled: isEnabled(), ...status });
+  });
+  app.get('/internal/cache-metrics', (req, res) => {
+    res.json(snapshot());
+  });
+  app.post('/internal/cache-metrics/reset', (req, res) => {
+    reset();
+    res.json({ ok: true });
+  });
+  console.log('[app.js] ✅ Cache endpoints mounted (/internal/cache-health, /internal/cache-metrics)');
+} catch (e) {
+  console.warn('[app.js] Cache subsystem not mounted:', e.message);
+}
+
 // Legacy mail-based OTP routes (disabled by default)
 // Enable only if you explicitly set ENABLE_LEGACY_MAIL_OTP=1
 if (process.env.ENABLE_LEGACY_MAIL_OTP === '1') {
