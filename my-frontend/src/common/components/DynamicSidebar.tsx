@@ -3,7 +3,7 @@
  * Automatically generates navigation from page registry based on user permissions from database
  */
 
-'use client';
+"use client";
 
 import React, { useMemo, useEffect, useState } from 'react';
 import { hasFullAdmin } from '../../constants/roles';
@@ -16,6 +16,21 @@ import {
   PAGE_REGISTRY,
   type PageMetadata,
 } from '@/common/config/page-registry';
+
+// DEBUG: allow slicing the registry during build to isolate problematic pages.
+// Set DEBUG_REGISTRY_SLICE=1 to use the first half, =2 to use the second half.
+const REGISTRY: PageMetadata[] = (() => {
+  try {
+    const ds = process.env.DEBUG_REGISTRY_SLICE;
+    if (!ds) return PAGE_REGISTRY;
+    const half = Math.ceil(PAGE_REGISTRY.length / 2);
+    if (ds === '1') return PAGE_REGISTRY.slice(0, half);
+    if (ds === '2') return PAGE_REGISTRY.slice(half);
+    return PAGE_REGISTRY;
+  } catch (e) {
+    return PAGE_REGISTRY;
+  }
+})();
 
 interface DynamicSidebarProps {
   className?: string;
@@ -71,7 +86,7 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
             setSuperAdminModules(assignedModules);
             
             // Grant all pages from assigned modules
-            const allPageKeys = PAGE_REGISTRY
+            const allPageKeys = REGISTRY
               .filter(page => assignedModules.includes(page.module))
               .map(page => page.id);
             
@@ -136,7 +151,7 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
     perms.add('authenticated');
     
     // Match allowed pages from database with PAGE_REGISTRY
-    PAGE_REGISTRY.forEach(page => {
+  REGISTRY.forEach(page => {
       // Check if this page key is in user's allowed pages
       if (userAllowedPages.includes(page.id)) {
         // Add all permissions from this page
@@ -168,7 +183,7 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
 
     const isEnterprise = user.role === 'ENTERPRISE_ADMIN' || user.roleName === 'ENTERPRISE_ADMIN';
 
-    let pages = PAGE_REGISTRY.filter(p => p.status === 'active');
+  let pages = REGISTRY.filter(p => p.status === 'active');
 
     if (isEnterprise) {
       // Enterprise Admin: enterprise-specific pages only
@@ -236,7 +251,10 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
     if (page.status === 'coming-soon') {
       return (
         <span className="ml-auto flex items-center space-x-1 text-xs text-gray-400 dark:text-gray-500">
-          <AlertCircle className="w-3 h-3" />
+          {/* Fallback Alert icon for SSR-safe rendering */}
+          <svg className="w-3 h-3" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+            <path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
           <span>Soon</span>
         </span>
       );
@@ -262,9 +280,12 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
   const renderPageLink = (page: PageMetadata) => {
     const isActive = isActivePath(page.path);
     const isDisabled = page.status === 'disabled' || page.status === 'coming-soon';
-    const Icon = page.icon;
+  // Defensive: ensure Icon is defined. PAGE_REGISTRY stores LucideIcon references but
+  // depending on bundling some exports may be undefined at server build time.
+  // Use a runtime guard and fallback to a simple SVG (Circle) when Icon is not renderable.
+  const Icon: unknown = page.icon || Circle;
 
-    const linkClasses = `
+  const linkClasses = `
       flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors
       ${isActive
         ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
@@ -276,7 +297,28 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
 
     const content = (
       <>
-        <Icon className="w-4 h-4 flex-shrink-0" />
+  {/* Render icon safely; fallback to Circle if missing or invalid */}
+  {(() => {
+      try {
+        // lucide exports can be functions (components) or objects; ensure it's renderable
+        if (Icon && (typeof Icon === 'function' || typeof Icon === 'object')) {
+          // Some build-time bundles may wrap components; attempt to render using any-cast
+          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+          // @ts-ignore
+          return <Icon className="w-4 h-4 flex-shrink-0" />;
+        }
+        console.warn('[Sidebar] Invalid icon for page', page.id, page.name, Icon);
+      } catch (e) {
+        console.warn('[Sidebar] Error rendering icon for', page.id, e);
+      }
+
+      // Fallback: simple inline SVG circle to avoid rendering undefined element during SSR
+      return (
+        <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
+          <circle cx="12" cy="12" r="8" strokeWidth="2" />
+        </svg>
+      );
+  })()}
         <span className="flex-1 truncate">{page.name}</span>
         {renderStatusBadge(page)}
       </>
