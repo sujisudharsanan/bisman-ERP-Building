@@ -100,6 +100,27 @@ app.use(compression({
 console.log('[app.js] ✅ Maximum response compression enabled (Level 9 GZIP/Brotli)');
 console.log('[app.js] 🚀 Optimized for AI chat responses - expect 80-90% size reduction');
 
+// --- Prometheus Metrics Integration (monitoring) ---
+try {
+  const { createPrometheusMiddleware, metricsHandler } = require('./middleware/prometheus');
+  const { metricsMiddleware, connectionTracker, detailedMetrics, register } = createPrometheusMiddleware();
+  
+  // Apply connection tracking
+  app.use(connectionTracker);
+  
+  // Apply detailed metrics collection
+  app.use(detailedMetrics);
+  
+  // Expose metrics endpoint for Prometheus scraping
+  app.get('/metrics', metricsHandler);
+  
+  console.log('[app.js] ✅ Prometheus metrics enabled at /metrics');
+  console.log('[app.js] 📊 Collecting: HTTP requests, latency, connections, DB queries, auth attempts');
+} catch (e) {
+  console.warn('[app.js] Prometheus metrics not enabled:', e.message);
+  console.warn('[app.js] Install dependencies: npm install prom-client express-prom-bundle');
+}
+
 // --- Redis Cache Integration (health & metrics) ---
 try {
   const { isEnabled, ping } = require('./cache/redisClient');
