@@ -1,171 +1,271 @@
-'use client';
+"use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import {
-  Home,
-  LayoutDashboard,
-  Users,
-  Settings,
-  BarChart2,
-  FileText,
-  ShoppingCart,
-  Wallet,
-  MessageSquare,
-  Calendar,
-  CheckSquare,
-  Globe,
-  Shield,
-  Database,
-  X,
-} from 'lucide-react';
-import { roleLayoutConfig } from '../../config/roleLayoutConfig';
+	Home,
+	LayoutDashboard,
+	Users,
+	Settings,
+	BarChart2,
+	FileText,
+	ShoppingCart,
+	Wallet,
+	MessageSquare,
+	Calendar,
+	CheckSquare,
+	Globe,
+	Shield,
+	Database,
+	X,
+	Activity,
+	Key,
+	Server,
+	User,
+	UserPlus,
+	DollarSign,
+	TrendingUp,
+	BarChart3,
+	PieChart,
+	Briefcase,
+	Package,
+	Truck,
+	ClipboardCheck,
+	FileCheck,
+	Scale,
+	AlertTriangle,
+	BookOpen,
+	Archive,
+	CreditCard,
+	Building,
+	Calculator,
+	Receipt,
+	Banknote,
+	FileSpreadsheet,
+	Landmark,
+	Coins,
+	FolderOpen,
+	FileEdit,
+	Upload,
+	CheckCircle,
+	Clock,
+	Box,
+	Boxes,
+	ListChecks,
+	Tag,
+	Factory,
+	Route,
+	MapPin,
+	Clipboard,
+	FileSignature,
+	Gavel,
+	Folder,
+	UserCheck,
+	Bell,
+	HelpCircle
+} from "lucide-react";
+import { roleLayoutConfig, MenuItem } from '../../config/roleLayoutConfig';
 
-interface BaseSidebarProps {
-  user: any;
-  collapsed: boolean;
-  onCollapse: (collapsed: boolean) => void;
-  isMobile: boolean;
-}
-
-// Icon mapping
-import type { LucideProps } from 'lucide-react';
-const iconMap: Record<string, React.ComponentType<LucideProps>> = {
-  Home,
-  LayoutDashboard,
-  Users,
-  Settings,
-  BarChart2,
-  FileText,
-  ShoppingCart,
-  Wallet,
-  MessageSquare,
-  Calendar,
-  CheckSquare,
-  Globe,
-  Shield,
-  Database,
+// Map icon names to Lucide icons
+const iconMap: Record<string, React.ComponentType<any>> = {
+	Home: Home,
+	LayoutDashboard: LayoutDashboard,
+	Users: Users,
+	Database: Database,
+	Activity: Activity,
+	Settings: Settings,
+	Key: Key,
+	Server: Server,
+	User: User,
+	UserPlus: UserPlus,
+	DollarSign: DollarSign,
+	FileText: FileText,
+	TrendingUp: TrendingUp,
+	BarChart3: BarChart3,
+	BarChart2: BarChart2,
+	PieChart: PieChart,
+	Briefcase: Briefcase,
+	ShoppingCart: ShoppingCart,
+	Package: Package,
+	Truck: Truck,
+	ClipboardCheck: ClipboardCheck,
+	FileCheck: FileCheck,
+	Scale: Scale,
+	AlertTriangle: AlertTriangle,
+	BookOpen: BookOpen,
+	Archive: Archive,
+	CreditCard: CreditCard,
+	Wallet: Wallet,
+	Building: Building,
+	Calculator: Calculator,
+	Receipt: Receipt,
+	Banknote: Banknote,
+	FileSpreadsheet: FileSpreadsheet,
+	Landmark: Landmark,
+	Globe: Globe,
+	Coins: Coins,
+	FolderOpen: FolderOpen,
+	FileEdit: FileEdit,
+	Upload: Upload,
+	CheckCircle: CheckCircle,
+	Clock: Clock,
+	Box: Box,
+	Boxes: Boxes,
+	ListChecks: ListChecks,
+	Tag: Tag,
+	Factory: Factory,
+	Route: Route,
+	MapPin: MapPin,
+	Clipboard: Clipboard,
+	FileSignature: FileSignature,
+	Gavel: Gavel,
+	Folder: Folder,
+	UserCheck: UserCheck,
+	Bell: Bell,
+	HelpCircle: HelpCircle,
+	MessageSquare: MessageSquare,
+	X: X,
+	Sun: Home, // fallback
+	Moon: Home, // fallback
+	Monitor: Home, // fallback
+	XCircle: Home, // fallback
+	Mail: Home // fallback
 };
 
-interface MenuItem {
-  id: string;
-  icon: keyof typeof iconMap;
-  href: string;
-  label: string;
-  badge?: string | number;
+export const getIcon = (name: string): React.ComponentType<any> => iconMap[name] || Home;
+
+
+interface User {
+	roleName?: string;
+}
+
+interface BaseSidebarProps {
+	user: User | null;
+	collapsed: boolean;
+	onCollapse: (collapsed: boolean) => void;
+	isMobile: boolean;
 }
 
 const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, isMobile }) => {
-  const pathname = usePathname();
+	const pathname = usePathname();
+	// Memoize layout config for performance
+	const layoutConfig = useMemo(() => {
+		if (user?.roleName && roleLayoutConfig[user.roleName]) {
+			return roleLayoutConfig[user.roleName];
+		}
+		return roleLayoutConfig.DEFAULT;
+	}, [user]);
+	const menuItems: MenuItem[] = layoutConfig.menuItems || [];
 
-  // Get role-specific menu items
-  const layoutConfig = user?.roleName
-    ? roleLayoutConfig[user.roleName] || roleLayoutConfig.DEFAULT
-    : roleLayoutConfig.DEFAULT;
+	useEffect(() => {
+		if (isMobile) {
+			onCollapse(true);
+		}
+	}, [pathname, isMobile, onCollapse]);
 
-  const menuItems: MenuItem[] = layoutConfig.menuItems || [];
+	// Keyboard accessibility: close sidebar with Escape on mobile
+	useEffect(() => {
+		if (!isMobile || collapsed) return;
+		const handleKeyDown = (e: KeyboardEvent) => {
+			if (e.key === 'Escape') onCollapse(true);
+		};
+		window.addEventListener('keydown', handleKeyDown);
+		return () => window.removeEventListener('keydown', handleKeyDown);
+	}, [isMobile, collapsed, onCollapse]);
 
-  // Close sidebar on route change (mobile)
-  useEffect(() => {
-    if (isMobile) {
-      onCollapse(true);
-    }
-  }, [pathname, isMobile, onCollapse]);
-
-  return (
-    <>
-      {/* Mobile Overlay */}
-      {isMobile && !collapsed && (
-        <div
-          className="fixed inset-0 bg-black/50 z-40"
-          onClick={() => onCollapse(true)}
-          aria-hidden="true"
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={`
-          fixed md:sticky top-0 left-0 h-screen z-50
-          bg-gray-900/95 backdrop-blur-sm border-r border-gray-800
-          transition-all duration-300 ease-in-out
-          ${collapsed && !isMobile ? 'w-16' : 'w-52'}
-          ${isMobile && collapsed ? '-translate-x-full' : 'translate-x-0'}
-          flex flex-col
-        `}
-        data-component="base-sidebar"
-        aria-label="Main navigation"
-      >
-        {/* Sidebar Header */}
-        <div className="p-4 border-b border-gray-800 flex items-center justify-between">
-          {(!collapsed || isMobile) && (
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <Shield size={20} className="text-white" />
-              </div>
-              <span className="font-bold text-white">BISMAN</span>
-            </div>
-          )}
-          
-          {isMobile && (
-            <button
-              onClick={() => onCollapse(true)}
-              className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-              aria-label="Close sidebar"
-            >
-              <X size={20} className="text-white" />
-            </button>
-          )}
-        </div>
-
-        {/* Sidebar Navigation */}
-        <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-          {menuItems.map((item: MenuItem) => {
-            const Icon = iconMap[item.icon] || Home;
-            const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
-
-            return (
-              <Link
-                key={item.id}
-                href={item.href}
-                className={`
-                  flex items-center gap-3 px-3 py-3 rounded-lg
-                  transition-all duration-200
-                  ${isActive
-                    ? 'bg-indigo-500/20 border border-indigo-500/50 text-white shadow-lg shadow-indigo-500/30'
-                    : 'text-gray-400 hover:text-white hover:bg-gray-800/50'
-                  }
-                  ${collapsed && !isMobile ? 'justify-center' : ''}
-                `}
-                title={item.label}
-              >
-                <Icon size={20} className={isActive ? 'text-indigo-400' : ''} />
-                {(!collapsed || isMobile) && (
-                  <span className="text-sm font-medium">{item.label}</span>
-                )}
-                {(!collapsed || isMobile) && item.badge && (
-                  <span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full">
-                    {item.badge}
-                  </span>
-                )}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* Sidebar Footer */}
-        <div className="p-4 border-t border-gray-800">
-          {(!collapsed || isMobile) && user && (
-            <div className="text-xs text-gray-500 space-y-1">
-              <p>Role: <span className="text-gray-400">{user.roleName}</span></p>
-              <p>Version: <span className="text-gray-400">1.0.0</span></p>
-            </div>
-          )}
-        </div>
-      </aside>
-    </>
-  );
+	return (
+		<>
+			{/* Mobile Overlay */}
+			{isMobile && !collapsed && (
+				<div
+					className="fixed inset-0 bg-black/50 z-40"
+					onClick={() => onCollapse(true)}
+					aria-hidden="true"
+					tabIndex={-1}
+				/>
+			)}
+			{/* Sidebar */}
+			<aside
+				className={`
+					fixed md:sticky top-0 left-0 h-screen z-50
+					bg-gray-900/95 backdrop-blur-sm border-r border-gray-800
+					transition-all duration-300 ease-in-out
+					${collapsed && !isMobile ? 'w-16' : 'w-52'}
+					${isMobile && collapsed ? '-translate-x-full' : 'translate-x-0'}
+					flex flex-col
+				`}
+				data-component="base-sidebar"
+				aria-label="Main navigation"
+				role="navigation"
+			>
+				{/* Sidebar Header */}
+				<div className="p-4 border-b border-gray-800 flex items-center justify-between">
+					{(!collapsed || isMobile) && (
+						<div className="flex items-center gap-2">
+							<div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
+								<Shield size={20} className="text-white" />
+							</div>
+							<span className="font-bold text-white">BISMAN</span>
+						</div>
+					)}
+					{isMobile && (
+						<button
+							onClick={() => onCollapse(true)}
+							className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+							aria-label="Close sidebar"
+						>
+							<X size={20} className="text-white" />
+						</button>
+					)}
+				</div>
+				{/* Sidebar Navigation */}
+								<nav className="flex-1 overflow-y-auto p-4 space-y-1" aria-label="Sidebar menu">
+									{menuItems.map((item: MenuItem) => {
+										const IconComp = getIcon(item.icon);
+										const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
+										return (
+											<Link
+												key={item.id}
+												href={item.href}
+												className={`
+													flex items-center gap-3 px-3 py-3 rounded-lg
+													transition-all duration-200
+													${isActive
+														? 'bg-indigo-500/20 border border-indigo-500/50 text-white shadow-lg shadow-indigo-500/30'
+														: 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+													}
+													${collapsed && !isMobile ? 'justify-center' : ''}
+												`}
+												title={item.label}
+												aria-current={isActive ? 'page' : undefined}
+												tabIndex={0}
+											>
+												<IconComp size={20} className={isActive ? 'text-indigo-400' : ''} aria-hidden="true" />
+												{(!collapsed || isMobile) && (
+													<span className="text-sm font-medium">{item.label}</span>
+												)}
+												{(!collapsed || isMobile) && item.badge && (
+													<span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full" aria-label={item.badgeLabel || 'Badge'}>
+														{item.badge}
+													</span>
+												)}
+											</Link>
+										);
+									})}
+								</nav>
+				{/* Sidebar Footer */}
+								<div className="p-4 border-t border-gray-800">
+									{(!collapsed || isMobile) && user && (
+										<div className="text-xs text-gray-500 space-y-1">
+											<p>Role: <span className="text-gray-400">{user.roleName || 'Unknown'}</span></p>
+											<p>Version: <span className="text-gray-400">{process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'}</span></p>
+										</div>
+									)}
+								</div>
+			</aside>
+		</>
+	);
 };
 
 export default BaseSidebar;

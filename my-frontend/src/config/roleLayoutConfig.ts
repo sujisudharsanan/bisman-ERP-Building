@@ -11,6 +11,7 @@ export interface MenuItem {
   href: string;
   icon: string; // Icon name from lucide-react
   badge?: string | number;
+  badgeLabel?: string; // Accessibility label for badge
   requiredPermissions?: string[];
 }
 
