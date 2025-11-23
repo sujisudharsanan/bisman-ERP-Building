@@ -11,6 +11,7 @@ import UserAssignmentDialog from './components/UserAssignmentDialog';
 import { usePermissions } from './hooks/usePermissions';
 import { api } from './utils/api';
 
+export const dynamic = 'force-dynamic';
 
 // Breadcrumb Navigation Component
 function Breadcrumb({ items }: { items: Array<{ label: string; href?: string }> }) {

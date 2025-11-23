@@ -8,6 +8,8 @@ import RightPanel from '@/components/dashboard/RightPanel';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboardData } from '@/hooks/useDashboardData';
 
+export const dynamic = 'force-dynamic';
+
 const TaskManagementDashboard: React.FC = () => {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();

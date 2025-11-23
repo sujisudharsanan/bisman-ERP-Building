@@ -5,6 +5,8 @@ import SuperAdminShell from '@/components/layouts/SuperAdminShell';
 import { FiGrid, FiUsers, FiFile, FiUserPlus } from 'react-icons/fi';
 import { useToast } from '@/components/ui/toast';
 
+export const dynamic = 'force-dynamic';
+
 type Module = {
   id: number | string;
   module_name: string;

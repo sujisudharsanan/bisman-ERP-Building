@@ -4,6 +4,8 @@ import SuperAdminShell from '@/components/layouts/SuperAdminShell';
 import ClientForm from '@/components/clients/ClientForm';
 import Link from 'next/link';
 
+export const dynamic = 'force-dynamic';
+
 export default function NewClientPage() {
   return (
     <SuperAdminShell>
