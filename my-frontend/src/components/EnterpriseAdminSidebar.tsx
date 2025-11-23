@@ -19,6 +19,9 @@ import {
   FiHelpCircle,
   FiBarChart2,
   FiBell,
+  FiMonitor,
+  FiTrendingUp,
+  FiDatabase,
 } from 'react-icons/fi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -89,6 +92,10 @@ export default function EnterpriseAdminSidebar({ className = '' }: EnterpriseAdm
   { id: 'support', label: 'Support', icon: FiHelpCircle, href: '/enterprise-admin/support' },
   { id: 'reports', label: 'Reports', icon: FiBarChart2, href: '/enterprise-admin/reports' },
   { id: 'notifications', label: 'Notifications', icon: FiBell, href: '/enterprise-admin/notifications' },
+  // Monitoring & Observability
+  { id: 'monitoring', label: 'System Monitoring', icon: FiMonitor, href: '/enterprise-admin/monitoring' },
+  { id: 'performance', label: 'Performance Metrics', icon: FiTrendingUp, href: '/enterprise-admin/monitoring/performance' },
+  { id: 'database-health', label: 'Database Health', icon: FiDatabase, href: '/enterprise-admin/monitoring/database' },
   ];
 
   const isActive = (href: string) => {
