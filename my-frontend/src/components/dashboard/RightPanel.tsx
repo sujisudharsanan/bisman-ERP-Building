@@ -55,7 +55,13 @@ const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar' }) => {
     ],
   }));
 
-  const barOptions = {
+  // Helper function to safely get CSS variables (client-side only)
+  const getCSSVar = (varName: string, fallback: string) => {
+    if (typeof window === 'undefined') return fallback;
+    return getComputedStyle(document.documentElement).getPropertyValue(varName) || fallback;
+  };
+
+  const barOptions = React.useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
     plugins: {
@@ -63,10 +69,10 @@ const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar' }) => {
         display: false,
       },
       tooltip: {
-        backgroundColor: getComputedStyle(document.documentElement).getPropertyValue('--panel') || '#1f2937',
-        titleColor: getComputedStyle(document.documentElement).getPropertyValue('--text') || '#fff',
-        bodyColor: getComputedStyle(document.documentElement).getPropertyValue('--text') || '#fff',
-        borderColor: getComputedStyle(document.documentElement).getPropertyValue('--border') || '#374151',
+        backgroundColor: getCSSVar('--panel', '#1f2937'),
+        titleColor: getCSSVar('--text', '#fff'),
+        bodyColor: getCSSVar('--text', '#fff'),
+        borderColor: getCSSVar('--border', '#374151'),
         borderWidth: 1,
       },
     },
@@ -76,19 +82,19 @@ const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar' }) => {
           display: false,
         },
         ticks: {
-          color: getComputedStyle(document.documentElement).getPropertyValue('--muted') || '#9ca3af',
+          color: getCSSVar('--muted', '#9ca3af'),
         },
       },
       y: {
         grid: {
-          color: getComputedStyle(document.documentElement).getPropertyValue('--border') || '#374151',
+          color: getCSSVar('--border', '#374151'),
         },
         ticks: {
-          color: getComputedStyle(document.documentElement).getPropertyValue('--muted') || '#9ca3af',
+          color: getCSSVar('--muted', '#9ca3af'),
         },
       },
     },
-  };
+  }), []);
 
   const createDoughnutData = (value: number, color: string) => ({
     datasets: [
