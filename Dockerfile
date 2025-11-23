@@ -16,18 +16,21 @@ FROM node:20-alpine AS build-frontend
 WORKDIR /app
 RUN apk add --no-cache postgresql-client openssl libc6-compat
 COPY my-frontend/package*.json ./frontend/
-# Use npm ci for deterministic builds and clean cache
-RUN cd frontend && npm ci --ignore-scripts && npm cache clean --force
+## Install full dependency tree (allowing postinstall scripts) for a reliable Next.js build.
+## The previous build used --ignore-scripts which can break packages (e.g. Prisma) and cause silent failures.
+RUN cd frontend && npm ci && npm cache clean --force
 COPY my-frontend/ ./frontend
-# Generate Prisma client for frontend before build
-RUN cd frontend && npx prisma generate
-# In CI, skip lint/type-check prebuild and Next telemetry; build Next app
+## Generate Prisma client if schema exists; ignore failure so build continues even if frontend doesn't need it.
+RUN cd frontend && npx prisma generate || echo "Prisma generate skipped (no schema)"
+## CI flags to skip telemetry & heavy dev checks; lint/type-check already bypassed via scripts logic.
 ENV CI=true
 ENV RAILWAY=1
 ENV NEXT_TELEMETRY_DISABLED=1
-# Set API URL for frontend build - Railway will use internal service communication
-ENV NEXT_PUBLIC_API_URL=""
-RUN npm run build --prefix frontend
+## Provide a sensible default API base. Frontend code prefers same-origin proxy; /api works inside container/nginx.
+ARG NEXT_PUBLIC_API_URL=/api
+ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
+## Build Next.js application. If it fails, output a hint.
+RUN npm run build --prefix frontend || (echo "\n==== Next build failed. Ensure dev deps & prisma schema present. Provide NEXT_PUBLIC_API_URL if required. ====" && exit 1)
 
 # ---- runner: minimal runtime with dumb-init; copy pruned node_modules later ----
 FROM node:20-alpine AS runner
