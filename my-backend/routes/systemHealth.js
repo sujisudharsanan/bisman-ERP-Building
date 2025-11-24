@@ -24,7 +24,13 @@ const execAsync = promisify(exec);
 
 // Middleware
 const { authenticate } = require('../middleware/auth');
-const rateLimit = require('express-rate-limit');
+let rateLimit;
+try {
+  rateLimit = require('express-rate-limit');
+} catch (e) {
+  console.warn('[system-health] express-rate-limit not available, proceeding without rate limiter');
+  rateLimit = () => (req, res, next) => next();
+}
 
 /**
  * POST /api/system-health/load-test
