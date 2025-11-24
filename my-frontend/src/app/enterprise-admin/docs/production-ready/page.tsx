@@ -1,8 +1,6 @@
 import fs from 'fs';
 import path from 'path';
 import React from 'react';
-import { marked } from 'marked';
-import DOMPurify from 'isomorphic-dompurify';
 
 export default async function ProductionReadyGuidePage() {
   const filePath = path.join(process.cwd(), 'PRODUCTION_READY_GUIDE_UPDATED.md');
@@ -12,8 +10,12 @@ export default async function ProductionReadyGuidePage() {
   } catch (e) {
     content = 'Failed to read production guide.';
   }
-  const rawHtml = marked.parse(content, { async: false });
-  const html = DOMPurify.sanitize(rawHtml, { USE_PROFILES: { html: true } });
+  const markedMod: any = await import('marked');
+  const parseFn = markedMod?.marked?.parse || markedMod?.parse || markedMod?.default?.parse;
+  const rawHtml = parseFn ? parseFn(content) : content;
+  const domPurifyMod: any = await import('isomorphic-dompurify');
+  const sanitizer: (h: string, o?: any) => string = (domPurifyMod && (domPurifyMod.default?.sanitize || domPurifyMod.sanitize)) as any;
+  const html: string = sanitizer ? sanitizer(String(rawHtml), { USE_PROFILES: { html: true } }) : String(rawHtml);
   return (
     <div className="p-6 max-w-5xl mx-auto">
       <h1 className="text-3xl font-bold mb-4">Production Readiness Guide</h1>

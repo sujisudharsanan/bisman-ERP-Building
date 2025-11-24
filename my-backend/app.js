@@ -142,7 +142,7 @@ try {
 
 // --- Redis Cache Integration (health & metrics) ---
 try {
-  const { isEnabled, ping } = require('./cache/redisClient');
+  const { isEnabled, ping, redis } = require('./cache/redisClient');
   const { snapshot, reset } = require('./cache/metrics/redisMetrics');
   app.get('/internal/cache-health', async (req, res) => {
     const status = await ping();
@@ -325,13 +325,55 @@ setInterval(async () => {
     if (!prisma || reqStats.count === 0) return;
     const avgLatency = Math.round(reqStats.totalLatency / reqStats.count);
     const errorRatePct = reqStats.errorCount ? parseFloat(((reqStats.errorCount / reqStats.count) * 100).toFixed(2)) : 0;
-    await prisma.systemMetricSample.create({ data: { latencyMs: avgLatency, errorRatePct } });
+    await prisma.systemMetricSample.create({ data: { latencyMs: avgLatency, errorRatePct, reqCount: reqStats.count, errCount: reqStats.errorCount } });
   } catch (e) {
     console.warn('[metrics] flush failed:', e.message);
   } finally {
     reqStats = { count: 0, errorCount: 0, totalLatency: 0 };
   }
 }, METRIC_FLUSH_INTERVAL_MS).unref();
+
+// Nightly aggregation & retention (runs approx every 24h)
+const DAY_MS = 24 * 60 * 60 * 1000;
+setInterval(async () => {
+  try {
+    const { prisma } = app.locals;
+    if (!prisma) return;
+    const config = await prisma.systemHealthConfig.findFirst({ where: { id: 1 } });
+    const metricsRetentionDays = config?.metricsRetentionDays ?? 7;
+    const aggregateRetentionDays = config?.aggregateRetentionDays ?? 365;
+
+    // Aggregate yesterday
+    const now = new Date();
+    const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1, 0, 0, 0));
+    const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
+    const samples = await prisma.systemMetricSample.findMany({
+      where: { collected_at: { gte: start, lt: end } },
+    });
+    if (samples.length) {
+      const sumLatency = samples.reduce((a, s) => a + s.latencyMs * (s.reqCount || 1), 0);
+      const sumReq = samples.reduce((a, s) => a + (s.reqCount || 0), 0) || samples.length;
+      const sumErr = samples.reduce((a, s) => a + (s.errCount || 0), 0);
+      const avgLatency = Math.round(sumLatency / sumReq);
+      const avgErrPct = sumReq ? parseFloat(((sumErr / sumReq) * 100).toFixed(2)) : 0;
+      await prisma.systemMetricDailyAggregate.upsert({
+        where: { day: start },
+        update: { avgLatencyMs: avgLatency, avgErrorRatePct: avgErrPct, reqCount: sumReq, errCount: sumErr },
+        create: { day: start, avgLatencyMs: avgLatency, avgErrorRatePct: avgErrPct, reqCount: sumReq, errCount: sumErr },
+      });
+    }
+
+    // Retention: purge old fine-grained samples
+    const cutoffSamples = new Date(Date.now() - metricsRetentionDays * DAY_MS);
+    await prisma.systemMetricSample.deleteMany({ where: { collected_at: { lt: cutoffSamples } } });
+
+    // Retention: purge old aggregates
+    const cutoffAgg = new Date(Date.now() - aggregateRetentionDays * DAY_MS);
+    await prisma.systemMetricDailyAggregate.deleteMany({ where: { day: { lt: cutoffAgg } } });
+  } catch (e) {
+    console.warn('[metrics] aggregation/retention failed:', e.message);
+  }
+}, DAY_MS).unref();
 
 // ❌ SECURITY FIX: Removed public static file serving
 // OLD CODE: app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
@@ -542,7 +584,7 @@ try {
   const systemHealthRouter = require('./routes/systemHealth');
   // Make prisma and redisClient available to the route
   app.locals.prisma = prisma;
-  app.locals.redisClient = redisClient; // If Redis is configured
+  app.locals.redisClient = redis; // If Redis is configured
   app.use('/api/system-health', systemHealthRouter);
 } catch (e) {
   console.warn('System Health routes not loaded:', e && e.message);

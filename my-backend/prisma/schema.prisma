@@ -523,6 +523,8 @@ model SystemHealthConfig {
   thresholds     Json    // { latency: {warning,critical}, p95Latency: {...}, errorRate: {...}, cacheHitRate: {...}, slowQueries: {...}, cpuUsage: {...}, memoryUsage: {...} }
   backupLocation String  @db.VarChar(255)
   refreshInterval Int    @default(30000) // ms
+  metricsRetentionDays Int @default(7)
+  aggregateRetentionDays Int @default(365)
   updated_at     DateTime @default(now()) @updatedAt @db.Timestamp(6)
 
   @@map("system_health_config")
@@ -533,6 +535,8 @@ model SystemMetricSample {
   id          Int      @id @default(autoincrement())
   latencyMs   Int      // average latency in interval
   errorRatePct Float   // percentage of failed requests
+  reqCount    Int      @default(0)
+  errCount    Int      @default(0)
   collected_at DateTime @default(now()) @db.Timestamp(6)
 
   @@index([collected_at], map: "idx_metric_sample_collected")
@@ -553,6 +557,21 @@ model LoadTestReport {
   @@index([timestamp], map: "idx_load_test_timestamp")
   @@index([source], map: "idx_load_test_source")
   @@map("load_test_reports")
+}
+
+// Daily rollup of metrics for long-term retention
+model SystemMetricDailyAggregate {
+  id              Int      @id @default(autoincrement())
+  day             DateTime // start of day (UTC)
+  avgLatencyMs    Int
+  avgErrorRatePct Float
+  reqCount        Int
+  errCount        Int
+  created_at      DateTime @default(now()) @db.Timestamp(6)
+
+  @@unique([day])
+  @@index([day], map: "idx_metric_daily_day")
+  @@map("system_metric_daily")
 }
 
 // ==========================================
