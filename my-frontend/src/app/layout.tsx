@@ -13,6 +13,9 @@ import ChatGuard from '@/components/ChatGuard';
 import React from 'react';
 import AppShell from '@/components/layout/AppShell';
 import { appConfig } from '@/config/appConfig';
+
+// Force all pages to be dynamically rendered (bypass static generation errors)
+export const dynamic = 'force-dynamic';
 // Helper component to inject a nonce-bearing inline script safely when strict CSP enabled
 function NoncedScript({ code }: { code: string }) {
   // Obtain nonce from body attribute (rendered server-side) for client hydration

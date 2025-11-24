@@ -1,6 +1,6 @@
 // Admin Permissions Page - Next.js Route Export
 // Imports the actual component from adminPermissionsPage.tsx for better organization
 
-import AdminPermissionsPageComponent from './adminPermissionsPage';
+import AdminPermissionsPage from './adminPermissionsPage';
 
-export default AdminPermissionsPageComponent;
+export default AdminPermissionsPage;
