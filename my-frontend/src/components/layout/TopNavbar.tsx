@@ -3,8 +3,11 @@
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
-import DarkModeToggle from '../ui/DarkModeToggle';
-import LogoutButton from '../ui/LogoutButton';
+import dynamic from 'next/dynamic';
+
+// Dynamic imports to prevent SSR issues with theme/auth hooks
+const DarkModeToggle = dynamic(() => import('../ui/DarkModeToggle'), { ssr: false });
+const LogoutButton = dynamic(() => import('../ui/LogoutButton'), { ssr: false });
 
 
 interface TopNavbarProps {

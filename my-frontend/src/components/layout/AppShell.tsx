@@ -5,12 +5,17 @@ import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
-// Use dynamic imports for TopNavbar and Sidebar so we can debug SSR prerender errors
-// that may be caused by their static module evaluation. These are still client
-// components, but loading them dynamically prevents Next from evaluating their
-// modules at build-time when diagnosing the originating undefined JSX element.
-const TopNavbar = dynamic(() => import('./TopNavbar'), { ssr: false, loading: () => <div style={{ height: 'var(--navbar-height)' }} /> });
-const Sidebar = dynamic(() => import('./Sidebar'), { ssr: false, loading: () => <div /> });
+// Use dynamic imports for TopNavbar and Sidebar to prevent SSR prerender errors
+// These components depend on client-side hooks and contexts that aren't available during static generation
+const TopNavbar = dynamic(() => import('./TopNavbar').then(mod => ({ default: mod.default })), { 
+  ssr: false, 
+  loading: () => <div style={{ height: 'var(--navbar-height)' }} /> 
+});
+
+const Sidebar = dynamic(() => import('./Sidebar').then(mod => ({ default: mod.default })), { 
+  ssr: false, 
+  loading: () => <div /> 
+});
 
 /**
  * Global AppShell

@@ -1,9 +1,12 @@
 'use client';
 
 import React, { useEffect } from 'react';
+import dynamic from 'next/dynamic';
 import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
-import DynamicSidebar from '@/common/components/DynamicSidebar';
 import { useAuth } from '@/hooks/useAuth';
+
+// Dynamic import to prevent SSR issues with permission-based sidebar
+const DynamicSidebar = dynamic(() => import('@/common/components/DynamicSidebar'), { ssr: false });
 
 interface SidebarProps {
   isOpen?: boolean;
