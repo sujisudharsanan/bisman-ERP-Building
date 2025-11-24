@@ -2211,11 +2211,11 @@ app.get('/api/enterprise-admin/dashboard/activity', authenticate, requireRole('E
     const recentActivity = await prisma.auditLog.findMany({
       where: whereClause, // ✅ SECURITY: Filter by tenant_id
       take: 10,
-      orderBy: { timestamp: 'desc' },
+      orderBy: { created_at: 'desc' },
       select: {
         id: true,
         action: true,
-        timestamp: true,
+        created_at: true,
         user_id: true,
         user: {
           select: {
@@ -2229,7 +2229,7 @@ app.get('/api/enterprise-admin/dashboard/activity', authenticate, requireRole('E
     const activities = recentActivity.map(log => ({
       id: log.id.toString(),
       action: log.action,
-      timestamp: log.timestamp.toISOString(),
+      timestamp: log.created_at.toISOString(),
       user: log.user?.username || log.user?.email || 'System'
     }));
 
