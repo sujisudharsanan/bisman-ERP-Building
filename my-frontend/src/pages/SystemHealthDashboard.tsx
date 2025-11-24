@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * System Health & Performance Dashboard
  * BISMAN ERP - Infrastructure & Performance Overview
@@ -1012,13 +1014,13 @@ const SystemHealthDashboard: React.FC = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis
                   dataKey="timestamp"
-                  tickFormatter={(value) => new Date(value).toLocaleTimeString()}
+                  tickFormatter={(value: any) => new Date(value).toLocaleTimeString()}
                   tick={{ fontSize: 12 }}
                 />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip
-                  labelFormatter={(value) => new Date(value).toLocaleString()}
-                  formatter={(value: number) => [`${value.toFixed(0)}ms`, 'Latency']}
+                  labelFormatter={(value: any) => new Date(value).toLocaleString()}
+                  formatter={(value: any) => [`${value.toFixed(0)}ms`, 'Latency']}
                 />
                 <Area
                   type="monotone"
@@ -1042,13 +1044,13 @@ const SystemHealthDashboard: React.FC = () => {
                 <CartesianGrid strokeDasharray="3 3" />
                 <XAxis
                   dataKey="timestamp"
-                  tickFormatter={(value) => new Date(value).toLocaleTimeString()}
+                  tickFormatter={(value: any) => new Date(value).toLocaleTimeString()}
                   tick={{ fontSize: 12 }}
                 />
                 <YAxis tick={{ fontSize: 12 }} />
                 <Tooltip
-                  labelFormatter={(value) => new Date(value).toLocaleString()}
-                  formatter={(value: number) => [`${value.toFixed(2)}%`, 'Error Rate']}
+                  labelFormatter={(value: any) => new Date(value).toLocaleString()}
+                  formatter={(value: any) => [`${value.toFixed(2)}%`, 'Error Rate']}
                 />
                 <Line type="monotone" dataKey="value" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} />
               </LineChart>

@@ -1,3 +1,5 @@
+'use client';
+
 /**
  * Error Boundary for System Health Dashboard
  * Catches React errors and displays a fallback UI
