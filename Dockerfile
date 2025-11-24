@@ -11,27 +11,41 @@ RUN npm ci --ignore-scripts && npm cache clean --force
 COPY my-backend/ ./
 RUN npx prisma generate
 
-# ---- build-frontend: install, build, export Next.js ----
+# ---- build-frontend: install, build Next.js (hardened with verbose errors) ----
 FROM node:20-alpine AS build-frontend
 WORKDIR /app
-RUN apk add --no-cache postgresql-client openssl libc6-compat
-COPY my-frontend/package*.json ./frontend/
-## Install full dependency tree (allowing postinstall scripts) for a reliable Next.js build.
-## The previous build used --ignore-scripts which can break packages (e.g. Prisma) and cause silent failures.
-RUN cd frontend && npm ci && npm cache clean --force
-COPY my-frontend/ ./frontend
-## Generate Prisma client if schema exists; ignore failure so build continues even if frontend doesn't need it.
-COPY my-frontend/prisma ./frontend/prisma
-RUN cd frontend && npx prisma generate || echo "Prisma generate skipped (no schema)"
-## CI flags to skip telemetry & heavy dev checks; lint/type-check already bypassed via scripts logic.
+ENV NODE_ENV=development
 ENV NEXT_TELEMETRY_DISABLED=1
-# Allow passing build-time public envs; default to /api for backend proxy
+RUN apk add --no-cache postgresql-client openssl libc6-compat
+# Copy manifests first for layer cache
+COPY my-frontend/package*.json ./frontend/
+COPY my-frontend/prisma ./frontend/prisma
+# Install full deps with cache mount
+RUN --mount=type=cache,target=/root/.npm \
+  cd frontend && \
+  npm ci && \
+  npm cache clean --force
+# Copy full frontend source
+COPY my-frontend/ ./frontend
+# Generate Prisma client (fail if schema exists but generate fails)
+RUN cd frontend && npx prisma generate || echo "Prisma generate skipped (no schema)"
+# Declare build-time public env vars (override with --build-arg if needed)
 ARG NEXT_PUBLIC_API_URL=/api
 ARG NEXT_PUBLIC_MM_TEAM_SLUG=erp
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
 ENV NEXT_PUBLIC_MM_TEAM_SLUG=${NEXT_PUBLIC_MM_TEAM_SLUG}
-# Fail fast with verbose output (no CI suppression) so undefined component errors surface
-RUN npm run build --prefix frontend || (echo "\n==== Next build failed. Showing verbose diagnostics. Ensure prisma schema & env vars. ====" && ls -1 frontend/.next || true && exit 1)
+# Build with verbose error output (no CI suppression) using build:verbose script
+RUN set -euxo pipefail && \
+  cd frontend && \
+  node -e "console.log('[info] Node',process.version)" && \
+  npm run build:verbose || { \
+    echo "===================================="; \
+    echo "NEXT BUILD FAILED - Stack trace above"; \
+    echo "===================================="; \
+    echo "Listing .next directory:"; \
+    ls -lah .next 2>/dev/null || echo ".next not created"; \
+    exit 1; \
+  }
 
 # ---- runner: minimal runtime with dumb-init; copy pruned node_modules later ----
 FROM node:20-alpine AS runner

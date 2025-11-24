@@ -6,6 +6,7 @@
     "dev": "next dev",
     "dev:both": "concurrently \"npm run dev\" \"echo 'Mattermost is running on Railway at https://mattermost-production-84fd.up.railway.app'\" --names \"frontend,mattermost\" --prefix-colors \"cyan,magenta\"",
     "build": "next build",
+    "build:verbose": "set -euxo pipefail && NEXT_TELEMETRY_DISABLED=1 NODE_ENV=production next build",
     "start": "node .next/standalone/server.js",
     "prisma:generate": "prisma generate",
     "prisma:migrate": "prisma migrate dev --name init",
