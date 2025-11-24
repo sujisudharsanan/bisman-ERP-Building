@@ -12,10 +12,11 @@ const BACKEND_BASE =
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { path: string[] } }
+  { params }: { params: Promise<{ path: string[] }> }
 ) {
   try {
-    const filePath = params.path.join('/');
+    const { path } = await params;
+    const filePath = path.join('/');
     
     // Forward cookies from client for authentication
     const cookieHeader = req.headers.get('cookie');

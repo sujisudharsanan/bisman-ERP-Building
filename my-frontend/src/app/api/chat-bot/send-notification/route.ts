@@ -12,7 +12,7 @@ const MATTERMOST_BOT_TOKEN = process.env.MATTERMOST_BOT_TOKEN;
 
 export async function POST(request: NextRequest) {
   try {
-    const cookieStore = cookies();
+    const cookieStore = await cookies();
     const authToken = cookieStore.get('authToken')?.value;
 
     if (!authToken) {

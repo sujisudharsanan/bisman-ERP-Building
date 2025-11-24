@@ -23,10 +23,6 @@ let nextConfig = {
   // Always surface lint and TS errors now to avoid undefined component masking
   eslint: { ignoreDuringBuilds: false },
   typescript: { ignoreBuildErrors: false },
-  // Experimental: disable static optimization to bypass undefined component errors during build
-  experimental: {
-    isrMemoryCacheSize: 0, // Disable ISR cache
-  },
   webpack: (config, { dev, isServer }) => {
     // Suppress webpack warnings in development
     if (dev && !isServer) {

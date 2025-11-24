@@ -9,8 +9,8 @@ interface ResumeData {
   trial_end_date?: string;
 }
 
-export default function TrialResumeTokenPage({ params }: { params: { token: string } }) {
-  const { token } = params;
+export default function TrialResumeTokenPage({ params }: any) {
+  const { token } = params as { token: string };
   const [data, setData] = useState<ResumeData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);

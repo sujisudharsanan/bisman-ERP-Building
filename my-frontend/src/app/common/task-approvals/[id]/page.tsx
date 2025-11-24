@@ -90,7 +90,8 @@ interface TaskData {
   createdAt: string;
 }
 
-export default function TaskDetailPage({ params }: TaskDetailPageProps) {
+export default function TaskDetailPage({ params }: any) {
+  const {id} = params as {id: string};
   const router = useRouter();
   const [task, setTask] = useState<TaskData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -141,7 +142,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
       }
 
       // Get task details
-      const response = await fetch(`http://localhost:8000/api/common/tasks/${params.id}`, {
+      const response = await fetch(`http://localhost:8000/api/common/tasks/${id}`, {
         headers: {
           Authorization: `Bearer ${token}`,
         },
@@ -163,7 +164,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
 
   useEffect(() => {
     fetchTask();
-  }, [params.id]);
+  }, [id]);
 
   // Handle approval action
   const handleApprovalAction = async () => {
@@ -179,7 +180,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         throw new Error('Not authenticated');
       }
 
-      const endpoint = `http://localhost:8000/api/common/tasks/${params.id}/${actionType}`;
+      const endpoint = `http://localhost:8000/api/common/tasks/${id}/${actionType}`;
       const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
@@ -220,7 +221,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`http://localhost:8000/api/common/tasks/${params.id}/messages`, {
+      const response = await fetch(`http://localhost:8000/api/common/tasks/${id}/messages`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -255,7 +256,7 @@ export default function TaskDetailPage({ params }: TaskDetailPageProps) {
         throw new Error('Not authenticated');
       }
 
-      const response = await fetch(`http://localhost:8000/api/common/tasks/${params.id}/payment`, {
+      const response = await fetch(`http://localhost:8000/api/common/tasks/${id}/payment`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

@@ -11,7 +11,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:800
 
 export async function GET(request: NextRequest) {
   try {
-  const authToken = requireAuthCookie(['authToken', 'token']);
+  const authToken = await requireAuthCookie(['authToken', 'token']);
 
     if (!authToken) {
       return NextResponse.json(
@@ -33,11 +33,12 @@ export async function GET(request: NextRequest) {
 
     // Search users via backend (if you have user search endpoint)
     // For now, we'll use Mattermost team members as the source
+    const mattermostToken = await requireAuthCookie(['mattermostToken']);
     const response = await fetch(`${process.env.NEXT_PUBLIC_MATTERMOST_URL}/api/v4/users/search`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-  'Authorization': `Bearer ${requireAuthCookie(['mattermostToken']) || ''}`,
+  'Authorization': `Bearer ${mattermostToken || ''}`,
       },
       body: JSON.stringify({
         term: query,
