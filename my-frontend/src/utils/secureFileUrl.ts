@@ -143,7 +143,7 @@ export function useSecureFileUrl(url: string | undefined | null): string {
 }
 
 // Default export for convenience
-export default {
+const secureFileUrlUtils = {
   convertToSecureUrl,
   getSecureFileUrl,
   extractFilename,
@@ -154,3 +154,5 @@ export default {
   isValidCategory,
   useSecureFileUrl,
 };
+
+export default secureFileUrlUtils;
