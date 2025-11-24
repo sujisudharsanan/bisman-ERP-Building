@@ -470,6 +470,17 @@ try {
   }
 }
 
+// System Health Dashboard routes
+try {
+  const systemHealthRouter = require('./routes/systemHealth');
+  // Make prisma and redisClient available to the route
+  app.locals.prisma = prisma;
+  app.locals.redisClient = redisClient; // If Redis is configured
+  app.use('/api/system-health', systemHealthRouter);
+} catch (e) {
+  console.warn('System Health routes not loaded:', e && e.message);
+}
+
 // Privilege management routes
 const privilegeRoutes = require('./routes/privilegeRoutes')
 app.use('/api/privileges', privilegeRoutes)

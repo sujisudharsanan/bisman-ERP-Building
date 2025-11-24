@@ -94,6 +94,7 @@ export default function EnterpriseAdminSidebar({ className = '' }: EnterpriseAdm
   { id: 'notifications', label: 'Notifications', icon: FiBell, href: '/enterprise-admin/notifications' },
   // Monitoring & Observability
   { id: 'monitoring', label: 'System Monitoring', icon: FiMonitor, href: '/enterprise-admin/monitoring' },
+  { id: 'system-health', label: 'System Health', icon: FiActivity, href: '/enterprise-admin/monitoring/system-health' },
   { id: 'performance', label: 'Performance Metrics', icon: FiTrendingUp, href: '/enterprise-admin/monitoring/performance' },
   { id: 'database-health', label: 'Database Health', icon: FiDatabase, href: '/enterprise-admin/monitoring/database' },
   ];
