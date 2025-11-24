@@ -40,7 +40,8 @@ const HeaderLogo: React.FC = () => {
 export default function SuperAdminShell({ title = 'Super Admin', children }: SuperAdminShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuth();
-  const [icons, setIcons] = useState<{ RefreshCw?: any; LogOut?: any }>({});
+  // Store resolved lucide icon components safely (capitalized keys)
+  const [icons, setIcons] = useState<{ RefreshCw?: React.ComponentType<any>; LogOut?: React.ComponentType<any> }>({});
 
   // Format role name for display
   const formatRoleName = (role: string | undefined) => {
@@ -61,9 +62,12 @@ export default function SuperAdminShell({ title = 'Super Admin', children }: Sup
       try {
         const mod = await import('lucide-react');
         if (!mounted) return;
-        setIcons({ RefreshCw: mod.RefreshCw, LogOut: mod.LogOut });
-      } catch (e) {
-        // ignore — icons will remain undefined and fallbacks used
+        // Only assign if they are valid functions (React components)
+        const RefreshCw = typeof mod.RefreshCw === 'function' ? mod.RefreshCw : undefined;
+        const LogOut = typeof mod.LogOut === 'function' ? mod.LogOut : undefined;
+        setIcons({ RefreshCw, LogOut });
+      } catch {
+        // silent: fallbacks below will render simple inline SVGs
       }
     })();
     return () => { mounted = false; };

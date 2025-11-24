@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { X, Shield } from "lucide-react";
 import { iconMap, getIcon } from '../../utils/iconMap';
+import { safeComponent } from '@/lib/safeComponent';
 import { roleLayoutConfig, MenuItem } from '../../config/roleLayoutConfig';
 
 // Export getIcon for external use
@@ -97,7 +98,7 @@ const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, 
 				{/* Sidebar Navigation */}
 								<nav className="flex-1 overflow-y-auto p-4 space-y-1" aria-label="Sidebar menu">
 									{menuItems.map((item: MenuItem) => {
-										const IconComp = getIcon(item.icon);
+										const IconComp = safeComponent(getIcon(item.icon), item.icon, 'BaseSidebar');
 										const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
 										return (
 											<Link

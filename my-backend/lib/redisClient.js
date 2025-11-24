@@ -53,6 +53,10 @@ let client
 if (forceInMemory) {
   console.log('✓ Using in-memory token store (forced by REDIS_URL)')
   client = createInMemoryClient()
+} else if (process.env.NODE_ENV === 'test' || process.env.SKIP_REDIS === '1') {
+  console.log('✓ Using in-memory token store (test mode SKIP_REDIS)')
+  client = createInMemoryClient()
+  useInMemory = true
 } else {
   try {
     const real = new Redis(redisUrl, {
@@ -99,6 +103,7 @@ if (forceInMemory) {
         try { return real.scanStream(...args) } catch (e) { useInMemory = true; return mem.scanStream(...args) }
       }
     }
+    client.disconnect = () => { try { real.disconnect(); } catch {} }
   } catch (e) {
     console.warn('Failed to create Redis client, using in-memory store:', e && e.message)
     client = createInMemoryClient()
@@ -106,3 +111,7 @@ if (forceInMemory) {
 }
 
 module.exports = client
+// Auto-disconnect in test to avoid open handle
+if (process.env.NODE_ENV === 'test' && client.disconnect) {
+  try { client.disconnect(); } catch {}
+}

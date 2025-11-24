@@ -1,11 +1,13 @@
 const request = require('supertest')
 const express = require('express')
 const jwt = require('jsonwebtoken')
+const { getPrisma } = require('../lib/prisma')
 
 describe('Calls API', () => {
   let app
   const OLD_ENV = process.env
   let token
+  let prisma
   beforeAll(() => {
     process.env = { ...OLD_ENV, JITSI_JWT_SECRET: 'secret', JITSI_DOMAIN: 'jitsi.test' }
     app = express()
@@ -15,9 +17,14 @@ describe('Calls API', () => {
     app.use('/api/calls', callsRouter)
     // Dev token for authenticate(): uses JWT_SECRET or 'dev-secret'
     token = jwt.sign({ sub: 303, email: 'demo_super@bisman.demo' }, process.env.JWT_SECRET || 'dev-secret', { algorithm: 'HS256' })
+    prisma = getPrisma && getPrisma()
   })
   afterAll(async () => {
+    // graceful short delay for pending async
     await new Promise(r => setTimeout(r, 10))
+    if (prisma && prisma.$disconnect) {
+      try { await prisma.$disconnect() } catch {}
+    }
   })
   afterAll(() => { process.env = OLD_ENV })
 

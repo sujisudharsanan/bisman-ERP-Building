@@ -18,4 +18,7 @@ module.exports = {
   testTimeout: 10000,
   verbose: true,
   setupFilesAfterEnv: [],
+  // Force exit to avoid lingering async handles in legacy scripts; remove after full cleanup
+  forceExit: true,
+  detectOpenHandles: true,
 };

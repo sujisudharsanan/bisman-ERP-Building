@@ -11,6 +11,7 @@ import { safeFetch } from '@/lib/safeFetch';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { Circle, AlertCircle } from 'lucide-react';
+import { safeComponent } from '@/lib/safeComponent';
 import { useAuth } from '@/common/hooks/useAuth';
 import {
   PAGE_REGISTRY,
@@ -36,6 +37,9 @@ interface DynamicSidebarProps {
   className?: string;
 }
 
+// Runtime icon map loaded client-side (lucide-react). We avoid SSR import.
+type IconComponent = React.ComponentType<any> | undefined;
+
 export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) {
   const { user } = useAuth();
   const pathname = usePathname();
@@ -43,6 +47,32 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
   const [userAllowedPages, setUserAllowedPages] = useState<string[]>([]);
   const [superAdminModules, setSuperAdminModules] = useState<string[]>([]);
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(true);
+  const [iconMap, setIconMap] = useState<Record<string, IconComponent>>({});
+
+  // Load lucide-react icons once on client to resolve registry icon keys (strings)
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      if (typeof window === 'undefined') return; // safety
+      try {
+        const mod = await import('lucide-react');
+        if (!mounted) return;
+        // Build a map of all exports that look like icon components (capitalized)
+        const map: Record<string, IconComponent> = {};
+        Object.keys(mod).forEach(k => {
+          // Basic heuristic: exported key starts with uppercase letter
+          if (/^[A-Z]/.test(k)) {
+            // @ts-ignore dynamic access
+            map[k] = (mod as any)[k];
+          }
+        });
+        setIconMap(map);
+      } catch (e) {
+        // Silently ignore; fallback icons will be used
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
 
   // Check if user is Super Admin
   const isSuperAdmin = useMemo(() => {
@@ -280,10 +310,15 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
   const renderPageLink = (page: PageMetadata) => {
     const isActive = isActivePath(page.path);
     const isDisabled = page.status === 'disabled' || page.status === 'coming-soon';
-  // Defensive: ensure Icon is defined. PAGE_REGISTRY stores LucideIcon references but
-  // depending on bundling some exports may be undefined at server build time.
-  // Use a runtime guard and fallback to a simple SVG (Circle) when Icon is not renderable.
-  const Icon: unknown = page.icon || Circle;
+
+    // Resolve icon using iconKey string from registry (lucide component name)
+    let Icon: any = undefined;
+    if (page.iconKey) {
+      const key = page.iconKey;
+      Icon = iconMap[key] || iconMap[key.replace(/[-_](\w)/g, (_: any, c: string) => c.toUpperCase())] || undefined;
+    }
+    // Guard icon component
+    Icon = safeComponent(Icon || Circle, page.iconKey || page.id, 'DynamicSidebar');
 
   const linkClasses = `
       flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors
@@ -299,25 +334,8 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
       <>
   {/* Render icon safely; fallback to Circle if missing or invalid */}
   {(() => {
-      try {
-        // lucide exports can be functions (components) or objects; ensure it's renderable
-        if (Icon && (typeof Icon === 'function' || typeof Icon === 'object')) {
-          // Some build-time bundles may wrap components; attempt to render using any-cast
-          // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-          // @ts-ignore
-          return <Icon className="w-4 h-4 flex-shrink-0" />;
-        }
-        console.warn('[Sidebar] Invalid icon for page', page.id, page.name, Icon);
-      } catch (e) {
-        console.warn('[Sidebar] Error rendering icon for', page.id, e);
-      }
-
-      // Fallback: simple inline SVG circle to avoid rendering undefined element during SSR
-      return (
-        <svg className="w-4 h-4 flex-shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
-          <circle cx="12" cy="12" r="8" strokeWidth="2" />
-        </svg>
-      );
+  // @ts-ignore guarded icon is always renderable
+  return <Icon className="w-4 h-4 flex-shrink-0" />;
   })()}
         <span className="flex-1 truncate">{page.name}</span>
         {renderStatusBadge(page)}

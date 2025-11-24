@@ -1,4 +1,13 @@
+// Legacy rateLimit kept for fallback; advanced middleware provides Redis + adaptive logic
 const rateLimit = require('express-rate-limit')
+const {
+  strictLoginLimiter,
+  moderateAuthLimiter,
+  standardApiLimiter,
+  publicLimiter,
+  expensiveOperationLimiter,
+  createAdaptiveRateLimiter,
+} = require('./middleware/advancedRateLimiter');
 const enforce = require('express-sslify')
 const helmet = require('helmet')
 const express = require('express')
@@ -11,6 +20,16 @@ const { Pool } = require('pg')
 const { getPrisma } = require('./lib/prisma')   // ✅ shared singleton
 // Load .env early for local/dev
 try { require('dotenv').config() } catch (e) {}
+// Optional auto-bootstrap for missing chat/calls tables (dev/staging convenience)
+if (process.env.AUTO_BOOTSTRAP_CHAT_CALLS === '1') {
+  try {
+    const { bootstrap } = require('./bootstrap/bootstrapChatCallsTables');
+    bootstrap().catch(err => console.error('[auto-bootstrap] failed', err.message));
+    console.log('[app.js] ⚙️ Auto bootstrap triggered (chat/calls tables)');
+  } catch (e) {
+    console.error('[app.js] Auto bootstrap load failed:', e.message);
+  }
+}
 
 // Initialize Prisma with safe defaults and error handling
 let prisma;
@@ -153,30 +172,39 @@ if (process.env.ENABLE_LEGACY_MAIL_OTP === '1') {
   }
 }
 
-// Rate limiting for authentication endpoints
-const loginLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.NODE_ENV === 'production' ? 10 : 100, // 10 login attempts per 15 mins in prod
-  message: {
-    error: 'Too many login attempts, please try again later.'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// =====================
+// Advanced Rate Limiting
+// =====================
+// Login & auth endpoints (strict + moderate)
+const loginLimiter = strictLoginLimiter;
+const authLimiter = moderateAuthLimiter;
+// General API limiter (authenticated)
+const apiLimiter = standardApiLimiter;
+// Public endpoints (health, metrics)
+const publicEndpointLimiter = publicLimiter;
+// Expensive operations (reports, AI)
+const expensiveLimiter = expensiveOperationLimiter;
+// Adaptive limiters for chat & calls (role/user aware)
+const chatLimiter = createAdaptiveRateLimiter({ windowMs: 60 * 1000, max: 30 }); // 30 messages/min base
+const callLimiter = createAdaptiveRateLimiter({ windowMs: 5 * 60 * 1000, max: 50 }); // 50 call ops/5min base
 
-// A more lenient rate limiter for general authenticated API traffic
-const apiLimiter = rateLimit({
-  windowMs: 5 * 60 * 1000, // 5 minutes
-  max: process.env.NODE_ENV === 'production' ? 100 : 1000, // 100 requests per 5 mins in prod
-  message: {
-    error: 'Too many requests, please try again later.'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
+// Mount public limiter early for truly public endpoints
+app.use(['/api/health','/health','/metrics'], publicEndpointLimiter);
 
 // Log sanitization middleware
 app.use(logSanitizer)
+
+// Apply login limiter to auth-related endpoints
+app.use(['/api/login','/api/auth/login','/api/auth/register','/api/password-reset','/api/security/otp'], loginLimiter);
+// Apply moderate auth limiter (token refresh, logout, session)
+app.use(['/api/auth/refresh','/api/auth/logout','/api/session'], authLimiter);
+// Apply API limiter for generic authenticated routes (mounted broadly after auth middleware later)
+app.use(['/api','/v1'], apiLimiter);
+// Apply expensive limiter for AI/report endpoints
+app.use(['/api/ai','/api/reports','/api/analytics/export'], expensiveLimiter);
+// Chat & call specific adaptive limiters
+app.use(['/api/chat','/api/messages'], chatLimiter);
+app.use(['/api/calls','/api/voice','/api/video'], callLimiter);
 
 
 // ============================================================================
@@ -273,6 +301,38 @@ app.use(express.json())
 // Parse cookies early so downstream routers (e.g., /api/privileges) can access auth cookies
 app.use(cookieParser())
 
+// =============================
+// Request Latency & Error Metrics
+// =============================
+let reqStats = { count: 0, errorCount: 0, totalLatency: 0 };
+const METRIC_FLUSH_INTERVAL_MS = 60000; // 1 minute aggregation window
+
+app.use((req, res, next) => {
+  const start = process.hrtime.bigint();
+  res.on('finish', () => {
+    const end = process.hrtime.bigint();
+    const durationMs = Number(end - start) / 1e6;
+    reqStats.count += 1;
+    reqStats.totalLatency += durationMs;
+    if (res.statusCode >= 500) reqStats.errorCount += 1;
+  });
+  next();
+});
+
+setInterval(async () => {
+  try {
+    const { prisma } = app.locals;
+    if (!prisma || reqStats.count === 0) return;
+    const avgLatency = Math.round(reqStats.totalLatency / reqStats.count);
+    const errorRatePct = reqStats.errorCount ? parseFloat(((reqStats.errorCount / reqStats.count) * 100).toFixed(2)) : 0;
+    await prisma.systemMetricSample.create({ data: { latencyMs: avgLatency, errorRatePct } });
+  } catch (e) {
+    console.warn('[metrics] flush failed:', e.message);
+  } finally {
+    reqStats = { count: 0, errorCount: 0, totalLatency: 0 };
+  }
+}, METRIC_FLUSH_INTERVAL_MS).unref();
+
 // ❌ SECURITY FIX: Removed public static file serving
 // OLD CODE: app.use('/uploads', express.static(path.join(__dirname, 'uploads')))
 // NEW: Files now served via authenticated endpoint (moved after middleware imports)
@@ -313,6 +373,13 @@ try {
 try {
   const callsRoutes = require('./routes/calls');
   app.use('/api/calls', callsRoutes);
+  try {
+    const healthRoute = require('./routes/health');
+    app.use('/api/health', healthRoute);
+    console.log('[app.js] ✅ Mounted /api/health');
+  } catch (e) {
+    console.warn('[app.js] Health route mount failed', e.message);
+  }
   console.log('[app.js] ✅ Mounted /api/calls (Jitsi calls)');
 } catch (e) {
   console.warn('[app.js] calls routes not loaded:', e?.message || e);

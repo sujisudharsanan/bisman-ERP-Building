@@ -28,6 +28,7 @@ import {
   Scale,
   Fuel
 } from 'lucide-react';
+import { getIcon } from '@/utils/iconMap';
 
 interface DemoUser {
   id: string;
@@ -37,7 +38,7 @@ interface DemoUser {
   role: string;
   department: string;
   category: string;
-  icon: React.ReactNode;
+  iconKey: string; // lucide icon name string
   description: string;
   redirectPath: string;
 }
@@ -51,7 +52,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'ENTERPRISE_ADMIN',
     department: 'Enterprise Management',
     category: 'Enterprise',
-    icon: <Building className="w-5 h-5" />, 
+  iconKey: 'Building', 
     description: 'Manage all businesses, assign modules, control subscriptions',
     redirectPath: '/enterprise-admin/dashboard'
   },
@@ -63,7 +64,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'SUPER_ADMIN',
     department: 'Business ERP',
     category: 'Super Admin',
-    icon: <Settings className="w-5 h-5" />, 
+  iconKey: 'Settings', 
     description: 'Super admin for Business ERP module - full system access',
     redirectPath: '/super-admin'
   },
@@ -75,7 +76,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'SUPER_ADMIN',
     department: 'Pump Management',
     category: 'Super Admin',
-    icon: <Fuel className="w-5 h-5" />, 
+  iconKey: 'Fuel', 
     description: 'Petrol pump operations, fuel management',
     redirectPath: '/super-admin'
   },
@@ -87,7 +88,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'IT_ADMIN',
     department: 'IT & Platform',
     category: 'Administration',
-    icon: <ServerCog className="w-5 h-5" />, 
+  iconKey: 'ServerCog', 
     description: 'IT operations, platform settings, monitoring',
     redirectPath: '/it-admin'
   },
@@ -99,7 +100,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'ADMIN',
     department: 'Administration',
     category: 'Administration',
-    icon: <Shield className="w-5 h-5" />, 
+  iconKey: 'Shield', 
     description: 'User management, roles, permissions',
     redirectPath: '/admin'
   },
@@ -111,7 +112,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'CFO',
     department: 'Finance Leadership',
     category: 'Finance',
-    icon: <Banknote className="w-5 h-5" />, 
+  iconKey: 'Banknote', 
     description: 'Financial oversight, reporting, approvals',
     redirectPath: '/cfo-dashboard'
   },
@@ -123,7 +124,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'FINANCE_CONTROLLER',
     department: 'Finance Control',
     category: 'Finance',
-    icon: <FileSpreadsheet className="w-5 h-5" />, 
+  iconKey: 'FileSpreadsheet', 
     description: 'Financial control, closing, compliance',
     redirectPath: '/finance-controller'
   },
@@ -135,7 +136,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'TREASURY',
     department: 'Treasury',
     category: 'Finance',
-    icon: <Wallet className="w-5 h-5" />, 
+  iconKey: 'Wallet', 
     description: 'Cash flow, bank positions, payments',
     redirectPath: '/treasury'
   },
@@ -147,7 +148,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'ACCOUNTS',
     department: 'Accounting',
     category: 'Finance',
-    icon: <FileSpreadsheet className="w-5 h-5" />, 
+  iconKey: 'FileSpreadsheet', 
     description: 'GL, journals, reconciliations',
     redirectPath: '/accounts'
   },
@@ -159,7 +160,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'ACCOUNTS_PAYABLE',
     department: 'Accounts Payable',
     category: 'Finance',
-    icon: <ReceiptIndianRupee className="w-5 h-5" />, 
+  iconKey: 'ReceiptIndianRupee', 
     description: 'Vendor invoices, payment runs',
     redirectPath: '/accounts-payable'
   },
@@ -171,7 +172,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'BANKER',
     department: 'Banking',
     category: 'Finance',
-    icon: <Landmark className="w-5 h-5" />, 
+  iconKey: 'Landmark', 
     description: 'Bank liaison, reconciliations',
     redirectPath: '/banker'
   },
@@ -183,7 +184,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'PROCUREMENT_OFFICER',
     department: 'Procurement',
     category: 'Operations',
-    icon: <ShoppingCart className="w-5 h-5" />, 
+  iconKey: 'ShoppingCart', 
     description: 'PR/PO lifecycle, vendor management',
     redirectPath: '/procurement-officer'
   },
@@ -195,7 +196,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'STORE_INCHARGE',
     department: 'Stores & Warehouse',
     category: 'Operations',
-    icon: <Boxes className="w-5 h-5" />, 
+  iconKey: 'Boxes', 
     description: 'GRN, inventory, stock movements',
     redirectPath: '/store-incharge'
   },
@@ -207,7 +208,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'MANAGER',
     department: 'Operations',
     category: 'Operations',
-    icon: <Briefcase className="w-5 h-5" />, 
+  iconKey: 'Briefcase', 
     description: 'Management dashboard, staff oversight',
     redirectPath: '/operations-manager'
   },
@@ -219,7 +220,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'HUB_INCHARGE',
     department: 'Hub Operations',
     category: 'Operations',
-    icon: <Building className="w-5 h-5" />, 
+  iconKey: 'Building', 
     description: 'Hub-level operations, inventory, sales',
     redirectPath: '/hub-incharge'
   },
@@ -231,7 +232,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'HR',
     department: 'Human Resources',
     category: 'Operations',
-    icon: <Users className="w-5 h-5" />, 
+  iconKey: 'Users', 
     description: 'Employee management, recruitment, payroll',
     redirectPath: '/hr-dashboard'
   },
@@ -243,7 +244,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'COMPLIANCE',
     department: 'Governance',
     category: 'Governance',
-    icon: <ClipboardCheck className="w-5 h-5" />, 
+  iconKey: 'ClipboardCheck', 
     description: 'Policy, audit trails, corrective actions',
     redirectPath: '/compliance-officer'
   },
@@ -255,7 +256,7 @@ const DEMO_USERS: DemoUser[] = [
     role: 'LEGAL',
     department: 'Legal',
     category: 'Governance',
-    icon: <Scale className="w-5 h-5" />, 
+  iconKey: 'Scale', 
     description: 'Contracts, disputes, SLA enforcement',
     redirectPath: '/legal'
   }
@@ -650,21 +651,24 @@ export default function StandardLoginPage() {
                     <div key={category}>
                       <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">{category}</div>
                       <div className="space-y-2">
-                        {categoryUsers.map((user) => (
-                          <div key={user.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-md p-3 hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors">
-                            <div className="flex items-center space-x-3 flex-1 min-w-0">
-                              <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded flex items-center justify-center text-amber-600 flex-shrink-0">{user.icon}</div>
-                              <div className="min-w-0 flex-1">
-                                <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{user.name}</div>
-                                <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</div>
+                        {categoryUsers.map((user) => {
+                          const IconComp = getIcon(user.iconKey || 'User');
+                          return (
+                            <div key={user.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-md p-3 hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors">
+                              <div className="flex items-center space-x-3 flex-1 min-w-0">
+                                <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded flex items-center justify-center text-amber-600 flex-shrink-0"><IconComp className="w-5 h-5" /></div>
+                                <div className="min-w-0 flex-1">
+                                  <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{user.name}</div>
+                                  <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</div>
+                                </div>
+                              </div>
+                              <div className="flex items-center space-x-2 ml-2">
+                                <button onClick={() => fillDemoCredentials(user)} className="text-xs px-3 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-100 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors">Fill</button>
+                                <button onClick={() => handleQuickLogin(user)} disabled={loading} className="text-xs px-3 py-1 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Login</button>
                               </div>
                             </div>
-                            <div className="flex items-center space-x-2 ml-2">
-                              <button onClick={() => fillDemoCredentials(user)} className="text-xs px-3 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-100 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors">Fill</button>
-                              <button onClick={() => handleQuickLogin(user)} disabled={loading} className="text-xs px-3 py-1 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Login</button>
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     </div>
                   );

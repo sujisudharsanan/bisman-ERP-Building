@@ -1,0 +1,75 @@
+name: build-and-scan
+
+on:
+  push:
+    branches: [ deployment, main ]
+  pull_request:
+    branches: [ deployment, main ]
+
+jobs:
+  docker-build-scan:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      security-events: write
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+        with:
+          install: true
+
+      - name: Cache Docker layers
+        uses: actions/cache@v4
+        with:
+          path: /tmp/.buildx-cache
+          key: buildx-${{ github.ref }}-${{ github.sha }}
+          restore-keys: |
+            buildx-${{ github.ref }}-
+            buildx-
+
+      - name: Build fullstack image
+        run: |
+          docker build --file Dockerfile --tag bisman-fullstack:latest --cache-from type=local,src=/tmp/.buildx-cache --cache-to type=local,dest=/tmp/.buildx-cache .
+
+      - name: Generate SBOM (Syft)
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          syft bisman-fullstack:latest -o json > sbom.json
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom
+          path: sbom.json
+
+      - name: Trivy scan (Filesystem)
+        uses: aquasecurity/trivy-action@0.18.0
+        with:
+          scan-type: fs
+          scanners: vuln,secret,config
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          timeout: 5m
+
+      - name: Trivy scan (Image)
+        uses: aquasecurity/trivy-action@0.18.0
+        with:
+          image-ref: bisman-fullstack:latest
+          severity: HIGH,CRITICAL
+          ignore-unfixed: true
+          timeout: 5m
+
+      - name: Upload SARIF
+        if: always()
+        uses: github/codeql-action/upload-sarif@v3
+        with:
+          sarif_file: trivy-results.sarif
+
+      - name: Summary
+        run: |
+          echo "Build & scan completed" >> $GITHUB_STEP_SUMMARY

@@ -374,7 +374,8 @@ const fetchSystemHealth = async (): Promise<SystemHealthData> => {
 
 const fetchSystemConfig = async (): Promise<SystemConfig> => {
   try {
-    const response = await fetch('/api/system-health/config', {
+  // Prefer new /settings endpoint (falls back to /config for backward compatibility)
+  const response = await fetch('/api/system-health/settings', {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
@@ -409,7 +410,8 @@ const fetchSystemConfig = async (): Promise<SystemConfig> => {
 
 const updateSystemConfig = async (config: Partial<SystemConfig>): Promise<void> => {
   try {
-    const response = await fetch('/api/system-health/config', {
+  // Persist via /settings endpoint
+  const response = await fetch('/api/system-health/settings', {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json',

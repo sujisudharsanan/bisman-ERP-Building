@@ -202,60 +202,63 @@ type LucideIcon = any;
 // Stub icon variables (placeholders) — actual icon components are resolved at
 // runtime in client components (DynamicSidebar / TopNav etc.) to avoid
 // executing lucide-react during server prerender.
-const Shield: LucideIcon = undefined as any;
-const Users: LucideIcon = undefined as any;
-const Database: LucideIcon = undefined as any;
-const Activity: LucideIcon = undefined as any;
-const Settings: LucideIcon = undefined as any;
-const Key: LucideIcon = undefined as any;
-const Server: LucideIcon = undefined as any;
-const User: LucideIcon = undefined as any;
-const UserPlus: LucideIcon = undefined as any;
-const DollarSign: LucideIcon = undefined as any;
-const FileText: LucideIcon = undefined as any;
-const TrendingUp: LucideIcon = undefined as any;
-const BarChart3: LucideIcon = undefined as any;
-const PieChart: LucideIcon = undefined as any;
-const Briefcase: LucideIcon = undefined as any;
-const ShoppingCart: LucideIcon = undefined as any;
-const Package: LucideIcon = undefined as any;
-const Truck: LucideIcon = undefined as any;
-const ClipboardCheck: LucideIcon = undefined as any;
-const FileCheck: LucideIcon = undefined as any;
-const Scale: LucideIcon = undefined as any;
-const AlertTriangle: LucideIcon = undefined as any;
-const BookOpen: LucideIcon = undefined as any;
-const Archive: LucideIcon = undefined as any;
-const CreditCard: LucideIcon = undefined as any;
-const Wallet: LucideIcon = undefined as any;
-const Building: LucideIcon = undefined as any;
-const Calculator: LucideIcon = undefined as any;
-const Receipt: LucideIcon = undefined as any;
-const Banknote: LucideIcon = undefined as any;
-const FileSpreadsheet: LucideIcon = undefined as any;
-const Landmark: LucideIcon = undefined as any;
-const Globe: LucideIcon = undefined as any;
-const Coins: LucideIcon = undefined as any;
-const FolderOpen: LucideIcon = undefined as any;
-const FileEdit: LucideIcon = undefined as any;
-const Upload: LucideIcon = undefined as any;
-const CheckCircle: LucideIcon = undefined as any;
-const Clock: LucideIcon = undefined as any;
-const Calendar: LucideIcon = undefined as any;
-const Box: LucideIcon = undefined as any;
-const Boxes: LucideIcon = undefined as any;
-const ListChecks: LucideIcon = undefined as any;
-const Tag: LucideIcon = undefined as any;
-const Factory: LucideIcon = undefined as any;
-const Route: LucideIcon = undefined as any;
-const MapPin: LucideIcon = undefined as any;
-const Clipboard: LucideIcon = undefined as any;
-const FileSignature: LucideIcon = undefined as any;
-const Gavel: LucideIcon = undefined as any;
-const Folder: LucideIcon = undefined as any;
-const UserCheck: LucideIcon = undefined as any;
-const Bell: LucideIcon = undefined as any;
-const HelpCircle: LucideIcon = undefined as any;
+// Provide stable noop React components instead of undefined to avoid
+// "Element type is invalid" during prerender when legacy `icon` fields
+// are still referenced somewhere. Each returns null.
+const Shield: LucideIcon = (() => null) as any;
+const Users: LucideIcon = (() => null) as any;
+const Database: LucideIcon = (() => null) as any;
+const Activity: LucideIcon = (() => null) as any;
+const Settings: LucideIcon = (() => null) as any;
+const Key: LucideIcon = (() => null) as any;
+const Server: LucideIcon = (() => null) as any;
+const User: LucideIcon = (() => null) as any;
+const UserPlus: LucideIcon = (() => null) as any;
+const DollarSign: LucideIcon = (() => null) as any;
+const FileText: LucideIcon = (() => null) as any;
+const TrendingUp: LucideIcon = (() => null) as any;
+const BarChart3: LucideIcon = (() => null) as any;
+const PieChart: LucideIcon = (() => null) as any;
+const Briefcase: LucideIcon = (() => null) as any;
+const ShoppingCart: LucideIcon = (() => null) as any;
+const Package: LucideIcon = (() => null) as any;
+const Truck: LucideIcon = (() => null) as any;
+const ClipboardCheck: LucideIcon = (() => null) as any;
+const FileCheck: LucideIcon = (() => null) as any;
+const Scale: LucideIcon = (() => null) as any;
+const AlertTriangle: LucideIcon = (() => null) as any;
+const BookOpen: LucideIcon = (() => null) as any;
+const Archive: LucideIcon = (() => null) as any;
+const CreditCard: LucideIcon = (() => null) as any;
+const Wallet: LucideIcon = (() => null) as any;
+const Building: LucideIcon = (() => null) as any;
+const Calculator: LucideIcon = (() => null) as any;
+const Receipt: LucideIcon = (() => null) as any;
+const Banknote: LucideIcon = (() => null) as any;
+const FileSpreadsheet: LucideIcon = (() => null) as any;
+const Landmark: LucideIcon = (() => null) as any;
+const Globe: LucideIcon = (() => null) as any;
+const Coins: LucideIcon = (() => null) as any;
+const FolderOpen: LucideIcon = (() => null) as any;
+const FileEdit: LucideIcon = (() => null) as any;
+const Upload: LucideIcon = (() => null) as any;
+const CheckCircle: LucideIcon = (() => null) as any;
+const Clock: LucideIcon = (() => null) as any;
+const Calendar: LucideIcon = (() => null) as any;
+const Box: LucideIcon = (() => null) as any;
+const Boxes: LucideIcon = (() => null) as any;
+const ListChecks: LucideIcon = (() => null) as any;
+const Tag: LucideIcon = (() => null) as any;
+const Factory: LucideIcon = (() => null) as any;
+const Route: LucideIcon = (() => null) as any;
+const MapPin: LucideIcon = (() => null) as any;
+const Clipboard: LucideIcon = (() => null) as any;
+const FileSignature: LucideIcon = (() => null) as any;
+const Gavel: LucideIcon = (() => null) as any;
+const Folder: LucideIcon = (() => null) as any;
+const UserCheck: LucideIcon = (() => null) as any;
+const Bell: LucideIcon = (() => null) as any;
+const HelpCircle: LucideIcon = (() => null) as any;
 
 // Page status types
 export type PageStatus = 'active' | 'coming-soon' | 'disabled';
@@ -265,7 +268,9 @@ export interface PageMetadata {
   id: string;
   name: string;
   path: string;
-  icon: LucideIcon;
+  // iconKey is a lucide-react component name string (e.g. "Settings", "Users")
+  // resolved client-side; avoids importing lucide components during SSR.
+  iconKey?: string;
   module: 'system' | 'finance' | 'procurement' | 'operations' | 'compliance' | 'common' | 'pump-management' | 'hr';
   permissions: string[]; // Required permissions (OR logic)
   roles: string[]; // Recommended roles
@@ -365,7 +370,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'system-settings',
     name: 'System Settings',
     path: '/system/system-settings',
-  icon: "Settings",
+    iconKey: "Settings",
     module: 'system',
     permissions: ['system-settings'],
   roles: ['SYSTEM_ADMIN', 'ADMIN', 'SYSTEM ADMINISTRATOR', 'IT ADMIN'],
@@ -375,9 +380,9 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   },
   {
     id: 'user-management',
-  name: 'Client Management',
+    name: 'Client Management',
     path: '/system/user-management',
-  icon: "Users",
+    iconKey: "Users",
     module: 'system',
     permissions: ['user-management'],
   roles: ['SYSTEM_ADMIN', 'ADMIN', 'SYSTEM ADMINISTRATOR'],
@@ -389,7 +394,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'user-creation',
     name: 'Create New User',
     path: '/hr/user-creation',
-  icon: "UserPlus",
+    iconKey: "UserPlus",
     module: 'hr',
     permissions: ['user-management', 'hr-management'],
   roles: ['SYSTEM_ADMIN', 'ADMIN', 'HR', 'HR_MANAGER'],
@@ -402,7 +407,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'permission-manager',
     name: 'Permission Manager',
     path: '/system/permission-manager',
-  icon: "Key",
+  iconKey: "Key",
     module: 'system',
     permissions: ['user-management'],
   roles: ['SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR', 'ADMIN'],
@@ -414,7 +419,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'roles-users-report',
     name: 'Modules & Roles',
     path: '/system/roles-users-report',
-  icon: "FileText",
+  iconKey: "FileText",
     module: 'system',
     permissions: ['user-management'],
   roles: ['SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR', 'ADMIN'],
@@ -426,7 +431,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'pages-roles-report',
     name: 'Pages & Roles Report',
     path: '/system/pages-roles-report',
-  icon: "FileText",
+  iconKey: "FileText",
     module: 'system',
     permissions: ['user-management', 'system-settings'],
   roles: ['SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR', 'ADMIN'],
@@ -438,7 +443,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'role-access-explorer',
     name: 'Role & Access Explorer',
     path: '/system/role-access-explorer',
-  icon: "FileText",
+  iconKey: "FileText",
     module: 'system',
     permissions: ['user-management', 'system-settings'],
     roles: ['SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR', 'ADMIN'],
@@ -451,7 +456,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'legal-agreements',
     name: 'Agreements & Contracts',
     path: '/compliance/agreements',
-  icon: "FileSignature",
+  iconKey: "FileSignature",
     module: 'compliance',
     permissions: ['contract-view'],
     roles: ['LEGAL', 'COMPLIANCE', 'ADMIN', 'SYSTEM_ADMIN'],
@@ -463,7 +468,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'audit-logs',
     name: 'Audit Logs',
     path: '/system/audit-logs',
-  icon: "Activity",
+  iconKey: "Activity",
     module: 'system',
     permissions: ['system-settings'],
   roles: ['SYSTEM_ADMIN', 'ADMIN', 'SYSTEM ADMINISTRATOR', 'IT ADMIN'],
@@ -475,7 +480,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'backup-restore',
     name: 'Backup & Restore',
     path: '/system/backup-restore',
-  icon: "Database",
+  iconKey: "Database",
     module: 'system',
     // Allow via either system settings or pump management common permissions
     permissions: [
@@ -494,7 +499,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'scheduler',
     name: 'Task Scheduler',
     path: '/system/scheduler',
-  icon: "Clock",
+  iconKey: "Clock",
     module: 'system',
     permissions: ['system-settings'],
   roles: ['SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR', 'ADMIN'],
@@ -506,7 +511,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'system-health',
     name: 'System Health',
     path: '/system/system-health-dashboard',
-  icon: "Activity",
+  iconKey: "Activity",
     module: 'system',
     permissions: ['system-settings'],
   roles: ['SYSTEM_ADMIN', 'ADMIN', 'SYSTEM ADMINISTRATOR', 'IT ADMIN'],
@@ -518,7 +523,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'integration-settings',
     name: 'Integration Settings',
     path: '/system/integration-settings',
-  icon: "Route",
+  iconKey: "Route",
     module: 'system',
     permissions: ['system-settings'],
   roles: ['SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR', 'ADMIN'],
@@ -530,7 +535,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'error-logs',
     name: 'Error Logs',
     path: '/system/error-logs',
-  icon: "AlertTriangle",
+  iconKey: "AlertTriangle",
     module: 'system',
     permissions: ['system-settings'],
   roles: ['SYSTEM_ADMIN', 'ADMIN', 'SYSTEM ADMINISTRATOR', 'IT ADMIN'],
@@ -542,7 +547,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'server-logs',
     name: 'Server Logs',
     path: '/system/server-logs',
-  icon: "Server",
+  iconKey: "Server",
     module: 'system',
     // Allow via System Settings
     permissions: [
@@ -560,7 +565,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'deployment-tools',
     name: 'Deployment Tools',
     path: '/system/deployment-tools',
-  icon: "Upload",
+  iconKey: "Upload",
     module: 'system',
     permissions: ['system-settings'],
   roles: ['SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR', 'ADMIN'],
@@ -572,7 +577,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'api-config',
     name: 'API Configuration',
     path: '/system/api-integration-config',
-  icon: "Route",
+  iconKey: "Route",
     module: 'system',
     permissions: ['system-settings'],
     roles: ['SUPER_ADMIN', 'SYSTEM ADMINISTRATOR'],
@@ -584,7 +589,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'company-setup',
     name: 'Company Setup',
     path: '/system/company-setup',
-  icon: "Building",
+  iconKey: "Building",
     module: 'system',
     permissions: ['system-settings'],
   roles: ['SYSTEM_ADMIN', 'ADMIN'],
@@ -596,7 +601,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'master-data',
     name: 'Master Data',
     path: '/system/master-data-management',
-  icon: "Database",
+  iconKey: "Database",
     module: 'system',
     permissions: ['system-settings'],
   roles: ['SYSTEM_ADMIN', 'ADMIN'],
@@ -610,7 +615,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'executive-dashboard',
     name: 'Executive Dashboard',
     path: '/finance/executive-dashboard',
-  icon: "BarChart3",
+  iconKey: "BarChart3",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO', 'FINANCE CONTROLLER', 'TREASURY'],
@@ -622,7 +627,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'financial-statements',
     name: 'Financial Statements',
     path: '/finance/financial-statements',
-  icon: "FileText",
+  iconKey: "FileText",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO', 'FINANCE CONTROLLER'],
@@ -634,7 +639,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'general-ledger',
     name: 'General Ledger',
     path: '/finance/general-ledger',
-  icon: "BookOpen",
+  iconKey: "BookOpen",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO', 'FINANCE CONTROLLER', 'ACCOUNTS'],
@@ -646,7 +651,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'budgeting-forecasting',
     name: 'Budgeting & Forecasting',
     path: '/finance/budgeting-forecasting',
-  icon: "TrendingUp",
+  iconKey: "TrendingUp",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO', 'FINANCE CONTROLLER'],
@@ -658,7 +663,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'cash-flow-statement',
     name: 'Cash Flow Statement',
     path: '/finance/cash-flow-statement',
-  icon: "DollarSign",
+  iconKey: "DollarSign",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO', 'TREASURY'],
@@ -670,7 +675,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'company-dashboard',
     name: 'Company Dashboard',
     path: '/finance/company-dashboard',
-  icon: "Building",
+  iconKey: "Building",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO'],
@@ -682,7 +687,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'period-end-closing',
     name: 'Period End Closing',
     path: '/finance/period-end-closing',
-  icon: "Archive",
+  iconKey: "Archive",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO', 'FINANCE CONTROLLER', 'ACCOUNTS'],
@@ -694,7 +699,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'cost-center-analysis',
     name: 'Cost Center Analysis',
     path: '/finance/cost-center-analysis',
-  icon: "PieChart",
+  iconKey: "PieChart",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO', 'FINANCE CONTROLLER'],
@@ -706,7 +711,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'journal-entries-approval',
     name: 'Journal Entry Approval',
     path: '/finance/journal-entries-approval',
-  icon: "CheckCircle",
+  iconKey: "CheckCircle",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO', 'FINANCE CONTROLLER'],
@@ -718,7 +723,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'trial-balance',
     name: 'Trial Balance',
     path: '/finance/trial-balance',
-  icon: "FileSpreadsheet",
+  iconKey: "FileSpreadsheet",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO', 'FINANCE CONTROLLER', 'ACCOUNTS'],
@@ -730,7 +735,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'journal-entries',
     name: 'Journal Entries',
     path: '/finance/journal-entries',
-  icon: "FileEdit",
+  iconKey: "FileEdit",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['ACCOUNTS', 'FINANCE CONTROLLER'],
@@ -742,7 +747,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'inter-company-reconciliation',
     name: 'Inter-Company Reconciliation',
     path: '/finance/inter-company-reconciliation',
-  icon: "Globe",
+  iconKey: "Globe",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO', 'FINANCE CONTROLLER'],
@@ -754,7 +759,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'fixed-asset-register',
     name: 'Fixed Asset Register',
     path: '/finance/fixed-asset-register',
-  icon: "Briefcase",
+  iconKey: "Briefcase",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['ACCOUNTS', 'FINANCE CONTROLLER'],
@@ -766,7 +771,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'tax-reports',
     name: 'Tax Reports',
     path: '/finance/tax-reports',
-  icon: "Receipt",
+  iconKey: "Receipt",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO', 'FINANCE CONTROLLER', 'ACCOUNTS'],
@@ -778,7 +783,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'bank-reconciliation',
     name: 'Bank Reconciliation',
     path: '/finance/bank-reconciliation',
-  icon: "Landmark",
+  iconKey: "Landmark",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['BANKER', 'ACCOUNTS', 'TREASURY'],
@@ -790,7 +795,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'cash-flow-forecast',
     name: 'Cash Flow Forecast',
     path: '/finance/cash-flow-forecast',
-  icon: "TrendingUp",
+  iconKey: "TrendingUp",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO', 'TREASURY'],
@@ -802,7 +807,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'payment-gateway',
     name: 'Payment Gateway',
     path: '/finance/payment-gateway-integration',
-  icon: "CreditCard",
+  iconKey: "CreditCard",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['TREASURY', 'BANKER'],
@@ -814,7 +819,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'foreign-exchange',
     name: 'Foreign Exchange',
     path: '/finance/foreign-exchange-management',
-  icon: "Globe",
+  iconKey: "Globe",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO', 'TREASURY', 'BANKER'],
@@ -826,7 +831,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'loan-management',
     name: 'Loan Management',
     path: '/finance/loan-management',
-  icon: "Coins",
+  iconKey: "Coins",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO', 'TREASURY'],
@@ -838,7 +843,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'chart-of-accounts',
     name: 'Chart of Accounts',
     path: '/finance/chart-of-accounts',
-  icon: "FolderOpen",
+  iconKey: "FolderOpen",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO', 'FINANCE CONTROLLER', 'ACCOUNTS'],
@@ -850,7 +855,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'invoice-posting',
     name: 'Invoice Posting',
     path: '/finance/invoice-posting',
-  icon: "FileText",
+  iconKey: "FileText",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['ACCOUNTS', 'ACCOUNTS PAYABLE'],
@@ -862,7 +867,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'period-adjustments',
     name: 'Period Adjustments',
     path: '/finance/period-end-adjustment-entries',
-  icon: "FileEdit",
+  iconKey: "FileEdit",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['FINANCE CONTROLLER', 'ACCOUNTS'],
@@ -874,7 +879,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'purchase-invoice',
     name: 'Purchase Invoice',
     path: '/finance/purchase-invoice',
-  icon: "Receipt",
+  iconKey: "Receipt",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['ACCOUNTS PAYABLE', 'ACCOUNTS'],
@@ -886,7 +891,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'payment-entry',
     name: 'Payment Entry',
     path: '/finance/payment-entry',
-  icon: "Banknote",
+  iconKey: "Banknote",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['ACCOUNTS PAYABLE', 'TREASURY', 'BANKER'],
@@ -898,7 +903,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'vendor-master',
     name: 'Vendor Master',
     path: '/finance/vendor-master',
-  icon: "Users",
+  iconKey: "Users",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['ACCOUNTS PAYABLE', 'PROCUREMENT OFFICER'],
@@ -910,7 +915,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'expense-report',
     name: 'Expense Report',
     path: '/finance/expense-report',
-  icon: "Calculator",
+  iconKey: "Calculator",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['ACCOUNTS', 'FINANCE CONTROLLER'],
@@ -922,7 +927,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'payment-batch',
     name: 'Batch Processing',
     path: '/finance/payment-batch-processing',
-  icon: "Boxes",
+  iconKey: "Boxes",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['TREASURY', 'BANKER', 'ACCOUNTS PAYABLE'],
@@ -934,7 +939,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'payment-view',
     name: 'Payment View',
     path: '/finance/payment-entry-view',
-  icon: "FileText",
+  iconKey: "FileText",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['ACCOUNTS', 'TREASURY'],
@@ -946,7 +951,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'bank-upload',
     name: 'Bank Statement Upload',
     path: '/finance/bank-statement-upload',
-  icon: "Upload",
+  iconKey: "Upload",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['BANKER', 'ACCOUNTS'],
@@ -958,7 +963,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'bank-reconcile-exec',
     name: 'Execute Reconciliation',
     path: '/finance/bank-reconciliation-execute',
-  icon: "CheckCircle",
+  iconKey: "CheckCircle",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['BANKER', 'ACCOUNTS'],
@@ -970,7 +975,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'payment-approval',
     name: 'Payment Approval',
     path: '/finance/payment-approval-queue',
-  icon: "CheckCircle",
+  iconKey: "CheckCircle",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO', 'TREASURY', 'FINANCE CONTROLLER'],
@@ -984,7 +989,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'purchase-order',
     name: 'Purchase Order',
     path: '/procurement/purchase-order',
-  icon: "ShoppingCart",
+  iconKey: "ShoppingCart",
     module: 'procurement',
     permissions: ['purchase-order'],
     roles: ['PROCUREMENT OFFICER'],
@@ -996,7 +1001,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'purchase-request',
     name: 'Purchase Request',
     path: '/procurement/purchase-request',
-  icon: "FileText",
+  iconKey: "FileText",
     module: 'procurement',
     permissions: ['purchase-order'],
     roles: ['PROCUREMENT OFFICER', 'STORE INCHARGE'],
@@ -1008,7 +1013,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'supplier-quotation',
     name: 'Supplier Quotation',
     path: '/procurement/supplier-quotation',
-    icon: FileText,
+  iconKey: "FileText",
     module: 'procurement',
     permissions: ['purchase-order'],
     roles: ['PROCUREMENT OFFICER'],
@@ -1020,7 +1025,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'supplier-master',
     name: 'Supplier Master',
     path: '/procurement/supplier-master',
-  icon: "Users",
+  iconKey: "Users",
     module: 'procurement',
     permissions: ['purchase-order'],
     roles: ['PROCUREMENT OFFICER'],
@@ -1032,7 +1037,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'material-request',
     name: 'Material Request',
     path: '/procurement/material-request',
-  icon: "Package",
+  iconKey: "Package",
     module: 'procurement',
     permissions: ['purchase-order'],
     roles: ['PROCUREMENT OFFICER', 'STORE INCHARGE', 'OPERATIONS MANAGER'],
@@ -1046,7 +1051,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'kpi-dashboard',
     name: 'KPI Dashboard',
     path: '/operations/kpi-dashboard',
-  icon: "BarChart3",
+  iconKey: "BarChart3",
     module: 'operations',
     permissions: ['kpi-dashboard'],
     roles: ['OPERATIONS MANAGER', 'HUB INCHARGE'],
@@ -1058,7 +1063,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'stock-entry',
     name: 'Stock Entry',
     path: '/operations/stock-entry',
-  icon: "Package",
+  iconKey: "Package",
     module: 'operations',
     permissions: ['kpi-dashboard'],
     roles: ['STORE INCHARGE', 'HUB INCHARGE', 'OPERATIONS MANAGER'],
@@ -1070,7 +1075,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'item-master',
     name: 'Item Master',
     path: '/operations/item-master-limited',
-  icon: "Tag",
+  iconKey: "Tag",
     module: 'operations',
     permissions: ['kpi-dashboard'],
     roles: ['STORE INCHARGE', 'OPERATIONS MANAGER'],
@@ -1082,7 +1087,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'stock-ledger',
     name: 'Stock Ledger',
     path: '/operations/stock-ledger',
-  icon: "BookOpen",
+  iconKey: "BookOpen",
     module: 'operations',
     permissions: ['kpi-dashboard'],
     roles: ['STORE INCHARGE', 'OPERATIONS MANAGER'],
@@ -1094,7 +1099,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'delivery-note',
     name: 'Delivery Note',
     path: '/operations/delivery-note',
-  icon: "Truck",
+  iconKey: "Truck",
     module: 'operations',
     permissions: ['kpi-dashboard'],
     roles: ['HUB INCHARGE', 'OPERATIONS MANAGER'],
@@ -1106,7 +1111,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'quality-inspection',
     name: 'Quality Inspection',
     path: '/operations/quality-inspection',
-  icon: "ClipboardCheck",
+  iconKey: "ClipboardCheck",
     module: 'operations',
     permissions: ['kpi-dashboard'],
     roles: ['STORE INCHARGE', 'OPERATIONS MANAGER'],
@@ -1118,7 +1123,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'sales-order',
     name: 'Sales Order',
     path: '/operations/sales-order',
-  icon: "ShoppingCart",
+  iconKey: "ShoppingCart",
     module: 'operations',
     permissions: ['kpi-dashboard'],
     roles: ['HUB INCHARGE', 'OPERATIONS MANAGER'],
@@ -1130,7 +1135,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'work-order',
     name: 'Work Order',
     path: '/operations/work-order',
-  icon: "Factory",
+  iconKey: "Factory",
     module: 'operations',
     permissions: ['kpi-dashboard'],
     roles: ['OPERATIONS MANAGER', 'HUB INCHARGE'],
@@ -1142,7 +1147,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'bom-view',
     name: 'Bill of Materials',
     path: '/operations/bom-view',
-  icon: "ListChecks",
+  iconKey: "ListChecks",
     module: 'operations',
     permissions: ['kpi-dashboard'],
     roles: ['OPERATIONS MANAGER', 'STORE INCHARGE'],
@@ -1154,7 +1159,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'shipping-logistics',
     name: 'Shipping & Logistics',
     path: '/operations/shipping-logistics',
-  icon: "Truck",
+  iconKey: "Truck",
     module: 'operations',
     permissions: ['kpi-dashboard'],
     roles: ['HUB INCHARGE', 'OPERATIONS MANAGER'],
@@ -1166,7 +1171,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'stock-transfer',
     name: 'Stock Transfer',
     path: '/operations/stock-entry-transfer',
-  icon: "MapPin",
+  iconKey: "MapPin",
     module: 'operations',
     permissions: ['kpi-dashboard'],
     roles: ['STORE INCHARGE', 'HUB INCHARGE'],
@@ -1178,7 +1183,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'sales-order-view',
     name: 'Sales Order View',
     path: '/operations/sales-order-view',
-  icon: "FileText",
+  iconKey: "FileText",
     module: 'operations',
     permissions: ['kpi-dashboard'],
     roles: ['HUB INCHARGE', 'OPERATIONS MANAGER'],
@@ -1190,7 +1195,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'asset-register',
     name: 'Asset Register',
     path: '/operations/asset-register-hub',
-  icon: "Box",
+  iconKey: "Box",
     module: 'operations',
     permissions: ['kpi-dashboard'],
     roles: ['HUB INCHARGE', 'OPERATIONS MANAGER'],
@@ -1204,7 +1209,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'compliance-dashboard',
     name: 'Compliance Dashboard',
     path: '/compliance/compliance-dashboard',
-  icon: "Scale",
+  iconKey: "Scale",
     module: 'compliance',
     permissions: ['compliance-dashboard'],
     roles: ['COMPLIANCE', 'LEGAL'],
@@ -1216,7 +1221,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'audit-trail',
     name: 'Audit Trail',
     path: '/compliance/audit-trail',
-  icon: "Activity",
+  iconKey: "Activity",
     module: 'compliance',
     permissions: ['compliance-dashboard'],
     roles: ['COMPLIANCE', 'LEGAL'],
@@ -1228,7 +1233,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'policy-management',
     name: 'Policy Management',
     path: '/compliance/policy-management',
-  icon: "FileCheck",
+  iconKey: "FileCheck",
     module: 'compliance',
     permissions: ['compliance-dashboard'],
     roles: ['COMPLIANCE', 'LEGAL'],
@@ -1240,7 +1245,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'regulatory-templates',
     name: 'Report Templates',
     path: '/compliance/regulatory-report-templates',
-  icon: "FileText",
+  iconKey: "FileText",
     module: 'compliance',
     permissions: ['compliance-dashboard'],
     roles: ['COMPLIANCE', 'LEGAL'],
@@ -1252,7 +1257,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'approval-workflows',
     name: 'Approval Workflows',
     path: '/compliance/approval-workflow-view',
-  icon: "CheckCircle",
+  iconKey: "CheckCircle",
     module: 'compliance',
     permissions: ['compliance-dashboard'],
     roles: ['COMPLIANCE'],
@@ -1264,7 +1269,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'contract-management',
     name: 'Contract Management',
     path: '/compliance/contract-management',
-  icon: "FileSignature",
+  iconKey: "FileSignature",
     module: 'compliance',
     permissions: ['compliance-dashboard'],
     roles: ['LEGAL', 'COMPLIANCE'],
@@ -1276,7 +1281,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'litigation-tracker',
     name: 'Litigation Tracker',
     path: '/compliance/litigation-tracker',
-  icon: "Gavel",
+  iconKey: "Gavel",
     module: 'compliance',
     permissions: ['compliance-dashboard'],
     roles: ['LEGAL'],
@@ -1288,7 +1293,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'document-repository',
     name: 'Document Repository',
     path: '/compliance/document-repository-view',
-  icon: "Folder",
+  iconKey: "Folder",
     module: 'compliance',
     permissions: ['compliance-dashboard'],
     roles: ['COMPLIANCE', 'LEGAL'],
@@ -1300,7 +1305,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'legal-master',
     name: 'Legal Master Data',
     path: '/compliance/vendor-customer-master-legal',
-  icon: "UserCheck",
+  iconKey: "UserCheck",
     module: 'compliance',
     permissions: ['compliance-dashboard'],
     roles: ['LEGAL', 'COMPLIANCE'],
@@ -1314,7 +1319,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'hub-incharge-dashboard',
     name: 'Hub Incharge Dashboard',
     path: '/hub-incharge',
-  icon: "MapPin",
+  iconKey: "MapPin",
     module: 'operations',
     permissions: ['kpi-dashboard'],
     roles: ['HUB INCHARGE'],
@@ -1326,7 +1331,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'store-incharge-dashboard',
     name: 'Store Incharge Dashboard',
     path: '/store-incharge',
-  icon: "Package",
+  iconKey: "Package",
     module: 'operations',
     permissions: ['kpi-dashboard'],
     roles: ['STORE INCHARGE'],
@@ -1338,7 +1343,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'operations-manager-dashboard',
     name: 'Operations Manager Dashboard',
     path: '/operations-manager',
-  icon: "Briefcase",
+  iconKey: "Briefcase",
     module: 'operations',
     permissions: ['kpi-dashboard'],
     roles: ['OPERATIONS MANAGER'],
@@ -1350,7 +1355,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'procurement-officer-dashboard',
     name: 'Procurement Officer Dashboard',
     path: '/procurement-officer',
-  icon: "ShoppingCart",
+  iconKey: "ShoppingCart",
     module: 'procurement',
     permissions: ['purchase-order'],
     roles: ['PROCUREMENT OFFICER'],
@@ -1362,7 +1367,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'finance-controller-dashboard',
     name: 'Finance Controller Dashboard',
     path: '/finance-controller',
-  icon: "Calculator",
+  iconKey: "Calculator",
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['FINANCE CONTROLLER'],
@@ -1374,7 +1379,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'compliance-officer-dashboard',
     name: 'Compliance Officer Dashboard',
     path: '/compliance-officer',
-  icon: "Shield",
+  iconKey: "Shield",
     module: 'compliance',
     permissions: ['compliance-dashboard'],
     roles: ['COMPLIANCE'],
@@ -1392,7 +1397,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'common-messages',
     name: 'Messages',
     path: '/common/messages',
-  icon: "HelpCircle",
+  iconKey: "HelpCircle",
     module: 'common',
     permissions: ['authenticated'],
     roles: ['ALL'],
@@ -1430,7 +1435,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'common-user-settings',
     name: 'User Settings',
     path: '/common/user-settings',
-    icon: "Settings",
+  iconKey: "Settings",
     module: 'common',
     permissions: ['authenticated'],
     roles: ['ALL'],
@@ -1442,7 +1447,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     id: 'common-payment-request',
     name: 'Payment Request',
     path: '/common/payment-request',
-    icon: "DollarSign",
+  iconKey: "DollarSign",
     module: 'common',
     permissions: ['authenticated'],
     roles: ['ALL'],

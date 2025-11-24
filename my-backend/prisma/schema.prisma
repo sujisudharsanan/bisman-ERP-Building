@@ -514,6 +514,48 @@ model ClientUsageEvent {
 }
 
 // ==========================================
+// SYSTEM HEALTH CONFIGURATION (Singleton)
+// ==========================================
+// Stores editable thresholds & dashboard config.
+// Single row (id=1) referenced by system health endpoints.
+model SystemHealthConfig {
+  id             Int      @id @default(autoincrement())
+  thresholds     Json    // { latency: {warning,critical}, p95Latency: {...}, errorRate: {...}, cacheHitRate: {...}, slowQueries: {...}, cpuUsage: {...}, memoryUsage: {...} }
+  backupLocation String  @db.VarChar(255)
+  refreshInterval Int    @default(30000) // ms
+  updated_at     DateTime @default(now()) @updatedAt @db.Timestamp(6)
+
+  @@map("system_health_config")
+}
+
+// Short-term metric samples (aggregated per interval)
+model SystemMetricSample {
+  id          Int      @id @default(autoincrement())
+  latencyMs   Int      // average latency in interval
+  errorRatePct Float   // percentage of failed requests
+  collected_at DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([collected_at], map: "idx_metric_sample_collected")
+  @@map("system_metric_samples")
+}
+
+// Load test report ingestion (e.g., k6)
+model LoadTestReport {
+  id         Int      @id @default(autoincrement())
+  source     String   @db.VarChar(100) // e.g., k6-login, k6-dashboard
+  p95Ms      Int
+  p99Ms      Int
+  avgMs      Int
+  errors     Int
+  timestamp  DateTime @default(now()) @db.Timestamp(6)
+  notes      String?  @db.VarChar(500)
+
+  @@index([timestamp], map: "idx_load_test_timestamp")
+  @@index([source], map: "idx_load_test_source")
+  @@map("load_test_reports")
+}
+
+// ==========================================
 // CLIENT DAILY USAGE (Aggregated metrics)
 // ==========================================
 model ClientDailyUsage {
@@ -944,4 +986,24 @@ model CallLog {
   @@index([status], map: "idx_call_logs_status")
   @@index([started_at], map: "idx_call_logs_started")
   @@map("call_logs")
+}
+
+// Rate Limiting Violations - Security Audit
+model RateLimitViolation {
+  id             Int       @id @default(autoincrement())
+  ip_address     String    @db.VarChar(45)
+  endpoint       String    @db.VarChar(255)
+  user_agent     String?   @db.Text
+  violation_type String    @default("UNKNOWN") @db.VarChar(50)
+  timestamp      DateTime  @default(now()) @db.Timestamp(6)
+  country_code   String?   @db.VarChar(2)
+  user_id        Int?
+  request_method String?   @db.VarChar(10)
+  response_status Int      @default(429)
+
+  @@index([ip_address, timestamp], map: "idx_violations_ip_timestamp")
+  @@index([endpoint, timestamp], map: "idx_violations_endpoint_timestamp")
+  @@index([timestamp(sort: Desc)], map: "idx_violations_timestamp")
+  @@index([violation_type], map: "idx_violations_type")
+  @@map("rate_limit_violations")
 }

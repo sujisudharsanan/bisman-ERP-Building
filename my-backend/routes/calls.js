@@ -7,6 +7,9 @@ const { getPrisma } = require('../lib/prisma')
 const prisma = getPrisma()
 // Helper: runtime check for Prisma model/method availability
 function canUseDB() {
+  if (process.env.SKIP_DB === '1' || !process.env.DATABASE_URL) {
+    return false
+  }
   try {
     const has = !!(
       prisma &&

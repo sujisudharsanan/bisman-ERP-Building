@@ -14,6 +14,7 @@
 import React from 'react';
 import * as Icons from 'lucide-react';
 import { Home } from 'lucide-react';
+import { safeComponent } from '@/lib/safeComponent';
 
 // Type for icon component
 type IconComponent = React.ComponentType<any>;
@@ -27,9 +28,9 @@ const FallbackIcon: IconComponent = Home;
  */
 export const iconMap = new Proxy(Icons as any, {
   get(target: any, prop: string): IconComponent {
-    // Return the icon if it exists, otherwise return fallback
-    return target[prop] || FallbackIcon;
-  }
+    // Return guarded icon or fallback, never undefined
+    return safeComponent(target[prop] || FallbackIcon, String(prop), 'iconMap') as IconComponent;
+  },
 });
 
 /**
@@ -38,7 +39,9 @@ export const iconMap = new Proxy(Icons as any, {
  * @returns Icon component (never undefined)
  */
 export function getIcon(iconName: string): IconComponent {
-  return iconMap[iconName] || FallbackIcon;
+  // Normalize common naming variants (kebab/underscore to PascalCase)
+  const normalized = iconName?.replace?.(/[-_](\w)/g, (_: string, c: string) => c.toUpperCase()) || iconName;
+  return iconMap[normalized] as IconComponent;
 }
 
 /**

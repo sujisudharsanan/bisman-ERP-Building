@@ -20,6 +20,7 @@ import {
   BarChart3,
 } from 'lucide-react';
 import { getIcon } from '@/components/layout/BaseSidebar';
+import { safeComponent } from '@/lib/safeComponent';
 
 export default function ExecutiveDashboardPage() {
   const { hasAccess } = useAuth();
@@ -111,7 +112,7 @@ export default function ExecutiveDashboardPage() {
             >
               <div className="flex items-center justify-between mb-4">
                 {(() => {
-                  const IconComp = getIcon(metric.icon);
+                  const IconComp = safeComponent(getIcon(metric.icon), metric.icon, 'executive-dashboard');
                   return <IconComp className={`w-8 h-8 text-${metric.color}-600 dark:text-${metric.color}-400`} />;
                 })()}
                 <span
