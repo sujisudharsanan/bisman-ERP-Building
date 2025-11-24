@@ -9,40 +9,45 @@ import React from 'react';
 import { useRoleDashboardData } from '@/hooks/useRoleDashboardData';
 import type { ERPDashboardLayoutProps, DashboardModule } from '@/types/dashboard';
 import { FaBox, FaUsers, FaChartLine, FaClipboardList, FaCheckCircle, FaWarehouse, FaUserFriends, FaRoute, FaChartBar, FaQrcode, FaUserTie, FaExclamationTriangle, FaFileContract, FaShieldAlt, FaExclamationCircle, FaDollarSign, FaTasks, FaCalendar, FaClock, FaBell, FaUser, FaShoppingCart, FaQuestionCircle, FaEnvelope, FaPlus, FaUserPlus, FaFileAlt, FaCheck, FaClipboardCheck } from 'react-icons/fa';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, Home } from 'lucide-react';
 
-// Icon map for dynamic rendering
-const iconMap: Record<string, React.ComponentType<any>> = {
-  FaBox: FaBox,
-  FaUsers: FaUsers,
-  FaChartLine: FaChartLine,
-  FaClipboardList: FaClipboardList,
-  FaCheckCircle: FaCheckCircle,
-  FaWarehouse: FaWarehouse,
-  FaUserFriends: FaUserFriends,
-  FaRoute: FaRoute,
-  FaChartBar: FaChartBar,
-  FaQrcode: FaQrcode,
-  FaUserTie: FaUserTie,
-  FaExclamationTriangle: FaExclamationTriangle,
-  FaFileContract: FaFileContract,
-  FaShieldAlt: FaShieldAlt,
-  FaExclamationCircle: FaExclamationCircle,
-  FaDollarSign: FaDollarSign,
-  FaTasks: FaTasks,
-  FaCalendar: FaCalendar,
-  FaClock: FaClock,
-  FaBell: FaBell,
-  FaUser: FaUser,
-  FaShoppingCart: FaShoppingCart,
-  FaQuestionCircle: FaQuestionCircle,
-  FaEnvelope: FaEnvelope,
-  FaPlus: FaPlus,
-  FaUserPlus: FaUserPlus,
-  FaFileAlt: FaFileAlt,
-  FaCheck: FaCheck,
-  FaClipboardCheck: FaClipboardCheck,
-};
+// Crash-proof icon map with fallback to FaBox
+const iconMap: Record<string, React.ComponentType<any>> = new Proxy({
+  FaBox,
+  FaUsers,
+  FaChartLine,
+  FaClipboardList,
+  FaCheckCircle,
+  FaWarehouse,
+  FaUserFriends,
+  FaRoute,
+  FaChartBar,
+  FaQrcode,
+  FaUserTie,
+  FaExclamationTriangle,
+  FaFileContract,
+  FaShieldAlt,
+  FaExclamationCircle,
+  FaDollarSign,
+  FaTasks,
+  FaCalendar,
+  FaClock,
+  FaBell,
+  FaUser,
+  FaShoppingCart,
+  FaQuestionCircle,
+  FaEnvelope,
+  FaPlus,
+  FaUserPlus,
+  FaFileAlt,
+  FaCheck,
+  FaClipboardCheck,
+  Home, // Lucide icon fallback
+}, {
+  get(target, prop: string) {
+    return target[prop as keyof typeof target] || FaBox;
+  }
+});
 
 function DashboardBox({ module, onClick, isLoading }: { module: DashboardModule; onClick?: () => void; isLoading?: boolean }) {
   return (
