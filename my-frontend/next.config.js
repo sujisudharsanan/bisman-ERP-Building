@@ -15,14 +15,14 @@ const isCI = process.env.CI === 'true' || process.env.VERCEL === '1' || process.
 const MM_URL = process.env.MM_BASE_URL || 'http://localhost:8065';
 
 let nextConfig = {
-  reactStrictMode: false, // Temporarily disabled to debug webpack errors
+  reactStrictMode: true, // re-enable to catch lifecycle issues early
   // swcMinify was removed in Next 13+; removing to avoid warnings
   images: { domains: [], unoptimized: true },
   // Use Node server output; disable static export due to dynamic routes
   output: 'standalone',
-  // In CI builds (Railway/Vercel), don’t fail on lint or TS; we already run these in prebuild locally
-  eslint: { ignoreDuringBuilds: isCI },
-  typescript: { ignoreBuildErrors: isCI },
+  // Always surface lint and TS errors now to avoid undefined component masking
+  eslint: { ignoreDuringBuilds: false },
+  typescript: { ignoreBuildErrors: false },
   webpack: (config, { dev, isServer }) => {
     // Suppress webpack warnings in development
     if (dev && !isServer) {

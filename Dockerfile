@@ -21,16 +21,17 @@ COPY my-frontend/package*.json ./frontend/
 RUN cd frontend && npm ci && npm cache clean --force
 COPY my-frontend/ ./frontend
 ## Generate Prisma client if schema exists; ignore failure so build continues even if frontend doesn't need it.
+COPY my-frontend/prisma ./frontend/prisma
 RUN cd frontend && npx prisma generate || echo "Prisma generate skipped (no schema)"
 ## CI flags to skip telemetry & heavy dev checks; lint/type-check already bypassed via scripts logic.
-ENV CI=true
-ENV RAILWAY=1
 ENV NEXT_TELEMETRY_DISABLED=1
-## Provide a sensible default API base. Frontend code prefers same-origin proxy; /api works inside container/nginx.
+# Allow passing build-time public envs; default to /api for backend proxy
 ARG NEXT_PUBLIC_API_URL=/api
+ARG NEXT_PUBLIC_MM_TEAM_SLUG=erp
 ENV NEXT_PUBLIC_API_URL=${NEXT_PUBLIC_API_URL}
-## Build Next.js application. If it fails, output a hint.
-RUN npm run build --prefix frontend || (echo "\n==== Next build failed. Ensure dev deps & prisma schema present. Provide NEXT_PUBLIC_API_URL if required. ====" && exit 1)
+ENV NEXT_PUBLIC_MM_TEAM_SLUG=${NEXT_PUBLIC_MM_TEAM_SLUG}
+# Fail fast with verbose output (no CI suppression) so undefined component errors surface
+RUN npm run build --prefix frontend || (echo "\n==== Next build failed. Showing verbose diagnostics. Ensure prisma schema & env vars. ====" && ls -1 frontend/.next || true && exit 1)
 
 # ---- runner: minimal runtime with dumb-init; copy pruned node_modules later ----
 FROM node:20-alpine AS runner
