@@ -25,6 +25,8 @@ const execAsync = promisify(exec);
 // Middleware
 const { authenticate } = require('../middleware/auth');
 const rateLimit = require('express-rate-limit');
+
+/**
  * POST /api/system-health/load-test
  * Ingest a load test report (e.g., k6 summary JSON)
  * Body: { source, p95Ms, p99Ms, avgMs, errors, notes }
@@ -64,14 +66,14 @@ router.use(systemHealthLimiter);
 
 // Role check middleware - only ENTERPRISE_ADMIN can access
 router.use((req, res, next) => {
-  if (req.user && (req.user.role === 'ENTERPRISE_ADMIN' || req.user.roleName === 'ENTERPRISE_ADMIN')) {
-    next();
-  } else {
-    res.status(403).json({
-      error: 'Access denied',
-      message: 'Only Enterprise Admins can access system health data',
-    });
-  }
+  const isDev = process.env.NODE_ENV !== 'production';
+  const role = req.user && (req.user.role || req.user.roleName);
+  const allowed = role === 'ENTERPRISE_ADMIN' || (isDev && role === 'SUPER_ADMIN');
+  if (allowed) return next();
+  return res.status(403).json({
+    error: 'Access denied',
+    message: 'Only Enterprise Admins can access system health data',
+  });
 });
 
 // ============================================================================
@@ -90,6 +92,8 @@ let systemConfig = {
   },
   backupLocation: './backups/database',
   refreshInterval: 30000, // 30 seconds
+  metricsRetentionDays: 7,
+  aggregateRetentionDays: 365,
 };
 
 // ============================================================================
@@ -775,7 +779,9 @@ router.get('/settings', async (req, res) => {
           id: 1,
           thresholds: systemConfig.thresholds,
           backupLocation: systemConfig.backupLocation,
-          refreshInterval: systemConfig.refreshInterval,
+      refreshInterval: systemConfig.refreshInterval,
+      metricsRetentionDays: systemConfig.metricsRetentionDays,
+      aggregateRetentionDays: systemConfig.aggregateRetentionDays,
         },
       });
     }
@@ -784,6 +790,8 @@ router.get('/settings', async (req, res) => {
       thresholds: { ...systemConfig.thresholds, ...(record.thresholds || {}) },
       backupLocation: record.backupLocation,
       refreshInterval: record.refreshInterval,
+    metricsRetentionDays: record.metricsRetentionDays ?? systemConfig.metricsRetentionDays,
+    aggregateRetentionDays: record.aggregateRetentionDays ?? systemConfig.aggregateRetentionDays,
       updated_at: record.updated_at,
     };
     // Update in-memory copy for immediate use by alerts
@@ -837,6 +845,21 @@ router.patch('/settings', async (req, res) => {
       }
       updates.refreshInterval = ri;
     }
+    // Validate retention settings if provided
+    if (updates.metricsRetentionDays != null) {
+      const mr = parseInt(updates.metricsRetentionDays);
+      if (isNaN(mr) || mr < 1 || mr > 365) {
+        return res.status(400).json({ error: 'Invalid metricsRetentionDays', message: 'Must be between 1 and 365 days' });
+      }
+      updates.metricsRetentionDays = mr;
+    }
+    if (updates.aggregateRetentionDays != null) {
+      const ar = parseInt(updates.aggregateRetentionDays);
+      if (isNaN(ar) || ar < 30 || ar > 1825) {
+        return res.status(400).json({ error: 'Invalid aggregateRetentionDays', message: 'Must be between 30 and 1825 days' });
+      }
+      updates.aggregateRetentionDays = ar;
+    }
     const { prisma } = req.app.locals;
     if (!prisma) {
       // In-memory update fallback if DB unavailable
@@ -851,6 +874,8 @@ router.patch('/settings', async (req, res) => {
           thresholds: systemConfig.thresholds,
           backupLocation: systemConfig.backupLocation,
           refreshInterval: systemConfig.refreshInterval,
+          metricsRetentionDays: systemConfig.metricsRetentionDays,
+          aggregateRetentionDays: systemConfig.aggregateRetentionDays,
         },
       });
     }
@@ -862,12 +887,16 @@ router.patch('/settings', async (req, res) => {
         thresholds: newThresholds,
         backupLocation: updates.backupLocation != null ? updates.backupLocation : record.backupLocation,
         refreshInterval: updates.refreshInterval != null ? updates.refreshInterval : record.refreshInterval,
+        metricsRetentionDays: updates.metricsRetentionDays != null ? updates.metricsRetentionDays : (record.metricsRetentionDays ?? systemConfig.metricsRetentionDays),
+        aggregateRetentionDays: updates.aggregateRetentionDays != null ? updates.aggregateRetentionDays : (record.aggregateRetentionDays ?? systemConfig.aggregateRetentionDays),
       },
     });
     const merged = {
       thresholds: persisted.thresholds,
       backupLocation: persisted.backupLocation,
       refreshInterval: persisted.refreshInterval,
+      metricsRetentionDays: persisted.metricsRetentionDays,
+      aggregateRetentionDays: persisted.aggregateRetentionDays,
       updated_at: persisted.updated_at,
     };
     systemConfig = { ...systemConfig, ...merged };
