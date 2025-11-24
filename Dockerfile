@@ -20,9 +20,8 @@ RUN apk add --no-cache postgresql-client openssl libc6-compat
 # Copy manifests first for layer cache
 COPY my-frontend/package*.json ./frontend/
 COPY my-frontend/prisma ./frontend/prisma
-# Install full deps with cache mount
-RUN --mount=type=cache,target=/root/.npm \
-  cd frontend && \
+# Install full deps (without cache mount for Railway compatibility)
+RUN cd frontend && \
   npm ci && \
   npm cache clean --force
 # Copy full frontend source
