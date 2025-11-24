@@ -1,0 +1,15 @@
+# Ignore documentation and non-essential files for faster Railway deployment
+*.md
+docs/
+*.log
+.DS_Store
+.vscode/
+.idea/
+*.backup.*
+backup-*/
+.husky/
+.git/
+
+# Keep only essential files for deployment
+!README.md
+!CHANGELOG.md
