@@ -43,4 +43,4 @@ fi
 
 # Start the application
 echo "🎬 Starting server..."
-exec node server.js
+exec node index.js
