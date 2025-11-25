@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useTaskAPI } from './useTaskAPI';
+import { useSocket } from '@/contexts/SocketContext';
 
 interface Task {
   id: string;
@@ -20,6 +22,21 @@ interface DashboardData {
   DONE: Task[];
 }
 
+// Status mapping from backend to frontend
+const STATUS_MAP: { [key: string]: keyof DashboardData } = {
+  'DRAFT': 'DRAFT',
+  'OPEN': 'DRAFT',
+  'IN_PROGRESS': 'IN_PROGRESS',
+  'IN_REVIEW': 'EDITING',
+  'BLOCKED': 'IN_PROGRESS',
+  'COMPLETED': 'DONE',
+  'CANCELLED': 'DONE',
+  'ARCHIVED': 'DONE',
+};
+
+// Color palette for tasks
+const COLORS = ['blue', 'purple', 'indigo', 'pink', 'cyan', 'teal', 'yellow'];
+
 export function useDashboardData(role: string) {
   const [dashboardData, setDashboardData] = useState<DashboardData>({
     DRAFT: [],
@@ -28,152 +45,121 @@ export function useDashboardData(role: string) {
     DONE: [],
   });
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const { getDashboardTasks } = useTaskAPI();
+  const { socket, isConnected } = useSocket();
 
-  useEffect(() => {
-    // Mock data - In production, this would be an API call
-    // Filter and customize data based on role
-    const mockData: DashboardData = {
-      DRAFT: [
-        {
-          id: 'd1',
-          title: 'Main Task',
-          subItems: [
-            { id: 's1', text: 'Incididunt ut labore et dolore' },
-            { id: 's2', text: 'Magna aliqua enim' },
-          ],
-          comments: 1,
-          attachments: 5,
-          color: 'blue',
-          status: 'draft',
-        },
-        {
-          id: 'd2',
-          title: 'Secondary Task',
-          subItems: [{ id: 's3', text: 'Ad minim veniam, quis ex ea' }],
-          comments: 0,
-          attachments: 4,
-          color: 'purple',
-          status: 'draft',
-        },
-        {
-          id: 'd3',
-          title: 'Tertiary Task',
-          subItems: [{ id: 's4', text: 'Commodo consequat' }],
-          comments: 2,
-          attachments: 1,
-          color: 'indigo',
-          status: 'draft',
-        },
-      ],
-      IN_PROGRESS: [
-        {
-          id: 'p1',
-          title: 'Main Task',
-          subItems: [{ id: 's5', text: 'Incididunt ut labore et dolore' }],
-          progress: 75,
-          comments: 1,
-          attachments: 5,
-          color: 'pink',
-          status: 'in_progress',
-        },
-        {
-          id: 'p2',
-          title: 'Secondary Task',
-          subItems: [
-            { id: 's6', text: 'Incididunt ut labore et dolore' },
-            { id: 's7', text: 'Magna aliqua enim' },
-          ],
-          progress: 50,
-          comments: 2,
-          attachments: 6,
-          color: 'cyan',
-          status: 'in_progress',
-        },
-      ],
-      EDITING: [
-        {
-          id: 'e1',
-          title: 'Main Task',
-          subItems: [
-            { id: 's8', text: 'Adipiscing elit sed do eiusmod' },
-            { id: 's9', text: 'Et dolore magna aliqua' },
-            { id: 's10', text: 'Excepteur sint occaecat cupidatat' },
-          ],
-          comments: 0,
-          attachments: 0,
-          color: 'teal',
-          status: 'editing',
-        },
-        {
-          id: 'e2',
-          title: 'Secondary Task',
-          subItems: [
-            { id: 's11', text: 'Adipiscing elit sed do eiusmod' },
-            { id: 's12', text: 'Et dolore magna aliqua' },
-          ],
-          comments: 1,
-          attachments: 2,
-          color: 'cyan',
-          status: 'editing',
-        },
-        {
-          id: 'e3',
-          title: 'Tertiary Task',
-          subItems: [
-            { id: 's13', text: 'Adipiscing elit sed do eiusmod' },
-            { id: 's14', text: 'Et dolore magna aliqua' },
-            { id: 's15', text: 'Excepteur sint occaecat cupidatat' },
-          ],
-          comments: 0,
-          attachments: 1,
-          color: 'blue',
-          status: 'editing',
-        },
-      ],
-      DONE: [
-        {
-          id: 'dn1',
-          title: 'Main Task',
-          subItems: [
-            { id: 's16', text: 'Incididunt ut labore et dolore' },
-            { id: 's17', text: 'Magna aliqua enim' },
-          ],
-          comments: 0,
-          attachments: 3,
-          color: 'purple',
-          status: 'done',
-        },
-        {
-          id: 'dn2',
-          title: 'Secondary Task',
-          subItems: [{ id: 's18', text: 'Incididunt ut labore et' }],
-          comments: 1,
-          attachments: 2,
-          color: 'yellow',
-          status: 'done',
-        },
-        {
-          id: 'dn3',
-          title: 'Tertiary Task',
-          subItems: [{ id: 's19', text: 'Incididunt ut labore et' }],
-          comments: 0,
-          attachments: 1,
-          color: 'pink',
-          status: 'done',
-        },
-      ],
+  // Convert backend task to frontend task format
+  const convertTask = (backendTask: any, index: number): Task => {
+    const subItems = backendTask.description 
+      ? backendTask.description.split('\n').filter((line: string) => line.trim()).map((text: string, i: number) => ({
+          id: `sub-${backendTask.id}-${i}`,
+          text: text.trim(),
+        }))
+      : [];
+
+    return {
+      id: backendTask.id.toString(),
+      title: backendTask.title,
+      subItems: subItems.length > 0 ? subItems : [{ id: `sub-${backendTask.id}-0`, text: 'No description' }],
+      progress: backendTask.progressPercentage || undefined,
+      comments: backendTask.messageCount || 0,
+      attachments: backendTask.attachmentCount || 0,
+      color: COLORS[index % COLORS.length],
+      status: STATUS_MAP[backendTask.status]?.toLowerCase() as Task['status'] || 'draft',
     };
+  };
 
-    // Role-based filtering (example)
-    // You can customize this based on your requirements
-    if (role === 'STAFF') {
-      // Staff might see fewer tasks
-      mockData.DRAFT = mockData.DRAFT.slice(0, 2);
+  // Load tasks from API
+  const loadTasks = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      
+      const tasksByStatus = await getDashboardTasks();
+      
+      if (tasksByStatus) {
+        // Group tasks by status
+        const grouped: DashboardData = {
+          DRAFT: [],
+          IN_PROGRESS: [],
+          EDITING: [],
+          DONE: [],
+        };
+
+        // Convert backend TasksByStatus to frontend DashboardData
+        let taskIndex = 0;
+        
+        // Process each status
+        Object.entries(tasksByStatus).forEach(([status, tasks]) => {
+          if (Array.isArray(tasks)) {
+            tasks.forEach((task: any) => {
+              const mappedStatus = STATUS_MAP[task.status] || 'DRAFT';
+              const convertedTask = convertTask(task, taskIndex++);
+              grouped[mappedStatus].push(convertedTask);
+            });
+          }
+        });
+
+        // Role-based filtering
+        if (role === 'STAFF') {
+          grouped.DRAFT = grouped.DRAFT.slice(0, 2);
+          grouped.IN_PROGRESS = grouped.IN_PROGRESS.slice(0, 2);
+        }
+
+        setDashboardData(grouped);
+      }
+    } catch (err) {
+      console.error('Failed to load dashboard tasks:', err);
+      setError('Failed to load tasks. Please try again.');
+    } finally {
+      setLoading(false);
     }
+  };
 
-    setDashboardData(mockData);
-    setLoading(false);
+  // Initial load
+  useEffect(() => {
+    loadTasks();
   }, [role]);
 
-  return { dashboardData, loading };
+  // Socket.IO real-time updates
+  useEffect(() => {
+    if (!socket || !isConnected) return;
+
+    const handleTaskCreated = (data: any) => {
+      console.log('Task created:', data);
+      loadTasks(); // Reload all tasks
+    };
+
+    const handleTaskUpdated = (data: any) => {
+      console.log('Task updated:', data);
+      loadTasks(); // Reload all tasks
+    };
+
+    const handleTaskDeleted = (data: any) => {
+      console.log('Task deleted:', data);
+      loadTasks(); // Reload all tasks
+    };
+
+    const handleStatusChanged = (data: any) => {
+      console.log('Task status changed:', data);
+      loadTasks(); // Reload all tasks
+    };
+
+    // Subscribe to events
+    socket.on('task:created', handleTaskCreated);
+    socket.on('task:updated', handleTaskUpdated);
+    socket.on('task:deleted', handleTaskDeleted);
+    socket.on('task:statusChanged', handleStatusChanged);
+
+    // Cleanup
+    return () => {
+      socket.off('task:created', handleTaskCreated);
+      socket.off('task:updated', handleTaskUpdated);
+      socket.off('task:deleted', handleTaskDeleted);
+      socket.off('task:statusChanged', handleStatusChanged);
+    };
+  }, [socket, isConnected]);
+
+  return { dashboardData, loading, error, reload: loadTasks };
 }

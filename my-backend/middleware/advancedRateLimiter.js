@@ -44,6 +44,14 @@ try {
   console.log('[RateLimiter] Redis not available, using in-memory store:', e.message);
 }
 
+// Check if rate limiting is disabled
+if (process.env.DISABLE_RATE_LIMIT === 'true' || process.env.NODE_ENV === 'development') {
+  console.log('[RateLimiter] ⚠️  Rate limiting DISABLED for local development');
+  console.log('[RateLimiter] 💡 To enable, set DISABLE_RATE_LIMIT=false in .env');
+} else {
+  console.log('[RateLimiter] 🛡️  Rate limiting ACTIVE');
+}
+
 // ============================================================================
 // RATE LIMIT STORE CONFIGURATION
 // ============================================================================
@@ -134,11 +142,17 @@ async function rateLimitHandler(req, res, options) {
 
 /**
  * Skip rate limiting for:
+ * - Local development (when DISABLE_RATE_LIMIT=true)
  * - Internal health checks
  * - Monitoring systems
  * - Whitelisted IPs (optional)
  */
 function skipRateLimit(req) {
+  // Disable rate limiting completely for local development
+  if (process.env.DISABLE_RATE_LIMIT === 'true' || process.env.NODE_ENV === 'development') {
+    return true;
+  }
+  
   const ip = advancedKeyGenerator(req);
   const path = req.path;
   
@@ -173,7 +187,7 @@ function skipRateLimit(req) {
  */
 const strictLoginLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: process.env.LOGIN_RATE_LIMIT || 5, // 5 attempts per 15 mins (very strict)
+  max: process.env.LOGIN_RATE_LIMIT || 20, // 20 attempts per 15 mins
   message: {
     error: 'Too many login attempts from this IP',
     message: 'Please try again after 15 minutes',
@@ -213,7 +227,7 @@ const moderateAuthLimiter = rateLimit({
  */
 const standardApiLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutes
-  max: process.env.API_RATE_LIMIT || 100, // 100 requests per 5 mins
+  max: process.env.API_RATE_LIMIT || 20, // 20 requests per 5 mins
   message: {
     error: 'API rate limit exceeded',
     message: 'Too many requests. Please slow down.',
@@ -233,7 +247,7 @@ const standardApiLimiter = rateLimit({
  */
 const publicLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: process.env.PUBLIC_RATE_LIMIT || 60, // 60 requests per minute
+  max: process.env.PUBLIC_RATE_LIMIT || 20, // 20 requests per minute
   message: {
     error: 'Too many requests',
     message: 'Please slow down',
@@ -253,7 +267,7 @@ const publicLimiter = rateLimit({
  */
 const expensiveOperationLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, // 1 hour
-  max: process.env.EXPENSIVE_RATE_LIMIT || 10, // 10 expensive operations per hour
+  max: process.env.EXPENSIVE_RATE_LIMIT || 20, // 20 expensive operations per hour
   message: {
     error: 'Rate limit for expensive operations exceeded',
     message: 'These operations are resource-intensive. Please try again later.',

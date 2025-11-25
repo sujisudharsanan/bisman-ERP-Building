@@ -1,5 +1,5 @@
 {
-  "seq": 4,
+  "seq": 5,
   "calls": [
     {
       "id": "1",
@@ -32,6 +32,17 @@
       "initiator_id": "1",
       "started_at": "2025-11-19T05:19:39.420Z",
       "ended_at": "2025-11-19T05:20:02.463Z",
+      "participants": []
+    },
+    {
+      "id": "4",
+      "thread_id": "spark",
+      "room_name": "erp-spark-4",
+      "call_type": "audio",
+      "status": "completed",
+      "initiator_id": "5",
+      "started_at": "2025-11-25T12:22:54.076Z",
+      "ended_at": "2025-11-25T12:23:10.080Z",
       "participants": []
     }
   ]

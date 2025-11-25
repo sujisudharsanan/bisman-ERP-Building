@@ -8,6 +8,16 @@ const {
   expensiveOperationLimiter,
   createAdaptiveRateLimiter,
 } = require('./middleware/advancedRateLimiter');
+const { 
+  errorHandler, 
+  notFoundHandler 
+} = require('./middleware/errorHandler');
+const { 
+  initializeErrorLogsTable 
+} = require('./utils/errorLogger');
+const { 
+  initializeLoginAttemptsTable 
+} = require('./middleware/loginRateLimiter');
 const enforce = require('express-sslify')
 const helmet = require('helmet')
 const express = require('express')
@@ -185,8 +195,8 @@ const publicEndpointLimiter = publicLimiter;
 // Expensive operations (reports, AI)
 const expensiveLimiter = expensiveOperationLimiter;
 // Adaptive limiters for chat & calls (role/user aware)
-const chatLimiter = createAdaptiveRateLimiter({ windowMs: 60 * 1000, max: 30 }); // 30 messages/min base
-const callLimiter = createAdaptiveRateLimiter({ windowMs: 5 * 60 * 1000, max: 50 }); // 50 call ops/5min base
+const chatLimiter = createAdaptiveRateLimiter({ windowMs: 60 * 1000, max: 20 }); // 20 messages/min base
+const callLimiter = createAdaptiveRateLimiter({ windowMs: 5 * 60 * 1000, max: 20 }); // 20 call ops/5min base
 
 // Mount public limiter early for truly public endpoints
 app.use(['/api/health','/health','/metrics'], publicEndpointLimiter);
@@ -584,8 +594,15 @@ try {
   const systemHealthRouter = require('./routes/systemHealth');
   // Make prisma and redisClient available to the route
   app.locals.prisma = prisma;
-  app.locals.redisClient = redis; // If Redis is configured
+  // Try to get redis client if available
+  try {
+    const { redis: redisClient } = require('./cache/redisClient');
+    app.locals.redisClient = redisClient;
+  } catch (redisErr) {
+    app.locals.redisClient = null; // Redis not available
+  }
   app.use('/api/system-health', systemHealthRouter);
+  console.log('✅ System Health routes loaded at /api/system-health');
 } catch (e) {
   console.warn('System Health routes not loaded:', e && e.message);
 }
@@ -681,6 +698,17 @@ try {
   }
 }
 
+// Task Management routes (protected)
+try {
+  const taskRoutes = require('./routes/tasks')
+  app.use('/api/tasks', authenticate, taskRoutes)
+  console.log('✅ Task Management routes loaded (protected)')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Task routes not loaded:', e && e.message)
+  }
+}
+
 // Enterprise Admin routes (protected)
 try {
   const enterpriseRoutes = require('./routes/enterprise')
@@ -695,20 +723,20 @@ try {
 
 // Enterprise Admin Dashboard & Management routes (protected)
 try {
-  const enterpriseAdminDashboard = require('./routes/enterpriseAdminDashboard')
-  const enterpriseAdminOrganizations = require('./routes/enterpriseAdminOrganizations')
-  const enterpriseAdminModules = require('./routes/enterpriseAdminModules')
-  const enterpriseAdminBilling = require('./routes/enterpriseAdminBilling')
-  const enterpriseAdminAudit = require('./routes/enterpriseAdminAudit')
-  const enterpriseAdminReports = require('./routes/enterpriseAdminReports')
-  const enterpriseAdminAI = require('./routes/enterpriseAdminAI')
-  const enterpriseAdminLogs = require('./routes/enterpriseAdminLogs')
-  const enterpriseAdminUsers = require('./routes/enterpriseAdminUsers')
-  const enterpriseAdminSuperAdmins = require('./routes/enterpriseAdminSuperAdmins')
-  const enterpriseAdminSettings = require('./routes/enterpriseAdminSettings')
-  const enterpriseAdminIntegrations = require('./routes/enterpriseAdminIntegrations')
-  const enterpriseAdminNotifications = require('./routes/enterpriseAdminNotifications')
-  const enterpriseAdminSupport = require('./routes/enterpriseAdminSupport')
+  const enterpriseAdminDashboard = require('./routes/enterprise-admin-Dashboard')
+  const enterpriseAdminOrganizations = require('./routes/enterprise-admin-Organizations')
+  const enterpriseAdminModules = require('./routes/enterprise-admin-Modules')
+  const enterpriseAdminBilling = require('./routes/enterprise-admin-Billing')
+  const enterpriseAdminAudit = require('./routes/enterprise-admin-Audit')
+  const enterpriseAdminReports = require('./routes/enterprise-admin-Reports')
+  const enterpriseAdminAI = require('./routes/enterprise-admin-AI')
+  const enterpriseAdminLogs = require('./routes/enterprise-admin-Logs')
+  const enterpriseAdminUsers = require('./routes/enterprise-admin-Users')
+  const enterpriseAdminSuperAdmins = require('./routes/enterprise-admin-SuperAdmins')
+  const enterpriseAdminSettings = require('./routes/enterprise-admin-Settings')
+  const enterpriseAdminIntegrations = require('./routes/enterprise-admin-Integrations')
+  const enterpriseAdminNotifications = require('./routes/enterprise-admin-Notifications')
+  const enterpriseAdminSupport = require('./routes/enterprise-admin-Support')
   
   app.use('/api/enterprise-admin/dashboard', enterpriseAdminDashboard)
   app.use('/api/enterprise-admin/organizations', enterpriseAdminOrganizations)
@@ -2890,31 +2918,31 @@ app.use((err, req, res, next) => {
     });
   }
   
-  // Handle validation errors
-  if (err.name === 'ValidationError') {
-    return res.status(400).json({
-      success: false,
-      error: 'Validation Error',
-      details: err.details || err.message
-    });
-  }
-  
-  // Handle JWT errors
-  if (err.name === 'JsonWebTokenError' || err.name === 'TokenExpiredError') {
-    return res.status(401).json({
-      success: false,
-      error: 'Authentication Error',
-      message: err.message
-    });
-  }
-  
-  // Generic error response (hide details in production)
-  const isProd = process.env.NODE_ENV === 'production';
-  res.status(err.status || 500).json({
-    success: false,
-    error: isProd ? 'Internal Server Error' : err.message,
-    ...(isProd ? {} : { stack: err.stack })
-  });
+  // Pass to global error handler
+  next(err);
 });
+
+// ============================================================================
+// 404 Not Found Handler (must be before error handler)
+// ============================================================================
+app.use(notFoundHandler);
+
+// ============================================================================
+// Global Error Handler (must be last)
+// ============================================================================
+app.use(errorHandler);
+
+// ============================================================================
+// Initialize Database Tables (async, non-blocking)
+// ============================================================================
+(async () => {
+  try {
+    await initializeErrorLogsTable();
+    await initializeLoginAttemptsTable();
+    console.log('✅ Error handling tables initialized');
+  } catch (err) {
+    console.warn('⚠️ Error tables initialization failed:', err.message);
+  }
+})();
 
 module.exports = app

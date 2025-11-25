@@ -23,28 +23,33 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('q') || '';
 
-    if (!query || query.length < 2) {
-      return NextResponse.json({
-        success: true,
-        data: [],
-        message: 'Please enter at least 2 characters to search',
-      });
-    }
-
     // Search users via backend (if you have user search endpoint)
     // For now, we'll use Mattermost team members as the source
     const mattermostToken = await requireAuthCookie(['mattermostToken']);
-    const response = await fetch(`${process.env.NEXT_PUBLIC_MATTERMOST_URL}/api/v4/users/search`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-  'Authorization': `Bearer ${mattermostToken || ''}`,
-      },
-      body: JSON.stringify({
-        term: query,
-        allow_inactive: false,
-      }),
-    });
+    
+    // If query is empty or too short, get all active users instead
+    let response;
+    if (!query || query.length < 2) {
+      response = await fetch(`${process.env.NEXT_PUBLIC_MATTERMOST_URL}/api/v4/users?per_page=100&active=true`, {
+        method: 'GET',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${mattermostToken || ''}`,
+        },
+      });
+    } else {
+      response = await fetch(`${process.env.NEXT_PUBLIC_MATTERMOST_URL}/api/v4/users/search`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${mattermostToken || ''}`,
+        },
+        body: JSON.stringify({
+          term: query,
+          allow_inactive: false,
+        }),
+      });
+    }
 
     if (!response.ok) {
       throw new Error('Failed to search users');

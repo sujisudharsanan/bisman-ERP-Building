@@ -63,7 +63,11 @@ export default function HubInchargePage() {
                           title="DRAFT" 
                           tasks={groupedTasks.draft} 
                           showCreate 
-                          onCreate={() => { window.location.href = '/tasks/create'; }}
+                          onCreate={() => {
+                            // Trigger Spark chat to show inline task form
+                            console.log('🎯 Create button clicked - triggering Spark chat');
+                            window.dispatchEvent(new CustomEvent('spark:createTask'));
+                          }}
                           onTaskClick={(task) => setSelectedTaskId(task.id)}
                         />
                       </div>
@@ -115,6 +119,9 @@ export default function HubInchargePage() {
           }}
         />
       )}
+
+      {/* Note: Task creation now happens inline in Spark Assistant chat */}
+      {/* No separate modal needed - click "Create" button to trigger Spark chat */}
     </DashboardLayout>
   );
 }

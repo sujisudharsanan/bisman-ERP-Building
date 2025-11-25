@@ -22,8 +22,8 @@ export default function Home() {
         } else if (user.roleName === 'STAFF') {
           router.push('/hub-incharge');
         } else {
-          // Default for any other role (MANAGER, CFO, IT_ADMIN, etc.)
-          router.push('/manager');
+          // Default for any other role - redirect to login
+          router.push('/auth/login');
         }
       }
     }

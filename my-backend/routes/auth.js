@@ -2,6 +2,13 @@ const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const { PrismaClient } = require('@prisma/client');
+const { AppError, ERROR_CODES, asyncHandler } = require('../middleware/errorHandler');
+const { 
+  loginRateLimiter, 
+  recordFailedLogin, 
+  recordSuccessfulLogin 
+} = require('../middleware/loginRateLimiter');
+
 const prisma = new PrismaClient();
 
 const router = express.Router();
@@ -27,17 +34,19 @@ function generateRefreshToken(payload) {
  * Multi-Tenant Login Endpoint
  * Handles: Enterprise Admin, Super Admin, and Regular Users
  */
-router.post('/login', async (req, res) => {
-  try {
-    const { email, password } = req.body;
+router.post('/login', loginRateLimiter, asyncHandler(async (req, res) => {
+  const { email, password } = req.body;
 
-    if (!email || !password) {
-      return res.status(400).json({ 
-        message: 'Email and password are required' 
-      });
-    }
+  // Validation
+  if (!email || !password) {
+    throw new AppError(
+      'Email and password are required',
+      ERROR_CODES.MISSING_REQUIRED_FIELD,
+      400
+    );
+  }
 
-    console.log(`🔐 Login attempt for: ${email}`);
+  console.log(`🔐 Login attempt for: ${email}`);
 
     let user = null;
     let userType = null;
@@ -84,7 +93,11 @@ router.post('/login', async (req, res) => {
         // Set cookies
         setCookies(res, accessToken, refreshToken);
 
+        // Record successful login
+        await recordSuccessfulLogin(req);
+
         return res.json({
+          success: true,
           message: 'Login successful',
           user: authData,
           accessToken,
@@ -142,7 +155,11 @@ router.post('/login', async (req, res) => {
         // Set cookies
         setCookies(res, accessToken, refreshToken);
 
+        // Record successful login
+        await recordSuccessfulLogin(req);
+
         return res.json({
+          success: true,
           message: 'Login successful',
           user: authData,
           accessToken,
@@ -214,10 +231,14 @@ router.post('/login', async (req, res) => {
         // Set cookies
         setCookies(res, accessToken, refreshToken);
 
+        // Record successful login
+        await recordSuccessfulLogin(req);
+
         // Determine redirect path based on role
         const redirectPath = getRedirectPath(regularUser.role);
 
         return res.json({
+          success: true,
           message: 'Login successful',
           user: authData,
           accessToken,
@@ -228,18 +249,16 @@ router.post('/login', async (req, res) => {
 
     // If we reach here, credentials are invalid
     console.log('❌ Invalid credentials for:', email);
-    return res.status(401).json({ 
-      message: 'Invalid credentials' 
-    });
-
-  } catch (error) {
-    console.error('❌ Login error:', error);
-    return res.status(500).json({ 
-      message: 'An error occurred during login',
-      error: process.env.NODE_ENV === 'development' ? error.message : undefined
-    });
-  }
-});
+    
+    // Record failed login attempt
+    await recordFailedLogin(req);
+    
+    throw new AppError(
+      'Invalid email or password',
+      ERROR_CODES.INVALID_CREDENTIALS,
+      401
+    );
+}));
 
 /**
  * Set HTTP-only cookies for tokens

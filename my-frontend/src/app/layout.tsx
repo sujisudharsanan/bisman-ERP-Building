@@ -5,11 +5,13 @@ import './tawk-inline.css';
 import { AuthProvider } from '../contexts/AuthContext';
 import { PermissionProvider } from '../contexts/PermissionContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
+import { SocketProvider } from '../contexts/SocketContext';
 import GlobalRouteLoader from '@/components/loading/GlobalRouteLoader';
 import HealthBoot from '@/components/dev/HealthBoot';
 import RenderLogger from '@/components/debug/RenderLogger';
 import { ToastProvider } from '@/components/ui/toast';
 import ChatGuard from '@/components/ChatGuard';
+import GlobalErrorToast from '@/components/GlobalErrorToast';
 import React from 'react';
 import AppShell from '@/components/layout/AppShell';
 import { appConfig } from '@/config/appConfig';
@@ -72,11 +74,12 @@ export default function RootLayout({
   <body data-nonce={nonce} className={`${inter.className} bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 transition-colors duration-300`}>
         <ThemeProvider>
           <AuthProvider>
-            <PermissionProvider>
-      <ToastProvider>
-              <RenderLogger />
-              <div className="min-h-screen pb-20 md:pb-0">
-                <AppShell>{children}</AppShell>
+            <SocketProvider>
+              <PermissionProvider>
+                <ToastProvider>
+                  <RenderLogger />
+                  <div className="min-h-screen pb-20 md:pb-0">
+                    <AppShell>{children}</AppShell>
                 {appConfig.showConfigPanel && (
                   <div className="fixed bottom-4 right-4 z-50 rounded-lg shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 text-xs max-w-xs space-y-1">
                     <div className="font-semibold text-gray-700 dark:text-gray-200">Runtime Config</div>
@@ -107,13 +110,16 @@ export default function RootLayout({
               </div>
               {/* Global route change loader shown on every page */}
               <GlobalRouteLoader />
+              {/* Global error toast notifications */}
+              <GlobalErrorToast />
               {/* Health check bootstraper (client-only) */}
               <HealthBoot />
               {/* Chat widget guarded: hidden on public routes and when not authenticated */}
               <ChatGuard />
               {/* Single-window chat removed; using existing ChatGuard integration */}
-      </ToastProvider>
-            </PermissionProvider>
+                </ToastProvider>
+              </PermissionProvider>
+            </SocketProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

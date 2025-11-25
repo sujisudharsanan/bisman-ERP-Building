@@ -49,6 +49,11 @@ async function start() {
     }
   });
 
+  // Initialize Task Socket handlers
+  const { initializeTaskSocket } = require('./socket/taskSocket');
+  initializeTaskSocket(io);
+  console.log('[startup] ✅ Task Socket.IO handlers initialized');
+
   // Socket.IO connection handler
   io.on('connection', (socket) => {
     console.log('[socket.io] Client connected:', socket.id);
@@ -70,14 +75,11 @@ async function start() {
     });
   });
 
-  // Inject Socket.IO into task routes
-  try {
-    const { setIO } = require('./routes/taskRoutes');
-    setIO(io);
-    console.log('[startup] ✅ Socket.IO integrated with task routes');
-  } catch (err) {
-    console.warn('[startup] Warning: Task routes not found, Socket.IO not injected');
-  }
+  // Make io available globally for task controller
+  global.io = io;
+  apiApp.set('io', io);
+  
+  console.log('[startup] ✅ Socket.IO instance made available to controllers');
   
   app.set('trust proxy', 1);
   

@@ -433,6 +433,356 @@ router.post('/feedback', async (req, res) => {
 });
 
 /**
+ * POST /api/chat/greeting
+ * Get personalized greeting with pending tasks
+ */
+router.post('/greeting', async (req, res) => {
+  try {
+    const userId = req.userId;
+    const userRole = req.userRole;
+    
+    let userName = 'there';
+    let lastLoginDate = null;
+    let pendingTasksCount = 0;
+    let pendingTasks = [];
+    
+    // Get user info and last login from database
+    if (userId && userId > 0) {
+      try {
+        const userQuery = await pool.query(
+          `SELECT first_name, last_name, last_login, previous_login 
+           FROM users 
+           WHERE id = $1`,
+          [userId]
+        );
+        
+        if (userQuery.rows.length > 0) {
+          const user = userQuery.rows[0];
+          userName = user.first_name || 'there';
+          lastLoginDate = user.previous_login || user.last_login;
+          
+          // Update last_login tracking
+          await pool.query(
+            `UPDATE users 
+             SET previous_login = last_login, 
+                 last_login = NOW() 
+             WHERE id = $1`,
+            [userId]
+          );
+          
+          // Get pending tasks since last login
+          const tasksQuery = await pool.query(
+            `SELECT id, title, priority, due_date, status
+             FROM tasks
+             WHERE assignee_id = $1 
+             AND status IN ('pending', 'in_progress', 'open')
+             AND (created_at > $2 OR updated_at > $2)
+             ORDER BY priority DESC, due_date ASC NULLS LAST
+             LIMIT 5`,
+            [userId, lastLoginDate || new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)]
+          );
+          
+          pendingTasks = tasksQuery.rows;
+          pendingTasksCount = tasksQuery.rows.length;
+        }
+      } catch (dbError) {
+        console.warn('[UltimateChatAPI] DB error fetching user data:', dbError.message);
+      }
+    }
+    
+    // Build time-based greeting
+    const hour = new Date().getHours();
+    let timeGreeting = 'Hello';
+    if (hour < 12) timeGreeting = 'Good morning';
+    else if (hour < 18) timeGreeting = 'Good afternoon';
+    else timeGreeting = 'Good evening';
+    
+    // Construct greeting message
+    let greetingMessage = `${timeGreeting}, ${userName}! ⚡`;
+    
+    if (pendingTasksCount > 0) {
+      greetingMessage += `\n\nYou have **${pendingTasksCount}** pending task${pendingTasksCount > 1 ? 's' : ''} since your last login:`;
+      
+      pendingTasks.forEach((task, index) => {
+        const priorityEmoji = task.priority === 'high' ? '🔴' : task.priority === 'medium' ? '🟡' : '🟢';
+        greetingMessage += `\n${index + 1}. ${priorityEmoji} ${task.title}`;
+        if (task.due_date) {
+          const dueDate = new Date(task.due_date);
+          const isOverdue = dueDate < new Date();
+          greetingMessage += isOverdue ? ' ⚠️ (Overdue)' : ` (Due: ${dueDate.toLocaleDateString()})`;
+        }
+      });
+      
+      greetingMessage += '\n\nHow can I assist you today?';
+    } else {
+      greetingMessage += '\n\nYou\'re all caught up! 🎉 How can I help you today?';
+    }
+    
+    res.json({
+      success: true,
+      greeting: greetingMessage,
+      userName,
+      pendingTasks,
+      pendingTasksCount,
+      lastLogin: lastLoginDate
+    });
+    
+  } catch (error) {
+    console.error('[UltimateChatAPI] Error generating greeting:', error);
+    res.status(500).json({
+      success: false,
+      greeting: 'Hello! How can I help you today?',
+      error: error.message
+    });
+  }
+});
+
+/**
+ * POST /api/chat/conversation/save
+ * Save current conversation to database
+ */
+router.post('/conversation/save', async (req, res) => {
+  try {
+    const { conversationId, messages, contextType = 'general' } = req.body;
+    const userId = req.userId;
+    
+    if (!userId || userId === 0) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+    
+    let finalConversationId = conversationId;
+    
+    // Create or update conversation
+    if (!conversationId) {
+      const convResult = await pool.query(
+        `INSERT INTO chat_conversations (user_id, context_type, metadata, created_at, updated_at, last_message_at)
+         VALUES ($1, $2, $3, NOW(), NOW(), NOW())
+         RETURNING id`,
+        [userId, contextType, JSON.stringify({ source: 'mira_chat' })]
+      );
+      finalConversationId = convResult.rows[0].id;
+    } else {
+      await pool.query(
+        `UPDATE chat_conversations 
+         SET updated_at = NOW(), last_message_at = NOW()
+         WHERE id = $1 AND user_id = $2`,
+        [conversationId, userId]
+      );
+    }
+    
+    // Save messages
+    if (messages && Array.isArray(messages)) {
+      for (const msg of messages) {
+        await pool.query(
+          `INSERT INTO chat_messages (conversation_id, user_id, role, content, created_at)
+           VALUES ($1, $2, $3, $4, NOW())
+           ON CONFLICT DO NOTHING`,
+          [finalConversationId, userId, msg.isBot ? 'assistant' : 'user', msg.message]
+        );
+      }
+    }
+    
+    res.json({
+      success: true,
+      conversationId: finalConversationId,
+      messagesSaved: messages?.length || 0
+    });
+    
+  } catch (error) {
+    console.error('[UltimateChatAPI] Error saving conversation:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to save conversation'
+    });
+  }
+});
+
+/**
+ * GET /api/chat/conversation/:id
+ * Load a specific conversation
+ */
+router.get('/conversation/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.userId;
+    
+    if (!userId || userId === 0) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+    
+    // Get conversation metadata
+    const convResult = await pool.query(
+      `SELECT id, context_type, created_at, updated_at, last_message_at
+       FROM chat_conversations
+       WHERE id = $1 AND user_id = $2`,
+      [id, userId]
+    );
+    
+    if (convResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Conversation not found'
+      });
+    }
+    
+    // Get messages
+    const messagesResult = await pool.query(
+      `SELECT id, role, content, created_at
+       FROM chat_messages
+       WHERE conversation_id = $1
+       ORDER BY created_at ASC`,
+      [id]
+    );
+    
+    const messages = messagesResult.rows.map(row => ({
+      id: row.id.toString(),
+      message: row.content,
+      isBot: row.role === 'assistant',
+      create_at: new Date(row.created_at).getTime(),
+      user_id: userId.toString()
+    }));
+    
+    res.json({
+      success: true,
+      conversation: convResult.rows[0],
+      messages
+    });
+    
+  } catch (error) {
+    console.error('[UltimateChatAPI] Error loading conversation:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load conversation'
+    });
+  }
+});
+
+/**
+ * GET /api/chat/conversation/latest
+ * Get user's latest conversation
+ */
+router.get('/conversation/latest', async (req, res) => {
+  try {
+    const userId = req.userId;
+    
+    if (!userId || userId === 0) {
+      return res.json({
+        success: true,
+        conversationId: null,
+        messages: []
+      });
+    }
+    
+    // Get latest conversation
+    const convResult = await pool.query(
+      `SELECT id FROM chat_conversations
+       WHERE user_id = $1 AND is_active = true
+       ORDER BY last_message_at DESC
+       LIMIT 1`,
+      [userId]
+    );
+    
+    if (convResult.rows.length === 0) {
+      return res.json({
+        success: true,
+        conversationId: null,
+        messages: []
+      });
+    }
+    
+    const conversationId = convResult.rows[0].id;
+    
+    // Get messages
+    const messagesResult = await pool.query(
+      `SELECT id, role, content, created_at
+       FROM chat_messages
+       WHERE conversation_id = $1
+       ORDER BY created_at ASC
+       LIMIT 50`,
+      [conversationId]
+    );
+    
+    const messages = messagesResult.rows.map(row => ({
+      id: row.id.toString(),
+      message: row.content,
+      isBot: row.role === 'assistant',
+      create_at: new Date(row.created_at).getTime(),
+      user_id: userId.toString()
+    }));
+    
+    res.json({
+      success: true,
+      conversationId,
+      messages
+    });
+    
+  } catch (error) {
+    console.error('[UltimateChatAPI] Error loading latest conversation:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load conversation'
+    });
+  }
+});
+
+/**
+ * POST /api/chat/feedback
+ * Submit feedback for a message
+ */
+router.post('/feedback', async (req, res) => {
+  try {
+    const { messageId, helpful, comment } = req.body;
+    const userId = req.userId;
+    
+    if (!userId || userId === 0) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+    
+    if (!messageId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Message ID is required'
+      });
+    }
+    
+    const feedbackType = helpful === true ? 'thumbs_up' : helpful === false ? 'thumbs_down' : 'comment';
+    
+    await pool.query(
+      `INSERT INTO chat_feedback (message_id, user_id, helpful, feedback_type, comment, created_at)
+       VALUES ($1, $2, $3, $4, $5, NOW())
+       ON CONFLICT (message_id, user_id) 
+       DO UPDATE SET 
+         helpful = EXCLUDED.helpful,
+         feedback_type = EXCLUDED.feedback_type,
+         comment = EXCLUDED.comment,
+         created_at = NOW()`,
+      [messageId, userId, helpful, feedbackType, comment]
+    );
+    
+    res.json({
+      success: true,
+      message: 'Feedback recorded successfully'
+    });
+    
+  } catch (error) {
+    console.error('[UltimateChatAPI] Error recording feedback:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to record feedback'
+    });
+  }
+});
+
+/**
  * GET /api/chat/metrics
  * Get chat metrics (admin only)
  */

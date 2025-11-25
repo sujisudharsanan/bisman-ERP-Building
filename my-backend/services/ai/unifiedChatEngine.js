@@ -499,7 +499,7 @@ class UnifiedChatEngine {
       if (!hasPermission) {
         const denialResponse = `I'm sorry ${firstName}, but you don't have permission to perform this action. Please contact your administrator.`;
         return {
-          response: humanizeService.humanize(denialResponse, { userName: firstName, tone: 'professional' }),
+          response: humanizeService.formatPermissionDenied(firstName),
           requiresPermission: intentData.requires_permission,
           hasPermission: false,
           data: null
@@ -525,10 +525,10 @@ class UnifiedChatEngine {
           tasks.forEach((task, idx) => {
             response += `\n${idx + 1}. ${task.title} (${task.priority} priority)`;
           });
-          response = humanizeService.humanize(response, { userName: firstName });
+          response = humanizeService.formatHumanReply(response, { userName: firstName });
         } else {
           const noTasksMsg = `Great news ${firstName}! You have no pending tasks. 🎉`;
-          response = humanizeService.humanize(noTasksMsg, { userName: firstName, tone: 'friendly' });
+          response = humanizeService.formatHumanReply(noTasksMsg, { userName: firstName, tone: 'friendly' });
         }
         break;
         
@@ -540,10 +540,10 @@ class UnifiedChatEngine {
           approvals.forEach((approval, idx) => {
             response += `\n${idx + 1}. ${approval.request_type} - ${approval.description || 'No description'}`;
           });
-          response = humanizeService.humanize(response, { userName: firstName });
+          response = humanizeService.formatHumanReply(response, { userName: firstName });
         } else {
           const noApprovalsMsg = `You're all caught up ${firstName}! No pending approvals. 🎉`;
-          response = humanizeService.humanize(noApprovalsMsg, { userName: firstName, tone: 'friendly' });
+          response = humanizeService.formatHumanReply(noApprovalsMsg, { userName: firstName, tone: 'friendly' });
         }
         break;
         
@@ -553,12 +553,12 @@ class UnifiedChatEngine {
         
       case 'help':
         response += `\n\nYou can ask me to:\n• "Show my tasks"\n• "List pending approvals"\n• "Create a task"\n• "Show reports"\n• And much more!`;
-        response = humanizeService.humanize(response, { userName: firstName, tone: 'friendly' });
+        response = humanizeService.formatHumanReply(response, { userName: firstName, tone: 'friendly' });
         break;
         
       default:
         // Humanize all other responses
-        response = humanizeService.humanize(response, { userName: firstName });
+        response = humanizeService.formatHumanReply(response, { userName: firstName });
         break;
     }
     

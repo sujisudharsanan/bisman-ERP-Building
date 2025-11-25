@@ -5,8 +5,23 @@ import { useAuth } from '@/contexts/AuthContext';
 import { 
   Send, 
   Sparkles,
-  MoreVertical
+  MoreVertical,
+  Paperclip,
+  Smile,
+  Maximize2,
+  Minimize2,
+  X,
+  Settings
 } from 'lucide-react';
+import dynamic from 'next/dynamic';
+import JitsiCallControls from './JitsiCallControls';
+import { Theme } from 'emoji-picker-react';
+
+// Dynamically import EmojiPicker to avoid SSR issues
+const EmojiPicker = dynamic(
+  () => import('emoji-picker-react'),
+  { ssr: false }
+);
 
 interface Message {
   id: string;
@@ -17,42 +32,416 @@ interface Message {
   isBot?: boolean;
 }
 
-export default function CleanChatInterface() {
+interface ChatUser {
+  id: string;
+  name: string;
+  email?: string;
+  avatar?: string;
+  isOnline?: boolean;
+  role?: string;
+  roleName?: string;
+}
+
+interface Task {
+  id: string;
+  title: string;
+  status: string;
+  priority?: string;
+}
+
+type ActiveView = 'mira' | 'user' | 'task';
+
+interface CleanChatInterfaceProps {
+  onClose?: () => void;
+}
+
+export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps = {}) {
   const { user } = useAuth();
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [thinking, setThinking] = useState(false);
+  const [activeView, setActiveView] = useState<ActiveView>('mira');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [chatUsers, setChatUsers] = useState<ChatUser[]>([]);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [conversationId, setConversationId] = useState<string | null>(null);
+  const [feedbackGiven, setFeedbackGiven] = useState<Map<string, boolean>>(new Map());
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+  const [attachedFiles, setAttachedFiles] = useState<File[]>([]);
+  const [openTasks, setOpenTasks] = useState<Task[]>([]);
+  const [isTaskPanelExpanded, setIsTaskPanelExpanded] = useState(false);
+  const [showTaskForm, setShowTaskForm] = useState(false);
+  const [taskFormData, setTaskFormData] = useState({
+    serialNumber: '',
+    title: '',
+    description: '',
+    priority: 'MEDIUM' as 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT',
+    assigneeId: ''
+  });
+  const [taskAttachments, setTaskAttachments] = useState<File[]>([]);
+  const [isDragging, setIsDragging] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const taskFileInputRef = useRef<HTMLInputElement>(null);
+  const emojiPickerRef = useRef<HTMLDivElement>(null);
+  const chatContainerRef = useRef<HTMLDivElement>(null);
+  const shouldTriggerTaskCreation = useRef(false);
 
-  // Auto-resize textarea
+  // Auto-resize textarea with expansion
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = textareaRef.current.scrollHeight + 'px';
+      const newHeight = Math.min(textareaRef.current.scrollHeight, 200); // Max 200px height
+      textareaRef.current.style.height = newHeight + 'px';
     }
   }, [newMessage]);
 
-  // Auto-scroll to bottom when new messages arrive
+  // Auto-scroll to bottom when new messages arrive or task form opens
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, showTaskForm]);
 
-  // Initialize with welcome message
+  // Close emoji picker when clicking outside
   useEffect(() => {
-    if (user) {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (emojiPickerRef.current && !emojiPickerRef.current.contains(event.target as Node)) {
+        setShowEmojiPicker(false);
+      }
+    };
+
+    if (showEmojiPicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showEmojiPicker]);
+
+  // Load chat users
+  useEffect(() => {
+    const loadUsers = async () => {
+      try {
+        // Get all users (empty query will return all active users now)
+        const response = await fetch('/api/chat-bot/search-users?q=');
+        if (response.ok) {
+          const data = await response.json();
+          console.log('[Chat] API response:', data);
+          const users = data.data?.map((u: any) => ({
+            id: u.id,
+            name: u.fullName || u.username,
+            email: u.email,
+            avatar: u.profile_pic_url,
+            isOnline: true,
+            role: u.role,
+            roleName: u.roleName
+          })) || [];
+          setChatUsers(users);
+          console.log('[Chat] Loaded users:', users.length, 'users');
+          console.log('[Chat] User details:', users.map((u: ChatUser) => ({ id: u.id, name: u.name, role: u.roleName || u.role })));
+        } else {
+          const errorText = await response.text();
+          console.error('[Chat] Failed to load users - Status:', response.status, 'Response:', errorText);
+        }
+      } catch (error) {
+        console.error('[Chat] Failed to load users:', error);
+      }
+    };
+    loadUsers();
+  }, []);
+
+  // Load tasks
+  useEffect(() => {
+    const loadTasks = async () => {
+      try {
+        const response = await fetch('/api/tasks');
+        if (response.ok) {
+          const data = await response.json();
+          const taskList = data.tasks?.slice(0, 10).map((t: any) => ({
+            id: t.id,
+            title: t.title,
+            status: t.status,
+            priority: t.priority
+          })) || [];
+          setTasks(taskList);
+        }
+      } catch (error) {
+        console.error('[Chat] Failed to load tasks:', error);
+      }
+    };
+    loadTasks();
+  }, []);
+
+  // Load personalized greeting with pending tasks
+  useEffect(() => {
+    if (user && activeView === 'mira' && messages.length === 0) {
+      loadGreeting();
+    }
+  }, [user, activeView]);
+
+  // Load previous conversation when switching to Mira
+  useEffect(() => {
+    if (user && activeView === 'mira' && !conversationId) {
+      loadLatestConversation();
+    }
+  }, [user, activeView]);
+
+  // Listen for external task creation trigger (e.g., from dashboard Create button)
+  useEffect(() => {
+    const handleExternalCreateTask = () => {
+      console.log('✨ External trigger for task creation - setting flag');
+      shouldTriggerTaskCreation.current = true;
+      
+      // Switch to Mira view if not already there
+      if (activeView !== 'mira') {
+        setActiveView('mira');
+      }
+    };
+
+    window.addEventListener('spark:createTask', handleExternalCreateTask);
+    return () => window.removeEventListener('spark:createTask', handleExternalCreateTask);
+  }, [activeView]);
+
+  // Handle task creation when component is ready
+  useEffect(() => {
+    if (shouldTriggerTaskCreation.current && user && activeView === 'mira') {
+      console.log('✨ Triggering task creation now that component is ready');
+      shouldTriggerTaskCreation.current = false;
+      
+      // Use setTimeout to ensure DOM is ready
+      setTimeout(() => {
+        // Add user message
+        const userMessage: Message = {
+          id: `user-${Date.now()}`,
+          message: 'create task now',
+          user_id: (user as any)?.id || 'current-user',
+          create_at: Date.now(),
+          username: 'You'
+        };
+        setMessages(prev => [...prev, userMessage]);
+        
+        // Show task form
+        setShowTaskForm(true);
+        
+        // Add bot response
+        const botMessage: Message = {
+          id: `bot-${Date.now()}`,
+          message: "✨ Great! Let's create a new task.\n\nPlease fill in the form below and I'll create the task for you! 📝",
+          user_id: 'mira',
+          create_at: Date.now(),
+          username: 'AIVA',
+          isBot: true
+        };
+        setMessages(prev => [...prev, botMessage]);
+      }, 100); // Small delay to ensure component is mounted
+    }
+  }, [user, activeView, shouldTriggerTaskCreation.current]);
+
+  // Generate unique serial number when task form opens
+  useEffect(() => {
+    if (showTaskForm && !taskFormData.serialNumber) {
+      // Generate unique serial number: TASK-YYYYMMDD-HHMMSS-XXX
+      const now = new Date();
+      const dateStr = now.toISOString().slice(0, 10).replace(/-/g, '');
+      const timeStr = now.toTimeString().slice(0, 8).replace(/:/g, '');
+      const randomStr = Math.random().toString(36).substring(2, 5).toUpperCase();
+      const serialNumber = `TASK-${dateStr}-${timeStr}-${randomStr}`;
+      
+      console.log('🔢 Generated serial number:', serialNumber);
+      setTaskFormData(prev => ({ ...prev, serialNumber }));
+    }
+  }, [showTaskForm]);
+
+  // Set default assignee to Operations Manager when task form opens
+  useEffect(() => {
+    if (showTaskForm && chatUsers.length > 0 && !taskFormData.assigneeId) {
+      // Find Operations Manager (or operations_manager role)
+      const operationsManager = chatUsers.find(u => 
+        u.name?.toLowerCase().includes('operations manager') ||
+        u.email?.toLowerCase().includes('operations') ||
+        (u as any).role?.toLowerCase().includes('operations_manager') ||
+        (u as any).roleName?.toLowerCase().includes('operations_manager')
+      );
+      
+      if (operationsManager) {
+        console.log('✅ Auto-selecting Operations Manager as default approver:', operationsManager.name);
+        setTaskFormData(prev => ({ ...prev, assigneeId: operationsManager.id }));
+      }
+    }
+  }, [showTaskForm, chatUsers]);
+
+  // Drag and drop handlers for file attachments
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (showTaskForm) {
+      setIsDragging(true);
+    }
+  };
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    // Only set dragging to false if leaving the chat container entirely
+    if (e.currentTarget === e.target) {
+      setIsDragging(false);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+
+    if (showTaskForm && e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+      const droppedFiles = Array.from(e.dataTransfer.files);
+      setTaskAttachments(prev => [...prev, ...droppedFiles]);
+      console.log('📎 Files dropped:', droppedFiles.map(f => f.name));
+      
+      const botMsg: Message = {
+        id: `bot-${Date.now()}`,
+        message: `📎 Added ${droppedFiles.length} file(s) to the task`,
+        user_id: 'mira',
+        create_at: Date.now(),
+        username: 'AIVA',
+        isBot: true
+      };
+      setMessages(prev => [...prev, botMsg]);
+    }
+  };
+
+  // Handle task file selection from button
+  const handleTaskFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files.length > 0) {
+      const selectedFiles = Array.from(e.target.files);
+      setTaskAttachments(prev => [...prev, ...selectedFiles]);
+      console.log('📎 Files selected:', selectedFiles.map(f => f.name));
+      
+      const botMsg: Message = {
+        id: `bot-${Date.now()}`,
+        message: `📎 Added ${selectedFiles.length} file(s) to the task`,
+        user_id: 'mira',
+        create_at: Date.now(),
+        username: 'AIVA',
+        isBot: true
+      };
+      setMessages(prev => [...prev, botMsg]);
+    }
+  };
+
+  // Remove attachment
+  const removeAttachment = (index: number) => {
+    setTaskAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const loadGreeting = async () => {
+    try {
+      const response = await fetch('/api/chat/greeting', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        const greetingMessage: Message = {
+          id: `bot-greeting-${Date.now()}`,
+          message: data.greeting || 'Hello! How can I help you today?',
+          user_id: 'mira',
+          create_at: Date.now(),
+          isBot: true
+        };
+        setMessages([greetingMessage]);
+      } else {
+        // Fallback to simple welcome
+        const userName = (user as any).name || (user as any).fullName || (user as any).username || 'there';
+        const welcomeMessage: Message = {
+          id: `bot-welcome-${Date.now()}`,
+          message: `Hey ${userName}! 👋 I'm AIVA (AI + Virtual Assistant), your intelligent operations assistant created by Bisman Corporation. How can I help you today?`,
+          user_id: 'mira',
+          create_at: Date.now(),
+          username: 'AIVA',
+          isBot: true
+        };
+        setMessages([welcomeMessage]);
+      }
+    } catch (error) {
+      console.error('[Chat] Failed to load greeting:', error);
+      // Fallback greeting
       const userName = (user as any).name || (user as any).fullName || (user as any).username || 'there';
       const welcomeMessage: Message = {
         id: `bot-welcome-${Date.now()}`,
-        message: `Hey ${userName}! 👋 I'm Mira, your operations assistant. How can I help you today?`,
+        message: `Hey ${userName}! 👋 I'm AIVA (AI + Virtual Assistant), your intelligent operations assistant created by Bisman Corporation. How can I help you today?`,
         user_id: 'mira',
         create_at: Date.now(),
-        username: 'Mira',
+        username: 'AIVA',
         isBot: true
       };
       setMessages([welcomeMessage]);
     }
-  }, [user]);
+  };
+
+  const loadLatestConversation = async () => {
+    try {
+      const response = await fetch('/api/chat/conversation/latest', {
+        credentials: 'include'
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        if (data.conversationId && data.messages && data.messages.length > 0) {
+          setConversationId(data.conversationId);
+          setMessages(data.messages);
+        }
+      }
+    } catch (error) {
+      console.error('[Chat] Failed to load conversation:', error);
+    }
+  };
+
+  const saveConversation = async () => {
+    try {
+      await fetch('/api/chat/conversation/save', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          conversationId,
+          messages,
+          contextType: 'general'
+        })
+      });
+    } catch (error) {
+      console.error('[Chat] Failed to save conversation:', error);
+    }
+  };
+
+  const handleFeedback = async (messageId: string, helpful: boolean) => {
+    try {
+      const response = await fetch('/api/chat/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          messageId,
+          helpful
+        })
+      });
+      
+      if (response.ok) {
+        setFeedbackGiven(prev => new Map(prev).set(messageId, helpful));
+      }
+    } catch (error) {
+      console.error('[Chat] Failed to submit feedback:', error);
+    }
+  };
 
   // Send a message to the intelligent chat engine
   const sendMessage = async () => {
@@ -68,15 +457,36 @@ export default function CleanChatInterface() {
 
     setMessages(prev => [...prev, userMessage]);
     const messageToSend = newMessage;
+    const msgLower = newMessage.toLowerCase().trim();
     setNewMessage('');
     setThinking(true);
+
+    // Check if user wants to create a task
+    if (msgLower.includes('create task') || msgLower.includes('new task') || 
+        msgLower.includes('add task') || msgLower.includes('make task')) {
+      setThinking(false);
+      setShowTaskForm(true);
+      
+      const botMessage: Message = {
+        id: `bot-${Date.now()}`,
+        message: "✨ Great! Let's create a new task.\n\nPlease fill in the form below and I'll create the task for you! 📝",
+        user_id: 'mira',
+        create_at: Date.now(),
+        username: 'AIVA',
+        isBot: true
+      };
+      setMessages(prev => [...prev, botMessage]);
+      return;
+    }
 
     try {
       const response = await fetch('/api/chat/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({
           message: messageToSend,
+          conversationId,
           userId: (user as any)?.id || 'guest',
           userName: (user as any)?.name || (user as any)?.fullName || 'User',
           context: {
@@ -99,6 +509,9 @@ export default function CleanChatInterface() {
         };
 
         setMessages(prev => [...prev, botMessage]);
+        
+        // Save conversation to database
+        await saveConversation();
       } else {
         // Error response
         const botMessage: Message = {
@@ -145,6 +558,51 @@ export default function CleanChatInterface() {
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
+  const handleEmojiClick = (emojiData: any) => {
+    setNewMessage(prev => prev + emojiData.emoji);
+    setShowEmojiPicker(false);
+    textareaRef.current?.focus();
+  };
+
+  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
+    if (files && files.length > 0) {
+      const newFiles = Array.from(files);
+      setAttachedFiles(prev => [...prev, ...newFiles]);
+    }
+    // Reset input so the same file can be selected again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  const removeAttachedFile = (index: number) => {
+    setAttachedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const addTaskToPanel = (task: Task) => {
+    if (!openTasks.find(t => t.id === task.id)) {
+      setOpenTasks(prev => [...prev, task]);
+      setIsTaskPanelExpanded(true);
+    }
+  };
+
+  const removeTaskFromPanel = (taskId: string) => {
+    setOpenTasks(prev => prev.filter(t => t.id !== taskId));
+    if (openTasks.length <= 1) {
+      setIsTaskPanelExpanded(false);
+    }
+  };
+
+  // Calculate task panel height based on number of open tasks
+  const getTaskPanelHeight = () => {
+    if (openTasks.length === 0) return '20%';
+    if (openTasks.length === 1) return '25%';
+    if (openTasks.length === 2) return '35%';
+    if (openTasks.length >= 3) return '50%';
+    return '20%';
+  };
+
   if (!user) {
     return (
       <div className="h-full flex items-center justify-center text-gray-500 dark:text-gray-400">
@@ -154,44 +612,327 @@ export default function CleanChatInterface() {
   }
 
   return (
-    <div className="flex h-full bg-white dark:bg-gray-900">
-      {/* Main Chat Area */}
-      <div className="flex-1 flex flex-col">
-        {/* Chat Header */}
-        <div className="h-14 px-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white">
-              <Sparkles className="w-5 h-5" />
+    <div className={`flex overflow-hidden ${
+      isFullscreen 
+        ? 'fixed inset-0 z-50 h-screen w-screen' 
+        : 'h-full rounded-lg'
+    } bg-[#1e1e2e] dark:bg-[#1e1e2e]`}>
+      {/* Left Sidebar - 40% - Full height */}
+      <div className="bg-[#2b2d42] dark:bg-[#2b2d42] border-r border-gray-700/50 flex flex-col flex-shrink-0 w-[40%] h-full">
+        {/* Sidebar Header */}
+        <div className={`p-2.5 border-b border-gray-700/50 ${!isFullscreen ? 'rounded-tl-lg' : ''}`}>
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded bg-blue-600 flex items-center justify-center text-white font-bold text-xs">
+              B
             </div>
-            <div>
-              <h3 className="font-semibold text-gray-900 dark:text-white">
-                Mira - AI Assistant
-              </h3>
-              <p className="text-xs text-green-500 flex items-center gap-1">
-                <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></span>
-                Online · Ready to help
-              </p>
-            </div>
+            <span className="text-white font-semibold truncate text-[13px]">Business ERP</span>
           </div>
-          <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors">
-            <MoreVertical className="w-5 h-5 text-gray-500" />
+        </div>
+
+        {/* Search */}
+        <div className="p-2.5">
+          <input
+            type="text"
+            placeholder="Search..."
+            className="w-full px-2.5 py-1.5 bg-[#1e1e2e] border border-gray-700/50 rounded text-gray-300 text-[12px] placeholder-gray-500 focus:outline-none focus:border-blue-500"
+          />
+        </div>
+
+        {/* Chat List */}
+        <div className="flex-1 overflow-y-auto" style={{ height: openTasks.length > 0 ? `calc(100% - ${getTaskPanelHeight()})` : 'auto' }}>
+          {/* Mira AI */}
+          <button
+            onClick={() => {
+              setActiveView('mira');
+              setSelectedUserId(null);
+              setSelectedTaskId(null);
+            }}
+            className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-[#1e1e2e] transition-colors ${
+              activeView === 'mira' ? 'bg-[#1e1e2e]' : ''
+            }`}
+          >
+            <div className="relative flex-shrink-0">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#2b2d42]"></div>
+            </div>
+            <div className="flex-1 text-left min-w-0">
+              <p className="text-white text-[13px] font-medium truncate">AIVA</p>
+            </div>
           </button>
+
+          {/* Team Members */}
+          {chatUsers.length > 0 && (
+            <>
+              {chatUsers.slice(0, 5).map((chatUser) => (
+                <button
+                  key={chatUser.id}
+                  onClick={() => {
+                    setActiveView('user');
+                    setSelectedUserId(chatUser.id);
+                    setSelectedTaskId(null);
+                    setMessages([{
+                      id: `info-${Date.now()}`,
+                      message: `Chat with ${chatUser.name} - Coming soon!`,
+                      user_id: 'system',
+                      create_at: Date.now(),
+                      username: 'System',
+                      isBot: true
+                    }]);
+                  }}
+                  className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-[#1e1e2e] transition-colors ${
+                    activeView === 'user' && selectedUserId === chatUser.id ? 'bg-[#1e1e2e]' : ''
+                  }`}
+                >
+                  <div className="relative flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-[10px] font-bold">
+                      {chatUser.name.slice(0, 2).toUpperCase()}
+                    </div>
+                    {chatUser.isOnline && (
+                      <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#2b2d42]"></div>
+                    )}
+                  </div>
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="text-white text-[13px] truncate">{chatUser.name}</p>
+                  </div>
+                </button>
+              ))}
+            </>
+          )}
+
+          {/* Tasks Section with Separator */}
+          {tasks.length > 0 && (
+            <>
+              <div className="px-3 py-2 mt-2">
+                <div className="border-t border-gray-700/50"></div>
+              </div>
+              <div className="px-3 py-1">
+                <p className="text-gray-400 text-[10px] font-semibold uppercase tracking-wide">Tasks</p>
+              </div>
+              {tasks.slice(0, 5).map((task) => (
+                <button
+                  key={task.id}
+                  onClick={() => {
+                    setActiveView('task');
+                    setSelectedTaskId(task.id);
+                    setSelectedUserId(null);
+                    addTaskToPanel(task);
+                    setMessages([{
+                      id: `task-info-${Date.now()}`,
+                      message: `**Task: ${task.title}**\n\nStatus: ${task.status}\nPriority: ${task.priority || 'N/A'}\n\nTask details and updates will appear here.`,
+                      user_id: 'system',
+                      create_at: Date.now(),
+                      username: 'Task Info',
+                      isBot: true
+                    }]);
+                  }}
+                  className={`w-full flex items-start gap-2 px-3 py-2 hover:bg-[#1e1e2e] transition-colors ${
+                    activeView === 'task' && selectedTaskId === task.id ? 'bg-[#1e1e2e]' : ''
+                  }`}
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${
+                    task.status === 'DONE' ? 'bg-green-500' :
+                    task.status === 'IN_PROGRESS' ? 'bg-blue-500' :
+                    task.status === 'CONFIRMED' ? 'bg-yellow-500' :
+                    'bg-gray-400'
+                  }`}></div>
+                  <div className="flex-1 text-left min-w-0">
+                    <p className="text-white text-[13px] truncate">{task.title}</p>
+                  </div>
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+
+        {/* Open Tasks Panel - Dynamic Height */}
+        <div 
+          className="border-t border-gray-700/50 bg-[#1e1e2e] overflow-y-auto transition-all duration-300"
+          style={{ height: getTaskPanelHeight() }}
+        >
+          <div className="p-2.5 flex items-center justify-between border-b border-gray-700/50">
+            <span className="text-gray-400 text-[11px] font-semibold uppercase">Open Tasks ({openTasks.length})</span>
+            {openTasks.length > 0 && (
+              <button
+                onClick={() => setIsTaskPanelExpanded(!isTaskPanelExpanded)}
+                className="text-gray-400 hover:text-white text-[10px] transition-colors"
+              >
+                {isTaskPanelExpanded ? '▼' : '▲'}
+              </button>
+            )}
+          </div>
+          
+          {openTasks.length === 0 ? (
+            <div className="p-3 text-center">
+              <p className="text-gray-500 text-[11px]">No tasks opened yet</p>
+              <p className="text-gray-600 text-[10px] mt-1">Click on tasks to view here</p>
+            </div>
+          ) : (
+            <div className="p-1">
+              {openTasks.map((task) => (
+                <div
+                  key={task.id}
+                  className="flex items-center gap-2 px-2 py-1.5 mb-1 bg-[#2b2d42] rounded hover:bg-[#353748] transition-colors group"
+                >
+                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                    task.status === 'DONE' ? 'bg-green-500' :
+                    task.status === 'IN_PROGRESS' ? 'bg-blue-500' :
+                    task.status === 'CONFIRMED' ? 'bg-yellow-500' :
+                    'bg-gray-400'
+                  }`}></div>
+                  <button
+                    onClick={() => {
+                      setActiveView('task');
+                      setSelectedTaskId(task.id);
+                      setSelectedUserId(null);
+                    }}
+                    className="flex-1 text-left min-w-0"
+                  >
+                    <p className="text-white text-[11px] truncate">{task.title}</p>
+                    <p className="text-gray-500 text-[9px]">{task.status}</p>
+                  </button>
+                  <button
+                    onClick={() => removeTaskFromPanel(task.id)}
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-400"
+                    title="Remove from panel"
+                  >
+                    <X className="w-3 h-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Sidebar Settings */}
+        <div className="p-2.5 border-t border-gray-700/50">
+          <button className="text-gray-400 hover:text-white text-[11px] transition-colors">
+            ⚙️ Settings
+          </button>
+        </div>
+      </div>
+
+      {/* Main Chat Area */}
+      <div className="flex-1 flex flex-col overflow-hidden relative">
+        {/* Chat Header */}
+        <div className={`h-12 px-3 bg-[#1e1e2e] border-b border-gray-700/50 flex items-center justify-between ${!isFullscreen ? 'rounded-tr-lg' : ''}`}>
+          <div className="flex items-center gap-2">
+            {activeView === 'mira' && (
+              <>
+                <div className="relative">
+                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white">
+                    <Sparkles className="w-4 h-4" />
+                  </div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#1e1e2e]"></div>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white text-[13px]">
+                    AIVA
+                  </h3>
+                  <p className="text-gray-400 text-[10px]">AI + Virtual Assistant</p>
+                </div>
+              </>
+            )}
+            {activeView === 'user' && selectedUserId && (
+              <>
+                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-[10px] font-bold">
+                  {chatUsers.find(u => u.id === selectedUserId)?.name.slice(0, 2).toUpperCase()}
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white text-[13px]">
+                    {chatUsers.find(u => u.id === selectedUserId)?.name}
+                  </h3>
+                  <p className="text-gray-400 text-[10px]">
+                    {chatUsers.find(u => u.id === selectedUserId)?.email}
+                  </p>
+                </div>
+              </>
+            )}
+            {activeView === 'task' && selectedTaskId && (
+              <>
+                <div className="w-8 h-8 rounded-lg bg-purple-600/20 flex items-center justify-center">
+                  <span className="text-base">📋</span>
+                </div>
+                <div>
+                  <h3 className="font-semibold text-white text-[13px]">
+                    {tasks.find(t => t.id === selectedTaskId)?.title}
+                  </h3>
+                  <p className="text-gray-400 text-[10px]">
+                    Status: {tasks.find(t => t.id === selectedTaskId)?.status}
+                  </p>
+                </div>
+              </>
+            )}
+          </div>
+          <div className="flex items-center gap-1">
+            {/* Jitsi Call Controls */}
+            {(activeView === 'user' || activeView === 'task') && (
+              <JitsiCallControls 
+                threadId={activeView === 'user' ? selectedUserId || undefined : selectedTaskId || undefined}
+                onError={(error) => console.error('Jitsi error:', error)}
+              />
+            )}
+            
+            {/* Fullscreen Toggle - 50% smaller */}
+            <button 
+              onClick={() => setIsFullscreen(!isFullscreen)}
+              className="p-1 hover:bg-gray-700/30 rounded transition-colors"
+              title={isFullscreen ? "Exit fullscreen" : "Enter fullscreen"}
+            >
+              {isFullscreen ? (
+                <Minimize2 className="w-3 h-3 text-gray-400" />
+              ) : (
+                <Maximize2 className="w-3 h-3 text-gray-400" />
+              )}
+            </button>
+            
+            {/* Close button - 50% smaller */}
+            {onClose && (
+              <button 
+                onClick={onClose}
+                className="p-1 hover:bg-gray-700/30 rounded transition-colors"
+                aria-label="Close chat"
+              >
+                <span className="text-gray-400 text-xs">✕</span>
+              </button>
+            )}
+          </div>
         </div>
 
         {/* Messages */}
-        <div className="flex-1 overflow-y-auto p-4 space-y-4 bg-gradient-to-b from-gray-50/50 to-transparent dark:from-gray-800/20">
+        <div 
+          ref={chatContainerRef}
+          className={`flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 space-y-2 sm:space-y-3 bg-[#1e1e2e] pb-[120px] relative ${isDragging ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
+          style={{ scrollBehavior: 'smooth' }}
+          onDragEnter={handleDragEnter}
+          onDragLeave={handleDragLeave}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          {/* Drag overlay */}
+          {isDragging && showTaskForm && (
+            <div className="absolute inset-0 bg-blue-500/10 backdrop-blur-sm z-10 flex items-center justify-center pointer-events-none">
+              <div className="bg-[#2b2d42] border-2 border-blue-500 border-dashed rounded-lg p-8 text-center">
+                <Paperclip className="w-12 h-12 text-blue-400 mx-auto mb-3" />
+                <p className="text-white font-semibold text-lg mb-1">Drop files here</p>
+                <p className="text-gray-400 text-sm">Files will be attached to your task</p>
+              </div>
+            </div>
+          )}
+          
           {messages.map((message) => (
             <div 
               key={message.id} 
-              className={`flex gap-3 ${message.isBot ? 'items-start' : 'items-start'}`}
+              className={`flex gap-2 sm:gap-3 items-start ${!message.isBot ? 'flex-row-reverse' : ''}`}
             >
               {/* Avatar */}
               {message.isBot ? (
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white flex-shrink-0 shadow-md">
-                  <Sparkles className="w-4 h-4" />
+                <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white flex-shrink-0">
+                  <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
                 </div>
               ) : (
-                <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden shadow-md">
+                <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-full flex-shrink-0 overflow-hidden bg-blue-600">
                   {(user as any)?.profile_pic_url ? (
                     <img 
                       src={(user as any).profile_pic_url.replace('/uploads/', '/api/secure-files/')} 
@@ -199,7 +940,7 @@ export default function CleanChatInterface() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-xs font-bold">
+                    <div className="w-full h-full bg-blue-600 flex items-center justify-center text-white text-[10px] sm:text-xs md:text-sm font-bold">
                       {getUserInitials(message.username)}
                     </div>
                   )}
@@ -207,52 +948,416 @@ export default function CleanChatInterface() {
               )}
 
               {/* Message Content */}
-              <div className="flex-1 max-w-2xl">
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="font-semibold text-sm text-gray-900 dark:text-white">
-                    {message.username || 'Unknown User'}
+              <div className={`flex-1 max-w-[70%] ${!message.isBot ? 'flex flex-col items-end' : ''}`}>
+                <div className={`flex items-baseline gap-1 mb-0.5 ${!message.isBot ? 'flex-row-reverse' : ''}`}>
+                  <span className="font-semibold text-[11px] text-white">
+                    {message.isBot ? 'AIVA' : message.username || 'You'}
                   </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                  <span className="text-[9px] text-gray-500">
                     {formatTime(message.create_at)}
                   </span>
                 </div>
-                <div 
-                  className={`rounded-2xl px-4 py-2.5 ${
-                    message.isBot 
-                      ? 'bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm'
-                      : 'bg-blue-600 text-white'
-                  }`}
-                >
-                  <p className={`text-sm whitespace-pre-wrap ${
-                    message.isBot ? 'text-gray-700 dark:text-gray-300' : 'text-white'
-                  }`}>
-                    {message.message}
-                  </p>
+                <div className={`${
+                  message.isBot 
+                    ? 'text-gray-300' 
+                    : 'bg-blue-600 text-white rounded-2xl px-2.5 py-1.5'
+                } text-[13px] leading-relaxed whitespace-pre-wrap break-words`}>
+                  {message.message}
                 </div>
+                
+                {/* Feedback Buttons - Only for bot messages */}
+                {message.isBot && activeView === 'mira' && (
+                  <div className="flex gap-1 mt-1">
+                    <button
+                      onClick={() => handleFeedback(message.id, true)}
+                      className={`flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] rounded transition-colors ${
+                        feedbackGiven.get(message.id) === true
+                          ? 'bg-green-600/20 text-green-400'
+                          : 'bg-gray-700/30 text-gray-400 hover:bg-gray-700/50'
+                      }`}
+                      title="Helpful"
+                    >
+                      👍
+                    </button>
+                    <button
+                      onClick={() => handleFeedback(message.id, false)}
+                      className={`flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] rounded transition-colors ${
+                        feedbackGiven.get(message.id) === false
+                          ? 'bg-red-600/20 text-red-400'
+                          : 'bg-gray-700/30 text-gray-400 hover:bg-gray-700/50'
+                      }`}
+                      title="Not helpful"
+                    >
+                      👎
+                    </button>
+                  </div>
+                )}
               </div>
             </div>
           ))}
           
+          {/* Inline Task Creation Form */}
+          {showTaskForm && activeView === 'mira' && (
+            <div className="flex gap-3">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white flex-shrink-0 mt-1">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div className="flex-1 max-h-[450px] overflow-hidden">
+                <div className="bg-[#2b2d42] border-2 border-blue-500/50 rounded-lg flex flex-col max-h-full">
+                  <div className="flex items-center justify-between p-3 pb-2 flex-shrink-0">
+                    <h4 className="font-semibold text-white flex items-center gap-2">
+                      ✨ Create New Task
+                    </h4>
+                  </div>
+                  
+                  {/* Scrollable Form Content */}
+                  <div className="overflow-y-auto px-3 space-y-2.5 flex-1 custom-scrollbar"
+                    style={{ maxHeight: 'calc(450px - 120px)' }}
+                  >
+                  
+                  {/* Serial Number (Read-only) */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Serial Number
+                    </label>
+                    <input
+                      type="text"
+                      value={taskFormData.serialNumber}
+                      readOnly
+                      className="w-full px-3 py-1.5 border border-gray-600 rounded-lg bg-gray-800 text-gray-400 text-sm font-mono cursor-not-allowed"
+                      title="Auto-generated unique identifier"
+                    />
+                  </div>
+                  
+                  {/* Task Title */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Task Title *
+                    </label>
+                    <input
+                      type="text"
+                      value={taskFormData.title}
+                      onChange={(e) => setTaskFormData({ ...taskFormData, title: e.target.value })}
+                      placeholder="Enter task title..."
+                      className="w-full px-3 py-1.5 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-[#1e1e2e] text-white text-sm"
+                    />
+                  </div>
+                  
+                  {/* Description */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Description
+                    </label>
+                    <textarea
+                      value={taskFormData.description}
+                      onChange={(e) => setTaskFormData({ ...taskFormData, description: e.target.value })}
+                      placeholder="Describe the task..."
+                      rows={2}
+                      className="w-full px-3 py-1.5 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-[#1e1e2e] text-white resize-none text-sm"
+                    />
+                  </div>
+                  
+                  {/* Priority */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                      Priority
+                    </label>
+                    <div className="flex gap-2">
+                      {(['LOW', 'MEDIUM', 'HIGH', 'URGENT'] as const).map((priority) => (
+                        <button
+                          key={priority}
+                          onClick={() => setTaskFormData({ ...taskFormData, priority })}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium transition-colors ${
+                            taskFormData.priority === priority
+                              ? priority === 'URGENT'
+                                ? 'bg-red-500 text-white'
+                                : priority === 'HIGH'
+                                ? 'bg-orange-500 text-white'
+                                : priority === 'MEDIUM'
+                                ? 'bg-yellow-500 text-white'
+                                : 'bg-green-500 text-white'
+                              : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                          }`}
+                        >
+                          {priority}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  
+                  {/* Assign To */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Assign To *
+                    </label>
+                    <select
+                      value={taskFormData.assigneeId}
+                      onChange={(e) => setTaskFormData({ ...taskFormData, assigneeId: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-gray-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-[#1e1e2e] text-white text-sm"
+                    >
+                      <option value="">Select user...</option>
+                      {chatUsers.map((chatUser) => (
+                        <option key={chatUser.id} value={chatUser.id}>
+                          {chatUser.name} ({chatUser.email})
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  
+                  {/* File Attachments */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-300 mb-1">
+                      Attachments
+                    </label>
+                    <div className="space-y-2">
+                      {/* File Upload Button */}
+                      <button
+                        type="button"
+                        onClick={() => taskFileInputRef.current?.click()}
+                        className="w-full px-3 py-2 border-2 border-dashed border-gray-600 rounded-lg hover:border-blue-500 hover:bg-blue-500/5 transition-colors flex items-center justify-center gap-2 text-gray-400 hover:text-blue-400 text-sm"
+                      >
+                        <Paperclip className="w-4 h-4" />
+                        <span>Click to attach files or drag & drop</span>
+                      </button>
+                      <input
+                        ref={taskFileInputRef}
+                        type="file"
+                        multiple
+                        onChange={handleTaskFileSelect}
+                        className="hidden"
+                      />
+                      
+                      {/* Attached Files List */}
+                      {taskAttachments.length > 0 && (
+                        <div className="space-y-1.5">
+                          {taskAttachments.map((file, index) => (
+                            <div
+                              key={index}
+                              className="flex items-center gap-2 px-2.5 py-1.5 bg-[#1e1e2e] border border-gray-600 rounded-lg group"
+                            >
+                              <Paperclip className="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                              <div className="flex-1 min-w-0">
+                                <p className="text-white text-xs truncate">{file.name}</p>
+                                <p className="text-gray-500 text-[10px]">
+                                  {(file.size / 1024).toFixed(1)} KB
+                                </p>
+                              </div>
+                              <button
+                                type="button"
+                                onClick={() => removeAttachment(index)}
+                                className="opacity-0 group-hover:opacity-100 transition-opacity p-1 hover:bg-red-500/20 rounded text-red-400"
+                                title="Remove file"
+                              >
+                                <X className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  </div>
+                  
+                  {/* Actions - Fixed at bottom */}
+                  <div className="flex flex-col gap-2 p-3 pt-2 border-t border-gray-700 flex-shrink-0 bg-[#2b2d42]">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={async () => {
+                        if (!taskFormData.title || !taskFormData.assigneeId) {
+                          const botMsg: Message = {
+                            id: `bot-${Date.now()}`,
+                            message: '⚠️ Please fill in the required fields: Title and Assignee',
+                            user_id: 'mira',
+                            create_at: Date.now(),
+                            username: 'AIVA',
+                            isBot: true
+                          };
+                          setMessages(prev => [...prev, botMsg]);
+                          return;
+                        }
+                        
+                        try {
+                          // Create FormData for file upload
+                          const formData = new FormData();
+                          formData.append('serialNumber', taskFormData.serialNumber);
+                          formData.append('title', taskFormData.title);
+                          formData.append('description', taskFormData.description);
+                          formData.append('priority', taskFormData.priority);
+                          formData.append('assigneeId', taskFormData.assigneeId);
+                          formData.append('status', 'IN_PROGRESS');
+                          
+                          // Append files
+                          taskAttachments.forEach((file) => {
+                            formData.append('attachments', file);
+                          });
+                          
+                          const response = await fetch('/api/tasks', {
+                            method: 'POST',
+                            credentials: 'include',
+                            body: formData
+                          });
+                          
+                          if (response.ok) {
+                            const successMsg: Message = {
+                              id: `bot-${Date.now()}`,
+                              message: `✅ Task created and moved to IN PROGRESS!\n\n� ${taskFormData.serialNumber}\n�📝 "${taskFormData.title}"\n🎯 Priority: ${taskFormData.priority}\n👤 Assigned to: ${chatUsers.find(u => u.id === taskFormData.assigneeId)?.name}`,
+                              user_id: 'mira',
+                              create_at: Date.now(),
+                              username: 'AIVA',
+                              isBot: true
+                            };
+                            setMessages(prev => [...prev, successMsg]);
+                            setShowTaskForm(false);
+                            setTaskFormData({ serialNumber: '', title: '', description: '', priority: 'MEDIUM', assigneeId: '' });
+                            setTaskAttachments([]);
+                          } else {
+                            throw new Error('Failed to create task');
+                          }
+                        } catch (error) {
+                          const errorMsg: Message = {
+                            id: `bot-${Date.now()}`,
+                            message: '❌ Sorry, I couldn\'t create the task. Please try again or contact support.',
+                            user_id: 'mira',
+                            create_at: Date.now(),
+                            username: 'AIVA',
+                            isBot: true
+                          };
+                          setMessages(prev => [...prev, errorMsg]);
+                        }
+                      }}
+                      className="flex-1 bg-gradient-to-r from-green-600 to-blue-600 hover:from-green-700 hover:to-blue-700 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      ✅ Create Task
+                    </button>
+                    <button
+                      onClick={async () => {
+                        if (!taskFormData.title) {
+                          const botMsg: Message = {
+                            id: `bot-${Date.now()}`,
+                            message: '⚠️ Please enter a task title to save as draft',
+                            user_id: 'mira',
+                            create_at: Date.now(),
+                            username: 'AIVA',
+                            isBot: true
+                          };
+                          setMessages(prev => [...prev, botMsg]);
+                          return;
+                        }
+                        
+                        try {
+                          console.log('[Draft] Saving draft with data:', {
+                            serialNumber: taskFormData.serialNumber,
+                            title: taskFormData.title,
+                            description: taskFormData.description,
+                            priority: taskFormData.priority,
+                            assigneeId: taskFormData.assigneeId,
+                            status: 'DRAFT'
+                          });
+                          
+                          // Create FormData for file upload
+                          const formData = new FormData();
+                          formData.append('serialNumber', taskFormData.serialNumber);
+                          formData.append('title', taskFormData.title);
+                          formData.append('description', taskFormData.description);
+                          formData.append('priority', taskFormData.priority);
+                          if (taskFormData.assigneeId) {
+                            formData.append('assigneeId', taskFormData.assigneeId);
+                          }
+                          formData.append('status', 'DRAFT');
+                          
+                          // Append files
+                          taskAttachments.forEach((file) => {
+                            formData.append('attachments', file);
+                          });
+                          
+                          const response = await fetch('/api/tasks', {
+                            method: 'POST',
+                            credentials: 'include',
+                            body: formData
+                          });
+                          
+                          const responseData = await response.json();
+                          console.log('[Draft] API response:', response.status, responseData);
+                          
+                          if (response.ok) {
+                            const successMsg: Message = {
+                              id: `bot-${Date.now()}`,
+                              message: `💾 Task saved as draft!\n\n🔢 ${taskFormData.serialNumber}\n📝 "${taskFormData.title}"\n\nYou can find it in the DRAFT column and complete it later.`,
+                              user_id: 'mira',
+                              create_at: Date.now(),
+                              username: 'AIVA',
+                              isBot: true
+                            };
+                            setMessages(prev => [...prev, successMsg]);
+                            setShowTaskForm(false);
+                            setTaskFormData({ serialNumber: '', title: '', description: '', priority: 'MEDIUM', assigneeId: '' });
+                            setTaskAttachments([]);
+                          } else {
+                            throw new Error(responseData.error || 'Failed to save draft');
+                          }
+                        } catch (error: any) {
+                          console.error('[Draft] Error saving draft:', error);
+                          const errorMsg: Message = {
+                            id: `bot-${Date.now()}`,
+                            message: `❌ Sorry, I couldn't save the draft. Error: ${error.message}\n\nPlease try again.`,
+                            user_id: 'mira',
+                            create_at: Date.now(),
+                            username: 'AIVA',
+                            isBot: true
+                          };
+                          setMessages(prev => [...prev, errorMsg]);
+                        }
+                      }}
+                      className="flex-1 bg-gray-700 hover:bg-gray-600 text-white px-3 py-1.5 rounded-lg text-sm font-medium transition-colors"
+                    >
+                      💾 Save to Draft
+                    </button>
+                    </div>
+                    <button
+                      onClick={() => {
+                        setShowTaskForm(false);
+                        setTaskFormData({ serialNumber: '', title: '', description: '', priority: 'MEDIUM', assigneeId: '' });
+                        setTaskAttachments([]);
+                        const cancelMsg: Message = {
+                          id: `bot-${Date.now()}`,
+                          message: 'Task creation cancelled. How else can I help you?',
+                          user_id: 'mira',
+                          create_at: Date.now(),
+                          username: 'AIVA',
+                          isBot: true
+                        };
+                        setMessages(prev => [...prev, cancelMsg]);
+                      }}
+                      className="w-full px-3 py-1.5 bg-red-600 hover:bg-red-700 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      ❌ Cancel
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
           {/* Thinking indicator */}
           {thinking && (
-            <div className="flex gap-3 items-start">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white flex-shrink-0 shadow-md">
-                <Sparkles className="w-4 h-4 animate-pulse" />
+            <div className="flex gap-2 items-start">
+              <div className="w-7 h-7 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white flex-shrink-0">
+                <Sparkles className="w-3.5 h-3.5 animate-pulse" />
               </div>
-              <div className="flex-1 max-w-2xl">
-                <div className="flex items-baseline gap-2 mb-1">
-                  <span className="font-semibold text-sm text-gray-900 dark:text-white">
-                    Mira
+              <div className="flex-1">
+                <div className="flex items-baseline gap-1 mb-0.5">
+                  <span className="font-semibold text-[11px] text-white">
+                    AIVA
                   </span>
-                  <span className="text-xs text-gray-500 dark:text-gray-400">
+                  <span className="text-[9px] text-gray-500">
                     thinking...
                   </span>
                 </div>
-                <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-2xl px-4 py-2.5 shadow-sm">
+                <div className="text-gray-400">
                   <div className="flex gap-1">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
-                    <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+                    <div className="w-1.5 h-1.5 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                   </div>
                 </div>
               </div>
@@ -261,11 +1366,64 @@ export default function CleanChatInterface() {
           
           <div ref={messagesEndRef} />
         </div>
+      </div>
 
-        {/* Message Input */}
-        <div className="p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-900">
-          <div className="flex items-end gap-2">
-            <div className="flex-1 bg-gray-100 dark:bg-gray-800 rounded-2xl border border-gray-200 dark:border-gray-700 focus-within:ring-2 focus-within:ring-blue-500 focus-within:border-transparent transition-all">
+      {/* Message Input - Spans full bottom across sidebar and chat */}
+      <div className="absolute bottom-0 left-0 right-0 bg-[#1e1e2e] border-t border-gray-700/50 z-30">
+          {/* Attached Files Preview */}
+          {attachedFiles.length > 0 && (
+            <div className="p-3 pb-0">
+              <div className="mb-2 flex flex-wrap gap-2">
+                {attachedFiles.map((file, index) => (
+                  <div key={index} className="flex items-center gap-1.5 bg-[#2b2d42] rounded-lg px-2 py-1 text-xs text-gray-300 border border-gray-700/50">
+                    <Paperclip className="w-3 h-3" />
+                    <span className="max-w-[150px] truncate">{file.name}</span>
+                    <button
+                      onClick={() => removeAttachedFile(index)}
+                      className="hover:text-red-400 transition-colors"
+                      title="Remove file"
+                    >
+                      <X className="w-3 h-3" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="p-3 relative flex items-center gap-2">
+            {/* Settings icon - Left corner */}
+            <button
+              className="p-2 hover:bg-gray-700/30 rounded-lg transition-colors flex-shrink-0"
+              title="Settings"
+            >
+              <Settings className="w-5 h-5 text-gray-400" />
+            </button>
+
+            {/* Input box - Aligned right */}
+            <div className="flex-1 flex justify-end">
+              <div className="w-[90%] flex items-start gap-2 bg-[#2b2d42] rounded-lg px-3 py-2 border border-gray-700/50 focus-within:border-blue-500 transition-all duration-200">
+                {/* Hidden file input */}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  onChange={handleFileSelect}
+                  className="hidden"
+                  accept="image/*,.pdf,.doc,.docx,.txt"
+                />
+              
+              {/* Attachment button */}
+              <button
+                onClick={() => fileInputRef.current?.click()}
+                disabled={thinking}
+                className="p-0.5 hover:bg-gray-700/30 rounded transition-colors disabled:opacity-50 mt-0.5 flex-shrink-0"
+                title="Attach file"
+              >
+                <Paperclip className="w-4 h-4 text-gray-400" />
+              </button>
+              
+              {/* Input box - Expands upward */}
               <textarea
                 ref={textareaRef}
                 value={newMessage}
@@ -276,48 +1434,49 @@ export default function CleanChatInterface() {
                     sendMessage();
                   }
                 }}
-                placeholder="Ask me anything... Try 'show my pending tasks' or 'create a task'"
+                placeholder="Type a message..."
                 rows={1}
                 disabled={thinking}
-                className="w-full px-4 py-3 bg-transparent resize-none focus:outline-none text-gray-900 dark:text-white max-h-32 overflow-y-auto disabled:opacity-50"
-                style={{ minHeight: '44px' }}
+                className="flex-1 bg-transparent resize-none focus:outline-none text-gray-200 placeholder-gray-500 text-[13px] max-h-[200px] overflow-y-auto disabled:opacity-50 leading-relaxed"
+                style={{ minHeight: '20px' }}
               />
+              
+              {/* Emoji button */}
+              <button
+                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                disabled={thinking}
+                className="p-0.5 hover:bg-gray-700/30 rounded transition-colors disabled:opacity-50 mt-0.5 flex-shrink-0"
+                title="Add emoji"
+              >
+                <Smile className="w-4 h-4 text-gray-400" />
+              </button>
+              
+              {/* Send button */}
+              <button
+                onClick={sendMessage}
+                disabled={!newMessage.trim() || thinking}
+                className="p-0.5 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed mt-0.5 flex-shrink-0"
+              >
+                <Send className={`w-4 h-4 text-blue-500 ${thinking ? 'animate-pulse' : ''}`} />
+              </button>
+              </div>
             </div>
-            <button
-              onClick={sendMessage}
-              disabled={!newMessage.trim() || thinking}
-              className="p-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 disabled:from-gray-300 disabled:to-gray-300 dark:disabled:from-gray-700 dark:disabled:to-gray-700 text-white rounded-2xl transition-all shadow-md hover:shadow-lg disabled:cursor-not-allowed disabled:shadow-none transform active:scale-95"
-            >
-              <Send className={`w-5 h-5 ${thinking ? 'animate-pulse' : ''}`} />
-            </button>
-          </div>
-          
-          {/* Quick suggestions */}
-          <div className="mt-3 flex flex-wrap gap-2">
-            <button
-              onClick={() => setNewMessage('Show my pending tasks')}
-              disabled={thinking}
-              className="px-3 py-1.5 text-xs bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 rounded-full hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors disabled:opacity-50"
-            >
-              📋 Show pending tasks
-            </button>
-            <button
-              onClick={() => setNewMessage('Create a task to review invoices')}
-              disabled={thinking}
-              className="px-3 py-1.5 text-xs bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-full hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors disabled:opacity-50"
-            >
-              ✨ Create task
-            </button>
-            <button
-              onClick={() => setNewMessage('What can you help me with?')}
-              disabled={thinking}
-              className="px-3 py-1.5 text-xs bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 rounded-full hover:bg-green-100 dark:hover:bg-green-900/30 transition-colors disabled:opacity-50"
-            >
-              💡 What can you do?
-            </button>
+
+            {/* Emoji Picker Popup */}
+            {showEmojiPicker && (
+              <div ref={emojiPickerRef} className="absolute bottom-full mb-2 right-3 z-50">
+                <EmojiPicker
+                  onEmojiClick={handleEmojiClick}
+                  theme={Theme.DARK}
+                  width={300}
+                  height={400}
+                  searchPlaceHolder="Search emoji..."
+                  previewConfig={{ showPreview: false }}
+                />
+              </div>
+            )}
           </div>
         </div>
-      </div>
     </div>
   );
 }

@@ -256,12 +256,33 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
 
   // Determine user's primary dashboard path by role
   const dashboardPath = useMemo(() => {
-  const role = String(user?.roleName || user?.role || '').toUpperCase();
-  if (hasFullAdmin(role)) return '/admin';
+    const role = String(user?.roleName || user?.role || '').toUpperCase();
+    
+    // Super Admin / Admin roles
+    if (hasFullAdmin(role)) return '/admin';
     if (role === 'ENTERPRISE_ADMIN') return '/enterprise-admin/dashboard';
     if (role === 'ADMIN') return '/admin/dashboard';
-    if (role === 'STAFF') return '/hub-incharge';
-    return '/manager';
+    
+    // Role-specific dashboards
+    const rolePathMap: Record<string, string> = {
+      'CFO': '/cfo-dashboard',
+      'FINANCE_CONTROLLER': '/finance-controller',
+      'TREASURY': '/treasury',
+      'ACCOUNTS': '/accounts',
+      'ACCOUNTS_PAYABLE': '/accounts-payable',
+      'OPERATIONS_MANAGER': '/operations-manager',
+      'STORE_INCHARGE': '/store-incharge',
+      'HUB_INCHARGE': '/hub-incharge',
+      'STAFF': '/staff',
+      'BANKER': '/banker',
+      'COMPLIANCE': '/compliance-officer',
+      'COMPLIANCE_OFFICER': '/compliance-officer',
+      'LEGAL': '/legal',
+      'IT_ADMIN': '/it-admin',
+      'PROCUREMENT_OFFICER': '/procurement-officer',
+    };
+    
+    return rolePathMap[role] || '/dashboard';
   }, [user?.roleName, user?.role]);
 
   // Get module color classes
@@ -377,7 +398,6 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
   const isDashboardPage = pathname === '/hub-incharge' || 
                           pathname === '/super-admin' || 
                           pathname === '/admin/dashboard' || 
-                          pathname === '/manager' ||
                           pathname === '/enterprise-admin/dashboard' ||
                           pathname === '/admin' ||
                           pathname === '/enterprise-admin';

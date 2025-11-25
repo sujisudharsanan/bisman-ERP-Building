@@ -18,19 +18,6 @@ export default function LoginPortalPage() {
       ],
     },
     {
-      title: 'Manager Portal',
-      description: 'Management dashboard and oversight',
-      icon: Briefcase,
-      href: '/auth/manager-login',
-      color: 'green',
-      features: [
-        'Staff Management',
-        'Sales Reports',
-        'Inventory Oversight',
-        'Analytics',
-      ],
-    },
-    {
       title: 'Hub Incharge Portal',
       description: 'Petrol station operations management',
       icon: Fuel,

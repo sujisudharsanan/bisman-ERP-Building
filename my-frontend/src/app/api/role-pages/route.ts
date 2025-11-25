@@ -5,7 +5,6 @@ import path from 'path';
 // Whitelist of directories under app/ that we allow scanning
 const ALLOWED_DIRS = new Set([
   'hub-incharge',
-  'manager',
   'admin',
   'super-admin',
 ]);
