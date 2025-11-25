@@ -5,5 +5,6 @@ try {
   // ignore if dotenv isn't installed in other environments
 }
 
-// Delegate to the Next-integrated server so non-API routes are handled by Next.js
-module.exports = require('./server')
+// Execute the server (don't just require it)
+// server.js will call start() and begin listening
+require('./server')
