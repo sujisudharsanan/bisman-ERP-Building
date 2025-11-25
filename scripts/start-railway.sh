@@ -43,4 +43,11 @@ fi
 
 # Start the application
 echo "🎬 Starting server..."
+echo "📂 Working directory: $(pwd)"
+echo "📂 Contents: $(ls -la | head -10)"
+echo "🔍 Node version: $(node --version)"
+echo "🔍 Index.js exists: $([ -f index.js ] && echo 'YES' || echo 'NO')"
+echo ""
+echo "🚀 Executing: node index.js"
+echo "========================================="
 exec node index.js
