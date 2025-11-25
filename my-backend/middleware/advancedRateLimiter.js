@@ -14,9 +14,12 @@
  */
 
 const rateLimit = require('express-rate-limit');
-// Use internal ipKeyGenerator helper to ensure IPv6 normalization compliance
-const { ipKeyGenerator } = require('express-rate-limit/dist/helpers.js');
 const { PrismaClient } = require('@prisma/client');
+
+// Custom IP key generator (replacing the non-exported internal helper)
+const ipKeyGenerator = (req) => {
+  return req.ip || req.connection?.remoteAddress || 'unknown';
+};
 const prisma = new PrismaClient();
 
 // Optional: Redis store for distributed rate limiting
