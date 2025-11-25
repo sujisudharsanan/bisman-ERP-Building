@@ -73,5 +73,26 @@ EXPOSE 8080
 COPY scripts/start-railway.sh /app/start-railway.sh
 RUN chmod +x /app/start-railway.sh
 
-ENTRYPOINT ["dumb-init", "--"]
-CMD ["/app/start-railway.sh"]
+# Inline the critical startup logic directly in CMD to ensure it runs
+# This eliminates any issues with dumb-init or external script execution
+CMD ["sh", "-c", "\
+  echo '============================================'; \
+  echo 'RAILWAY CONTAINER STARTED'; \
+  echo 'Time:' $(date); \
+  echo 'PWD:' $(pwd); \
+  echo 'Files:' $(ls -la | head -5); \
+  echo '============================================'; \
+  echo 'Checking for DATABASE_URL...'; \
+  if [ -n \"$DATABASE_URL\" ]; then \
+    echo 'DATABASE_URL detected, running migrations with timeout...'; \
+    timeout 30 npx prisma migrate deploy 2>&1 || echo 'Migration failed or timed out'; \
+  else \
+    echo 'No DATABASE_URL, skipping migrations'; \
+  fi; \
+  echo '============================================'; \
+  echo 'Starting Node.js application...'; \
+  echo 'Node version:' $(node --version); \
+  echo 'Executing: node index.js'; \
+  echo '============================================'; \
+  exec node index.js \
+"]
