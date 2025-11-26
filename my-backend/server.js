@@ -132,6 +132,33 @@ async function start() {
     res.status(200).end();
   });
 
+  // CRITICAL: Register root route FIRST, before mounting apiApp
+  // apiApp includes notFoundHandler which will catch ALL unmatched routes including /
+  // So we must register / handler BEFORE mounting apiApp
+  app.get('/', (_req, res) => {
+    res.status(200).json({
+      name: 'BISMAN ERP Backend API',
+      version: '1.0.2',  // Incremented to verify deployment
+      status: 'online',
+      environment: process.env.NODE_ENV || 'development',
+      endpoints: {
+        health: '/api/health',
+        auth: '/api/auth/*',
+        tasks: '/api/tasks/*',
+        chat: '/api/chat/*',
+        ai: '/api/langchain/*',
+        calls: '/api/calls/*',
+        metrics: '/metrics'
+      },
+      frontend: process.env.FRONTEND_URL || 'Deploy frontend separately',
+      documentation: 'https://github.com/sujisudharsanan/bisman-ERP-Building',
+      nextjs: handle ? 'INTEGRATED' : 'API-ONLY',
+      deployment: 'railway',
+      buildTime: '2025-11-26T10:25:00Z'
+    });
+  });
+  console.log('[startup] ✅ Root route registered at /');
+
   // Mount API routes (may have issues, but healthcheck is already registered)
   try {
     app.use(apiApp);
@@ -161,29 +188,8 @@ async function start() {
     }
   }
 
-  // CRITICAL: Register root route FIRST, before any catch-all routes
-  // This MUST be outside and before any app.all('*') to ensure it executes first
-  app.get('/', (_req, res) => {
-    res.status(200).json({
-      name: 'BISMAN ERP Backend API',
-      version: '1.0.1',
-      status: 'online',
-      environment: process.env.NODE_ENV || 'development',
-      endpoints: {
-        health: '/api/health',
-        auth: '/api/auth/*',
-        tasks: '/api/tasks/*',
-        chat: '/api/chat/*',
-        ai: '/api/langchain/*',
-        calls: '/api/calls/*',
-        metrics: '/metrics'
-      },
-      frontend: process.env.FRONTEND_URL || 'Deploy frontend separately',
-      documentation: 'https://github.com/sujisudharsanan/bisman-ERP-Building',
-      nextjs: handle ? 'INTEGRATED' : 'API-ONLY'
-    });
-  });
-
+  // Root route already registered above, before apiApp was mounted
+  
   if (handle) {
     // Let Next.js handle all other routes (except / which is handled above)
     app.all('*', (req, res) => {
