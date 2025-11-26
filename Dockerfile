@@ -1,8 +1,9 @@
 ## Root Dockerfile for Railway (backend service)
 ## Fullstack Dockerfile (backend + frontend) for Railway
+## FORCE REDEPLOY: 2025-11-26T14:30:00Z
 
 # CACHE BUST: Change this value to force complete rebuild
-ARG CACHEBUST=2025-11-26-v2
+ARG CACHEBUST=2025-11-26-v3-URGENT
 
 # ---- deps: install and prepare backend with Prisma ----
 FROM node:20-alpine AS deps
