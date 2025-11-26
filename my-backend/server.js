@@ -1,4 +1,5 @@
 // server.js - Start Express API and optionally serve the exported Next.js app
+// Build: 2025-11-26T09:20:00Z - Force Railway cache bust
 try { require('dotenv').config(); } catch (_) {}
 
 const path = require('path');
