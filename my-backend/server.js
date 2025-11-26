@@ -1,5 +1,6 @@
 // server.js - Start Express API and optionally serve the exported Next.js app
-// Build: 2025-11-26T09:20:00Z - Force Railway cache bust
+// Build: 2025-11-26T15:07:00Z - NUCLEAR REBUILD v4
+// Commit: 891a089f (Latest fix with root route handler)
 try { require('dotenv').config(); } catch (_) {}
 
 const path = require('path');
@@ -228,7 +229,9 @@ async function start() {
     console.log('\n' + '='.repeat(70));
     console.log('🚀 BISMAN ERP Backend Server Started Successfully');
     console.log('='.repeat(70));
-    console.log(`📡 Server URL:        http://0.0.0.0:${port}`);
+    console.log(`� Build Version:     2025-11-26T15:07:00Z (NUCLEAR v4)`);
+    console.log(`📝 Git Commit:        891a089f (Root route fix)`);
+    console.log(`�📡 Server URL:        http://0.0.0.0:${port}`);
     console.log(`🏥 Health Check:      http://0.0.0.0:${port}/api/health`);
     console.log(`🔌 Socket.IO:         ENABLED (Realtime updates)`);
     console.log(`🌍 Environment:       ${isProd ? 'PRODUCTION' : 'DEVELOPMENT'}`);
@@ -236,6 +239,7 @@ async function start() {
     console.log(`🌐 Allowed Origins:   ${allowedOrigins.join(', ')}`);
     console.log(`🍪 Credentials:       ENABLED (JWT/Cookies)`);
     console.log(`⚡ Next.js Frontend:  ${nextApp ? 'INTEGRATED' : 'API-ONLY MODE'}`);
+    console.log(`✅ Root Route:        ${handle ? 'REGISTERED (/)' : 'API-ONLY MODE'}`);
     console.log('='.repeat(70) + '\n');
   });
 

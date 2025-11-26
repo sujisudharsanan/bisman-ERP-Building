@@ -1,14 +1,22 @@
 ## Root Dockerfile for Railway (backend service)
 ## Fullstack Dockerfile (backend + frontend) for Railway
-## FORCE REDEPLOY: 2025-11-26T14:30:00Z
+## FORCE REDEPLOY: 2025-11-26T15:07:00Z - NUCLEAR CACHE BUST
 
-# CACHE BUST: Change this value to force complete rebuild
-ARG CACHEBUST=2025-11-26-v3-URGENT
+# NUCLEAR OPTION: Complete cache invalidation
+ARG CACHEBUST=NUCLEAR_REBUILD_$(date +%s)_v4
+ARG BUILD_DATE=2025-11-26T15:07:00Z
 
 # ---- deps: install and prepare backend with Prisma ----
 FROM node:20-alpine AS deps
 ARG CACHEBUST
-RUN echo "Cache bust: $CACHEBUST"
+ARG BUILD_DATE
+RUN echo "===========================================" && \
+    echo "NUCLEAR CACHE BUST ACTIVE" && \
+    echo "Build ID: $CACHEBUST" && \
+    echo "Build Date: $BUILD_DATE" && \
+    echo "This forces complete Docker rebuild" && \
+    echo "===========================================" && \
+    date
 WORKDIR /app
 RUN apk add --no-cache postgresql-client openssl libc6-compat
 COPY my-backend/package*.json ./
