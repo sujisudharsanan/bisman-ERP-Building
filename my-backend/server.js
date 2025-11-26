@@ -161,31 +161,41 @@ async function start() {
     }
   }
 
-  if (handle) {
-    // Root route - API landing page (must be before Next.js catch-all)
-    // This route MUST be registered before app.all('*') to prevent Next.js interception
-    app.get('/', (_req, res) => {
-      res.status(200).json({
-        name: 'BISMAN ERP Backend API',
-        version: '1.0.0',
-        status: 'online',
-        environment: process.env.NODE_ENV || 'development',
-        endpoints: {
-          health: '/api/health',
-          auth: '/api/auth/*',
-          tasks: '/api/tasks/*',
-          chat: '/api/chat/*',
-          ai: '/api/langchain/*',
-          calls: '/api/calls/*',
-          metrics: '/metrics'
-        },
-        frontend: process.env.FRONTEND_URL || 'Deploy frontend separately',
-        documentation: 'https://github.com/sujisudharsanan/bisman-ERP-Building'
-      });
+  // CRITICAL: Register root route FIRST, before any catch-all routes
+  // This MUST be outside and before any app.all('*') to ensure it executes first
+  app.get('/', (_req, res) => {
+    res.status(200).json({
+      name: 'BISMAN ERP Backend API',
+      version: '1.0.1',
+      status: 'online',
+      environment: process.env.NODE_ENV || 'development',
+      endpoints: {
+        health: '/api/health',
+        auth: '/api/auth/*',
+        tasks: '/api/tasks/*',
+        chat: '/api/chat/*',
+        ai: '/api/langchain/*',
+        calls: '/api/calls/*',
+        metrics: '/metrics'
+      },
+      frontend: process.env.FRONTEND_URL || 'Deploy frontend separately',
+      documentation: 'https://github.com/sujisudharsanan/bisman-ERP-Building',
+      nextjs: handle ? 'INTEGRATED' : 'API-ONLY'
     });
-    
-    // Let Next handle other routes (but not /)
+  });
+
+  if (handle) {
+    // Let Next.js handle all other routes (except / which is handled above)
     app.all('*', (req, res) => {
+      // Skip root path (already handled above)
+      if (req.path === '/') {
+        // This should never execute because app.get('/') is registered first
+        return res.status(500).json({
+          error: 'ROUTE_ORDER_ERROR',
+          message: 'Root route handler was bypassed - Express route order issue'
+        });
+      }
+      
       // Skip API routes (already handled by apiApp)
       if (req.path.startsWith('/api/') || req.path === '/metrics') {
         return res.status(404).json({ 
@@ -193,9 +203,19 @@ async function start() {
           message: `Route ${req.method} ${req.path} not found` 
         });
       }
+      
+      // Pass everything else to Next.js
       return handle(req, res);
     });
   } else {
+    // API-only mode - no Next.js catch-all needed
+    // Root route already registered above
+    // API routes already mounted via apiApp in app.js
+    console.log('[startup] Running in API-only mode (Next.js not available)');
+  }
+  
+  // Remove old fallback block (dead code)
+  if (false) {
     // Fallback root route if Next.js is not available
     app.get('/', (_req, res) => {
       res.status(200).json({
