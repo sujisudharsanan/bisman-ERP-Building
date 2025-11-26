@@ -24,6 +24,10 @@ try {
 }
 
 const apiApp = require('./app');
+// Silence favicon & apple-touch icon 404 spam (return 204 No Content)
+app.get(['/favicon.ico','/apple-touch-icon.png','/apple-touch-icon-precomposed.png'], (req,res) => {
+  res.status(204).end()
+})
 
 // Next.js setup
 const dev = process.env.NODE_ENV !== 'production';

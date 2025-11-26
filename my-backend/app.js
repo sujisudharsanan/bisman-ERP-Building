@@ -223,10 +223,24 @@ app.use(['/api/calls','/api/voice','/api/video'], callLimiter);
 const isProd = process.env.NODE_ENV === 'production';
 
 // Build allowed origins list - Railway only
-const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:3000', // Local dev
-  'https://bisman-erp-backend-production.up.railway.app', // Railway backend
-].filter(Boolean); // Remove any undefined values
+// Build allowed origins list - prioritize explicit FRONTEND_URLS (comma separated)
+let allowedOrigins = []
+if (process.env.FRONTEND_URLS) {
+  allowedOrigins = process.env.FRONTEND_URLS.split(',').map(o => o.trim()).filter(Boolean)
+}
+// Fallback minimal list (backend URL + optional frontend single URL)
+if (allowedOrigins.length === 0) {
+  allowedOrigins = [
+    process.env.FRONTEND_URL || 'http://localhost:3000',
+    'https://bisman-erp-backend-production.up.railway.app'
+  ].filter(Boolean)
+}
+// In production we often still need local testing – allow if ALLOW_LOCALHOST=1
+if (process.env.ALLOW_LOCALHOST === '1') {
+  ['http://localhost:3000','http://127.0.0.1:3000'].forEach(l => { if (!allowedOrigins.includes(l)) allowedOrigins.push(l) })
+}
+// Deduplicate
+allowedOrigins = Array.from(new Set(allowedOrigins))
 
 const corsOptions = {
   origin: (origin, callback) => {

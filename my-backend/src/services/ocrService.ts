@@ -1,12 +1,13 @@
 /**
- * 📄 OCR Service - Tesseract Integration
+ * 📄 OCR Service - Tesseract Integration (Production Ready)
  * 
- * Handles OCR processing for bills/invoices using Tesseract OCR
- * Features:
- * - Image OCR processing
- * - PDF to image conversion + OCR
- * - Invoice field parsing (vendor, amount, dates, invoice number)
- * - Error handling and timeouts
+ * Enhancements:
+ * - Env-driven configuration (language, timeouts, concurrency, page limits)
+ * - Concurrency semaphore to avoid CPU overload
+ * - Timeout wrapper for Tesseract call
+ * - PDF page limiting to prevent huge resource usage
+ * - Extended OcrResult (pagesProcessed, debug)
+ * - Stale temp file cleanup helper
  */
 
 import tesseract from 'node-tesseract-ocr';
@@ -15,6 +16,29 @@ import sharp from 'sharp';
 import fs from 'fs/promises';
 import path from 'path';
 import { parse, isValid, format } from 'date-fns';
+
+// Runtime environment configuration
+const env = (n: string, fb?: string) => process.env[n] || fb;
+const OCR_RUNTIME = {
+  LANG: env('OCR_LANG', 'eng'),
+  TIMEOUT_MS: parseInt(env('OCR_TIMEOUT_MS', '120000')),
+  MAX_PDF_PAGES: parseInt(env('OCR_MAX_PDF_PAGES', '10')),
+  MAX_CONCURRENCY: parseInt(env('OCR_MAX_CONCURRENCY', '2')),
+  ENABLE_DEBUG: env('OCR_ENABLE_DEBUG', '0') === '1',
+  TEMP_MAX_AGE_MS: parseInt(env('OCR_TEMP_MAX_AGE_MS', '3600000')), // 1h
+};
+
+let activeJobs = 0;
+const waiters: Array<() => void> = [];
+async function acquireSlot(): Promise<void> {
+  if (activeJobs < OCR_RUNTIME.MAX_CONCURRENCY) { activeJobs++; return; }
+  await new Promise<void>(r => waiters.push(r));
+  activeJobs++;
+}
+function releaseSlot() {
+  activeJobs = Math.max(0, activeJobs - 1);
+  const nxt = waiters.shift(); if (nxt) nxt();
+}
 
 // ==========================================
 // TYPES
@@ -26,6 +50,8 @@ export interface OcrResult {
   confidence?: number;
   processingTime: number;
   error?: string;
+  pagesProcessed?: number;
+  debug?: any;
 }
 
 export interface ParsedInvoiceData {
@@ -52,10 +78,10 @@ export interface SuggestedTask {
 // ==========================================
 
 const OCR_CONFIG = {
-  lang: 'eng', // Language
+  lang: OCR_RUNTIME.LANG,
   oem: 1, // OCR Engine Mode: 1 = LSTM only
   psm: 3, // Page Segmentation Mode: 3 = Fully automatic
-  timeout: 120000, // 2 minutes timeout
+  timeout: OCR_RUNTIME.TIMEOUT_MS, // 2 minutes timeout
 };
 
 const TEMP_DIR = path.join(process.cwd(), 'uploads', 'temp');
@@ -153,15 +179,19 @@ export async function convertPdfToImages(pdfPath: string): Promise<string[]> {
  */
 export async function runOcrOnImage(imagePath: string): Promise<OcrResult> {
   const startTime = Date.now();
-
   try {
     console.log(`[OCR] Processing image: ${imagePath}`);
 
     // Preprocess image
     const processedPath = await preprocessImage(imagePath);
 
-    // Run Tesseract OCR
-    const text = await tesseract.recognize(processedPath, OCR_CONFIG);
+    await acquireSlot();
+
+    // Run Tesseract OCR with timeout
+    const text = await Promise.race([
+      tesseract.recognize(processedPath, OCR_CONFIG),
+      new Promise<string>((_, rej) => setTimeout(() => rej(new Error('OCR timeout exceeded')), OCR_RUNTIME.TIMEOUT_MS))
+    ]);
 
     const processingTime = Date.now() - startTime;
 
@@ -170,13 +200,15 @@ export async function runOcrOnImage(imagePath: string): Promise<OcrResult> {
       await fs.unlink(processedPath).catch(() => {});
     }
 
-    console.log(`[OCR] Completed in ${processingTime}ms - Extracted ${text.length} characters`);
+    console.log(`[OCR] Completed in ${processingTime}ms - Extracted ${String(text).length} characters`);
 
     return {
       success: true,
-      text: text.trim(),
+      text: String(text).trim(),
       processingTime,
       confidence: 85, // Tesseract doesn't easily expose per-page confidence
+      pagesProcessed: 1,
+      debug: OCR_RUNTIME.ENABLE_DEBUG ? { config: OCR_CONFIG } : undefined,
     };
   } catch (error: any) {
     console.error('[OCR] Processing failed:', error);
@@ -185,7 +217,11 @@ export async function runOcrOnImage(imagePath: string): Promise<OcrResult> {
       text: '',
       processingTime: Date.now() - startTime,
       error: error.message || 'OCR processing failed',
+      pagesProcessed: 1,
+      debug: OCR_RUNTIME.ENABLE_DEBUG ? { error: error.message } : undefined,
     };
+  } finally {
+    releaseSlot();
   }
 }
 
@@ -194,12 +230,17 @@ export async function runOcrOnImage(imagePath: string): Promise<OcrResult> {
  */
 export async function processFile(filePath: string, fileType: string): Promise<OcrResult> {
   await ensureTempDir();
-
   try {
     // Handle PDF files
     if (fileType === 'application/pdf' || filePath.toLowerCase().endsWith('.pdf')) {
       console.log('[OCR] Processing PDF file');
-      const imageFiles = await convertPdfToImages(filePath);
+      let imageFiles = await convertPdfToImages(filePath);
+
+      // Limit pages if too many
+      if (imageFiles.length > OCR_RUNTIME.MAX_PDF_PAGES) {
+        console.log(`[OCR] Limiting PDF pages from ${imageFiles.length} to ${OCR_RUNTIME.MAX_PDF_PAGES}`);
+        imageFiles = imageFiles.slice(0, OCR_RUNTIME.MAX_PDF_PAGES);
+      }
 
       if (imageFiles.length === 0) {
         return {
@@ -207,6 +248,7 @@ export async function processFile(filePath: string, fileType: string): Promise<O
           text: '',
           processingTime: 0,
           error: 'No pages found in PDF',
+          pagesProcessed: 0,
         };
       }
 
@@ -235,6 +277,8 @@ export async function processFile(filePath: string, fileType: string): Promise<O
         confidence: results.length > 0
           ? results.reduce((sum, r) => sum + (r.confidence || 0), 0) / results.length
           : 0,
+        pagesProcessed: imageFiles.length,
+        debug: OCR_RUNTIME.ENABLE_DEBUG ? { pages: imageFiles.length } : undefined,
       };
     }
 
@@ -247,6 +291,8 @@ export async function processFile(filePath: string, fileType: string): Promise<O
       text: '',
       processingTime: 0,
       error: error.message || 'File processing failed',
+      pagesProcessed: 0,
+      debug: OCR_RUNTIME.ENABLE_DEBUG ? { error: error.message } : undefined,
     };
   }
 }
@@ -543,5 +589,28 @@ export async function cleanupTempFiles(filePatterns: string[]) {
     } catch (error) {
       // Ignore errors (file may not exist)
     }
+  }
+}
+
+/**
+ * Clean up stale temporary files
+ */
+export async function cleanupStaleTempFiles() {
+  try {
+    await ensureTempDir();
+    const files = await fs.readdir(TEMP_DIR);
+    const now = Date.now();
+    for (const f of files) {
+      const full = path.join(TEMP_DIR, f);
+      try {
+        const stat = await fs.stat(full);
+        if (now - stat.mtimeMs > OCR_RUNTIME.TEMP_MAX_AGE_MS) {
+          await fs.unlink(full).catch(()=>{});
+          if (OCR_RUNTIME.ENABLE_DEBUG) console.log('[OCR] Purged stale temp file:', full);
+        }
+      } catch {}
+    }
+  } catch (e:any) {
+    console.error('[OCR] Stale cleanup failed:', e.message);
   }
 }

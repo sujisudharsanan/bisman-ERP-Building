@@ -260,6 +260,17 @@ router.post('/login', loginRateLimiter, asyncHandler(async (req, res) => {
     );
 }));
 
+// Provide a lightweight GET /auth/login informational response to silence 404 noise
+router.get('/login', (req, res) => {
+  return res.status(200).json({
+    success: true,
+    method: 'POST required',
+    message: 'Use POST /api/auth/login with { email, password } to obtain tokens',
+    fields: ['email','password'],
+  })
+})
+
+
 /**
  * Set HTTP-only cookies for tokens
  */

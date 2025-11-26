@@ -14,6 +14,7 @@ import { billUpload, handleUploadError, deleteUploadedFile } from '../middleware
 import { authMiddleware } from '../middleware/auth';
 import * as ocrService from '../services/ocrService';
 import rateLimit from 'express-rate-limit';
+import multer from 'multer';
 
 const router = express.Router();
 const prisma = new PrismaClient();
@@ -36,13 +37,13 @@ const ocrRateLimit = rateLimit({
 // ==========================================
 // TYPES
 // ==========================================
-
 interface AuthRequest extends Request {
   user?: {
     id: number;
     email: string;
     role: string;
   };
+  file?: multer.File;
 }
 
 // ==========================================
@@ -84,7 +85,11 @@ router.post(
       console.log(`[Bill] Upload started by user ${userId}: ${file.originalname}`);
 
       // Create Bill record with PROCESSING status
-      const bill = await prisma.bill.create({
+      // Use prisma.bill (model Bill) - ensure migrations applied. Fallback error if missing.
+      if (!('bill' in prisma)) {
+        return res.status(500).json({ success:false, error:'Bill model not available in Prisma client. Run prisma generate & migrate.' });
+      }
+      const bill = await (prisma as any).bill.create({
         data: {
           filePath: file.path,
           originalName: file.originalname,
@@ -104,7 +109,7 @@ router.post(
 
       if (!ocrResult.success) {
         // Update bill with error
-        await prisma.bill.update({
+  await (prisma as any).bill.update({
           where: { id: billId },
           data: {
             ocrStatus: 'FAILED',
@@ -127,7 +132,7 @@ router.post(
       const suggestedTask = ocrService.generateSuggestedTask(parsedData, ocrResult.text);
 
       // Update bill with OCR results
-      await prisma.bill.update({
+  await (prisma as any).bill.update({
         where: { id: billId },
         data: {
           ocrStatus: 'DONE',
@@ -161,7 +166,7 @@ router.post(
 
       // Update bill status if created
       if (billId) {
-        await prisma.bill.update({
+  await (prisma as any).bill.update({
           where: { id: billId },
           data: {
             ocrStatus: 'FAILED',
@@ -187,7 +192,7 @@ router.get('/:id', authMiddleware, async (req: AuthRequest, res: Response) => {
     const { id } = req.params;
     const userId = req.user?.id;
 
-    const bill = await prisma.bill.findUnique({
+  const bill = await (prisma as any).bill.findUnique({
       where: { id },
       include: {
         uploadedBy: {
@@ -268,7 +273,7 @@ router.post('/:id/create-task', authMiddleware, async (req: AuthRequest, res: Re
     }
 
     // Get bill
-    const bill = await prisma.bill.findUnique({
+  const bill = await (prisma as any).bill.findUnique({
       where: { id: billId },
     });
 
@@ -301,31 +306,36 @@ router.post('/:id/create-task', authMiddleware, async (req: AuthRequest, res: Re
     // For now, let's create a simple payment request
 
     // Create PaymentRequest
-    const paymentRequest = await prisma.paymentRequest.create({
+  // Create minimal PaymentRequest with required decimal fields
+  const totalAmount = (bill.parsedJson as any)?.totalAmount || 0;
+  const paymentRequest = await prisma.paymentRequest.create({
       data: {
-        amount: (bill.parsedJson as any)?.totalAmount || 0,
-        purpose: title,
-        description: description || '',
-        status: 'PENDING',
-        createdById: userId,
-        serialNumber: serialNumber || `PR-${Date.now()}`,
+    requestId: `PR-${Date.now()}`,
+    clientName: bill.originalName.substring(0,200),
+    subtotal: totalAmount,
+    taxAmount: 0,
+    discountAmount: 0,
+    totalAmount: totalAmount,
+    description: description || '',
+    status: 'DRAFT',
+    createdById: userId,
       },
     });
 
     // Create Expense linked to PaymentRequest
-    const expense = await prisma.expense.create({
+  const expense = await prisma.expense.create({
       data: {
-        paymentRequestId: paymentRequest.id,
-        category: 'BILLS_PAYABLE',
-        amount: (bill.parsedJson as any)?.totalAmount || 0,
-        description: description || '',
-        status: 'PENDING',
-        createdById: userId,
+    requestId: `EXP-${Date.now()}`,
+    paymentRequestId: paymentRequest.id,
+    createdById: userId,
+    amount: totalAmount,
+    description: description || '',
+    status: 'DRAFT',
       },
     });
 
     // Create Task
-    const task = await prisma.task.create({
+  const task = await prisma.task.create({
       data: {
         title,
         description: description || '',
@@ -356,7 +366,7 @@ router.post('/:id/create-task', authMiddleware, async (req: AuthRequest, res: Re
     });
 
     // Update bill
-    await prisma.bill.update({
+  await (prisma as any).bill.update({
       where: { id: billId },
       data: {
         taskId: task.id,
@@ -401,7 +411,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       where.ocrStatus = status;
     }
 
-    const bills = await prisma.bill.findMany({
+  const bills = await (prisma as any).bill.findMany({
       where,
       include: {
         uploadedBy: {
@@ -426,7 +436,7 @@ router.get('/', authMiddleware, async (req: AuthRequest, res: Response) => {
       skip: parseInt(offset as string),
     });
 
-    const total = await prisma.bill.count({ where });
+  const total = await (prisma as any).bill.count({ where });
 
     return res.status(200).json({
       success: true,
