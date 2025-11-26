@@ -21,7 +21,7 @@ export default function AdminPage() {
       } else if (user.roleName === 'SUPER_ADMIN') {
         router.push('/super-admin');
       } else if (user.roleName === 'MANAGER') {
-        router.push('/manager');
+        router.push('/operations-manager');
       } else if (user.roleName === 'STAFF') {
         router.push('/hub-incharge');
       } else if (user.roleName && !['ADMIN', 'SUPER_ADMIN'].includes(user.roleName)) {

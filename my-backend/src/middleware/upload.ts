@@ -9,7 +9,7 @@
  * - Organization into folders
  */
 
-import multer from 'multer';
+import multer, { type File as MulterFile } from 'multer';
 import path from 'path';
 import fs from 'fs';
 
@@ -63,7 +63,7 @@ const storage = multer.diskStorage({
 // FILE FILTER
 // ==========================================
 
-const fileFilter = (req: any, file: Express.Multer.File, cb: multer.FileFilterCallback) => {
+const fileFilter = (req: any, file: MulterFile, cb: multer.FileFilterCallback) => {
   const ext = path.extname(file.originalname).toLowerCase();
   const mimeType = file.mimetype.toLowerCase();
 
@@ -148,7 +148,7 @@ export async function deleteUploadedFile(filePath: string): Promise<void> {
 /**
  * Get file info
  */
-export function getFileInfo(file: Express.Multer.File) {
+export function getFileInfo(file: MulterFile) {
   return {
     originalName: file.originalname,
     filename: file.filename,

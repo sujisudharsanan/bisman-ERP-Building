@@ -49,19 +49,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   async function login(email: string, password: string) {
     // Server will set HttpOnly cookie on successful login
-  await api.post('/api/auth/login', { email, password });
+    await api.post('/api/auth/login', { email, password });
     const me = await api.get('/api/me');
     const user = me.data.user || null;
     setUser(user);
 
-    // Role-based redirect
-    if (user?.roleName === 'STAFF') {
-      // Staff users go directly to Hub Incharge dashboard
-      window.location.href = '/hub-incharge';
-    } else {
-      // Admin and Manager go to main dashboard
-      window.location.href = '/dashboard';
-    }
+    // Note: Role-based redirect is now handled by the login page component
+    // This AuthProvider is used by older components and should not override redirects
+    // The login happens, state is updated, but redirect is handled by the calling component
   }
 
   async function logout() {

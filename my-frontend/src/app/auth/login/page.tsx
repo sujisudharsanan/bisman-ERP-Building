@@ -6,262 +6,11 @@ import { useAuth } from '@/contexts/AuthContext';
 import DarkModeToggle from '@/components/ui/DarkModeToggle';
 import { 
   Eye, 
-  EyeOff, 
-  ArrowRight, 
-  Shield, 
-  Users, 
-  Settings, 
-  Building, 
-  User,
-  ChevronDown,
+  EyeOff,
   CheckCircle,
-  Briefcase,
-  ServerCog,
-  Banknote,
-  Wallet,
-  FileSpreadsheet,
-  ReceiptIndianRupee,
-  Landmark,
-  ShoppingCart,
-  Boxes,
-  ClipboardCheck,
-  Scale,
-  Fuel
+  User,
+  Shield
 } from 'lucide-react';
-import { getIcon } from '@/utils/iconMap';
-
-interface DemoUser {
-  id: string;
-  name: string;
-  email: string;
-  password: string;
-  role: string;
-  department: string;
-  category: string;
-  iconKey: string; // lucide icon name string
-  description: string;
-  redirectPath: string;
-}
-
-const DEMO_USERS: DemoUser[] = [
-  {
-    id: 'enterprise_admin',
-    name: 'Enterprise Admin',
-    email: 'enterprise@bisman.erp',
-    password: 'enterprise123',
-    role: 'ENTERPRISE_ADMIN',
-    department: 'Enterprise Management',
-    category: 'Enterprise',
-  iconKey: 'Building', 
-    description: 'Manage all businesses, assign modules, control subscriptions',
-    redirectPath: '/enterprise-admin/dashboard'
-  },
-  {
-    id: 'business_superadmin',
-    name: 'Business Super Admin',
-    email: 'business_superadmin@bisman.demo',
-    password: 'Super@123',
-    role: 'SUPER_ADMIN',
-    department: 'Business ERP',
-    category: 'Super Admin',
-  iconKey: 'Settings', 
-    description: 'Super admin for Business ERP module - full system access',
-    redirectPath: '/super-admin'
-  },
-  {
-    id: 'pump_superadmin',
-    name: 'Pump Super Admin',
-    email: 'pump_superadmin@bisman.demo',
-    password: 'Super@123',
-    role: 'SUPER_ADMIN',
-    department: 'Pump Management',
-    category: 'Super Admin',
-  iconKey: 'Fuel', 
-    description: 'Petrol pump operations, fuel management',
-    redirectPath: '/super-admin'
-  },
-  {
-    id: 'it_admin',
-    name: 'IT Admin',
-    email: 'demo_it_admin@bisman.demo',
-    password: 'Demo@123',
-    role: 'IT_ADMIN',
-    department: 'IT & Platform',
-    category: 'Administration',
-  iconKey: 'ServerCog', 
-    description: 'IT operations, platform settings, monitoring',
-    redirectPath: '/it-admin'
-  },
-  {
-    id: 'admin',
-    name: 'Admin',
-    email: 'demo_admin@bisman.demo',
-    password: 'Demo@123',
-    role: 'ADMIN',
-    department: 'Administration',
-    category: 'Administration',
-  iconKey: 'Shield', 
-    description: 'User management, roles, permissions',
-    redirectPath: '/admin'
-  },
-  {
-    id: 'cfo',
-    name: 'CFO',
-    email: 'demo_cfo@bisman.demo',
-    password: 'Demo@123',
-    role: 'CFO',
-    department: 'Finance Leadership',
-    category: 'Finance',
-  iconKey: 'Banknote', 
-    description: 'Financial oversight, reporting, approvals',
-    redirectPath: '/cfo-dashboard'
-  },
-  {
-    id: 'finance_controller',
-    name: 'Finance Controller',
-    email: 'demo_finance_controller@bisman.demo',
-    password: 'Demo@123',
-    role: 'FINANCE_CONTROLLER',
-    department: 'Finance Control',
-    category: 'Finance',
-  iconKey: 'FileSpreadsheet', 
-    description: 'Financial control, closing, compliance',
-    redirectPath: '/finance-controller'
-  },
-  {
-    id: 'treasury',
-    name: 'Treasury',
-    email: 'demo_treasury@bisman.demo',
-    password: 'Demo@123',
-    role: 'TREASURY',
-    department: 'Treasury',
-    category: 'Finance',
-  iconKey: 'Wallet', 
-    description: 'Cash flow, bank positions, payments',
-    redirectPath: '/treasury'
-  },
-  {
-    id: 'accounts',
-    name: 'Accounts',
-    email: 'demo_accounts@bisman.demo',
-    password: 'Demo@123',
-    role: 'ACCOUNTS',
-    department: 'Accounting',
-    category: 'Finance',
-  iconKey: 'FileSpreadsheet', 
-    description: 'GL, journals, reconciliations',
-    redirectPath: '/accounts'
-  },
-  {
-    id: 'accounts_payable',
-    name: 'Accounts Payable',
-    email: 'demo_accounts_payable@bisman.demo',
-    password: 'Demo@123',
-    role: 'ACCOUNTS_PAYABLE',
-    department: 'Accounts Payable',
-    category: 'Finance',
-  iconKey: 'ReceiptIndianRupee', 
-    description: 'Vendor invoices, payment runs',
-    redirectPath: '/accounts-payable'
-  },
-  {
-    id: 'banker',
-    name: 'Banker',
-    email: 'demo_banker@bisman.demo',
-    password: 'Demo@123',
-    role: 'BANKER',
-    department: 'Banking',
-    category: 'Finance',
-  iconKey: 'Landmark', 
-    description: 'Bank liaison, reconciliations',
-    redirectPath: '/banker'
-  },
-  {
-    id: 'procurement_officer',
-    name: 'Procurement Officer',
-    email: 'demo_procurement_officer@bisman.demo',
-    password: 'Demo@123',
-    role: 'PROCUREMENT_OFFICER',
-    department: 'Procurement',
-    category: 'Operations',
-  iconKey: 'ShoppingCart', 
-    description: 'PR/PO lifecycle, vendor management',
-    redirectPath: '/procurement-officer'
-  },
-  {
-    id: 'store_incharge',
-    name: 'Store Incharge',
-    email: 'demo_store_incharge@bisman.demo',
-    password: 'Demo@123',
-    role: 'STORE_INCHARGE',
-    department: 'Stores & Warehouse',
-    category: 'Operations',
-  iconKey: 'Boxes', 
-    description: 'GRN, inventory, stock movements',
-    redirectPath: '/store-incharge'
-  },
-  {
-    id: 'manager',
-    name: 'Operations Manager',
-    email: 'demo_operations_manager@bisman.demo',
-    password: 'Demo@123',
-    role: 'MANAGER',
-    department: 'Operations',
-    category: 'Operations',
-  iconKey: 'Briefcase', 
-    description: 'Management dashboard, staff oversight',
-    redirectPath: '/operations-manager'
-  },
-  {
-    id: 'hub_incharge',
-    name: 'Hub Incharge',
-    email: 'demo_hub_incharge@bisman.demo',
-    password: 'Demo@123',
-    role: 'HUB_INCHARGE',
-    department: 'Hub Operations',
-    category: 'Operations',
-  iconKey: 'Building', 
-    description: 'Hub-level operations, inventory, sales',
-    redirectPath: '/hub-incharge'
-  },
-  {
-    id: 'hr',
-    name: 'HR Manager',
-    email: 'demo_hr@bisman.demo',
-    password: 'hr123',
-    role: 'HR',
-    department: 'Human Resources',
-    category: 'Operations',
-  iconKey: 'Users', 
-    description: 'Employee management, recruitment, payroll',
-    redirectPath: '/hr-dashboard'
-  },
-  {
-    id: 'compliance',
-    name: 'Compliance',
-    email: 'demo_compliance@bisman.demo',
-    password: 'Demo@123',
-    role: 'COMPLIANCE',
-    department: 'Governance',
-    category: 'Governance',
-  iconKey: 'ClipboardCheck', 
-    description: 'Policy, audit trails, corrective actions',
-    redirectPath: '/compliance-officer'
-  },
-  {
-    id: 'legal',
-    name: 'Legal',
-    email: 'demo_legal@bisman.demo',
-    password: 'Demo@123',
-    role: 'LEGAL',
-    department: 'Legal',
-    category: 'Governance',
-  iconKey: 'Scale', 
-    description: 'Contracts, disputes, SLA enforcement',
-    redirectPath: '/legal'
-  }
-];
-
 export default function StandardLoginPage() {
   const brandCandidates = ['/brand/bisman-logo.svg', '/brand/logo.svg', '/bisman_lockup.svg', '/bisman_logo.svg', '/bisman_logo.png'] as const;
   const [brandIndex, setBrandIndex] = useState(0);
@@ -280,10 +29,189 @@ export default function StandardLoginPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
-  const [showDemoUsers, setShowDemoUsers] = useState(false);
   const router = useRouter();
 
   const { login } = useAuth();
+
+  // Demo credentials - organized hierarchically
+  const demoAccountsSections = [
+    {
+      category: 'System Administration',
+      accounts: [
+        {
+          id: 1,
+          name: 'Enterprise Admin',
+          email: 'enterprise@bisman.erp',
+          password: 'enterprise123',
+          role: 'ENTERPRISE_ADMIN',
+          icon: Shield,
+          description: 'Full system access'
+        },
+        {
+          id: 2,
+          name: 'Business Super Admin',
+          email: 'business_superadmin@bisman.demo',
+          password: 'Super@123',
+          role: 'SUPER_ADMIN',
+          icon: Shield,
+          description: 'Multi-tenant admin'
+        }
+      ]
+    },
+    {
+      category: 'Executive Management',
+      accounts: [
+        {
+          id: 3,
+          name: 'CFO',
+          email: 'rajesh.verma@bisman.demo',
+          password: 'Demo@123',
+          role: 'CFO',
+          icon: Shield,
+          description: 'Chief Financial Officer'
+        },
+        {
+          id: 4,
+          name: 'Legal Head',
+          email: 'deepak.mishra@bisman.demo',
+          password: 'Demo@123',
+          role: 'LEGAL_HEAD',
+          icon: Shield,
+          description: 'Legal & Compliance Head'
+        }
+      ]
+    },
+    {
+      category: 'Finance Department',
+      accounts: [
+        {
+          id: 5,
+          name: 'Finance Controller',
+          email: 'meera.singh@bisman.demo',
+          password: 'Demo@123',
+          role: 'FINANCE_CONTROLLER',
+          icon: User,
+          description: 'Financial operations manager'
+        },
+        {
+          id: 6,
+          name: 'Accounts Payable',
+          email: 'rohit.desai@bisman.demo',
+          password: 'Demo@123',
+          role: 'ACCOUNTS_PAYABLE',
+          icon: User,
+          description: 'Invoice & payment processing'
+        }
+      ]
+    },
+    {
+      category: 'Operations',
+      accounts: [
+        {
+          id: 7,
+          name: 'Operations Manager',
+          email: 'vikram.reddy@bisman.demo',
+          password: 'Demo@123',
+          role: 'OPERATIONS_MANAGER',
+          icon: User,
+          description: 'Multi-site operations'
+        },
+        {
+          id: 8,
+          name: 'Hub Incharge',
+          email: 'arun.kumar@bisman.demo',
+          password: 'Demo@123',
+          role: 'HUB_INCHARGE',
+          icon: User,
+          description: 'Site operations lead'
+        },
+        {
+          id: 9,
+          name: 'Store Incharge',
+          email: 'suresh.yadav@bisman.demo',
+          password: 'Demo@123',
+          role: 'STORE_INCHARGE',
+          icon: User,
+          description: 'Warehouse & inventory'
+        }
+      ]
+    },
+    {
+      category: 'Support Functions',
+      accounts: [
+        {
+          id: 10,
+          name: 'HR Manager',
+          email: 'priya.sharma@bisman.demo',
+          password: 'Demo@123',
+          role: 'HR_MANAGER',
+          icon: User,
+          description: 'Human resources'
+        },
+        {
+          id: 11,
+          name: 'Procurement Officer',
+          email: 'amit.patel@bisman.demo',
+          password: 'Demo@123',
+          role: 'PROCUREMENT_OFFICER',
+          icon: User,
+          description: 'Vendor & purchasing'
+        },
+        {
+          id: 12,
+          name: 'Compliance Officer',
+          email: 'kavita.iyer@bisman.demo',
+          password: 'Demo@123',
+          role: 'COMPLIANCE_OFFICER',
+          icon: User,
+          description: 'Regulatory compliance'
+        }
+      ]
+    }
+  ];
+
+  // Flatten for backward compatibility
+  const demoAccounts = demoAccountsSections.flatMap(section => section.accounts);
+
+  const fillDemoCredentials = (account: typeof demoAccounts[0]) => {
+    setEmail(account.email);
+    setPassword(account.password);
+    setError('');
+  };
+
+  const handleQuickLogin = async (account: typeof demoAccounts[0]) => {
+    setEmail(account.email);
+    setPassword(account.password);
+    setError('');
+    
+    // Trigger form submission
+    setLoading(true);
+    setSuccess('');
+
+    try {
+      const user = await login(account.email, account.password);
+      if (user) {
+        setSuccess('Login successful! Redirecting...');
+        await new Promise(resolve => setTimeout(resolve, 300));
+        const roleValue = (user.roleName || user.role || '').toUpperCase().replace(/\s+/g, '_');
+        
+        let targetPath = '/dashboard';
+        if (roleValue === 'ENTERPRISE_ADMIN') {
+          targetPath = '/enterprise-admin/dashboard';
+        } else if (roleValue === 'SUPER_ADMIN') {
+          targetPath = '/super-admin';
+        }
+        
+        window.location.replace(targetPath);
+      } else {
+        setError('Login failed. Please check your credentials.');
+      }
+    } catch {
+      setError('Network error. Please check your connection and try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -299,25 +227,29 @@ export default function StandardLoginPage() {
         // Small delay to ensure cookies are set before redirect
         await new Promise(resolve => setTimeout(resolve, 300));
 
+        // Normalize role name - handle both 'role' and 'roleName' fields
+        const roleValue = (user.roleName || user.role || '').toUpperCase().replace(/\s+/g, '_');
+        console.log('🔍 Login - User role detected:', roleValue, 'Raw user data:', { role: user.role, roleName: user.roleName });
+
         // Role-based redirection - route to independent role dashboards
         let targetPath = '/dashboard'; // Default fallback
-        switch (user.roleName?.toUpperCase()) {
+        switch (roleValue) {
           // Enterprise Management
           case 'ENTERPRISE_ADMIN':
-          case 'ENTERPRISE ADMIN':
             targetPath = '/enterprise-admin/dashboard';
+            console.log('✅ Redirecting ENTERPRISE_ADMIN to:', targetPath);
             break;
             
           // System Administration
           case 'SUPER_ADMIN':
             targetPath = '/super-admin';
+            console.log('✅ Redirecting SUPER_ADMIN to:', targetPath);
             break;
           case 'ADMIN':
-          case 'SYSTEM ADMINISTRATOR':
+          case 'SYSTEM_ADMINISTRATOR':
             targetPath = '/admin';
             break;
           case 'IT_ADMIN':
-          case 'IT ADMIN':
             targetPath = '/it-admin';
             break;
             
@@ -326,7 +258,6 @@ export default function StandardLoginPage() {
             targetPath = '/cfo-dashboard';
             break;
           case 'FINANCE_CONTROLLER':
-          case 'FINANCE CONTROLLER':
             targetPath = '/finance-controller';
             break;
           case 'TREASURY':
@@ -336,11 +267,9 @@ export default function StandardLoginPage() {
             targetPath = '/accounts';
             break;
           case 'ACCOUNTS_PAYABLE':
-          case 'ACCOUNTS PAYABLE':
             targetPath = '/accounts-payable';
             break;
           case 'ACCOUNTS_RECEIVABLE':
-          case 'ACCOUNTS RECEIVABLE':
             targetPath = '/accounts';
             break;
           case 'BANKER':
@@ -349,65 +278,59 @@ export default function StandardLoginPage() {
             
           // Procurement Roles → Procurement Dashboard
           case 'PROCUREMENT_OFFICER':
-          case 'PROCUREMENT OFFICER':
           case 'PROCUREMENT_HEAD':
-          case 'PROCUREMENT HEAD':
           case 'PROCUREMENT_MANAGER':
-          case 'PROCUREMENT MANAGER':
           case 'SUPPLIER_MANAGER':
-          case 'SUPPLIER MANAGER':
             targetPath = '/procurement-officer';
             break;
             
           // Operations Roles → Independent Operations Dashboards
           case 'OPERATIONS_MANAGER':
-          case 'OPERATIONS MANAGER':
           case 'WAREHOUSE_MANAGER':
-          case 'WAREHOUSE MANAGER':
           case 'LOGISTICS_MANAGER':
-          case 'LOGISTICS MANAGER':
           case 'INVENTORY_CONTROLLER':
-          case 'INVENTORY CONTROLLER':
             targetPath = '/operations-manager';
             break;
           case 'HUB_INCHARGE':
-          case 'HUB INCHARGE':
             targetPath = '/hub-incharge';
             break;
           case 'STORE_INCHARGE':
-          case 'STORE INCHARGE':
             targetPath = '/store-incharge';
             break;
             
           // Compliance & Legal → Independent Dashboards
           case 'COMPLIANCE':
           case 'COMPLIANCE_OFFICER':
-          case 'COMPLIANCE OFFICER':
             targetPath = '/compliance-officer';
             break;
           case 'LEGAL':
           case 'LEGAL_HEAD':
-          case 'LEGAL HEAD':
           case 'RISK_MANAGER':
-          case 'RISK MANAGER':
             targetPath = '/legal';
             break;
             
-          // Staff → Hub Incharge Dashboard
+          // Staff → Staff Dashboard
           case 'STAFF':
             targetPath = '/staff';
             break;
             
-          // Manager → Operations Manager Dashboard
+          // Manager & Operations Manager → Same Dashboard
+          // Note: MANAGER is legacy role name, both redirect to operations-manager
           case 'MANAGER':
+          case 'OPERATIONS_MANAGER':
             targetPath = '/operations-manager';
             break;
             
           default:
-            // For any other role, default to manager dashboard
-            targetPath = '/manager';
+            // For any other role, default to dashboard
+            console.warn('⚠️ Unknown role, using default dashboard:', roleValue);
+            targetPath = '/dashboard';
             break;
         }
+        
+        console.log('🎯 Final redirect path:', targetPath);
+        console.log('🍪 Checking cookies before redirect...');
+        console.log('🍪 Document cookies:', document.cookie);
         
         // Use location.replace for a clean navigation with cookies
         window.location.replace(targetPath);
@@ -416,40 +339,6 @@ export default function StandardLoginPage() {
       }
     } catch {
       setError('Network error. Please check your connection and try again.');
-      // Error logged for debugging purposes
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fillDemoCredentials = (user: DemoUser) => {
-    setEmail(user.email);
-    setPassword(user.password);
-    setShowDemoUsers(false);
-    setError('');
-    setSuccess('');
-  };
-
-  const handleQuickLogin = async (user: DemoUser) => {
-    setLoading(true);
-    setError('');
-    setSuccess(`Logging in as ${user.name}...`);
-
-    try {
-      const logged = await login(user.email, user.password);
-      if (logged) {
-        setSuccess(`Welcome ${user.name}! Redirecting to your dashboard...`);
-        
-        // Small delay to ensure cookies are set before redirect
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        // Use location.replace for a clean navigation with cookies
-        window.location.replace(user.redirectPath);
-      } else {
-        setError('Quick login failed.');
-      }
-    } catch {
-      setError('Network error during quick login.');
       // Error logged for debugging purposes
     } finally {
       setLoading(false);
@@ -633,48 +522,61 @@ export default function StandardLoginPage() {
             </div>
           </form>
 
-          {/* Demo Users */}
-          <div className="mt-6">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-medium text-slate-600 dark:text-slate-300">Demo accounts</h3>
-              <button onClick={() => setShowDemoUsers(!showDemoUsers)} className="text-sm text-slate-400 hover:text-slate-600 dark:hover:text-slate-200">{showDemoUsers ? 'Hide' : 'Show'}</button>
-            </div>
-
-            {showDemoUsers && (
-              <div className="mt-3 max-h-96 overflow-y-auto space-y-4">
-                {/* Group users by category */}
-                {['Enterprise', 'Super Admin', 'Administration', 'Finance', 'Operations', 'Governance'].map((category) => {
-                  const categoryUsers = DEMO_USERS.filter(user => user.category === category);
-                  if (categoryUsers.length === 0) return null;
-                  
-                  return (
-                    <div key={category}>
-                      <div className="text-xs font-semibold text-slate-500 dark:text-slate-400 mb-2 uppercase tracking-wide">{category}</div>
-                      <div className="space-y-2">
-                        {categoryUsers.map((user) => {
-                          const IconComp = getIcon(user.iconKey || 'User');
-                          return (
-                            <div key={user.id} className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 rounded-md p-3 hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors">
-                              <div className="flex items-center space-x-3 flex-1 min-w-0">
-                                <div className="w-8 h-8 bg-slate-100 dark:bg-slate-700 rounded flex items-center justify-center text-amber-600 flex-shrink-0"><IconComp className="w-5 h-5" /></div>
-                                <div className="min-w-0 flex-1">
-                                  <div className="text-sm font-medium text-slate-800 dark:text-slate-100 truncate">{user.name}</div>
-                                  <div className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</div>
-                                </div>
-                              </div>
-                              <div className="flex items-center space-x-2 ml-2">
-                                <button onClick={() => fillDemoCredentials(user)} className="text-xs px-3 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-100 border border-slate-200 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors">Fill</button>
-                                <button onClick={() => handleQuickLogin(user)} disabled={loading} className="text-xs px-3 py-1 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded font-medium disabled:opacity-50 disabled:cursor-not-allowed transition-colors">Login</button>
-                              </div>
+          {/* Demo Credentials - Hierarchical */}
+          <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">
+            <h3 className="text-sm font-semibold text-slate-700 dark:text-slate-200 mb-4">Demo Accounts by Role</h3>
+            <div className="space-y-4 max-h-[400px] overflow-y-auto pr-2">
+              {demoAccountsSections.map((section, sectionIdx) => (
+                <div key={sectionIdx} className="space-y-2">
+                  <h4 className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wider">
+                    {section.category}
+                  </h4>
+                  {section.accounts.map((account) => {
+                    const IconComp = account.icon;
+                    return (
+                      <div 
+                        key={account.id} 
+                        className="flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg p-2.5 hover:bg-slate-100 dark:hover:bg-slate-750 transition-colors"
+                      >
+                        <div className="flex items-center space-x-2.5 flex-1 min-w-0">
+                          <div className="w-8 h-8 bg-amber-100 dark:bg-amber-900/30 rounded-full flex items-center justify-center text-amber-600 dark:text-amber-400 flex-shrink-0">
+                            <IconComp className="w-4 h-4" />
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="text-xs font-semibold text-slate-800 dark:text-slate-100 truncate">
+                              {account.name}
                             </div>
-                          );
-                        })}
+                            <div className="text-[10px] text-slate-500 dark:text-slate-400 truncate">
+                              {account.description}
+                            </div>
+                          </div>
+                        </div>
+                        <div className="flex items-center space-x-1.5 ml-2">
+                          <button 
+                            onClick={() => fillDemoCredentials(account)}
+                            className="text-[10px] px-2.5 py-1 bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-100 border border-slate-300 dark:border-slate-600 rounded hover:bg-slate-50 dark:hover:bg-slate-600 transition-colors font-medium"
+                            type="button"
+                          >
+                            Fill
+                          </button>
+                          <button 
+                            onClick={() => handleQuickLogin(account)}
+                            disabled={loading}
+                            className="text-[10px] px-2.5 py-1 bg-amber-400 hover:bg-amber-500 text-slate-900 rounded font-semibold disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                            type="button"
+                          >
+                            Login
+                          </button>
+                        </div>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
-            )}
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+            <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-3">
+              All demo users • Password: Demo@123 • Click "Fill" to populate or "Login" to sign in directly
+            </p>
           </div>
 
           <div className="mt-6 text-xs text-slate-400 dark:text-slate-500 break-words">Not your computer? Use Private Browsing windows to sign in. Learn more about using Guest mode</div>

@@ -120,24 +120,91 @@ export default function StandardLoginPage() {
           })
         );
 
-        // Role-based redirection
+        // Normalize role name - handle both 'role' and 'roleName' fields
+        const roleValue = (data.roleName || data.role || '').toUpperCase().replace(/\s+/g, '_');
+        console.log('🔍 Standard Login - User role detected:', roleValue);
+
+        // Role-based redirection with comprehensive mapping
+        let targetPath = '/dashboard';
+        switch (roleValue) {
+          case 'ENTERPRISE_ADMIN':
+            targetPath = '/enterprise-admin/dashboard';
+            break;
+          case 'SUPER_ADMIN':
+            targetPath = '/super-admin';
+            break;
+          case 'ADMIN':
+          case 'SYSTEM_ADMINISTRATOR':
+            targetPath = '/admin';
+            break;
+          case 'IT_ADMIN':
+            targetPath = '/it-admin';
+            break;
+          case 'CFO':
+            targetPath = '/cfo-dashboard';
+            break;
+          case 'FINANCE_CONTROLLER':
+            targetPath = '/finance-controller';
+            break;
+          case 'TREASURY':
+            targetPath = '/treasury';
+            break;
+          case 'ACCOUNTS':
+            targetPath = '/accounts';
+            break;
+          case 'ACCOUNTS_PAYABLE':
+            targetPath = '/accounts-payable';
+            break;
+          case 'ACCOUNTS_RECEIVABLE':
+            targetPath = '/accounts';
+            break;
+          case 'BANKER':
+            targetPath = '/banker';
+            break;
+          case 'PROCUREMENT_OFFICER':
+          case 'PROCUREMENT_HEAD':
+          case 'PROCUREMENT_MANAGER':
+          case 'SUPPLIER_MANAGER':
+            targetPath = '/procurement-officer';
+            break;
+          case 'OPERATIONS_MANAGER':
+          case 'WAREHOUSE_MANAGER':
+          case 'LOGISTICS_MANAGER':
+          case 'INVENTORY_CONTROLLER':
+            targetPath = '/operations-manager';
+            break;
+          case 'HUB_INCHARGE':
+            targetPath = '/hub-incharge';
+            break;
+          case 'STORE_INCHARGE':
+            targetPath = '/store-incharge';
+            break;
+          case 'COMPLIANCE':
+          case 'COMPLIANCE_OFFICER':
+            targetPath = '/compliance-officer';
+            break;
+          case 'LEGAL':
+          case 'LEGAL_HEAD':
+          case 'RISK_MANAGER':
+            targetPath = '/legal';
+            break;
+          case 'STAFF':
+            targetPath = '/staff';
+            break;
+          // Manager & Operations Manager → Same Dashboard  
+          case 'MANAGER':
+          case 'OPERATIONS_MANAGER':
+            targetPath = '/operations-manager';
+            break;
+          default:
+            console.warn('⚠️ Unknown role in standard login:', roleValue);
+            targetPath = '/dashboard';
+            break;
+        }
+
+        console.log('🎯 Standard Login redirect path:', targetPath);
         setTimeout(() => {
-          switch (data.role?.toUpperCase()) {
-            case 'SUPER_ADMIN':
-              router.push('/super-admin');
-              break;
-            case 'ADMIN':
-              router.push('/admin');
-              break;
-            case 'STAFF':
-              router.push('/hub-incharge');
-              break;
-            case 'MANAGER':
-            case 'USER':
-            default:
-              router.push('/dashboard');
-              break;
-          }
+          router.push(targetPath);
         }, 1000);
       } else {
         const errorData = await response.json();

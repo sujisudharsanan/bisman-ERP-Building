@@ -181,6 +181,11 @@ async function cleanupOldAttempts() {
  * Place BEFORE login handler
  */
 async function loginRateLimiter(req, res, next) {
+  // Skip rate limiting if disabled for development
+  if (process.env.DISABLE_RATE_LIMIT === 'true') {
+    return next();
+  }
+
   try {
     const { email } = req.body;
     const ipAddress = extractIpAddress(req);

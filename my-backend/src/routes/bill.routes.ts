@@ -345,7 +345,6 @@ router.post('/:id/create-task', authMiddleware, async (req: AuthRequest, res: Re
         paymentRequestId: paymentRequest.id,
         createdById: userId,
         assigneeId: parseInt(assigneeId),
-        billId,
       },
       include: {
         createdBy: {

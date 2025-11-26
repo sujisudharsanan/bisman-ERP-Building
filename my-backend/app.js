@@ -15,9 +15,6 @@ const {
 const { 
   initializeErrorLogsTable 
 } = require('./utils/errorLogger');
-const { 
-  initializeLoginAttemptsTable 
-} = require('./middleware/loginRateLimiter');
 const enforce = require('express-sslify')
 const helmet = require('helmet')
 const express = require('express')
@@ -183,38 +180,30 @@ if (process.env.ENABLE_LEGACY_MAIL_OTP === '1') {
 }
 
 // =====================
-// Advanced Rate Limiting
+// Advanced Rate Limiting - DISABLED FOR DEVELOPMENT
 // =====================
-// Login & auth endpoints (strict + moderate)
+// COMMENTED OUT - All rate limiters disabled in development
+// Uncomment for production use
+/*
 const loginLimiter = strictLoginLimiter;
 const authLimiter = moderateAuthLimiter;
-// General API limiter (authenticated)
 const apiLimiter = standardApiLimiter;
-// Public endpoints (health, metrics)
 const publicEndpointLimiter = publicLimiter;
-// Expensive operations (reports, AI)
 const expensiveLimiter = expensiveOperationLimiter;
-// Adaptive limiters for chat & calls (role/user aware)
-const chatLimiter = createAdaptiveRateLimiter({ windowMs: 60 * 1000, max: 20 }); // 20 messages/min base
-const callLimiter = createAdaptiveRateLimiter({ windowMs: 5 * 60 * 1000, max: 20 }); // 20 call ops/5min base
+const chatLimiter = createAdaptiveRateLimiter({ windowMs: 60 * 1000, max: 20 });
+const callLimiter = createAdaptiveRateLimiter({ windowMs: 5 * 60 * 1000, max: 20 });
 
-// Mount public limiter early for truly public endpoints
-app.use(['/api/health','/health','/metrics'], publicEndpointLimiter);
+// app.use(['/api/health','/health','/metrics'], publicEndpointLimiter);
+// app.use(['/api/login','/api/auth/login','/api/auth/register','/api/password-reset','/api/security/otp'], loginLimiter);
+// app.use(['/api/auth/refresh','/api/auth/logout','/api/session'], authLimiter);
+// app.use(['/api','/v1'], apiLimiter);
+// app.use(['/api/ai','/api/reports','/api/analytics/export'], expensiveLimiter);
+// app.use(['/api/chat','/api/messages'], chatLimiter);
+// app.use(['/api/calls','/api/voice','/api/video'], callLimiter);
+*/
 
 // Log sanitization middleware
 app.use(logSanitizer)
-
-// Apply login limiter to auth-related endpoints
-app.use(['/api/login','/api/auth/login','/api/auth/register','/api/password-reset','/api/security/otp'], loginLimiter);
-// Apply moderate auth limiter (token refresh, logout, session)
-app.use(['/api/auth/refresh','/api/auth/logout','/api/session'], authLimiter);
-// Apply API limiter for generic authenticated routes (mounted broadly after auth middleware later)
-app.use(['/api','/v1'], apiLimiter);
-// Apply expensive limiter for AI/report endpoints
-app.use(['/api/ai','/api/reports','/api/analytics/export'], expensiveLimiter);
-// Chat & call specific adaptive limiters
-app.use(['/api/chat','/api/messages'], chatLimiter);
-app.use(['/api/calls','/api/voice','/api/video'], callLimiter);
 
 
 // ============================================================================
@@ -1208,7 +1197,8 @@ app.get('/api/secure-files/:category/:filename', authenticate, async (req, res) 
 // Use seed scripts to create demo users: seed-multi-tenant.js, create-all-demo-users.js, etc.
 
 // Simple login rate limiting
-app.use('/api/auth', apiLimiter)
+// RATE LIMITER DISABLED FOR DEVELOPMENT
+// app.use('/api/auth', apiLimiter)
 
 // OLD /api/login endpoint REMOVED - Now using /api/auth/login from routes/auth.js
 // The old endpoint only checked the users table and didn't support super_admins or enterprise_admins
@@ -2959,7 +2949,6 @@ app.use(errorHandler);
 (async () => {
   try {
     await initializeErrorLogsTable();
-    await initializeLoginAttemptsTable();
     console.log('✅ Error handling tables initialized');
   } catch (err) {
     console.warn('⚠️ Error tables initialization failed:', err.message);

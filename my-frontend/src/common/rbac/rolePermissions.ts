@@ -250,7 +250,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
       'stock-ledger',
       'delivery-note',
     ],
-    defaultRoute: '/operations/kpi-dashboard',
+    defaultRoute: '/operations-manager',
   },
   HUB_INCHARGE: {
     role: 'HUB_INCHARGE',
@@ -285,16 +285,18 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
     ],
     defaultRoute: '/compliance/contract-management',
   },
+  // MANAGER: Legacy role name, synonym for OPERATIONS_MANAGER
+  // Both redirect to /operations-manager dashboard
   MANAGER: {
     role: 'MANAGER',
-    label: 'Manager',
+    label: 'Manager (Operations)',
     permissions: [
       'kpi-dashboard',
       'sales-order',
       'stock-ledger',
       'financial-statements',
     ],
-    defaultRoute: '/manager/dashboard',
+    defaultRoute: '/operations-manager',
   },
   STAFF: {
     role: 'STAFF',

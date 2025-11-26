@@ -41,7 +41,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       '/common',
       '/dashboard',
       '/staff',
-      '/manager',
+      '/operations-manager',
       '/cfo-dashboard',
       '/finance',
       '/accounts',

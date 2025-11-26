@@ -91,6 +91,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async (email: string, password: string): Promise<User | null> => {
     setLoading(true);
     try {
+      console.log('🔐 [LOGIN] Attempting login for:', email);
       // Same-origin proxy for login
       const response = await fetch(`/api/auth/login`, {
         method: 'POST',
@@ -101,21 +102,33 @@ export function AuthProvider({ children }: AuthProviderProps) {
         body: JSON.stringify({ email, password }),
       });
 
+      console.log('🔐 [LOGIN] Response status:', response.status);
+      
       if (response.ok) {
+        const loginData = await response.json();
+        console.log('🔐 [LOGIN] Response data:', loginData);
+        
         // Small delay to ensure cookies are set by the browser
         await new Promise(resolve => setTimeout(resolve, 100));
         
         // Ensure cookies are persisted by validating with /api/me.
         // Try a quick whoami, and if needed, refresh then whoami again.
         const probeMe = async () => {
+          console.log('🔐 [LOGIN] Probing /api/me...');
           const me1 = await fetch(`/api/me`, { 
             credentials: 'include',
             headers: {
               'Content-Type': 'application/json',
             },
           });
-          if (me1.ok) return me1.json();
+          console.log('🔐 [LOGIN] /api/me first attempt status:', me1.status);
+          if (me1.ok) {
+            const data = await me1.json();
+            console.log('🔐 [LOGIN] /api/me data:', data);
+            return data;
+          }
           // Attempt refresh once
+          console.log('🔐 [LOGIN] First /api/me failed, attempting token refresh...');
           await fetch(`/api/token/refresh`, { 
             method: 'POST', 
             credentials: 'include',
@@ -129,10 +142,16 @@ export function AuthProvider({ children }: AuthProviderProps) {
               'Content-Type': 'application/json',
             },
           });
-          if (me2.ok) return me2.json();
+          console.log('🔐 [LOGIN] /api/me second attempt status:', me2.status);
+          if (me2.ok) {
+            const data = await me2.json();
+            console.log('🔐 [LOGIN] /api/me second attempt data:', data);
+            return data;
+          }
           return null;
         };
         const who = await probeMe();
+        console.log('🔐 [LOGIN] Final probe result:', who);
         if (who && who.user) {
           const userData = who.user;
           
@@ -147,11 +166,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
             userData.role = userData.roleName;
           }
           
-          console.log('✅ Login successful - User authenticated with role:', userData.roleName || userData.role);
+          console.log('✅ [LOGIN] Login successful - User authenticated with role:', userData.roleName || userData.role);
           setUser(userData);
           setLoading(false);
           return userData;
         }
+        console.warn('⚠️ [LOGIN] Probe failed - who is null or missing user');
         // Fallback to parsing login body if /api/me probe fails for any reason
         try {
           const data = await response.clone().json();

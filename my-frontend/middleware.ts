@@ -19,7 +19,19 @@ export function middleware(req: NextRequest) {
 
   const accessToken = req.cookies.get('access_token')?.value || req.cookies.get('token')?.value;
   const refreshToken = req.cookies.get('refresh_token')?.value;
+  
+  // Debug logging for authentication (only if DEBUG_AUTH env is set)
+  if (process.env.DEBUG_AUTH === '1') {
+    console.log(`🔐 [MIDDLEWARE] Path: ${pathname}`);
+    console.log(`🔐 [MIDDLEWARE] Access token: ${accessToken ? '✅ Found' : '❌ Missing'}`);
+    console.log(`🔐 [MIDDLEWARE] Refresh token: ${refreshToken ? '✅ Found' : '❌ Missing'}`);
+    console.log(`🔐 [MIDDLEWARE] All cookies:`, req.cookies.getAll().map(c => c.name));
+  }
+  
   if (!accessToken && !refreshToken) {
+    if (process.env.DEBUG_AUTH === '1') {
+      console.log(`🔐 [MIDDLEWARE] No auth tokens found, redirecting to login from ${pathname}`);
+    }
     const url = req.nextUrl.clone();
     url.pathname = '/auth/login';
     return NextResponse.redirect(url);
