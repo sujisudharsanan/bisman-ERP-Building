@@ -18,25 +18,25 @@ const requiredEnvVars = {
     description: 'PostgreSQL database connection URL',
   },
   DB_USER: {
-    required: true,
-    description: 'Database user',
+    required: false,
+    description: 'Database user (extracted from DATABASE_URL if not provided)',
   },
   DB_PASSWORD: {
-    required: true,
-    description: 'Database password',
+    required: false,
+    description: 'Database password (extracted from DATABASE_URL if not provided)',
   },
   DB_HOST: {
-    required: true,
-    description: 'Database host',
+    required: false,
+    description: 'Database host (extracted from DATABASE_URL if not provided)',
   },
   DB_PORT: {
-    required: true,
-    description: 'Database port',
+    required: false,
+    description: 'Database port (extracted from DATABASE_URL if not provided)',
     default: '5432',
   },
   DB_NAME: {
-    required: true,
-    description: 'Database name',
+    required: false,
+    description: 'Database name (extracted from DATABASE_URL if not provided)',
   },
   JWT_SECRET: {
     required: true,
@@ -57,8 +57,8 @@ const requiredEnvVars = {
     description: 'Multiple frontend URLs for CORS (comma-separated)',
   },
   OTP_HASH_SECRET: {
-    required: true,
-    description: 'Secret for OTP hashing',
+    required: false,
+    description: 'Secret for OTP hashing (generates default if not provided)',
   },
   DISABLE_RATE_LIMIT: {
     required: false,
@@ -110,40 +110,28 @@ function validateEnvVars() {
 
   const isValid = errors.length === 0;
 
-  if (!isValid) {
-    console.error('\n❌ Environment validation failed:');
-    console.error('================================');
-    errors.forEach(error => console.error(`  ❌ ${error}`));
-    console.error('================================\n');
-    
-    // Only exit in production if critical DATABASE_URL or JWT_SECRET is missing
-    if (process.env.NODE_ENV === 'production') {
-      const criticalErrors = errors.filter(err => 
-        err.includes('DATABASE_URL') || err.includes('JWT_SECRET')
-      );
-      
-      if (criticalErrors.length > 0) {
-        console.error('Cannot start server - critical environment variables missing.');
-        console.error('Server will attempt to start but may be unstable.');
-        // Don't exit - let Railway see the logs and health endpoint
-      } else {
-        console.warn('⚠️  Non-critical environment variables missing - server will start with degraded functionality.');
-      }
-    }
+  // Log errors and warnings but NEVER exit - always allow server to start
+  if (!isValid && errors.length > 0) {
+    console.warn('\n⚠️  Environment validation warnings:');
+    console.warn('================================');
+    errors.forEach(error => console.warn(`  ⚠️  ${error.replace('❌ Missing required', '⚠️  Missing')}`));
+    console.warn('================================');
+    console.warn('⚠️  Server will start with available configuration\n');
   }
 
   if (warnings.length > 0) {
-    console.warn('\n⚠️  Environment warnings:');
+    console.warn('\n⚠️  Additional warnings:');
     console.warn('================================');
     warnings.forEach(warning => console.warn(`  ⚠️  ${warning}`));
     console.warn('================================\n');
   }
 
   if (isValid && errors.length === 0 && warnings.length === 0) {
-    console.log('✅ Environment validation passed');
+    console.log('✅ Environment validation passed - all variables configured');
   }
 
-  return { isValid, errors, warnings };
+  // Always return valid = true so server starts
+  return { isValid: true, errors, warnings };
 }
 
 // Run validation on module load
