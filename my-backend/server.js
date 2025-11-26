@@ -159,29 +159,29 @@ async function start() {
     }
   }
 
-  // Root route - API landing page
-  app.get('/', (_req, res) => {
-    res.status(200).json({
-      name: 'BISMAN ERP Backend API',
-      version: '1.0.0',
-      status: 'online',
-      environment: process.env.NODE_ENV || 'development',
-      endpoints: {
-        health: '/api/health',
-        auth: '/api/auth/*',
-        tasks: '/api/tasks/*',
-        chat: '/api/chat/*',
-        ai: '/api/langchain/*',
-        calls: '/api/calls/*',
-        metrics: '/metrics'
-      },
-      frontend: process.env.FRONTEND_URL || 'Deploy frontend separately',
-      documentation: 'https://github.com/sujisudharsanan/bisman-ERP-Building'
-    });
-  });
-  
   if (handle) {
-    // Let Next handle other routes
+    // Root route - API landing page (must be before Next.js catch-all)
+    app.get('/', (_req, res) => {
+      res.status(200).json({
+        name: 'BISMAN ERP Backend API',
+        version: '1.0.0',
+        status: 'online',
+        environment: process.env.NODE_ENV || 'development',
+        endpoints: {
+          health: '/api/health',
+          auth: '/api/auth/*',
+          tasks: '/api/tasks/*',
+          chat: '/api/chat/*',
+          ai: '/api/langchain/*',
+          calls: '/api/calls/*',
+          metrics: '/metrics'
+        },
+        frontend: process.env.FRONTEND_URL || 'Deploy frontend separately',
+        documentation: 'https://github.com/sujisudharsanan/bisman-ERP-Building'
+      });
+    });
+    
+    // Let Next handle other routes (but not /)
     app.all('*', (req, res) => {
       // Skip API routes (already handled by apiApp)
       if (req.path.startsWith('/api/') || req.path === '/metrics') {
@@ -191,6 +191,27 @@ async function start() {
         });
       }
       return handle(req, res);
+    });
+  } else {
+    // Fallback root route if Next.js is not available
+    app.get('/', (_req, res) => {
+      res.status(200).json({
+        name: 'BISMAN ERP Backend API',
+        version: '1.0.0',
+        status: 'online (API-only mode)',
+        environment: process.env.NODE_ENV || 'development',
+        endpoints: {
+          health: '/api/health',
+          auth: '/api/auth/*',
+          tasks: '/api/tasks/*',
+          chat: '/api/chat/*',
+          ai: '/api/langchain/*',
+          calls: '/api/calls/*',
+          metrics: '/metrics'
+        },
+        note: 'Frontend not available in this deployment',
+        documentation: 'https://github.com/sujisudharsanan/bisman-ERP-Building'
+      });
     });
   }
 
