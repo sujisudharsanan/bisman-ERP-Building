@@ -11,7 +11,7 @@
  */
 
 import tesseract from 'node-tesseract-ocr';
-import pdf from 'pdf-poppler';
+import pdf from 'pdf-poppler'; // uses native binary; only executed on server
 import sharp from 'sharp';
 import fs from 'fs/promises';
 import path from 'path';
