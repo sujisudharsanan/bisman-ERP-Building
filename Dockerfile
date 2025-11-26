@@ -1,8 +1,13 @@
 ## Root Dockerfile for Railway (backend service)
 ## Fullstack Dockerfile (backend + frontend) for Railway
 
+# CACHE BUST: Change this value to force complete rebuild
+ARG CACHEBUST=2025-11-26-v2
+
 # ---- deps: install and prepare backend with Prisma ----
 FROM node:20-alpine AS deps
+ARG CACHEBUST
+RUN echo "Cache bust: $CACHEBUST"
 WORKDIR /app
 RUN apk add --no-cache postgresql-client openssl libc6-compat
 COPY my-backend/package*.json ./
