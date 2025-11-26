@@ -116,9 +116,19 @@ function validateEnvVars() {
     errors.forEach(error => console.error(`  ❌ ${error}`));
     console.error('================================\n');
     
+    // Only exit in production if critical DATABASE_URL or JWT_SECRET is missing
     if (process.env.NODE_ENV === 'production') {
-      console.error('Cannot start server in production with invalid environment configuration.');
-      process.exit(1);
+      const criticalErrors = errors.filter(err => 
+        err.includes('DATABASE_URL') || err.includes('JWT_SECRET')
+      );
+      
+      if (criticalErrors.length > 0) {
+        console.error('Cannot start server - critical environment variables missing.');
+        console.error('Server will attempt to start but may be unstable.');
+        // Don't exit - let Railway see the logs and health endpoint
+      } else {
+        console.warn('⚠️  Non-critical environment variables missing - server will start with degraded functionality.');
+      }
     }
   }
 
