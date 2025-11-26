@@ -33,16 +33,12 @@ async function start() {
   const app = express();
   const server = http.createServer(app);
   
-  // Initialize Socket.IO with CORS
+  // Initialize Socket.IO with CORS - Railway only
   const io = new Server(server, {
     cors: {
       origin: [
-        process.env.FRONTEND_URL || 'http://localhost:3000',
-        'http://localhost:3001',
-        process.env.PRODUCTION_URL || 'https://bisman.erp',
-        'https://bisman-erp-frontend.vercel.app',
-        'https://bisman-erp-frontend-production.up.railway.app',
-        'https://bisman-erp-backend-production.up.railway.app'
+        process.env.FRONTEND_URL || 'http://localhost:3000', // Local dev
+        'https://bisman-erp-backend-production.up.railway.app' // Railway backend
       ].filter(Boolean),
       credentials: true,
       methods: ['GET', 'POST']
@@ -91,14 +87,10 @@ async function start() {
     const origin = req.headers.origin;
     const isProd = process.env.NODE_ENV === 'production';
     
-    // Build allowed origins from environment
+    // Build allowed origins from environment - Railway only
     const allowedOrigins = [
-      process.env.FRONTEND_URL || 'http://localhost:3000',
-      'http://localhost:3001',
-      process.env.PRODUCTION_URL || 'https://bisman.erp',
-      'https://bisman-erp-frontend.vercel.app',
-      'https://bisman-erp-frontend-production.up.railway.app',
-      'https://bisman-erp-backend-production.up.railway.app'
+      process.env.FRONTEND_URL || 'http://localhost:3000', // Local dev
+      'https://bisman-erp-backend-production.up.railway.app' // Railway backend
     ].filter(Boolean);
     
     // Set CORS headers explicitly (this endpoint bypasses app.js CORS)
@@ -125,12 +117,8 @@ async function start() {
     const origin = req.headers.origin;
     const isProd = process.env.NODE_ENV === 'production';
     const allowedOrigins = [
-      process.env.FRONTEND_URL || 'http://localhost:3000',
-      'http://localhost:3001',
-      process.env.PRODUCTION_URL || 'https://bisman.erp',
-      'https://bisman-erp-frontend.vercel.app',
-      'https://bisman-erp-frontend-production.up.railway.app',
-      'https://bisman-erp-backend-production.up.railway.app'
+      process.env.FRONTEND_URL || 'http://localhost:3000', // Local dev
+      'https://bisman-erp-backend-production.up.railway.app' // Railway backend
     ].filter(Boolean);
     
     if (origin && (allowedOrigins.includes(origin) || (!isProd && origin.startsWith('http://localhost:')))) {
@@ -210,8 +198,8 @@ async function start() {
   const serverInstance = server.listen(port, '0.0.0.0', () => {
     const isProd = process.env.NODE_ENV === 'production';
     const allowedOrigins = [
-      process.env.FRONTEND_URL || 'http://localhost:3000',
-      process.env.PRODUCTION_URL || 'https://bisman.erp'
+      process.env.FRONTEND_URL || 'http://localhost:3000', // Local dev
+      'https://bisman-erp-backend-production.up.railway.app' // Railway backend
     ];
     
     console.log('\n' + '='.repeat(70));

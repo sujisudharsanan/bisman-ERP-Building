@@ -87,7 +87,7 @@ console.log('🔐 Authentication Environment:', {
   NODE_ENV: process.env.NODE_ENV,
   isProduction,
   RAILWAY: process.env.RAILWAY || 'not-set',
-  platform: process.env.RAILWAY ? 'Railway' : (process.env.VERCEL ? 'Vercel' : 'local')
+  platform: process.env.RAILWAY ? 'Railway' : 'local'
 })
 
 // ============================================================================

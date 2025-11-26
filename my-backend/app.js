@@ -222,14 +222,10 @@ app.use(['/api/calls','/api/voice','/api/video'], callLimiter);
 // ============================================================================
 const isProd = process.env.NODE_ENV === 'production';
 
-// Build allowed origins list from environment variables
+// Build allowed origins list - Railway only
 const allowedOrigins = [
-  process.env.FRONTEND_URL || 'http://localhost:3000',
-  'http://localhost:3001', // Backend itself (for testing)
-  process.env.PRODUCTION_URL || 'https://bisman.erp',
-  'https://bisman-erp-frontend.vercel.app',
-  'https://bisman-erp-frontend-production.up.railway.app',
-  'https://bisman-erp-backend-production.up.railway.app',
+  process.env.FRONTEND_URL || 'http://localhost:3000', // Local dev
+  'https://bisman-erp-backend-production.up.railway.app', // Railway backend
 ].filter(Boolean); // Remove any undefined values
 
 const corsOptions = {
