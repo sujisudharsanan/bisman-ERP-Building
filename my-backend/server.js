@@ -24,10 +24,6 @@ try {
 }
 
 const apiApp = require('./app');
-// Silence favicon & apple-touch icon 404 spam (return 204 No Content)
-app.get(['/favicon.ico','/apple-touch-icon.png','/apple-touch-icon-precomposed.png'], (req,res) => {
-  res.status(204).end()
-})
 
 // Next.js setup
 const dev = process.env.NODE_ENV !== 'production';
@@ -38,6 +34,18 @@ async function start() {
   // Create Express server first, before Next preparation
   const app = express();
   const server = http.createServer(app);
+  
+  // Silence favicon & apple-touch icon 404 spam (return 204 No Content)
+  app.get(['/favicon.ico','/apple-touch-icon.png','/apple-touch-icon-precomposed.png'], (req,res) => {
+    res.status(204).end()
+  })
+  // Provide GET /auth/login info to silence browser probes
+  app.get('/auth/login', (req,res) => {
+    res.status(200).json({
+      use: 'POST /api/auth/login',
+      body: { email: 'string', password: 'string' }
+    })
+  })
   
   // Initialize Socket.IO with CORS - Railway only
   const io = new Server(server, {
