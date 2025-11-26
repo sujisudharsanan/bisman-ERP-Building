@@ -61,6 +61,9 @@ model User {
   threadsCreated         Thread[]                @relation("ThreadCreatedBy")
   threadMembers          ThreadMember[]          @relation("ThreadMemberUser")
   initiatedCallLogs      CallLog[]               @relation("CallLogInitiator")
+  
+  // OCR Bill uploads
+  billsUploaded          Bill[]                  @relation("BillUploader")
 
   @@index([tenant_id], map: "idx_users_tenant")
   @@index([productType], map: "idx_users_product_type")
@@ -720,6 +723,9 @@ model Task {
   createdById Int
   assigneeId  Int? // Current approver user id
 
+  // OCR Bill linkage
+  billId      String? // Link to Bill if task was created from OCR
+
   createdAt DateTime @default(now()) @db.Timestamp(6)
   updatedAt DateTime @default(now()) @updatedAt @db.Timestamp(6)
 
@@ -732,6 +738,9 @@ model Task {
   approvals      Approval[]
   messages       Message[]
   paymentRecords PaymentRecord[]
+  
+  // OCR Bill relation
+  bill               Bill? @relation("BillTask")
 
   // P0 FIX: Approver selection audit logs
   approverSelectionLogs ApproverSelectionLog[] @relation("ApproverSelectionLogs")
@@ -1005,6 +1014,52 @@ model CallLog {
   @@index([status], map: "idx_call_logs_status")
   @@index([started_at], map: "idx_call_logs_started")
   @@map("call_logs")
+}
+
+// ==========================================
+// OCR BILL PROCESSING SYSTEM
+// ==========================================
+
+enum OcrStatus {
+  PENDING
+  PROCESSING
+  DONE
+  FAILED
+}
+
+model Bill {
+  id             String    @id @default(cuid())
+  filePath       String    @db.VarChar(500) // Path to uploaded file
+  originalName   String    @db.VarChar(255) // Original filename
+  fileType       String    @db.VarChar(50) // image/jpeg, application/pdf, etc.
+  fileSize       Int // Size in bytes
+  
+  uploadedById   Int
+  ocrStatus      OcrStatus @default(PENDING)
+  ocrText        String?   @db.Text // Full OCR extracted text
+  parsedJson     Json? // { vendorName, invoiceNumber, invoiceDate, dueDate, totalAmount, etc. }
+  
+  // Optional task creation
+  taskId         String?   @unique
+  taskCreated    Boolean   @default(false)
+  
+  // Processing metadata
+  processingError String?  @db.Text
+  processingTime  Int?     @default(0) // Time in milliseconds
+  confidence      Float?   // OCR confidence score (0-100)
+  
+  createdAt      DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+  
+  // Relations
+  uploadedBy User  @relation("BillUploader", fields: [uploadedById], references: [id], onDelete: Cascade)
+  task       Task? @relation("BillTask", fields: [taskId], references: [id], onDelete: SetNull)
+  
+  @@index([uploadedById], map: "idx_bills_uploader")
+  @@index([ocrStatus], map: "idx_bills_ocr_status")
+  @@index([taskCreated], map: "idx_bills_task_created")
+  @@index([createdAt(sort: Desc)], map: "idx_bills_created")
+  @@map("bills")
 }
 
 // Rate Limiting Violations - Security Audit

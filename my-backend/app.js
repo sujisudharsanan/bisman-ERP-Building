@@ -709,6 +709,17 @@ try {
   }
 }
 
+// Bill OCR routes (protected)
+try {
+  const billRoutes = require('./src/routes/bill.routes')
+  app.use('/api/bills', billRoutes)
+  console.log('✅ Bill OCR routes loaded (protected with rate limiting)')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Bill OCR routes not loaded:', e && e.message)
+  }
+}
+
 // Enterprise Admin routes (protected)
 try {
   const enterpriseRoutes = require('./routes/enterprise')

@@ -16,6 +16,7 @@ import {
 import dynamic from 'next/dynamic';
 import JitsiCallControls from './JitsiCallControls';
 import { Theme } from 'emoji-picker-react';
+import { useOcrUpload, isBillFile } from '@/hooks/useOcrUpload';
 
 // Dynamically import EmojiPicker to avoid SSR issues
 const EmojiPicker = dynamic(
@@ -89,6 +90,10 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const shouldTriggerTaskCreation = useRef(false);
+
+  // OCR Upload Hook
+  const { uploadBill, isUploading, isProcessing, progress, error: ocrError, result: ocrResult, reset: resetOcr } = useOcrUpload();
+  const [processingBillId, setProcessingBillId] = useState<string | null>(null);
 
   // Auto-resize textarea with expansion
   useEffect(() => {
@@ -295,7 +300,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
     e.stopPropagation();
   };
 
-  const handleDrop = (e: React.DragEvent) => {
+  const handleDrop = async (e: React.DragEvent) => {
     e.preventDefault();
     e.stopPropagation();
     setIsDragging(false);
@@ -305,34 +310,168 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       setTaskAttachments(prev => [...prev, ...droppedFiles]);
       console.log('📎 Files dropped:', droppedFiles.map(f => f.name));
       
-      const botMsg: Message = {
-        id: `bot-${Date.now()}`,
-        message: `📎 Added ${droppedFiles.length} file(s) to the task`,
-        user_id: 'mira',
-        create_at: Date.now(),
-        username: 'AIVA',
-        isBot: true
-      };
-      setMessages(prev => [...prev, botMsg]);
+      // Check if any file is a bill/invoice
+      const billFiles = droppedFiles.filter(file => isBillFile(file));
+      
+      if (billFiles.length > 0) {
+        // Show analyzing message
+        const analyzingMsg: Message = {
+          id: `bot-analyzing-${Date.now()}`,
+          message: `� Analyzing ${billFiles.length} bill/invoice file(s)...\n\nI'll extract the data and pre-fill the task form for you!`,
+          user_id: 'mira',
+          create_at: Date.now(),
+          username: 'AIVA',
+          isBot: true
+        };
+        setMessages(prev => [...prev, analyzingMsg]);
+        
+        // Process first bill file with OCR
+        try {
+          const result = await uploadBill(billFiles[0]);
+          
+          if (result && result.parsed) {
+            const { parsed, suggestedTask, confidence, billId } = result;
+            
+            // Store bill ID for task creation
+            setProcessingBillId(billId);
+            
+            // Pre-fill task form with extracted data
+            setTaskFormData(prev => ({
+              ...prev,
+              title: suggestedTask?.title || `Payment: ${parsed.vendorName || 'Vendor'}`,
+              description: suggestedTask?.description || 
+                `Invoice #${parsed.invoiceNumber || 'N/A'}\nAmount: ${parsed.currency || '₹'}${parsed.totalAmount || 'N/A'}\nVendor: ${parsed.vendorName || 'N/A'}\n\nExtracted from bill attachment.`,
+              priority: suggestedTask?.priority || 'MEDIUM'
+            }));
+            
+            // Show success message with extracted data
+            const successMsg: Message = {
+              id: `bot-ocr-success-${Date.now()}`,
+              message: `✅ Bill analyzed successfully! (${confidence}% confidence)\n\n📋 **Extracted Data:**\n` +
+                `• Vendor: ${parsed.vendorName || 'N/A'}\n` +
+                `• Invoice #: ${parsed.invoiceNumber || 'N/A'}\n` +
+                `• Amount: ${parsed.currency || '₹'}${parsed.totalAmount || 'N/A'}\n` +
+                `• Date: ${parsed.invoiceDate || 'N/A'}\n\n` +
+                `I've pre-filled the task form. Please review and submit! 📝`,
+              user_id: 'mira',
+              create_at: Date.now(),
+              username: 'AIVA',
+              isBot: true
+            };
+            setMessages(prev => [...prev, successMsg]);
+          } else {
+            throw new Error('OCR processing failed');
+          }
+        } catch (error) {
+          console.error('OCR Error:', error);
+          const errorMsg: Message = {
+            id: `bot-ocr-error-${Date.now()}`,
+            message: `⚠️ I couldn't extract data from the bill automatically.\n\nPlease fill in the task details manually. The bill is still attached.`,
+            user_id: 'mira',
+            create_at: Date.now(),
+            username: 'AIVA',
+            isBot: true
+          };
+          setMessages(prev => [...prev, errorMsg]);
+        }
+      } else {
+        // Regular file attachment (not a bill)
+        const botMsg: Message = {
+          id: `bot-${Date.now()}`,
+          message: `�📎 Added ${droppedFiles.length} file(s) to the task`,
+          user_id: 'mira',
+          create_at: Date.now(),
+          username: 'AIVA',
+          isBot: true
+        };
+        setMessages(prev => [...prev, botMsg]);
+      }
     }
   };
 
-  // Handle task file selection from button
-  const handleTaskFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // Handle task file selection from button with OCR detection
+  const handleTaskFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files.length > 0) {
       const selectedFiles = Array.from(e.target.files);
       setTaskAttachments(prev => [...prev, ...selectedFiles]);
       console.log('📎 Files selected:', selectedFiles.map(f => f.name));
       
-      const botMsg: Message = {
-        id: `bot-${Date.now()}`,
-        message: `📎 Added ${selectedFiles.length} file(s) to the task`,
-        user_id: 'mira',
-        create_at: Date.now(),
-        username: 'AIVA',
-        isBot: true
-      };
-      setMessages(prev => [...prev, botMsg]);
+      // Check if any file is a bill/invoice
+      const billFiles = selectedFiles.filter(file => isBillFile(file));
+      
+      if (billFiles.length > 0 && showTaskForm) {
+        // Show analyzing message
+        const analyzingMsg: Message = {
+          id: `bot-analyzing-${Date.now()}`,
+          message: `� Analyzing ${billFiles.length} bill/invoice file(s)...\n\nI'll extract the data and pre-fill the task form for you!`,
+          user_id: 'mira',
+          create_at: Date.now(),
+          username: 'AIVA',
+          isBot: true
+        };
+        setMessages(prev => [...prev, analyzingMsg]);
+        
+        // Process first bill file with OCR
+        try {
+          const result = await uploadBill(billFiles[0]);
+          
+          if (result && result.parsed) {
+            const { parsed, suggestedTask, confidence, billId } = result;
+            
+            // Store bill ID for task creation
+            setProcessingBillId(billId);
+            
+            // Pre-fill task form with extracted data
+            setTaskFormData(prev => ({
+              ...prev,
+              title: suggestedTask?.title || `Payment: ${parsed.vendorName || 'Vendor'}`,
+              description: suggestedTask?.description || 
+                `Invoice #${parsed.invoiceNumber || 'N/A'}\nAmount: ${parsed.currency || '₹'}${parsed.totalAmount || 'N/A'}\nVendor: ${parsed.vendorName || 'N/A'}\n\nExtracted from bill attachment.`,
+              priority: suggestedTask?.priority || 'MEDIUM'
+            }));
+            
+            // Show success message with extracted data
+            const successMsg: Message = {
+              id: `bot-ocr-success-${Date.now()}`,
+              message: `✅ Bill analyzed successfully! (${confidence}% confidence)\n\n📋 **Extracted Data:**\n` +
+                `• Vendor: ${parsed.vendorName || 'N/A'}\n` +
+                `• Invoice #: ${parsed.invoiceNumber || 'N/A'}\n` +
+                `• Amount: ${parsed.currency || '₹'}${parsed.totalAmount || 'N/A'}\n` +
+                `• Date: ${parsed.invoiceDate || 'N/A'}\n\n` +
+                `I've pre-filled the task form. Please review and submit! 📝`,
+              user_id: 'mira',
+              create_at: Date.now(),
+              username: 'AIVA',
+              isBot: true
+            };
+            setMessages(prev => [...prev, successMsg]);
+          } else {
+            throw new Error('OCR processing failed');
+          }
+        } catch (error) {
+          console.error('OCR Error:', error);
+          const errorMsg: Message = {
+            id: `bot-ocr-error-${Date.now()}`,
+            message: `⚠️ I couldn't extract data from the bill automatically.\n\nPlease fill in the task details manually. The bill is still attached.`,
+            user_id: 'mira',
+            create_at: Date.now(),
+            username: 'AIVA',
+            isBot: true
+          };
+          setMessages(prev => [...prev, errorMsg]);
+        }
+      } else {
+        // Regular file attachment (not a bill)
+        const botMsg: Message = {
+          id: `bot-${Date.now()}`,
+          message: `�📎 Added ${selectedFiles.length} file(s) to the task`,
+          user_id: 'mira',
+          create_at: Date.now(),
+          username: 'AIVA',
+          isBot: true
+        };
+        setMessages(prev => [...prev, botMsg]);
+      }
     }
   };
 
@@ -1014,6 +1153,61 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                   <div className="overflow-y-auto px-3 space-y-2.5 flex-1 custom-scrollbar"
                     style={{ maxHeight: 'calc(450px - 120px)' }}
                   >
+                  
+                  {/* OCR Processing Indicator */}
+                  {(isUploading || isProcessing) && (
+                    <div className="bg-blue-500/10 border border-blue-500/50 rounded-lg p-3 flex items-center gap-3">
+                      <div className="animate-spin rounded-full h-5 w-5 border-2 border-blue-500 border-t-transparent"></div>
+                      <div className="flex-1">
+                        <p className="text-blue-400 text-sm font-medium">
+                          🔍 Analyzing bill with OCR...
+                        </p>
+                        {progress > 0 && (
+                          <div className="mt-1.5 bg-gray-700 rounded-full h-1.5 overflow-hidden">
+                            <div 
+                              className="bg-blue-500 h-full transition-all duration-300"
+                              style={{ width: `${progress}%` }}
+                            ></div>
+                          </div>
+                        )}
+                        <p className="text-gray-400 text-xs mt-1">
+                          Extracting vendor, invoice number, amount, and dates...
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* OCR Success Indicator */}
+                  {ocrResult && processingBillId && (
+                    <div className="bg-green-500/10 border border-green-500/50 rounded-lg p-3">
+                      <p className="text-green-400 text-sm font-medium mb-2">
+                        ✅ Bill data extracted ({ocrResult.confidence}% confidence)
+                      </p>
+                      <div className="text-xs text-gray-300 space-y-1">
+                        {ocrResult.parsed.vendorName && (
+                          <p>• Vendor: {ocrResult.parsed.vendorName}</p>
+                        )}
+                        {ocrResult.parsed.invoiceNumber && (
+                          <p>• Invoice #: {ocrResult.parsed.invoiceNumber}</p>
+                        )}
+                        {ocrResult.parsed.totalAmount && (
+                          <p>• Amount: {ocrResult.parsed.currency || '₹'}{ocrResult.parsed.totalAmount}</p>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* OCR Error */}
+                  {ocrError && (
+                    <div className="bg-red-500/10 border border-red-500/50 rounded-lg p-3">
+                      <p className="text-red-400 text-sm font-medium">
+                        ⚠️ OCR processing failed
+                      </p>
+                      <p className="text-gray-400 text-xs mt-1">
+                        Please fill in the details manually
+                      </p>
+                    </div>
+                  )}
                   
                   {/* Serial Number (Read-only) */}
                   <div>
