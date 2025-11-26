@@ -171,12 +171,39 @@ async function start() {
     }
   }
 
+  // Root route - API landing page
+  app.get('/', (_req, res) => {
+    res.status(200).json({
+      name: 'BISMAN ERP Backend API',
+      version: '1.0.0',
+      status: 'online',
+      environment: process.env.NODE_ENV || 'development',
+      endpoints: {
+        health: '/api/health',
+        auth: '/api/auth/*',
+        tasks: '/api/tasks/*',
+        chat: '/api/chat/*',
+        ai: '/api/langchain/*',
+        calls: '/api/calls/*',
+        metrics: '/metrics'
+      },
+      frontend: process.env.FRONTEND_URL || 'Deploy frontend separately',
+      documentation: 'https://github.com/sujisudharsanan/bisman-ERP-Building'
+    });
+  });
+  
   if (handle) {
-    // Let Next handle everything else
-    app.all('*', (req, res) => handle(req, res));
-  } else {
-    // Fallback: minimal root route for API-only mode
-    app.get('/', (_req, res) => res.status(200).send('BISMAN ERP API')); 
+    // Let Next handle other routes
+    app.all('*', (req, res) => {
+      // Skip API routes (already handled by apiApp)
+      if (req.path.startsWith('/api/') || req.path === '/metrics') {
+        return res.status(404).json({ 
+          error: 'RESOURCE_NOT_FOUND', 
+          message: `Route ${req.method} ${req.path} not found` 
+        });
+      }
+      return handle(req, res);
+    });
   }
 
   const port = process.env.PORT || 8080;
