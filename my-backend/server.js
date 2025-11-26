@@ -161,6 +161,7 @@ async function start() {
 
   if (handle) {
     // Root route - API landing page (must be before Next.js catch-all)
+    // This route MUST be registered before app.all('*') to prevent Next.js interception
     app.get('/', (_req, res) => {
       res.status(200).json({
         name: 'BISMAN ERP Backend API',
