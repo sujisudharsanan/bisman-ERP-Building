@@ -78,9 +78,17 @@ COPY --from=build-frontend /app/frontend/.next /app/frontend/.next
 COPY --from=build-frontend /app/frontend/public /app/frontend/public
 COPY --from=build-frontend /app/frontend/next.config.js /app/frontend/
 
-# Unified startup script from repo root (relative path)
-COPY ../start-railway.sh /app/start-railway.sh
-RUN chmod +x /app/start-railway.sh
+# Create startup script inline (no external file dependency)
+RUN echo '#!/bin/sh' > /app/start-railway.sh && \
+    echo 'echo "FRONTEND+BACKEND STARTUP"' >> /app/start-railway.sh && \
+    echo 'echo "Time: $(date)"' >> /app/start-railway.sh && \
+    echo 'set +e' >> /app/start-railway.sh && \
+    echo 'if [ -n "$DATABASE_URL" ] && [ -d /app/prisma/migrations ]; then' >> /app/start-railway.sh && \
+    echo '  timeout 30 npx prisma migrate deploy 2>&1 || echo "[db] Migration skipped"' >> /app/start-railway.sh && \
+    echo 'fi' >> /app/start-railway.sh && \
+    echo 'echo "[start] Launching: node index.js"' >> /app/start-railway.sh && \
+    echo 'exec node index.js' >> /app/start-railway.sh && \
+    chmod +x /app/start-railway.sh
 
 ENTRYPOINT ["dumb-init","/app/start-railway.sh"]
 

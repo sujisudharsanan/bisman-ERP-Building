@@ -1,6 +1,7 @@
 # Backend-only Dockerfile for Railway
 # This builds and runs ONLY the backend service
-# BUILD_VERSION: 2025-11-28-backend-only
+# Root directory should be set to /my-backend/ in Railway
+# BUILD_VERSION: 2025-11-28-backend-only-folder
 
 FROM node:20-alpine AS deps
 WORKDIR /app
@@ -8,15 +9,15 @@ WORKDIR /app
 # Install system dependencies for Prisma
 RUN apk add --no-cache postgresql-client openssl libc6-compat
 
-# Copy backend package files
-COPY my-backend/package*.json ./
-COPY my-backend/prisma ./prisma/
+# Copy backend package files (from current directory since root is my-backend/)
+COPY package*.json ./
+COPY prisma ./prisma/
 
 # Install backend dependencies
 RUN npm ci --ignore-scripts && npm cache clean --force
 
 # Copy backend source
-COPY my-backend/ ./
+COPY . ./
 
 # Generate Prisma client
 RUN npx prisma generate
