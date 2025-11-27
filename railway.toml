@@ -1,28 +1,13 @@
-# Railway Multi-Service Configuration for Monorepo
-# Defines backend and frontend services with explicit Dockerfile paths
+# Railway Configuration for Monorepo
+# Uses root Dockerfile that builds both backend and frontend
 
-# Backend Service Configuration
-[services.backend]
-source = "my-backend"
+[build]
 builder = "dockerfile"
-dockerfilePath = "my-backend/Dockerfile"
+dockerfilePath = "Dockerfile"
 
-[services.backend.deploy]
-startCommand = "node server.js"
+[deploy]
+startCommand = "/app/start-railway.sh"
 healthcheckPath = "/api/health"
-healthcheckTimeout = 300
-restartPolicyType = "on_failure"
-restartPolicyMaxRetries = 10
-
-# Frontend Service Configuration
-[services.frontend]
-source = "my-frontend"
-builder = "dockerfile"
-dockerfilePath = "my-frontend/Dockerfile"
-
-[services.frontend.deploy]
-startCommand = "node server.js"
-healthcheckPath = "/"
 healthcheckTimeout = 300
 restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 10
