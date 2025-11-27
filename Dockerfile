@@ -84,9 +84,12 @@ COPY --from=build-frontend /app/frontend/next.config.js /app/frontend/
 
 # Copy startup script
 # Copy startup script (root wrapper ensures presence even if scripts/ filtered)
+# Copy unified startup script
 COPY start-railway.sh /app/start-railway.sh
-RUN test -f /app/start-railway.sh || (echo "Startup script missing" && exit 1)
 RUN chmod +x /app/start-railway.sh
+
+# Use dumb-init for proper signal handling
+ENTRYPOINT ["dumb-init","/app/start-railway.sh"]
 
 # Set environment
 ENV NODE_ENV=production
@@ -94,4 +97,5 @@ ENV PORT=8080
 EXPOSE 8080
 
 # Use startup script that handles migrations
+# CMD retained for clarity (ignored because ENTRYPOINT runs the script)
 CMD ["/app/start-railway.sh"]

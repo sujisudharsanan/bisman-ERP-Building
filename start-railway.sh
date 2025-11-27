@@ -1,19 +1,37 @@
 #!/bin/sh
-# Root wrapper to ensure Railway build context always has startup script even if scripts/ excluded.
-# Delegates to scripts/start-railway.sh if present; otherwise minimal fallback to start backend.
+# Unified Railway startup script (single source of truth)
+# Performs safe Prisma migrations (timeout), then starts backend (index.js).
+# No dependency on scripts/ directory to avoid missing file in build context.
 
-set -e
+echo "============================================"
+echo "UNIFIED RAILWAY STARTUP"
+echo "============================================"
+echo "Time: $(date)"
+echo "PID: $$"
+echo "Working directory: $(pwd)"
+echo "Node: $(node --version 2>/dev/null || echo 'missing')"
+echo "============================================"
 
-if [ -f /app/scripts/start-railway.sh ]; then
-  echo "[wrapper] Delegating to /app/scripts/start-railway.sh"
-  exec /app/scripts/start-railway.sh
+# Allow failures in migration block without stopping server startup
+set +e
+
+if [ -n "$DATABASE_URL" ]; then
+  echo "[db] DATABASE_URL detected"
+  echo "[db] Sanitized: $(echo "$DATABASE_URL" | sed 's/:[^@]*@/:***@/')"
+  if [ -d /app/prisma/migrations ] && [ "$(ls -A /app/prisma/migrations 2>/dev/null)" ]; then
+    echo "[db] Migrations found. Running prisma migrate deploy (30s timeout)..."
+    if timeout 30 npx prisma migrate deploy 2>&1; then
+      echo "[db] ✅ Migrations complete"
+    else
+      EXIT_CODE=$?
+      echo "[db] ❌ migrate deploy failed (code $EXIT_CODE). Continuing."
+    fi
+  else
+    echo "[db] No migrations directory or empty. Skipping migrate deploy."
+  fi
+else
+  echo "[db] No DATABASE_URL set. Skipping migrations."
 fi
 
-echo "[wrapper] WARNING: /app/scripts/start-railway.sh missing; running fallback"
-# Fallback: run migrations lightly if prisma exists
-if [ -d /app/prisma ]; then
-  echo "[wrapper] Attempting prisma migrate deploy (30s timeout)"
-  timeout 30 npx prisma migrate deploy || echo "[wrapper] migrate deploy failed or timed out"
-fi
-echo "[wrapper] Starting node index.js"
+echo "[start] Launching backend: node index.js"
 exec node index.js
