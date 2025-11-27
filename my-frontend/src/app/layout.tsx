@@ -6,6 +6,7 @@ import { AuthProvider } from '../contexts/AuthContext';
 import { PermissionProvider } from '../contexts/PermissionContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import { SocketProvider } from '../contexts/SocketContext';
+import { ColorThemeProvider } from '@/components/ColorThemeProvider';
 import GlobalRouteLoader from '@/components/loading/GlobalRouteLoader';
 import HealthBoot from '@/components/dev/HealthBoot';
 import RenderLogger from '@/components/debug/RenderLogger';
@@ -72,11 +73,12 @@ export default function RootLayout({
   return (
     <html lang="en">
   <body data-nonce={nonce} className={`${inter.className} bg-white dark:bg-slate-900 text-gray-900 dark:text-gray-100 transition-colors duration-300`}>
-        <ThemeProvider>
-          <AuthProvider>
-            <SocketProvider>
-              <PermissionProvider>
-                <ToastProvider>
+        <ColorThemeProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <SocketProvider>
+                <PermissionProvider>
+                  <ToastProvider>
                   <RenderLogger />
                   <div className="min-h-screen pb-20 md:pb-0">
                     <AppShell>{children}</AppShell>
@@ -117,11 +119,12 @@ export default function RootLayout({
               {/* Chat widget guarded: hidden on public routes and when not authenticated */}
               <ChatGuard />
               {/* Single-window chat removed; using existing ChatGuard integration */}
-                </ToastProvider>
-              </PermissionProvider>
-            </SocketProvider>
-          </AuthProvider>
-        </ThemeProvider>
+                  </ToastProvider>
+                </PermissionProvider>
+              </SocketProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </ColorThemeProvider>
       </body>
     </html>
   );

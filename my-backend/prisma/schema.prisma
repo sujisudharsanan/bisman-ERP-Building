@@ -35,6 +35,7 @@ model User {
   updatedAt       DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
   assignedModules Json?
   pagePermissions Json?
+  theme_preference String?  @default("bisman-default") @db.VarChar(50)
 
   // Relations
   client        Client?         @relation("ClientUsers", fields: [tenant_id], references: [id], onDelete: Cascade)

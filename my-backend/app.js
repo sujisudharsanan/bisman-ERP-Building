@@ -720,6 +720,17 @@ try {
   }
 }
 
+// User preferences routes (protected)
+try {
+  const userPreferencesRoutes = require('./routes/user-preferences')
+  app.use('/api/user', authenticate, userPreferencesRoutes)
+  console.log('✅ User preferences routes loaded (protected)')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('User preferences routes not loaded:', e && e.message)
+  }
+}
+
 // Enterprise Admin routes (protected)
 try {
   const enterpriseRoutes = require('./routes/enterprise')

@@ -18,6 +18,7 @@ import {
   HelpCircle,
 } from "lucide-react";
 import { uploadFiles } from "@/lib/attachments";
+import ThemeSelector from "@/components/ThemeSelector";
 
 type Msg = { type: "success" | "error"; text: string } | null;
 
@@ -382,9 +383,15 @@ export default function UserSettingsPage() {
 
             {activeTab === "preferences" && (
               <div className="space-y-6">
+                {/* Color Theme Selector */}
+                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Color Theme</h2>
+                  <ThemeSelector variant="grid" />
+                </div>
+
                 {/* Appearance */}
                 <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Appearance</h2>
+                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Display Mode</h2>
                   <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                     {[
                       { value: "light", label: "Light", icon: 'Sun' },

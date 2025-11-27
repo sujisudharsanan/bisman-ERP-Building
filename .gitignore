@@ -34,3 +34,4 @@ deployment-secrets.txt
 *.env
 .env*
 !.env.example
+SECRETS_GENERATED.md

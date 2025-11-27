@@ -500,10 +500,11 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         setMessages([greetingMessage]);
       } else {
         // Fallback to simple welcome
-        const userName = (user as any).name || (user as any).fullName || (user as any).username || 'there';
+        const fullName = (user as any).name || (user as any).fullName || (user as any).username || 'there';
+        const firstName = fullName.split(/[\s_]+/)[0]; // Extract first name only
         const welcomeMessage: Message = {
           id: `bot-welcome-${Date.now()}`,
-          message: `Hey ${userName}! 👋 I'm AIVA (AI + Virtual Assistant), your intelligent operations assistant created by Bisman Corporation. How can I help you today?`,
+          message: `Hey ${firstName}! 👋 I'm AIVA (AI + Virtual Assistant), your intelligent operations assistant created by Bisman Corporation. How can I help you today?`,
           user_id: 'mira',
           create_at: Date.now(),
           username: 'AIVA',
@@ -514,10 +515,11 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
     } catch (error) {
       console.error('[Chat] Failed to load greeting:', error);
       // Fallback greeting
-      const userName = (user as any).name || (user as any).fullName || (user as any).username || 'there';
+      const fullName = (user as any).name || (user as any).fullName || (user as any).username || 'there';
+      const firstName = fullName.split(/[\s_]+/)[0]; // Extract first name only
       const welcomeMessage: Message = {
         id: `bot-welcome-${Date.now()}`,
-        message: `Hey ${userName}! 👋 I'm AIVA (AI + Virtual Assistant), your intelligent operations assistant created by Bisman Corporation. How can I help you today?`,
+        message: `Hey ${firstName}! 👋 I'm AIVA (AI + Virtual Assistant), your intelligent operations assistant created by Bisman Corporation. How can I help you today?`,
         user_id: 'mira',
         create_at: Date.now(),
         username: 'AIVA',
