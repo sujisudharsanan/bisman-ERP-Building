@@ -1,5 +1,6 @@
 # Monorepo Multi-Stage Dockerfile for Railway
 # Builds both backend and frontend in a single container
+# BUILD_VERSION: 2025-11-28-v2
 
 # ============================================
 # Stage 1: Backend Dependencies
@@ -9,11 +10,6 @@ WORKDIR /app
 
 # Install system dependencies for Prisma
 RUN apk add --no-cache postgresql-client openssl libc6-compat
-
-# Cache bust to force fresh build
-RUN echo "===========================================" && \
-    echo "Build Date: $(date)" && \
-    echo "==========================================="
 
 # Copy backend package files
 COPY my-backend/package*.json ./
