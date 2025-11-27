@@ -28,7 +28,7 @@ import {
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
-import ChatWidget from '@/components/ai/ChatWidget';
+import ChatWidget from '@/modules/chat/components/AIWidget';
 // Navbar and Sidebar are provided by the enterprise-admin layout
 
 // Types

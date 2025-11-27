@@ -60,10 +60,14 @@ model User {
   // Chat & Calls relations (added for thread/call logs)
   threadsCreated         Thread[]                @relation("ThreadCreatedBy")
   threadMembers          ThreadMember[]          @relation("ThreadMemberUser")
+  threadMessagesSent     ThreadMessage[]         @relation("ThreadMessageSender")
   initiatedCallLogs      CallLog[]               @relation("CallLogInitiator")
   
   // OCR Bill uploads
   billsUploaded          Bill[]                  @relation("BillUploader")
+  
+  // Assistant Memory
+  assistantMemory        AssistantMemory?        @relation("AssistantMemoryUser")
   
   // Extended Profile Relations
   profile                UserProfile?
@@ -972,8 +976,9 @@ model Thread {
   createdAt   DateTime @default(now()) @db.Timestamp(6)
   updatedAt   DateTime @default(now()) @updatedAt @db.Timestamp(6)
 
-  createdBy User           @relation("ThreadCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
+  createdBy User            @relation("ThreadCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
   members   ThreadMember[]
+  messages  ThreadMessage[]
   callLogs  CallLog[]
 
   @@index([createdById], map: "idx_threads_creator")
@@ -1026,6 +1031,63 @@ model CallLog {
   @@index([status], map: "idx_call_logs_status")
   @@index([started_at], map: "idx_call_logs_started")
   @@map("call_logs")
+}
+
+model ThreadMessage {
+  id         String    @id @default(cuid())
+  threadId   String
+  senderId   Int
+  content    String    @db.Text
+  type       String    @default("text") @db.VarChar(50) // text | image | file | audio | video | system
+  
+  attachments Json? // [{name, url, type, size, mimeType}]
+  replyToId   String?   // For threading/replies
+  reactions   Json?     // [{emoji, userId, createdAt}]
+  
+  isEdited    Boolean   @default(false)
+  editedAt    DateTime? @db.Timestamp(6)
+  isDeleted   Boolean   @default(false)
+  deletedAt   DateTime? @db.Timestamp(6)
+  
+  readBy      Json?     // [{userId, readAt}]
+  
+  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+
+  thread     Thread          @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  sender     User            @relation("ThreadMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
+  replyTo    ThreadMessage?  @relation("MessageReplies", fields: [replyToId], references: [id], onDelete: SetNull)
+  replies    ThreadMessage[] @relation("MessageReplies")
+
+  @@index([threadId], map: "idx_thread_messages_thread")
+  @@index([senderId], map: "idx_thread_messages_sender")
+  @@index([createdAt], map: "idx_thread_messages_created")
+  @@index([type], map: "idx_thread_messages_type")
+  @@index([isDeleted], map: "idx_thread_messages_deleted")
+  @@map("thread_messages")
+}
+
+// ==========================================
+// INTELLIGENT ASSISTANT MEMORY SYSTEM
+// ==========================================
+
+model AssistantMemory {
+  id             String    @id @default(cuid())
+  userId         Int       @unique
+  lastBranchId   Int?
+  lastModule     String?   @db.VarChar(100) // e.g. "COD", "TASKS", "INVOICES", "DASHBOARD"
+  preferences    Json?     // { "reportStyle": "brief", "defaultBranchName": "Chennai", "tone": "friendly" }
+  lastSummary    String?   @db.Text // Last conversation summary for context
+  conversationCount Int    @default(0) // Track total conversations
+  
+  createdAt      DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt      DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+
+  user           User      @relation("AssistantMemoryUser", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_assistant_memory_user")
+  @@index([lastModule], map: "idx_assistant_memory_module")
+  @@map("assistant_memory")
 }
 
 // ==========================================

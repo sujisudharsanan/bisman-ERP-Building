@@ -14,7 +14,7 @@ import {
   Settings
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
-import JitsiCallControls from './JitsiCallControls';
+import CallControls from './CallControls';
 import { Theme } from 'emoji-picker-react';
 import { useOcrUpload, isBillFile } from '@/hooks/useOcrUpload';
 
@@ -1007,7 +1007,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           <div className="flex items-center gap-1">
             {/* Jitsi Call Controls */}
             {(activeView === 'user' || activeView === 'task') && (
-              <JitsiCallControls 
+              <CallControls 
                 threadId={activeView === 'user' ? selectedUserId || undefined : selectedTaskId || undefined}
                 onError={(error) => console.error('Jitsi error:', error)}
               />

@@ -10,7 +10,7 @@ import GlobalRouteLoader from '@/components/loading/GlobalRouteLoader';
 import HealthBoot from '@/components/dev/HealthBoot';
 import RenderLogger from '@/components/debug/RenderLogger';
 import { ToastProvider } from '@/components/ui/toast';
-import ChatGuard from '@/components/ChatGuard';
+import ChatGuard from '@/modules/chat/components/ChatGuard';
 import GlobalErrorToast from '@/components/GlobalErrorToast';
 import React from 'react';
 import AppShell from '@/components/layout/AppShell';

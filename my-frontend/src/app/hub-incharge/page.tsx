@@ -7,7 +7,7 @@ import KanbanColumn from '@/components/dashboard/KanbanColumn';
 import RightPanel from '@/components/dashboard/RightPanel';
 import TaskChatDrawer from '@/components/tasks/TaskChatDrawer';
 import { useAuth } from '@/hooks/useAuth';
-import { useSocket } from '@/hooks/useSocket';
+import { useSocket } from '@/modules/chat/hooks/useSocket';
 import { useWorkflowTasks } from '@/hooks/useWorkflowTasks';
 
 export default function HubInchargePage() {

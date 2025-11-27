@@ -4,10 +4,10 @@ import { useMemo, useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import dynamic from 'next/dynamic';
-import BismanFloatingWidget from './BismanFloatingWidget';
+import FloatingWidget from './FloatingWidget';
 
-// Dynamically import CleanChatInterface-NEW (Mira with sidebar) to avoid SSR issues
-const CleanChatInterface = dynamic(() => import('./chat/CleanChatInterface-NEW'), { ssr: false });
+// Dynamically import ChatInterface (Mira with sidebar) to avoid SSR issues
+const CleanChatInterface = dynamic(() => import('./ChatInterface'), { ssr: false });
 
 // Guard that renders CleanChatInterface (Spark Assistant) only on private pages
 export default function ChatGuard() {
@@ -49,7 +49,7 @@ export default function ChatGuard() {
     <>
       {/* Floating Chat Button - Hidden when chat is open */}
       {!isChatOpen && (
-        <BismanFloatingWidget
+        <FloatingWidget
           onOpen={() => setIsChatOpen(true)}
           position="bottom-right"
           primaryColor="#0A3A63"

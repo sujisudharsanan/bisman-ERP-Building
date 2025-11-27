@@ -64,6 +64,15 @@ async function start() {
   initializeTaskSocket(io);
   console.log('[startup] ✅ Task Socket.IO handlers initialized');
 
+  // Initialize Chat Socket handlers (new modular chat)
+  try {
+    const { initializeChatSocket } = require('./modules/chat/socket/chatSocket');
+    initializeChatSocket(io);
+    console.log('[startup] ✅ Chat Socket.IO handlers initialized (namespace: /chat)');
+  } catch (e) {
+    console.warn('[startup] ⚠️ Chat Socket.IO not initialized:', e.message);
+  }
+
   // Socket.IO connection handler
   io.on('connection', (socket) => {
     console.log('[socket.io] Client connected:', socket.id);

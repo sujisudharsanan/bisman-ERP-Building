@@ -9,7 +9,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { getUnifiedChat } = require('../services/ai/unifiedChatEngine');
+const { getUnifiedChat } = require('../../../services/ai/unifiedChatEngine');
 const { Pool } = require('pg');
 require('dotenv').config();
 

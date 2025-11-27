@@ -649,32 +649,33 @@ try {
 }
 
 // ===================================================================
-// ULTIMATE CHAT SYSTEM - All Features Combined! 🚀
+// CHAT MODULE - Modular Chat System 🚀
 // ===================================================================
-// Combines:
-// - Unified Chat: Database-driven, RBAC, production-ready
-// - Intelligent Chat: NLP, intent detection, entity extraction
-// - Enhanced Chat: Self-learning, human-like responses, metrics
+// Modular architecture with organized structure:
+// - AI Assistant: Ollama/rule-based intelligent responses
+// - Threads & Messages: Database-driven messaging system
+// - Calls: Jitsi Meet video/audio integration
+// - Real-time: Socket.IO for live updates
 //
-// Single endpoint: /api/chat/*
-// Features: ALL the features from all 3 systems!
+// Base endpoint: /api/chat/*
+// Sub-routes: /ai, /threads, /messages, /calls
 // ===================================================================
 try {
-  const ultimateChatRoutes = require('./routes/ultimate-chat')
-  app.use('/api/chat', ultimateChatRoutes)
-  console.log('✅ 🎯 ULTIMATE CHAT SYSTEM loaded at /api/chat - All features combined!')
+  const chatModuleRoutes = require('./modules/chat/routes')
+  app.use('/api/chat', chatModuleRoutes)
+  console.log('✅ 🎯 CHAT MODULE loaded at /api/chat - Modular architecture enabled!')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
-    console.warn('❌ Ultimate Chat System not loaded:', e && e.message)
+    console.warn('❌ Chat Module not loaded:', e && e.message)
   }
 }
 
-// ===== OLD CHAT SYSTEMS - NOW REMOVED =====
-// All 3 chat systems have been consolidated into ONE ultimate system above:
-// - Unified Chat (/api/unified-chat/*) - REMOVED
-// - Intelligent Chat (/api/chat/*) - REMOVED
-// - Enhanced Chat (new) - INTEGRATED above
-// ===== END OLD CHAT SYSTEMS =====
+// ===== OLD CHAT ROUTES - NOW DEPRECATED =====
+// Legacy routes maintained for backward compatibility:
+// - /routes/ultimate-chat.js - Use /modules/chat/routes/ai.js instead
+// - /routes/unified-chat.js - Use /modules/chat/routes/messages.js instead
+// - /routes/calls.js - Use /modules/chat/routes/calls.js instead
+// ===== END OLD CHAT ROUTES =====
 
 // Security monitoring routes (versioned)
 try {

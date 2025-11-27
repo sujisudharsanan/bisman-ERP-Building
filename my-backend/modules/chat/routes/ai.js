@@ -8,8 +8,8 @@
 
 const express = require('express');
 const { Pool } = require('pg');
-const { getUnifiedChat } = require('../services/ai/unifiedChatEngine');
-const rbacService = require('../services/rbacService');
+const { getUnifiedChat } = require('../../../services/ai/unifiedChatEngine');
+const rbacService = require('../../../services/rbacService');
 
 const router = express.Router();
 

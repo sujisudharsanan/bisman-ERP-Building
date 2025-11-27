@@ -75,10 +75,11 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
       { id: 'team', label: 'Team', href: '/operations-manager/team', icon: 'Users' },
       { id: 'reports', label: 'Reports', href: '/operations-manager/reports', icon: 'BarChart2' },
       { id: 'calendar', label: 'Calendar', href: '/operations-manager/calendar', icon: 'Calendar' },
-      { id: 'messages', label: 'Messages', href: '/operations-manager/messages', icon: 'MessageSquare', badge: 3 },
+      { id: 'messages', label: 'Messages', href: '/chat', icon: 'MessageSquare', badge: 3 },
+      { id: 'ai-assistant', label: 'AI Assistant', href: '/chat/ai', icon: 'Bot' },
       { id: 'settings', label: 'Settings', href: '/operations-manager/settings', icon: 'Settings' },
     ],
-    allowedPages: ['/operations-manager', '/operations-manager/*', '/reports', '/finance'],
+    allowedPages: ['/operations-manager', '/operations-manager/*', '/reports', '/finance', '/chat', '/chat/*'],
   },
 
   STAFF: {
@@ -91,10 +92,11 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
       { id: 'inventory', label: 'Inventory', href: '/hub-incharge/inventory', icon: 'ShoppingCart' },
       { id: 'sales', label: 'Sales', href: '/hub-incharge/sales', icon: 'Wallet' },
       { id: 'approvals', label: 'Approvals', href: '/hub-incharge/approvals', icon: 'FileText' },
-      { id: 'messages', label: 'Messages', href: '/hub-incharge/messages', icon: 'MessageSquare' },
+      { id: 'messages', label: 'Messages', href: '/chat', icon: 'MessageSquare' },
+      { id: 'ai-assistant', label: 'AI Assistant', href: '/chat/ai', icon: 'Bot' },
       { id: 'settings', label: 'Settings', href: '/hub-incharge/settings', icon: 'Settings' },
     ],
-    allowedPages: ['/hub-incharge', '/hub-incharge/*'],
+    allowedPages: ['/hub-incharge', '/hub-incharge/*', '/chat', '/chat/*'],
   },
 
   CFO: {
