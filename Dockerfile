@@ -82,11 +82,28 @@ COPY --from=build-frontend /app/frontend/.next /app/frontend/.next
 COPY --from=build-frontend /app/frontend/public /app/frontend/public
 COPY --from=build-frontend /app/frontend/next.config.js /app/frontend/
 
-# Copy startup script
-# Copy startup script (root wrapper ensures presence even if scripts/ filtered)
-# Copy unified startup script
-COPY start-railway.sh /app/start-railway.sh
-RUN chmod +x /app/start-railway.sh
+# Create startup script inline (no external file dependency)
+RUN echo '#!/bin/sh' > /app/start-railway.sh && \
+    echo 'echo "============================================"' >> /app/start-railway.sh && \
+    echo 'echo "RAILWAY STARTUP"' >> /app/start-railway.sh && \
+    echo 'echo "============================================"' >> /app/start-railway.sh && \
+    echo 'echo "Time: $(date)"' >> /app/start-railway.sh && \
+    echo 'echo "Working directory: $(pwd)"' >> /app/start-railway.sh && \
+    echo 'echo "Node: $(node --version 2>/dev/null || echo missing)"' >> /app/start-railway.sh && \
+    echo 'set +e' >> /app/start-railway.sh && \
+    echo 'if [ -n "$DATABASE_URL" ]; then' >> /app/start-railway.sh && \
+    echo '  echo "[db] Running migrations..."' >> /app/start-railway.sh && \
+    echo '  if [ -d /app/prisma/migrations ] && [ "$(ls -A /app/prisma/migrations 2>/dev/null)" ]; then' >> /app/start-railway.sh && \
+    echo '    timeout 30 npx prisma migrate deploy 2>&1 && echo "[db] ✅ Migrations complete" || echo "[db] ⚠️ Migration warning"' >> /app/start-railway.sh && \
+    echo '  else' >> /app/start-railway.sh && \
+    echo '    echo "[db] No migrations to run"' >> /app/start-railway.sh && \
+    echo '  fi' >> /app/start-railway.sh && \
+    echo 'else' >> /app/start-railway.sh && \
+    echo '  echo "[db] No DATABASE_URL, skipping migrations"' >> /app/start-railway.sh && \
+    echo 'fi' >> /app/start-railway.sh && \
+    echo 'echo "[start] Launching backend: node index.js"' >> /app/start-railway.sh && \
+    echo 'exec node index.js' >> /app/start-railway.sh && \
+    chmod +x /app/start-railway.sh
 
 # Use dumb-init for proper signal handling
 ENTRYPOINT ["dumb-init","/app/start-railway.sh"]
