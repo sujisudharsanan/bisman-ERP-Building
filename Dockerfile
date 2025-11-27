@@ -83,7 +83,9 @@ COPY --from=build-frontend /app/frontend/public /app/frontend/public
 COPY --from=build-frontend /app/frontend/next.config.js /app/frontend/
 
 # Copy startup script
-COPY scripts/start-railway.sh /app/start-railway.sh
+# Copy startup script (root wrapper ensures presence even if scripts/ filtered)
+COPY start-railway.sh /app/start-railway.sh
+RUN test -f /app/start-railway.sh || (echo "Startup script missing" && exit 1)
 RUN chmod +x /app/start-railway.sh
 
 # Set environment
