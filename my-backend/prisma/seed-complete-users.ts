@@ -993,11 +993,11 @@ async function main() {
       // Create profile
       await prisma.userProfile.upsert({
         where: { userId: user.id },
-        update: userData.profile,
+        update: userData.profile as any,
         create: {
           userId: user.id,
           ...userData.profile,
-        },
+        } as any,
       });
       console.log(`    ✅ Profile created`);
 
@@ -1006,14 +1006,14 @@ async function main() {
         await prisma.userAddress.upsert({
           where: {
             id: (await prisma.userAddress.findFirst({
-              where: { userId: user.id, type: addressData.type },
+              where: { userId: user.id, type: addressData.type as any },
             }))?.id || 0,
           },
-          update: addressData,
+          update: addressData as any,
           create: {
             userId: user.id,
             ...addressData,
-          },
+          } as any,
         });
       }
       console.log(`    ✅ ${userData.addresses.length} addresses created`);
@@ -1021,11 +1021,11 @@ async function main() {
       // Create KYC
       await prisma.userKYC.upsert({
         where: { userId: user.id },
-        update: userData.kyc,
+        update: userData.kyc as any,
         create: {
           userId: user.id,
           ...userData.kyc,
-        },
+        } as any,
       });
       console.log(`    ✅ KYC created`);
 
@@ -1063,11 +1063,11 @@ async function main() {
               where: { userId: user.id, skillName: skillData.skillName },
             }))?.id || 0,
           },
-          update: skillData,
+          update: skillData as any,
           create: {
             userId: user.id,
             ...skillData,
-          },
+          } as any,
         });
       }
       console.log(`    ✅ ${userData.skills.length} skills created`);

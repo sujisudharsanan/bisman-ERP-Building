@@ -1,0 +1,13 @@
+# Copy these EXACT variables to Railway Frontend Service
+
+# CRITICAL: API URL - tells frontend where backend is
+NEXT_PUBLIC_API_URL=https://bisman-erp-backend-production.up.railway.app
+
+# Environment
+NODE_ENV=production
+
+# Port
+PORT=3000
+
+# Optional but recommended
+NEXT_TELEMETRY_DISABLED=1
