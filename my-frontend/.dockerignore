@@ -14,3 +14,9 @@ yarn-error.log*
 Dockerfile
 **/.DS_Store
 **/Thumbs.db
+out
+.cache
+pnpm-debug.log*
+coverage
+backups/
+.tmp/
