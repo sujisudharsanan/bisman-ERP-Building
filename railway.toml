@@ -1,7 +1,40 @@
 # Railway Monorepo Configuration
-# Place this file in the PROJECT ROOT to define multiple services
+# Place this file in the PROJECT ROOT
 
-[build]
-builder = "NIXPACKS"
+# Frontend Service
+[[services]]
+name = "bisman-erp-frontend"
+source = "my-frontend"
 
-[deploy]
+[services.build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[services.deploy]
+startCommand = "node server.js"
+healthcheckPath = "/"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[services.watch]
+patterns = ["my-frontend/**/*"]
+
+# Backend Service
+[[services]]
+name = "bisman-erp-backend"
+source = "my-backend"
+
+[services.build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+
+[services.deploy]
+startCommand = "node index.js"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
+
+[services.watch]
+patterns = ["my-backend/**/*"]
