@@ -1,25 +1,24 @@
-# Railway Diagnostic Dockerfile - Build Time: 2025-11-28 20:40
-# This file should NOT be used - it's only here to show Railway is looking in the wrong place
+# UNIQUE_BUILD_ID: 20251129-001122-RAILWAY-DIAGNOSTIC
+# This is a diagnostic Dockerfile to prove Railway Root Directory is not set
 
-FROM alpine:latest
+FROM node:20-alpine
 
-# Display error message
-RUN echo "=============================================" && \
-    echo "❌ RAILWAY ROOT DIRECTORY IS WRONG!" && \
-    echo "=============================================" && \
+WORKDIR /diagnostic
+
+RUN echo "================================================" && \
+    echo "🚨 RAILWAY CONFIGURATION ERROR DETECTED 🚨" && \
+    echo "================================================" && \
     echo "" && \
-    echo "Railway is using: ./Dockerfile (at repository root)" && \
-    echo "Should be using: my-frontend/Dockerfile" && \
+    echo "Railway is building from: PROJECT ROOT" && \
+    echo "Railway should build from: my-frontend/" && \
     echo "" && \
-    echo "📋 FIX IN RAILWAY DASHBOARD:" && \
-    echo "1. Click your frontend service" && \
-    echo "2. Go to Settings tab" && \
-    echo "3. Find 'Root Directory' field" && \
-    echo "4. Set to: my-frontend" && \
-    echo "5. Click Save" && \
-    echo "6. Redeploy" && \
+    echo "SOLUTION:" && \
+    echo "In Railway Dashboard → Settings → Root Directory" && \
+    echo "Set to: my-frontend" && \
     echo "" && \
-    echo "❌ DO NOT USE THIS DOCKERFILE!" && \
+    echo "Current Dockerfile location: ./Dockerfile (ROOT)" && \
+    echo "Correct Dockerfile location: my-frontend/Dockerfile" && \
+    echo "" && \
     exit 1
 
-CMD ["echo", "ERROR: This should never run"]
+CMD ["node", "--version"]
