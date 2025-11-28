@@ -45,13 +45,19 @@ WORKDIR /app
 
 ENV NODE_ENV=production \
   PORT=3000 \
-  NEXT_TELEMETRY_DISABLED=1
+  NEXT_TELEMETRY_DISABLED=1 \
+  OPENSSL_INSTALLED=2025-11-28
 
 # Install OpenSSL for Prisma (libssl is required by Prisma's query engine)
-RUN apt-get update -y && \
-    apt-get install -y openssl && \
+# This MUST run on every build to ensure libssl.so.1.1 is available
+RUN echo "Installing OpenSSL for Prisma..." && \
+    apt-get update -y && \
+    apt-get install -y openssl libssl3 && \
     apt-get clean && \
-    rm -rf /var/lib/apt/lists/*
+    rm -rf /var/lib/apt/lists/* && \
+    echo "OpenSSL installation complete" && \
+    ldconfig && \
+    ldconfig -p | grep libssl
 
 # Create non-root user
 RUN groupadd -g 1001 nodejs \
