@@ -46,7 +46,10 @@ export async function GET(req: NextRequest) {
     // Enrich with actor names if available
   const actorIds = Array.from(new Set(logs.map((l: any) => l.actorId).filter(Boolean))) as string[];
   const users = actorIds.length ? await prisma.user.findMany({ where: { id: { in: actorIds as string[] } }, select: { id: true, name: true, email: true } }) : [];
-    const userMap = new Map(users.map((u) => [u.id, u]));
+    // Avoid implicit any: provide minimal typing for Prisma-selected fields
+    const userMap = new Map(
+      users.map((u: { id: string; name?: string | null; email?: string | null }) => [u.id, u])
+    );
 
     const data = logs.map((l: any) => {
       const sev = l?.meta?.severity || l?.meta?.level || undefined;
