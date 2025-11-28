@@ -1,10 +1,11 @@
-// Use a namespace import so PrismaClient is available as a runtime value
-import * as PrismaPkg from '@prisma/client';
+// Ensure runtime value import under Next.js strict settings
+import type { PrismaClient as PrismaClientType } from '@prisma/client';
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { PrismaClient } = require('@prisma/client') as typeof import('@prisma/client');
 
-type PrismaClient = PrismaPkg.PrismaClient;
-const globalForPrisma = globalThis as unknown as { prisma?: PrismaClient };
+const globalForPrisma = globalThis as unknown as { prisma?: PrismaClientType };
 
-export const prisma = globalForPrisma.prisma ?? new PrismaPkg.PrismaClient({
+export const prisma = globalForPrisma.prisma ?? new PrismaClient({
   log: ['error', 'warn']
 });
 
