@@ -47,6 +47,12 @@ ENV NODE_ENV=production \
   PORT=3000 \
   NEXT_TELEMETRY_DISABLED=1
 
+# Install OpenSSL for Prisma (libssl is required by Prisma's query engine)
+RUN apt-get update -y && \
+    apt-get install -y openssl && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 # Create non-root user
 RUN groupadd -g 1001 nodejs \
  && useradd -u 1001 -g nodejs -m nextjs
