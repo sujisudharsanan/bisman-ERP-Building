@@ -4,12 +4,8 @@
 # Default: ignore everything
 **
 
-# Allow root Dockerfile, startup script, and backend/frontend directories
+# Allow root Dockerfile and only my-frontend when building frontend image
 !Dockerfile
-!start-railway.sh
-!scripts/
-!scripts/**
-!my-backend/**
 !my-frontend/**
 
 # Exclude heavy/unnecessary items even under my-backend
@@ -35,8 +31,7 @@ logs
 **/*.dump
 .env*
 
-# Frontend heavies still excluded even though directory is included
-# Keep frontend node_modules out of context; we install inside image
+# Frontend heavies excluded even though directory is included
 my-frontend/node_modules
 my-frontend/.next
 my-frontend/out
