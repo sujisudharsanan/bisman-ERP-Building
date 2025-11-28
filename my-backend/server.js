@@ -8,26 +8,29 @@ const express = require('express');
 const http = require('http');
 const { Server } = require('socket.io');
 
-// Load Next.js from production node_modules (not standalone)
+// Optional Next.js integration is disabled by default on Railway API service.
+// Enable only if you intentionally bundle a frontend with the backend container.
+const ENABLE_NEXT = process.env.ENABLE_NEXT_INTEGRATION === '1';
 const frontendDir = path.resolve(__dirname, 'frontend');
 let next;
 let nextAvailable = false;
 
-try {
-  // Use the Next.js installed in frontend/node_modules
-  next = require(path.join(frontendDir, 'node_modules', 'next'));
-  nextAvailable = true;
-  console.log('[startup] Next.js loaded from frontend/node_modules');
-} catch (e1) {
-  console.warn('[startup] Next.js not available:', e1.message);
-  console.warn('[startup] Proceeding with API-only server.');
+if (ENABLE_NEXT) {
+  try {
+    next = require(path.join(frontendDir, 'node_modules', 'next'));
+    nextAvailable = true;
+    console.log('[startup] Next.js loaded from frontend/node_modules');
+  } catch (e1) {
+    console.warn('[startup] Next.js not available:', e1.message);
+    console.warn('[startup] Proceeding with API-only server.');
+  }
 }
 
 const apiApp = require('./app');
 
 // Next.js setup
 const dev = process.env.NODE_ENV !== 'production';
-const nextApp = nextAvailable ? next({ dev, dir: frontendDir }) : null;
+const nextApp = (ENABLE_NEXT && nextAvailable) ? next({ dev, dir: frontendDir }) : null;
 const handle = nextApp ? nextApp.getRequestHandler() : null;
 
 async function start() {
@@ -238,7 +241,7 @@ async function start() {
     // API-only mode - no Next.js catch-all needed
     // Root route already registered above
     // API routes already mounted via apiApp in app.js
-    console.log('[startup] Running in API-only mode (Next.js not available)');
+    console.log('[startup] Running in API-only mode');
   }
   
   // Remove old fallback block (dead code)
