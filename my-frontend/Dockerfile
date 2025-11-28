@@ -1,6 +1,9 @@
 # Multi-stage Dockerfile for Next.js 15 (standalone output)
 # Works on Railway with startCommand: "node server.js"
 
+# Cache-buster: Force rebuild when changed
+ARG CACHE_BUST=v2025-11-28-14
+
 # 1) Install dependencies (including dev) for building
 FROM node:20-bookworm-slim AS deps
 WORKDIR /app
@@ -49,6 +52,11 @@ RUN npm run build
 
 # 3) Runtime image: minimal Node with standalone server
 FROM node:20-bookworm-slim AS runner
+
+# Use cache-busting ARG to force rebuild
+ARG CACHE_BUST=v2025-11-28-14
+RUN echo "Cache bust: ${CACHE_BUST}"
+
 WORKDIR /app
 
 # Install OpenSSL FIRST before any ENV or other commands
