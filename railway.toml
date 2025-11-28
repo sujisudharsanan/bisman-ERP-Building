@@ -1,5 +1,11 @@
 # Railway Monorepo Configuration
 # Place this file in the PROJECT ROOT
+#
+# ⚠️ IMPORTANT: In Railway Dashboard, you MUST set Root Directory:
+# - Frontend service → Root Directory: my-frontend (no slashes!)
+# - Backend service → Root Directory: my-backend (no slashes!)
+#
+# DO NOT set Root Directory to "/" - that will fail!
 
 # Frontend Service
 [[services]]
