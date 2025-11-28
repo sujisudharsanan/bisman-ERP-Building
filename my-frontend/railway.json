@@ -3,14 +3,7 @@
   "build": {
     "builder": "DOCKERFILE",
     "dockerfilePath": "Dockerfile",
-    "watchPatterns": [
-      "**/*.tsx",
-      "**/*.ts",
-      "**/*.jsx",
-      "**/*.js",
-      "package.json",
-      "next.config.js"
-    ]
+    "watchPatterns": ["**"]
   },
   "deploy": {
     "startCommand": "node server.js",
