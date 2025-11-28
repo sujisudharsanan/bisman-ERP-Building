@@ -27,9 +27,17 @@ RUN if [ -f package-lock.json ] || [ -f npm-shrinkwrap.json ]; then \
 FROM node:20-bookworm-slim AS builder
 WORKDIR /app
 
+# Install OpenSSL in builder stage too
+RUN apt-get update -y && \
+    apt-get install -y openssl libssl3 && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/*
+
 ENV NODE_ENV=production \
   NEXT_TELEMETRY_DISABLED=1 \
-  RAILWAY=1
+  RAILWAY=1 \
+  OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu \
+  PRISMA_ENGINES_MIRROR=https://binaries.prisma.sh
 
 # Copy installed node_modules from deps
 COPY --from=deps /app/node_modules ./node_modules
@@ -43,21 +51,20 @@ RUN npm run build
 FROM node:20-bookworm-slim AS runner
 WORKDIR /app
 
+# Install OpenSSL FIRST before any ENV or other commands
+RUN echo "=== Installing OpenSSL for Prisma ===" && \
+    apt-get update -y && \
+    apt-get install -y openssl libssl3 ca-certificates && \
+    apt-get clean && \
+    rm -rf /var/lib/apt/lists/* && \
+    ldconfig && \
+    echo "=== OpenSSL installed, available libraries: ===" && \
+    ldconfig -p | grep libssl || echo "No libssl found"
+
 ENV NODE_ENV=production \
   PORT=3000 \
   NEXT_TELEMETRY_DISABLED=1 \
-  OPENSSL_INSTALLED=2025-11-28
-
-# Install OpenSSL for Prisma (libssl is required by Prisma's query engine)
-# This MUST run on every build to ensure libssl.so.1.1 is available
-RUN echo "Installing OpenSSL for Prisma..." && \
-    apt-get update -y && \
-    apt-get install -y openssl libssl3 && \
-    apt-get clean && \
-    rm -rf /var/lib/apt/lists/* && \
-    echo "OpenSSL installation complete" && \
-    ldconfig && \
-    ldconfig -p | grep libssl
+  OPENSSL_LIB_DIR=/usr/lib/x86_64-linux-gnu
 
 # Create non-root user
 RUN groupadd -g 1001 nodejs \
