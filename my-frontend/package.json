@@ -13,7 +13,7 @@
     "prisma:deploy": "prisma migrate deploy",
     "prisma:seed": "ts-node --compiler-options '{\"module\":\"commonjs\"}' prisma/seed.ts",
     "prepare": "if [ \"$CI\" = \"true\" ]; then echo 'skip husky on CI'; else husky; fi",
-    "prebuild": "node ../my-backend/scripts/export-page-registry.js 2>/dev/null || echo 'Registry export skipped'; if [ \"$CI\" = \"true\" ] || [ \"$VERCEL\" = \"1\" ] || [ \"$RAILWAY\" = \"1\" ]; then echo 'skip lint/type-check in CI/Vercel/Railway'; else if [ -f .eslintrc.json ] || [ -f .eslintrc.js ] || [ -f .eslintrc.cjs ] || [ -f .eslintrc.yml ] || [ -f .eslintrc.yaml ] || grep -q \"\\\"eslintConfig\\\"\" package.json 2>/dev/null; then eslint . --ext .js,.jsx,.ts,.tsx --no-error-on-unmatched-pattern; else echo 'skip eslint (no config)'; fi; tsc --noEmit; fi",
+    "prebuild": "echo '=== Generating Prisma Client ===' && npx prisma generate && echo '=== Prisma Client Generated ===' && node ../my-backend/scripts/export-page-registry.js 2>/dev/null || echo 'Registry export skipped'; if [ \"$CI\" = \"true\" ] || [ \"$VERCEL\" = \"1\" ] || [ \"$RAILWAY\" = \"1\" ]; then echo 'skip lint/type-check in CI/Vercel/Railway'; else if [ -f .eslintrc.json ] || [ -f .eslintrc.js ] || [ -f .eslintrc.cjs ] || [ -f .eslintrc.yml ] || [ -f .eslintrc.yaml ] || grep -q \"\\\"eslintConfig\\\"\" package.json 2>/dev/null; then eslint . --ext .js,.jsx,.ts,.tsx --no-error-on-unmatched-pattern; else echo 'skip eslint (no config)'; fi; tsc --noEmit; fi",
     "vercel-build": "CI=true VERCEL=1 npx next build",
     "verify:clean": "grep -R 'loader-demo' -n || echo 'No loader-demo references'",
     "lint": "eslint src --ext .js,.jsx,.ts,.tsx --max-warnings=0",

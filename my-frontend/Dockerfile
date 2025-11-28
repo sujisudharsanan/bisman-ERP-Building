@@ -29,24 +29,14 @@ WORKDIR /app
 
 ENV NODE_ENV=production \
   NEXT_TELEMETRY_DISABLED=1 \
-  RAILWAY=1 \
-  PRISMA_GENERATE_REQUIRED=1
+  RAILWAY=1
 
 # Copy installed node_modules from deps
 COPY --from=deps /app/node_modules ./node_modules
-
-# Copy prisma schema first
-COPY prisma ./prisma
-
-# Generate Prisma client BEFORE copying rest of source
-RUN echo "=== Running prisma generate ===" && \
-    npx prisma generate && \
-    echo "=== Prisma client generated successfully ==="
-
-# Now copy rest of app source
+# Copy app source
 COPY . .
 
-# Build Next.js (next.config.js sets output: 'standalone')
+# Build Next.js (prisma generate now runs in prebuild script in package.json)
 RUN npm run build
 
 # 3) Runtime image: minimal Node with standalone server
