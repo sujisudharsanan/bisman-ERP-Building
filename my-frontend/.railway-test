@@ -1,0 +1,4 @@
+# Test file to verify Railway can see this directory
+# If Railway builds successfully, this file exists in the correct location
+Railway Root Directory Test - Frontend Service
+Location: my-frontend/.railway-test
