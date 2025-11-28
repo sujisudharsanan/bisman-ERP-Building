@@ -1,4 +1,5 @@
-ARG CACHEBUST=20251128-1403
+# Railway Deploy - Force Rebuild 2025-11-28 20:15
+ARG CACHEBUST=20251128-2015
 FROM node:20-bullseye-slim AS deps
 WORKDIR /app
 RUN echo "Cache bust: ${CACHEBUST:-default}" && \
@@ -11,7 +12,7 @@ COPY package.json package-lock.json* ./
 RUN npm ci --include=dev
 
 FROM node:20-bullseye-slim AS builder
-ARG CACHEBUST=20251128-1403
+ARG CACHEBUST=20251128-2015
 WORKDIR /app
 RUN echo "Builder cache bust: ${CACHEBUST:-default}" && \
     apt-get update && \
@@ -28,7 +29,7 @@ ENV CI=true
 RUN npm run build
 
 FROM node:20-bullseye-slim AS runner
-ARG CACHEBUST=20251128-1403
+ARG CACHEBUST=20251128-2015
 WORKDIR /app
 RUN echo "Runner cache bust: ${CACHEBUST:-default}" && \
     apt-get update && \
