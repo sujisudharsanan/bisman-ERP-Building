@@ -33,11 +33,11 @@ ENV NODE_ENV=production \
 
 # Copy installed node_modules from deps
 COPY --from=deps /app/node_modules ./node_modules
-# Copy app source
+# Copy app source (including prisma schema)
 COPY . .
 
 # Generate Prisma client before building Next.js
-RUN npx prisma generate
+RUN echo "Running prisma generate..." && npx prisma generate && echo "Prisma generate complete"
 
 # Build Next.js (next.config.js sets output: 'standalone')
 RUN npm run build
