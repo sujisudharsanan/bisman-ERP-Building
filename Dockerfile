@@ -2,7 +2,7 @@
 # Remove this file after setting Root Directory to 'my-frontend'.
 # Mirrors my-frontend/Dockerfile.
 
-ARG CACHEBUST=20251129-2130
+ARG CACHEBUST=20251129-2215
 FROM node:20-bullseye-slim AS deps
 WORKDIR /app
 RUN apt-get update && apt-get install -y openssl libssl1.1 ca-certificates && rm -rf /var/lib/apt/lists/* && ldconfig
@@ -11,7 +11,7 @@ COPY my-frontend/prisma ./prisma
 RUN npm ci --include=dev
 
 FROM node:20-bullseye-slim AS builder
-ARG CACHEBUST=20251129-2130
+ARG CACHEBUST=20251129-2215
 WORKDIR /app
 RUN apt-get update && apt-get install -y openssl libssl1.1 ca-certificates && rm -rf /var/lib/apt/lists/* && ldconfig
 COPY --from=deps /app/node_modules ./node_modules
