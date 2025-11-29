@@ -11,8 +11,8 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  // Priority: BACKEND_URL (runtime) > NEXT_PUBLIC_* (build-time) > fallback
-  const BACKEND_URL = process.env.BACKEND_URL || process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+  // Priority: BACKEND_URL (runtime) > NEXT_PUBLIC_* (build-time) > Railway default
+  const BACKEND_URL = process.env.BACKEND_URL || process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'https://bisman-erp-backend-production.up.railway.app';
   
   try {
     // Forward the request to the backend
