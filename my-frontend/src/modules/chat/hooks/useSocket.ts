@@ -17,8 +17,10 @@ export function useSocket(): UseSocketReturn {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    // Get API URL from environment or default
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
+    // Get API URL from environment - for Socket.IO we need direct backend connection
+    const apiUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 
+                   process.env.NEXT_PUBLIC_API_URL || 
+                   'https://bisman-erp-backend-production.up.railway.app';
     
     // Initialize Socket.IO client
     const socketInstance = io(apiUrl, {

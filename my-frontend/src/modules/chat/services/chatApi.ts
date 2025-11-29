@@ -14,7 +14,8 @@ import type {
   AIMessage,
 } from '../types'
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000'
+// Use empty string for relative URLs - requests will go through Next.js API proxy
+const API_BASE = ''
 
 class ChatApiService {
   private baseUrl: string
