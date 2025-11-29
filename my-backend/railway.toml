@@ -1,0 +1,14 @@
+# Backend Railway Config
+# Root Directory should be set to 'my-backend' in Railway Dashboard
+
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
+watchPatterns = ["**"]
+
+[deploy]
+startCommand = "sh /app/start-backend.sh"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 300
+restartPolicyType = "ON_FAILURE"
+restartPolicyMaxRetries = 10
