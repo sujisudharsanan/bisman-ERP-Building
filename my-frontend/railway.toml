@@ -1,9 +1,10 @@
-# Temporary service-level Railway config to satisfy build while Root Directory is incorrectly set to '/'.
-# REMOVE after setting Root Directory to 'my-frontend' in Dashboard.
+# Frontend Railway Config
+# Works with Root Directory set to 'my-frontend' OR '/'
 
 [build]
 builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
+watchPatterns = ["**"]
 
 [deploy]
 startCommand = "node server.js"
