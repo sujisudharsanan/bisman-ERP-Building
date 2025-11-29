@@ -1,7 +1,7 @@
 {
   "meta": {
     "version": "1.0.0",
-    "exportedAt": "2025-11-29T13:22:23.991Z",
+    "exportedAt": "2025-11-29T15:54:36.409Z",
     "source": "my-frontend/src/common/config/page-registry.ts",
     "generator": "scripts/export-page-registry.js"
   },

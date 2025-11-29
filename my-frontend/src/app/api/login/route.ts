@@ -1,17 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
-// When running on Railway (same-origin), use localhost to call Express API in same container
-// Otherwise fall back to external backend URL
+// Priority: BACKEND_URL (runtime server-side) > NEXT_PUBLIC_* (build-time) > fallback
 const BACKEND_BASE =
-  process.env.RAILWAY_ENVIRONMENT 
-    ? `http://127.0.0.1:${process.env.PORT || 8080}` // Same container
-    : (
-      process.env.RENDER_BACKEND_URL ||
-      process.env.NEXT_PUBLIC_API_URL ||
-      process.env.NEXT_PUBLIC_API_BASE ||
-      process.env.NEXT_PUBLIC_API_BASE_URL ||
-      'https://bisman-erp-rr6f.onrender.com'
-    );
+  process.env.BACKEND_URL ||
+  process.env.API_URL ||
+  process.env.RENDER_BACKEND_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_API_BASE ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  'http://localhost:3001';
 
 export async function POST(req: NextRequest) {
   try {

@@ -3,6 +3,9 @@
  * 
  * CRITICAL FIX: Uses http/https module instead of fetch to properly
  * handle multiple Set-Cookie headers from backend.
+ * 
+ * NOTE: Uses BACKEND_URL (server-side env var) for runtime, not NEXT_PUBLIC_*
+ * which is inlined at build time. This allows Railway to inject the URL at runtime.
  */
 
 import type { NextApiRequest, NextApiResponse } from 'next';
@@ -10,7 +13,8 @@ import http from 'http';
 import https from 'https';
 import { URL } from 'url';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+// Priority: BACKEND_URL (runtime) > API_URL (runtime) > NEXT_PUBLIC_API_URL (build-time) > fallback
+const BACKEND_URL = process.env.BACKEND_URL || process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
 
 export default async function handler(
   req: NextApiRequest,
