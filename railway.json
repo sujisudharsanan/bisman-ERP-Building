@@ -5,7 +5,6 @@
     "dockerfilePath": "my-frontend/Dockerfile"
   },
   "deploy": {
-    "startCommand": "node server.js",
     "healthcheckPath": "/",
     "healthcheckTimeout": 300
   }
