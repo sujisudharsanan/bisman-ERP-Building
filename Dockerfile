@@ -25,6 +25,8 @@ RUN apt-get update && apt-get install -y openssl libssl1.1 ca-certificates curl 
 ENV NODE_ENV=production
 ENV HOSTNAME="0.0.0.0"
 ENV PORT=3000
+# Default backend URL for Railway - can be overridden by Railway env vars
+ENV BACKEND_URL="https://bisman-erp-backend-production.up.railway.app"
 RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -m nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
