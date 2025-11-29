@@ -1,64 +1,29 @@
-# Backend-only Dockerfile for Railway
-# This builds and runs ONLY the backend service
-# Root directory should be set to /my-backend/ in Railway
-# BUILD_VERSION: 2025-11-28-backend-only-folder
+# Backend Dockerfile for Railway
+# BUILD_VERSION: 2025-11-29-simplified
 
-FROM node:20-alpine AS deps
+FROM node:20-alpine
 WORKDIR /app
 
-# Install system dependencies for Prisma
-RUN apk add --no-cache postgresql-client openssl libc6-compat
+# Install system dependencies
+RUN apk add --no-cache postgresql-client openssl libc6-compat dumb-init
 
-# Copy backend package files (from current directory since root is my-backend/)
+# Copy package files
 COPY package*.json ./
-COPY prisma ./prisma/
 
-# Install backend dependencies
+# Install dependencies
 RUN npm ci --ignore-scripts && npm cache clean --force
 
-# Copy backend source
-COPY . ./
-
-# Generate Prisma client
+# Copy prisma schema and generate client
+COPY prisma ./prisma/
 RUN npx prisma generate
 
-# ============================================
-# Production Runtime
-# ============================================
-FROM node:20-alpine AS runner
-RUN apk add --no-cache dumb-init libc6-compat
-WORKDIR /app
-
-# Copy backend from deps stage
-COPY --from=deps /app /app
-
-# Create backend startup script inline
-RUN echo '#!/bin/sh' > /app/start-backend.sh && \
-    echo 'echo "============================================"' >> /app/start-backend.sh && \
-    echo 'echo "BACKEND SERVICE STARTUP"' >> /app/start-backend.sh && \
-    echo 'echo "============================================"' >> /app/start-backend.sh && \
-    echo 'echo "Time: $(date)"' >> /app/start-backend.sh && \
-    echo 'echo "Working directory: $(pwd)"' >> /app/start-backend.sh && \
-    echo 'echo "Node: $(node --version 2>/dev/null || echo missing)"' >> /app/start-backend.sh && \
-    echo 'set +e' >> /app/start-backend.sh && \
-    echo 'if [ -n "$DATABASE_URL" ]; then' >> /app/start-backend.sh && \
-    echo '  echo "[db] Running migrations..."' >> /app/start-backend.sh && \
-    echo '  if [ -d /app/prisma/migrations ] && [ "$(ls -A /app/prisma/migrations 2>/dev/null)" ]; then' >> /app/start-backend.sh && \
-    echo '    timeout 30 npx prisma migrate deploy 2>&1 && echo "[db] ✅ Migrations complete" || echo "[db] ⚠️ Migration warning"' >> /app/start-backend.sh && \
-    echo '  else' >> /app/start-backend.sh && \
-    echo '    echo "[db] No migrations to run"' >> /app/start-backend.sh && \
-    echo '  fi' >> /app/start-backend.sh && \
-    echo 'else' >> /app/start-backend.sh && \
-    echo '  echo "[db] No DATABASE_URL, skipping migrations"' >> /app/start-backend.sh && \
-    echo 'fi' >> /app/start-backend.sh && \
-    echo 'echo "[start] Launching backend: node index.js"' >> /app/start-backend.sh && \
-    echo 'exec node index.js' >> /app/start-backend.sh && \
-    chmod +x /app/start-backend.sh
-
-# Use dumb-init for proper signal handling
-ENTRYPOINT ["dumb-init", "/app/start-backend.sh"]
+# Copy rest of the source
+COPY . ./
 
 # Set environment
 ENV NODE_ENV=production
 ENV PORT=3000
 EXPOSE 3000
+
+# Start command
+CMD ["sh", "-c", "npx prisma migrate deploy || true; node index.js"]
