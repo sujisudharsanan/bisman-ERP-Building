@@ -14,14 +14,6 @@ export default async function handler(
   // Priority: BACKEND_URL (runtime) > NEXT_PUBLIC_* (build-time) > fallback
   const BACKEND_URL = process.env.BACKEND_URL || process.env.API_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
   
-  // Debug: Log which env vars are available (remove after fixing)
-  console.log('🔍 ENV DEBUG:', {
-    BACKEND_URL: process.env.BACKEND_URL || '(not set)',
-    API_URL: process.env.API_URL || '(not set)',
-    NEXT_PUBLIC_API_URL: process.env.NEXT_PUBLIC_API_URL || '(not set)',
-    RESOLVED: BACKEND_URL,
-  });
-  
   try {
     // Forward the request to the backend
     const backendResponse = await fetch(`${BACKEND_URL}/api/health`, {
