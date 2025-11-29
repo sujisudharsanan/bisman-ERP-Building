@@ -32,5 +32,5 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modul
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 USER nextjs
 EXPOSE 3000
-# Use PORT from environment if set, otherwise default to 3000
-CMD node server.js
+# Railway sets PORT dynamically - must use shell form to expand $PORT
+CMD ["sh", "-c", "PORT=${PORT:-3000} node server.js"]
