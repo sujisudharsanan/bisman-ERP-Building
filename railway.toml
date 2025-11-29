@@ -1,9 +1,0 @@
-# Railway Monorepo - DO NOT USE THIS FILE
-# ========================================
-# Each service has its own config in its directory:
-#   - my-frontend/railway.toml (frontend)
-#   - my-backend/railway.toml (backend)
-#
-# In Railway Dashboard, set Root Directory for each service:
-#   - Frontend: my-frontend
-#   - Backend: my-backend
