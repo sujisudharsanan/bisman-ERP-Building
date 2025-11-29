@@ -1,23 +1,47 @@
-# Keep Docker context tiny to avoid timeouts in Railway
-# Include only backend for the root Dockerfile
+# Keep Docker context small for Railway
+# DO NOT use ** as first line - it can break Railway's Dockerfile detection
 
-# Default: ignore everything
-**
+# Exclude heavy directories
+node_modules
+.next
+.git
+coverage
+logs
+dist
+out
+.venv*
+__pycache__
 
-# Allow root Dockerfile and only my-frontend when building frontend image
-!Dockerfile
-!my-frontend/**
+# Exclude documentation
+*.md
+docs/
 
-# Exclude heavy/unnecessary items even under my-backend
-my-backend/node_modules
-my-backend/logs
-my-backend/**/*.log
-my-backend/**/*.dump
-my-backend/**/*.sqlite
-my-backend/*.sqlite*
-my-backend/.env*
-my-backend/coverage
-my-backend/__tests__
+# Exclude env files
+.env*
+*.env
+
+# Exclude logs and dumps
+*.log
+*.dump
+*.sqlite*
+
+# Exclude OS/editor files
+.DS_Store
+.vscode
+.idea
+.husky
+
+# Exclude test files
+**/*.test.js
+**/*.spec.js
+__tests__
+
+# Exclude backup files
+*.backup.*
+backup-*/
+
+# Allow essential files (implicit - not excluded above)
+# Dockerfile, package.json, source code, prisma, etc.
 
 # Root noise and large dirs
 !.dockerignore
