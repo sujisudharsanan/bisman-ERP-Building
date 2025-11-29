@@ -27,6 +27,9 @@ RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -m nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Copy Prisma client (required for database operations at runtime)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 USER nextjs
 EXPOSE 3000
 # Use PORT from environment if set, otherwise default to 3000

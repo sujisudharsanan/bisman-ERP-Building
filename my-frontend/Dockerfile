@@ -48,6 +48,9 @@ RUN chown -R nextjs:nodejs /app
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
+# Copy Prisma client (required for database operations at runtime)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 USER nextjs
 EXPOSE 3000
 # Use shell form to ensure environment variables are expanded
