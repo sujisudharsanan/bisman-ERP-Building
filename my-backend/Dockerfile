@@ -1,5 +1,6 @@
 FROM node:20-alpine
 
+# Force rebuild: 2025-11-30-v1
 WORKDIR /app
 
 # Install dependencies for Prisma
