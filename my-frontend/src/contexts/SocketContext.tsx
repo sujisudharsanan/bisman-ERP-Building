@@ -220,26 +220,6 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
   return (
     <SocketContext.Provider value={value}>
       {children}
-      {/* Connection Status Indicator (optional) */}
-      {process.env.NODE_ENV === 'development' && (
-        <div
-          style={{
-            position: 'fixed',
-            bottom: 10,
-            right: 10,
-            padding: '8px 12px',
-            borderRadius: 4,
-            backgroundColor: connected ? '#10b981' : '#ef4444',
-            color: 'white',
-            fontSize: 12,
-            fontWeight: 'bold',
-            zIndex: 9999,
-            boxShadow: '0 2px 8px rgba(0,0,0,0.2)'
-          }}
-        >
-          {connected ? '🟢 Connected' : '🔴 Disconnected'}
-        </div>
-      )}
     </SocketContext.Provider>
   );
 };

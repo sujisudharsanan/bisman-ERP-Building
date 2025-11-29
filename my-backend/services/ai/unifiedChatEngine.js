@@ -497,9 +497,10 @@ class UnifiedChatEngine {
     if (intentData?.requires_permission) {
       const hasPermission = await this.checkPermission(userId, intentData.requires_permission);
       if (!hasPermission) {
-        const denialResponse = `I'm sorry ${firstName}, but you don't have permission to perform this action. Please contact your administrator.`;
+        const featureName = intentData.category || intent.replace(/_/g, ' ');
+        const requiredRole = intentData.requires_permission || 'higher access';
         return {
-          response: humanizeService.formatPermissionDenied(firstName),
+          response: humanizeService.formatPermissionDenied(firstName, featureName, requiredRole, roleName),
           requiresPermission: intentData.requires_permission,
           hasPermission: false,
           data: null
@@ -514,6 +515,17 @@ class UnifiedChatEngine {
     response = response.replace('{firstName}', firstName);
     response = response.replace('{roleName}', roleName || 'your role');
     
+    // Helper to safely get reply from humanizeService (which returns an object)
+    const humanize = (text, opts = {}) => {
+      const result = humanizeService.formatHumanReply({ 
+        baseText: text, 
+        userName: opts.userName || firstName, 
+        intent: opts.intent || intent,
+        confidence: 0.9 
+      });
+      return typeof result === 'string' ? result : (result?.reply || text);
+    };
+    
     // Execute intent-specific actions
     switch (intent) {
       case 'list_tasks':
@@ -525,10 +537,10 @@ class UnifiedChatEngine {
           tasks.forEach((task, idx) => {
             response += `\n${idx + 1}. ${task.title} (${task.priority} priority)`;
           });
-          response = humanizeService.formatHumanReply(response, { userName: firstName });
+          response = humanize(response);
         } else {
           const noTasksMsg = `Great news ${firstName}! You have no pending tasks. 🎉`;
-          response = humanizeService.formatHumanReply(noTasksMsg, { userName: firstName, tone: 'friendly' });
+          response = humanize(noTasksMsg);
         }
         break;
         
@@ -540,10 +552,10 @@ class UnifiedChatEngine {
           approvals.forEach((approval, idx) => {
             response += `\n${idx + 1}. ${approval.request_type} - ${approval.description || 'No description'}`;
           });
-          response = humanizeService.formatHumanReply(response, { userName: firstName });
+          response = humanize(response);
         } else {
           const noApprovalsMsg = `You're all caught up ${firstName}! No pending approvals. 🎉`;
-          response = humanizeService.formatHumanReply(noApprovalsMsg, { userName: firstName, tone: 'friendly' });
+          response = humanize(noApprovalsMsg);
         }
         break;
         
@@ -553,12 +565,12 @@ class UnifiedChatEngine {
         
       case 'help':
         response += `\n\nYou can ask me to:\n• "Show my tasks"\n• "List pending approvals"\n• "Create a task"\n• "Show reports"\n• And much more!`;
-        response = humanizeService.formatHumanReply(response, { userName: firstName, tone: 'friendly' });
+        response = humanize(response, { intent: 'help' });
         break;
         
       default:
         // Humanize all other responses
-        response = humanizeService.formatHumanReply(response, { userName: firstName });
+        response = humanize(response);
         break;
     }
     
@@ -606,13 +618,18 @@ class UnifiedChatEngine {
       );
       
       // Create or get conversation
-      let actualConversationId = conversationId;
+      // Only use conversationId if it's a valid integer (not a session string)
+      let actualConversationId = null;
+      if (conversationId && !isNaN(parseInt(conversationId)) && !String(conversationId).includes('session')) {
+        actualConversationId = parseInt(conversationId);
+      }
+      
       if (!actualConversationId) {
         const convResult = await pool.query(`
           INSERT INTO chat_conversations (user_id, title, context_type)
           VALUES ($1, $2, $3)
           RETURNING id
-        `, [userId, `Chat - ${new Date().toLocaleDateString()}`, intentResult.category]);
+        `, [userId, `Chat - ${new Date().toLocaleDateString()}`, intentResult.category || 'general']);
         actualConversationId = convResult.rows[0].id;
       }
       

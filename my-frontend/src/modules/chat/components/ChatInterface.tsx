@@ -106,7 +106,11 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
 
   // Auto-scroll to bottom when new messages arrive or task form opens
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    // Small delay to ensure DOM has updated
+    const timer = setTimeout(() => {
+      messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
+    return () => clearTimeout(timer);
   }, [messages, showTaskForm]);
 
   // Close emoji picker when clicking outside
@@ -642,10 +646,10 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         
         const botMessage: Message = {
           id: `bot-${Date.now()}`,
-          message: data.reply || data.message || "I'm here to help! Could you rephrase that?",
+          message: data.response || data.reply || data.message || "I'm here to help! Could you rephrase that?",
           user_id: 'mira',
           create_at: Date.now(),
-          username: data.persona?.name || 'Mira',
+          username: data.persona?.name || 'AIVA',
           isBot: true
         };
 
@@ -1044,7 +1048,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         {/* Messages */}
         <div 
           ref={chatContainerRef}
-          className={`flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 space-y-2 sm:space-y-3 bg-[#1e1e2e] pb-[120px] relative ${isDragging ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
+          className={`flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 space-y-2 sm:space-y-3 bg-[#1e1e2e] pb-[140px] relative ${isDragging ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
           style={{ scrollBehavior: 'smooth' }}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
