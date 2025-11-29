@@ -1,0 +1,20 @@
+# Railway Monorepo Configuration
+# ================================
+# This project has two services that need to be configured in Railway Dashboard:
+#
+# SERVICE 1: bisman-ERP-frontend
+#   - Root Directory: my-frontend
+#   - Dockerfile: my-frontend/Dockerfile
+#   - Port: 3000 (or use $PORT)
+#
+# SERVICE 2: bisman-ERP-backend  
+#   - Root Directory: my-backend
+#   - Dockerfile: my-backend/Dockerfile
+#   - Port: 8080 (or use $PORT)
+#
+# IMPORTANT: You MUST set "Root Directory" in Railway Dashboard for each service!
+# Go to: Service -> Settings -> Source -> Root Directory
+#
+# This file is for documentation only. Railway reads service-specific configs from:
+#   - my-frontend/railway.toml
+#   - my-backend/railway.toml
