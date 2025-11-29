@@ -22,15 +22,19 @@ RUN npm run build
 FROM node:20-bullseye-slim AS runner
 WORKDIR /app
 RUN apt-get update && apt-get install -y openssl libssl1.1 ca-certificates curl && rm -rf /var/lib/apt/lists/* && ldconfig
-ENV NODE_ENV=production HOSTNAME="0.0.0.0" HOST="0.0.0.0"
+ENV NODE_ENV=production
+ENV HOSTNAME="0.0.0.0"
+ENV PORT=3000
 RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -m nextjs
+
+# Copy entire app for next start (instead of standalone)
+COPY --from=builder --chown=nextjs:nodejs /app/.next ./.next
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-# Copy Prisma client (required for database operations at runtime)
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+COPY --from=builder --chown=nextjs:nodejs /app/package.json ./package.json
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules ./node_modules
+COPY --from=builder --chown=nextjs:nodejs /app/next.config.js ./next.config.js
+
 USER nextjs
 EXPOSE 3000
-# Debug and start server
-CMD ["sh", "-c", "echo 'PORT=$PORT HOSTNAME=$HOSTNAME' && sleep 1 && exec node server.js"]
+# Use next start instead of standalone
+CMD ["npx", "next", "start", "-H", "0.0.0.0", "-p", "3000"]
