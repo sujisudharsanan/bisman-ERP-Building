@@ -1,5 +1,5 @@
 "use client";
-import AgreementsLegalPage from '@/pages/legal/agreements';
+import AgreementsLegalPage from '@/app/legal/agreements/page';
 import SuperAdminShell from '@/components/layouts/SuperAdminShell';
 
 export default function AgreementsAppPage() {
