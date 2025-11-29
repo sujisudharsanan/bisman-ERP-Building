@@ -41,6 +41,8 @@ RUN echo "Runner cache bust: ${CACHEBUST:-default}" && \
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV PORT=3000
+ENV HOSTNAME=0.0.0.0
+ENV HOST=0.0.0.0
 RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -m nextjs
 RUN chown -R nextjs:nodejs /app
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public

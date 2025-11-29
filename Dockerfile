@@ -22,7 +22,7 @@ RUN npm run build
 FROM node:20-bullseye-slim AS runner
 WORKDIR /app
 RUN apt-get update && apt-get install -y openssl libssl1.1 ca-certificates && rm -rf /var/lib/apt/lists/* && ldconfig
-ENV NODE_ENV=production PORT=3000
+ENV NODE_ENV=production PORT=3000 HOSTNAME=0.0.0.0 HOST=0.0.0.0
 RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -m nextjs
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
