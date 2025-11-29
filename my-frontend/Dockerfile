@@ -40,7 +40,6 @@ RUN echo "Runner cache bust: ${CACHEBUST:-default}" && \
     ldconfig -p | grep libssl || (echo "ERROR: libssl1.1 not found!" && exit 1)
 ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
-# Don't set PORT here - Railway provides it dynamically
 ENV HOSTNAME=0.0.0.0
 ENV HOST=0.0.0.0
 RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -m nextjs
@@ -53,5 +52,5 @@ COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modul
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 USER nextjs
 EXPOSE 3000
-# Railway sets PORT dynamically - must use shell form to expand $PORT
-CMD ["sh", "-c", "PORT=${PORT:-3000} node server.js"]
+# Start server - Railway provides PORT=3000, HOSTNAME binds to 0.0.0.0
+CMD ["node", "server.js"]
