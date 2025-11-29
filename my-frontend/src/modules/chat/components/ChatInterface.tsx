@@ -1048,7 +1048,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         {/* Messages */}
         <div 
           ref={chatContainerRef}
-          className={`flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 space-y-2 sm:space-y-3 bg-[#1e1e2e] pb-[140px] relative ${isDragging ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
+          className={`flex-1 overflow-y-auto p-2 sm:p-3 md:p-4 space-y-2 sm:space-y-3 bg-[#1e1e2e] relative ${isDragging ? 'ring-2 ring-blue-500 ring-inset' : ''}`}
           style={{ scrollBehavior: 'smooth' }}
           onDragEnter={handleDragEnter}
           onDragLeave={handleDragLeave}
@@ -1564,12 +1564,11 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             </div>
           )}
           
-          <div ref={messagesEndRef} />
+          <div ref={messagesEndRef} className="h-4" />
         </div>
-      </div>
 
-      {/* Message Input - Spans full bottom across sidebar and chat */}
-      <div className="absolute bottom-0 left-0 right-0 bg-[#1e1e2e] border-t border-gray-700/50 z-30">
+        {/* Message Input - Fixed at bottom */}
+        <div className="bg-[#1e1e2e] border-t border-gray-700/50 flex-shrink-0">
           {/* Attached Files Preview */}
           {attachedFiles.length > 0 && (
             <div className="p-3 pb-0">
@@ -1677,6 +1676,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             )}
           </div>
         </div>
+      </div>
     </div>
   );
 }
