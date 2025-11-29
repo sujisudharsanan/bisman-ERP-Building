@@ -42,6 +42,7 @@ ENV NODE_ENV=production
 ENV NEXT_TELEMETRY_DISABLED=1
 ENV HOSTNAME=0.0.0.0
 ENV HOST=0.0.0.0
+ENV PORT=8080
 RUN groupadd -g 1001 nodejs && useradd -u 1001 -g nodejs -m nextjs
 RUN chown -R nextjs:nodejs /app
 COPY --from=builder --chown=nextjs:nodejs /app/public ./public
@@ -51,6 +52,6 @@ COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
 USER nextjs
-EXPOSE 3000
-# Start server - Railway provides PORT=3000, HOSTNAME binds to 0.0.0.0
+EXPOSE 8080
+# Start server - Railway provides PORT=8080, HOSTNAME binds to 0.0.0.0
 CMD ["node", "server.js"]
