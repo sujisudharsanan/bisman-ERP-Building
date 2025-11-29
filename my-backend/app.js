@@ -217,10 +217,11 @@ let allowedOrigins = []
 if (process.env.FRONTEND_URLS) {
   allowedOrigins = process.env.FRONTEND_URLS.split(',').map(o => o.trim()).filter(Boolean)
 }
-// Fallback minimal list (backend URL + optional frontend single URL)
+// Fallback minimal list (backend URL + frontend URL)
 if (allowedOrigins.length === 0) {
   allowedOrigins = [
     process.env.FRONTEND_URL || 'http://localhost:3000',
+    'https://bisman-erp-frontend-production.up.railway.app',
     'https://bisman-erp-backend-production.up.railway.app'
   ].filter(Boolean)
 }

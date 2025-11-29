@@ -55,6 +55,7 @@ async function start() {
     cors: {
       origin: [
         process.env.FRONTEND_URL || 'http://localhost:3000', // Local dev
+        'https://bisman-erp-frontend-production.up.railway.app', // Railway frontend
         'https://bisman-erp-backend-production.up.railway.app' // Railway backend
       ].filter(Boolean),
       credentials: true,
