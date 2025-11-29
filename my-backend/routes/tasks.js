@@ -7,7 +7,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const taskController = require('../controllers/taskController');
-const { upload } = require('../middleware/upload');
+const upload = require('../middleware/upload');
 
 // ============================================
 // TASK CRUD OPERATIONS

@@ -32,15 +32,28 @@ const sessionCache = new Map();
 /**
  * Middleware to extract user from request
  * Supports multiple auth methods for compatibility
- * UPDATED: Now allows guest access for testing/development
+ * UPDATED: Now reads JWT from cookies for authenticated users
  */
 const extractUser = async (req, res, next) => {
   try {
     // Try different auth methods
-    const userId = req.user?.id || 
-                   req.user?.userId || 
-                   req.headers['x-user-id'] || 
-                   req.body.userId;
+    let userId = req.user?.id || 
+                 req.user?.userId || 
+                 req.headers['x-user-id'] || 
+                 req.body.userId;
+    
+    // If no userId yet, try to extract from JWT token in cookies
+    if (!userId && req.cookies?.access_token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const token = req.cookies.access_token;
+        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        userId = decoded.id || decoded.userId;
+        console.log(`[UltimateChatAPI] Extracted userId from JWT: ${userId}`);
+      } catch (jwtError) {
+        console.warn('[UltimateChatAPI] JWT verification failed:', jwtError.message);
+      }
+    }
     
     if (!userId) {
       // For testing/development, allow guest access
@@ -601,71 +614,9 @@ router.post('/conversation/save', async (req, res) => {
 });
 
 /**
- * GET /api/chat/conversation/:id
- * Load a specific conversation
- */
-router.get('/conversation/:id', async (req, res) => {
-  try {
-    const { id } = req.params;
-    const userId = req.userId;
-    
-    if (!userId || userId === 0) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication required'
-      });
-    }
-    
-    // Get conversation metadata
-    const convResult = await pool.query(
-      `SELECT id, context_type, created_at, updated_at, last_message_at
-       FROM chat_conversations
-       WHERE id = $1 AND user_id = $2`,
-      [id, userId]
-    );
-    
-    if (convResult.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Conversation not found'
-      });
-    }
-    
-    // Get messages
-    const messagesResult = await pool.query(
-      `SELECT id, role, content, created_at
-       FROM chat_messages
-       WHERE conversation_id = $1
-       ORDER BY created_at ASC`,
-      [id]
-    );
-    
-    const messages = messagesResult.rows.map(row => ({
-      id: row.id.toString(),
-      message: row.content,
-      isBot: row.role === 'assistant',
-      create_at: new Date(row.created_at).getTime(),
-      user_id: userId.toString()
-    }));
-    
-    res.json({
-      success: true,
-      conversation: convResult.rows[0],
-      messages
-    });
-    
-  } catch (error) {
-    console.error('[UltimateChatAPI] Error loading conversation:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to load conversation'
-    });
-  }
-});
-
-/**
  * GET /api/chat/conversation/latest
  * Get user's latest conversation
+ * NOTE: Must be defined BEFORE /conversation/:id to avoid route matching issues
  */
 router.get('/conversation/latest', async (req, res) => {
   try {
@@ -724,6 +675,69 @@ router.get('/conversation/latest', async (req, res) => {
     
   } catch (error) {
     console.error('[UltimateChatAPI] Error loading latest conversation:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to load conversation'
+    });
+  }
+});
+
+/**
+ * GET /api/chat/conversation/:id
+ * Load a specific conversation
+ */
+router.get('/conversation/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.userId;
+    
+    if (!userId || userId === 0) {
+      return res.status(401).json({
+        success: false,
+        error: 'Authentication required'
+      });
+    }
+    
+    // Get conversation metadata
+    const convResult = await pool.query(
+      `SELECT id, context_type, created_at, updated_at, last_message_at
+       FROM chat_conversations
+       WHERE id = $1 AND user_id = $2`,
+      [id, userId]
+    );
+    
+    if (convResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Conversation not found'
+      });
+    }
+    
+    // Get messages
+    const messagesResult = await pool.query(
+      `SELECT id, role, content, created_at
+       FROM chat_messages
+       WHERE conversation_id = $1
+       ORDER BY created_at ASC`,
+      [id]
+    );
+    
+    const messages = messagesResult.rows.map(row => ({
+      id: row.id.toString(),
+      message: row.content,
+      isBot: row.role === 'assistant',
+      create_at: new Date(row.created_at).getTime(),
+      user_id: userId.toString()
+    }));
+    
+    res.json({
+      success: true,
+      conversation: convResult.rows[0],
+      messages
+    });
+    
+  } catch (error) {
+    console.error('[UltimateChatAPI] Error loading conversation:', error);
     res.status(500).json({
       success: false,
       error: 'Failed to load conversation'

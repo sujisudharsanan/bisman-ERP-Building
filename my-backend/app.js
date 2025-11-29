@@ -2770,6 +2770,62 @@ app.get('/api/auth/permissions', authenticate, async (req, res) => {
   }
 })
 
+// User search endpoint for chat @mentions (any authenticated user can search)
+app.get('/api/users/search', authenticate, async (req, res) => {
+  try {
+    const { q = '', limit = 10 } = req.query;
+    const searchTerm = q.toLowerCase().trim();
+    
+    // Get users from database - only search by username and email (fields that exist)
+    const users = await prisma.user.findMany({
+      where: {
+        OR: [
+          { username: { contains: searchTerm, mode: 'insensitive' } },
+          { email: { contains: searchTerm, mode: 'insensitive' } },
+        ],
+        // Don't show the current user in search results
+        NOT: { id: req.user.id },
+        // Only active users
+        is_active: true
+      },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        role: true,
+        profile_pic_url: true,
+      },
+      take: parseInt(limit) || 10,
+      orderBy: { username: 'asc' }
+    });
+
+    const results = users.map(user => ({
+      id: user.id,
+      username: user.username || user.email?.split('@')[0] || '',
+      email: user.email,
+      firstName: '', // Not available in schema
+      lastName: '',  // Not available in schema
+      fullName: user.username || user.email?.split('@')[0] || '',
+      role: user.role || 'USER',
+      profilePic: user.profile_pic_url || null,
+    }));
+
+    res.json({
+      success: true,
+      users: results,
+      count: results.length
+    });
+  } catch (error) {
+    console.error('[UserSearch] Error:', error.message);
+    res.json({
+      success: true,
+      users: [],
+      count: 0,
+      message: 'Search unavailable'
+    });
+  }
+});
+
 // Users management endpoint
 app.get('/api/users', authenticate, requireRole(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
   try {

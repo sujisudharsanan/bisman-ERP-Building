@@ -31,7 +31,7 @@ const assistantRoutes = require('./assistant');
 
 // Mount authenticated routes
 router.use('/ai', aiRoutes);        // /api/chat/ai/*
-router.use('/message', aiRoutes);   // /api/chat/message (AI assistant - legacy)
+router.use('/', aiRoutes);          // /api/chat/message (AI assistant) - mount at root since ai.js has /message route
 router.use('/assistant', assistantRoutes); // /api/chat/assistant/* (NEW intelligent assistant)
 router.use('/threads', messagesRoutes); // /api/chat/threads/* (legacy)
 router.use('/', threadMessagesRoutes); // /api/chat/threads/:id/messages, /api/chat/messages/* (new DB-backed)

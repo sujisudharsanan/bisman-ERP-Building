@@ -5,15 +5,17 @@
  */
 
 import { NextRequest, NextResponse } from 'next/server';
-import { requireAuthCookie } from '@/lib/apiGuard';
+import { cookies } from 'next/headers';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+const BACKEND_URL = process.env.BACKEND_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
 
 export async function GET(request: NextRequest) {
   try {
-  const authToken = await requireAuthCookie(['authToken', 'token']);
+    // Get auth token from cookies
+    const cookieStore = await cookies();
+    const accessToken = cookieStore.get('access_token')?.value;
 
-    if (!authToken) {
+    if (!accessToken) {
       return NextResponse.json(
         { success: false, error: 'Not authenticated' },
         { status: 401 }
@@ -23,54 +25,42 @@ export async function GET(request: NextRequest) {
     const searchParams = request.nextUrl.searchParams;
     const query = searchParams.get('q') || '';
 
-    // Search users via backend (if you have user search endpoint)
-    // For now, we'll use Mattermost team members as the source
-    const mattermostToken = await requireAuthCookie(['mattermostToken']);
-    
-    // If query is empty or too short, get all active users instead
-    let response;
-    if (!query || query.length < 2) {
-      response = await fetch(`${process.env.NEXT_PUBLIC_MATTERMOST_URL}/api/v4/users?per_page=100&active=true`, {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${mattermostToken || ''}`,
-        },
-      });
-    } else {
-      response = await fetch(`${process.env.NEXT_PUBLIC_MATTERMOST_URL}/api/v4/users/search`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${mattermostToken || ''}`,
-        },
-        body: JSON.stringify({
-          term: query,
-          allow_inactive: false,
-        }),
-      });
-    }
+    // Search users via backend
+    const response = await fetch(`${BACKEND_URL}/api/users/search?q=${encodeURIComponent(query)}&limit=10`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+        'Cookie': `access_token=${accessToken}`,
+      },
+    });
 
     if (!response.ok) {
-      throw new Error('Failed to search users');
+      // If backend doesn't have search endpoint, return empty results gracefully
+      if (response.status === 404) {
+        return NextResponse.json({
+          success: true,
+          data: [],
+          count: 0,
+          message: 'User search not available'
+        });
+      }
+      throw new Error(`Backend returned ${response.status}`);
     }
 
-    const users = await response.json();
-
-    // Filter and format results
-    const results = users
-      .filter((user: any) => !user.delete_at && user.username !== 'admin')
-      .slice(0, 10)
-      .map((user: any) => ({
-        id: user.id,
-        username: user.username,
-        email: user.email,
-        firstName: user.first_name || '',
-        lastName: user.last_name || '',
-        fullName: `${user.first_name || ''} ${user.last_name || ''}`.trim() || user.username,
-        role: user.roles || 'user',
-        position: user.position || '',
-      }));
+    const data = await response.json();
+    
+    // Format results
+    const users = Array.isArray(data) ? data : (data.users || data.data || []);
+    const results = users.slice(0, 10).map((user: any) => ({
+      id: user.id,
+      username: user.username || user.email?.split('@')[0] || '',
+      email: user.email,
+      firstName: user.first_name || user.firstName || '',
+      lastName: user.last_name || user.lastName || '',
+      fullName: user.full_name || `${user.first_name || user.firstName || ''} ${user.last_name || user.lastName || ''}`.trim() || user.username || user.email,
+      role: user.role || 'user',
+      position: user.position || '',
+    }));
 
     return NextResponse.json({
       success: true,
@@ -79,10 +69,13 @@ export async function GET(request: NextRequest) {
     });
 
   } catch (error: any) {
-    console.error('User search error:', error);
-    return NextResponse.json(
-      { success: false, error: 'Failed to search users', details: error.message },
-      { status: 500 }
-    );
+    console.error('[Chat] User search error:', error.message);
+    // Return empty results instead of error for better UX
+    return NextResponse.json({
+      success: true,
+      data: [],
+      count: 0,
+      message: 'User search unavailable'
+    });
   }
 }

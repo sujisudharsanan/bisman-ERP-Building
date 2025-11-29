@@ -42,17 +42,31 @@ function authenticateUser(req, res, next) {
 router.get('/', authenticateUser, async (req, res) => {
   try {
     const { status, creator_id, approver_id } = req.query;
-    const where = {};
     
-    if (status) where.status = status;
-    if (creator_id) where.creator_id = creator_id;
-    if (approver_id) where.approver_id = approver_id;
+    // Build WHERE conditions safely
+    const conditions = [];
+    const params = [];
+    
+    if (status) {
+      conditions.push(`status = $${params.length + 1}`);
+      params.push(status);
+    }
+    if (creator_id) {
+      conditions.push(`creator_id = $${params.length + 1}`);
+      params.push(parseInt(creator_id));
+    }
+    if (approver_id) {
+      conditions.push(`approver_id = $${params.length + 1}`);
+      params.push(parseInt(approver_id));
+    }
 
-    const tasks = await prisma.$queryRaw`
-      SELECT * FROM workflow_tasks 
-      ${Object.keys(where).length > 0 ? 'WHERE ' + Object.keys(where).map(k => `${k} = ${where[k]}`).join(' AND ') : ''}
-      ORDER BY created_at DESC
-    `;
+    const whereClause = conditions.length > 0 ? `WHERE ${conditions.join(' AND ')}` : '';
+    
+    // Use Prisma.sql for raw queries with parameters
+    const tasks = await prisma.$queryRawUnsafe(
+      `SELECT * FROM workflow_tasks ${whereClause} ORDER BY created_at DESC`,
+      ...params
+    );
 
     res.json(tasks);
   } catch (error) {

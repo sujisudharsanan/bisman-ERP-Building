@@ -6,7 +6,7 @@
 const express = require('express');
 const router = express.Router();
 const chatService = require('../services/chat.service');
-const authenticateToken = require('../../../middleware/auth.middleware');
+const { authenticate } = require('../../../middleware/auth');
 
 /**
  * POST /api/chat/assistant/message
@@ -31,7 +31,7 @@ const authenticateToken = require('../../../middleware/auth.middleware');
  *   "contextInfo": "Branch: Chennai · Module: COD"
  * }
  */
-router.post('/message', authenticateToken, async (req, res) => {
+router.post('/message', authenticate, async (req, res) => {
   try {
     const { message, context: additionalContext } = req.body;
 
@@ -72,7 +72,7 @@ router.post('/message', authenticateToken, async (req, res) => {
  * GET /api/chat/assistant/memory
  * Get current user's assistant memory (for debugging or context display)
  */
-router.get('/memory', authenticateToken, async (req, res) => {
+router.get('/memory', authenticate, async (req, res) => {
   try {
     const memoryRepo = require('../services/assistantMemory.repository');
     const memory = await memoryRepo.getByUserId(req.user.id);
@@ -106,7 +106,7 @@ router.get('/memory', authenticateToken, async (req, res) => {
  * DELETE /api/chat/assistant/memory
  * Reset current user's assistant memory
  */
-router.delete('/memory', authenticateToken, async (req, res) => {
+router.delete('/memory', authenticate, async (req, res) => {
   try {
     const memoryRepo = require('../services/assistantMemory.repository');
     await memoryRepo.reset(req.user.id);
@@ -128,7 +128,7 @@ router.delete('/memory', authenticateToken, async (req, res) => {
  * GET /api/chat/assistant/capabilities
  * Get list of assistant capabilities (what it can do)
  */
-router.get('/capabilities', authenticateToken, async (req, res) => {
+router.get('/capabilities', authenticate, async (req, res) => {
   try {
     res.json({
       capabilities: [
