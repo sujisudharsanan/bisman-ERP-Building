@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 
 // Proxy to backend /api/auth/login and forward cookies bidirectionally
+// Priority: BACKEND_URL (runtime server-side) > NEXT_PUBLIC_* (build-time) > fallback
 const BACKEND_BASE =
-  process.env.RAILWAY_ENVIRONMENT
-    ? `http://127.0.0.1:${process.env.PORT || 8080}`
-    : (
-      process.env.NEXT_PUBLIC_API_URL ||
-      process.env.NEXT_PUBLIC_API_BASE ||
-      process.env.NEXT_PUBLIC_API_BASE_URL ||
-      'http://localhost:3001'
-    );
+  process.env.BACKEND_URL ||
+  process.env.API_URL ||
+  process.env.NEXT_PUBLIC_API_URL ||
+  process.env.NEXT_PUBLIC_API_BASE ||
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  'http://localhost:3001';
 
 export async function POST(req: NextRequest) {
   try {
