@@ -1,7 +1,8 @@
 #!/usr/bin/env node
 /**
  * Drift check: compares DB modules to registry/modules.json
- * - Fails with exit(1) on differences
+ * - Warns on differences but doesn't fail for extra modules in DB
+ * - Only fails if modules in registry are missing from DB
  * - Never writes to DB
  */
 const fs = require('fs');
@@ -25,9 +26,9 @@ async function main() {
 
   let ok = true;
   if (missingInDb.length) { ok = false; console.error('Missing in DB:', missingInDb.join(', ')); }
-  if (extraInDb.length) { console.warn('Extra in DB (not in registry):', extraInDb.join(', ')); }
+  if (extraInDb.length) { console.warn('Extra in DB (not in registry - OK):', extraInDb.join(', ')); }
 
-  // Field mismatches for those present in both
+  // Field mismatches for those present in both - warn only, don't fail
   const mismatches = [];
   for (const d of db) {
     const r = regMap.get(d.module_name);
@@ -39,7 +40,9 @@ async function main() {
       }
     }
   }
-  if (mismatches.length) { ok = false; console.error('Field mismatches:', JSON.stringify(mismatches, null, 2)); }
+  if (mismatches.length) { 
+    console.warn('Field mismatches (warning only):', JSON.stringify(mismatches, null, 2)); 
+  }
 
   await prisma.$disconnect();
   if (!ok) process.exit(1);

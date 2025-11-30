@@ -1,29 +1,122 @@
 [
   {
     "module_name": "common",
-    "display_name": "Common",
+    "display_name": "Common Module",
     "route": "/common",
-    "icon": "layers",
+    "icon": "FiUser",
     "productType": "ALL",
     "is_active": true,
+    "is_always_accessible": true,
+    "sort_order": 1
+  },
+  {
+    "module_name": "finance",
+    "display_name": "Finance Module",
+    "route": "/finance",
+    "icon": "FiDollarSign",
+    "productType": "BUSINESS_ERP",
+    "is_active": true,
+    "is_always_accessible": false,
+    "sort_order": 2
+  },
+  {
+    "module_name": "operations",
+    "display_name": "Operations Module",
+    "route": "/operations",
+    "icon": "FiPackage",
+    "productType": "BUSINESS_ERP",
+    "is_active": true,
+    "is_always_accessible": false,
+    "sort_order": 3
+  },
+  {
+    "module_name": "hr",
+    "display_name": "Human Resources",
+    "route": "/hr",
+    "icon": "FiUsers",
+    "productType": "BUSINESS_ERP",
+    "is_active": true,
+    "is_always_accessible": false,
+    "sort_order": 4
+  },
+  {
+    "module_name": "procurement",
+    "display_name": "Procurement Module",
+    "route": "/procurement",
+    "icon": "FiShoppingCart",
+    "productType": "BUSINESS_ERP",
+    "is_active": true,
+    "is_always_accessible": false,
     "sort_order": 5
   },
   {
+    "module_name": "compliance",
+    "display_name": "Compliance & Legal Module",
+    "route": "/compliance",
+    "icon": "FiShield",
+    "productType": "BUSINESS_ERP",
+    "is_active": true,
+    "is_always_accessible": false,
+    "sort_order": 6
+  },
+  {
+    "module_name": "system",
+    "display_name": "System Administration",
+    "route": "/system",
+    "icon": "FiSettings",
+    "productType": "BUSINESS_ERP",
+    "is_active": true,
+    "is_always_accessible": false,
+    "sort_order": 7
+  },
+  {
     "module_name": "super-admin",
-    "display_name": "Super Admin",
+    "display_name": "Super Admin Module",
     "route": "/super-admin",
-    "icon": "shield",
+    "icon": "FiShield",
+    "productType": "BUSINESS_ERP",
+    "is_active": true,
+    "is_always_accessible": false,
+    "sort_order": 8
+  },
+  {
+    "module_name": "admin",
+    "display_name": "Admin Module",
+    "route": "/admin",
+    "icon": "FiUser",
+    "productType": "BUSINESS_ERP",
+    "is_active": true,
+    "is_always_accessible": false,
+    "sort_order": 9
+  },
+  {
+    "module_name": "task-management",
+    "display_name": "Task Management Module",
+    "route": "/task-dashboard",
+    "icon": "FiCheckSquare",
+    "productType": "BUSINESS_ERP",
+    "is_active": true,
+    "is_always_accessible": false,
+    "sort_order": 10
+  },
+  {
+    "module_name": "chat",
+    "display_name": "Chat & Communication",
+    "route": "/chat",
+    "icon": "FiMessageSquare",
     "productType": "ALL",
     "is_active": true,
-    "sort_order": 99
+    "is_always_accessible": true,
+    "sort_order": 11
   },
   {
     "module_name": "enterprise-admin",
     "display_name": "Enterprise Admin",
     "route": "/enterprise-admin",
-    "icon": "building",
+    "icon": "FiGrid",
     "productType": "ALL",
     "is_active": true,
-    "sort_order": 90
+    "is_always_accessible": false,
+    "sort_order": 99
   }
 ]
