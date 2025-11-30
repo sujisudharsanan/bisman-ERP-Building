@@ -6,10 +6,11 @@ const MASTER_MODULES = [
   {
     id: 'common',
     name: 'Common Module',
-    description: 'Pages available to all users',
+    description: 'Pages available to all users - NO ASSIGNMENT REQUIRED',
     icon: 'FiUser',
     category: 'Common',
     businessCategory: 'All',
+    alwaysAccessible: true, // This module is accessible by all authenticated users
     pages: [
       { id: 'about-me', name: 'About Me', path: '/common/about-me' },
       { id: 'change-password', name: 'Change Password', path: '/common/change-password' },
@@ -48,7 +49,7 @@ const MASTER_MODULES = [
     description: 'Operations and inventory management',
     icon: 'FiPackage',
     category: 'Operations',
-    businessCategory: 'Pump Management',
+    businessCategory: 'Business ERP',
     pages: [
       { id: 'dashboard', name: 'Operations Dashboard', path: '/operations-manager' },
       { id: 'inventory', name: 'Inventory Management', path: '/operations/inventory-management' },
@@ -172,11 +173,26 @@ const MASTER_MODULES = [
     description: 'Task tracking and management',
     icon: 'FiCheckSquare',
     category: 'Operations',
-    businessCategory: 'Pump Management',
+    businessCategory: 'Business ERP',
     pages: [
       { id: 'dashboard', name: 'Task Dashboard', path: '/task-dashboard' },
       { id: 'my-tasks', name: 'My Tasks', path: '/task-dashboard/my-tasks' },
       { id: 'team-tasks', name: 'Team Tasks', path: '/task-dashboard/team-tasks' },
+    ],
+  },
+  {
+    id: 'chat',
+    name: 'Chat & Communication',
+    description: 'Real-time messaging and AIVA assistant - NO ASSIGNMENT REQUIRED',
+    icon: 'FiMessageSquare',
+    category: 'Communication',
+    businessCategory: 'All',
+    alwaysAccessible: true, // Chat is accessible by all authenticated users
+    pages: [
+      { id: 'chat', name: 'Chat', path: '/chat' },
+      { id: 'aiva', name: 'AIVA Assistant', path: '/chat/aiva' },
+      { id: 'channels', name: 'Channels', path: '/chat/channels' },
+      { id: 'direct-messages', name: 'Direct Messages', path: '/chat/direct' },
     ],
   },
 ];

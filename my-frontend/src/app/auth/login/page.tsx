@@ -55,6 +55,15 @@ export default function StandardLoginPage() {
           role: 'SUPER_ADMIN',
           icon: Shield,
           description: 'Multi-tenant admin'
+        },
+        {
+          id: 13,
+          name: 'Eazymiles Admin',
+          email: 'admin@eazymiles.com',
+          password: 'Demo@123',
+          role: 'ADMIN',
+          icon: Shield,
+          description: 'Eazymiles client administrator'
         }
       ]
     },

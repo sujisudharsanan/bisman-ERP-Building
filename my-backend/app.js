@@ -1411,6 +1411,8 @@ app.get('/api/enterprise-admin/master-modules', authenticate, requireRole(['ENTE
         icon: configModule?.icon || 'FiBox',
         category: configModule?.category || 'General',
         businessCategory: configModule?.businessCategory || 'All',
+        alwaysAccessible: dbModule.is_always_accessible || configModule?.alwaysAccessible || false,
+        is_always_accessible: dbModule.is_always_accessible || configModule?.alwaysAccessible || false,
         pages: configModule?.pages || []
       };
     });
@@ -2773,21 +2775,28 @@ app.get('/api/auth/permissions', authenticate, async (req, res) => {
 // User search endpoint for chat @mentions (any authenticated user can search)
 app.get('/api/users/search', authenticate, async (req, res) => {
   try {
-    const { q = '', limit = 10 } = req.query;
+    const { q = '', limit = 20 } = req.query;
     const searchTerm = q.toLowerCase().trim();
     
-    // Get users from database - only search by username and email (fields that exist)
+    // Build where clause - if empty query, return all active users
+    const whereClause = {
+      // Don't show the current user in search results
+      NOT: { id: req.user.id },
+      // Only active users
+      is_active: true
+    };
+
+    // Only add search filter if query is provided
+    if (searchTerm) {
+      whereClause.OR = [
+        { username: { contains: searchTerm, mode: 'insensitive' } },
+        { email: { contains: searchTerm, mode: 'insensitive' } },
+      ];
+    }
+    
+    // Get users from database
     const users = await prisma.user.findMany({
-      where: {
-        OR: [
-          { username: { contains: searchTerm, mode: 'insensitive' } },
-          { email: { contains: searchTerm, mode: 'insensitive' } },
-        ],
-        // Don't show the current user in search results
-        NOT: { id: req.user.id },
-        // Only active users
-        is_active: true
-      },
+      where: whereClause,
       select: {
         id: true,
         username: true,
@@ -2795,7 +2804,7 @@ app.get('/api/users/search', authenticate, async (req, res) => {
         role: true,
         profile_pic_url: true,
       },
-      take: parseInt(limit) || 10,
+      take: parseInt(limit) || 20,
       orderBy: { username: 'asc' }
     });
 
@@ -2807,6 +2816,7 @@ app.get('/api/users/search', authenticate, async (req, res) => {
       lastName: '',  // Not available in schema
       fullName: user.username || user.email?.split('@')[0] || '',
       role: user.role || 'USER',
+      roleName: user.role || 'USER',
       profilePic: user.profile_pic_url || null,
     }));
 

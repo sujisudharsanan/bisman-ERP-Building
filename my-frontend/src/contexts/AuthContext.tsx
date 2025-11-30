@@ -14,6 +14,19 @@ import React, {
 } from 'react';
 import { API_BASE } from '@/config/api';
 
+// Common module pages that are always accessible without assignment
+const COMMON_MODULE_PATHS = [
+  '/common/about-me',
+  '/common/change-password',
+  '/common/security-settings',
+  '/common/notifications',
+  '/common/messages',
+  '/common/help-center',
+  '/common/documentation',
+  '/common/user-settings',
+  '/chat', // Chat is accessible to all
+];
+
 interface User {
   id?: number;
   username?: string;
@@ -22,6 +35,10 @@ interface User {
   role?: string; // Added for compatibility
   name?: string;
   profile_pic_url?: string; // Profile picture URL
+  assignedModules?: (number | string)[]; // Module IDs or names assigned to user
+  pagePermissions?: Record<string, string[]>; // { moduleId: [pageIds] }
+  userType?: string; // USER, SUPER_ADMIN, ENTERPRISE_ADMIN
+  productType?: string; // BUSINESS_ERP, PUMP_MANAGEMENT
 }
 
 interface AuthContextType {
@@ -31,6 +48,10 @@ interface AuthContextType {
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
+  // Access control methods
+  hasModuleAccess: (moduleIdOrName: number | string) => boolean;
+  hasPageAccess: (pagePath: string) => boolean;
+  isCommonPage: (pagePath: string) => boolean;
 }
 
 
@@ -282,13 +303,82 @@ export function AuthProvider({ children }: AuthProviderProps) {
     };
   }, [checkAuth, mounted]);
 
+  // Check if a path is a common module page (always accessible)
+  const isCommonPage = useCallback((pagePath: string): boolean => {
+    const normalizedPath = pagePath.toLowerCase().replace(/\/$/, '');
+    return COMMON_MODULE_PATHS.some(commonPath => 
+      normalizedPath === commonPath.toLowerCase() || 
+      normalizedPath.startsWith(commonPath.toLowerCase() + '/')
+    );
+  }, []);
+
+  // Check if user has access to a specific module
+  const hasModuleAccess = useCallback((moduleIdOrName: number | string): boolean => {
+    if (!user) return false;
+    
+    // Enterprise Admin has access to all modules
+    if (user.role === 'ENTERPRISE_ADMIN' || user.userType === 'ENTERPRISE_ADMIN') {
+      return true;
+    }
+    
+    // Common module (id=1 or name='common') is always accessible
+    if (moduleIdOrName === 1 || moduleIdOrName === 'common') {
+      return true;
+    }
+    
+    const assignedModules = user.assignedModules || [];
+    
+    // Check by ID or name
+    if (typeof moduleIdOrName === 'number') {
+      return assignedModules.some(m => Number(m) === moduleIdOrName);
+    }
+    
+    const nameLower = String(moduleIdOrName).toLowerCase();
+    return assignedModules.some(m => String(m).toLowerCase() === nameLower);
+  }, [user]);
+
+  // Check if user has access to a specific page
+  const hasPageAccess = useCallback((pagePath: string): boolean => {
+    if (!user) return false;
+    
+    // Enterprise Admin has access to all pages
+    if (user.role === 'ENTERPRISE_ADMIN' || user.userType === 'ENTERPRISE_ADMIN') {
+      return true;
+    }
+    
+    // Common pages are always accessible
+    if (isCommonPage(pagePath)) {
+      return true;
+    }
+    
+    // Check page permissions
+    const pagePermissions = user.pagePermissions || {};
+    const normalizedPath = pagePath.toLowerCase().replace(/^\//, '');
+    
+    // Check if the page is in any of the assigned modules' page permissions
+    for (const moduleId of Object.keys(pagePermissions)) {
+      const pages = pagePermissions[moduleId] || [];
+      if (pages.some(p => {
+        const normalizedP = String(p).toLowerCase().replace(/^\//, '');
+        return normalizedP === normalizedPath || normalizedPath.startsWith(normalizedP + '/');
+      })) {
+        return true;
+      }
+    }
+    
+    return false;
+  }, [user, isCommonPage]);
+
   const value: AuthContextType = {
     user,
     loading,
     login,
     logout,
     refreshUser,
-  isAuthenticated: !!user && !loading,
+    isAuthenticated: !!user && !loading,
+    hasModuleAccess,
+    hasPageAccess,
+    isCommonPage,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -305,6 +395,9 @@ export function useAuth() {
       logout: async () => {},
       refreshUser: async () => {},
       isAuthenticated: false,
+      hasModuleAccess: () => false,
+      hasPageAccess: () => false,
+      isCommonPage: () => false,
     } as AuthContextType;
   }
 

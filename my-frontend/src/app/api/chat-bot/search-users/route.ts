@@ -51,7 +51,7 @@ export async function GET(request: NextRequest) {
     
     // Format results
     const users = Array.isArray(data) ? data : (data.users || data.data || []);
-    const results = users.slice(0, 10).map((user: any) => ({
+    const results = users.slice(0, 20).map((user: any) => ({
       id: user.id,
       username: user.username || user.email?.split('@')[0] || '',
       email: user.email,
@@ -59,7 +59,9 @@ export async function GET(request: NextRequest) {
       lastName: user.last_name || user.lastName || '',
       fullName: user.full_name || `${user.first_name || user.firstName || ''} ${user.last_name || user.lastName || ''}`.trim() || user.username || user.email,
       role: user.role || 'user',
+      roleName: user.roleName || user.role || 'USER',
       position: user.position || '',
+      profile_pic_url: user.profilePic || user.profile_pic_url || null,
     }));
 
     return NextResponse.json({

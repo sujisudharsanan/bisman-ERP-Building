@@ -65,6 +65,10 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [chatUsers, setChatUsers] = useState<ChatUser[]>([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [searchResults, setSearchResults] = useState<ChatUser[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [conversationId, setConversationId] = useState<string | null>(null);
   const [feedbackGiven, setFeedbackGiven] = useState<Map<string, boolean>>(new Map());
@@ -160,6 +164,72 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
     };
     loadUsers();
   }, []);
+
+  // Real-time user search with debouncing
+  const searchUsers = async (query: string) => {
+    if (!query.trim()) {
+      setSearchResults([]);
+      setIsSearching(false);
+      return;
+    }
+
+    setIsSearching(true);
+    try {
+      const response = await fetch(`/api/chat-bot/search-users?q=${encodeURIComponent(query)}`);
+      if (response.ok) {
+        const data = await response.json();
+        const users = data.data?.map((u: any) => ({
+          id: u.id,
+          name: u.fullName || u.username,
+          email: u.email,
+          avatar: u.profile_pic_url,
+          isOnline: true,
+          role: u.role,
+          roleName: u.roleName
+        })) || [];
+        setSearchResults(users);
+        console.log('[Chat] Search results for "' + query + '":', users.length, 'users');
+      }
+    } catch (error) {
+      console.error('[Chat] Search failed:', error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  // Handle search input change with debounce
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const query = e.target.value;
+    setSearchQuery(query);
+
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+
+    // Debounce search - trigger after 300ms of no typing
+    searchTimeoutRef.current = setTimeout(() => {
+      searchUsers(query);
+    }, 300);
+  };
+
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Get users to display - search results if searching, otherwise default users
+  const displayUsers = searchQuery.trim() ? searchResults : chatUsers;
+
+  // Helper to find selected user from all known users
+  const getSelectedUser = (userId: string | null): ChatUser | undefined => {
+    if (!userId) return undefined;
+    return chatUsers.find(u => u.id === userId) || searchResults.find(u => u.id === userId);
+  };
 
   // Load tasks
   useEffect(() => {
@@ -604,9 +674,34 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
     const messageToSend = newMessage;
     const msgLower = newMessage.toLowerCase().trim();
     setNewMessage('');
+
+    // If chatting with a user (not AIVA), just send the message - no AI response
+    if (activeView === 'user' && selectedUserId) {
+      // TODO: Implement direct messaging via socket/API to the selected user
+      // For now, just save the message without AI response
+      console.log('[Chat] Direct message to user:', selectedUserId, messageToSend);
+      
+      // Save conversation to database (user-to-user chat)
+      try {
+        await fetch('/api/chat/direct-message', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            message: messageToSend,
+            recipientId: selectedUserId,
+            senderId: (user as any)?.id
+          })
+        });
+      } catch (error) {
+        console.error('[Chat] Failed to send direct message:', error);
+      }
+      return; // Don't get AI response for direct messages
+    }
+
     setThinking(true);
 
-    // Check if user wants to create a task
+    // Check if user wants to create a task (only for AIVA chat)
     if (msgLower.includes('create task') || msgLower.includes('new task') || 
         msgLower.includes('add task') || msgLower.includes('make task')) {
       setThinking(false);
@@ -776,11 +871,23 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
 
         {/* Search */}
         <div className="p-2.5">
-          <input
-            type="text"
-            placeholder="Search..."
-            className="w-full px-2.5 py-1.5 bg-[#1e1e2e] border border-gray-700/50 rounded text-gray-300 text-[12px] placeholder-gray-500 focus:outline-none focus:border-blue-500"
-          />
+          <div className="relative">
+            <input
+              type="text"
+              placeholder="Search users..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+              className="w-full px-2.5 py-1.5 bg-[#1e1e2e] border border-gray-700/50 rounded text-gray-300 text-[12px] placeholder-gray-500 focus:outline-none focus:border-blue-500"
+            />
+            {isSearching && (
+              <div className="absolute right-2 top-1/2 -translate-y-1/2">
+                <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              </div>
+            )}
+          </div>
+          {searchQuery && searchResults.length === 0 && !isSearching && (
+            <p className="text-gray-500 text-[10px] mt-1 px-1">No users found</p>
+          )}
         </div>
 
         {/* Chat List */}
@@ -808,23 +915,20 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           </button>
 
           {/* Team Members */}
-          {chatUsers.length > 0 && (
+          {displayUsers.length > 0 && (
             <>
-              {chatUsers.slice(0, 5).map((chatUser) => (
+              {displayUsers.map((chatUser) => (
                 <button
                   key={chatUser.id}
                   onClick={() => {
                     setActiveView('user');
                     setSelectedUserId(chatUser.id);
                     setSelectedTaskId(null);
-                    setMessages([{
-                      id: `info-${Date.now()}`,
-                      message: `Chat with ${chatUser.name} - Coming soon!`,
-                      user_id: 'system',
-                      create_at: Date.now(),
-                      username: 'System',
-                      isBot: true
-                    }]);
+                    // Clear messages when switching to direct chat (start fresh conversation)
+                    setMessages([]);
+                    // Clear search after selecting user
+                    setSearchQuery('');
+                    setSearchResults([]);
                   }}
                   className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-[#1e1e2e] transition-colors ${
                     activeView === 'user' && selectedUserId === chatUser.id ? 'bg-[#1e1e2e]' : ''
@@ -840,6 +944,9 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                   </div>
                   <div className="flex-1 text-left min-w-0">
                     <p className="text-white text-[13px] truncate">{chatUser.name}</p>
+                    {chatUser.roleName && (
+                      <p className="text-gray-500 text-[10px] truncate">{chatUser.roleName.replace(/_/g, ' ')}</p>
+                    )}
                   </div>
                 </button>
               ))}
@@ -982,14 +1089,14 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             {activeView === 'user' && selectedUserId && (
               <>
                 <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-[10px] font-bold">
-                  {chatUsers.find(u => u.id === selectedUserId)?.name.slice(0, 2).toUpperCase()}
+                  {getSelectedUser(selectedUserId)?.name?.slice(0, 2).toUpperCase() || 'U'}
                 </div>
                 <div>
                   <h3 className="font-semibold text-white text-[13px]">
-                    {chatUsers.find(u => u.id === selectedUserId)?.name}
+                    {getSelectedUser(selectedUserId)?.name || 'Unknown User'}
                   </h3>
                   <p className="text-gray-400 text-[10px]">
-                    {chatUsers.find(u => u.id === selectedUserId)?.email}
+                    {getSelectedUser(selectedUserId)?.email || getSelectedUser(selectedUserId)?.roleName?.replace(/_/g, ' ') || 'Direct Message'}
                   </p>
                 </div>
               </>

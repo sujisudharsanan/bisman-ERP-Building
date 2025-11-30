@@ -394,18 +394,23 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
 
   const profilePicUrl = getProfilePicUrl();
 
-  // Check if current page is a dashboard
-  const isDashboardPage = pathname === '/hub-incharge' || 
+  // Check if current page is a dashboard or user settings - hide profile on these pages
+  const hideProfileInSidebar = pathname === '/hub-incharge' || 
                           pathname === '/super-admin' || 
                           pathname === '/admin/dashboard' || 
                           pathname === '/enterprise-admin/dashboard' ||
                           pathname === '/admin' ||
-                          pathname === '/enterprise-admin';
+                          pathname === '/enterprise-admin' ||
+                          pathname === '/cfo-dashboard' ||
+                          pathname === '/dashboard' ||
+                          pathname === '/common/about-me' ||
+                          pathname?.startsWith('/user-settings') ||
+                          pathname?.startsWith('/common/user-settings');
 
   return (
     <div className={`py-4 ${className}`}>
-      {/* User Profile Section - Only show on non-dashboard pages */}
-      {user && !isDashboardPage && (
+      {/* User Profile Section - Hide on dashboard and user settings pages */}
+      {user && !hideProfileInSidebar && (
         <div className="px-2 mb-4">
           <div 
             className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -449,7 +454,7 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
           <div className="border-b border-gray-200 dark:border-gray-700 mt-2"></div>
         </div>
       )}
-      
+
       {/* Loading State */}
       {isLoadingPermissions && (
         <div className="px-3 py-8 text-center">

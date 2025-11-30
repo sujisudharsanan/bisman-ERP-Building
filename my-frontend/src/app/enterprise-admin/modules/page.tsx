@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { FiUsers, FiPackage, FiGrid, FiCheckCircle } from "react-icons/fi";
+import { FiUsers, FiPackage, FiGrid, FiCheckCircle, FiUnlock } from "react-icons/fi";
 
 type Module = {
   id: number | string;
@@ -9,6 +9,7 @@ type Module = {
   name: string;
   productType?: string;
   businessCategory?: string;
+  alwaysAccessible?: boolean; // Modules accessible by all users (common, chat)
   pages?: Array<{ id: string; name?: string; path: string }>;
 };
 type SuperAdmin = {
@@ -139,6 +140,7 @@ export default function Page() {
   const [selectedPageIds, setSelectedPageIds] = useState<string[]>([]);
   const [saving, setSaving] = useState(false);
   const [authHint, setAuthHint] = useState<string | null>(null);
+  const [isAssignMode, setIsAssignMode] = useState(false); // Toggle for showing + icons on unassigned modules
 
   useEffect(() => {
     const load = async () => {
@@ -172,37 +174,9 @@ export default function Page() {
           name: String(m.display_name ?? m.name ?? m.module_name ?? ""),
           productType: m.productType,
           businessCategory: m.businessCategory,
+          alwaysAccessible: m.alwaysAccessible || m.is_always_accessible || false,
           pages: Array.isArray(m.pages) ? m.pages : [],
         })) as Module[];
-
-        // Inject a virtual "Common (Pump)" module if backend doesn't provide one
-        try {
-          const regPages = Array.isArray((registryData as any).pages) ? (registryData as any).pages : [];
-          const commonPages = regPages.filter((p: any) => {
-            const mk = (p as any).moduleKey || (p as any).module;
-            return String(mk || '').toLowerCase() === 'common';
-          });
-          const hasPumpCommonAlready = mods.some(
-            (m) => String(m.moduleKey || '').toLowerCase() === 'pump-common' || String(m.name || '').toLowerCase().includes('common') && ((m.productType === 'PUMP_ERP') || String(m.businessCategory || '').toLowerCase().includes('pump'))
-          );
-          if (!hasPumpCommonAlready && commonPages.length) {
-            const virtualPumpCommon: Module = {
-              id: 'pump-common',
-              moduleKey: 'pump-common',
-              name: 'Common (Pump)',
-              productType: 'PUMP_ERP',
-              businessCategory: 'pump',
-              pages: commonPages.map((p: any) => ({
-                id: String(p.id || p.path),
-                name: String(p.name || p.title || p.id || p.path),
-                path: String(p.path),
-              })),
-            };
-            mods = [...mods, virtualPumpCommon];
-          }
-        } catch (e) {
-          // non-fatal; continue without virtual module
-        }
 
         const admins = arr<any>(usersJson, "superAdmins").map((a) => {
           // Build page permissions map if backend provided it (various shapes supported)
@@ -252,9 +226,22 @@ export default function Page() {
     const list = Array.isArray(modules) ? modules : [];
     const isPump = (m: Module) =>
       (m.businessCategory ?? "").toLowerCase().includes("pump") || m.productType === "PUMP_ERP";
+    // Modules with businessCategory 'All' or alwaysAccessible should appear in BOTH categories
+    const isSharedModule = (m: Module) =>
+      (m.businessCategory ?? "").toLowerCase() === "all" || m.alwaysAccessible === true;
+    
+    const sharedCount = list.filter(isSharedModule).length;
+    const businessOnly = list.filter((m) => !isSharedModule(m) && !isPump(m)).length;
+    const pumpOnly = list.filter((m) => !isSharedModule(m) && isPump(m)).length;
+    
     return {
-      business: list.filter((m) => !isPump(m)).length,
-      pump: list.filter((m) => isPump(m)).length,
+      // Total modules visible in each category (including shared)
+      business: businessOnly + sharedCount,
+      pump: pumpOnly + sharedCount,
+      // For reference: unique counts
+      businessOnly,
+      pumpOnly,
+      shared: sharedCount,
     };
   }, [modules]);
 
@@ -304,7 +291,10 @@ export default function Page() {
     if (!category) return list;
     const isPump = (m: Module) =>
       (m.businessCategory ?? "").toLowerCase().includes("pump") || m.productType === "PUMP_ERP";
-    const categoryFiltered = list.filter((m) => (category === "pump" ? isPump(m) : !isPump(m)));
+    // Modules with businessCategory 'All' or alwaysAccessible should appear in BOTH categories
+    const isSharedModule = (m: Module) =>
+      (m.businessCategory ?? "").toLowerCase() === "all" || m.alwaysAccessible === true;
+    const categoryFiltered = list.filter((m) => isSharedModule(m) || (category === "pump" ? isPump(m) : !isPump(m)));
     
     // If admin selected, show assigned modules first (green), then unassigned (red) at bottom
     if (selectedAdminId && selectedAdmin) {
@@ -350,7 +340,10 @@ export default function Page() {
       if (v != null) keySet.add(String(v).toLowerCase());
     });
     filteredModules.forEach((m) => {
-      const isAssigned = idSet.has(Number(m.id)) || keySet.has(String(m.moduleKey || '').toLowerCase());
+      const isExplicitlyAssigned = idSet.has(Number(m.id)) || keySet.has(String(m.moduleKey || '').toLowerCase());
+      // Always accessible modules (common, chat) should be treated as "assigned"
+      const isAlwaysAccessible = m.alwaysAccessible || m.moduleKey === 'common' || m.moduleKey === 'chat';
+      const isAssigned = isExplicitlyAssigned || isAlwaysAccessible;
       (isAssigned ? result.assigned : result.unassigned).push(m);
     });
     return result;
@@ -389,15 +382,29 @@ export default function Page() {
     if (selectedAdmin && selectedModuleId) {
       const modKey = String(selectedModuleId);
       const assignedForModule = selectedAdmin.pagePermissions?.[modKey] || [];
+      
+      // Debug logging
+      console.log('📋 Page Permissions Debug:', {
+        selectedModuleId,
+        modKey,
+        allPagePermissions: selectedAdmin.pagePermissions,
+        assignedForModule,
+        pageCount: pages.length
+      });
+      
       const assignedSet = new Set<string>();
       (assignedForModule || []).forEach((x) => {
         const [withSlash, noSlash] = bothForms(String(x));
         if (withSlash) assignedSet.add(withSlash);
         if (noSlash) assignedSet.add(noSlash);
       });
+      
+      console.log('📋 Assigned Set:', Array.from(assignedSet));
+      
       pages = pages.map((p) => {
         const [withSlash, noSlash] = bothForms(String(p.id));
         const isAssigned = assignedSet.has(withSlash) || assignedSet.has(noSlash);
+        console.log('📋 Page check:', p.id, '→', isAssigned, 'forms:', [withSlash, noSlash]);
         return { ...p, isAssigned };
       });
 
@@ -410,6 +417,10 @@ export default function Page() {
     return pages;
   }, [modulesById, registry, selectedModuleId, selectedModuleKey, selectedAdmin]);
 
+  // Helper to check if module is shared (available in both ERP and Pump)
+  const isSharedModule = (m: Module) =>
+    (m.businessCategory ?? "").toLowerCase() === "all" || m.alwaysAccessible === true;
+
   // Derived counts - count UNIQUE assigned modules across admins, resolve by id OR moduleKey
   const assignedBusinessCount = (() => {
     const unique = new Set<string>();
@@ -421,7 +432,8 @@ export default function Page() {
         if (!m && mid != null) m = modulesByKey.get(String(mid).toLowerCase());
         if (m) {
           const isPump = (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP';
-          if (!isPump) unique.add(String(m.moduleKey || '').toLowerCase());
+          // Include shared modules in business count
+          if (isSharedModule(m) || !isPump) unique.add(String(m.moduleKey || '').toLowerCase());
         }
       });
     });
@@ -438,7 +450,8 @@ export default function Page() {
         if (!m && mid != null) m = modulesByKey.get(String(mid).toLowerCase());
         if (m) {
           const isPump = (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP';
-          if (isPump) unique.add(String(m.moduleKey || '').toLowerCase());
+          // Include shared modules in pump count
+          if (isSharedModule(m) || isPump) unique.add(String(m.moduleKey || '').toLowerCase());
         }
       });
     });
@@ -452,8 +465,9 @@ export default function Page() {
     const isPump = (m: Module) => (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP';
     if (selectedAdmin) {
       const raw = selectedAdmin.assignedModules || [];
-      const business = list.filter(m => !isPump(m) && isModuleAssigned(m, raw)).length;
-      const pump = list.filter(m => isPump(m) && isModuleAssigned(m, raw)).length;
+      // Include shared modules in both counts
+      const business = list.filter(m => (isSharedModule(m) || !isPump(m)) && isModuleAssigned(m, raw)).length;
+      const pump = list.filter(m => (isSharedModule(m) || isPump(m)) && isModuleAssigned(m, raw)).length;
       return { business, pump };
     }
     return { business: assignedBusinessCount, pump: assignedPumpCount };
@@ -602,6 +616,152 @@ export default function Page() {
     }
   };
 
+  // Quick assign a module (assigns all pages by default)
+  const quickAssignModule = async (moduleToAssign: Module) => {
+    if (!selectedAdminId) return;
+    
+    const moduleId = Number.isFinite(Number(moduleToAssign.id)) ? Number(moduleToAssign.id) : null;
+    if (!moduleId) return;
+    
+    // Get all page IDs for this module
+    const allPageIds = (moduleToAssign.pages || []).map(p => canonicalPageId(p.id ?? p.path));
+    
+    try {
+      setSaving(true);
+      const resAssign = await fetch(`/api/enterprise-admin/super-admins/${selectedAdminId}/assign-module`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ 
+          moduleId: moduleId, 
+          pageIds: allPageIds,
+          pages: allPageIds,
+          pageIdsNormalized: allPageIds,
+        }),
+      });
+      
+      if (!resAssign.ok) {
+        const text = await resAssign.text().catch(() => '');
+        console.error('❌ Quick assign failed', resAssign.status, text);
+        return;
+      }
+      
+      console.log('✅ Quick assign successful for', moduleToAssign.name);
+      
+      // Refresh super admins data
+      const usersRes = await fetch("/api/enterprise-admin/super-admins", { credentials: "include" });
+      if (usersRes.ok) {
+        const usersJson = await usersRes.json().catch(() => ({}));
+        const admins = arr<any>(usersJson, "superAdmins").map((a) => {
+          const pagePerms: Record<string, string[]> = (() => {
+            if (a.pagePermissions && typeof a.pagePermissions === 'object') return a.pagePermissions as Record<string, string[]>;
+            const perms: Record<string, string[]> = {};
+            const assigned = Array.isArray(a.assignedModules) ? a.assignedModules : (Array.isArray(a.moduleAssignments) ? a.moduleAssignments : []);
+            assigned.forEach((item: any) => {
+              if (item && typeof item === 'object') {
+                const midRaw = item.module_id ?? item.moduleId ?? item.id ?? item.module?.id;
+                const pages = item.assigned_pages ?? item.page_permissions ?? item.pages;
+                if (midRaw != null && Array.isArray(pages)) {
+                  const mid = String(Number.isFinite(Number(midRaw)) ? Number(midRaw) : midRaw);
+                  perms[mid] = pages.map((p: any) => String(p));
+                }
+              }
+            });
+            return perms;
+          })();
+
+          return {
+            id: Number(a.id),
+            name: a.username ?? a.name,
+            email: a.email,
+            role: a.role ?? "SUPER_ADMIN",
+            productType: a.productType,
+            assignedModules: pickAssignedArray(a)
+              .map((x: any) => normalizeAssigned(x))
+              .filter((v: any) => v !== null),
+            pagePermissions: pagePerms,
+          } as SuperAdmin;
+        }) as SuperAdmin[];
+        setSuperAdmins(admins);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Quick unassign a module (removes all pages)
+  const quickUnassignModule = async (moduleToUnassign: Module) => {
+    if (!selectedAdminId) return;
+    
+    const moduleId = Number.isFinite(Number(moduleToUnassign.id)) ? Number(moduleToUnassign.id) : null;
+    if (!moduleId) return;
+    
+    // Get all page IDs for this module to unassign
+    const allPageIds = (moduleToUnassign.pages || []).map(p => canonicalPageId(p.id ?? p.path));
+    
+    try {
+      setSaving(true);
+      const resUnassign = await fetch(`/api/enterprise-admin/super-admins/${selectedAdminId}/unassign-module`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ 
+          moduleId: moduleId, 
+          pageIds: allPageIds,
+          pages: allPageIds,
+          pageIdsNormalized: allPageIds,
+        }),
+      });
+      
+      if (!resUnassign.ok) {
+        const text = await resUnassign.text().catch(() => '');
+        console.error('❌ Quick unassign failed', resUnassign.status, text);
+        return;
+      }
+      
+      console.log('✅ Quick unassign successful for', moduleToUnassign.name);
+      
+      // Refresh super admins data
+      const usersRes = await fetch("/api/enterprise-admin/super-admins", { credentials: "include" });
+      if (usersRes.ok) {
+        const usersJson = await usersRes.json().catch(() => ({}));
+        const admins = arr<any>(usersJson, "superAdmins").map((a) => {
+          const pagePerms: Record<string, string[]> = (() => {
+            if (a.pagePermissions && typeof a.pagePermissions === 'object') return a.pagePermissions as Record<string, string[]>;
+            const perms: Record<string, string[]> = {};
+            const assigned = Array.isArray(a.assignedModules) ? a.assignedModules : (Array.isArray(a.moduleAssignments) ? a.moduleAssignments : []);
+            assigned.forEach((item: any) => {
+              if (item && typeof item === 'object') {
+                const midRaw = item.module_id ?? item.moduleId ?? item.id ?? item.module?.id;
+                const pages = item.assigned_pages ?? item.page_permissions ?? item.pages;
+                if (midRaw != null && Array.isArray(pages)) {
+                  const mid = String(Number.isFinite(Number(midRaw)) ? Number(midRaw) : midRaw);
+                  perms[mid] = pages.map((p: any) => String(p));
+                }
+              }
+            });
+            return perms;
+          })();
+
+          return {
+            id: Number(a.id),
+            name: a.username ?? a.name,
+            email: a.email,
+            role: a.role ?? "SUPER_ADMIN",
+            productType: a.productType,
+            assignedModules: pickAssignedArray(a)
+              .map((x: any) => normalizeAssigned(x))
+              .filter((v: any) => v !== null),
+            pagePermissions: pagePerms,
+          } as SuperAdmin;
+        }) as SuperAdmin[];
+        setSuperAdmins(admins);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
   if (loading) return <div className="p-4">Loading…</div>;
   if (error) return <div className="p-4 text-red-600">{error}</div>;
 
@@ -612,48 +772,6 @@ export default function Page() {
           {authHint}
         </div>
       )}
-
-      {/* Stats row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-        <div className="rounded-md border bg-white/40 dark:bg-gray-900/30 p-2">
-          <div className="flex items-center gap-1.5 text-[10px] text-gray-600 dark:text-gray-400">
-            <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-blue-100 dark:bg-blue-900/40">
-              <FiUsers className="text-blue-600" />
-            </span>
-            Total Super Admins
-          </div>
-          <div className="text-base font-semibold mt-0.5">{superAdmins.length}</div>
-        </div>
-        <div className="rounded-md border bg-white/40 dark:bg-gray-900/30 p-2">
-          <div className="flex items-center gap-1.5 text-[10px] text-gray-600 dark:text-gray-400">
-            <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-purple-100 dark:bg-purple-900/30">
-              <FiPackage className="text-purple-600" />
-            </span>
-            Total Modules
-          </div>
-          <div className="text-base font-semibold mt-0.5">{modules.length}</div>
-        </div>
-        <div className="rounded-md border bg-white/40 dark:bg-gray-900/30 p-2">
-          <div className="flex items-center gap-1.5 text-[10px] text-gray-600 dark:text-gray-400">
-            <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-indigo-100 dark:bg-indigo-900/30">
-              <FiGrid className="text-indigo-600" />
-            </span>
-            Business ERP (Total)
-          </div>
-          <div className="text-base font-semibold mt-0.5">{categoryCounts.business}</div>
-          <div className="text-[9px] text-gray-500 mt-0.5">Assigned: {topAssigned.business}</div>
-        </div>
-        <div className="rounded-md border bg-white/40 dark:bg-gray-900/30 p-2">
-          <div className="flex items-center gap-1.5 text-[10px] text-gray-600 dark:text-gray-400">
-            <span className="inline-flex items-center justify-center w-4 h-4 rounded bg-orange-100 dark:bg-orange-900/30">
-              <FiGrid className="text-orange-600" />
-            </span>
-            Pump Management (Total)
-          </div>
-          <div className="text-base font-semibold mt-0.5">{categoryCounts.pump}</div>
-          <div className="text-[9px] text-gray-500 mt-0.5">Assigned: {topAssigned.pump}</div>
-        </div>
-      </div>
 
       {/* Guidance tiles */}
       {!category && (
@@ -672,7 +790,10 @@ export default function Page() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         {/* 1. Categories */}
         <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
-          <div className="text-sm font-semibold mb-2">Categories</div>
+          <div className="text-sm font-semibold mb-2 flex items-center justify-between">
+            <span>Categories</span>
+            <span className="text-xs font-normal text-gray-500">2</span>
+          </div>
           <div className="space-y-2">
             {CATEGORIES.map((c) => (
               <button
@@ -708,7 +829,10 @@ export default function Page() {
 
         {/* 2. Super Admins */}
         <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
-          <div className="text-sm font-semibold mb-2">Super Admins</div>
+          <div className="text-sm font-semibold mb-2 flex items-center justify-between">
+            <span>Super Admins</span>
+            <span className="text-xs font-normal text-gray-500">{superAdmins.length}</span>
+          </div>
           <div className="space-y-1 max-h-[520px] overflow-y-auto">
             {filteredAdmins.length === 0 && (
               <div className="text-xs text-gray-500">No Super Admins</div>
@@ -736,17 +860,22 @@ export default function Page() {
         {/* 3. Modules - Yellow (no selection), Green (assigned), Red (unassigned) */}
         <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
           <div className="text-sm font-semibold mb-2 flex items-center justify-between">
-            <span>Modules</span>
+            <span className="flex items-center gap-2">
+              Modules
+              <span className="text-xs font-normal text-gray-500">{moduleGroups.assigned.length}</span>
+            </span>
             <div className="flex items-center gap-2">
-              {category && (
-                <span className="text-xs font-normal px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300">
-                  {filteredModules.length} modules
-                </span>
-              )}
-              {selectedAdmin && (
-                <span className="text-xs font-normal px-2 py-1 rounded-full bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300">
-                  {assignedInCategory} assigned
-                </span>
+              {category && selectedAdminId && (
+                <button
+                  onClick={() => setIsAssignMode(!isAssignMode)}
+                  className={`text-xs font-medium px-2 py-1 rounded-md transition flex items-center gap-1 ${
+                    isAssignMode
+                      ? "bg-blue-600 text-white hover:bg-blue-700"
+                      : "bg-transparent text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
+                  }`}
+                >
+                  {isAssignMode ? "✓ Done" : "Add/Remove"}
+                </button>
               )}
             </div>
           </div>
@@ -758,27 +887,25 @@ export default function Page() {
             )}
             {category && !selectedAdminId && (
               <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
-                ⚠️ Select a Super Admin to see module assignments
+                ⚠️ Select a Super Admin to see assigned modules
               </div>
             )}
-            {category && selectedAdminId && filteredModules.length === 0 && (
-              <div className="text-xs text-gray-500">No Modules</div>
+            {category && selectedAdminId && moduleGroups.assigned.length === 0 && (
+              <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-300 dark:border-gray-600">
+                No modules assigned to this Super Admin. Use the section below to assign.
+              </div>
             )}
+            {/* Show ASSIGNED and ALWAYS ACCESSIBLE modules here */}
             {category && selectedAdminId && (
               <>
-                {moduleGroups.assigned.map((m, index) => {
-                  const isAssigned = isModuleAssigned(m, selectedAdmin?.assignedModules || []);
-              
-              // Determine color: yellow if no admin selected, green if assigned, red if unassigned
-              const showYellow = !selectedAdminId;
-              const showGreen = selectedAdminId && isAssigned;
-              const showRed = selectedAdminId && !isAssigned;
+                {moduleGroups.assigned.map((m) => {
+                  const isAlwaysAccessible = m.alwaysAccessible || m.moduleKey === 'common' || m.moduleKey === 'chat';
               const isSelected = (selectedModuleKey && selectedModuleKey === m.moduleKey) || (selectedModuleId != null && Number.isFinite(Number(m.id)) && selectedModuleId === Number(m.id));
+              const canRemove = isAssignMode && !isAlwaysAccessible;
               
-                  // Assigned group
                   return (
-        <button
-                  key={m.id}
+        <div key={m.id} className="flex items-center gap-1">
+          <button
                   onClick={() => {
           const nextModuleId = Number.isFinite(Number(m.id)) ? Number(m.id) : null;
           setSelectedModuleId(nextModuleId);
@@ -791,73 +918,41 @@ export default function Page() {
                       setSelectedPageIds([]);
                     }
                   }}
-                  className={`w-full text-left rounded-md border px-3 py-2 text-xs transition ${
+                  className={`flex-1 text-left rounded-md border px-3 py-2 text-xs transition ${
           isSelected
                       ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-700"
-                      : showYellow
-                      ? "border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/30"
-                      : showGreen
-                      ? "border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30"
-                      : "border-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30"
+                      : isAlwaysAccessible
+                      ? "border-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                      : "border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30"
                   }`}
-                  title={`${m.moduleKey} - ${showYellow ? 'Select admin to see status' : isAssigned ? 'Assigned' : 'Not assigned'}`}
+                  title={`${m.moduleKey} - ${isAlwaysAccessible ? 'Always Accessible' : 'Assigned'}`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate flex items-center gap-1.5">
-                      {showYellow ? (
-                        <span className="text-yellow-600 dark:text-yellow-400 font-bold text-sm">⚠</span>
-                      ) : showGreen ? (
-                        <span className="text-green-600 dark:text-green-400 font-bold text-sm">✓</span>
+                      {isAlwaysAccessible ? (
+                        <FiUnlock className="text-blue-600 dark:text-blue-400 text-sm" />
                       ) : (
-                        <span className="text-red-600 dark:text-red-400 font-bold text-sm">✗</span>
+                        <span className="text-green-600 dark:text-green-400 font-bold text-sm">✓</span>
                       )}
-                      <span className={showGreen ? "font-medium" : ""}>{m.name}</span>
+                      <span className="font-medium">{m.name}</span>
                     </span>
-                    <span className="text-[10px] text-gray-500 shrink-0">{m.moduleKey}</span>
+                    <span className="text-[10px] text-gray-500 shrink-0">{isAlwaysAccessible ? '🔓' : m.moduleKey}</span>
                   </div>
                 </button>
+                {canRemove && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      quickUnassignModule(m);
+                    }}
+                    className="p-2 rounded-md bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition"
+                    title={`Remove ${m.name}`}
+                  >
+                    <span className="font-bold text-sm">−</span>
+                  </button>
+                )}
+        </div>
                 );
-                })}
-                {moduleGroups.unassigned.map((m) => {
-                  const isSelected = (selectedModuleKey && selectedModuleKey === m.moduleKey) || (selectedModuleId != null && Number.isFinite(Number(m.id)) && selectedModuleId === Number(m.id));
-                  const showYellow = !selectedAdminId;
-                  const showGreen = false;
-                  return (
-                    <button
-                      key={m.id}
-                      onClick={() => {
-                        const nextModuleId = Number.isFinite(Number(m.id)) ? Number(m.id) : null;
-                        setSelectedModuleId(nextModuleId);
-                        setSelectedModuleKey(m.moduleKey);
-                        if (selectedAdmin && nextModuleId) {
-                          const existing = selectedAdmin.pagePermissions?.[String(nextModuleId)] || [];
-                          setSelectedPageIds(existing.map(canonicalPageId));
-                        } else {
-                          setSelectedPageIds([]);
-                        }
-                      }}
-                      className={`w-full text-left rounded-md border px-3 py-2 text-xs transition ${
-                        isSelected
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-700"
-                          : showYellow
-                          ? "border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/30"
-                          : "border-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30"
-                      }`}
-                      title={`${m.moduleKey} - Not assigned`}
-                    >
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="truncate flex items-center gap-1.5">
-                          {showYellow ? (
-                            <span className="text-yellow-600 dark:text-yellow-400 font-bold text-sm">⚠</span>
-                          ) : (
-                            <span className="text-red-600 dark:text-red-400 font-bold text-sm">✗</span>
-                          )}
-                          <span>{m.name}</span>
-                        </span>
-                        <span className="text-[10px] text-gray-500 shrink-0">{m.moduleKey}</span>
-                      </div>
-                    </button>
-                  );
                 })}
               </>
             )}
@@ -867,7 +962,10 @@ export default function Page() {
         {/* 4. Pages - Yellow (no selection), Green (assigned), Red (unassigned) */}
         <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
           <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-semibold">Pages</div>
+            <div className="text-sm font-semibold flex items-center gap-2">
+              Pages
+              <span className="text-xs font-normal text-gray-500">{pagesForSelectedModule.length}</span>
+            </div>
             <div className="text-xs text-gray-500">
               {selectedPageIds.length} selected
             </div>
@@ -964,6 +1062,91 @@ export default function Page() {
           ))}
         </div>
       </div>
+
+      {/* All Modules Overview - Shows modules filtered by category with assignment status */}
+      {selectedAdminId && category && (
+        <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="text-sm font-semibold flex items-center gap-2">
+              <FiPackage className="text-purple-600" />
+              {category === 'pump' ? 'Pump' : 'Business ERP'} Modules - {selectedAdmin?.name || 'Super Admin'}
+              {isAssignMode && <span className="text-xs font-normal text-blue-600 dark:text-blue-400">(Click + to assign)</span>}
+            </div>
+            <div className="flex items-center gap-3 text-xs">
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded bg-green-500"></span>
+                Assigned ({moduleGroups.assigned.length})
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded bg-red-500"></span>
+                Not Assigned ({moduleGroups.unassigned.length})
+              </span>
+              <span className="flex items-center gap-1">
+                <FiUnlock className="w-3 h-3 text-blue-500" />
+                Always Accessible ({filteredModules.filter(m => m.alwaysAccessible).length})
+              </span>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+            {filteredModules.map((m) => {
+              const isExplicitlyAssigned = isModuleAssigned(m, selectedAdmin?.assignedModules || []);
+              const isPump = (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP' || m.productType === 'PUMP_MANAGEMENT';
+              const isAlwaysAccessible = m.alwaysAccessible || m.moduleKey === 'common' || m.moduleKey === 'chat';
+              // Check if this is a shared module (available in both ERP and Pump)
+              const isShared = (m.businessCategory ?? '').toLowerCase() === 'all' || m.alwaysAccessible === true;
+              const canAssign = isAssignMode && !isExplicitlyAssigned && !isAlwaysAccessible;
+              
+              return (
+                <div key={m.id} className="relative">
+                  {/* Show + button overlay when in assign mode for unassigned modules */}
+                  {canAssign && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        quickAssignModule(m);
+                      }}
+                      disabled={saving}
+                      className="absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full bg-green-500 hover:bg-green-600 text-white flex items-center justify-center text-lg font-bold shadow-lg transition-transform hover:scale-110"
+                      title={`Assign ${m.name}`}
+                    >
+                      +
+                    </button>
+                  )}
+                  {/* Non-clickable display card */}
+                  <div
+                    className={`w-full text-left rounded-md border px-3 py-2 text-xs ${
+                      isAlwaysAccessible
+                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
+                        : isExplicitlyAssigned
+                        ? "border-green-500 bg-green-50 dark:bg-green-900/20"
+                        : canAssign
+                        ? "border-dashed border-green-400 bg-green-50/50 dark:bg-green-900/10"
+                        : "border-red-400 bg-red-50 dark:bg-red-900/20"
+                    }`}
+                    title={`${m.name} - ${isAlwaysAccessible ? 'Always Accessible (No Assignment Needed)' : isExplicitlyAssigned ? 'Assigned' : 'Not Assigned'}`}
+                  >
+                    <div className="flex items-center gap-1.5">
+                      {isAlwaysAccessible ? (
+                        <FiUnlock className="text-blue-600 dark:text-blue-400 text-sm" />
+                      ) : isExplicitlyAssigned ? (
+                        <span className="text-green-600 dark:text-green-400 font-bold text-sm">✓</span>
+                      ) : (
+                        <span className="text-red-600 dark:text-red-400 font-bold text-sm">✗</span>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium">{m.name}</div>
+                        <div className="text-[10px] text-gray-500 truncate">
+                          {isAlwaysAccessible ? '🔓 All Users' : isShared ? '🔄 Both' : isPump ? 'Pump' : 'ERP'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
