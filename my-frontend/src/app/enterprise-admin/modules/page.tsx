@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { FiUsers, FiPackage, FiGrid, FiCheckCircle, FiUnlock } from "react-icons/fi";
+import { FiUsers, FiPackage, FiGrid, FiCheckCircle, FiUnlock, FiExternalLink } from "react-icons/fi";
 
 type Module = {
   id: number | string;
@@ -358,6 +358,7 @@ export default function Page() {
   const pagesForSelectedModule = useMemo(() => {
     if (!selectedModuleId) return [] as { id: string; title?: string; path: string; isAssigned?: boolean }[];
     const mod = modulesById.get(selectedModuleId);
+    const isAlwaysAccessibleModule = mod?.alwaysAccessible || mod?.moduleKey === 'common' || mod?.moduleKey === 'chat';
     const fromModule = (mod?.pages ?? []).map((p) => ({ 
       id: canonicalPageId(p.id ?? p.path), 
       title: p.name, 
@@ -381,12 +382,18 @@ export default function Page() {
     // If admin is selected, mark pages as assigned based on pagePermissions
     if (selectedAdmin && selectedModuleId) {
       const modKey = String(selectedModuleId);
-      const assignedForModule = selectedAdmin.pagePermissions?.[modKey] || [];
+      const moduleKey = mod?.moduleKey || '';
+      // Check by both numeric id and module key string
+      const assignedForModule = selectedAdmin.pagePermissions?.[modKey] 
+        || selectedAdmin.pagePermissions?.[moduleKey] 
+        || [];
       
       // Debug logging
       console.log('📋 Page Permissions Debug:', {
         selectedModuleId,
         modKey,
+        moduleKey,
+        isAlwaysAccessibleModule,
         allPagePermissions: selectedAdmin.pagePermissions,
         assignedForModule,
         pageCount: pages.length
@@ -403,7 +410,11 @@ export default function Page() {
       
       pages = pages.map((p) => {
         const [withSlash, noSlash] = bothForms(String(p.id));
-        const isAssigned = assignedSet.has(withSlash) || assignedSet.has(noSlash);
+        let isAssigned = assignedSet.has(withSlash) || assignedSet.has(noSlash);
+        // For always accessible modules with no saved permissions, treat all pages as assigned by default
+        if (isAlwaysAccessibleModule && assignedForModule.length === 0) {
+          isAssigned = true;
+        }
         console.log('📋 Page check:', p.id, '→', isAssigned, 'forms:', [withSlash, noSlash]);
         return { ...p, isAssigned };
       });
@@ -766,16 +777,16 @@ export default function Page() {
   if (error) return <div className="p-4 text-red-600">{error}</div>;
 
   return (
-    <div className="space-y-6 text-gray-900 dark:text-gray-100">
+    <div className="flex flex-col h-[calc(100vh-120px)] text-gray-900 dark:text-gray-100">
       {authHint && (
-        <div className="rounded-md border border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 px-3 py-2 text-xs">
+        <div className="rounded-md border border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 px-3 py-2 text-xs mb-4">
           {authHint}
         </div>
       )}
 
       {/* Guidance tiles */}
       {!category && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
           <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-4">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <FiGrid className="text-blue-600" /> Select a Category
@@ -787,36 +798,38 @@ export default function Page() {
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* 1. Categories */}
-        <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
-          <div className="text-sm font-semibold mb-2 flex items-center justify-between">
-            <span>Categories</span>
-            <span className="text-xs font-normal text-gray-500">2</span>
-          </div>
-          <div className="space-y-2">
-            {CATEGORIES.map((c) => (
-              <button
-                key={c.key}
-                onClick={() => {
-                  setCategory(c.key);
-                  setSelectedModuleKey(null);
-                  setSelectedPageIds([]);
-                }}
-                className={`w-full text-left rounded-md border px-3 py-2 text-sm transition ${
-                  category === c.key
-                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30"
-                    : "border-gray-200 dark:border-gray-700 hover:border-blue-300"
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="flex items-center gap-2">
-                    <span
-                      className={`inline-block w-2 h-2 rounded-full ${
-                        c.key === "pump" ? "bg-orange-500" : "bg-purple-600"
-                      }`}
-                    />
-                    {c.label}
+      {/* Scrollable top section with 4 columns */}
+      <div className="flex-1 overflow-auto min-h-0 mb-4">
+        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+          {/* 1. Categories */}
+          <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
+            <div className="text-sm font-semibold mb-2 flex items-center justify-between">
+              <span>Categories</span>
+              <span className="text-xs font-normal text-gray-500">2</span>
+            </div>
+            <div className="space-y-2">
+              {CATEGORIES.map((c) => (
+                <button
+                  key={c.key}
+                  onClick={() => {
+                    setCategory(c.key);
+                    setSelectedModuleKey(null);
+                    setSelectedPageIds([]);
+                  }}
+                  className={`w-full text-left rounded-md border px-3 py-2 text-sm transition ${
+                    category === c.key
+                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30"
+                      : "border-gray-200 dark:border-gray-700 hover:border-blue-300"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <span
+                        className={`inline-block w-2 h-2 rounded-full ${
+                          c.key === "pump" ? "bg-orange-500" : "bg-purple-600"
+                        }`}
+                      />
+                      {c.label}
                   </span>
                   <span className="text-xs text-gray-500">
                     {c.key === "pump" ? categoryCounts.pump : categoryCounts.business}
@@ -911,21 +924,30 @@ export default function Page() {
           setSelectedModuleId(nextModuleId);
                     setSelectedModuleKey(m.moduleKey);
                     // Preselect already assigned pages for this admin+module if available
+                    // For always accessible modules, also try to load saved page permissions
                     if (selectedAdmin && nextModuleId) {
-                      const existing = selectedAdmin.pagePermissions?.[String(nextModuleId)] || [];
-                      setSelectedPageIds(existing.map(canonicalPageId));
+                      // Check by both numeric id and module key string
+                      const existing = selectedAdmin.pagePermissions?.[String(nextModuleId)] 
+                        || selectedAdmin.pagePermissions?.[m.moduleKey] 
+                        || [];
+                      // If no saved permissions, for always accessible modules, select all pages by default
+                      if (existing.length === 0 && isAlwaysAccessible && m.pages && m.pages.length > 0) {
+                        setSelectedPageIds(m.pages.map(p => canonicalPageId(p.id ?? p.path)));
+                      } else {
+                        setSelectedPageIds(existing.map(canonicalPageId));
+                      }
                     } else {
                       setSelectedPageIds([]);
                     }
                   }}
-                  className={`flex-1 text-left rounded-md border px-3 py-2 text-xs transition ${
+                  className={`flex-1 text-left rounded-md border px-3 py-2 text-xs transition cursor-pointer ${
           isSelected
                       ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-700"
                       : isAlwaysAccessible
                       ? "border-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30"
                       : "border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30"
                   }`}
-                  title={`${m.moduleKey} - ${isAlwaysAccessible ? 'Always Accessible' : 'Assigned'}`}
+                  title={`${m.moduleKey} - ${isAlwaysAccessible ? 'Always Accessible (Click to edit page permissions)' : 'Assigned'} - Click to manage pages`}
                 >
                   <div className="flex items-center justify-between gap-2">
                     <span className="truncate flex items-center gap-1.5">
@@ -936,7 +958,9 @@ export default function Page() {
                       )}
                       <span className="font-medium">{m.name}</span>
                     </span>
-                    <span className="text-[10px] text-gray-500 shrink-0">{isAlwaysAccessible ? '🔓' : m.moduleKey}</span>
+                    <span className="text-[10px] text-gray-500 shrink-0">
+                      {isAlwaysAccessible ? '🔓 Edit' : m.moduleKey}
+                    </span>
                   </div>
                 </button>
                 {canRemove && (
@@ -1049,7 +1073,27 @@ export default function Page() {
                       {/* status icons removed; checkbox shows assigned status */}
                       <div className="flex-1 min-w-0">
                         <div className="truncate">{p.title || p.path}</div>
-                        <div className="text-[10px] text-gray-500 truncate">{p.path}</div>
+                        <div className="flex items-center gap-2">
+                          <span 
+                            className="text-[10px] text-gray-500 dark:text-gray-400 truncate cursor-default"
+                            title={`Page path: ${p.path}`}
+                          >
+                            {p.path}
+                          </span>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              // Open with preview mode - Enterprise Admin viewing as preview
+                              const previewUrl = `${p.path}${p.path.includes('?') ? '&' : '?'}preview=enterprise-admin`;
+                              window.open(previewUrl, '_blank', 'noopener,noreferrer');
+                            }}
+                            className="text-[10px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline flex items-center gap-0.5 opacity-70 hover:opacity-100 transition-opacity"
+                            title={`Preview ${p.path} (opens in new tab with preview mode)`}
+                          >
+                            <FiExternalLink className="w-3 h-3" />
+                            <span>Preview</span>
+                          </button>
+                        </div>
                       </div>
                       {checked && (
                         <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Selected</span>
@@ -1061,92 +1105,109 @@ export default function Page() {
             </div>
           ))}
         </div>
+        </div>
       </div>
 
-      {/* All Modules Overview - Shows modules filtered by category with assignment status */}
-      {selectedAdminId && category && (
-        <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="text-sm font-semibold flex items-center gap-2">
-              <FiPackage className="text-purple-600" />
-              {category === 'pump' ? 'Pump' : 'Business ERP'} Modules - {selectedAdmin?.name || 'Super Admin'}
-              {isAssignMode && <span className="text-xs font-normal text-blue-600 dark:text-blue-400">(Click + to assign)</span>}
-            </div>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded bg-green-500"></span>
-                Assigned ({moduleGroups.assigned.length})
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded bg-red-500"></span>
-                Not Assigned ({moduleGroups.unassigned.length})
-              </span>
-              <span className="flex items-center gap-1">
-                <FiUnlock className="w-3 h-3 text-blue-500" />
-                Always Accessible ({filteredModules.filter(m => m.alwaysAccessible).length})
-              </span>
-            </div>
+      {/* Static bottom section - All Modules Overview */}
+      <div className="flex-shrink-0 rounded-lg border bg-white/40 dark:bg-gray-900/30 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="text-sm font-semibold flex items-center gap-2">
+            <FiPackage className="text-purple-600" />
+            {category === 'pump' ? 'Pump Management' : 'Business ERP'} Modules {selectedAdmin ? `- ${selectedAdmin.name}` : ''}
+            {isAssignMode && <span className="text-xs font-normal text-blue-600 dark:text-blue-400">(Click + to assign)</span>}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-            {filteredModules.map((m) => {
-              const isExplicitlyAssigned = isModuleAssigned(m, selectedAdmin?.assignedModules || []);
-              const isPump = (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP' || m.productType === 'PUMP_MANAGEMENT';
-              const isAlwaysAccessible = m.alwaysAccessible || m.moduleKey === 'common' || m.moduleKey === 'chat';
-              // Check if this is a shared module (available in both ERP and Pump)
-              const isShared = (m.businessCategory ?? '').toLowerCase() === 'all' || m.alwaysAccessible === true;
-              const canAssign = isAssignMode && !isExplicitlyAssigned && !isAlwaysAccessible;
-              
-              return (
-                <div key={m.id} className="relative">
-                  {/* Show + button overlay when in assign mode for unassigned modules */}
-                  {canAssign && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        quickAssignModule(m);
-                      }}
-                      disabled={saving}
-                      className="absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full bg-green-500 hover:bg-green-600 text-white flex items-center justify-center text-lg font-bold shadow-lg transition-transform hover:scale-110"
-                      title={`Assign ${m.name}`}
-                    >
-                      +
-                    </button>
-                  )}
-                  {/* Non-clickable display card */}
-                  <div
-                    className={`w-full text-left rounded-md border px-3 py-2 text-xs ${
-                      isAlwaysAccessible
-                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20"
-                        : isExplicitlyAssigned
-                        ? "border-green-500 bg-green-50 dark:bg-green-900/20"
-                        : canAssign
-                        ? "border-dashed border-green-400 bg-green-50/50 dark:bg-green-900/10"
-                        : "border-red-400 bg-red-50 dark:bg-red-900/20"
-                    }`}
-                    title={`${m.name} - ${isAlwaysAccessible ? 'Always Accessible (No Assignment Needed)' : isExplicitlyAssigned ? 'Assigned' : 'Not Assigned'}`}
+          <div className="flex items-center gap-3 text-xs">
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded bg-green-500"></span>
+              Assigned {selectedAdminId ? `(${moduleGroups.assigned.filter(m => !m.alwaysAccessible).length})` : ''}
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded bg-red-500"></span>
+              Not Assigned {selectedAdminId ? `(${moduleGroups.unassigned.length})` : ''}
+            </span>
+            <span className="flex items-center gap-1">
+              <FiUnlock className="w-3 h-3 text-blue-500" />
+              Always Accessible ({modules.filter(m => m.alwaysAccessible).length})
+            </span>
+          </div>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+          {filteredModules.map((m) => {
+            const isExplicitlyAssigned = selectedAdmin ? isModuleAssigned(m, selectedAdmin.assignedModules || []) : false;
+            const isPump = (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP' || m.productType === 'PUMP_MANAGEMENT';
+            const isAlwaysAccessible = m.alwaysAccessible || m.moduleKey === 'common' || m.moduleKey === 'chat';
+            const isShared = (m.businessCategory ?? '').toLowerCase() === 'all' || m.alwaysAccessible === true;
+            const canAssign = isAssignMode && !isExplicitlyAssigned && !isAlwaysAccessible && selectedAdminId;
+            
+            return (
+              <div key={m.id} className="relative">
+                {/* Show + button overlay when in assign mode for unassigned modules */}
+                {canAssign && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      quickAssignModule(m);
+                    }}
+                    disabled={saving}
+                    className="absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full bg-green-500 hover:bg-green-600 text-white flex items-center justify-center text-lg font-bold shadow-lg transition-transform hover:scale-110"
+                    title={`Assign ${m.name}`}
                   >
-                    <div className="flex items-center gap-1.5">
-                      {isAlwaysAccessible ? (
-                        <FiUnlock className="text-blue-600 dark:text-blue-400 text-sm" />
-                      ) : isExplicitlyAssigned ? (
-                        <span className="text-green-600 dark:text-green-400 font-bold text-sm">✓</span>
-                      ) : (
-                        <span className="text-red-600 dark:text-red-400 font-bold text-sm">✗</span>
-                      )}
-                      <div className="min-w-0 flex-1">
-                        <div className="truncate font-medium">{m.name}</div>
-                        <div className="text-[10px] text-gray-500 truncate">
-                          {isAlwaysAccessible ? '🔓 All Users' : isShared ? '🔄 Both' : isPump ? 'Pump' : 'ERP'}
-                        </div>
+                    +
+                  </button>
+                )}
+                {/* Clickable card for editing page permissions */}
+                <button
+                  onClick={() => {
+                    const nextModuleId = Number.isFinite(Number(m.id)) ? Number(m.id) : null;
+                    setSelectedModuleId(nextModuleId);
+                    setSelectedModuleKey(m.moduleKey);
+                    if (selectedAdmin && nextModuleId) {
+                      const existing = selectedAdmin.pagePermissions?.[String(nextModuleId)] 
+                        || selectedAdmin.pagePermissions?.[m.moduleKey] 
+                        || [];
+                      if (existing.length === 0 && isAlwaysAccessible && m.pages && m.pages.length > 0) {
+                        setSelectedPageIds(m.pages.map(p => canonicalPageId(p.id ?? p.path)));
+                      } else {
+                        setSelectedPageIds(existing.map(canonicalPageId));
+                      }
+                    } else {
+                      setSelectedPageIds([]);
+                    }
+                  }}
+                  className={`w-full text-left rounded-md border px-3 py-2 text-xs cursor-pointer transition hover:ring-2 hover:ring-blue-300 ${
+                    isAlwaysAccessible
+                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                      : !selectedAdminId
+                      ? "border-gray-300 bg-gray-50 dark:bg-gray-800/30 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                      : isExplicitlyAssigned
+                      ? "border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30"
+                      : "border-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30"
+                  }`}
+                  title={`${m.name} - ${isAlwaysAccessible ? 'Always Accessible - Click to edit page permissions' : !selectedAdminId ? 'Select a Super Admin to see status' : isExplicitlyAssigned ? 'Assigned - Click to manage pages' : 'Not Assigned'}`}
+                >
+                  <div className="flex items-center gap-1.5">
+                    {isAlwaysAccessible ? (
+                      <FiUnlock className="text-blue-600 dark:text-blue-400 text-sm" />
+                    ) : !selectedAdminId ? (
+                      <span className="text-gray-400 text-sm">○</span>
+                    ) : isExplicitlyAssigned ? (
+                      <span className="text-green-600 dark:text-green-400 font-bold text-sm">✓</span>
+                    ) : (
+                      <span className="text-red-600 dark:text-red-400 font-bold text-sm">✗</span>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <div className="truncate font-medium">{m.name}</div>
+                      <div className="text-[10px] text-gray-500 truncate">
+                        {isAlwaysAccessible ? '🔓 Click to edit' : isShared ? '🔄 Both' : isPump ? 'Pump' : 'ERP'}
                       </div>
                     </div>
                   </div>
-                </div>
-              );
-            })}
-          </div>
+                </button>
+              </div>
+            );
+          })}
         </div>
-      )}
+      </div>
     </div>
   );
 }

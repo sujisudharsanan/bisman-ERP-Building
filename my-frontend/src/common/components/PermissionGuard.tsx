@@ -25,8 +25,8 @@ export default function PermissionGuard({
   const [isChecking, setIsChecking] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
 
-  // Check if user is Super Admin
-  const isSuperAdmin = React.useMemo(() => {
+  // Check if user has full admin access (Enterprise Admin, Super Admin, System Admin, etc.)
+  const isFullAdmin = React.useMemo(() => {
     const roleName = String(user?.roleName || user?.role || '').toUpperCase();
     return hasFullAdmin(roleName);
   }, [user?.roleName, user?.role]);
@@ -38,8 +38,8 @@ export default function PermissionGuard({
         return;
       }
 
-      // Super Admin always has access
-      if (isSuperAdmin) {
+      // Full Admin roles always have access (Enterprise Admin, Super Admin, etc.)
+      if (isFullAdmin) {
         setHasAccess(true);
         setIsChecking(false);
         return;
@@ -85,7 +85,7 @@ export default function PermissionGuard({
     };
 
     checkPermissions();
-  }, [user?.id, isSuperAdmin, requirePermissions, router]);
+  }, [user?.id, isFullAdmin, requirePermissions, router]);
 
   // Show loading state while checking
   if (isChecking) {
