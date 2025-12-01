@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import SuperAdminLayout from '@/common/layouts/superadmin-layout';
+import PermissionGuard from '@/common/components/PermissionGuard';
 import { 
   Calendar,
   ChevronLeft, 
@@ -178,6 +179,7 @@ export default function ModernCalendarPage() {
   };
 
   return (
+    <PermissionGuard>
     <SuperAdminLayout 
       title="Schedule Calendar" 
       description="Manage appointments and team schedules"
@@ -417,5 +419,6 @@ export default function ModernCalendarPage() {
         </div>
       </div>
     </SuperAdminLayout>
+    </PermissionGuard>
   );
 }

@@ -81,11 +81,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const data = await response.json();
         const userData = data.user;
         
-        // Ensure role/roleName exists, provide fallback
+        // Security: If role is missing, don't assign fallback - treat as invalid session
         if (!userData.role && !userData.roleName) {
-          console.warn('⚠️ Role missing from /api/me response — assigning fallback role: MANAGER');
-          userData.role = 'MANAGER';
-          userData.roleName = 'MANAGER';
+          console.error('❌ Role missing from /api/me response — invalid session, logging out');
+          setUser(null);
+          setLoading(false);
+          return;
         } else if (!userData.roleName) {
           userData.roleName = userData.role;
         } else if (!userData.role) {
@@ -174,11 +175,12 @@ export function AuthProvider({ children }: AuthProviderProps) {
         if (who && who.user) {
           const userData = who.user;
           
-          // Ensure role/roleName exists, provide fallback
+          // Security: If role is missing, don't assign fallback - treat as invalid login
           if (!userData.role && !userData.roleName) {
-            console.warn('⚠️ Role missing after login — assigning fallback role: MANAGER');
-            userData.role = 'MANAGER';
-            userData.roleName = 'MANAGER';
+            console.error('❌ Role missing after login — invalid user data, rejecting login');
+            setUser(null);
+            setLoading(false);
+            return null;
           } else if (!userData.roleName) {
             userData.roleName = userData.role;
           } else if (!userData.role) {

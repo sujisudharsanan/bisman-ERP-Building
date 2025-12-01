@@ -74,10 +74,10 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
     return () => { mounted = false; };
   }, []);
 
-  // Check if user is Super Admin
+  // Check if user is Super Admin (only SUPER_ADMIN, not ADMIN which is tenant-level)
   const isSuperAdmin = useMemo(() => {
     const roleName = String(user?.roleName || user?.role || '').toUpperCase();
-    return hasFullAdmin(roleName);
+    return roleName === 'SUPER_ADMIN';
   }, [user?.roleName, user?.role]);
 
   // Fetch user permissions from database
@@ -113,27 +113,31 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
             console.log('[Sidebar] Super Admin permissions:', result);
             
             const assignedModules = result.user?.permissions?.assignedModules || [];
+            const pagePermissions = result.user?.permissions?.pagePermissions || {};
             setSuperAdminModules(assignedModules);
             
-            // Grant all pages from assigned modules
-            const allPageKeys = REGISTRY
-              .filter(page => assignedModules.includes(page.module))
-              .map(page => page.id);
+            // Use specific page permissions from Enterprise Admin assignment
+            // Only grant pages that are explicitly assigned, not all pages from modules
+            const allowedPageKeys: string[] = [];
+            Object.entries(pagePermissions).forEach(([moduleName, pages]) => {
+              if (Array.isArray(pages)) {
+                allowedPageKeys.push(...pages);
+              }
+            });
             
             console.log('[Sidebar] Assigned modules:', assignedModules);
-            console.log('[Sidebar] Allowed pages:', allPageKeys.length);
-            setUserAllowedPages(allPageKeys);
+            console.log('[Sidebar] Page permissions by module:', pagePermissions);
+            console.log('[Sidebar] Allowed pages:', allowedPageKeys.length, allowedPageKeys);
+            setUserAllowedPages(allowedPageKeys);
           } else {
             console.error('[Sidebar] Failed to fetch Super Admin permissions:', response.status);
-            // Fallback: grant all access if API fails
-            const allPageKeys = PAGE_REGISTRY.map(page => page.id);
-            setUserAllowedPages(allPageKeys);
+            // Security: DO NOT grant access if API fails - show empty sidebar
+            setUserAllowedPages([]);
           }
         } catch (error) {
           console.error('[Sidebar] Error fetching Super Admin permissions:', error);
-          // Fallback: grant all access if API fails
-          const allPageKeys = PAGE_REGISTRY.map(page => page.id);
-          setUserAllowedPages(allPageKeys);
+          // Security: DO NOT grant access if API fails - show empty sidebar
+          setUserAllowedPages([]);
         }
         setIsLoadingPermissions(false);
         return;
@@ -219,15 +223,14 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
       // Enterprise Admin: enterprise-specific pages only
       pages = pages.filter(p => p.path.startsWith('/enterprise') || p.roles.includes('ENTERPRISE_ADMIN'));
     } else if (isSuperAdmin) {
-      // Super Admin: Only pages from modules assigned by Enterprise Admin
-      // Always include 'common' and 'chat' modules (always accessible)
-      // Plus any modules assigned via module_assignments table
-      const allowedModules = new Set(['common', 'chat', ...superAdminModules]);
-      pages = pages.filter(p => allowedModules.has(p.module) || userAllowedPages.includes(p.id));
-      console.log('[Sidebar] Super Admin allowed modules:', Array.from(allowedModules));
+      // Super Admin: Only pages explicitly assigned by Enterprise Admin
+      // Filter by userAllowedPages which contains the specific page IDs from page_permissions
+      pages = pages.filter(p => userAllowedPages.includes(p.id));
+      console.log('[Sidebar] Super Admin allowed pages:', userAllowedPages);
     } else {
-      // Regular users: only explicitly allowed pages from DB + Common pages (available to all)
-      pages = pages.filter(p => userAllowedPages.includes(p.id) || p.module === 'common');
+      // Regular users: only explicitly allowed pages from DB
+      // NO auto-grant for common module - must be explicitly assigned
+      pages = pages.filter(p => userAllowedPages.includes(p.id));
     }
 
     // Non-enterprise users should not see enterprise pages

@@ -160,13 +160,21 @@ router.post('/login', asyncHandler(async (req, res) => {
       if (isValidPassword) {
         console.log('✅ Authenticated as Super Admin');
 
-        // Get assigned modules
+        // Get assigned modules with page permissions
         const moduleAssignments = await prisma.moduleAssignment.findMany({
           where: { super_admin_id: superAdmin.id },
           include: { module: true }
         });
 
         const assignedModules = moduleAssignments.map(ma => ma.module.module_name);
+        
+        // Build pagePermissions object: { moduleName: [pageIds] }
+        const pagePermissions = {};
+        moduleAssignments.forEach(ma => {
+          const moduleName = ma.module.module_name;
+          const pages = ma.page_permissions || [];
+          pagePermissions[moduleName] = pages;
+        });
 
         authData = {
           id: superAdmin.id,
@@ -178,6 +186,7 @@ router.post('/login', asyncHandler(async (req, res) => {
           tenant_id: null,
           super_admin_id: superAdmin.id,
           assignedModules: assignedModules,
+          pagePermissions: pagePermissions,
           profile_pic_url: superAdmin.profile_pic_url
         };
 
@@ -300,58 +309,7 @@ router.post('/login', asyncHandler(async (req, res) => {
       }
     }
 
-    // If we reach here, credentials did not match database users
-    // Development-only fallback: allow dev demo users when explicitly enabled
-    if (process.env.NODE_ENV !== 'production' && process.env.ALLOW_DEV_USERS === 'true') {
-      // Minimal dev users - extend as needed for local testing
-      const devUsers = [
-        {
-          id: 300,
-          email: 'demo_hub_incharge@bisman.demo',
-          // Accept common demo passwords for local testing only
-          passwords: ['Demo@123', 'demo123', 'changeme'],
-          role: 'HUB_INCHARGE',
-          userType: 'USER',
-          redirectPath: '/hub-incharge'
-        },
-      ];
-      const dev = devUsers.find(u => u.email.toLowerCase() === String(email).toLowerCase());
-      const passOk = dev && dev.passwords.some(p => p === password);
-      if (dev && passOk) {
-        console.warn('⚠️ DEV LOGIN: Authenticating via devUsers fallback for', dev.email);
-
-        const accessToken = generateAccessToken({
-          id: dev.id,
-          email: dev.email,
-          role: dev.role,
-          userType: dev.userType,
-          productType: 'BUSINESS_ERP'
-        });
-        const refreshToken = generateRefreshToken({ id: dev.id, email: dev.email, userType: dev.userType });
-
-        setCookies(res, accessToken, refreshToken);
-
-        return res.json({
-          success: true,
-          message: 'Login successful (dev fallback)',
-          user: {
-            id: dev.id,
-            email: dev.email,
-            username: 'hub_incharge',
-            name: 'Hub Incharge',
-            role: dev.role,
-            userType: dev.userType,
-            productType: 'BUSINESS_ERP',
-            assignedModules: [],
-            profile_pic_url: null,
-          },
-          accessToken,
-          redirectPath: dev.redirectPath,
-        });
-      }
-    }
-
-    // Invalid credentials
+    // Invalid credentials - no fallback, database is the single source of truth
     console.log('❌ Invalid credentials for:', email);
     throw new AppError(
       'Invalid email or password',

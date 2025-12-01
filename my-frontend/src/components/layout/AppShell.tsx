@@ -31,6 +31,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const excludedPrefixes = useMemo(
     () => [
       '/auth',
+      '/access-denied',   // ✅ Added: Full screen access denied page
       '/super-admin',
       '/enterprise-admin',
       '/enterprise',

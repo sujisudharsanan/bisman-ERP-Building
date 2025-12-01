@@ -688,6 +688,17 @@ try {
   }
 }
 
+// Fallback Logs routes (for Super Admin monitoring)
+try {
+  const fallbackLogsRoutes = require('./routes/fallbackLogsRoutes')
+  app.use('/api/fallback-logs', fallbackLogsRoutes)
+  console.log('✅ Fallback Logs routes loaded at /api/fallback-logs')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Fallback Logs routes not loaded:', e && e.message)
+  }
+}
+
 // Multi-tenant authentication routes
 try {
   const authRoutes = require('./routes/auth')
@@ -1563,8 +1574,10 @@ app.get('/api/auth/me/permissions', authenticate, async (req, res) => {
 
     // For SUPER_ADMIN role, fetch from super_admins table
     if (req.user.role === 'SUPER_ADMIN') {
-      const superAdmin = await prisma.superAdmin.findUnique({
-        where: { id: userId },
+      // Look up by email since super_admins table has different IDs than users table
+      const userEmail = req.user.email;
+      const superAdmin = await prisma.superAdmin.findFirst({
+        where: { email: userEmail },
         include: {
           moduleAssignments: {
             include: {
@@ -1575,7 +1588,7 @@ app.get('/api/auth/me/permissions', authenticate, async (req, res) => {
       });
 
       if (!superAdmin) {
-        console.error('❌ [PERMISSIONS] Super Admin not found:', userId);
+        console.error('❌ [PERMISSIONS] Super Admin not found for email:', userEmail);
         return res.status(404).json({ ok: false, error: 'Super Admin not found' });
       }
 

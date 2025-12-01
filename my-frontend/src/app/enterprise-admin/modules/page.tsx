@@ -145,6 +145,16 @@ export default function Page() {
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedRef = useRef<string>(''); // Track last saved state to avoid duplicate saves
   const isInitialLoadRef = useRef<boolean>(true); // Flag to skip auto-save on initial page selection
+  const initialPageIdsRef = useRef<string[]>([]); // Track initial pages loaded for a module to detect changes
+
+  // Compute whether there are unsaved changes by comparing current selection with initial state
+  const hasChanges = useMemo(() => {
+    if (!selectedAdminId || !selectedModuleId) return false;
+    const sortedCurrent = [...selectedPageIds].sort();
+    const sortedInitial = [...initialPageIdsRef.current].sort();
+    if (sortedCurrent.length !== sortedInitial.length) return true;
+    return sortedCurrent.some((id, i) => id !== sortedInitial[i]);
+  }, [selectedPageIds, selectedAdminId, selectedModuleId]);
 
   // Auto-save function - saves page permissions to database
   const savePagePermissions = useCallback(async (adminId: number, moduleId: number, pageIds: string[]) => {
@@ -184,6 +194,7 @@ export default function Page() {
       
       if (response.ok) {
         lastSavedRef.current = saveKey;
+        initialPageIdsRef.current = [...pageIds]; // Update initial state after auto-save
         setAutoSaveStatus('saved');
         console.log('✅ Auto-save successful');
         
@@ -276,7 +287,15 @@ export default function Page() {
         const admins = arr<any>(usersJson, "superAdmins").map((a) => {
           // Build page permissions map if backend provided it (various shapes supported)
           const pagePerms: Record<string, string[]> = (() => {
-            if (a.pagePermissions && typeof a.pagePermissions === 'object') return a.pagePermissions as Record<string, string[]>;
+            if (a.pagePermissions && typeof a.pagePermissions === 'object') {
+              // Ensure all keys are strings and values are string arrays
+              const normalized: Record<string, string[]> = {};
+              Object.entries(a.pagePermissions).forEach(([key, value]) => {
+                normalized[String(key)] = Array.isArray(value) ? value.map(String) : [];
+              });
+              console.log('📦 Loaded pagePermissions from API:', normalized);
+              return normalized;
+            }
             const perms: Record<string, string[]> = {};
             const assigned = Array.isArray(a.assignedModules) ? a.assignedModules : (Array.isArray(a.moduleAssignments) ? a.moduleAssignments : []);
             assigned.forEach((item: any) => {
@@ -365,7 +384,9 @@ export default function Page() {
         id: admin.id,
         name: admin.name,
         assignedModules: admin.assignedModules,
-        assignedModulesCount: admin.assignedModules?.length || 0
+        assignedModulesCount: admin.assignedModules?.length || 0,
+        pagePermissions: admin.pagePermissions,
+        pagePermissionsKeys: admin.pagePermissions ? Object.keys(admin.pagePermissions) : []
       });
     }
     return admin;
@@ -505,11 +526,9 @@ export default function Page() {
       
       pages = pages.map((p) => {
         const [withSlash, noSlash] = bothForms(String(p.id));
-        let isAssigned = assignedSet.has(withSlash) || assignedSet.has(noSlash);
-        // For always accessible modules with no saved permissions, treat all pages as assigned by default
-        if (isAlwaysAccessibleModule && assignedForModule.length === 0) {
-          isAssigned = true;
-        }
+        const isAssigned = assignedSet.has(withSlash) || assignedSet.has(noSlash);
+        // Removed: Don't auto-mark all pages as assigned for always accessible modules
+        // Users must explicitly select pages
         console.log('📋 Page check:', p.id, '→', isAssigned, 'forms:', [withSlash, noSlash]);
         return { ...p, isAssigned };
       });
@@ -636,6 +655,9 @@ export default function Page() {
       }
       
       console.log('✅ Assign successful!');
+      
+      // Update initialPageIdsRef to reflect saved state (for hasChanges detection)
+      initialPageIdsRef.current = [...selectedPageIds];
       
       // Refresh super admins data after assignment to update green/red indicators
         const usersRes = await fetch("/api/enterprise-admin/super-admins", { credentials: "include" });
@@ -1023,23 +1045,36 @@ export default function Page() {
                     // For always accessible modules, also try to load saved page permissions
                     if (selectedAdmin && nextModuleId) {
                       // Check by both numeric id and module key string
-                      const existing = selectedAdmin.pagePermissions?.[String(nextModuleId)] 
+                      const stringKey = String(nextModuleId);
+                      const moduleKeyLower = m.moduleKey?.toLowerCase() || '';
+                      console.log('🔍 Looking for pagePermissions:', {
+                        nextModuleId,
+                        stringKey,
+                        moduleKey: m.moduleKey,
+                        moduleKeyLower,
+                        allPermissions: selectedAdmin.pagePermissions,
+                        byStringKey: selectedAdmin.pagePermissions?.[stringKey],
+                        byModuleKey: selectedAdmin.pagePermissions?.[m.moduleKey],
+                        byModuleKeyLower: selectedAdmin.pagePermissions?.[moduleKeyLower]
+                      });
+                      const existing = selectedAdmin.pagePermissions?.[stringKey] 
                         || selectedAdmin.pagePermissions?.[m.moduleKey] 
+                        || selectedAdmin.pagePermissions?.[moduleKeyLower]
                         || [];
-                      // If no saved permissions, for always accessible modules, select all pages by default
-                      let initialPages: string[];
-                      if (existing.length === 0 && isAlwaysAccessible && m.pages && m.pages.length > 0) {
-                        initialPages = m.pages.map(p => canonicalPageId(p.id ?? p.path));
-                      } else {
-                        initialPages = existing.map(canonicalPageId);
-                      }
+                      console.log('📋 Found existing pages:', existing);
+                      // Use saved permissions - do NOT auto-select all pages for always accessible modules
+                      // The user must explicitly select pages they want
+                      const initialPages = existing.map(canonicalPageId);
+                      console.log('📋 Initial pages after canonicalize:', initialPages);
                       isInitialLoadRef.current = true;
                       setSelectedPageIds(initialPages);
+                      initialPageIdsRef.current = initialPages; // Track initial state for hasChanges detection
                       // Initialize lastSavedRef to prevent auto-save from triggering on initial load
-                      lastSavedRef.current = `${selectedAdmin.id}-${nextModuleId}-${initialPages.sort().join(',')}`;
+                      lastSavedRef.current = `${selectedAdmin.id}-${nextModuleId}-${[...initialPages].sort().join(',')}`;
                     } else {
                       isInitialLoadRef.current = true;
                       setSelectedPageIds([]);
+                      initialPageIdsRef.current = []; // Reset initial state
                       lastSavedRef.current = '';
                     }
                   }}
@@ -1119,11 +1154,8 @@ export default function Page() {
             <div className="text-xs text-gray-500">No pages found for this module</div>
           ) : (
             <div className="space-y-1 max-h-[460px] overflow-y-auto">
-              {/* With both selections, show controls */}
-              <div className="flex items-center gap-2 mb-2">
-                <span className="text-xs text-gray-600 dark:text-gray-400">
-                  {selectedPageIds.length} of {pagesForSelectedModule.length} selected
-                </span>
+              {/* Controls: Deselect All and Save */}
+              <div className="flex items-center justify-between mb-2">
                 <button
                   onClick={toggleAllPages}
                   className="px-2 py-1 text-xs rounded border hover:bg-blue-50 dark:hover:bg-blue-900/30"
@@ -1131,20 +1163,16 @@ export default function Page() {
                   {selectedPageIds.length === pagesForSelectedModule.length ? "Deselect All" : "Select All"}
                 </button>
                 <button
-                  disabled={!selectedAdminId || saving || selectedPageIds.length === 0}
+                  disabled={!selectedAdminId || saving || !hasChanges}
                   onClick={assignPages}
-                  className="px-2 py-1 text-xs rounded border bg-green-600 text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                  title={selectedPageIds.length === 0 ? "Select at least one page" : `Assign ${selectedPageIds.length} page(s)`}
+                  className={`px-3 py-1 text-xs rounded border text-white disabled:opacity-60 disabled:cursor-not-allowed ${
+                    hasChanges 
+                      ? 'bg-blue-600 hover:bg-blue-700' 
+                      : 'bg-gray-400'
+                  }`}
+                  title={hasChanges ? "Save page selections" : "No changes to save"}
                 >
-                  {saving ? "Saving..." : `Assign (${selectedPageIds.length})`}
-                </button>
-                <button
-                  disabled={!selectedAdminId || saving || selectedPageIds.length === 0}
-                  onClick={unassignPages}
-                  className="px-2 py-1 text-xs rounded border bg-red-600 text-white disabled:opacity-60 disabled:cursor-not-allowed"
-                  title={selectedPageIds.length === 0 ? "Select at least one page" : `Unassign ${selectedPageIds.length} page(s)`}
-                >
-                  {saving ? "Saving..." : `Unassign (${selectedPageIds.length})`}
+                  {saving ? "Saving..." : hasChanges ? "Save" : "Saved ✓"}
                 </button>
               </div>
               {pagesForSelectedModule.map((p) => {
@@ -1278,16 +1306,12 @@ export default function Page() {
                       const existing = selectedAdmin.pagePermissions?.[String(nextModuleId)] 
                         || selectedAdmin.pagePermissions?.[m.moduleKey] 
                         || [];
-                      let initialPages: string[];
-                      if (existing.length === 0 && isAlwaysAccessible && m.pages && m.pages.length > 0) {
-                        initialPages = m.pages.map(p => canonicalPageId(p.id ?? p.path));
-                      } else {
-                        initialPages = existing.map(canonicalPageId);
-                      }
+                      // Use saved permissions - do NOT auto-select all pages
+                      const initialPages = existing.map(canonicalPageId);
                       isInitialLoadRef.current = true;
                       setSelectedPageIds(initialPages);
                       // Initialize lastSavedRef to prevent auto-save from triggering on initial load
-                      lastSavedRef.current = `${selectedAdmin.id}-${nextModuleId}-${initialPages.sort().join(',')}`;
+                      lastSavedRef.current = `${selectedAdmin.id}-${nextModuleId}-${[...initialPages].sort().join(',')}`;
                     } else {
                       isInitialLoadRef.current = true;
                       setSelectedPageIds([]);

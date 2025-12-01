@@ -5,41 +5,8 @@ const { isJtiRevoked } = require('../lib/tokenStore')
 const { getPrisma } = require('../lib/prisma')
 const prisma = getPrisma()
 
-// ⚠️ SECURITY: Dev users only enabled in development mode
-// In production, all users MUST come from database
-const isDevelopment = process.env.NODE_ENV !== 'production'
-const devUsers = isDevelopment ? [
-  // Original dev credentials (DEVELOPMENT ONLY)
-  { id: 0, email: 'super@bisman.local', password: 'password', role: 'SUPER_ADMIN' },
-  { id: 1, email: 'manager@business.com', password: 'password', role: 'MANAGER' },
-  { id: 2, email: 'admin@business.com', password: 'admin123', role: 'ADMIN' },
-  { id: 3, email: 'staff@business.com', password: 'staff123', role: 'STAFF' },
-
-  // Additional dev users to support "changeme" credentials used by the frontend/docs
-  { id: 100, email: 'super@bisman.local', password: 'changeme', role: 'SUPER_ADMIN' },
-  { id: 101, email: 'admin@bisman.local', password: 'changeme', role: 'ADMIN' },
-  { id: 102, email: 'manager@bisman.local', password: 'changeme', role: 'MANAGER' },
-  { id: 103, email: 'hub@bisman.local', password: 'changeme', role: 'STAFF' },
-
-  // Demo credentials for testing
-  { id: 300, email: 'demo_hub_incharge@bisman.demo', password: 'changeme', role: 'HUB_INCHARGE' },
-  { id: 301, email: 'demo_admin@bisman.demo', password: 'changeme', role: 'ADMIN' },
-  { id: 302, email: 'demo_manager@bisman.demo', password: 'changeme', role: 'MANAGER' },
-  { id: 303, email: 'demo_super@bisman.demo', password: 'changeme', role: 'SUPER_ADMIN' },
-
-  // Finance & Operations demo users
-  { id: 201, email: 'it@bisman.local', password: 'changeme', role: 'IT_ADMIN' },
-  { id: 202, email: 'cfo@bisman.local', password: 'changeme', role: 'CFO' },
-  { id: 203, email: 'controller@bisman.local', password: 'changeme', role: 'FINANCE_CONTROLLER' },
-  { id: 204, email: 'treasury@bisman.local', password: 'changeme', role: 'TREASURY' },
-  { id: 205, email: 'accounts@bisman.local', password: 'changeme', role: 'ACCOUNTS' },
-  { id: 206, email: 'ap@bisman.local', password: 'changeme', role: 'ACCOUNTS_PAYABLE' },
-  { id: 207, email: 'banker@bisman.local', password: 'changeme', role: 'BANKER' },
-  { id: 208, email: 'procurement@bisman.local', password: 'changeme', role: 'PROCUREMENT_OFFICER' },
-  { id: 209, email: 'store@bisman.local', password: 'changeme', role: 'STORE_INCHARGE' },
-  { id: 210, email: 'compliance@bisman.local', password: 'changeme', role: 'COMPLIANCE' },
-  { id: 211, email: 'legal@bisman.local', password: 'changeme', role: 'LEGAL' },
-] : [] // Empty array in production
+// ⚠️ SECURITY: No dev users - all authentication goes through database
+// This ensures consistent behavior between development and production
 
 async function authenticate(req, res, next) {
   console.log('[authenticate] Checking authentication...')
@@ -149,25 +116,13 @@ async function authenticate(req, res, next) {
         req.user = user
       }
     } catch (dbError) {
-      console.log('Database not available, using development user lookup')
-      user = null
+      console.error('[authenticate] Database error:', dbError.message)
+      return res.status(503).json({ error: 'Database unavailable' })
     }
 
-    // Fallback to development users if database fails (ONLY IN DEV MODE)
-    if (!user && isDevelopment && devUsers.length > 0) {
-      console.log('[authenticate] Using dev user lookup for subjectId:', subjectId)
-      const devUser = devUsers.find(u => u.id === subjectId || (payload.email && u.email === payload.email))
-      if (!devUser) {
-        console.log('[authenticate] Dev user not found for id/email:', subjectId, payload.email)
-        return res.status(401).json({ error: 'invalid token user' })
-      }
-      console.log('[authenticate] ⚠️  DEV MODE: Using development user:', devUser.email)
-      req.user = { ...devUser }
-      delete req.user.password
-      req.user.roleName = devUser.role
-    } else if (!user) {
-      // Production: No fallback, user must exist in database
-      console.log('[authenticate] ❌ User not found in database and dev users disabled')
+    // User must exist in database - no fallbacks
+    if (!user) {
+      console.log('[authenticate] ❌ User not found in database')
       return res.status(401).json({ error: 'user not found' })
     }
 

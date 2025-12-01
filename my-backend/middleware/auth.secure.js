@@ -91,73 +91,10 @@ console.log('🔐 Authentication Environment:', {
 })
 
 // ============================================================================
-// 🔐 CRITICAL SECURITY: Dev Users Configuration
+// 🔐 SECURITY: No hardcoded dev users
+// All authentication goes through the database
 // ============================================================================
-
-// Dev users ONLY enabled when:
-// 1. NOT in production
-// 2. ALLOW_DEV_USERS explicitly set to 'true'
-const devUsersEnabled = !isProduction && process.env.ALLOW_DEV_USERS === 'true'
-
-const devUsers = devUsersEnabled ? [
-  // Original dev credentials (DEVELOPMENT ONLY)
-  { id: 0, email: 'super@bisman.local', password: 'password', role: 'SUPER_ADMIN' },
-  { id: 1, email: 'manager@business.com', password: 'password', role: 'MANAGER' },
-  { id: 2, email: 'admin@business.com', password: 'admin123', role: 'ADMIN' },
-  { id: 3, email: 'staff@business.com', password: 'staff123', role: 'STAFF' },
-
-  // Additional dev users to support "changeme" credentials
-  { id: 100, email: 'super@bisman.local', password: 'changeme', role: 'SUPER_ADMIN' },
-  { id: 101, email: 'admin@bisman.local', password: 'changeme', role: 'ADMIN' },
-  { id: 102, email: 'manager@bisman.local', password: 'changeme', role: 'MANAGER' },
-  { id: 103, email: 'hub@bisman.local', password: 'changeme', role: 'STAFF' },
-
-  // Demo credentials for testing
-  { id: 300, email: 'demo_hub_incharge@bisman.demo', password: 'changeme', role: 'HUB_INCHARGE' },
-  { id: 301, email: 'demo_admin@bisman.demo', password: 'changeme', role: 'ADMIN' },
-  { id: 302, email: 'demo_manager@bisman.demo', password: 'changeme', role: 'MANAGER' },
-  { id: 303, email: 'demo_super@bisman.demo', password: 'changeme', role: 'SUPER_ADMIN' },
-
-  // Finance & Operations demo users
-  { id: 201, email: 'it@bisman.local', password: 'changeme', role: 'IT_ADMIN' },
-  { id: 202, email: 'cfo@bisman.local', password: 'changeme', role: 'CFO' },
-  { id: 203, email: 'controller@bisman.local', password: 'changeme', role: 'FINANCE_CONTROLLER' },
-  { id: 204, email: 'treasury@bisman.local', password: 'changeme', role: 'TREASURY' },
-  { id: 205, email: 'accounts@bisman.local', password: 'changeme', role: 'ACCOUNTS' },
-  { id: 206, email: 'ap@bisman.local', password: 'changeme', role: 'ACCOUNTS_PAYABLE' },
-  { id: 207, email: 'banker@bisman.local', password: 'changeme', role: 'BANKER' },
-  { id: 208, email: 'procurement@bisman.local', password: 'changeme', role: 'PROCUREMENT_OFFICER' },
-  { id: 209, email: 'store@bisman.local', password: 'changeme', role: 'STORE_INCHARGE' },
-  { id: 210, email: 'compliance@bisman.local', password: 'changeme', role: 'COMPLIANCE' },
-  { id: 211, email: 'legal@bisman.local', password: 'changeme', role: 'LEGAL' },
-] : [] // Empty array when disabled
-
-// ⚠️ WARNING: Log dev users status
-if (devUsersEnabled) {
-  console.warn('⚠️  WARNING: Development users are ENABLED')
-  console.warn('   This should NEVER happen in production!')
-  console.warn('   Dev users count:', devUsers.length)
-  console.warn('   Environment check:', {
-    NODE_ENV: process.env.NODE_ENV,
-    RAILWAY: process.env.RAILWAY,
-    PRODUCTION_MODE: process.env.PRODUCTION_MODE,
-    ALLOW_DEV_USERS: process.env.ALLOW_DEV_USERS
-  })
-} else {
-  console.log('✅ Production mode: Dev users DISABLED')
-}
-
-// ⚠️ FAIL-SAFE: Runtime check to prevent accidental production exposure
-if (isProduction && devUsers.length > 0) {
-  console.error('❌ SECURITY FATAL: Dev users detected in production environment')
-  console.error('   This is a critical security vulnerability!')
-  console.error('   Production indicators:', {
-    NODE_ENV: process.env.NODE_ENV,
-    RAILWAY: process.env.RAILWAY,
-    PRODUCTION_MODE: process.env.PRODUCTION_MODE
-  })
-  process.exit(1) // Fail-fast to prevent security breach
-}
+console.log('✅ Secure mode: All users from database only')
 
 // ============================================================================
 // 🔐 SECURITY: Constant-Time String Comparison
@@ -284,20 +221,6 @@ async function authenticate(req, res, next) {
     } else {
       // Regular user
       user = await prisma.user.findUnique({ where: { id: payload.id } })
-    }
-
-    // Fallback: try dev users (only if enabled)
-    if (!user && devUsersEnabled) {
-      const devUser = devUsers.find(u => 
-        constantTimeCompare(String(u.email), String(payload.email)) && 
-        u.id === payload.id
-      )
-      
-      if (devUser) {
-        console.warn('⚠️ [authenticate] Using DEV user (development mode only)')
-        user = { ...devUser }
-        delete user.password // Never expose password
-      }
     }
 
     if (!user) {

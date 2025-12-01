@@ -1,16 +1,18 @@
 // Privilege Management Service
 // Production-ready service layer with comprehensive database operations
+// Enhanced with robust fallback handling and logging
 
 // Use shared Prisma singleton to avoid multiple pools
 const { getPrisma } = require('../lib/prisma');
 const TenantGuard = require('../middleware/tenantGuard'); // ✅ SECURITY: Multi-tenant isolation
+const { FallbackService } = require('./fallbackService'); // ✅ ROBUST: Centralized fallback handling
 const prisma = getPrisma();
 
 // Lightweight DB readiness cache so we don't probe every call
 let _dbReadyCache = { ready: null, checkedAt: 0 };
 const DB_READY_TTL_MS = 30_000; // 30s
 
-// In-memory overrides for dev/no-DB environments
+// In-memory overrides for role status (used only when DB is available)
 const ROLE_STATUS_OVERRIDES = new Map(); // roleId -> boolean
 
 // Determine if database is not only configured but also has required tables
@@ -37,9 +39,8 @@ async function isDbReady() {
   }
 }
 
-// Helpers and fallbacks for dev/no-DB environments
+// Helper functions
 const isDbConfigured = () => Boolean(process.env.DATABASE_URL);
-
 const nowIso = () => new Date().toISOString();
 
 const DEFAULT_ROLES = [
@@ -71,26 +72,7 @@ const DEFAULT_ROLES = [
   { id: 'LEGAL', name: 'Legal', description: 'Legal and contracts', level: 6, is_active: true },
 ].map(r => ({ ...r, created_at: nowIso(), updated_at: nowIso(), user_count: 0 }));
 
-const DEV_USERS = [
-  { id: '0', username: 'super', email: 'super@bisman.local', first_name: 'Super', last_name: 'Admin', role_id: 'SUPER_ADMIN', is_active: true },
-  { id: '2', username: 'admin', email: 'admin@business.com', first_name: 'Admin', last_name: 'User', role_id: 'ADMIN', is_active: true },
-  { id: '1', username: 'manager', email: 'manager@business.com', first_name: 'Manager', last_name: 'User', role_id: 'MANAGER', is_active: true },
-  { id: '3', username: 'staff', email: 'staff@business.com', first_name: 'Staff', last_name: 'User', role_id: 'STAFF', is_active: true },
-
-  // New Finance & Operations demo users (for counts in Role Management)
-  { id: '201', username: 'itadmin', email: 'it@bisman.local', first_name: 'IT', last_name: 'Admin', role_id: 'IT_ADMIN', is_active: true },
-  { id: '202', username: 'cfo', email: 'cfo@bisman.local', first_name: 'CFO', last_name: 'Demo', role_id: 'CFO', is_active: true },
-  { id: '203', username: 'controller', email: 'controller@bisman.local', first_name: 'Finance', last_name: 'Controller', role_id: 'FINANCE_CONTROLLER', is_active: true },
-  { id: '204', username: 'treasury', email: 'treasury@bisman.local', first_name: 'Treasury', last_name: 'User', role_id: 'TREASURY', is_active: true },
-  { id: '205', username: 'accounts', email: 'accounts@bisman.local', first_name: 'Accounts', last_name: 'User', role_id: 'ACCOUNTS', is_active: true },
-  { id: '206', username: 'ap', email: 'ap@bisman.local', first_name: 'AP', last_name: 'User', role_id: 'ACCOUNTS_PAYABLE', is_active: true },
-  { id: '207', username: 'banker', email: 'banker@bisman.local', first_name: 'Bank', last_name: 'Ops', role_id: 'BANKER', is_active: true },
-  { id: '208', username: 'procurement', email: 'procurement@bisman.local', first_name: 'Procurement', last_name: 'Officer', role_id: 'PROCUREMENT_OFFICER', is_active: true },
-  { id: '209', username: 'store', email: 'store@bisman.local', first_name: 'Store', last_name: 'Incharge', role_id: 'STORE_INCHARGE', is_active: true },
-  { id: '210', username: 'compliance', email: 'compliance@bisman.local', first_name: 'Compliance', last_name: 'User', role_id: 'COMPLIANCE', is_active: true },
-  { id: '211', username: 'legal', email: 'legal@bisman.local', first_name: 'Legal', last_name: 'User', role_id: 'LEGAL', is_active: true }
-].map(u => ({ ...u, created_at: nowIso(), updated_at: nowIso() }));
-
+// DEFAULT_FEATURES for schema sync operations
 const DEFAULT_FEATURES = [
   // User Management
   { id: 'feature:user_list', name: 'User List', module: 'User Management', description: 'View user list' },
@@ -129,89 +111,74 @@ class PrivilegeService {
     this.prisma = prisma;
   }
 
-  // Get all roles with user counts
-  async getAllRoles() {
-    try {
-      if (!(await isDbReady())) {
-        const withCounts = DEFAULT_ROLES.map(r => ({
-          ...r,
-          // Apply in-memory status overrides if any
-          is_active: ROLE_STATUS_OVERRIDES.has(r.id) ? ROLE_STATUS_OVERRIDES.get(r.id) : r.is_active,
-          user_count: DEV_USERS.filter(u => u.role_id === r.id).length
-        }));
-        return withCounts;
-      }
-      const roles = await this.prisma.role.findMany({
-        orderBy: { name: 'asc' }
-      });
+  // Get all roles with user counts - with robust fallback
+  async getAllRoles(userId = null) {
+    return await FallbackService.execute({
+      primaryFn: async () => {
+        if (!(await isDbReady())) {
+          throw new Error('DATABASE_ERROR: Database not available - cannot fetch roles');
+        }
+        const roles = await this.prisma.role.findMany({
+          orderBy: { name: 'asc' }
+        });
 
-      // Manually count users for each role since there's no FK relation
-      // SIMPLIFIED APPROACH: Just count exact matches first, then try common variations
-      const rolesWithCounts = await Promise.all(
-        roles.map(async (role) => {
-          let userCount = 0;
-          
-          try {
-            // Try exact match first (most common case)
-            userCount = await this.prisma.user.count({
-              where: { role: role.name }
-            });
+        // Manually count users for each role since there's no FK relation
+        const rolesWithCounts = await Promise.all(
+          roles.map(async (role) => {
+            let userCount = 0;
             
-            // If no exact match, try normalized variations
-            if (userCount === 0) {
-              const normalized = role.name.toUpperCase().replace(/[\s-]+/g, '_');
-              const roleVariations = [
-                normalized,                                    // SUPER_ADMIN
-                normalized.toLowerCase(),                      // super_admin
-                normalized.replace(/_/g, ' '),                 // SUPER ADMIN
-                normalized.replace(/_/g, ' ').toLowerCase(),   // super admin
-              ];
-              
+            try {
               userCount = await this.prisma.user.count({
-                where: { role: { in: roleVariations } }
+                where: { role: role.name }
               });
+              
+              if (userCount === 0) {
+                const normalized = role.name.toUpperCase().replace(/[\s-]+/g, '_');
+                const roleVariations = [
+                  normalized,
+                  normalized.toLowerCase(),
+                  normalized.replace(/_/g, ' '),
+                  normalized.replace(/_/g, ' ').toLowerCase(),
+                ];
+                
+                userCount = await this.prisma.user.count({
+                  where: { role: { in: roleVariations } }
+                });
+              }
+            } catch (e) {
+              console.error(`[getAllRoles] Error counting users for role ${role.name}:`, e.message);
+              userCount = 0;
             }
             
-            console.log(`[getAllRoles] Role "${role.name}" (ID ${role.id}): ${userCount} user(s)`);
-          } catch (e) {
-            console.error(`[getAllRoles] Error counting users for role ${role.name}:`, e.message);
-            userCount = 0;
-          }
-          
-          return {
-            id: role.id,
-            name: role.name,
-            description: role.description || '',
-            is_active: role.is_active ?? true,
-            created_at: role.created_at?.toISOString() || new Date().toISOString(),
-            updated_at: role.updated_at?.toISOString() || new Date().toISOString(),
-            user_count: userCount
-          };
-        })
-      );
+            return {
+              id: role.id,
+              name: role.name,
+              description: role.description || '',
+              is_active: role.is_active ?? true,
+              created_at: role.created_at?.toISOString() || new Date().toISOString(),
+              updated_at: role.updated_at?.toISOString() || new Date().toISOString(),
+              user_count: userCount
+            };
+          })
+        );
 
-      return rolesWithCounts;
-    } catch (error) {
-      console.error('Error in getAllRoles:', error);
-      // Fallback in dev or when DB isn’t ready
-      if (process.env.NODE_ENV !== 'production' || !isDbConfigured() || !(await isDbReady())) {
-        const withCounts = DEFAULT_ROLES.map(r => ({
-          ...r,
-          is_active: ROLE_STATUS_OVERRIDES.has(r.id) ? ROLE_STATUS_OVERRIDES.get(r.id) : r.is_active,
-          user_count: DEV_USERS.filter(u => u.role_id === r.id).length
-        }));
-        return withCounts;
-      }
-      throw new Error('Failed to fetch roles');
-    }
+        return rolesWithCounts;
+      },
+      moduleName: 'privilege',
+      operationName: 'getAllRoles',
+      fallbackKey: 'privilege:getAllRoles',
+      userId,
+      cacheKey: 'privilege:getAllRoles:result',
+      timeoutMs: 15000,
+      enableRetry: true
+    });
   }
 
-  // Fallback: set role status in-memory when DB is not ready
+  // Set role status - requires DB connection
   async setRoleStatus(roleId, isActive) {
     try {
       if (!(await isDbReady())) {
-        ROLE_STATUS_OVERRIDES.set(String(roleId), Boolean(isActive));
-        return { success: true, persisted: false };
+        throw new Error('DATABASE_ERROR: Database not ready - cannot update role status');
       }
       // If DB is ready and roles table exists (non-RBAC path), attempt to update if schema supports is_active
       try {
@@ -225,237 +192,193 @@ class PrivilegeService {
         return { success: true, persisted: false };
       }
     } catch (error) {
-      console.error('Error setting role status (fallback):', error);
+      console.error('Error setting role status:', error);
       throw error;
     }
   }
 
-  // Get users by role (string role field in users table, not numeric ID)
-  async getUsersByRole(roleId) {
-    try {
-      if (!(await isDbReady())) {
-        // Fallback to dev users by role code
-        const list = DEV_USERS.filter(u => !roleId || u.role_id === roleId).map(u => ({
-          ...u,
-          role: { id: u.role_id, name: DEFAULT_ROLES.find(r => r.id === u.role_id)?.name || u.role_id }
-        }));
-        console.log(`[getUsersByRole] DB not ready, returning ${list.length} dev users for role: ${roleId || 'ALL'}`);
-        return list;
-      }
-      
-      // Your DB schema has users.role as a string field (e.g., "ADMIN", "MANAGER", "STAFF", "SUPER_ADMIN", "USER")
-      // Handle various role name formats: numeric ID from roles table, or role string
-      let roleFilter = undefined;
-      let roleIdForLogging = roleId;
-      
-      if (roleId != null && String(roleId).trim()) {
-        const trimmed = String(roleId).trim();
+  // Get users by role - with robust fallback
+  async getUsersByRole(roleId, userId = null) {
+    return await FallbackService.execute({
+      primaryFn: async () => {
+        if (!(await isDbReady())) {
+          throw new Error('DATABASE_ERROR: Database not ready - cannot fetch users');
+        }
         
-        // Check if it's a numeric ID referring to roles table
-        if (!Number.isNaN(Number(trimmed))) {
-          // Look up role name from roles table
-          try {
-            const roleRecord = await this.prisma.role.findUnique({
-              where: { id: Number(trimmed) }
-            });
-            if (roleRecord && roleRecord.name) {
-              // The role name might be "Super Admin", "Admin", etc. We need to convert to the user.role format
-              // which is typically "SUPER_ADMIN", "ADMIN", etc. (uppercase with underscores)
-              roleFilter = roleRecord.name.toUpperCase().replace(/[\s-]+/g, '_');
-              console.log(`[getUsersByRole] Converted role ID ${trimmed} to role name: ${roleRecord.name} -> ${roleFilter}`);
-            } else {
-              console.warn(`[getUsersByRole] No role found with ID ${trimmed}`);
+        let roleFilter = undefined;
+        
+        if (roleId != null && String(roleId).trim()) {
+          const trimmed = String(roleId).trim();
+          
+          if (!Number.isNaN(Number(trimmed))) {
+            try {
+              const roleRecord = await this.prisma.role.findUnique({
+                where: { id: Number(trimmed) }
+              });
+              if (roleRecord && roleRecord.name) {
+                roleFilter = roleRecord.name.toUpperCase().replace(/[\s-]+/g, '_');
+              }
+            } catch (e) {
+              console.error(`[getUsersByRole] Error looking up role ID ${trimmed}:`, e.message);
             }
-          } catch (e) {
-            console.error(`[getUsersByRole] Error looking up role ID ${trimmed}:`, e.message);
+          }
+          
+          if (!roleFilter) {
+            roleFilter = trimmed;
           }
         }
         
-        // If still no match, use the provided string as-is (it's likely a role name already)
-        if (!roleFilter) {
-          roleFilter = trimmed;
-          console.log(`[getUsersByRole] Using role name directly: ${roleFilter}`);
+        let roleVariations = [];
+        if (roleFilter) {
+          const normalized = roleFilter.toUpperCase().replace(/[\s-]+/g, '_');
+          roleVariations.push(
+            normalized,
+            normalized.toLowerCase(),
+            normalized.replace(/_/g, ' '),
+            normalized.replace(/_/g, ' ').toLowerCase(),
+            normalized.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '),
+            normalized.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('_')
+          );
+          roleVariations = [...new Set(roleVariations)];
         }
-      }
-      
-      console.log(`[getUsersByRole] Querying users with role filter: ${roleFilter || 'ALL USERS'}`);
-      
-      // Build a list of possible role name variations to match against
-      // users.role field (which can be "SUPER_ADMIN", "Super Admin", "super_admin", etc.)
-      let roleVariations = [];
-      if (roleFilter) {
-        const normalized = roleFilter.toUpperCase().replace(/[\s-]+/g, '_');
-        roleVariations.push(
-          normalized,                                    // SUPER_ADMIN
-          normalized.toLowerCase(),                      // super_admin
-          normalized.replace(/_/g, ' '),                 // SUPER ADMIN
-          normalized.replace(/_/g, ' ').toLowerCase(),   // super admin
-          normalized.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' '), // Super Admin
-          normalized.split('_').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join('_')  // Super_Admin
-        );
-        // Remove duplicates
-        roleVariations = [...new Set(roleVariations)];
-        console.log(`[getUsersByRole] Trying role variations:`, roleVariations);
-      }
-      
-      const users = await this.prisma.user.findMany({
-        where: roleVariations.length > 0 ? { 
-          role: { in: roleVariations }
-        } : {},
-        orderBy: [
-          { username: 'asc' }
-        ]
-      });
-      
-      console.log(`[getUsersByRole] Found ${users.length} users for role: ${roleFilter || 'ALL'}`);
-
-      return users.map(user => ({
-        id: String(user.id),
-        username: user.username,
-        email: user.email,
-        first_name: user.username, // Your schema doesn't have first_name/last_name
-        last_name: '',
-        role_id: user.role,
-        is_active: true, // No status field in your schema
-        created_at: user.createdAt?.toISOString() || new Date().toISOString(),
-        updated_at: user.updatedAt?.toISOString() || new Date().toISOString(),
-        role: { id: user.role, name: user.role }
-      }));
-    } catch (error) {
-      console.error('Error in getUsersByRole:', error);
-      if (process.env.NODE_ENV !== 'production' || !isDbConfigured() || !(await isDbReady())) {
-        const list = DEV_USERS.filter(u => !roleId || u.role_id === roleId).map(u => ({
-          ...u,
-          role: { id: u.role_id, name: DEFAULT_ROLES.find(r => r.id === u.role_id)?.name || u.role_id }
-        }));
-        return list;
-      }
-      throw new Error('Failed to fetch users');
-    }
-  }
-
-  // Get all features from database
-  async getAllFeatures() {
-    try {
-      if (!(await isDbReady())) {
-        return DEFAULT_FEATURES;
-      }
-      const features = await this.prisma.feature.findMany({
-        orderBy: [
-          { module: 'asc' },
-          { name: 'asc' }
-        ]
-      });
-
-      return features.map(feature => ({
-        id: feature.id,
-        name: feature.name,
-        module: feature.module,
-        description: feature.description,
-        is_active: feature.is_active,
-        created_at: feature.created_at.toISOString(),
-        updated_at: feature.updated_at.toISOString()
-      }));
-    } catch (error) {
-      console.error('Error in getAllFeatures:', error);
-  if (process.env.NODE_ENV !== 'production' || !isDbConfigured() || !(await isDbReady())) {
-        return DEFAULT_FEATURES;
-      }
-      throw new Error('Failed to fetch features');
-    }
-  }
-
-  // Get privileges for role and optionally user
-  async getPrivileges(roleId, userId = null) {
-    try {
-      const features = await this.getAllFeatures();
-      if (!(await isDbReady())) {
-        // Build a default privilege table: all permissions false
-        const privilegeRows = features.map(feature => ({
-          ...feature,
-          role_privilege: null,
-          user_privilege: null,
-          has_user_override: false
-        }));
-        return { features, privileges: privilegeRows };
-      }
-      
-      // Get role privileges
-      const roleIdNum = roleId != null && !Number.isNaN(Number(roleId)) ? Number(roleId) : undefined;
-      const rolePrivileges = await this.prisma.rolePrivilege.findMany({
-        where: { role_id: roleIdNum },
-        include: {
-          feature: true
-        }
-      });
-
-      // Get user privileges if userId provided
-      let userPrivileges = [];
-  if (userId) {
-        userPrivileges = await this.prisma.userPrivilege.findMany({
-          where: { 
-    user_id: Number(userId),
-    ...(roleIdNum ? { role_id: roleIdNum } : {}),
-          },
-          include: {
-            feature: true
-          }
+        
+        const users = await this.prisma.user.findMany({
+          where: roleVariations.length > 0 ? { role: { in: roleVariations } } : {},
+          orderBy: [{ username: 'asc' }]
         });
-      }
 
-      // Build privilege table rows
-      const privilegeRows = features.map(feature => {
-        const rolePrivilege = rolePrivileges.find(rp => rp.feature_id === feature.id);
-        const userPrivilege = userPrivileges.find(up => up.feature_id === feature.id);
-
-        return {
-          ...feature,
-          role_privilege: rolePrivilege ? {
-            id: rolePrivilege.id,
-            feature_id: rolePrivilege.feature_id,
-            can_view: rolePrivilege.can_view,
-            can_create: rolePrivilege.can_create,
-            can_edit: rolePrivilege.can_edit,
-            can_delete: rolePrivilege.can_delete,
-            can_hide: rolePrivilege.can_hide,
-            created_at: rolePrivilege.created_at.toISOString(),
-            updated_at: rolePrivilege.updated_at.toISOString()
-          } : null,
-          user_privilege: userPrivilege ? {
-            id: userPrivilege.id,
-            feature_id: userPrivilege.feature_id,
-            can_view: userPrivilege.can_view,
-            can_create: userPrivilege.can_create,
-            can_edit: userPrivilege.can_edit,
-            can_delete: userPrivilege.can_delete,
-            can_hide: userPrivilege.can_hide,
-            overrides_role: userPrivilege.overrides_role,
-            created_at: userPrivilege.created_at.toISOString(),
-            updated_at: userPrivilege.updated_at.toISOString()
-          } : null,
-          has_user_override: !!userPrivilege
-        };
-      });
-
-      return {
-        features,
-        privileges: privilegeRows
-      };
-    } catch (error) {
-      console.error('Error in getPrivileges:', error);
-  if (process.env.NODE_ENV !== 'production' || !isDbConfigured() || !(await isDbReady())) {
-        // Build a default privilege table: all permissions false
-        const features = DEFAULT_FEATURES;
-        const privilegeRows = features.map(feature => ({
-          ...feature,
-          role_privilege: null,
-          user_privilege: null,
-          has_user_override: false
+        return users.map(user => ({
+          id: String(user.id),
+          username: user.username,
+          email: user.email,
+          first_name: user.username,
+          last_name: '',
+          role_id: user.role,
+          is_active: true,
+          created_at: user.createdAt?.toISOString() || new Date().toISOString(),
+          updated_at: user.updatedAt?.toISOString() || new Date().toISOString(),
+          role: { id: user.role, name: user.role }
         }));
+      },
+      moduleName: 'privilege',
+      operationName: 'getUsersByRole',
+      fallbackKey: 'privilege:getUsersByRole',
+      userId,
+      requestPayload: { roleId },
+      cacheKey: `privilege:getUsersByRole:${roleId || 'all'}`,
+      timeoutMs: 15000,
+      enableRetry: true
+    });
+  }
+
+  // Get all features from database - with robust fallback
+  async getAllFeatures(userId = null) {
+    return await FallbackService.execute({
+      primaryFn: async () => {
+        if (!(await isDbReady())) {
+          throw new Error('DATABASE_ERROR: Database not available - cannot fetch features');
+        }
+        const features = await this.prisma.feature.findMany({
+          orderBy: [
+            { module: 'asc' },
+            { name: 'asc' }
+          ]
+        });
+
+        return features.map(feature => ({
+          id: feature.id,
+          name: feature.name,
+          module: feature.module,
+          description: feature.description,
+          is_active: feature.is_active,
+          created_at: feature.created_at.toISOString(),
+          updated_at: feature.updated_at.toISOString()
+        }));
+      },
+      moduleName: 'privilege',
+      operationName: 'getAllFeatures',
+      fallbackKey: 'privilege:getAllFeatures',
+      userId,
+      cacheKey: 'privilege:getAllFeatures:result',
+      timeoutMs: 15000,
+      enableRetry: true
+    });
+  }
+
+  // Get privileges for role and optionally user - with robust fallback
+  async getPrivileges(roleId, userId = null) {
+    return await FallbackService.execute({
+      primaryFn: async () => {
+        if (!(await isDbReady())) {
+          throw new Error('DATABASE_ERROR: Database not available - cannot fetch privileges');
+        }
+        const featuresResult = await this.getAllFeatures(userId);
+        const features = featuresResult.data || featuresResult;
+        
+        // Get role privileges
+        const roleIdNum = roleId != null && !Number.isNaN(Number(roleId)) ? Number(roleId) : undefined;
+        const rolePrivileges = await this.prisma.rolePrivilege.findMany({
+          where: { role_id: roleIdNum },
+          include: { feature: true }
+        });
+
+        // Get user privileges if userId provided
+        let userPrivileges = [];
+        if (userId) {
+          userPrivileges = await this.prisma.userPrivilege.findMany({
+            where: { 
+              user_id: Number(userId),
+              ...(roleIdNum ? { role_id: roleIdNum } : {}),
+            },
+            include: { feature: true }
+          });
+        }
+
+        // Build privilege table rows
+        const privilegeRows = features.map(feature => {
+          const rolePrivilege = rolePrivileges.find(rp => rp.feature_id === feature.id);
+          const userPrivilege = userPrivileges.find(up => up.feature_id === feature.id);
+
+          return {
+            ...feature,
+            role_privilege: rolePrivilege ? {
+              id: rolePrivilege.id,
+              feature_id: rolePrivilege.feature_id,
+              can_view: rolePrivilege.can_view,
+              can_create: rolePrivilege.can_create,
+              can_edit: rolePrivilege.can_edit,
+              can_delete: rolePrivilege.can_delete,
+              can_hide: rolePrivilege.can_hide,
+              created_at: rolePrivilege.created_at.toISOString(),
+              updated_at: rolePrivilege.updated_at.toISOString()
+            } : null,
+            user_privilege: userPrivilege ? {
+              id: userPrivilege.id,
+              feature_id: userPrivilege.feature_id,
+              can_view: userPrivilege.can_view,
+              can_create: userPrivilege.can_create,
+              can_edit: userPrivilege.can_edit,
+              can_delete: userPrivilege.can_delete,
+              can_hide: userPrivilege.can_hide,
+              overrides_role: userPrivilege.overrides_role,
+              created_at: userPrivilege.created_at.toISOString(),
+              updated_at: userPrivilege.updated_at.toISOString()
+            } : null,
+            has_user_override: !!userPrivilege
+          };
+        });
+
         return { features, privileges: privilegeRows };
-      }
-      throw new Error('Failed to fetch privileges');
-    }
+      },
+      moduleName: 'privilege',
+      operationName: 'getPrivileges',
+      fallbackKey: 'privilege:getPrivileges',
+      userId,
+      requestPayload: { roleId },
+      cacheKey: `privilege:getPrivileges:${roleId || 'all'}:${userId || 'none'}`,
+      timeoutMs: 20000,
+      enableRetry: true
+    });
   }
 
   // Update role or user privileges
@@ -645,15 +568,7 @@ class PrivilegeService {
       return result;
     } catch (error) {
       console.error('Error in syncSchemaFeatures:', error);
-      // Graceful fallback in dev or when DB not ready
-      if (process.env.NODE_ENV !== 'production' || !(await isDbReady())) {
-        return {
-          new_features: [],
-          updated_features: [],
-          removed_features: []
-        };
-      }
-      throw new Error('Failed to sync schema features');
+      throw new Error('DATABASE_ERROR: Failed to sync schema features - ' + error.message);
     }
   }
 

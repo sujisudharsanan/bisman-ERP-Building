@@ -58,18 +58,8 @@ class SuperAdminService {
   return { users, total, count: users.length }
     } catch (error) {
       console.error('Error getting users:', error)
-      // Fallback to dev users if DB not available
-      const devUsers = [
-        { id: 1, username: 'superadmin', email: 'super@bisman.local', role: 'SUPER_ADMIN', createdAt: new Date(), updatedAt: new Date() },
-        { id: 2, username: 'admin', email: 'admin@bisman.local', role: 'ADMIN', createdAt: new Date(), updatedAt: new Date() },
-        { id: 3, username: 'manager', email: 'manager@business.com', role: 'MANAGER', createdAt: new Date(), updatedAt: new Date() },
-        { id: 4, username: 'staff', email: 'staff@business.com', role: 'STAFF', createdAt: new Date(), updatedAt: new Date() },
-        { id: 5, username: 'demo', email: 'demo@bisman.local', role: 'USER', createdAt: new Date(), updatedAt: new Date() },
-      ]
-      const filtered = search
-        ? devUsers.filter(u => u.email.includes(search) || u.username.includes(search))
-        : devUsers
-      return { users: filtered.slice(offset, offset + limit), total: filtered.length, count: filtered.length }
+      // Security: Return DB error instead of fallback dev users
+      throw new Error('DATABASE_ERROR: Failed to fetch users - ' + error.message)
     }
   }
 
@@ -207,12 +197,9 @@ class SuperAdminService {
       `)
       return rows.map(r => ({ name: r.name }))
     } catch (e) {
-      console.warn('listTables fallback (DB not ready):', e.message)
-      return [
-        { name: 'users' },
-        { name: 'roles' },
-        { name: 'audit_logs' }
-      ]
+      console.error('Error listing tables:', e.message)
+      // Security: Return DB error instead of fallback table list
+      throw new Error('DATABASE_ERROR: Failed to list tables - ' + e.message)
     }
   }
 
@@ -242,11 +229,8 @@ class SuperAdminService {
       return { columns, rows, count: total }
     } catch (error) {
       console.error('Error getting table data:', error)
-      // Graceful fallback when table is missing: return empty dataset instead of 500
-      if (String(error?.message || '').includes('does not exist')) {
-        return { columns: ['id'], rows: [], count: 0 }
-      }
-      throw new Error(`Failed to fetch ${tableName} data`)
+      // Security: Return DB error with details
+      throw new Error('DATABASE_ERROR: Failed to fetch ' + tableName + ' data - ' + error.message)
     }
   }
 

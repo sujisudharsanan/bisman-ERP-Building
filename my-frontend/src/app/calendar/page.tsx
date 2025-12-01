@@ -28,6 +28,7 @@ import {
   Bell
 } from '@/lib/ssr-safe-icons';
 import axios from 'axios';
+import PermissionGuard from '@/common/components/PermissionGuard';
 
 // Types
 interface Calendar {
@@ -477,6 +478,7 @@ export default function CalendarPage() {
   };
 
   return (
+    <PermissionGuard>
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-4 md:p-8">
       <div className="max-w-7xl mx-auto">
         {/* Header */}
@@ -637,5 +639,6 @@ export default function CalendarPage() {
         calendars={calendars}
       />
     </div>
+    </PermissionGuard>
   );
 }

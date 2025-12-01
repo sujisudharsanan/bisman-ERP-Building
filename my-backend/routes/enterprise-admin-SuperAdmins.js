@@ -63,7 +63,7 @@ router.get('/', async (req, res) => {
         assignedModules: moduleAssignments.map(ma => ({
           module_id: ma.module_id,
           module_name: ma.module.module_name,
-          assigned_pages: ma.assigned_pages || []
+          assigned_pages: ma.page_permissions || []
         }))
       };
     }));
