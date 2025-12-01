@@ -144,13 +144,26 @@ export default function Page() {
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedRef = useRef<string>(''); // Track last saved state to avoid duplicate saves
+  const isInitialLoadRef = useRef<boolean>(true); // Flag to skip auto-save on initial page selection
 
   // Auto-save function - saves page permissions to database
   const savePagePermissions = useCallback(async (adminId: number, moduleId: number, pageIds: string[]) => {
-    const saveKey = `${adminId}-${moduleId}-${pageIds.sort().join(',')}`;
+    // Sort for consistent comparison
+    const sortedPageIds = [...pageIds].sort();
+    const saveKey = `${adminId}-${moduleId}-${sortedPageIds.join(',')}`;
+    
+    // Skip if same as last save
     if (saveKey === lastSavedRef.current) {
       console.log('⏭️ Skip auto-save: no changes');
       return; // No changes to save
+    }
+    
+    // Skip if this is the initial load (user just clicked on module)
+    if (isInitialLoadRef.current) {
+      console.log('⏭️ Skip auto-save: initial load');
+      isInitialLoadRef.current = false;
+      lastSavedRef.current = saveKey;
+      return;
     }
     
     console.log('💾 Auto-saving page permissions:', { adminId, moduleId, pageCount: pageIds.length });
@@ -896,7 +909,8 @@ export default function Page() {
                   onClick={() => {
                     setCategory(c.key);
                     setSelectedModuleKey(null);
-                    setSelectedPageIds([]);
+                    isInitialLoadRef.current = true;
+                      setSelectedPageIds([]);
                   }}
                   className={`w-full text-left rounded-md border px-3 py-2 text-sm transition ${
                     category === c.key
@@ -1019,10 +1033,12 @@ export default function Page() {
                       } else {
                         initialPages = existing.map(canonicalPageId);
                       }
+                      isInitialLoadRef.current = true;
                       setSelectedPageIds(initialPages);
                       // Initialize lastSavedRef to prevent auto-save from triggering on initial load
                       lastSavedRef.current = `${selectedAdmin.id}-${nextModuleId}-${initialPages.sort().join(',')}`;
                     } else {
+                      isInitialLoadRef.current = true;
                       setSelectedPageIds([]);
                       lastSavedRef.current = '';
                     }
@@ -1268,10 +1284,12 @@ export default function Page() {
                       } else {
                         initialPages = existing.map(canonicalPageId);
                       }
+                      isInitialLoadRef.current = true;
                       setSelectedPageIds(initialPages);
                       // Initialize lastSavedRef to prevent auto-save from triggering on initial load
                       lastSavedRef.current = `${selectedAdmin.id}-${nextModuleId}-${initialPages.sort().join(',')}`;
                     } else {
+                      isInitialLoadRef.current = true;
                       setSelectedPageIds([]);
                       lastSavedRef.current = '';
                     }
