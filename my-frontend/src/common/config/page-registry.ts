@@ -1388,75 +1388,70 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 100,
   },
 
-  // ==================== COMMON MODULE (9 pages) ====================
+  // ==================== COMMON MODULE ====================
   // These pages are accessible to ALL authenticated users regardless of role
-  // Create User removed per request
-  // Change Password removed per request
-  // Notifications page removed per request
+  // Removed per request: security-settings, notifications, messages, documentation, 
+  // bank-accounts, calendar (non-root), task-approvals, settings, assistant
   {
-    id: 'common-messages',
-    name: 'Messages',
-    path: '/common/messages',
-  iconKey: "HelpCircle",
+    id: 'common-about-me',
+    name: 'About Me',
+    path: '/common/about-me',
+    iconKey: "User",
     module: 'common',
     permissions: ['authenticated'],
     roles: ['ALL'],
-  status: 'disabled',
-    description: 'Internal messaging system',
-    order: 5,
+    status: 'active',
+    description: 'View and edit your profile',
+    order: 1,
   },
-  // Help Center removed per request
-  // {
-  //   id: 'common-help-center',
-  //   name: 'Help Center',
-  //   path: '/common/help-center',
-  //   icon: HelpCircle,
-  //   module: 'common',
-  //   permissions: ['authenticated'],
-  //   roles: ['ALL'],
-  //   status: 'active',
-  //   description: 'Get help and support resources',
-  //   order: 6,
-  // },
-  // Documentation removed per request
-  // {
-  //   id: 'common-documentation',
-  //   name: 'Documentation',
-  //   path: '/common/documentation',
-  //   icon: FileText,
-  //   module: 'common',
-  //   permissions: ['authenticated'],
-  //   roles: ['ALL'],
-  //   status: 'active',
-  //   description: 'System documentation and guides',
-  //   order: 7,
-  // },
+  {
+    id: 'common-change-password',
+    name: 'Change Password',
+    path: '/common/change-password',
+    iconKey: "Key",
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL'],
+    status: 'active',
+    description: 'Update your password',
+    order: 2,
+  },
+  {
+    id: 'common-help-center',
+    name: 'Help Center',
+    path: '/common/help-center',
+    iconKey: "HelpCircle",
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL'],
+    status: 'active',
+    description: 'Get help and support resources',
+    order: 3,
+  },
   {
     id: 'common-user-settings',
     name: 'User Settings',
     path: '/common/user-settings',
-  iconKey: "Settings",
+    iconKey: "Settings",
     module: 'common',
     permissions: ['authenticated'],
     roles: ['ALL'],
     status: 'active',
     description: 'Customize your preferences and settings',
-    order: 8,
+    order: 4,
   },
   {
     id: 'common-payment-request',
     name: 'Payment Request',
     path: '/common/payment-request',
-  iconKey: "DollarSign",
+    iconKey: "DollarSign",
     module: 'common',
     permissions: ['authenticated'],
     roles: ['ALL'],
     status: 'active',
     description: 'Submit and track payment requests',
-    order: 9,
+    order: 5,
   },
-  // Task Approvals removed per request
-  // Calendar removed from sidebar per request
 ];
 
 /**

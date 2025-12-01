@@ -78,31 +78,31 @@ export const COMMON_PAGES: CommonPageMetadata[] = [
   autoRegister: false,
   },
   
-  // Communication Pages
-  {
-    id: 'common-notifications',
-    name: 'Notifications',
-    path: '/common/notifications',
-    icon: Bell,
-    description: 'View and manage your notifications',
-    category: 'settings',
-    order: 4,
-    isActive: true,
-    requiresAuth: true,
-    autoRegister: true,
-  },
-  {
-    id: 'common-messages',
-    name: 'Messages',
-    path: '/common/messages',
-    icon: MessageSquare,
-    description: 'Internal messaging system',
-    category: 'settings',
-    order: 5,
-    isActive: true,
-    requiresAuth: true,
-    autoRegister: true,
-  },
+  // Communication Pages - Removed per request
+  // {
+  //   id: 'common-notifications',
+  //   name: 'Notifications',
+  //   path: '/common/notifications',
+  //   icon: Bell,
+  //   description: 'View and manage your notifications',
+  //   category: 'settings',
+  //   order: 4,
+  //   isActive: false,
+  //   requiresAuth: true,
+  //   autoRegister: false,
+  // },
+  // {
+  //   id: 'common-messages',
+  //   name: 'Messages',
+  //   path: '/common/messages',
+  //   icon: MessageSquare,
+  //   description: 'Internal messaging system',
+  //   category: 'settings',
+  //   order: 5,
+  //   isActive: false,
+  //   requiresAuth: true,
+  //   autoRegister: false,
+  // },
   
   // Support Pages
   {
@@ -159,18 +159,19 @@ export const COMMON_PAGES: CommonPageMetadata[] = [
     requiresAuth: true,
     autoRegister: true,
   },
-  {
-    id: 'common-calendar',
-    name: 'Calendar',
-    path: '/common/calendar',
-  icon: Calendar,
-    description: 'View personal and team events',
-    category: 'settings',
-    order: 10,
-    isActive: true,
-    requiresAuth: true,
-    autoRegister: true,
-  },
+  // Calendar Page - Removed per request
+  // {
+  //   id: 'common-calendar',
+  //   name: 'Calendar',
+  //   path: '/common/calendar',
+  //   icon: Calendar,
+  //   description: 'View personal and team events',
+  //   category: 'settings',
+  //   order: 10,
+  //   isActive: false,
+  //   requiresAuth: true,
+  //   autoRegister: false,
+  // },
 ];
 
 /**
