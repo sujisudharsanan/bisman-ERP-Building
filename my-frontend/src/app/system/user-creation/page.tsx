@@ -1,7 +1,7 @@
 'use client';
 
 import SuperAdminLayout from '@/common/layouts/superadmin-layout';
-import UserCreationPage from '@/modules/system/pages/user-creation';
+import UserCreationPage from '@/modules/common/pages/user-creation';
 
 export default function UserCreationRoute() {
   return (
