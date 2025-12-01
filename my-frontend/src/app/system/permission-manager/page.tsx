@@ -3,6 +3,7 @@
 import React, { useState } from 'react';
 import Link from 'next/link';
 import SuperAdminShell from '@/components/layouts/SuperAdminShell';
+import ClientManagementTabs from '@/components/common/ClientManagementTabs';
 import RoleSearch from './components/RoleSearch';
 import UserSearch from './components/UserSearch';
 import PermissionTable from './components/PermissionTable';
@@ -119,7 +120,11 @@ export default function PermissionManagerPage() {
 
   return (
     <SuperAdminShell title="Permission Manager">
-      <div className="space-y-4">
+      <div className="p-4 md:p-6">
+        {/* Shared Tabs Navigation */}
+        <ClientManagementTabs />
+        
+        <div className="space-y-4">
         {/* Search Row */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
@@ -363,6 +368,7 @@ export default function PermissionManagerPage() {
             onClick={handleSave} 
             disabled={!perms.canSelect || !hasUnsavedChanges} 
           />
+        </div>
         </div>
       </div>
 

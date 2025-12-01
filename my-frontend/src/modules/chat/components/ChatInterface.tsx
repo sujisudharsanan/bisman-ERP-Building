@@ -310,7 +310,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           message: "✨ Great! Let's create a new task.\n\nPlease fill in the form below and I'll create the task for you! 📝",
           user_id: 'mira',
           create_at: Date.now(),
-          username: 'AIVA',
+          username: 'Bey',
           isBot: true
         };
         setMessages(prev => [...prev, botMessage]);
@@ -394,7 +394,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           message: `� Analyzing ${billFiles.length} bill/invoice file(s)...\n\nI'll extract the data and pre-fill the task form for you!`,
           user_id: 'mira',
           create_at: Date.now(),
-          username: 'AIVA',
+          username: 'Bey',
           isBot: true
         };
         setMessages(prev => [...prev, analyzingMsg]);
@@ -429,7 +429,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                 `I've pre-filled the task form. Please review and submit! 📝`,
               user_id: 'mira',
               create_at: Date.now(),
-              username: 'AIVA',
+              username: 'Bey',
               isBot: true
             };
             setMessages(prev => [...prev, successMsg]);
@@ -443,7 +443,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             message: `⚠️ I couldn't extract data from the bill automatically.\n\nPlease fill in the task details manually. The bill is still attached.`,
             user_id: 'mira',
             create_at: Date.now(),
-            username: 'AIVA',
+            username: 'Bey',
             isBot: true
           };
           setMessages(prev => [...prev, errorMsg]);
@@ -455,7 +455,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           message: `�📎 Added ${droppedFiles.length} file(s) to the task`,
           user_id: 'mira',
           create_at: Date.now(),
-          username: 'AIVA',
+          username: 'Bey',
           isBot: true
         };
         setMessages(prev => [...prev, botMsg]);
@@ -480,7 +480,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           message: `� Analyzing ${billFiles.length} bill/invoice file(s)...\n\nI'll extract the data and pre-fill the task form for you!`,
           user_id: 'mira',
           create_at: Date.now(),
-          username: 'AIVA',
+          username: 'Bey',
           isBot: true
         };
         setMessages(prev => [...prev, analyzingMsg]);
@@ -515,7 +515,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                 `I've pre-filled the task form. Please review and submit! 📝`,
               user_id: 'mira',
               create_at: Date.now(),
-              username: 'AIVA',
+              username: 'Bey',
               isBot: true
             };
             setMessages(prev => [...prev, successMsg]);
@@ -529,7 +529,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             message: `⚠️ I couldn't extract data from the bill automatically.\n\nPlease fill in the task details manually. The bill is still attached.`,
             user_id: 'mira',
             create_at: Date.now(),
-            username: 'AIVA',
+            username: 'Bey',
             isBot: true
           };
           setMessages(prev => [...prev, errorMsg]);
@@ -541,7 +541,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           message: `�📎 Added ${selectedFiles.length} file(s) to the task`,
           user_id: 'mira',
           create_at: Date.now(),
-          username: 'AIVA',
+          username: 'Bey',
           isBot: true
         };
         setMessages(prev => [...prev, botMsg]);
@@ -578,10 +578,10 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         const firstName = fullName.split(/[\s_]+/)[0]; // Extract first name only
         const welcomeMessage: Message = {
           id: `bot-welcome-${Date.now()}`,
-          message: `Hey ${firstName}! 👋 I'm AIVA (AI + Virtual Assistant), your intelligent operations assistant created by Bisman Corporation. How can I help you today?`,
+          message: `Hey ${firstName}! 👋 I'm Bey, your intelligent assistant for BISMAN ERP. How can I help you today?`,
           user_id: 'mira',
           create_at: Date.now(),
-          username: 'AIVA',
+          username: 'Bey',
           isBot: true
         };
         setMessages([welcomeMessage]);
@@ -593,10 +593,10 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       const firstName = fullName.split(/[\s_]+/)[0]; // Extract first name only
       const welcomeMessage: Message = {
         id: `bot-welcome-${Date.now()}`,
-        message: `Hey ${firstName}! 👋 I'm AIVA (AI + Virtual Assistant), your intelligent operations assistant created by Bisman Corporation. How can I help you today?`,
+        message: `Hey ${firstName}! 👋 I'm Bey, your intelligent assistant for BISMAN ERP. How can I help you today?`,
         user_id: 'mira',
         create_at: Date.now(),
-        username: 'AIVA',
+        username: 'Bey',
         isBot: true
       };
       setMessages([welcomeMessage]);
@@ -675,7 +675,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
     const msgLower = newMessage.toLowerCase().trim();
     setNewMessage('');
 
-    // If chatting with a user (not AIVA), just send the message - no AI response
+    // If chatting with a user (not Bey), just send the message - no AI response
     if (activeView === 'user' && selectedUserId) {
       // TODO: Implement direct messaging via socket/API to the selected user
       // For now, just save the message without AI response
@@ -701,7 +701,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
 
     setThinking(true);
 
-    // Check if user wants to create a task (only for AIVA chat)
+    // Check if user wants to create a task (only for Bey chat)
     if (msgLower.includes('create task') || msgLower.includes('new task') || 
         msgLower.includes('add task') || msgLower.includes('make task')) {
       setThinking(false);
@@ -712,7 +712,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         message: "✨ Great! Let's create a new task.\n\nPlease fill in the form below and I'll create the task for you! 📝",
         user_id: 'mira',
         create_at: Date.now(),
-        username: 'AIVA',
+        username: 'Bey',
         isBot: true
       };
       setMessages(prev => [...prev, botMessage]);
@@ -744,7 +744,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           message: data.response || data.reply || data.message || "I'm here to help! Could you rephrase that?",
           user_id: 'mira',
           create_at: Date.now(),
-          username: data.persona?.name || 'AIVA',
+          username: data.persona?.name || 'Bey',
           isBot: true
         };
 
@@ -910,7 +910,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
               <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#2b2d42]"></div>
             </div>
             <div className="flex-1 text-left min-w-0">
-              <p className="text-white text-[13px] font-medium truncate">AIVA</p>
+              <p className="text-white text-[13px] font-medium truncate">Bey</p>
             </div>
           </button>
 
@@ -1080,9 +1080,9 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                 </div>
                 <div>
                   <h3 className="font-semibold text-white text-[13px]">
-                    AIVA
+                    Bey
                   </h3>
-                  <p className="text-gray-400 text-[10px]">AI + Virtual Assistant</p>
+                  <p className="text-gray-400 text-[10px]">Your AI Assistant</p>
                 </div>
               </>
             )}
@@ -1203,7 +1203,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
               <div className={`flex-1 max-w-[70%] ${!message.isBot ? 'flex flex-col items-end' : ''}`}>
                 <div className={`flex items-baseline gap-1 mb-0.5 ${!message.isBot ? 'flex-row-reverse' : ''}`}>
                   <span className="font-semibold text-[11px] text-white">
-                    {message.isBot ? 'AIVA' : message.username || 'You'}
+                    {message.isBot ? 'Bey' : message.username || 'You'}
                   </span>
                   <span className="text-[9px] text-gray-500">
                     {formatTime(message.create_at)}
@@ -1476,7 +1476,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                             message: '⚠️ Please fill in the required fields: Title and Assignee',
                             user_id: 'mira',
                             create_at: Date.now(),
-                            username: 'AIVA',
+                            username: 'Bey',
                             isBot: true
                           };
                           setMessages(prev => [...prev, botMsg]);
@@ -1510,7 +1510,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                               message: `✅ Task created and moved to IN PROGRESS!\n\n� ${taskFormData.serialNumber}\n�📝 "${taskFormData.title}"\n🎯 Priority: ${taskFormData.priority}\n👤 Assigned to: ${chatUsers.find(u => u.id === taskFormData.assigneeId)?.name}`,
                               user_id: 'mira',
                               create_at: Date.now(),
-                              username: 'AIVA',
+                              username: 'Bey',
                               isBot: true
                             };
                             setMessages(prev => [...prev, successMsg]);
@@ -1526,7 +1526,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                             message: '❌ Sorry, I couldn\'t create the task. Please try again or contact support.',
                             user_id: 'mira',
                             create_at: Date.now(),
-                            username: 'AIVA',
+                            username: 'Bey',
                             isBot: true
                           };
                           setMessages(prev => [...prev, errorMsg]);
@@ -1544,7 +1544,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                             message: '⚠️ Please enter a task title to save as draft',
                             user_id: 'mira',
                             create_at: Date.now(),
-                            username: 'AIVA',
+                            username: 'Bey',
                             isBot: true
                           };
                           setMessages(prev => [...prev, botMsg]);
@@ -1592,7 +1592,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                               message: `💾 Task saved as draft!\n\n🔢 ${taskFormData.serialNumber}\n📝 "${taskFormData.title}"\n\nYou can find it in the DRAFT column and complete it later.`,
                               user_id: 'mira',
                               create_at: Date.now(),
-                              username: 'AIVA',
+                              username: 'Bey',
                               isBot: true
                             };
                             setMessages(prev => [...prev, successMsg]);
@@ -1609,7 +1609,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                             message: `❌ Sorry, I couldn't save the draft. Error: ${error.message}\n\nPlease try again.`,
                             user_id: 'mira',
                             create_at: Date.now(),
-                            username: 'AIVA',
+                            username: 'Bey',
                             isBot: true
                           };
                           setMessages(prev => [...prev, errorMsg]);
@@ -1630,7 +1630,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                           message: 'Task creation cancelled. How else can I help you?',
                           user_id: 'mira',
                           create_at: Date.now(),
-                          username: 'AIVA',
+                          username: 'Bey',
                           isBot: true
                         };
                         setMessages(prev => [...prev, cancelMsg]);
@@ -1654,7 +1654,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
               <div className="flex-1">
                 <div className="flex items-baseline gap-1 mb-0.5">
                   <span className="font-semibold text-[11px] text-white">
-                    AIVA
+                    Bey
                   </span>
                   <span className="text-[9px] text-gray-500">
                     thinking...

@@ -119,33 +119,35 @@ const MASTER_MODULES = [
   {
     id: 'super-admin',
     name: 'Super Admin Module',
-    description: 'Super admin tools and oversight',
+    description: 'Super admin tools and oversight - Auto-assigned to Super Admin',
     icon: 'FiShield',
     category: 'Administration',
     businessCategory: 'Business ERP',
+    hideFromAssignment: true, // Don't show in module assignment UI - auto-assigned to Super Admin
     pages: [
-      { id: 'security', name: 'Security Management', path: '/super-admin/security' },
-      // System module pages (excluding AI and logs)
-      { id: 'it-admin', name: 'IT Admin Dashboard', path: '/super-admin/system/it-admin' },
-      { id: 'user-management', name: 'User Management', path: '/super-admin/system/user-management' },
-      { id: 'user-creation', name: 'User Creation', path: '/super-admin/system/user-creation' },
-      { id: 'roles-users', name: 'Roles & Users Report', path: '/super-admin/system/roles-users-report' },
-      { id: 'pages-roles', name: 'Pages & Roles Report', path: '/super-admin/system/pages-roles-report' },
-      { id: 'role-access-explorer', name: 'Role & Access Explorer', path: '/super-admin/system/role-access-explorer' },
-      { id: 'permission-manager', name: 'Permission Manager', path: '/super-admin/system/permission-manager' },
-      { id: 'system-settings', name: 'System Settings', path: '/super-admin/system/system-settings' },
-      { id: 'integration-settings', name: 'Integration Settings', path: '/super-admin/system/integration-settings' },
-      { id: 'deployment', name: 'Deployment Tools', path: '/super-admin/system/deployment-tools' },
-      { id: 'backup-restore', name: 'Backup & Restore', path: '/super-admin/system/backup-restore' },
+      { id: 'super-admin-security', name: 'Security Management', path: '/super-admin/security' },
+      // System module pages (excluding AI and logs) - IDs must match page-registry.ts
+      { id: 'super-admin-it-admin', name: 'IT Admin Dashboard', path: '/super-admin/system/it-admin' },
+      { id: 'super-admin-user-management', name: 'Client Management', path: '/super-admin/system/user-management' },
+      // Permission Manager & Modules & Roles are now part of Client Management page (hidden from sidebar)
+      { id: 'super-admin-pages-roles-report', name: 'Pages & Roles Report', path: '/super-admin/system/pages-roles-report' },
+      { id: 'super-admin-role-access-explorer', name: 'Role & Access Explorer', path: '/super-admin/system/role-access-explorer' },
+      { id: 'super-admin-system-settings', name: 'System Settings', path: '/super-admin/system/system-settings' },
+      { id: 'super-admin-integration-settings', name: 'Integration Settings', path: '/super-admin/system/integration-settings' },
+      { id: 'super-admin-deployment-tools', name: 'Deployment Tools', path: '/super-admin/system/deployment-tools' },
+      { id: 'super-admin-backup-restore', name: 'Backup & Restore', path: '/super-admin/system/backup-restore' },
+      { id: 'super-admin-system-health', name: 'System Health', path: '/super-admin/system/system-health' },
+      { id: 'super-admin-about-me', name: 'About Me', path: '/super-admin/about-me' },
     ],
   },
   {
     id: 'admin',
     name: 'Admin Module',
-    description: 'General administration',
+    description: 'General administration - Auto-assigned to Admin users',
     icon: 'FiUser',
     category: 'Administration',
     businessCategory: 'Business ERP',
+    hideFromAssignment: true, // Don't show in module assignment UI - auto-assigned to Admin
     pages: [
       { id: 'dashboard', name: 'Admin Dashboard', path: '/admin' },
       { id: 'admin-dashboard', name: 'Admin Dashboard Alt', path: '/admin/dashboard' },
@@ -196,10 +198,11 @@ const MASTER_MODULES = [
   {
     id: 'enterprise-admin',
     name: 'Enterprise Admin Module',
-    description: 'Enterprise-level administration and multi-tenant management',
+    description: 'Enterprise-level administration and multi-tenant management - Auto-assigned to Enterprise Admin',
     icon: 'FiBriefcase',
     category: 'Enterprise',
     businessCategory: 'Enterprise',
+    hideFromAssignment: true, // Don't show in module assignment UI - auto-assigned to Enterprise Admin
     pages: [
       { id: 'dashboard', name: 'Enterprise Dashboard', path: '/enterprise-admin/dashboard' },
       { id: 'modules', name: 'Module Management', path: '/enterprise-admin/modules' },

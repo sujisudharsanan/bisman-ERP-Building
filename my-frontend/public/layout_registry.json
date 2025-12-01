@@ -1,24 +1,25 @@
 {
   "meta": {
     "version": "1.0.0",
-    "exportedAt": "2025-11-29T15:54:36.409Z",
+    "exportedAt": "2025-12-01T18:59:56.987Z",
     "source": "my-frontend/src/common/config/page-registry.ts",
     "generator": "scripts/export-page-registry.js"
   },
   "statistics": {
-    "totalPages": 79,
+    "totalPages": 87,
     "totalModules": 2,
     "pagesByModule": {
-      "system": 17,
+      "super-admin": 13,
       "hr": 1,
+      "system": 11,
       "finance": 31,
       "procurement": 5,
-      "operations": 14,
+      "operations": 13,
       "compliance": 9,
-      "common": 2
+      "common": 4
     },
     "pagesByStatus": {
-      "active": 79,
+      "active": 85,
       "coming-soon": 0,
       "disabled": 0
     }
@@ -39,38 +40,168 @@
   },
   "pages": [
     {
-      "id": "system-settings",
-      "name": "System Settings",
-      "path": "/system/system-settings",
-      "module": "system",
-      "status": "active",
-      "description": "Configure system-wide settings",
-      "order": 1,
-      "permissions": [
-        "system-settings"
-      ],
-      "roles": [
-        "SYSTEM_ADMIN",
-        "ADMIN",
-        "SYSTEM ADMINISTRATOR",
-        "IT ADMIN"
-      ]
-    },
-    {
-      "id": "user-management",
+      "id": "super-admin-user-management",
       "name": "Client Management",
-      "path": "/system/user-management",
-      "module": "system",
+      "path": "/super-admin/system/user-management",
+      "module": "super-admin",
       "status": "active",
-      "description": "Manage ERP clients and quick-access their Admin login",
-      "order": 2,
+      "description": "Manage clients, permissions and roles",
+      "order": 1,
       "permissions": [
         "user-management"
       ],
       "roles": [
-        "SYSTEM_ADMIN",
-        "ADMIN",
-        "SYSTEM ADMINISTRATOR"
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "super-admin-permission-manager",
+      "name": "Permission Manager",
+      "path": "/super-admin/system/permission-manager",
+      "module": "super-admin",
+      "status": "inactive",
+      "description": "Manage system permissions",
+      "order": 3,
+      "permissions": [
+        "user-management"
+      ],
+      "roles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "super-admin-roles-users-report",
+      "name": "Modules & Roles",
+      "path": "/super-admin/system/roles-users-report",
+      "module": "super-admin",
+      "status": "inactive",
+      "description": "View comprehensive report of all roles and assigned users",
+      "order": 4,
+      "permissions": [
+        "user-management"
+      ],
+      "roles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "super-admin-pages-roles-report",
+      "name": "Pages & Roles Report",
+      "path": "/super-admin/system/pages-roles-report",
+      "module": "super-admin",
+      "status": "active",
+      "description": "View all pages and their assigned roles",
+      "order": 5,
+      "permissions": [
+        "user-management"
+      ],
+      "roles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "super-admin-role-access-explorer",
+      "name": "Role & Access Explorer",
+      "path": "/super-admin/system/role-access-explorer",
+      "module": "super-admin",
+      "status": "active",
+      "description": "Interactive matrix for roles and workflows",
+      "order": 6,
+      "permissions": [
+        "user-management"
+      ],
+      "roles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "super-admin-backup-restore",
+      "name": "Backup & Restore",
+      "path": "/super-admin/system/backup-restore",
+      "module": "super-admin",
+      "status": "active",
+      "description": "Manage system backups and restoration",
+      "order": 7,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "super-admin-system-health",
+      "name": "System Health",
+      "path": "/super-admin/system/system-health-dashboard",
+      "module": "super-admin",
+      "status": "active",
+      "description": "Monitor system performance and health",
+      "order": 8,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "super-admin-integration-settings",
+      "name": "Integration Settings",
+      "path": "/super-admin/system/integration-settings",
+      "module": "super-admin",
+      "status": "active",
+      "description": "Configure third-party integrations",
+      "order": 9,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "super-admin-deployment-tools",
+      "name": "Deployment Tools",
+      "path": "/super-admin/system/deployment-tools",
+      "module": "super-admin",
+      "status": "active",
+      "description": "Manage deployments and releases",
+      "order": 10,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "super-admin-it-admin",
+      "name": "IT Admin",
+      "path": "/super-admin/system/it-admin",
+      "module": "super-admin",
+      "status": "active",
+      "description": "IT administration tools",
+      "order": 11,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "super-admin-about-me",
+      "name": "About Me",
+      "path": "/super-admin/system/about-me",
+      "module": "super-admin",
+      "status": "active",
+      "description": "View and edit your profile",
+      "order": 12,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "SUPER_ADMIN"
       ]
     },
     {
@@ -202,23 +333,6 @@
       ]
     },
     {
-      "id": "scheduler",
-      "name": "Task Scheduler",
-      "path": "/system/scheduler",
-      "module": "system",
-      "status": "active",
-      "description": "Configure automated tasks and schedules",
-      "order": 7,
-      "permissions": [
-        "system-settings"
-      ],
-      "roles": [
-        "SYSTEM_ADMIN",
-        "SYSTEM ADMINISTRATOR",
-        "ADMIN"
-      ]
-    },
-    {
       "id": "system-health",
       "name": "System Health",
       "path": "/system/system-health-dashboard",
@@ -272,6 +386,36 @@
       ]
     },
     {
+      "id": "fallback-logs",
+      "name": "Fallback Logs",
+      "path": "/super-admin/fallback-logs",
+      "module": "super-admin",
+      "status": "active",
+      "description": "Monitor fallback events, errors, and system alerts",
+      "order": 11,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "ai-handling",
+      "name": "AI Handling",
+      "path": "/super-admin/ai-handling",
+      "module": "super-admin",
+      "status": "active",
+      "description": "AI configuration and management",
+      "order": 5,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
       "id": "server-logs",
       "name": "Server Logs",
       "path": "/system/server-logs",
@@ -305,54 +449,6 @@
       "roles": [
         "SYSTEM_ADMIN",
         "SYSTEM ADMINISTRATOR",
-        "ADMIN"
-      ]
-    },
-    {
-      "id": "api-config",
-      "name": "API Configuration",
-      "path": "/system/api-integration-config",
-      "module": "system",
-      "status": "active",
-      "description": "Configure API integrations",
-      "order": 13,
-      "permissions": [
-        "system-settings"
-      ],
-      "roles": [
-        "SUPER_ADMIN",
-        "SYSTEM ADMINISTRATOR"
-      ]
-    },
-    {
-      "id": "company-setup",
-      "name": "Company Setup",
-      "path": "/system/company-setup",
-      "module": "system",
-      "status": "active",
-      "description": "Configure company information",
-      "order": 14,
-      "permissions": [
-        "system-settings"
-      ],
-      "roles": [
-        "SYSTEM_ADMIN",
-        "ADMIN"
-      ]
-    },
-    {
-      "id": "master-data",
-      "name": "Master Data",
-      "path": "/system/master-data-management",
-      "module": "system",
-      "status": "active",
-      "description": "Manage master data entities",
-      "order": 15,
-      "permissions": [
-        "system-settings"
-      ],
-      "roles": [
-        "SYSTEM_ADMIN",
         "ADMIN"
       ]
     },
@@ -909,23 +1005,6 @@
       ]
     },
     {
-      "id": "stock-entry",
-      "name": "Stock Entry",
-      "path": "/operations/stock-entry",
-      "module": "operations",
-      "status": "active",
-      "description": "Record stock movements",
-      "order": 2,
-      "permissions": [
-        "kpi-dashboard"
-      ],
-      "roles": [
-        "STORE INCHARGE",
-        "HUB INCHARGE",
-        "OPERATIONS MANAGER"
-      ]
-    },
-    {
       "id": "item-master",
       "name": "Item Master",
       "path": "/operations/item-master-limited",
@@ -934,7 +1013,7 @@
       "description": "Manage item catalog",
       "order": 3,
       "permissions": [
-        "kpi-dashboard"
+        "inventory-management"
       ],
       "roles": [
         "STORE INCHARGE",
@@ -950,7 +1029,7 @@
       "description": "View stock ledger",
       "order": 4,
       "permissions": [
-        "kpi-dashboard"
+        "inventory-management"
       ],
       "roles": [
         "STORE INCHARGE",
@@ -966,7 +1045,7 @@
       "description": "Manage delivery notes",
       "order": 5,
       "permissions": [
-        "kpi-dashboard"
+        "inventory-management"
       ],
       "roles": [
         "HUB INCHARGE",
@@ -982,7 +1061,7 @@
       "description": "Perform quality checks",
       "order": 6,
       "permissions": [
-        "kpi-dashboard"
+        "inventory-management"
       ],
       "roles": [
         "STORE INCHARGE",
@@ -998,7 +1077,7 @@
       "description": "Manage sales orders",
       "order": 7,
       "permissions": [
-        "kpi-dashboard"
+        "inventory-management"
       ],
       "roles": [
         "HUB INCHARGE",
@@ -1014,7 +1093,7 @@
       "description": "Create and track work orders",
       "order": 8,
       "permissions": [
-        "kpi-dashboard"
+        "inventory-management"
       ],
       "roles": [
         "OPERATIONS MANAGER",
@@ -1030,7 +1109,7 @@
       "description": "View BOM structure",
       "order": 9,
       "permissions": [
-        "kpi-dashboard"
+        "inventory-management"
       ],
       "roles": [
         "OPERATIONS MANAGER",
@@ -1046,7 +1125,7 @@
       "description": "Manage shipping operations",
       "order": 10,
       "permissions": [
-        "kpi-dashboard"
+        "inventory-management"
       ],
       "roles": [
         "HUB INCHARGE",
@@ -1062,7 +1141,7 @@
       "description": "Transfer stock between locations",
       "order": 11,
       "permissions": [
-        "kpi-dashboard"
+        "inventory-management"
       ],
       "roles": [
         "STORE INCHARGE",
@@ -1078,7 +1157,7 @@
       "description": "View sales orders",
       "order": 12,
       "permissions": [
-        "kpi-dashboard"
+        "inventory-management"
       ],
       "roles": [
         "HUB INCHARGE",
@@ -1094,7 +1173,7 @@
       "description": "Manage hub assets",
       "order": 13,
       "permissions": [
-        "kpi-dashboard"
+        "inventory-management"
       ],
       "roles": [
         "HUB INCHARGE",
@@ -1236,7 +1315,7 @@
       "description": "Store operations management dashboard",
       "order": 101,
       "permissions": [
-        "kpi-dashboard"
+        "inventory-management"
       ],
       "roles": [
         "STORE INCHARGE"
@@ -1251,7 +1330,7 @@
       "description": "Operations oversight and management",
       "order": 102,
       "permissions": [
-        "kpi-dashboard"
+        "inventory-management"
       ],
       "roles": [
         "OPERATIONS MANAGER"
@@ -1303,13 +1382,43 @@
       ]
     },
     {
+      "id": "common-about-me",
+      "name": "About Me",
+      "path": "/common/about-me",
+      "module": "common",
+      "status": "active",
+      "description": "View and edit your profile",
+      "order": 1,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
+      "id": "common-help-center",
+      "name": "Help Center",
+      "path": "/common/help-center",
+      "module": "common",
+      "status": "active",
+      "description": "Get help and support resources",
+      "order": 3,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
       "id": "common-user-settings",
       "name": "User Settings",
       "path": "/common/user-settings",
       "module": "common",
       "status": "active",
       "description": "Customize your preferences and settings",
-      "order": 8,
+      "order": 4,
       "permissions": [
         "authenticated"
       ],
@@ -1324,7 +1433,7 @@
       "module": "common",
       "status": "active",
       "description": "Submit and track payment requests",
-      "order": 9,
+      "order": 5,
       "permissions": [
         "authenticated"
       ],

@@ -1424,11 +1424,14 @@ app.get('/api/enterprise-admin/master-modules', authenticate, requireRole(['ENTE
         businessCategory: configModule?.businessCategory || 'All',
         alwaysAccessible: dbModule.is_always_accessible || configModule?.alwaysAccessible || false,
         is_always_accessible: dbModule.is_always_accessible || configModule?.alwaysAccessible || false,
+        hideFromAssignment: configModule?.hideFromAssignment || false, // Flag to hide from assignment UI
         pages: configModule?.pages || []
       };
-    });
+    })
+    // Filter out modules that should be hidden from assignment UI (enterprise-admin, super-admin, admin)
+    .filter(m => !m.hideFromAssignment);
 
-    console.log('[master-modules] Returning', modulesWithPages.length, 'modules');
+    console.log('[master-modules] Returning', modulesWithPages.length, 'modules (after filtering hidden)');
     res.json({ 
       ok: true, 
       modules: modulesWithPages,
@@ -1554,6 +1557,12 @@ app.get('/api/auth/me/permissions', authenticate, async (req, res) => {
     // For ENTERPRISE_ADMIN role - only enterprise-level access
     if (req.user.role === 'ENTERPRISE_ADMIN') {
       console.log('🏢 [PERMISSIONS] Enterprise Admin detected');
+      
+      // Load enterprise-admin module pages from config
+      const { MASTER_MODULES } = require('./config/master-modules');
+      const enterpriseModule = MASTER_MODULES.find(m => m.id === 'enterprise-admin');
+      const enterprisePages = enterpriseModule?.pages?.map(p => p.id) || [];
+      
       return res.json({
         ok: true,
         user: {
@@ -1562,10 +1571,10 @@ app.get('/api/auth/me/permissions', authenticate, async (req, res) => {
           email: req.user.email,
           role: 'ENTERPRISE_ADMIN',
           permissions: {
-            assignedModules: ['enterprise-management'],  // Only enterprise module
+            assignedModules: ['enterprise-admin'],
             accessLevel: 'enterprise',
             pagePermissions: {
-              'enterprise-management': ['super-admins', 'clients', 'modules', 'billing', 'analytics', 'dashboard']
+              'enterprise-admin': enterprisePages
             }
           }
         }
@@ -1601,6 +1610,14 @@ app.get('/api/auth/me/permissions', authenticate, async (req, res) => {
       // Build permissions from database
       const assignedModules = [];
       const pagePermissions = {};
+
+      // ✅ AUTO-ASSIGN super-admin module to all Super Admins
+      const superAdminModule = MASTER_MODULES.find(m => m.id === 'super-admin');
+      if (superAdminModule) {
+        assignedModules.push('super-admin');
+        pagePermissions['super-admin'] = superAdminModule.pages.map(p => p.id);
+        console.log(`📄 [PERMISSIONS] AUTO-ASSIGNED super-admin module with ${superAdminModule.pages.length} pages`);
+      }
 
       superAdmin.moduleAssignments.forEach(assignment => {
         const module = assignment.module;

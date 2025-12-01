@@ -217,7 +217,8 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
 
     const isEnterprise = user.role === 'ENTERPRISE_ADMIN' || user.roleName === 'ENTERPRISE_ADMIN';
 
-  let pages = REGISTRY.filter(p => p.status === 'active');
+  // Filter by status === 'active' AND showInSidebar !== false
+  let pages = REGISTRY.filter(p => p.status === 'active' && p.showInSidebar !== false);
 
     if (isEnterprise) {
       // Enterprise Admin: enterprise-specific pages only

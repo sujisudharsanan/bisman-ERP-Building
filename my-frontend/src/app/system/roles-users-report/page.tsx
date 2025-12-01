@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useMemo } from 'react';
 import SuperAdminShell from '@/components/layouts/SuperAdminShell';
+import ClientManagementTabs from '@/components/common/ClientManagementTabs';
 import { FiGrid, FiUsers, FiFile, FiUserPlus } from 'react-icons/fi';
 import { useToast } from '@/components/ui/toast';
 
@@ -163,10 +164,10 @@ export default function RolesUsersReportPage() {
   };
 
   const filteredRoles = useMemo(() => {
-    if (!selectedModuleName) return reportData;
-    const mod = filteredModules.find(mm => mm.module_name === selectedModuleName) || null;
-    return reportData.filter(r => roleMatchesModule(r, mod));
-  }, [reportData, selectedModuleName, filteredModules]);
+    // Show all roles regardless of module selection
+    // The heuristic module-role matching was too strict and hiding valid roles
+    return reportData;
+  }, [reportData]);
 
   const selectedRole = useMemo(() => {
     if (!selectedRoleId) return null;
@@ -404,14 +405,21 @@ export default function RolesUsersReportPage() {
   if (loading) {
     return (
       <SuperAdminShell title="Modules & Roles">
-        <div className="p-4">Loading...</div>
+        <div className="p-4 md:p-6">
+          <ClientManagementTabs />
+          <div className="p-4">Loading...</div>
+        </div>
       </SuperAdminShell>
     );
   }
 
   return (
     <SuperAdminShell title="Modules & Roles">
-      <div className="space-y-4">
+      <div className="p-4 md:p-6">
+        {/* Shared Tabs Navigation */}
+        <ClientManagementTabs />
+        
+        <div className="space-y-4">
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
           <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md p-2 border-l-4 border-l-purple-400">
@@ -542,16 +550,11 @@ export default function RolesUsersReportPage() {
           <div className="rounded-lg border bg-white dark:bg-gray-900 p-3">
             <div className="text-sm font-semibold mb-2 flex items-center justify-between">
               <span>Roles</span>
-              {selectedModuleName && (
-                <span className="text-xs font-normal px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">{filteredRoles.length}</span>
-              )}
+              <span className="text-xs font-normal px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">{filteredRoles.length}</span>
             </div>
             <div className="space-y-1 max-h-[520px] overflow-y-auto">
-              {!selectedModuleName && (
-                <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300">⚠️ Select a module to view roles</div>
-              )}
-              {selectedModuleName && filteredRoles.length === 0 && <div className="text-xs text-gray-500">No Roles</div>}
-      {selectedModuleName && filteredRoles.map((r, idx) => {
+              {filteredRoles.length === 0 && <div className="text-xs text-gray-500">No Roles</div>}
+              {filteredRoles.map((r, idx) => {
                 const isSelected = selectedRoleId === r.roleId;
                 const barColor = colorForIndex(idx);
                 return (
@@ -706,6 +709,7 @@ export default function RolesUsersReportPage() {
               </>
             )}
           </div>
+        </div>
         </div>
       </div>
     </SuperAdminShell>

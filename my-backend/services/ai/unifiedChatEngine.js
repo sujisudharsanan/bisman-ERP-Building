@@ -167,6 +167,69 @@ class UnifiedChatEngine {
   }
 
   /**
+   * Calculate math expressions from user message
+   */
+  calculateMath(message) {
+    try {
+      // Extract numbers and operators from the message
+      const cleanMessage = message.toLowerCase()
+        .replace(/what is/gi, '')
+        .replace(/calculate/gi, '')
+        .replace(/compute/gi, '')
+        .replace(/solve/gi, '')
+        .replace(/×/g, '*')
+        .replace(/x(?=\s*\d)/gi, '*')
+        .replace(/÷/g, '/')
+        .replace(/plus/gi, '+')
+        .replace(/minus/gi, '-')
+        .replace(/times/gi, '*')
+        .replace(/multiplied by/gi, '*')
+        .replace(/divided by/gi, '/')
+        .replace(/add/gi, '+')
+        .replace(/subtract/gi, '-')
+        .replace(/multiply/gi, '*')
+        .replace(/divide/gi, '/')
+        .replace(/sum of/gi, '')
+        .replace(/difference of/gi, '')
+        .replace(/product of/gi, '')
+        .replace(/and/gi, '+')
+        .trim();
+      
+      // Extract the math expression (numbers and operators only)
+      const mathMatch = cleanMessage.match(/[\d\s+\-*/().]+/);
+      if (!mathMatch) {
+        return { success: false, error: 'No math expression found' };
+      }
+      
+      let expression = mathMatch[0].trim();
+      
+      // Security: Only allow safe characters
+      if (!/^[\d\s+\-*/().]+$/.test(expression)) {
+        return { success: false, error: 'Invalid characters in expression' };
+      }
+      
+      // Evaluate safely using Function (limited scope)
+      const result = Function('"use strict"; return (' + expression + ')')();
+      
+      if (typeof result !== 'number' || !isFinite(result)) {
+        return { success: false, error: 'Invalid result' };
+      }
+      
+      // Format result nicely
+      const formattedResult = Number.isInteger(result) ? result : parseFloat(result.toFixed(4));
+      
+      return {
+        success: true,
+        expression: expression.replace(/\s+/g, ' ').trim(),
+        result: formattedResult
+      };
+    } catch (error) {
+      console.error('[UnifiedChat] Math calculation error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  /**
    * Spell check and auto-correct message
    */
   async spellCheck(message) {
@@ -222,6 +285,29 @@ class UnifiedChatEngine {
    */
   async classifyIntent(message) {
     const lowerMessage = message.toLowerCase();
+    
+    // 0. Check for math expressions first (high priority)
+    const mathPatterns = [
+      /\d+\s*[+\-*/×÷x]\s*\d+/i,  // "5 + 3", "10*2"
+      /what\s+is\s+\d+/i,          // "what is 5..."
+      /calculate\s+\d+/i,          // "calculate 5..."
+      /\d+\s+(plus|minus|times|divided|multiplied)/i,  // "5 plus 3"
+      /(add|subtract|multiply|divide)\s+\d+/i,         // "add 5 and 3"
+      /sum\s+of\s+\d+/i,           // "sum of 5 and 3"
+    ];
+    
+    for (const pattern of mathPatterns) {
+      if (pattern.test(lowerMessage)) {
+        return {
+          intent: 'math',
+          confidence: 0.98,
+          method: 'math-pattern',
+          requiresPermission: null,
+          category: 'utility',
+          responseTemplate: null
+        };
+      }
+    }
     
     // 1. Try exact pattern matching first (higher priority)
     for (const data of this.trainingData) {
@@ -514,6 +600,8 @@ class UnifiedChatEngine {
     // Replace placeholders
     response = response.replace('{firstName}', firstName);
     response = response.replace('{roleName}', roleName || 'your role');
+    response = response.replace('{time}', new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }));
+    response = response.replace('{date}', new Date().toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }));
     
     // Helper to safely get reply from humanizeService (which returns an object)
     const humanize = (text, opts = {}) => {
@@ -564,8 +652,18 @@ class UnifiedChatEngine {
         break;
         
       case 'help':
-        response += `\n\nYou can ask me to:\n• "Show my tasks"\n• "List pending approvals"\n• "Create a task"\n• "Show reports"\n• And much more!`;
+        response += `\n\nYou can ask me to:\n• "Show my tasks"\n• "List pending approvals"\n• "Create a task"\n• "Show reports"\n• "Calculate 25 + 17"\n• And much more!`;
         response = humanize(response, { intent: 'help' });
+        break;
+      
+      case 'math':
+        // Extract and calculate math expression from message
+        const mathResult = this.calculateMath(message);
+        if (mathResult.success) {
+          response = `🧮 ${mathResult.expression} = **${mathResult.result}**`;
+        } else {
+          response = `I couldn't calculate that. Try something like "what is 25 + 17" or "calculate 100 / 5"`;
+        }
         break;
         
       default:
