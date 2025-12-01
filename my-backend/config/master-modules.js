@@ -41,7 +41,7 @@ const MASTER_MODULES = [
       { id: 'executive-dashboard', name: 'Executive Dashboard', path: '/finance/executive-dashboard' },
       { id: 'cfo-dashboard', name: 'CFO Dashboard', path: '/cfo-dashboard' },
       { id: 'finance-controller', name: 'Finance Controller', path: '/finance-controller' },
-      { id: 'treasury', name: 'Treasury', path: '/treasury' },
+      // Removed per request: treasury
       { id: 'banker', name: 'Banker Portal', path: '/banker' },
     ],
   },
