@@ -25,8 +25,8 @@ import {
 } from 'lucide-react';
 
 import type { LucideIcon } from 'lucide-react';
-import BaseLayout from '@/components/layout/BaseLayout';
 import PageDirectory from '@/components/settings/PageDirectory';
+import SuperAdminShell from '@/components/layouts/SuperAdminShell';
 
 interface SystemMetric {
   name: string;
@@ -223,7 +223,7 @@ export default function SuperAdminSystemPage() {
   };
 
   return (
-    <BaseLayout pageId="super-admin-system" showSidebar showHeader showFooter>
+    <SuperAdminShell>
       <div className="max-w-7xl mx-auto">
         {/* Header */}
         <div className="mb-8">
@@ -396,6 +396,6 @@ export default function SuperAdminSystemPage() {
           </div>
         </div>
       </div>
-    </BaseLayout>
+    </SuperAdminShell>
   );
 }

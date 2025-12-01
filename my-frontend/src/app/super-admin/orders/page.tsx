@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import BaseLayout from '@/components/layout/BaseLayout';
+import SuperAdminShell from '@/components/layouts/SuperAdminShell';
 import { 
   ShoppingCart, 
   Package, 
@@ -189,7 +189,7 @@ export default function SuperAdminOrdersPage() {
   };
 
   return (
-    <BaseLayout pageId="super-admin-orders" showSidebar showHeader showFooter>
+    <SuperAdminShell>
       <div className="max-w-7xl mx-auto">
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -399,6 +399,6 @@ export default function SuperAdminOrdersPage() {
       </div>
     </div>
   </div>
-    </BaseLayout>
+    </SuperAdminShell>
   );
 }

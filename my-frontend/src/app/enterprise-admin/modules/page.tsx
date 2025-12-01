@@ -1096,8 +1096,8 @@ export default function Page() {
                       )}
                       <span className="font-medium">{m.name}</span>
                     </span>
-                    <span className="text-[10px] text-gray-500 shrink-0">
-                      {isAlwaysAccessible ? '🔓 Edit' : m.moduleKey}
+                    <span className="text-[10px] text-gray-500 shrink-0 flex items-center gap-1">
+                      <span>{m.pages?.length || 0} pages</span>
                     </span>
                   </div>
                 </button>
@@ -1341,8 +1341,9 @@ export default function Page() {
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">{m.name}</div>
-                      <div className="text-[10px] text-gray-500 truncate">
-                        {isAlwaysAccessible ? '🔓 Click to edit' : isShared ? '🔄 Both' : isPump ? 'Pump' : 'ERP'}
+                      <div className="text-[10px] text-gray-500 flex items-center justify-between">
+                        <span>{isAlwaysAccessible ? '🔓 Click to edit' : isShared ? '🔄 Both' : isPump ? 'Pump' : 'ERP'}</span>
+                        <span className="text-gray-400">{m.pages?.length || 0} pages</span>
                       </div>
                     </div>
                   </div>

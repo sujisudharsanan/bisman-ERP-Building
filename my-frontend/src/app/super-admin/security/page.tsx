@@ -4,7 +4,7 @@ import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
 import SecurityDashboard from '@/components/security/SecurityDashboard';
-import BaseLayout from '@/components/layout/BaseLayout';
+import SuperAdminShell from '@/components/layouts/SuperAdminShell';
 
 export default function SuperAdminSecurityPage() {
   const { user, loading } = useAuth();
@@ -58,7 +58,7 @@ export default function SuperAdminSecurityPage() {
   }
 
   return (
-    <BaseLayout pageId="super-admin-security" showSidebar showHeader showFooter>
+    <SuperAdminShell>
       <div className="max-w-7xl mx-auto">
         <div className="mb-8">
           <h1 className="text-3xl font-bold text-gray-900">Security Monitoring</h1>
@@ -66,6 +66,6 @@ export default function SuperAdminSecurityPage() {
         </div>
         <SecurityDashboard className="w-full" />
       </div>
-    </BaseLayout>
+    </SuperAdminShell>
   );
 }
