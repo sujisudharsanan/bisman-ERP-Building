@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { FiUsers, FiPackage, FiGrid, FiCheckCircle, FiUnlock, FiExternalLink } from "react-icons/fi";
 
 type Module = {
@@ -141,6 +141,88 @@ export default function Page() {
   const [saving, setSaving] = useState(false);
   const [authHint, setAuthHint] = useState<string | null>(null);
   const [isAssignMode, setIsAssignMode] = useState(false); // Toggle for showing + icons on unassigned modules
+  const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const lastSavedRef = useRef<string>(''); // Track last saved state to avoid duplicate saves
+
+  // Auto-save function - saves page permissions to database
+  const savePagePermissions = useCallback(async (adminId: number, moduleId: number, pageIds: string[]) => {
+    const saveKey = `${adminId}-${moduleId}-${pageIds.sort().join(',')}`;
+    if (saveKey === lastSavedRef.current) {
+      console.log('⏭️ Skip auto-save: no changes');
+      return; // No changes to save
+    }
+    
+    console.log('💾 Auto-saving page permissions:', { adminId, moduleId, pageCount: pageIds.length });
+    setAutoSaveStatus('saving');
+    
+    try {
+      const response = await fetch(`/api/enterprise-admin/super-admins/${adminId}/assign-module`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ 
+          moduleId, 
+          pageIds,
+          pages: pageIds,
+          pageIdsNormalized: pageIds.map(canonicalPageId),
+        }),
+      });
+      
+      if (response.ok) {
+        lastSavedRef.current = saveKey;
+        setAutoSaveStatus('saved');
+        console.log('✅ Auto-save successful');
+        
+        // Update local state to reflect saved permissions
+        setSuperAdmins(prev => prev.map(admin => {
+          if (admin.id === adminId) {
+            return {
+              ...admin,
+              pagePermissions: {
+                ...admin.pagePermissions,
+                [String(moduleId)]: pageIds
+              }
+            };
+          }
+          return admin;
+        }));
+        
+        // Reset status after 2 seconds
+        setTimeout(() => setAutoSaveStatus('idle'), 2000);
+      } else {
+        console.error('❌ Auto-save failed:', response.status);
+        setAutoSaveStatus('error');
+        setTimeout(() => setAutoSaveStatus('idle'), 3000);
+      }
+    } catch (error) {
+      console.error('❌ Auto-save error:', error);
+      setAutoSaveStatus('error');
+      setTimeout(() => setAutoSaveStatus('idle'), 3000);
+    }
+  }, []);
+
+  // Auto-save effect - debounced save when selectedPageIds changes
+  useEffect(() => {
+    // Clear any existing timer
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    
+    // Only auto-save if we have admin and module selected
+    if (!selectedAdminId || !selectedModuleId) return;
+    
+    // Debounce: wait 800ms after last change before saving
+    autoSaveTimerRef.current = setTimeout(() => {
+      savePagePermissions(selectedAdminId, selectedModuleId, selectedPageIds);
+    }, 800);
+    
+    return () => {
+      if (autoSaveTimerRef.current) {
+        clearTimeout(autoSaveTimerRef.current);
+      }
+    };
+  }, [selectedPageIds, selectedAdminId, selectedModuleId, savePagePermissions]);
 
   useEffect(() => {
     const load = async () => {
@@ -931,13 +1013,18 @@ export default function Page() {
                         || selectedAdmin.pagePermissions?.[m.moduleKey] 
                         || [];
                       // If no saved permissions, for always accessible modules, select all pages by default
+                      let initialPages: string[];
                       if (existing.length === 0 && isAlwaysAccessible && m.pages && m.pages.length > 0) {
-                        setSelectedPageIds(m.pages.map(p => canonicalPageId(p.id ?? p.path)));
+                        initialPages = m.pages.map(p => canonicalPageId(p.id ?? p.path));
                       } else {
-                        setSelectedPageIds(existing.map(canonicalPageId));
+                        initialPages = existing.map(canonicalPageId);
                       }
+                      setSelectedPageIds(initialPages);
+                      // Initialize lastSavedRef to prevent auto-save from triggering on initial load
+                      lastSavedRef.current = `${selectedAdmin.id}-${nextModuleId}-${initialPages.sort().join(',')}`;
                     } else {
                       setSelectedPageIds([]);
+                      lastSavedRef.current = '';
                     }
                   }}
                   className={`flex-1 text-left rounded-md border px-3 py-2 text-xs transition cursor-pointer ${
@@ -989,6 +1076,16 @@ export default function Page() {
             <div className="text-sm font-semibold flex items-center gap-2">
               Pages
               <span className="text-xs font-normal text-gray-500">{pagesForSelectedModule.length}</span>
+              {/* Auto-save status indicator */}
+              {autoSaveStatus === 'saving' && (
+                <span className="text-xs text-blue-500 animate-pulse">💾 Saving...</span>
+              )}
+              {autoSaveStatus === 'saved' && (
+                <span className="text-xs text-green-500">✅ Saved</span>
+              )}
+              {autoSaveStatus === 'error' && (
+                <span className="text-xs text-red-500">❌ Save failed</span>
+              )}
             </div>
             <div className="text-xs text-gray-500">
               {selectedPageIds.length} selected
@@ -1165,13 +1262,18 @@ export default function Page() {
                       const existing = selectedAdmin.pagePermissions?.[String(nextModuleId)] 
                         || selectedAdmin.pagePermissions?.[m.moduleKey] 
                         || [];
+                      let initialPages: string[];
                       if (existing.length === 0 && isAlwaysAccessible && m.pages && m.pages.length > 0) {
-                        setSelectedPageIds(m.pages.map(p => canonicalPageId(p.id ?? p.path)));
+                        initialPages = m.pages.map(p => canonicalPageId(p.id ?? p.path));
                       } else {
-                        setSelectedPageIds(existing.map(canonicalPageId));
+                        initialPages = existing.map(canonicalPageId);
                       }
+                      setSelectedPageIds(initialPages);
+                      // Initialize lastSavedRef to prevent auto-save from triggering on initial load
+                      lastSavedRef.current = `${selectedAdmin.id}-${nextModuleId}-${initialPages.sort().join(',')}`;
                     } else {
                       setSelectedPageIds([]);
+                      lastSavedRef.current = '';
                     }
                   }}
                   className={`w-full text-left rounded-md border px-3 py-2 text-xs cursor-pointer transition hover:ring-2 hover:ring-blue-300 ${

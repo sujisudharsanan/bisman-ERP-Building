@@ -219,8 +219,12 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
       // Enterprise Admin: enterprise-specific pages only
       pages = pages.filter(p => p.path.startsWith('/enterprise') || p.roles.includes('ENTERPRISE_ADMIN'));
     } else if (isSuperAdmin) {
-      // Super Admin: System Administration pages + Common pages
-      pages = pages.filter(p => p.module === 'system' || p.module === 'common');
+      // Super Admin: Only pages from modules assigned by Enterprise Admin
+      // Always include 'common' and 'chat' modules (always accessible)
+      // Plus any modules assigned via module_assignments table
+      const allowedModules = new Set(['common', 'chat', ...superAdminModules]);
+      pages = pages.filter(p => allowedModules.has(p.module) || userAllowedPages.includes(p.id));
+      console.log('[Sidebar] Super Admin allowed modules:', Array.from(allowedModules));
     } else {
       // Regular users: only explicitly allowed pages from DB + Common pages (available to all)
       pages = pages.filter(p => userAllowedPages.includes(p.id) || p.module === 'common');
@@ -234,7 +238,7 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
     // Sort by explicit order then name
     pages.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name));
     return pages;
-  }, [user, userAllowedPages, isSuperAdmin]);
+  }, [user, userAllowedPages, isSuperAdmin, superAdminModules]);
 
   // Remove toggle function - modules will always be expanded
   // const toggleModule = (moduleId: string) => {
