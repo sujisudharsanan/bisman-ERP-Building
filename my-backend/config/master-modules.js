@@ -55,7 +55,7 @@ const MASTER_MODULES = [
     pages: [
       { id: 'dashboard', name: 'Operations Dashboard', path: '/operations-manager' },
       { id: 'inventory', name: 'Inventory Management', path: '/operations/inventory-management' },
-      { id: 'kpi', name: 'KPI Dashboard', path: '/operations/kpi-dashboard' },
+      // Removed per request: kpi (KPI Dashboard)
       { id: 'hub-incharge', name: 'Hub Incharge', path: '/hub-incharge' },
       { id: 'store-incharge', name: 'Store Incharge', path: '/store-incharge' },
       { id: 'staff', name: 'Staff Portal', path: '/staff' },
