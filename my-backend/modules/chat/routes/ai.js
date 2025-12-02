@@ -66,7 +66,7 @@ const extractUser = async (req, res, next) => {
     // Try to get user role from database
     try {
       const userQuery = await pool.query(
-        'SELECT id, role FROM users WHERE id = $1',
+        'SELECT id, role FROM users_enhanced WHERE id = $1',
         [userId]
       );
       
@@ -559,10 +559,14 @@ router.post('/conversation/save', async (req, res) => {
     const { conversationId, messages, contextType = 'general' } = req.body;
     const userId = req.userId;
     
+    // For guest users, return success without saving (no DB storage for guests)
     if (!userId || userId === 0) {
-      return res.status(401).json({
-        success: false,
-        error: 'Authentication required'
+      console.log('[UltimateChatAPI] Guest user - skipping conversation save');
+      return res.json({
+        success: true,
+        conversationId: null,
+        messagesSaved: 0,
+        note: 'Guest conversations are not persisted'
       });
     }
     
