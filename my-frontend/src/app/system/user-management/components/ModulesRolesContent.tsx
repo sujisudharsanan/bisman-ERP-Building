@@ -1,5 +1,6 @@
 'use client';
 
+// Cache bust: 2025-12-02-0225
 import React, { useState, useEffect, useMemo } from 'react';
 import { FiGrid, FiUsers, FiFile, FiUserPlus } from 'react-icons/fi';
 
@@ -319,4 +320,3 @@ export default function ModulesRolesContent() {
   );
 }
 
-export default ModulesRolesContent;

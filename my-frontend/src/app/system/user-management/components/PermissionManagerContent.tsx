@@ -104,4 +104,3 @@ export default function PermissionManagerContent() {
   );
 }
 
-export default PermissionManagerContent;
