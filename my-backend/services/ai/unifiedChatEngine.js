@@ -348,15 +348,64 @@ class UnifiedChatEngine {
       };
     }
     
-    // 3. Unknown intent
+    // 3. Unknown intent - use smart fallback from database
+    const fallbackResponse = this.getSmartFallback(lowerMessage);
     return {
       intent: 'unknown',
       confidence: 0,
-      method: 'none',
+      method: 'fallback',
       requiresPermission: null,
-      category: 'general',
-      responseTemplate: "I'm not sure I understand. Can you rephrase that?"
+      category: 'fallback',
+      responseTemplate: fallbackResponse
     };
+  }
+
+  /**
+   * Get smart fallback response based on message content
+   */
+  getSmartFallback(message) {
+    // Check for out-of-scope queries (weather, news, etc.)
+    const outOfScopePatterns = /weather|news|joke|music|game|movie|sport|recipe|translate|wikipedia/i;
+    if (outOfScopePatterns.test(message)) {
+      const data = this.trainingData.find(d => d.intent === 'fallback_out_of_scope');
+      if (data) return data.response_template;
+    }
+
+    // Check for frustrated user
+    const frustratedPatterns = /not working|doesnt work|broken|useless|stupid|worst|hate|frustrated/i;
+    if (frustratedPatterns.test(message)) {
+      const data = this.trainingData.find(d => d.intent === 'fallback_frustrated');
+      if (data) return data.response_template;
+    }
+
+    // Check for capability questions
+    const capabilityPatterns = /can you|are you able|do you know|will you|could you/i;
+    if (capabilityPatterns.test(message)) {
+      const data = this.trainingData.find(d => d.intent === 'fallback_capability');
+      if (data) return data.response_template;
+    }
+
+    // Check for very short/vague queries
+    if (message.split(' ').length <= 2) {
+      const data = this.trainingData.find(d => d.intent === 'fallback_vague');
+      if (data) return data.response_template;
+    }
+
+    // Default fallback
+    const genericFallback = this.trainingData.find(d => d.intent === 'fallback_generic' || d.intent === 'fallback');
+    return genericFallback?.response_template || `🤔 **Hmm, I'm not sure about that.**
+
+I'm **BEIA**, your ERP assistant. I can help with:
+• HR & Leave Management
+• Attendance & Timekeeping
+• Finance & Accounts
+• Inventory & Stock
+• Sales & Dispatch
+
+**Try asking something like:**
+"How do I apply for leave?" or "How do I create an invoice?"
+
+Type **"help"** to see all topics!`;
   }
 
   /**
@@ -545,7 +594,7 @@ class UnifiedChatEngine {
     let greeting = `Hello ${firstName}! `;
     
     if (isNew || visitCount === 0) {
-      greeting += "Welcome! I'm your AI assistant. I can help you with tasks, approvals, reports, and more.";
+      greeting += "Welcome! I'm BEIA, your BISMAN ERP Internal Assistant. I can help you with tasks, approvals, reports, navigation, and more.";
       greeting = humanizeService.humanize(greeting, { userName: firstName, tone: 'friendly' });
     } else {
       const newItems = await this.getNewItemsSinceLastVisit(userId, lastVisit);
@@ -573,6 +622,135 @@ class UnifiedChatEngine {
       userContext,
       newItems: isNew ? null : await this.getNewItemsSinceLastVisit(userId, lastVisit)
     };
+  }
+
+  /**
+   * Search workflows by user query and role
+   * Returns matching workflows for navigation help
+   */
+  async searchWorkflows(query, userRole = 'EMPLOYEE', limit = 3) {
+    try {
+      const result = await pool.query(`
+        WITH search_results AS (
+          SELECT 
+            w.*,
+            (
+              CASE WHEN w.title ILIKE '%' || $1 || '%' THEN 50 ELSE 0 END +
+              CASE WHEN w.description ILIKE '%' || $1 || '%' THEN 20 ELSE 0 END +
+              CASE WHEN EXISTS (SELECT 1 FROM unnest(w.keywords) k WHERE $1 ILIKE '%' || k || '%') THEN 40 ELSE 0 END +
+              CASE WHEN EXISTS (SELECT 1 FROM unnest(w.keywords) k WHERE k ILIKE '%' || $1 || '%') THEN 35 ELSE 0 END +
+              w.priority
+            ) as relevance_score
+          FROM workflows w
+          WHERE w.is_active = true
+            AND (w.required_roles @> $2::jsonb OR w.required_roles = '[]'::jsonb)
+        )
+        SELECT * FROM search_results
+        WHERE relevance_score > 30
+        ORDER BY relevance_score DESC
+        LIMIT $3
+      `, [query, JSON.stringify([userRole]), limit]);
+      
+      return result.rows;
+    } catch (error) {
+      console.error('[UnifiedChat] Workflow search error:', error);
+      return [];
+    }
+  }
+
+  /**
+   * Format workflow response with steps and clickable link
+   * @param {Object} workflow - Workflow object from database
+   * @param {string} baseUrl - Frontend base URL for links
+   * @returns {Object} Formatted response with steps and link
+   */
+  formatWorkflowResponse(workflow, baseUrl = '') {
+    const steps = workflow.ui_steps || [];
+    const frontendRoute = workflow.frontend_route;
+    
+    let response = `**${workflow.title}**\n\n`;
+    response += `📍 **Path:** ${workflow.ui_path}\n\n`;
+    
+    if (steps.length > 0) {
+      response += `**Steps:**\n`;
+      steps.forEach((step, idx) => {
+        const hint = step.hint ? ` _(${step.hint})_` : '';
+        response += `${idx + 1}. ${this.formatStepAction(step.action)} **${step.target}**${hint}\n`;
+      });
+    }
+    
+    if (workflow.description) {
+      response += `\n💡 ${workflow.description}\n`;
+    }
+    
+    // Add link if frontend route exists
+    let link = null;
+    if (frontendRoute) {
+      link = {
+        url: `${baseUrl}${frontendRoute}`,
+        label: `Open ${workflow.title}`,
+        route: frontendRoute
+      };
+      response += `\n🔗 [Open ${workflow.title}](${frontendRoute})`;
+    }
+    
+    // Add permission info
+    const roles = workflow.required_roles || [];
+    if (roles.length > 0 && roles.length < 6) {
+      response += `\n\n_Allowed roles: ${roles.join(', ')}_`;
+    }
+    
+    return {
+      response,
+      link,
+      workflow: {
+        id: workflow.id,
+        slug: workflow.slug,
+        module: workflow.module,
+        title: workflow.title,
+        frontend_route: frontendRoute
+      }
+    };
+  }
+
+  /**
+   * Format step action verb for display
+   */
+  formatStepAction(action) {
+    const actionMap = {
+      'click': 'Click',
+      'select': 'Select',
+      'fill': 'Fill in',
+      'enter': 'Enter',
+      'view': 'View',
+      'search': 'Search for',
+      'add': 'Add',
+      'check': 'Check',
+      'review': 'Review',
+      'apply': 'Apply',
+      'attach': 'Attach',
+      'link': 'Link to',
+      'set': 'Set',
+      'wait': 'Wait for',
+      'open': 'Open',
+      'filter': 'Filter by',
+      'assign': 'Assign'
+    };
+    return actionMap[action?.toLowerCase()] || action || 'Do';
+  }
+
+  /**
+   * Log workflow usage for audit
+   */
+  async logWorkflowUsage(userId, workflowId, query, response, resolved = true) {
+    try {
+      await pool.query(`
+        INSERT INTO workflow_audit (user_id, workflow_id, query, response, resolved)
+        VALUES ($1, $2, $3, $4, $5)
+      `, [userId || 0, workflowId, query, response, resolved]);
+    } catch (error) {
+      console.warn('[UnifiedChat] Workflow audit log error:', error.message);
+    }
   }
 
   /**
@@ -672,6 +850,34 @@ class UnifiedChatEngine {
         break;
         
       default:
+        // Check if this is a navigation/how-to question - search workflows
+        const navigationKeywords = ['how to', 'how do i', 'where', 'where is', 'navigate', 'find', 'go to', 'open', 'access', 'show me', 'steps to', 'guide'];
+        const isNavigationQuestion = navigationKeywords.some(kw => message.toLowerCase().includes(kw));
+        
+        if (isNavigationQuestion || confidence < 0.7) {
+          // Try to find matching workflow
+          const workflows = await this.searchWorkflows(message, roleName || 'EMPLOYEE', 2);
+          
+          if (workflows.length > 0) {
+            const bestMatch = workflows[0];
+            const formatted = this.formatWorkflowResponse(bestMatch);
+            response = formatted.response;
+            responseData = {
+              workflow: formatted.workflow,
+              link: formatted.link,
+              alternateWorkflows: workflows.slice(1).map(w => ({
+                title: w.title,
+                slug: w.slug,
+                route: w.frontend_route
+              }))
+            };
+            
+            // Log workflow usage
+            await this.logWorkflowUsage(userId, bestMatch.id, message, response);
+            break;
+          }
+        }
+        
         // Humanize all other responses
         response = humanize(response);
         break;
@@ -681,7 +887,8 @@ class UnifiedChatEngine {
       response,
       requiresPermission: intentData?.requires_permission,
       hasPermission: true,
-      data: responseData
+      data: responseData,
+      link: responseData?.link || null
     };
   }
 

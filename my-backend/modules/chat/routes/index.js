@@ -28,11 +28,13 @@ const messagesRoutes = require('./messages');
 const threadMessagesRoutes = require('./thread-messages');
 const callsRoutes = require('./calls');
 const assistantRoutes = require('./assistant');
+const workflowsRoutes = require('./workflows');
 
 // Mount authenticated routes
 router.use('/ai', aiRoutes);        // /api/chat/ai/*
 router.use('/', aiRoutes);          // /api/chat/message (AI assistant) - mount at root since ai.js has /message route
 router.use('/assistant', assistantRoutes); // /api/chat/assistant/* (NEW intelligent assistant)
+router.use('/workflows', workflowsRoutes); // /api/chat/workflows/* (Dynamic UI navigation help)
 router.use('/threads', messagesRoutes); // /api/chat/threads/* (legacy)
 router.use('/', threadMessagesRoutes); // /api/chat/threads/:id/messages, /api/chat/messages/* (new DB-backed)
 router.use('/calls', callsRoutes);  // /api/chat/calls/*
