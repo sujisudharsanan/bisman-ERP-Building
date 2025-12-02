@@ -720,6 +720,24 @@ class UnifiedChatEngine {
         userContext
       );
       
+      // For guest users (userId=0), skip database conversation saving
+      // Return response immediately without persistence
+      if (!userId || userId === 0) {
+        console.log('[UnifiedChat] Guest user - skipping conversation persistence');
+        return {
+          response: responseResult.response,
+          intent,
+          confidence,
+          spellCheck: spellCheckResult,
+          entities,
+          conversationId: null,
+          suggestions: responseResult.suggestions || [],
+          actions: responseResult.actions || [],
+          data: responseResult.data,
+          isGuest: true
+        };
+      }
+      
       // Create or get conversation
       // Only use conversationId if it's a valid integer (not a session string)
       let actualConversationId = null;
