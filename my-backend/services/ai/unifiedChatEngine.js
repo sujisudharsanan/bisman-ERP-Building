@@ -20,6 +20,7 @@ require('dotenv').config();
 
 // Import advanced features from old systems
 const humanizeService = require('../chat/humanizeService');
+const preprocessor = require('../chat/preprocessor');
 
 // Database connection - Use DATABASE_URL if available (Railway), fallback to individual vars
 const pool = process.env.DATABASE_URL
@@ -908,9 +909,49 @@ Type **"help"** to see all topics!`;
       // Get user context
       const userContext = await this.getUserContext(userId);
       
-      // Spell check
-      const spellCheckResult = await this.spellCheck(message);
-      const messageToProcess = spellCheckResult.corrected;
+      // ========== PREPROCESSING PIPELINE (NEW) ==========
+      // Use the new preprocessor for normalization, protected spans, and spell check
+      let preprocessResult = null;
+      let messageToProcess = message;
+      
+      try {
+        preprocessResult = await preprocessor.preprocess(message, userId, userContext.roleName, {
+          autocorrect: true,  // Auto-apply high-confidence corrections
+          rephrase: false     // Don't rephrase unless explicitly requested
+        });
+        
+        // Use corrected text if available
+        messageToProcess = preprocessResult.correctedText || preprocessResult.normalizedText || message;
+        
+        console.log('[UnifiedChat] Preprocessing complete:', {
+          original: message.substring(0, 50),
+          corrected: messageToProcess.substring(0, 50),
+          language: preprocessResult.language,
+          protectedSpansCount: preprocessResult.protectedSpans?.length || 0,
+          correctionsCount: preprocessResult.corrections?.length || 0
+        });
+      } catch (preprocessError) {
+        console.warn('[UnifiedChat] Preprocessor error, falling back to basic spell check:', preprocessError.message);
+        // Fall back to basic spell check if preprocessor fails
+        const basicSpellCheck = await this.spellCheck(message);
+        messageToProcess = basicSpellCheck.corrected;
+        preprocessResult = {
+          originalText: message,
+          normalizedText: messageToProcess,
+          corrections: basicSpellCheck.corrections || [],
+          language: 'en',
+          protectedSpans: [],
+          suggestions: []
+        };
+      }
+      
+      // Legacy spell check result for backward compatibility
+      const spellCheckResult = {
+        original: message,
+        corrected: messageToProcess,
+        corrections: preprocessResult.corrections || [],
+        wasAutocorrected: preprocessResult.wasAutocorrected || false
+      };
       
       // Extract entities
       const entities = this.extractEntities(messageToProcess);
@@ -941,7 +982,16 @@ Type **"help"** to see all topics!`;
           suggestions: responseResult.suggestions || [],
           actions: responseResult.actions || [],
           data: responseResult.data,
-          isGuest: true
+          isGuest: true,
+          // Preprocessor data (NEW)
+          preprocessing: preprocessResult ? {
+            language: preprocessResult.language,
+            protectedSpans: preprocessResult.protectedSpans,
+            corrections: preprocessResult.corrections,
+            suggestions: preprocessResult.suggestions,
+            auditId: preprocessResult.auditId,
+            wasAutocorrected: preprocessResult.wasAutocorrected
+          } : null
         };
       }
       
@@ -1029,7 +1079,16 @@ Type **"help"** to see all topics!`;
         stats: {
           responseTime,
           totalMessages: this.stats.totalMessages
-        }
+        },
+        // Preprocessor data (NEW)
+        preprocessing: preprocessResult ? {
+          language: preprocessResult.language,
+          protectedSpans: preprocessResult.protectedSpans,
+          corrections: preprocessResult.corrections,
+          suggestions: preprocessResult.suggestions,
+          auditId: preprocessResult.auditId,
+          wasAutocorrected: preprocessResult.wasAutocorrected
+        } : null
       };
       
     } catch (error) {

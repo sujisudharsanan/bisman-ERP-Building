@@ -16,7 +16,8 @@ router.get('/health', (req, res) => {
       threads: true,
       calls: true,
       realtime: true,
-      database: true
+      database: true,
+      preprocessor: true
     },
     timestamp: new Date().toISOString()
   });
@@ -29,12 +30,14 @@ const threadMessagesRoutes = require('./thread-messages');
 const callsRoutes = require('./calls');
 const assistantRoutes = require('./assistant');
 const workflowsRoutes = require('./workflows');
+const preprocessorRoutes = require('./preprocessor');
 
 // Mount authenticated routes
 router.use('/ai', aiRoutes);        // /api/chat/ai/*
 router.use('/', aiRoutes);          // /api/chat/message (AI assistant) - mount at root since ai.js has /message route
 router.use('/assistant', assistantRoutes); // /api/chat/assistant/* (NEW intelligent assistant)
 router.use('/workflows', workflowsRoutes); // /api/chat/workflows/* (Dynamic UI navigation help)
+router.use('/', preprocessorRoutes); // /api/chat/preprocess/*, /api/chat/dictionary/* (Spellcheck & preprocessing)
 router.use('/threads', messagesRoutes); // /api/chat/threads/* (legacy)
 router.use('/', threadMessagesRoutes); // /api/chat/threads/:id/messages, /api/chat/messages/* (new DB-backed)
 router.use('/calls', callsRoutes);  // /api/chat/calls/*

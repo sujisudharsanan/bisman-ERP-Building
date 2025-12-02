@@ -68,6 +68,33 @@ export default function RolesUsersReportPage() {
     return ids.size;
   }, [reportData]);
 
+  // All users list - only show ADMIN role users for Super Admin context
+  const allUsers = useMemo(() => {
+    const usersMap = new Map<number, UserDetail & { roleName: string; roleDisplayName: string; roleId: number }>();
+    for (const r of reportData) {
+      // Only include users with ADMIN role
+      if (r.roleName.toUpperCase() === 'ADMIN') {
+        for (const u of r.users) {
+          if (!usersMap.has(u.userId)) {
+            usersMap.set(u.userId, {
+              ...u,
+              roleName: r.roleName,
+              roleDisplayName: r.roleDisplayName,
+              roleId: r.roleId,
+            });
+          }
+        }
+      }
+    }
+    return Array.from(usersMap.values()).sort((a, b) => a.username.localeCompare(b.username));
+  }, [reportData]);
+
+  // Selected user with role info
+  const selectedUserWithRole = useMemo(() => {
+    if (!selectedUserId) return null;
+    return allUsers.find(u => u.userId === selectedUserId) || null;
+  }, [allUsers, selectedUserId]);
+
   // Row color identification palette (stable, cyclical)
   const ROW_COLORS = [
     'bg-indigo-500',
@@ -405,8 +432,8 @@ export default function RolesUsersReportPage() {
   if (loading) {
     return (
       <SuperAdminShell title="Modules & Roles">
-        <div className="p-4 md:p-6">
-          <ClientManagementTabs />
+        <div className="p-3 md:p-4">
+          <ClientManagementTabs hideHeader />
           <div className="p-4">Loading...</div>
         </div>
       </SuperAdminShell>
@@ -415,13 +442,22 @@ export default function RolesUsersReportPage() {
 
   return (
     <SuperAdminShell title="Modules & Roles">
-      <div className="p-4 md:p-6">
+      <div className="p-3 md:p-4">
         {/* Shared Tabs Navigation */}
-        <ClientManagementTabs />
+        <ClientManagementTabs hideHeader />
         
-        <div className="space-y-4">
+        <div className="space-y-3">
         {/* Statistics Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
+          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-2 border-l-4 border-l-green-400">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs text-green-600 dark:text-green-400">Total Admins</div>
+                <div className="text-lg font-bold text-green-900 dark:text-green-100">{allUsers.length}</div>
+              </div>
+              <FiUsers className="w-4 h-4 text-green-500" />
+            </div>
+          </div>
           <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md p-2 border-l-4 border-l-purple-400">
             <div className="flex items-center justify-between">
               <div>
@@ -437,16 +473,7 @@ export default function RolesUsersReportPage() {
                 <div className="text-xs text-blue-600 dark:text-blue-400">Total Roles</div>
                 <div className="text-lg font-bold text-blue-900 dark:text-blue-100">{summary?.totalRoles || 0}</div>
               </div>
-              <FiUsers className="w-4 h-4 text-blue-500" />
-            </div>
-          </div>
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-2 border-l-4 border-l-green-400">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs text-green-600 dark:text-green-400">Total Users</div>
-                <div className="text-lg font-bold text-green-900 dark:text-green-100">{summary?.totalUsers || 0}</div>
-              </div>
-              <FiFile className="w-4 h-4 text-green-500" />
+              <FiFile className="w-4 h-4 text-blue-500" />
             </div>
           </div>
           <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-md p-2 border-l-4 border-l-orange-400">
@@ -480,25 +507,41 @@ export default function RolesUsersReportPage() {
           </div>
         )}
 
-        {/* Four Column Layout: Modules | Roles | Users | Pages */}
+        {/* Four Column Layout: Users | Modules | Roles | Pages */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {/* 1. Modules */}
+          {/* 1. Users - Shows admin users only */}
           <div className="rounded-lg border bg-white dark:bg-gray-900 p-3">
-            <div className="text-sm font-semibold mb-2 flex items-center justify-between">
-              <span>Modules</span>
-              <div className="flex items-center gap-2">
-                <span className="text-xs font-normal px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800" title="Total modules">{filteredModules.length}</span>
+            <div className="space-y-1 max-h-[520px] overflow-y-auto">
+              {allUsers.length === 0 && <div className="text-xs text-gray-500">No users found</div>}
+              {allUsers.map((user, idx) => (
                 <button
-                  onClick={handleAssignRoleToModule}
-                  disabled={!selectedModuleName || !selectedRoleId || saving}
-                  className={`inline-flex items-center gap-1 px-2 py-1 rounded-md text-[10px] font-medium transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${(!selectedModuleName || !selectedRoleId || saving) ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
-                  title={(!selectedModuleName || !selectedRoleId) ? 'Select a module and a role to assign' : 'Assign selected role to this module'}
+                  type="button"
+                  onClick={() => {
+                    setSelectedUserId(user.userId);
+                    setSelectedRoleId(user.roleId);
+                  }}
+                  key={user.userId}
+                  className={`text-left w-full relative pl-2 rounded-md border p-3 hover:bg-gray-50 dark:hover:bg-gray-800 ${selectedUserId === user.userId ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700'}`}
                 >
-                  <FiUserPlus className="w-3 h-3" />
-                  Assign Role
+                  <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${colorForIndex(idx)}`} />
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex-1 min-w-0">
+                      <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{user.username}</div>
+                      <div className="text-[10px] text-blue-600 dark:text-blue-400 truncate mt-0.5">{user.email}</div>
+                      <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 mr-1">
+                          {user.roleDisplayName}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
                 </button>
-              </div>
+              ))}
             </div>
+          </div>
+
+          {/* 2. Modules */}
+          <div className="rounded-lg border bg-white dark:bg-gray-900 p-3">
             <div className="space-y-1 max-h-[520px] overflow-y-auto">
               {filteredModules.length === 0 && <div className="text-xs text-gray-500">No Modules</div>}
               {filteredModules.map((m, idx) => {
@@ -511,7 +554,7 @@ export default function RolesUsersReportPage() {
                     key={m.id}
                     onClick={() => {
                       setSelectedModuleName(m.module_name);
-                      setSelectedRoleId(null);
+                      // Don't reset roleId/userId - keep user selection
                       requestAnimationFrame(() => {
                         const fourthRow = document.querySelector('[data-fourth-row]') as HTMLElement | null;
                         if (fourthRow?.scrollIntoView) {
@@ -546,12 +589,8 @@ export default function RolesUsersReportPage() {
             </div>
           </div>
 
-          {/* 2. Roles */}
+          {/* 3. Roles */}
           <div className="rounded-lg border bg-white dark:bg-gray-900 p-3">
-            <div className="text-sm font-semibold mb-2 flex items-center justify-between">
-              <span>Roles</span>
-              <span className="text-xs font-normal px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">{filteredRoles.length}</span>
-            </div>
             <div className="space-y-1 max-h-[520px] overflow-y-auto">
               {filteredRoles.length === 0 && <div className="text-xs text-gray-500">No Roles</div>}
               {filteredRoles.map((r, idx) => {
@@ -560,7 +599,7 @@ export default function RolesUsersReportPage() {
                 return (
                   <button
                     key={r.roleId}
-        onClick={() => { setSelectedRoleId(r.roleId); setSelectedUserId(null); }}
+                    onClick={() => { setSelectedRoleId(r.roleId); }}
                     className={`relative pl-2 w-full text-left rounded-md border px-3 py-2 text-xs transition ${isSelected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'}`}
                     title={r.roleName}
                   >
@@ -576,53 +615,8 @@ export default function RolesUsersReportPage() {
             </div>
           </div>
 
-          {/* 3. Users */}
-          <div className="rounded-lg border bg-white dark:bg-gray-900 p-3">
-            <div className="text-sm font-semibold mb-2 flex items-center justify-between">
-              <span>Users</span>
-              {selectedRole && (
-                <span className="text-xs font-normal px-2 py-1 rounded-full bg-gray-100 dark:bg-gray-800">{selectedRole.users.length}</span>
-              )}
-            </div>
-            <div className="space-y-1 max-h-[520px] overflow-y-auto">
-              {!selectedRoleId && (
-                <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300">⚠️ Select a role to view users</div>
-              )}
-              {selectedRoleId && !selectedRole && <div className="text-xs text-gray-500">Loading users...</div>}
-              {selectedRole && selectedRole.users.length === 0 && <div className="text-xs text-gray-500">No users assigned to this role</div>}
-              {selectedRole && selectedRole.users.map((user, idx) => (
-                <button
-                  type="button"
-                  onClick={() => setSelectedUserId(user.userId)}
-                  key={user.userId}
-                  className={`text-left w-full relative pl-2 rounded-md border p-3 hover:bg-gray-50 dark:hover:bg-gray-800 ${selectedUserId === user.userId ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700'}`}
-                >
-                  <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${colorForIndex(idx)}`} />
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{user.username}</div>
-                      <div className="text-[10px] text-blue-600 dark:text-blue-400 truncate mt-0.5">{user.email}</div>
-                      <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">ID: {user.userId} • Created: {new Date(user.createdAt).toLocaleDateString()}</div>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
           {/* 4. Pages */}
           <div data-fourth-row className="rounded-lg border bg-white dark:bg-gray-900 p-3">
-            <div className="text-sm font-semibold mb-2 flex items-center justify-between">
-              <span>
-                Pages{selectedModuleName ? (<>
-                  {' '}in {String(selectedModule?.display_name || selectedModule?.name || selectedModuleName)}
-                </>) : null}
-              </span>
-              {selectedModuleName && modulePages.length > 0 && (
-                <span className="text-xs font-normal px-2 py-1 rounded-full bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300">{modulePages.length}</span>
-              )}
-            </div>
-
             {!selectedModuleName && (
               <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300">⚠️ Select a module to view pages</div>
             )}

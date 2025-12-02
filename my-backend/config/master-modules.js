@@ -119,11 +119,11 @@ const MASTER_MODULES = [
   {
     id: 'super-admin',
     name: 'Super Admin Module',
-    description: 'Super admin tools and oversight - Auto-assigned to Super Admin',
+    description: 'Super admin tools and oversight - Can be assigned to Super Admin',
     icon: 'FiShield',
     category: 'Administration',
     businessCategory: 'Business ERP',
-    hideFromAssignment: true, // Don't show in module assignment UI - auto-assigned to Super Admin
+    // hideFromAssignment removed - now visible in Enterprise Admin allocation page
     pages: [
       { id: 'super-admin-security', name: 'Security Management', path: '/super-admin/security' },
       // System module pages (excluding AI and logs) - IDs must match page-registry.ts
@@ -143,11 +143,11 @@ const MASTER_MODULES = [
   {
     id: 'admin',
     name: 'Admin Module',
-    description: 'General administration - Auto-assigned to Admin users',
+    description: 'General administration - Can be assigned to Admin and Super Admin users',
     icon: 'FiUser',
     category: 'Administration',
     businessCategory: 'Business ERP',
-    hideFromAssignment: true, // Don't show in module assignment UI - auto-assigned to Admin
+    // hideFromAssignment removed - now visible in Enterprise Admin allocation page
     pages: [
       { id: 'dashboard', name: 'Admin Dashboard', path: '/admin' },
       { id: 'admin-dashboard', name: 'Admin Dashboard Alt', path: '/admin/dashboard' },

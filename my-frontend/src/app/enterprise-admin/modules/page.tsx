@@ -25,11 +25,6 @@ type Registry = {
   pages?: Array<{ path: string; title?: string; module?: string; moduleKey?: string }>;
 };
 
-const CATEGORIES = [
-  { key: "business", label: "Business ERP", color: "purple" },
-  { key: "pump", label: "Pump Management", color: "orange" },
-];
-
 function arr<T = any>(obj: any, key: string): T[] {
   if (!obj || typeof obj !== "object") return [];
   const v = obj[key];
@@ -133,7 +128,7 @@ export default function Page() {
   const [modules, setModules] = useState<Module[]>([]);
   const [superAdmins, setSuperAdmins] = useState<SuperAdmin[]>([]);
   const [registry, setRegistry] = useState<Registry | null>(null);
-  const [category, setCategory] = useState<string | null>(null);
+  const [category, setCategory] = useState<string | null>("all"); // Default to show all modules
   const [selectedAdminId, setSelectedAdminId] = useState<number | null>(null);
   const [selectedModuleId, setSelectedModuleId] = useState<number | null>(null);
   const [selectedModuleKey, setSelectedModuleKey] = useState<string | null>(null);
@@ -404,7 +399,25 @@ export default function Page() {
 
   const filteredModules = useMemo(() => {
     const list = Array.isArray(modules) ? modules : [];
-    if (!category) return list;
+    // Show all modules regardless of category
+    if (category === "all" || !category) {
+      // If admin selected, show assigned modules first (green), then unassigned (red) at bottom
+      if (selectedAdminId && selectedAdmin) {
+        const assignedMods = selectedAdmin.assignedModules || [];
+        const idSet = new Set<number>();
+        const keySet = new Set<string>();
+        assignedMods.forEach((v) => {
+          const n = Number(v);
+          if (Number.isFinite(n)) idSet.add(n);
+          if (v != null) keySet.add(String(v).toLowerCase());
+        });
+        const isAssigned = (m: Module) => idSet.has(Number(m.id)) || keySet.has(String(m.moduleKey || '').toLowerCase());
+        const assigned = list.filter(isAssigned);
+        const unassigned = list.filter((m) => !isAssigned(m));
+        return [...assigned, ...unassigned];
+      }
+      return list;
+    }
     const isPump = (m: Module) =>
       (m.businessCategory ?? "").toLowerCase().includes("pump") || m.productType === "PUMP_ERP";
     // Modules with businessCategory 'All' or alwaysAccessible should appear in BOTH categories
@@ -901,60 +914,60 @@ export default function Page() {
         </div>
       )}
 
-      {/* Guidance tiles */}
-      {!category && (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-3 mb-4">
-          <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-4">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <FiGrid className="text-blue-600" /> Select a Category
-            </div>
-            <p className="text-xs text-gray-600 dark:text-gray-400 mt-1">
-              Choose Business ERP or Pump Management to view modules
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* Scrollable top section with 4 columns */}
       <div className="flex-1 overflow-auto min-h-0 mb-4">
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {/* 1. Categories */}
-          <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
-            <div className="text-sm font-semibold mb-2 flex items-center justify-between">
-              <span>Categories</span>
-              <span className="text-xs font-normal text-gray-500">2</span>
-            </div>
-            <div className="space-y-2">
-              {CATEGORIES.map((c) => (
-                <button
-                  key={c.key}
-                  onClick={() => {
-                    setCategory(c.key);
-                    setSelectedModuleKey(null);
-                    isInitialLoadRef.current = true;
-                      setSelectedPageIds([]);
-                  }}
-                  className={`w-full text-left rounded-md border px-3 py-2 text-sm transition ${
-                    category === c.key
-                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30"
-                      : "border-gray-200 dark:border-gray-700 hover:border-blue-300"
-                  }`}
-                >
-                  <div className="flex items-center justify-between">
-                    <span className="flex items-center gap-2">
-                      <span
-                        className={`inline-block w-2 h-2 rounded-full ${
-                          c.key === "pump" ? "bg-orange-500" : "bg-purple-600"
-                        }`}
-                      />
-                      {c.label}
-                  </span>
-                  <span className="text-xs text-gray-500">
-                    {c.key === "pump" ? categoryCounts.pump : categoryCounts.business}
-                  </span>
+          {/* 1. Category Selection */}
+        <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
+          <div className="text-sm font-semibold mb-2 flex items-center justify-between">
+            <span>Category</span>
+            <span className="text-xs font-normal text-gray-500">
+              {category === 'business' ? 'Business ERP' : category === 'pump' ? 'Pump' : 'Select'}
+            </span>
+          </div>
+          <div className="space-y-1">
+            <button
+              onClick={() => setCategory('business')}
+              className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition ${
+                category === 'business'
+                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 ring-2 ring-emerald-300"
+                  : "border-gray-200 dark:border-gray-700 hover:border-emerald-300 hover:bg-emerald-50/50"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-lg">💼</span>
+                <div>
+                  <div className="font-medium">Business ERP</div>
+                  <div className="text-[10px] text-gray-500">
+                    {modules.filter(m => 
+                      !((m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP') ||
+                      (m.businessCategory ?? '').toLowerCase() === 'all' || m.alwaysAccessible
+                    ).length} modules
+                  </div>
                 </div>
-              </button>
-            ))}
+              </div>
+            </button>
+            <button
+              onClick={() => setCategory('pump')}
+              className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition ${
+                category === 'pump'
+                  ? "border-orange-500 bg-orange-50 dark:bg-orange-900/30 ring-2 ring-orange-300"
+                  : "border-gray-200 dark:border-gray-700 hover:border-orange-300 hover:bg-orange-50/50"
+              }`}
+            >
+              <div className="flex items-center gap-2">
+                <span className="text-lg">⛽</span>
+                <div>
+                  <div className="font-medium">Pump Management</div>
+                  <div className="text-[10px] text-gray-500">
+                    {modules.filter(m => 
+                      ((m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP') ||
+                      (m.businessCategory ?? '').toLowerCase() === 'all' || m.alwaysAccessible
+                    ).length} modules
+                  </div>
+                </div>
+              </div>
+            </button>
           </div>
         </div>
 
@@ -996,7 +1009,7 @@ export default function Page() {
               <span className="text-xs font-normal text-gray-500">{moduleGroups.assigned.length}</span>
             </span>
             <div className="flex items-center gap-2">
-              {category && selectedAdminId && (
+              {selectedAdminId && (
                 <button
                   onClick={() => setIsAssignMode(!isAssignMode)}
                   className={`text-xs font-medium px-2 py-1 rounded-md transition flex items-center gap-1 ${
@@ -1011,23 +1024,18 @@ export default function Page() {
             </div>
           </div>
           <div className="space-y-1 max-h-[520px] overflow-y-auto">
-            {!category && (
-              <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
-                ⚠️ Select a category to view modules
-              </div>
-            )}
-            {category && !selectedAdminId && (
+            {!selectedAdminId && (
               <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
                 ⚠️ Select a Super Admin to see assigned modules
               </div>
             )}
-            {category && selectedAdminId && moduleGroups.assigned.length === 0 && (
+            {selectedAdminId && moduleGroups.assigned.length === 0 && (
               <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-300 dark:border-gray-600">
                 No modules assigned to this Super Admin. Use the section below to assign.
               </div>
             )}
             {/* Show ASSIGNED and ALWAYS ACCESSIBLE modules here */}
-            {category && selectedAdminId && (
+            {selectedAdminId && (
               <>
                 {moduleGroups.assigned.map((m) => {
                   const isAlwaysAccessible = m.alwaysAccessible || m.moduleKey === 'common' || m.moduleKey === 'chat';
@@ -1087,18 +1095,39 @@ export default function Page() {
                   }`}
                   title={`${m.moduleKey} - ${isAlwaysAccessible ? 'Always Accessible (Click to edit page permissions)' : 'Assigned'} - Click to manage pages`}
                 >
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="truncate flex items-center gap-1.5">
-                      {isAlwaysAccessible ? (
-                        <FiUnlock className="text-blue-600 dark:text-blue-400 text-sm" />
-                      ) : (
-                        <span className="text-green-600 dark:text-green-400 font-bold text-sm">✓</span>
-                      )}
-                      <span className="font-medium">{m.name}</span>
-                    </span>
-                    <span className="text-[10px] text-gray-500 shrink-0 flex items-center gap-1">
-                      <span>{m.pages?.length || 0} pages</span>
-                    </span>
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate flex items-center gap-1.5">
+                        {isAlwaysAccessible ? (
+                          <FiUnlock className="text-blue-600 dark:text-blue-400 text-sm" />
+                        ) : (
+                          <span className="text-green-600 dark:text-green-400 font-bold text-sm">✓</span>
+                        )}
+                        <span className="font-medium">{m.name}</span>
+                      </span>
+                      <span className="text-[10px] text-gray-500 shrink-0 flex items-center gap-1">
+                        <span>{m.pages?.length || 0} pages</span>
+                      </span>
+                    </div>
+                    <div className="flex items-center gap-1 pl-5">
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                        (m.businessCategory ?? '').toLowerCase() === 'all' || m.alwaysAccessible
+                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                          : (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP'
+                          ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                          : (m.businessCategory ?? '').toLowerCase().includes('enterprise')
+                          ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                      }`}>
+                        {(m.businessCategory ?? '').toLowerCase() === 'all' || m.alwaysAccessible
+                          ? '🔄 Shared'
+                          : (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP'
+                          ? '⛽ Pump'
+                          : (m.businessCategory ?? '').toLowerCase().includes('enterprise')
+                          ? '🏢 Enterprise'
+                          : '💼 Business ERP'}
+                      </span>
+                    </div>
                   </div>
                 </button>
                 {canRemove && (
@@ -1121,11 +1150,11 @@ export default function Page() {
           </div>
         </div>
 
-        {/* 4. Pages - Yellow (no selection), Green (assigned), Red (unassigned) */}
+        {/* 4. Roles - Shows allowed roles for this module (instead of pages) */}
         <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
           <div className="flex items-center justify-between mb-2">
             <div className="text-sm font-semibold flex items-center gap-2">
-              Pages
+              Roles
               <span className="text-xs font-normal text-gray-500">{pagesForSelectedModule.length}</span>
               {/* Auto-save status indicator */}
               {autoSaveStatus === 'saving' && (
@@ -1139,19 +1168,19 @@ export default function Page() {
               )}
             </div>
             <div className="text-xs text-gray-500">
-              {selectedPageIds.length} selected
+              {selectedPageIds.length} allowed
             </div>
           </div>
           {!selectedModuleId ? (
             <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
-              ⚠️ Select a module to view pages
+              ⚠️ Select a module to view roles
             </div>
           ) : (!selectedAdminId ? (
             <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
-              ⚠️ Select a Super Admin to see and assign pages
+              ⚠️ Select a Super Admin to manage allowed roles
             </div>
           ) : pagesForSelectedModule.length === 0 ? (
-            <div className="text-xs text-gray-500">No pages found for this module</div>
+            <div className="text-xs text-gray-500">No roles found for this module</div>
           ) : (
             <div className="space-y-1 max-h-[460px] overflow-y-auto">
               {/* Controls: Deselect All and Save */}
@@ -1170,7 +1199,7 @@ export default function Page() {
                       ? 'bg-blue-600 hover:bg-blue-700' 
                       : 'bg-gray-400'
                   }`}
-                  title={hasChanges ? "Save page selections" : "No changes to save"}
+                  title={hasChanges ? "Save role selections" : "No changes to save"}
                 >
                   {saving ? "Saving..." : hasChanges ? "Save" : "Saved ✓"}
                 </button>
@@ -1181,11 +1210,6 @@ export default function Page() {
                 const showYellow = !selectedAdminId;
                 const showGreen = selectedAdminId && isAssigned;
                 const showRed = selectedAdminId && !isAssigned;
-                
-                // Debug: Log page selection state
-                if (checked) {
-                  console.log('✅ Page selected:', p.id, p.title);
-                }
                 
                 return (
                   <div
@@ -1203,41 +1227,17 @@ export default function Page() {
                     <input
                       type="checkbox"
                       checked={checked}
-                      onChange={(e) => {
-                        console.log('📋 Checkbox clicked:', p.id, 'New state:', e.target.checked);
-                        togglePage(p.id);
-                      }}
+                      onChange={() => togglePage(p.id)}
                       className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                      aria-label={`Select page ${p.title || p.path}`}
+                      aria-label={`Allow role ${p.title || p.path}`}
                     />
                     <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                      {/* status icons removed; checkbox shows assigned status */}
                       <div className="flex-1 min-w-0">
-                        <div className="truncate">{p.title || p.path}</div>
-                        <div className="flex items-center gap-2">
-                          <span 
-                            className="text-[10px] text-gray-500 dark:text-gray-400 truncate cursor-default"
-                            title={`Page path: ${p.path}`}
-                          >
-                            {p.path}
-                          </span>
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              // Open with preview mode - Enterprise Admin viewing as preview
-                              const previewUrl = `${p.path}${p.path.includes('?') ? '&' : '?'}preview=enterprise-admin`;
-                              window.open(previewUrl, '_blank', 'noopener,noreferrer');
-                            }}
-                            className="text-[10px] text-blue-600 dark:text-blue-400 hover:text-blue-800 dark:hover:text-blue-300 hover:underline flex items-center gap-0.5 opacity-70 hover:opacity-100 transition-opacity"
-                            title={`Preview ${p.path} (opens in new tab with preview mode)`}
-                          >
-                            <FiExternalLink className="w-3 h-3" />
-                            <span>Preview</span>
-                          </button>
-                        </div>
+                        <div className="truncate font-medium">{p.title || p.path}</div>
+                        <div className="text-[10px] text-gray-500 dark:text-gray-400">{p.path}</div>
                       </div>
                       {checked && (
-                        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">Selected</span>
+                        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">Allowed</span>
                       )}
                     </div>
                   </div>
@@ -1341,9 +1341,25 @@ export default function Page() {
                     )}
                     <div className="min-w-0 flex-1">
                       <div className="truncate font-medium">{m.name}</div>
-                      <div className="text-[10px] text-gray-500 flex items-center justify-between">
-                        <span>{isAlwaysAccessible ? '🔓 Click to edit' : isShared ? '🔄 Both' : isPump ? 'Pump' : 'ERP'}</span>
-                        <span className="text-gray-400">{m.pages?.length || 0} pages</span>
+                      <div className="flex items-center justify-between gap-1">
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                          isShared || isAlwaysAccessible
+                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                            : isPump
+                            ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                            : (m.businessCategory ?? '').toLowerCase().includes('enterprise')
+                            ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                            : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                        }`}>
+                          {isShared || isAlwaysAccessible
+                            ? '🔄 Shared'
+                            : isPump
+                            ? '⛽ Pump'
+                            : (m.businessCategory ?? '').toLowerCase().includes('enterprise')
+                            ? '🏢 Enterprise'
+                            : '💼 ERP'}
+                        </span>
+                        <span className="text-[10px] text-gray-400">{m.pages?.length || 0} pgs</span>
                       </div>
                     </div>
                   </div>
