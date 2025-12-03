@@ -446,6 +446,27 @@ model ModuleAssignment {
   @@map("module_assignments")
 }
 
+// Unified Admin Role Assignment - For Enterprise Admin, Super Admin, and Admin role allocations
+// This table stores which roles are assigned/allocated by each admin level
+model AdminRoleAssignment {
+  id                Int       @id @default(autoincrement())
+  assigner_type     String    @db.VarChar(50)  // 'ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN'
+  assigner_id       Int                        // ID of the admin who assigned
+  role_id           Int                        // ID of the role being assigned (references rbac_roles)
+  assignee_type     String?   @db.VarChar(50)  // 'SUPER_ADMIN', 'ADMIN', 'USER' (who receives the role)
+  assignee_id       Int?                       // Optional: specific user receiving the role
+  is_active         Boolean   @default(true)
+  assigned_at       DateTime  @default(now()) @db.Timestamp(6)
+  updated_at        DateTime  @default(now()) @updatedAt @db.Timestamp(6)
+  
+  @@unique([assigner_type, assigner_id, role_id, assignee_type, assignee_id])
+  @@index([assigner_type, assigner_id], map: "idx_admin_role_assign_assigner")
+  @@index([role_id], map: "idx_admin_role_assign_role")
+  @@index([assignee_id], map: "idx_admin_role_assign_assignee")
+  @@index([is_active], map: "idx_admin_role_assign_active")
+  @@map("admin_role_assignments")
+}
+
 model ClientModulePermission {
   id         Int      @id @default(autoincrement())
   client_id  String   @db.Uuid

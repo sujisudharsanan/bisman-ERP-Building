@@ -2226,6 +2226,290 @@ app.post('/api/enterprise-admin/super-admins/:id/unassign-module', authenticate,
 });
 
 // ============================================
+// ADMIN ROLE ASSIGNMENT API ENDPOINTS
+// For Enterprise Admin, Super Admin, and Admin role allocations
+// ============================================
+
+// Get assigned roles for an admin
+app.get('/api/admin/role-assignments', authenticate, async (req, res) => {
+  try {
+    const userRole = (req.user?.role || '').toUpperCase();
+    const userId = req.user?.id;
+    
+    // Determine assigner type based on user role
+    let assignerType;
+    if (userRole === 'ENTERPRISE_ADMIN') {
+      assignerType = 'ENTERPRISE_ADMIN';
+    } else if (userRole === 'SUPER_ADMIN') {
+      assignerType = 'SUPER_ADMIN';
+    } else if (userRole === 'ADMIN') {
+      assignerType = 'ADMIN';
+    } else {
+      return res.status(403).json({ ok: false, error: 'Access denied' });
+    }
+
+    console.log('🔵 GET role-assignments for:', { assignerType, userId });
+
+    // Check if table exists, create if not
+    let assignments = [];
+    try {
+      assignments = await prisma.adminRoleAssignment.findMany({
+        where: {
+          assigner_type: assignerType,
+          assigner_id: userId,
+          is_active: true
+        },
+        orderBy: { assigned_at: 'desc' }
+      });
+    } catch (tableError) {
+      // Table might not exist yet - return empty array
+      console.log('⚠️ AdminRoleAssignment table may not exist yet:', tableError.message);
+      assignments = [];
+    }
+
+    // Get all available roles from rbac_roles
+    const allRoles = await prisma.rbac_roles.findMany({
+      where: { status: 'active' },
+      orderBy: { level: 'asc' }
+    });
+
+    const assignedRoleIds = assignments.map(a => a.role_id);
+
+    res.json({
+      ok: true,
+      assignerType,
+      assignerId: userId,
+      assignedRoleIds,
+      assignments: assignments.map(a => ({
+        id: a.id,
+        roleId: a.role_id,
+        assigneeType: a.assignee_type,
+        assigneeId: a.assignee_id,
+        assignedAt: a.assigned_at
+      })),
+      allRoles: allRoles.map(r => ({
+        id: r.id,
+        name: r.name,
+        displayName: r.display_name,
+        description: r.description,
+        level: r.level
+      }))
+    });
+  } catch (error) {
+    console.error('Error fetching role assignments:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: 'Failed to fetch role assignments',
+      message: error.message 
+    });
+  }
+});
+
+// Save/Update role assignments for an admin
+app.post('/api/admin/role-assignments', authenticate, async (req, res) => {
+  try {
+    const userRole = (req.user?.role || '').toUpperCase();
+    const userId = req.user?.id;
+    const { roleIds, assigneeType, assigneeId } = req.body;
+    
+    // Determine assigner type based on user role
+    let assignerType;
+    if (userRole === 'ENTERPRISE_ADMIN') {
+      assignerType = 'ENTERPRISE_ADMIN';
+    } else if (userRole === 'SUPER_ADMIN') {
+      assignerType = 'SUPER_ADMIN';
+    } else if (userRole === 'ADMIN') {
+      assignerType = 'ADMIN';
+    } else {
+      return res.status(403).json({ ok: false, error: 'Access denied' });
+    }
+
+    if (!Array.isArray(roleIds)) {
+      return res.status(400).json({ ok: false, error: 'roleIds must be an array' });
+    }
+
+    console.log('🔵 POST role-assignments:', { 
+      assignerType, 
+      userId, 
+      roleIds,
+      assigneeType,
+      assigneeId,
+      roleCount: roleIds.length 
+    });
+
+    // Use a transaction for atomic operations - simple delete + insert approach
+    const result = await prisma.$transaction(async (tx) => {
+      // First, delete all existing assignments for this assigner
+      await tx.adminRoleAssignment.deleteMany({
+        where: {
+          assigner_type: assignerType,
+          assigner_id: userId
+        }
+      });
+
+      // Then, create new assignments for each role
+      const assignments = [];
+      for (const roleId of roleIds) {
+        const assignment = await tx.adminRoleAssignment.create({
+          data: {
+            assigner_type: assignerType,
+            assigner_id: userId,
+            role_id: roleId,
+            assignee_type: assigneeType || null,
+            assignee_id: assigneeId || null,
+            is_active: true
+          }
+        });
+        assignments.push(assignment);
+      }
+
+      return assignments;
+    });
+
+    console.log('✅ Role assignments saved:', result.length);
+
+    res.json({
+      ok: true,
+      message: 'Role assignments saved successfully',
+      assignedCount: result.length,
+      assignedRoleIds: roleIds
+    });
+  } catch (error) {
+    console.error('Error saving role assignments:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: 'Failed to save role assignments',
+      message: error.message 
+    });
+  }
+});
+
+// Assign a single role
+app.post('/api/admin/role-assignments/assign', authenticate, async (req, res) => {
+  try {
+    const userRole = (req.user?.role || '').toUpperCase();
+    const userId = req.user?.id;
+    const { roleId, assigneeType, assigneeId } = req.body;
+    
+    let assignerType;
+    if (userRole === 'ENTERPRISE_ADMIN') {
+      assignerType = 'ENTERPRISE_ADMIN';
+    } else if (userRole === 'SUPER_ADMIN') {
+      assignerType = 'SUPER_ADMIN';
+    } else if (userRole === 'ADMIN') {
+      assignerType = 'ADMIN';
+    } else {
+      return res.status(403).json({ ok: false, error: 'Access denied' });
+    }
+
+    if (!roleId) {
+      return res.status(400).json({ ok: false, error: 'roleId is required' });
+    }
+
+    console.log('🔵 Assigning role:', { assignerType, userId, roleId });
+
+    const assigneeTypeVal = assigneeType || 'ALL';
+    const assigneeIdVal = assigneeId || 0;
+
+    // Delete existing assignment if any, then create new one
+    await prisma.adminRoleAssignment.deleteMany({
+      where: {
+        assigner_type: assignerType,
+        assigner_id: userId,
+        role_id: roleId,
+        assignee_type: assigneeTypeVal,
+        assignee_id: assigneeIdVal
+      }
+    });
+
+    const assignment = await prisma.adminRoleAssignment.create({
+      data: {
+        assigner_type: assignerType,
+        assigner_id: userId,
+        role_id: roleId,
+        assignee_type: assigneeTypeVal,
+        assignee_id: assigneeIdVal,
+        is_active: true
+      }
+    });
+
+    console.log('✅ Role assigned:', assignment.id);
+
+    res.json({
+      ok: true,
+      message: 'Role assigned successfully',
+      assignment: {
+        id: assignment.id,
+        roleId: assignment.role_id,
+        assignedAt: assignment.assigned_at
+      }
+    });
+  } catch (error) {
+    console.error('Error assigning role:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: 'Failed to assign role',
+      message: error.message 
+    });
+  }
+});
+
+// Unassign a single role
+app.post('/api/admin/role-assignments/unassign', authenticate, async (req, res) => {
+  try {
+    const userRole = (req.user?.role || '').toUpperCase();
+    const userId = req.user?.id;
+    const { roleId, assigneeType, assigneeId } = req.body;
+    
+    let assignerType;
+    if (userRole === 'ENTERPRISE_ADMIN') {
+      assignerType = 'ENTERPRISE_ADMIN';
+    } else if (userRole === 'SUPER_ADMIN') {
+      assignerType = 'SUPER_ADMIN';
+    } else if (userRole === 'ADMIN') {
+      assignerType = 'ADMIN';
+    } else {
+      return res.status(403).json({ ok: false, error: 'Access denied' });
+    }
+
+    if (!roleId) {
+      return res.status(400).json({ ok: false, error: 'roleId is required' });
+    }
+
+    console.log('🔵 Unassigning role:', { assignerType, userId, roleId });
+
+    const assigneeTypeVal = assigneeType || 'ALL';
+    const assigneeIdVal = assigneeId || 0;
+
+    // Delete the assignment (hard delete instead of soft delete for simplicity)
+    const result = await prisma.adminRoleAssignment.deleteMany({
+      where: {
+        assigner_type: assignerType,
+        assigner_id: userId,
+        role_id: roleId,
+        assignee_type: assigneeTypeVal,
+        assignee_id: assigneeIdVal
+      }
+    });
+
+    console.log('✅ Role unassigned:', result.count);
+
+    res.json({
+      ok: true,
+      message: 'Role unassigned successfully',
+      unassignedCount: result.count
+    });
+  } catch (error) {
+    console.error('Error unassigning role:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: 'Failed to unassign role',
+      message: error.message 
+    });
+  }
+});
+
+// ============================================
 // ENTERPRISE ADMIN DASHBOARD API ENDPOINTS
 // ============================================
 

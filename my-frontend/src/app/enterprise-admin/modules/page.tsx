@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { FiUsers, FiPackage, FiGrid, FiCheckCircle, FiUnlock, FiExternalLink } from "react-icons/fi";
+import { FiUsers, FiPackage, FiGrid, FiCheckCircle, FiUnlock, FiExternalLink, FiShield } from "react-icons/fi";
 
 type Module = {
   id: number | string;
@@ -20,9 +20,22 @@ type SuperAdmin = {
   productType?: string;
   assignedModules?: Array<number | string>;
   pagePermissions?: Record<string, string[]>; // moduleId -> pageIds
+  allowedRoles?: string[]; // Roles allowed for this Super Admin
 };
 type Registry = {
   pages?: Array<{ path: string; title?: string; module?: string; moduleKey?: string }>;
+};
+
+// Role type from roles-users API
+type Role = {
+  id: number;
+  name: string;
+  display_name?: string;
+  description?: string;
+  level?: number;
+  is_active?: boolean;
+  users?: Array<{ id: number; username: string; email: string }>;
+  userCount?: number;
 };
 
 function arr<T = any>(obj: any, key: string): T[] {
@@ -128,19 +141,74 @@ export default function Page() {
   const [modules, setModules] = useState<Module[]>([]);
   const [superAdmins, setSuperAdmins] = useState<SuperAdmin[]>([]);
   const [registry, setRegistry] = useState<Registry | null>(null);
+  const [allRoles, setAllRoles] = useState<Role[]>([]); // All available roles from API
   const [category, setCategory] = useState<string | null>("all"); // Default to show all modules
   const [selectedAdminId, setSelectedAdminId] = useState<number | null>(null);
+  const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null); // Selected role
   const [selectedModuleId, setSelectedModuleId] = useState<number | null>(null);
   const [selectedModuleKey, setSelectedModuleKey] = useState<string | null>(null);
   const [selectedPageIds, setSelectedPageIds] = useState<string[]>([]);
+  const [selectedRoleIds, setSelectedRoleIds] = useState<number[]>([]); // Selected/allowed roles for Super Admin
   const [saving, setSaving] = useState(false);
   const [authHint, setAuthHint] = useState<string | null>(null);
   const [isAssignMode, setIsAssignMode] = useState(false); // Toggle for showing + icons on unassigned modules
+  const [isRoleAssignMode, setIsRoleAssignMode] = useState(false); // Toggle for role assignment mode
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
+  const [bottomView, setBottomView] = useState<'roles' | 'modules'>('modules'); // What to show in bottom section
+  const [assignedRoleIds, setAssignedRoleIds] = useState<number[]>([]); // Roles assigned to Super Admin
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedRef = useRef<string>(''); // Track last saved state to avoid duplicate saves
   const isInitialLoadRef = useRef<boolean>(true); // Flag to skip auto-save on initial page selection
   const initialPageIdsRef = useRef<string[]>([]); // Track initial pages loaded for a module to detect changes
+  const isRolesInitializedRef = useRef<boolean>(false); // Flag to prevent saving on initial load
+  const rolesSaveTimerRef = useRef<NodeJS.Timeout | null>(null); // Debounce timer for role saves
+
+  // Save assigned role IDs to database whenever they change (debounced)
+  useEffect(() => {
+    if (assignedRoleIds.length > 0 && isRolesInitializedRef.current) {
+      // Clear existing timer
+      if (rolesSaveTimerRef.current) {
+        clearTimeout(rolesSaveTimerRef.current);
+      }
+      
+      // Debounce save to database
+      rolesSaveTimerRef.current = setTimeout(async () => {
+        try {
+          console.log('💾 Saving assigned roles to database:', assignedRoleIds.length);
+          const response = await fetch('/api/admin/role-assignments', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ roleIds: assignedRoleIds })
+          });
+          
+          if (response.ok) {
+            console.log('✅ Assigned roles saved to database');
+          } else {
+            console.error('❌ Failed to save roles to database, falling back to localStorage');
+            // Fallback to localStorage
+            localStorage.setItem('enterprise-admin-assigned-roles', JSON.stringify(assignedRoleIds));
+          }
+        } catch (error) {
+          console.error('❌ Error saving roles:', error);
+          // Fallback to localStorage
+          localStorage.setItem('enterprise-admin-assigned-roles', JSON.stringify(assignedRoleIds));
+        }
+      }, 500); // 500ms debounce
+    }
+    
+    // Mark as initialized after first render with roles
+    if (assignedRoleIds.length > 0) {
+      isRolesInitializedRef.current = true;
+    }
+    
+    // Cleanup timer on unmount
+    return () => {
+      if (rolesSaveTimerRef.current) {
+        clearTimeout(rolesSaveTimerRef.current);
+      }
+    };
+  }, [assignedRoleIds]);
 
   // Compute whether there are unsaved changes by comparing current selection with initial state
   const hasChanges = useMemo(() => {
@@ -248,12 +316,14 @@ export default function Page() {
       setLoading(true);
       setError(null);
       try {
-        const [modsRes, usersRes, regRes] = await Promise.all([
+        const [modsRes, usersRes, regRes, rolesRes] = await Promise.all([
           fetch("/api/enterprise-admin/master-modules", { credentials: "include" }),
           fetch("/api/enterprise-admin/super-admins", { credentials: "include" }),
           fetch("/layout_registry.json").catch(() => new Response("{}")),
+          fetch("/api/reports/roles-users", { credentials: "include" }).catch(() => new Response("{}")),
         ]);
         const modsJson = await modsRes.json().catch(() => ({}));
+        const rolesJson = await rolesRes.json().catch(() => ({}));
         let usersJson: any = {};
         if (usersRes.ok) {
           usersJson = await usersRes.json().catch(() => ({}));
@@ -268,6 +338,74 @@ export default function Page() {
           }
         }
   const registryData = await regRes.json().catch(() => ({}));
+
+        // Parse roles data - API returns { success, summary, data: [...] }
+        // The data array contains role objects with users
+        const rolesArray = rolesJson.data || rolesJson.roles || [];
+        const rolesData = (Array.isArray(rolesArray) ? rolesArray : []).map((r: any) => ({
+          id: Number(r.roleId || r.id),
+          name: String(r.roleName || r.name || ''),
+          display_name: String(r.roleDisplayName || r.display_name || r.roleName || r.name || ''),
+          description: r.roleDescription || r.description,
+          level: r.roleLevel || r.level,
+          is_active: r.roleStatus === 'active' || r.is_active !== false,
+          users: Array.isArray(r.users) ? r.users : [],
+          userCount: r.userCount || (Array.isArray(r.users) ? r.users.length : 0),
+        })) as Role[];
+        console.log('📋 Loaded roles:', rolesData.length, rolesData);
+        setAllRoles(rolesData);
+        
+        // Load assigned role IDs from database API
+        try {
+          const roleAssignRes = await fetch('/api/admin/role-assignments', { credentials: 'include' });
+          if (roleAssignRes.ok) {
+            const roleAssignJson = await roleAssignRes.json();
+            if (roleAssignJson.ok && Array.isArray(roleAssignJson.assignedRoleIds)) {
+              // Filter to only include IDs that exist in current roles
+              const validIds = roleAssignJson.assignedRoleIds.filter((id: number) => 
+                rolesData.some(r => r.id === id)
+              );
+              if (validIds.length > 0) {
+                setAssignedRoleIds(validIds);
+                console.log('📋 Loaded assigned roles from database:', validIds.length);
+              } else {
+                // No assignments in DB - default to all roles
+                const allIds = rolesData.map(r => r.id);
+                setAssignedRoleIds(allIds);
+                // Save to database
+                await fetch('/api/admin/role-assignments', {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  credentials: 'include',
+                  body: JSON.stringify({ roleIds: allIds })
+                });
+                console.log('📋 Initialized all roles as assigned in database:', allIds.length);
+              }
+            } else {
+              // API returned but no data - default to all roles
+              const allIds = rolesData.map(r => r.id);
+              setAssignedRoleIds(allIds);
+            }
+          } else {
+            // API failed - fallback to localStorage or all roles
+            console.log('⚠️ Role assignments API not available, using fallback');
+            const storageKey = 'enterprise-admin-assigned-roles';
+            const savedRoleIds = localStorage.getItem(storageKey);
+            if (savedRoleIds) {
+              const parsed = JSON.parse(savedRoleIds);
+              if (Array.isArray(parsed)) {
+                const validIds = parsed.filter((id: number) => rolesData.some(r => r.id === id));
+                setAssignedRoleIds(validIds.length > 0 ? validIds : rolesData.map(r => r.id));
+              }
+            } else {
+              setAssignedRoleIds(rolesData.map(r => r.id));
+            }
+          }
+        } catch (roleAssignError) {
+          console.error('Failed to load role assignments:', roleAssignError);
+          // Fallback to all roles
+          setAssignedRoleIds(rolesData.map(r => r.id));
+        }
 
         let mods = arr<any>(modsJson, "modules").map((m) => ({
           id: Number.isFinite(Number(m.id)) ? Number(m.id) : String(m.id ?? m.module_name ?? ""),
@@ -381,11 +519,24 @@ export default function Page() {
         assignedModules: admin.assignedModules,
         assignedModulesCount: admin.assignedModules?.length || 0,
         pagePermissions: admin.pagePermissions,
-        pagePermissionsKeys: admin.pagePermissions ? Object.keys(admin.pagePermissions) : []
+        pagePermissionsKeys: admin.pagePermissions ? Object.keys(admin.pagePermissions) : [],
+        allowedRoles: admin.allowedRoles
       });
     }
     return admin;
   }, [superAdmins, selectedAdminId]);
+
+  // Roles allowed for the selected Super Admin
+  // Enterprise Admin sees ALL roles; Super Admin sees roles they're allowed to manage
+  const rolesForSelectedAdmin = useMemo(() => {
+    // Enterprise Admin always sees all roles
+    return allRoles;
+  }, [allRoles]);
+
+  // Get the selected role object
+  const selectedRole = useMemo(() => {
+    return allRoles.find(r => r.id === selectedRoleId) || null;
+  }, [allRoles, selectedRoleId]);
 
   const filteredAdmins = useMemo(() => {
     const list = Array.isArray(superAdmins) ? superAdmins : [];
@@ -444,6 +595,14 @@ export default function Page() {
     return categoryFiltered;
   }, [modules, category, selectedAdminId, selectedAdmin]);
 
+  // Modules that the selected role has access to (based on role-module mapping)
+  // For now, we'll show all modules but can be enhanced with actual role-module permissions
+  const modulesForSelectedRole = useMemo(() => {
+    if (!selectedRoleId) return [];
+    // Return all modules for now - can be enhanced with actual role-module mapping from backend
+    return filteredModules;
+  }, [selectedRoleId, filteredModules]);
+
   // Assigned count within the filtered (visible) modules
   const assignedInCategory = useMemo(() => {
   if (!selectedAdmin || !Array.isArray(filteredModules)) return 0;
@@ -463,18 +622,39 @@ export default function Page() {
     const assignedMods = selectedAdmin.assignedModules || [];
     const idSet = new Set<number>();
     const keySet = new Set<string>();
+    
+    // assignedModules is already normalized to numbers/strings during parsing
     assignedMods.forEach((v) => {
-      const n = Number(v);
-      if (Number.isFinite(n)) idSet.add(n);
-      if (v != null) keySet.add(String(v).toLowerCase());
+      if (typeof v === 'number') {
+        idSet.add(v);
+      } else if (typeof v === 'string') {
+        const n = Number(v);
+        if (Number.isFinite(n)) {
+          idSet.add(n);
+        } else {
+          keySet.add(v.toLowerCase());
+        }
+      } else if (v && typeof v === 'object') {
+        // Fallback: handle objects if not normalized
+        const normalized = normalizeAssigned(v);
+        if (typeof normalized === 'number') {
+          idSet.add(normalized);
+        } else if (typeof normalized === 'string') {
+          keySet.add(normalized.toLowerCase());
+        }
+      }
     });
+    
     filteredModules.forEach((m) => {
-      const isExplicitlyAssigned = idSet.has(Number(m.id)) || keySet.has(String(m.moduleKey || '').toLowerCase());
+      const moduleId = Number(m.id);
+      const isExplicitlyAssigned = idSet.has(moduleId) || keySet.has(String(m.moduleKey || '').toLowerCase()) || keySet.has(String(m.name || '').toLowerCase());
       // Always accessible modules (common, chat) should be treated as "assigned"
       const isAlwaysAccessible = m.alwaysAccessible || m.moduleKey === 'common' || m.moduleKey === 'chat';
       const isAssigned = isExplicitlyAssigned || isAlwaysAccessible;
+      
       (isAssigned ? result.assigned : result.unassigned).push(m);
     });
+    
     return result;
   }, [filteredModules, selectedAdmin]);
 
@@ -985,389 +1165,472 @@ export default function Page() {
               <button
                 key={a.id}
                 onClick={() => setSelectedAdminId(a.id)}
-                className={`w-full text-left rounded-md border px-3 py-2 text-xs transition ${
+                className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition ${
                   selectedAdminId === a.id
-                    ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30"
-                    : "border-gray-200 dark:border-gray-700 hover:border-blue-300"
+                    ? "border-blue-500 bg-blue-100 dark:bg-blue-900/40 ring-2 ring-blue-300 shadow-sm"
+                    : "border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:bg-blue-50/50"
                 }`}
                 title={a.email}
               >
                 <div className="flex items-center justify-between gap-2">
-                  <span className="truncate">{a.name || a.email || String(a.id)}</span>
-                  <span className="text-[10px] text-gray-500">{a.role || "SUPER_ADMIN"}</span>
+                  <div className="flex items-center gap-2">
+                    {selectedAdminId === a.id && <span className="text-blue-600 font-bold">✓</span>}
+                    <span className={`truncate font-medium ${selectedAdminId === a.id ? 'text-blue-700 dark:text-blue-300' : ''}`}>
+                      {a.name || a.email || String(a.id)}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                    {a.role || "SUPER_ADMIN"}
+                  </span>
                 </div>
               </button>
             ))}
           </div>
         </div>
 
-        {/* 3. Modules - Yellow (no selection), Green (assigned), Red (unassigned) */}
-        <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
+        {/* 3. Roles - Only show allocated/assigned roles */}
+        <div 
+          onClick={() => setBottomView('roles')}
+          className={`rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3 cursor-pointer transition hover:border-purple-400 hover:shadow-md ${
+            bottomView === 'roles' ? 'border-purple-500 ring-2 ring-purple-200 dark:ring-purple-800' : ''
+          }`}
+        >
           <div className="text-sm font-semibold mb-2 flex items-center justify-between">
-            <span className="flex items-center gap-2">
-              Modules
-              <span className="text-xs font-normal text-gray-500">{moduleGroups.assigned.length}</span>
-            </span>
-            <div className="flex items-center gap-2">
-              {selectedAdminId && (
-                <button
-                  onClick={() => setIsAssignMode(!isAssignMode)}
-                  className={`text-xs font-medium px-2 py-1 rounded-md transition flex items-center gap-1 ${
-                    isAssignMode
-                      ? "bg-blue-600 text-white hover:bg-blue-700"
-                      : "bg-transparent text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
-                  }`}
-                >
-                  {isAssignMode ? "✓ Done" : "Add/Remove"}
-                </button>
-              )}
+            <div className={`flex items-center gap-2 ${bottomView === 'roles' ? 'text-purple-600' : ''}`}>
+              <FiShield className="text-purple-600" />
+              Roles
+              <span className="text-xs font-normal text-gray-500">{assignedRoleIds.length}</span>
+              {bottomView === 'roles' && <span className="text-[10px] text-purple-500">▼</span>}
             </div>
           </div>
-          <div className="space-y-1 max-h-[520px] overflow-y-auto">
-            {!selectedAdminId && (
-              <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
-                ⚠️ Select a Super Admin to see assigned modules
-              </div>
-            )}
-            {selectedAdminId && moduleGroups.assigned.length === 0 && (
-              <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-300 dark:border-gray-600">
-                No modules assigned to this Super Admin. Use the section below to assign.
-              </div>
-            )}
-            {/* Show ASSIGNED and ALWAYS ACCESSIBLE modules here */}
-            {selectedAdminId && (
-              <>
-                {moduleGroups.assigned.map((m) => {
-                  const isAlwaysAccessible = m.alwaysAccessible || m.moduleKey === 'common' || m.moduleKey === 'chat';
-              const isSelected = (selectedModuleKey && selectedModuleKey === m.moduleKey) || (selectedModuleId != null && Number.isFinite(Number(m.id)) && selectedModuleId === Number(m.id));
-              const canRemove = isAssignMode && !isAlwaysAccessible;
+          <div className="space-y-1 max-h-[520px] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {/* Top section always shows only assigned/allocated roles */}
+            {(() => {
+              const rolesToShow = rolesForSelectedAdmin.filter(r => assignedRoleIds.includes(r.id));
               
-                  return (
-        <div key={m.id} className="flex items-center gap-1">
-          <button
-                  onClick={() => {
-          const nextModuleId = Number.isFinite(Number(m.id)) ? Number(m.id) : null;
-          setSelectedModuleId(nextModuleId);
-                    setSelectedModuleKey(m.moduleKey);
-                    // Preselect already assigned pages for this admin+module if available
-                    // For always accessible modules, also try to load saved page permissions
-                    if (selectedAdmin && nextModuleId) {
-                      // Check by both numeric id and module key string
-                      const stringKey = String(nextModuleId);
-                      const moduleKeyLower = m.moduleKey?.toLowerCase() || '';
-                      console.log('🔍 Looking for pagePermissions:', {
-                        nextModuleId,
-                        stringKey,
-                        moduleKey: m.moduleKey,
-                        moduleKeyLower,
-                        allPermissions: selectedAdmin.pagePermissions,
-                        byStringKey: selectedAdmin.pagePermissions?.[stringKey],
-                        byModuleKey: selectedAdmin.pagePermissions?.[m.moduleKey],
-                        byModuleKeyLower: selectedAdmin.pagePermissions?.[moduleKeyLower]
-                      });
-                      const existing = selectedAdmin.pagePermissions?.[stringKey] 
-                        || selectedAdmin.pagePermissions?.[m.moduleKey] 
-                        || selectedAdmin.pagePermissions?.[moduleKeyLower]
-                        || [];
-                      console.log('📋 Found existing pages:', existing);
-                      // Use saved permissions - do NOT auto-select all pages for always accessible modules
-                      // The user must explicitly select pages they want
-                      const initialPages = existing.map(canonicalPageId);
-                      console.log('📋 Initial pages after canonicalize:', initialPages);
-                      isInitialLoadRef.current = true;
-                      setSelectedPageIds(initialPages);
-                      initialPageIdsRef.current = initialPages; // Track initial state for hasChanges detection
-                      // Initialize lastSavedRef to prevent auto-save from triggering on initial load
-                      lastSavedRef.current = `${selectedAdmin.id}-${nextModuleId}-${[...initialPages].sort().join(',')}`;
-                    } else {
-                      isInitialLoadRef.current = true;
-                      setSelectedPageIds([]);
-                      initialPageIdsRef.current = []; // Reset initial state
-                      lastSavedRef.current = '';
-                    }
-                  }}
-                  className={`flex-1 text-left rounded-md border px-3 py-2 text-xs transition cursor-pointer ${
-          isSelected
-                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-700"
-                      : isAlwaysAccessible
-                      ? "border-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30"
-                      : "border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30"
-                  }`}
-                  title={`${m.moduleKey} - ${isAlwaysAccessible ? 'Always Accessible (Click to edit page permissions)' : 'Assigned'} - Click to manage pages`}
-                >
-                  <div className="flex flex-col gap-1">
+              if (rolesToShow.length === 0) {
+                return (
+                  <div className="text-xs text-gray-500 text-center py-4">
+                    No roles allocated. Click below to manage roles.
+                  </div>
+                );
+              }
+              
+              return rolesToShow.map((role) => {
+                const isSelected = selectedRoleId === role.id;
+                const userCount = role.userCount || role.users?.length || 0;
+                
+                return (
+                  <button
+                    key={role.id}
+                    onClick={() => setSelectedRoleId(role.id)}
+                    className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition ${
+                      isSelected
+                        ? "border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300 shadow-sm"
+                        : "border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30"
+                    }`}
+                    title={role.description || role.name}
+                  >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="truncate flex items-center gap-1.5">
-                        {isAlwaysAccessible ? (
-                          <FiUnlock className="text-blue-600 dark:text-blue-400 text-sm" />
+                      <div className="flex items-center gap-2 min-w-0">
+                        {isSelected ? (
+                          <span className="text-purple-600 dark:text-purple-400 font-bold text-sm">●</span>
                         ) : (
                           <span className="text-green-600 dark:text-green-400 font-bold text-sm">✓</span>
                         )}
-                        <span className="font-medium">{m.name}</span>
-                      </span>
-                      <span className="text-[10px] text-gray-500 shrink-0 flex items-center gap-1">
-                        <span>{m.pages?.length || 0} pages</span>
-                      </span>
+                        <span className={`truncate font-medium ${isSelected ? 'text-purple-700 dark:text-purple-300' : ''}`}>
+                          {role.display_name || role.name}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                          <FiUsers className="w-3 h-3" />
+                          {userCount}
+                        </span>
+                        {role.level && (
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                            role.level <= 2 
+                              ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                              : role.level <= 4
+                              ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                          }`}>
+                            L{role.level}
+                          </span>
+                        )}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-1 pl-5">
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                        (m.businessCategory ?? '').toLowerCase() === 'all' || m.alwaysAccessible
-                          ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                          : (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP'
-                          ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-                          : (m.businessCategory ?? '').toLowerCase().includes('enterprise')
-                          ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
-                          : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                      }`}>
-                        {(m.businessCategory ?? '').toLowerCase() === 'all' || m.alwaysAccessible
-                          ? '🔄 Shared'
-                          : (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP'
-                          ? '⛽ Pump'
-                          : (m.businessCategory ?? '').toLowerCase().includes('enterprise')
-                          ? '🏢 Enterprise'
-                          : '💼 Business ERP'}
-                      </span>
-                    </div>
-                  </div>
-                </button>
-                {canRemove && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      quickUnassignModule(m);
-                    }}
-                    className="p-2 rounded-md bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 hover:bg-red-200 dark:hover:bg-red-900/50 transition"
-                    title={`Remove ${m.name}`}
-                  >
-                    <span className="font-bold text-sm">−</span>
                   </button>
-                )}
-        </div>
                 );
-                })}
-              </>
-            )}
+              });
+            })()}
           </div>
         </div>
 
-        {/* 4. Roles - Shows allowed roles for this module (instead of pages) */}
-        <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
-          <div className="flex items-center justify-between mb-2">
-            <div className="text-sm font-semibold flex items-center gap-2">
-              Roles
-              <span className="text-xs font-normal text-gray-500">{pagesForSelectedModule.length}</span>
-              {/* Auto-save status indicator */}
-              {autoSaveStatus === 'saving' && (
-                <span className="text-xs text-blue-500 animate-pulse">💾 Saving...</span>
-              )}
-              {autoSaveStatus === 'saved' && (
-                <span className="text-xs text-green-500">✅ Saved</span>
-              )}
-              {autoSaveStatus === 'error' && (
-                <span className="text-xs text-red-500">❌ Save failed</span>
-              )}
-            </div>
-            <div className="text-xs text-gray-500">
-              {selectedPageIds.length} allowed
+        {/* 4. Modules - Show assigned modules for selected Super Admin */}
+        <div 
+          onClick={() => setBottomView('modules')}
+          className={`rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3 cursor-pointer transition hover:border-emerald-400 hover:shadow-md ${
+            bottomView === 'modules' ? 'border-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-800' : ''
+          }`}
+        >
+          <div className="text-sm font-semibold mb-2 flex items-center justify-between">
+            <div className={`flex items-center gap-2 ${bottomView === 'modules' ? 'text-emerald-600' : ''}`}>
+              <FiPackage className="text-emerald-600" />
+              Modules
+              <span className="text-xs font-normal text-gray-500">{selectedAdminId ? moduleGroups.assigned.length : filteredModules.length}</span>
+              {bottomView === 'modules' && <span className="text-[10px] text-emerald-500">▼</span>}
             </div>
           </div>
-          {!selectedModuleId ? (
-            <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
-              ⚠️ Select a module to view roles
-            </div>
-          ) : (!selectedAdminId ? (
-            <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
-              ⚠️ Select a Super Admin to manage allowed roles
-            </div>
-          ) : pagesForSelectedModule.length === 0 ? (
-            <div className="text-xs text-gray-500">No roles found for this module</div>
-          ) : (
-            <div className="space-y-1 max-h-[460px] overflow-y-auto">
-              {/* Controls: Deselect All and Save */}
-              <div className="flex items-center justify-between mb-2">
-                <button
-                  onClick={toggleAllPages}
-                  className="px-2 py-1 text-xs rounded border hover:bg-blue-50 dark:hover:bg-blue-900/30"
-                >
-                  {selectedPageIds.length === pagesForSelectedModule.length ? "Deselect All" : "Select All"}
-                </button>
-                <button
-                  disabled={!selectedAdminId || saving || !hasChanges}
-                  onClick={assignPages}
-                  className={`px-3 py-1 text-xs rounded border text-white disabled:opacity-60 disabled:cursor-not-allowed ${
-                    hasChanges 
-                      ? 'bg-blue-600 hover:bg-blue-700' 
-                      : 'bg-gray-400'
-                  }`}
-                  title={hasChanges ? "Save role selections" : "No changes to save"}
-                >
-                  {saving ? "Saving..." : hasChanges ? "Save" : "Saved ✓"}
-                </button>
+          <div className="space-y-1 max-h-[520px] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+            {!selectedAdminId ? (
+              <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
+                ⚠️ Select a Super Admin to see assigned modules
               </div>
-              {pagesForSelectedModule.map((p) => {
-                const checked = selectedPageIds.includes(p.id);
-                const isAssigned = p.isAssigned || false;
-                const showYellow = !selectedAdminId;
-                const showGreen = selectedAdminId && isAssigned;
-                const showRed = selectedAdminId && !isAssigned;
+            ) : moduleGroups.assigned.length === 0 ? (
+              <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-300 dark:border-gray-600">
+                No modules assigned to this Super Admin.
+              </div>
+            ) : (
+              /* Show only assigned modules for the selected Super Admin */
+              moduleGroups.assigned.map((m) => {
+                const isAlwaysAccessible = m.alwaysAccessible || m.moduleKey === 'common' || m.moduleKey === 'chat';
+                const isSelected = (selectedModuleKey && selectedModuleKey === m.moduleKey) || (selectedModuleId != null && Number.isFinite(Number(m.id)) && selectedModuleId === Number(m.id));
                 
                 return (
-                  <div
-                    key={p.id}
-                    className={`flex items-center gap-2 rounded-md border px-3 py-2 text-xs transition ${
-                      checked
-                        ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 ring-1 ring-blue-300 dark:ring-blue-700"
-                        : showYellow
-                        ? "border-yellow-400 bg-yellow-50 dark:bg-yellow-900/20 hover:bg-yellow-100 dark:hover:bg-yellow-900/30"
-                        : showGreen
-                        ? "border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30"
-                        : "border-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30"
-                    }`}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={checked}
-                      onChange={() => togglePage(p.id)}
-                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500 cursor-pointer"
-                      aria-label={`Allow role ${p.title || p.path}`}
-                    />
-                    <div className="flex-1 min-w-0 flex items-center gap-1.5">
-                      <div className="flex-1 min-w-0">
-                        <div className="truncate font-medium">{p.title || p.path}</div>
-                        <div className="text-[10px] text-gray-500 dark:text-gray-400">{p.path}</div>
+                  <div key={m.id} className="flex items-center gap-1">
+                    <button
+                      onClick={() => {
+                        const nextModuleId = Number.isFinite(Number(m.id)) ? Number(m.id) : null;
+                        setSelectedModuleId(nextModuleId);
+                        setSelectedModuleKey(m.moduleKey);
+                        // Clear page selection when changing modules
+                        isInitialLoadRef.current = true;
+                        setSelectedPageIds([]);
+                        initialPageIdsRef.current = [];
+                        lastSavedRef.current = '';
+                      }}
+                      className={`flex-1 text-left rounded-md border px-3 py-2 text-xs transition cursor-pointer ${
+                        isSelected
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-700"
+                          : isAlwaysAccessible
+                          ? "border-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                          : "border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30"
+                      }`}
+                      title={`${m.moduleKey} - ${isAlwaysAccessible ? 'Always Accessible' : 'Available'}`}
+                    >
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="truncate flex items-center gap-1.5">
+                            {isAlwaysAccessible ? (
+                              <FiUnlock className="text-blue-600 dark:text-blue-400 text-sm" />
+                            ) : (
+                              <FiPackage className="text-green-600 dark:text-green-400 text-sm" />
+                            )}
+                            <span className="font-medium">{m.name}</span>
+                          </span>
+                          <span className="text-[10px] text-gray-500 shrink-0">
+                            {m.pages?.length || 0} pages
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 pl-5">
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                            (m.businessCategory ?? '').toLowerCase() === 'all' || m.alwaysAccessible
+                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                              : (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP'
+                              ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                          }`}>
+                            {(m.businessCategory ?? '').toLowerCase() === 'all' || m.alwaysAccessible
+                              ? '🔄 Shared'
+                              : (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP'
+                              ? '⛽ Pump'
+                              : '💼 ERP'}
+                          </span>
+                        </div>
                       </div>
-                      {checked && (
-                        <span className="ml-2 inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300">Allowed</span>
-                      )}
-                    </div>
+                    </button>
                   </div>
                 );
-              })}
-            </div>
-          ))}
+              })
+            )}
+          </div>
         </div>
         </div>
       </div>
 
-      {/* Static bottom section - All Modules Overview */}
+      {/* Static bottom section - Toggle between Roles and Modules */}
       <div className="flex-shrink-0 rounded-lg border bg-white/40 dark:bg-gray-900/30 p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="text-sm font-semibold flex items-center gap-2">
-            <FiPackage className="text-purple-600" />
-            {category === 'pump' ? 'Pump Management' : 'Business ERP'} Modules {selectedAdmin ? `- ${selectedAdmin.name}` : ''}
-            {isAssignMode && <span className="text-xs font-normal text-blue-600 dark:text-blue-400">(Click + to assign)</span>}
-          </div>
-          <div className="flex items-center gap-3 text-xs">
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded bg-green-500"></span>
-              Assigned {selectedAdminId ? `(${moduleGroups.assigned.filter(m => !m.alwaysAccessible).length})` : ''}
-            </span>
-            <span className="flex items-center gap-1">
-              <span className="w-3 h-3 rounded bg-red-500"></span>
-              Not Assigned {selectedAdminId ? `(${moduleGroups.unassigned.length})` : ''}
-            </span>
-            <span className="flex items-center gap-1">
-              <FiUnlock className="w-3 h-3 text-blue-500" />
-              Always Accessible ({modules.filter(m => m.alwaysAccessible).length})
-            </span>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-          {filteredModules.map((m) => {
-            const isExplicitlyAssigned = selectedAdmin ? isModuleAssigned(m, selectedAdmin.assignedModules || []) : false;
-            const isPump = (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP' || m.productType === 'PUMP_MANAGEMENT';
-            const isAlwaysAccessible = m.alwaysAccessible || m.moduleKey === 'common' || m.moduleKey === 'chat';
-            const isShared = (m.businessCategory ?? '').toLowerCase() === 'all' || m.alwaysAccessible === true;
-            const canAssign = isAssignMode && !isExplicitlyAssigned && !isAlwaysAccessible && selectedAdminId;
-            
-            return (
-              <div key={m.id} className="relative">
-                {/* Show + button overlay when in assign mode for unassigned modules */}
-                {canAssign && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      quickAssignModule(m);
-                    }}
-                    disabled={saving}
-                    className="absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full bg-green-500 hover:bg-green-600 text-white flex items-center justify-center text-lg font-bold shadow-lg transition-transform hover:scale-110"
-                    title={`Assign ${m.name}`}
-                  >
-                    +
-                  </button>
-                )}
-                {/* Clickable card for editing page permissions */}
+        {bottomView === 'roles' ? (
+          /* Show All Roles Grid */
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-4">
+                <div className="text-sm font-semibold flex items-center gap-2">
+                  <FiShield className="text-purple-600" />
+                  All Roles Overview
+                  <span className="text-xs font-normal text-gray-500">({allRoles.length} roles)</span>
+                </div>
+                {/* Add/Remove button - prominent placement */}
                 <button
-                  onClick={() => {
-                    const nextModuleId = Number.isFinite(Number(m.id)) ? Number(m.id) : null;
-                    setSelectedModuleId(nextModuleId);
-                    setSelectedModuleKey(m.moduleKey);
-                    if (selectedAdmin && nextModuleId) {
-                      const existing = selectedAdmin.pagePermissions?.[String(nextModuleId)] 
-                        || selectedAdmin.pagePermissions?.[m.moduleKey] 
-                        || [];
-                      // Use saved permissions - do NOT auto-select all pages
-                      const initialPages = existing.map(canonicalPageId);
-                      isInitialLoadRef.current = true;
-                      setSelectedPageIds(initialPages);
-                      // Initialize lastSavedRef to prevent auto-save from triggering on initial load
-                      lastSavedRef.current = `${selectedAdmin.id}-${nextModuleId}-${[...initialPages].sort().join(',')}`;
-                    } else {
-                      isInitialLoadRef.current = true;
-                      setSelectedPageIds([]);
-                      lastSavedRef.current = '';
-                    }
-                  }}
-                  className={`w-full text-left rounded-md border px-3 py-2 text-xs cursor-pointer transition hover:ring-2 hover:ring-blue-300 ${
-                    isAlwaysAccessible
-                      ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30"
-                      : !selectedAdminId
-                      ? "border-gray-300 bg-gray-50 dark:bg-gray-800/30 hover:bg-gray-100 dark:hover:bg-gray-800/50"
-                      : isExplicitlyAssigned
-                      ? "border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30"
-                      : "border-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30"
+                  onClick={() => setIsRoleAssignMode(!isRoleAssignMode)}
+                  className={`text-sm font-semibold px-4 py-1.5 rounded-lg transition flex items-center gap-2 shadow-sm ${
+                    isRoleAssignMode
+                      ? "bg-green-600 text-white hover:bg-green-700"
+                      : "bg-purple-600 text-white hover:bg-purple-700"
                   }`}
-                  title={`${m.name} - ${isAlwaysAccessible ? 'Always Accessible - Click to edit page permissions' : !selectedAdminId ? 'Select a Super Admin to see status' : isExplicitlyAssigned ? 'Assigned - Click to manage pages' : 'Not Assigned'}`}
                 >
-                  <div className="flex items-center gap-1.5">
-                    {isAlwaysAccessible ? (
-                      <FiUnlock className="text-blue-600 dark:text-blue-400 text-sm" />
-                    ) : !selectedAdminId ? (
-                      <span className="text-gray-400 text-sm">○</span>
-                    ) : isExplicitlyAssigned ? (
-                      <span className="text-green-600 dark:text-green-400 font-bold text-sm">✓</span>
-                    ) : (
-                      <span className="text-red-600 dark:text-red-400 font-bold text-sm">✗</span>
-                    )}
-                    <div className="min-w-0 flex-1">
-                      <div className="truncate font-medium">{m.name}</div>
-                      <div className="flex items-center justify-between gap-1">
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                          isShared || isAlwaysAccessible
-                            ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                            : isPump
-                            ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-                            : (m.businessCategory ?? '').toLowerCase().includes('enterprise')
-                            ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
-                            : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                        }`}>
-                          {isShared || isAlwaysAccessible
-                            ? '🔄 Shared'
-                            : isPump
-                            ? '⛽ Pump'
-                            : (m.businessCategory ?? '').toLowerCase().includes('enterprise')
-                            ? '🏢 Enterprise'
-                            : '💼 ERP'}
-                        </span>
-                        <span className="text-[10px] text-gray-400">{m.pages?.length || 0} pgs</span>
-                      </div>
-                    </div>
-                  </div>
+                  {isRoleAssignMode ? "✓ Done" : "Add/Remove"}
                 </button>
               </div>
-            );
-          })}
-        </div>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-green-500"></span>
+                  Assigned ({assignedRoleIds.length})
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-red-500"></span>
+                  Not Assigned ({allRoles.length - assignedRoleIds.length})
+                </span>
+                <span className="flex items-center gap-1">
+                  <FiUsers className="w-3 h-3 text-blue-500" />
+                  Total Users: {allRoles.reduce((sum, r) => sum + (r.userCount || r.users?.length || 0), 0)}
+                </span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+              {allRoles.map((role) => {
+                const isSelected = selectedRoleId === role.id;
+                const userCount = role.userCount || role.users?.length || 0;
+                const isAssigned = assignedRoleIds.includes(role.id);
+                
+                return (
+                  <div key={role.id} className="relative">
+                    {/* Show +/- button overlay when in role assign mode */}
+                    {isRoleAssignMode && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setAssignedRoleIds(prev => 
+                            prev.includes(role.id) 
+                              ? prev.filter(id => id !== role.id)
+                              : [...prev, role.id]
+                          );
+                        }}
+                        className={`absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full flex items-center justify-center text-lg font-bold shadow-lg transition-transform hover:scale-110 ${
+                          isAssigned 
+                            ? "bg-red-500 hover:bg-red-600 text-white"
+                            : "bg-green-500 hover:bg-green-600 text-white"
+                        }`}
+                        title={isAssigned ? `Remove ${role.name}` : `Add ${role.name}`}
+                      >
+                        {isAssigned ? '−' : '+'}
+                      </button>
+                    )}
+                    <button
+                      onClick={() => {
+                        if (isRoleAssignMode) {
+                          setAssignedRoleIds(prev => 
+                            prev.includes(role.id) 
+                              ? prev.filter(id => id !== role.id)
+                              : [...prev, role.id]
+                          );
+                        } else {
+                          setSelectedRoleId(role.id);
+                          setBottomView('modules'); // Switch to modules after selecting a role
+                        }
+                      }}
+                      className={`w-full text-left rounded-md border px-3 py-2 text-xs cursor-pointer transition hover:ring-2 ${
+                        isSelected
+                          ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-300 hover:ring-purple-300"
+                          : isAssigned
+                          ? "border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 hover:ring-green-300"
+                          : "border-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 hover:ring-red-300"
+                      }`}
+                      title={role.description || role.name}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {isAssigned ? (
+                          <span className="text-green-600 dark:text-green-400 font-bold text-sm">✓</span>
+                        ) : (
+                          <span className="text-red-600 dark:text-red-400 font-bold text-sm">✗</span>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium">{role.display_name || role.name}</div>
+                          <div className="flex items-center justify-between gap-1">
+                            <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                              <FiUsers className="w-3 h-3" />
+                              {userCount} users
+                            </span>
+                            {role.level && (
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                                role.level <= 2 
+                                  ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                                  : role.level <= 4
+                                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                              }`}>
+                                L{role.level}
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        ) : (
+          /* Show All Modules Grid */
+          <>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-4">
+                <div className="text-sm font-semibold flex items-center gap-2">
+                  <FiPackage className="text-emerald-600" />
+                  {category === 'pump' ? 'Pump Management' : 'Business ERP'} Modules {selectedAdmin ? `- ${selectedAdmin.name}` : ''} {selectedRole ? `| Role: ${selectedRole.display_name || selectedRole.name}` : ''}
+                </div>
+                {/* Add/Remove button - prominent placement */}
+                <button
+                  onClick={() => setIsAssignMode(!isAssignMode)}
+                  className={`text-sm font-semibold px-4 py-1.5 rounded-lg transition flex items-center gap-2 shadow-sm ${
+                    isAssignMode
+                      ? "bg-green-600 text-white hover:bg-green-700"
+                      : "bg-emerald-600 text-white hover:bg-emerald-700"
+                  }`}
+                >
+                  {isAssignMode ? "✓ Done" : "Add/Remove"}
+                </button>
+              </div>
+              <div className="flex items-center gap-3 text-xs">
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-green-500"></span>
+                  Assigned {selectedAdminId ? `(${moduleGroups.assigned.filter(m => !m.alwaysAccessible).length})` : ''}
+                </span>
+                <span className="flex items-center gap-1">
+                  <span className="w-3 h-3 rounded bg-red-500"></span>
+                  Not Assigned {selectedAdminId ? `(${moduleGroups.unassigned.length})` : ''}
+                </span>
+                <span className="flex items-center gap-1">
+                  <FiUnlock className="w-3 h-3 text-blue-500" />
+                  Always Accessible ({modules.filter(m => m.alwaysAccessible).length})
+                </span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+              {filteredModules.map((m) => {
+                const isExplicitlyAssigned = selectedAdmin ? isModuleAssigned(m, selectedAdmin.assignedModules || []) : false;
+                const isPump = (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP' || m.productType === 'PUMP_MANAGEMENT';
+                const isAlwaysAccessible = m.alwaysAccessible || m.moduleKey === 'common' || m.moduleKey === 'chat';
+                const isShared = (m.businessCategory ?? '').toLowerCase() === 'all' || m.alwaysAccessible === true;
+                const canAssign = isAssignMode && !isExplicitlyAssigned && !isAlwaysAccessible && selectedAdminId;
+                const canUnassign = isAssignMode && isExplicitlyAssigned && !isAlwaysAccessible && selectedAdminId;
+                
+                return (
+                  <div key={m.id} className="relative">
+                    {/* Show + button overlay when in assign mode for unassigned modules */}
+                    {canAssign && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          quickAssignModule(m);
+                        }}
+                        disabled={saving}
+                        className="absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full bg-green-500 hover:bg-green-600 text-white flex items-center justify-center text-lg font-bold shadow-lg transition-transform hover:scale-110"
+                        title={`Assign ${m.name}`}
+                      >
+                        +
+                      </button>
+                    )}
+                    {/* Show - button overlay when in assign mode for assigned modules */}
+                    {canUnassign && (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          quickUnassignModule(m);
+                        }}
+                        disabled={saving}
+                        className="absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center text-lg font-bold shadow-lg transition-transform hover:scale-110"
+                        title={`Unassign ${m.name}`}
+                      >
+                        −
+                      </button>
+                    )}
+                    {/* Clickable card for editing page permissions */}
+                    <button
+                      onClick={() => {
+                        const nextModuleId = Number.isFinite(Number(m.id)) ? Number(m.id) : null;
+                        setSelectedModuleId(nextModuleId);
+                        setSelectedModuleKey(m.moduleKey);
+                        if (selectedAdmin && nextModuleId) {
+                          const existing = selectedAdmin.pagePermissions?.[String(nextModuleId)] 
+                            || selectedAdmin.pagePermissions?.[m.moduleKey] 
+                            || [];
+                          // Use saved permissions - do NOT auto-select all pages
+                          const initialPages = existing.map(canonicalPageId);
+                          isInitialLoadRef.current = true;
+                          setSelectedPageIds(initialPages);
+                          // Initialize lastSavedRef to prevent auto-save from triggering on initial load
+                          lastSavedRef.current = `${selectedAdmin.id}-${nextModuleId}-${[...initialPages].sort().join(',')}`;
+                        } else {
+                          isInitialLoadRef.current = true;
+                          setSelectedPageIds([]);
+                          lastSavedRef.current = '';
+                        }
+                      }}
+                      className={`w-full text-left rounded-md border px-3 py-2 text-xs cursor-pointer transition hover:ring-2 hover:ring-blue-300 ${
+                        isAlwaysAccessible
+                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30"
+                          : !selectedAdminId
+                          ? "border-gray-300 bg-gray-50 dark:bg-gray-800/30 hover:bg-gray-100 dark:hover:bg-gray-800/50"
+                          : isExplicitlyAssigned
+                          ? "border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30"
+                          : "border-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30"
+                      }`}
+                      title={`${m.name} - ${isAlwaysAccessible ? 'Always Accessible - Click to edit page permissions' : !selectedAdminId ? 'Select a Super Admin to see status' : isExplicitlyAssigned ? 'Assigned - Click to manage pages' : 'Not Assigned'}`}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        {isAlwaysAccessible ? (
+                          <FiUnlock className="text-blue-600 dark:text-blue-400 text-sm" />
+                        ) : !selectedAdminId ? (
+                          <span className="text-gray-400 text-sm">○</span>
+                        ) : isExplicitlyAssigned ? (
+                          <span className="text-green-600 dark:text-green-400 font-bold text-sm">✓</span>
+                        ) : (
+                          <span className="text-red-600 dark:text-red-400 font-bold text-sm">✗</span>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium">{m.name}</div>
+                          <div className="flex items-center justify-between gap-1">
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                              isShared || isAlwaysAccessible
+                                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                                : isPump
+                                ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                                : (m.businessCategory ?? '').toLowerCase().includes('enterprise')
+                                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
+                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
+                            }`}>
+                              {isShared || isAlwaysAccessible
+                                ? '🔄 Shared'
+                                : isPump
+                                ? '⛽ Pump'
+                                : (m.businessCategory ?? '').toLowerCase().includes('enterprise')
+                                ? '🏢 Enterprise'
+                                : '💼 ERP'}
+                            </span>
+                            <span className="text-[10px] text-gray-400">{m.pages?.length || 0} pgs</span>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </>
+        )}
       </div>
     </div>
   );
