@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 // Use shared Prisma getter to avoid crashing when DATABASE_URL is missing locally
 const { getPrisma } = require('../lib/prisma');
 const { AppError, ERROR_CODES, asyncHandler } = require('../middleware/errorHandler');
+const { auditService } = require('../services/auditService');
 // Rate limiter import removed - all rate limiting disabled for development
 
 let prisma = null;
@@ -82,8 +83,10 @@ router.post('/login', asyncHandler(async (req, res) => {
     if (enterpriseAdmin && enterpriseAdmin.is_active) {
       let isValidPassword = false;
       try {
-        isValidPassword = typeof enterpriseAdmin.password === 'string' && enterpriseAdmin.password.length > 0 
-          ? bcrypt.compareSync(password, enterpriseAdmin.password)
+        // Use password_hash column (renamed from password for clarity)
+        const passwordHash = enterpriseAdmin.password_hash || enterpriseAdmin.password;
+        isValidPassword = typeof passwordHash === 'string' && passwordHash.length > 0 
+          ? bcrypt.compareSync(password, passwordHash)
           : false;
       } catch (e) {
         console.warn('⚠️ Password compare failed for Enterprise Admin (likely missing/invalid hash)');
@@ -92,6 +95,12 @@ router.post('/login', asyncHandler(async (req, res) => {
       
       if (isValidPassword) {
         console.log('✅ Authenticated as Enterprise Admin');
+        
+        // Log successful login
+        auditService.logLoginAttempt(true, email, req.ip, {
+          userType: 'ENTERPRISE_ADMIN',
+          userId: enterpriseAdmin.id
+        }).catch(() => {}); // Don't block on audit logging
         
         authData = {
           id: enterpriseAdmin.id,
@@ -149,8 +158,10 @@ router.post('/login', asyncHandler(async (req, res) => {
     if (superAdmin && superAdmin.is_active) {
       let isValidPassword = false;
       try {
-        isValidPassword = typeof superAdmin.password === 'string' && superAdmin.password.length > 0 
-          ? bcrypt.compareSync(password, superAdmin.password)
+        // Use password_hash column (renamed from password for clarity)
+        const passwordHash = superAdmin.password_hash || superAdmin.password;
+        isValidPassword = typeof passwordHash === 'string' && passwordHash.length > 0 
+          ? bcrypt.compareSync(password, passwordHash)
           : false;
       } catch (e) {
         console.warn('⚠️ Password compare failed for Super Admin (likely missing/invalid hash)');
@@ -159,6 +170,12 @@ router.post('/login', asyncHandler(async (req, res) => {
       
       if (isValidPassword) {
         console.log('✅ Authenticated as Super Admin');
+
+        // Log successful login
+        auditService.logLoginAttempt(true, email, req.ip, {
+          userType: 'SUPER_ADMIN',
+          userId: superAdmin.id
+        }).catch(() => {}); // Don't block on audit logging
 
         // Get assigned modules with page permissions
         const moduleAssignments = await prisma.moduleAssignment.findMany({
@@ -233,8 +250,10 @@ router.post('/login', asyncHandler(async (req, res) => {
     if (regularUser) {
       let isValidPassword = false;
       try {
-        isValidPassword = typeof regularUser.password === 'string' && regularUser.password.length > 0 
-          ? bcrypt.compareSync(password, regularUser.password)
+        // Use password_hash column (renamed from password for clarity)
+        const passwordHash = regularUser.password_hash || regularUser.password;
+        isValidPassword = typeof passwordHash === 'string' && passwordHash.length > 0 
+          ? bcrypt.compareSync(password, passwordHash)
           : false;
       } catch (e) {
         console.warn('⚠️ Password compare failed for Regular User (likely missing/invalid hash)');
@@ -243,6 +262,14 @@ router.post('/login', asyncHandler(async (req, res) => {
       
       if (isValidPassword) {
         console.log('✅ Authenticated as Regular User');
+
+        // Log successful login
+        auditService.logLoginAttempt(true, email, req.ip, {
+          userType: 'USER',
+          userId: regularUser.id,
+          role: regularUser.role,
+          tenantId: regularUser.tenant_id
+        }).catch(() => {}); // Don't block on audit logging
 
         authData = {
           id: regularUser.id,
@@ -311,6 +338,12 @@ router.post('/login', asyncHandler(async (req, res) => {
 
     // Invalid credentials - no fallback, database is the single source of truth
     console.log('❌ Invalid credentials for:', email);
+    
+    // Log failed login attempt
+    auditService.logLoginAttempt(false, email, req.ip, {
+      reason: 'Invalid credentials'
+    }).catch(() => {}); // Don't block on audit logging
+    
     throw new AppError(
       'Invalid email or password',
       ERROR_CODES.INVALID_CREDENTIALS,

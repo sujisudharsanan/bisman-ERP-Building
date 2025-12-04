@@ -13,6 +13,7 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
   
   try {
     console.log('[RolesUsersReport] Generating roles and users report...');
+    console.log('[RolesUsersReport] User type:', req.user?.userType, 'Role:', req.user?.role);
     
     // ✅ SECURITY FIX: Define tenant filter at the beginning
     // For ADMIN in non-tenant demo contexts, gracefully fallback to no filter
@@ -25,6 +26,40 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
         tenantFilter = {};
       } else {
         throw err;
+      }
+    }
+    
+    // ✅ SECURITY FIX: Get assigned role IDs/names for SUPER_ADMIN
+    let assignedRoleIds = null; // null means no filter (show all)
+    let assignedRoleNames = []; // Store role names for matching when IDs don't work
+    if (req.user?.userType === 'SUPER_ADMIN' || (req.user?.role || '').toUpperCase() === 'SUPER_ADMIN') {
+      console.log('[RolesUsersReport] SUPER_ADMIN access - checking role assignments');
+      console.log('[RolesUsersReport] Super Admin user.id:', req.user.id, 'email:', req.user.email);
+      try {
+        // Get role assignments made by ENTERPRISE_ADMIN for this SUPER_ADMIN
+        const roleAssignments = await prisma.adminRoleAssignment.findMany({
+          where: {
+            assignee_type: 'SUPER_ADMIN',
+            assignee_id: req.user.id,
+            is_active: true
+          },
+          select: { role_id: true }
+        });
+        
+        console.log('[RolesUsersReport] Found role assignments:', roleAssignments);
+        
+        if (roleAssignments.length > 0) {
+          assignedRoleIds = roleAssignments.map(ra => ra.role_id);
+          console.log('[RolesUsersReport] SUPER_ADMIN has', assignedRoleIds.length, 'assigned role IDs:', assignedRoleIds);
+        } else {
+          // No explicit assignments - restrict to empty (no roles shown)
+          assignedRoleIds = [];
+          console.log('[RolesUsersReport] SUPER_ADMIN has NO role assignments - showing empty');
+        }
+      } catch (err) {
+        console.warn('[RolesUsersReport] Error checking role assignments:', err.message);
+        // On error, restrict to empty for security
+        assignedRoleIds = [];
       }
     }
     
@@ -87,6 +122,18 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
       const roleName = String(role.name).toUpperCase();
       return roleName !== 'SUPER_ADMIN' && roleName !== 'ENTERPRISE_ADMIN';
     });
+    
+    // ✅ SECURITY FIX: Filter roles for SUPER_ADMIN based on their assignments
+    if (assignedRoleIds !== null) {
+      const beforeCount = roles.length;
+      // Filter by role ID OR role name (to handle mismatched IDs)
+      roles = roles.filter(role => {
+        const roleIdMatch = assignedRoleIds.includes(role.id);
+        const roleNameMatch = assignedRoleNames.includes(String(role.name).toUpperCase());
+        return roleIdMatch || roleNameMatch;
+      });
+      console.log(`[RolesUsersReport] Filtered roles from ${beforeCount} to ${roles.length} based on SUPER_ADMIN assignments (IDs: ${assignedRoleIds}, Names: ${assignedRoleNames})`);
+    }
     
     // Sort: active first, then by level (desc), then by name
     roles = roles.sort((a, b) => {

@@ -62,6 +62,7 @@ const { logSanitizer } = require('./middleware/logSanitizer')
 const privilegeService = require('./services/privilegeService')
 const TenantGuard = require('./middleware/tenantGuard') // ✅ SECURITY: Multi-tenant isolation
 const { authenticate, requireRole } = require('./middleware/auth') // ✅ Authentication middleware
+const { setTenantContext } = require('./middleware/tenantContext') // ✅ RLS tenant context
 
 const app = express()
 
@@ -165,6 +166,15 @@ try {
   console.log('[app.js] ✅ Cache endpoints mounted (/internal/cache-health, /internal/cache-metrics)');
 } catch (e) {
   console.warn('[app.js] Cache subsystem not mounted:', e.message);
+}
+
+// --- Security Alerting Middleware ---
+try {
+  const { createSecurityAlertingMiddleware } = require('./middleware/securityAlerting');
+  app.use(createSecurityAlertingMiddleware());
+  console.log('[app.js] ✅ Security alerting middleware enabled (failed auth/rate limit spike detection)');
+} catch (e) {
+  console.warn('[app.js] Security alerting middleware not enabled:', e.message);
 }
 
 // Legacy mail-based OTP routes (disabled by default)
@@ -688,6 +698,39 @@ try {
   }
 }
 
+// Test Runner routes (for Security Dashboard)
+try {
+  const testRunnerRoutes = require('./routes/admin/testRunnerRoutes')
+  app.use('/api/admin/tests', testRunnerRoutes)
+  console.log('✅ Test Runner routes loaded at /api/admin/tests')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Test Runner routes not loaded:', e && e.message)
+  }
+}
+
+// Security Monitor API routes (real-time monitoring)
+try {
+  const securityMonitorRoutes = require('./routes/admin/securityMonitorRoutes')
+  app.use('/api/admin/security', securityMonitorRoutes)
+  console.log('✅ Security Monitor API routes loaded at /api/admin/security')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Security Monitor routes not loaded:', e && e.message)
+  }
+}
+
+// Audit routes (for Service-Table usage tracking)
+try {
+  const auditRoutes = require('./routes/admin/auditRoutes')
+  app.use('/api/audit', auditRoutes)
+  console.log('✅ Audit routes loaded at /api/audit')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Audit routes not loaded:', e && e.message)
+  }
+}
+
 // Fallback Logs routes (for Super Admin monitoring)
 try {
   const fallbackLogsRoutes = require('./routes/fallbackLogsRoutes')
@@ -713,7 +756,7 @@ try {
 // Task Management routes (protected)
 try {
   const taskRoutes = require('./routes/tasks')
-  app.use('/api/tasks', authenticate, taskRoutes)
+  app.use('/api/tasks', authenticate, setTenantContext, taskRoutes)
   console.log('✅ Task Management routes loaded (protected)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
@@ -747,7 +790,7 @@ try {
 try {
   const enterpriseRoutes = require('./routes/enterprise')
   // Protect all enterprise routes - only ENTERPRISE_ADMIN can access
-  app.use('/api/enterprise', authenticate, requireEnterpriseAdmin, enterpriseRoutes)
+  app.use('/api/enterprise', authenticate, setTenantContext, requireEnterpriseAdmin, enterpriseRoutes)
   console.log('✅ Enterprise Admin routes loaded (protected)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
@@ -772,20 +815,20 @@ try {
   const enterpriseAdminNotifications = require('./routes/enterprise-admin-Notifications')
   const enterpriseAdminSupport = require('./routes/enterprise-admin-Support')
   
-  app.use('/api/enterprise-admin/dashboard', authenticate, enterpriseAdminDashboard)
-  app.use('/api/enterprise-admin/organizations', authenticate, enterpriseAdminOrganizations)
-  app.use('/api/enterprise-admin/modules', authenticate, enterpriseAdminModules)
-  app.use('/api/enterprise-admin/billing', authenticate, enterpriseAdminBilling)
-  app.use('/api/enterprise-admin/audit', authenticate, enterpriseAdminAudit)
-  app.use('/api/enterprise-admin/reports', authenticate, enterpriseAdminReports)
-  app.use('/api/enterprise-admin/ai', authenticate, enterpriseAdminAI)
-  app.use('/api/enterprise-admin/logs', authenticate, enterpriseAdminLogs)
-  app.use('/api/enterprise-admin/users', authenticate, enterpriseAdminUsers)
-  app.use('/api/enterprise-admin/super-admins', authenticate, enterpriseAdminSuperAdmins)
-  app.use('/api/enterprise-admin/settings', authenticate, enterpriseAdminSettings)
-  app.use('/api/enterprise-admin/integrations', authenticate, enterpriseAdminIntegrations)
-  app.use('/api/enterprise-admin/notifications', authenticate, enterpriseAdminNotifications)
-  app.use('/api/enterprise-admin/support', authenticate, enterpriseAdminSupport)
+  app.use('/api/enterprise-admin/dashboard', authenticate, setTenantContext, enterpriseAdminDashboard)
+  app.use('/api/enterprise-admin/organizations', authenticate, setTenantContext, enterpriseAdminOrganizations)
+  app.use('/api/enterprise-admin/modules', authenticate, setTenantContext, enterpriseAdminModules)
+  app.use('/api/enterprise-admin/billing', authenticate, setTenantContext, enterpriseAdminBilling)
+  app.use('/api/enterprise-admin/audit', authenticate, setTenantContext, enterpriseAdminAudit)
+  app.use('/api/enterprise-admin/reports', authenticate, setTenantContext, enterpriseAdminReports)
+  app.use('/api/enterprise-admin/ai', authenticate, setTenantContext, enterpriseAdminAI)
+  app.use('/api/enterprise-admin/logs', authenticate, setTenantContext, enterpriseAdminLogs)
+  app.use('/api/enterprise-admin/users', authenticate, setTenantContext, enterpriseAdminUsers)
+  app.use('/api/enterprise-admin/super-admins', authenticate, setTenantContext, enterpriseAdminSuperAdmins)
+  app.use('/api/enterprise-admin/settings', authenticate, setTenantContext, enterpriseAdminSettings)
+  app.use('/api/enterprise-admin/integrations', authenticate, setTenantContext, enterpriseAdminIntegrations)
+  app.use('/api/enterprise-admin/notifications', authenticate, setTenantContext, enterpriseAdminNotifications)
+  app.use('/api/enterprise-admin/support', authenticate, setTenantContext, enterpriseAdminSupport)
   
   console.log('✅ Enterprise Admin Management routes loaded (14 modules)')
 } catch (e) {
@@ -799,12 +842,36 @@ try {
   const { router: taskRoutes } = require('./routes/taskRoutes');
   const approverRoutes = require('./routes/approverRoutes');
   
-  app.use('/api/tasks', authenticate, taskRoutes);
-  app.use('/api/approvers', authenticate, approverRoutes);
+  app.use('/api/tasks', authenticate, setTenantContext, taskRoutes);
+  app.use('/api/approvers', authenticate, setTenantContext, approverRoutes);
   
   console.log('✅ Task Workflow System routes loaded (with Socket.IO realtime)');
 } catch (e) {
   console.warn('Task Workflow System routes not loaded:', e && e.message);
+}
+
+// Audit Monitoring routes (protected - admin only)
+try {
+  const auditRoutes = require('./routes/audit');
+  app.use('/api/audit', auditRoutes);
+  console.log('✅ Audit Monitoring routes loaded (dashboard, logs, security events)');
+} catch (e) {
+  console.warn('Audit Monitoring routes not loaded:', e && e.message);
+}
+
+// Security Operations Dashboard routes (Enterprise Admin only)
+try {
+  const securityRoutes = require('./routes/security');
+  const securityDashboardRoutes = require('./routes/securityDashboard');
+  const serviceTableUsageRoutes = require('./routes/serviceTableUsage');
+  
+  app.use('/api/security', securityRoutes);
+  app.use('/api/security-dashboard', securityDashboardRoutes);
+  app.use('/api/admin', serviceTableUsageRoutes);
+  
+  console.log('✅ Security Operations routes loaded (scan, dashboard, service-table-usage)');
+} catch (e) {
+  console.warn('Security Operations routes not loaded:', e && e.message);
 }
 
 // Payment Approval System routes (protected)
@@ -1780,7 +1847,7 @@ app.put('/api/enterprise-admin/super-admins/:id', authenticate, requireRole('ENT
     const updateData = {};
     if (username) updateData.username = username;
     if (email) updateData.email = email;
-    if (password) updateData.password = bcrypt.hashSync(password, 10);
+    if (password) updateData.password_hash = bcrypt.hashSync(password, 10);
 
     // ✅ SECURITY FIX: Add tenant filter to prevent cross-tenant updates
     const tenantId = TenantGuard.getTenantId(req);
@@ -2225,6 +2292,127 @@ app.post('/api/enterprise-admin/super-admins/:id/unassign-module', authenticate,
   }
 });
 
+// Assign roles to a Super Admin (for role-based access control)
+app.post('/api/enterprise-admin/super-admins/:id/assign-roles', authenticate, requireRole('ENTERPRISE_ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { roleIds } = req.body;
+
+    console.log('🔵 ASSIGN ROLES TO SUPER ADMIN:', { 
+      superAdminId: id, 
+      roleIds,
+      roleCount: roleIds?.length || 0 
+    });
+
+    if (!Array.isArray(roleIds)) {
+      return res.status(400).json({ 
+        ok: false, 
+        message: 'roleIds must be an array' 
+      });
+    }
+
+    const superAdminId = parseInt(id);
+    const enterpriseAdminId = req.user.id;
+
+    // Verify super admin exists
+    const superAdmin = await prisma.superAdmin.findUnique({
+      where: { id: superAdminId }
+    });
+
+    if (!superAdmin) {
+      console.error('❌ Super admin not found:', superAdminId);
+      return res.status(404).json({ 
+        ok: false, 
+        message: 'Super admin not found' 
+      });
+    }
+
+    console.log('✅ Super admin found:', superAdmin.name);
+
+    // Use transaction to atomically update role assignments
+    const result = await prisma.$transaction(async (tx) => {
+      // Delete existing role assignments for this super admin
+      await tx.adminRoleAssignment.deleteMany({
+        where: {
+          assignee_type: 'SUPER_ADMIN',
+          assignee_id: superAdminId
+        }
+      });
+
+      // Create new role assignments
+      const assignments = [];
+      for (const roleId of roleIds) {
+        const assignment = await tx.adminRoleAssignment.create({
+          data: {
+            assigner_type: 'ENTERPRISE_ADMIN',
+            assigner_id: enterpriseAdminId,
+            role_id: roleId,
+            assignee_type: 'SUPER_ADMIN',
+            assignee_id: superAdminId,
+            is_active: true
+          }
+        });
+        assignments.push(assignment);
+      }
+
+      return assignments;
+    });
+
+    console.log('✅ Roles assigned to super admin:', result.length);
+
+    res.json({ 
+      ok: true, 
+      message: `${result.length} role(s) assigned successfully`,
+      superAdminId,
+      assignedRoleIds: roleIds,
+      assignedCount: result.length
+    });
+  } catch (error) {
+    console.error('❌ ERROR ASSIGNING ROLES:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: 'Failed to assign roles',
+      message: error.message 
+    });
+  }
+});
+
+// Get roles assigned to a specific Super Admin
+app.get('/api/enterprise-admin/super-admins/:id/roles', authenticate, requireRole('ENTERPRISE_ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const superAdminId = parseInt(id);
+
+    // Get role assignments for this super admin
+    const assignments = await prisma.adminRoleAssignment.findMany({
+      where: {
+        assignee_type: 'SUPER_ADMIN',
+        assignee_id: superAdminId,
+        is_active: true
+      },
+      select: { role_id: true }
+    });
+
+    const roleIds = assignments.map(a => a.role_id);
+
+    console.log('🔵 GET roles for Super Admin:', superAdminId, 'Roles:', roleIds);
+
+    res.json({ 
+      ok: true, 
+      superAdminId,
+      roleIds,
+      roleCount: roleIds.length
+    });
+  } catch (error) {
+    console.error('Error fetching super admin roles:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: 'Failed to fetch roles',
+      message: error.message 
+    });
+  }
+});
+
 // ============================================
 // ADMIN ROLE ASSIGNMENT API ENDPOINTS
 // For Enterprise Admin, Super Admin, and Admin role allocations
@@ -2236,31 +2424,42 @@ app.get('/api/admin/role-assignments', authenticate, async (req, res) => {
     const userRole = (req.user?.role || '').toUpperCase();
     const userId = req.user?.id;
     
-    // Determine assigner type based on user role
-    let assignerType;
-    if (userRole === 'ENTERPRISE_ADMIN') {
-      assignerType = 'ENTERPRISE_ADMIN';
-    } else if (userRole === 'SUPER_ADMIN') {
-      assignerType = 'SUPER_ADMIN';
-    } else if (userRole === 'ADMIN') {
-      assignerType = 'ADMIN';
-    } else {
-      return res.status(403).json({ ok: false, error: 'Access denied' });
-    }
-
-    console.log('🔵 GET role-assignments for:', { assignerType, userId });
+    console.log('🔵 GET role-assignments for:', { userRole, userId });
 
     // Check if table exists, create if not
     let assignments = [];
     try {
-      assignments = await prisma.adminRoleAssignment.findMany({
-        where: {
-          assigner_type: assignerType,
-          assigner_id: userId,
-          is_active: true
-        },
-        orderBy: { assigned_at: 'desc' }
-      });
+      if (userRole === 'ENTERPRISE_ADMIN') {
+        // Enterprise Admin: Get roles THEY have assigned (as assigner)
+        assignments = await prisma.adminRoleAssignment.findMany({
+          where: {
+            assigner_type: 'ENTERPRISE_ADMIN',
+            assigner_id: userId,
+            is_active: true
+          },
+          orderBy: { assigned_at: 'desc' }
+        });
+      } else if (userRole === 'SUPER_ADMIN' || userRole === 'ADMIN') {
+        // Super Admin / Admin: Get roles that Enterprise Admin has ALLOWED for them
+        // Look for assignments where assigner_type = 'ENTERPRISE_ADMIN'
+        // Note: assignee fields might be null if it's a global assignment, 
+        // or could be specific to this user
+        assignments = await prisma.adminRoleAssignment.findMany({
+          where: {
+            assigner_type: 'ENTERPRISE_ADMIN',
+            is_active: true,
+            // Include both global assignments (no assignee) and user-specific ones
+            OR: [
+              { assignee_type: null },
+              { assignee_type: '', assignee_id: null },
+              { assignee_type: userRole, assignee_id: userId }
+            ]
+          },
+          orderBy: { assigned_at: 'desc' }
+        });
+      } else {
+        return res.status(403).json({ ok: false, error: 'Access denied' });
+      }
     } catch (tableError) {
       // Table might not exist yet - return empty array
       console.log('⚠️ AdminRoleAssignment table may not exist yet:', tableError.message);
@@ -2277,7 +2476,7 @@ app.get('/api/admin/role-assignments', authenticate, async (req, res) => {
 
     res.json({
       ok: true,
-      assignerType,
+      assignerType: userRole === 'ENTERPRISE_ADMIN' ? 'ENTERPRISE_ADMIN' : 'RECEIVED',
       assignerId: userId,
       assignedRoleIds,
       assignments: assignments.map(a => ({

@@ -30,7 +30,20 @@ router.get('/clients', authMiddleware, async (req, res) => {
   try {
     const user = req.user;
     const where = {};
-    if (!isPlatformAdmin(user?.role) && user?.super_admin_id) where.super_admin_id = user.super_admin_id;
+    
+    // For SUPER_ADMIN, use their own id to filter clients
+    // For regular users, use super_admin_id from their user record
+    if (!isPlatformAdmin(user?.role)) {
+      if (user?.userType === 'SUPER_ADMIN' || user?.role === 'SUPER_ADMIN') {
+        // SUPER_ADMIN - filter by their own id
+        where.super_admin_id = user.id;
+      } else if (user?.super_admin_id) {
+        // Regular user - filter by their assigned super_admin_id
+        where.super_admin_id = user.super_admin_id;
+      }
+    }
+    
+    console.log('[clients] User:', user?.id, 'Role:', user?.role, 'Filter:', where);
 
     if (!prisma) {
       // Database not available (dev mode fallback) — return empty list instead of 500
@@ -38,7 +51,13 @@ router.get('/clients', authMiddleware, async (req, res) => {
     }
 
     const clients = await prisma.client.findMany({ where, orderBy: { created_at: 'desc' } });
-    res.json({ success: true, count: clients.length, data: clients });
+    console.log('[clients] Found', clients.length, 'clients');
+    // Convert BigInt fields to strings for JSON serialization
+    const serializedClients = clients.map(client => ({
+      ...client,
+      client_number: client.client_number ? client.client_number.toString() : null,
+    }));
+    res.json({ success: true, count: clients.length, data: serializedClients });
   } catch (e) {
     console.error('List clients error:', e?.message || e);
     // Graceful fallback: avoid blocking UI in dev if DB hiccups
@@ -142,7 +161,7 @@ router.post('/clients', authMiddleware, async (req, res) => {
         data: {
           username,
           email: adminUser.email,
-          password: hashed,
+          password_hash: hashed,
           role: 'ADMIN',
           is_active: true,
           productType,

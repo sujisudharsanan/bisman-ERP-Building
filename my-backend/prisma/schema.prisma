@@ -20,12 +20,13 @@ model User {
   id                     Int                     @id @default(autoincrement())
   username               String                  @map("username") @db.VarChar(100)
   email                  String                  @unique @db.VarChar(150)
-  password               String                  @db.VarChar(255)
+  password_hash          String                  @map("password_hash") @db.VarChar(255)
   role                   String?                 @db.VarChar(50)
   is_active              Boolean                 @default(true)
   productType            String?                 @default("BUSINESS_ERP") @db.VarChar(50)
   tenant_id              String?                 @db.Uuid
   super_admin_id         Int?
+  created_by             Int?
   createdAt              DateTime?               @default(now()) @map("created_at") @db.Timestamp(6)
   profile_pic_url        String?                 @map("profile_pic_url")
   updatedAt              DateTime?               @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
@@ -231,7 +232,11 @@ model routes {
 model user_sessions {
   id               Int        @id @default(autoincrement())
   user_id          Int
+  // DEPRECATED: Use token_hash for lookups
   session_token    String     @unique @db.VarChar(255)
+  // Hashed token fields (SHA-256)
+  token_hash       String?    @db.VarChar(64)
+  token_prefix     String?    @db.VarChar(8)
   ip_address       String?    @db.Inet
   user_agent       String?
   created_at       DateTime?  @default(now()) @db.Timestamp(6)
@@ -242,6 +247,7 @@ model user_sessions {
   users            User       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@index([session_token], map: "idx_user_sessions_token")
+  @@index([token_hash], map: "idx_user_sessions_token_hash")
   @@index([user_id], map: "idx_user_sessions_user")
 }
 
@@ -249,7 +255,7 @@ model EnterpriseAdmin {
   id              Int          @id @default(autoincrement())
   name            String       @db.VarChar(100)
   email           String       @unique @db.VarChar(150)
-  password        String       @db.VarChar(255)
+  password_hash   String       @map("password_hash") @db.VarChar(255)
   profile_pic_url String?
   is_active       Boolean      @default(true)
   created_at      DateTime     @default(now()) @db.Timestamp(6)
@@ -263,7 +269,7 @@ model SuperAdmin {
   id                Int                @id @default(autoincrement())
   name              String             @db.VarChar(100)
   email             String             @unique @db.VarChar(150)
-  password          String             @db.VarChar(255)
+  password_hash     String             @map("password_hash") @db.VarChar(255)
   productType       String             @db.VarChar(50)
   profile_pic_url   String?
   is_active         Boolean            @default(true)
@@ -1045,8 +1051,17 @@ model UserAddress {
 model UserKYC {
   id                 Int       @id @default(autoincrement())
   userId             Int       @unique @map("user_id")
+  // DEPRECATED: Use encrypted fields below
   panNumber          String?   @map("pan_number") @db.VarChar(20)
   aadhaarNumber      String?   @map("aadhaar_number") @db.VarChar(20)
+  // Encrypted PII fields (AES-256-GCM)
+  panEncrypted       Bytes?    @map("pan_encrypted")
+  panIv              Bytes?    @map("pan_iv")
+  panLast4           String?   @map("pan_last4") @db.VarChar(4)
+  aadhaarEncrypted   Bytes?    @map("aadhaar_encrypted")
+  aadhaarIv          Bytes?    @map("aadhaar_iv")
+  aadhaarLast4       String?   @map("aadhaar_last4") @db.VarChar(4)
+  encryptionVersion  Int       @default(1) @map("encryption_version")
   kycStatus          KYCStatus @default(PENDING) @map("kyc_status")
   panDocumentUrl     String?   @map("pan_document_url")
   aadhaarDocumentUrl String?   @map("aadhaar_document_url")
@@ -1065,7 +1080,13 @@ model UserBankAccount {
   accountHolderName          String   @map("account_holder_name") @db.VarChar(255)
   bankName                   String   @map("bank_name") @db.VarChar(255)
   branchName                 String   @map("branch_name") @db.VarChar(255)
+  // DEPRECATED: Use encrypted field below
   accountNumber              String   @map("account_number") @db.VarChar(50)
+  // Encrypted account number (AES-256-GCM)
+  accountNumberEncrypted     Bytes?   @map("account_number_encrypted")
+  accountNumberIv            Bytes?   @map("account_number_iv")
+  accountNumberLast4         String?  @map("account_number_last4") @db.VarChar(4)
+  encryptionVersion          Int      @default(1) @map("encryption_version")
   ifscCode                   String   @map("ifsc_code") @db.VarChar(20)
   isPrimary                  Boolean  @default(false) @map("is_primary")
   cancelledChequeDocumentUrl String?  @map("cancelled_cheque_document_url")

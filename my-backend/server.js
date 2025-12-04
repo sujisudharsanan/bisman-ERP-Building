@@ -201,6 +201,15 @@ async function start() {
     console.warn('[startup] AI cron jobs not initialized:', cronError.message);
   }
 
+  // Initialize Security Monitor Cron Jobs
+  try {
+    const securityMonitor = require('./cron/securityMonitor');
+    securityMonitor.initializeSecurityMonitor();
+    console.log('[startup] ✅ Security Monitor cron jobs initialized');
+  } catch (securityCronError) {
+    console.warn('[startup] Security Monitor cron not initialized:', securityCronError.message);
+  }
+
   // Prepare Next.js if available
   if (nextApp) {
     try {

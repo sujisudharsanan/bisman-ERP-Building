@@ -89,33 +89,33 @@
 		{
 			"label": "start backend (dev)",
 			"type": "shell",
-			"command": "bash -lc 'set -e; cp -n my-backend/.env.local.example my-backend/.env.local || true; (cd my-backend && PORT=3001 NODE_ENV=development node index.js)'",
+			"command": "bash -lc 'set -e; cp -n my-backend/.env.local.example my-backend/.env.local || true; (cd my-backend && PORT=5000 NODE_ENV=development node index.js)'",
 			"isBackground": false,
 			"group": "build"
 		},
 		{
 			"label": "smoke test login /api/auth/login",
 			"type": "shell",
-			"command": "bash -lc 'set -e; curl -sS -i -X POST http://localhost:3001/api/auth/login -H \"Content-Type: application/json\" --data '{\"email\":\"demo_hub_incharge@bisman.demo\",\"password\":\"Demo@123\"}' | sed -n \"1,20p\"'",
+			"command": "bash -lc 'set -e; curl -sS -i -X POST http://localhost:5000/api/auth/login -H \"Content-Type: application/json\" --data '{\"email\":\"demo_hub_incharge@bisman.demo\",\"password\":\"Demo@123\"}' | sed -n \"1,20p\"'",
 			"group": "build"
 		},
 		{
 			"label": "restart backend (dev)",
 			"type": "shell",
-			"command": "bash -lc 'pkill -f \"node index.js\" || true; sleep 0.5; (cd my-backend && PORT=3001 NODE_ENV=development node index.js)'",
+			"command": "bash -lc 'pkill -f \"node index.js\" || true; sleep 0.5; (cd my-backend && PORT=5000 NODE_ENV=development node index.js)'",
 			"isBackground": false,
 			"group": "build"
 		},
 		{
 			"label": "curl login after start",
 			"type": "shell",
-			"command": "bash -lc 'sleep 1; curl -sS -i -X POST http://localhost:3001/api/auth/login -H \"Content-Type: application/json\" --data '{\"email\":\"demo_hub_incharge@bisman.demo\",\"password\":\"Demo@123\"}' | sed -n \"1,200p\"'",
+			"command": "bash -lc 'sleep 1; curl -sS -i -X POST http://localhost:5000/api/auth/login -H \"Content-Type: application/json\" --data '{\"email\":\"demo_hub_incharge@bisman.demo\",\"password\":\"Demo@123\"}' | sed -n \"1,200p\"'",
 			"group": "build"
 		},
 		{
 			"label": "curl login json proper",
 			"type": "shell",
-			"command": "bash -lc 'curl -sS -i -X POST http://localhost:3001/api/auth/login -H \"Content-Type: application/json\" --data \"{\\\"email\\\":\\\"demo_hub_incharge@bisman.demo\\\",\\\"password\\\":\\\"Demo@123\\\"}\" | sed -n \"1,200p\"'",
+			"command": "bash -lc 'curl -sS -i -X POST http://localhost:5000/api/auth/login -H \"Content-Type: application/json\" --data \"{\\\"email\\\":\\\"demo_hub_incharge@bisman.demo\\\",\\\"password\\\":\\\"Demo@123\\\"}\" | sed -n \"1,200p\"'",
 			"group": "build"
 		},
 		{

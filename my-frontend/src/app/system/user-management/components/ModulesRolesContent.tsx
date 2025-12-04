@@ -1,6 +1,6 @@
 'use client';
 
-// Cache bust: 2025-12-02-0225
+// Cache bust: 2025-12-03-2320
 import React, { useState, useEffect, useMemo } from 'react';
 import { FiGrid, FiUsers, FiFile, FiUserPlus } from 'react-icons/fi';
 
@@ -47,6 +47,7 @@ export default function ModulesRolesContent() {
   const [summary, setSummary] = useState<ReportSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedModuleName, setSelectedModuleName] = useState<string | null>(null);
+  const [allowedRoleIds, setAllowedRoleIds] = useState<number[]>([]); // Roles allowed by Enterprise Admin
 
   // Row color identification palette
   const ROW_COLORS = [
@@ -66,9 +67,10 @@ export default function ModulesRolesContent() {
     setError(null);
 
     try {
-      const [rolesRes, modulesRes] = await Promise.all([
+      const [rolesRes, modulesRes, allowedRolesRes] = await Promise.all([
         fetch('/api/reports/roles-users', { credentials: 'include' }),
         fetch('/api/enterprise-admin/master-modules', { credentials: 'include' }),
+        fetch('/api/admin/role-assignments', { credentials: 'include' }),
       ]);
 
       if (!rolesRes.ok) {
@@ -94,6 +96,17 @@ export default function ModulesRolesContent() {
             : [];
 
       setModules(modsList);
+
+      // Get allowed role IDs from Enterprise Admin assignments
+      const allowedData = await allowedRolesRes.json().catch(() => ({}));
+      if (allowedData.ok && Array.isArray(allowedData.assignedRoleIds)) {
+        setAllowedRoleIds(allowedData.assignedRoleIds);
+        console.log('[ModulesRoles] Allowed roles from Enterprise Admin:', allowedData.assignedRoleIds);
+      } else {
+        // If no role assignments found, default to showing all roles (backward compatibility)
+        console.log('[ModulesRoles] No role restrictions found, showing all roles');
+        setAllowedRoleIds([]);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
@@ -143,11 +156,20 @@ export default function ModulesRolesContent() {
     return keys.some(k => a.includes(k) || b.includes(k));
   };
 
+  // Filter roles: first by Enterprise Admin allowed roles, then by selected module
   const filteredRoles = useMemo(() => {
-    if (!selectedModuleName) return reportData;
+    // First, filter by allowed roles from Enterprise Admin
+    // If allowedRoleIds is empty, show all roles (backward compatibility)
+    let roles = reportData;
+    if (allowedRoleIds.length > 0) {
+      roles = reportData.filter(r => allowedRoleIds.includes(r.roleId));
+    }
+    
+    // Then filter by selected module
+    if (!selectedModuleName) return roles;
     const mod = filteredModules.find(mm => mm.module_name === selectedModuleName) || null;
-    return reportData.filter(r => roleMatchesModule(r, mod));
-  }, [reportData, selectedModuleName, filteredModules]);
+    return roles.filter(r => roleMatchesModule(r, mod));
+  }, [reportData, selectedModuleName, filteredModules, allowedRoleIds]);
 
   // Helper: count pages for module
   const getModulePageCount = (m: Module): number => {
@@ -198,7 +220,9 @@ export default function ModulesRolesContent() {
               </div>
               <div>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Total Roles</p>
-                <p className="text-2xl font-semibold dark:text-white">{summary.totalRoles}</p>
+                <p className="text-2xl font-semibold dark:text-white">
+                  {allowedRoleIds.length > 0 ? allowedRoleIds.length : summary.totalRoles}
+                </p>
               </div>
             </div>
           </div>

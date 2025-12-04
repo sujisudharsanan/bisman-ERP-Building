@@ -71,7 +71,7 @@ class SuperAdminService {
         data: {
           username: userData.username,
           email: userData.email,
-          password: hashedPassword,
+          password_hash: hashedPassword,
           role: userData.role || 'USER',
         },
         select: {
@@ -100,7 +100,7 @@ class SuperAdminService {
       }
 
       if (userData.password) {
-        updateData.password = await bcrypt.hash(userData.password, 10)
+        updateData.password_hash = await bcrypt.hash(userData.password, 10)
       }
 
       const updatedUser = await prisma.user.update({

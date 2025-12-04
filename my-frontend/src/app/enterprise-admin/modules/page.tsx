@@ -2,6 +2,7 @@
 
 import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { FiUsers, FiPackage, FiGrid, FiCheckCircle, FiUnlock, FiExternalLink, FiShield } from "react-icons/fi";
+import { useAuth } from "@/contexts/AuthContext";
 
 type Module = {
   id: number | string;
@@ -12,6 +13,18 @@ type Module = {
   alwaysAccessible?: boolean; // Modules accessible by all users (common, chat)
   pages?: Array<{ id: string; name?: string; path: string }>;
 };
+
+// Client type for SUPER_ADMIN managing their clients
+type Client = {
+  id: string;
+  name: string;
+  email?: string;
+  client_code?: string;
+  productType?: string;
+  status?: string;
+  is_active?: boolean;
+};
+
 type SuperAdmin = {
   id: number;
   name?: string;
@@ -136,14 +149,19 @@ function isModuleAssigned(m: Module, rawAssigned: any[]): boolean {
 }
 
 export default function Page() {
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role?.toUpperCase() === 'SUPER_ADMIN' || user?.userType === 'SUPER_ADMIN';
+  
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [superAdmins, setSuperAdmins] = useState<SuperAdmin[]>([]);
+  const [clients, setClients] = useState<Client[]>([]); // Clients for SUPER_ADMIN
   const [registry, setRegistry] = useState<Registry | null>(null);
   const [allRoles, setAllRoles] = useState<Role[]>([]); // All available roles from API
   const [category, setCategory] = useState<string | null>("all"); // Default to show all modules
   const [selectedAdminId, setSelectedAdminId] = useState<number | null>(null);
+  const [selectedClientId, setSelectedClientId] = useState<string | null>(null); // Selected client for SUPER_ADMIN
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null); // Selected role
   const [selectedModuleId, setSelectedModuleId] = useState<number | null>(null);
   const [selectedModuleKey, setSelectedModuleKey] = useState<string | null>(null);
@@ -155,52 +173,93 @@ export default function Page() {
   const [isRoleAssignMode, setIsRoleAssignMode] = useState(false); // Toggle for role assignment mode
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [bottomView, setBottomView] = useState<'roles' | 'modules'>('modules'); // What to show in bottom section
-  const [assignedRoleIds, setAssignedRoleIds] = useState<number[]>([]); // Roles assigned to Super Admin
+  const [assignedRoleIds, setAssignedRoleIds] = useState<number[]>([]); // Roles assigned to selected Super Admin
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedRef = useRef<string>(''); // Track last saved state to avoid duplicate saves
   const isInitialLoadRef = useRef<boolean>(true); // Flag to skip auto-save on initial page selection
   const initialPageIdsRef = useRef<string[]>([]); // Track initial pages loaded for a module to detect changes
   const isRolesInitializedRef = useRef<boolean>(false); // Flag to prevent saving on initial load
   const rolesSaveTimerRef = useRef<NodeJS.Timeout | null>(null); // Debounce timer for role saves
+  const lastLoadedAdminIdRef = useRef<number | null>(null); // Track which admin's roles we last loaded
 
-  // Save assigned role IDs to database whenever they change (debounced)
+  // Load role assignments when a Super Admin is selected
   useEffect(() => {
-    if (assignedRoleIds.length > 0 && isRolesInitializedRef.current) {
-      // Clear existing timer
-      if (rolesSaveTimerRef.current) {
-        clearTimeout(rolesSaveTimerRef.current);
-      }
-      
-      // Debounce save to database
-      rolesSaveTimerRef.current = setTimeout(async () => {
-        try {
-          console.log('💾 Saving assigned roles to database:', assignedRoleIds.length);
-          const response = await fetch('/api/admin/role-assignments', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            credentials: 'include',
-            body: JSON.stringify({ roleIds: assignedRoleIds })
-          });
-          
-          if (response.ok) {
-            console.log('✅ Assigned roles saved to database');
-          } else {
-            console.error('❌ Failed to save roles to database, falling back to localStorage');
-            // Fallback to localStorage
-            localStorage.setItem('enterprise-admin-assigned-roles', JSON.stringify(assignedRoleIds));
-          }
-        } catch (error) {
-          console.error('❌ Error saving roles:', error);
-          // Fallback to localStorage
-          localStorage.setItem('enterprise-admin-assigned-roles', JSON.stringify(assignedRoleIds));
-        }
-      }, 500); // 500ms debounce
+    if (!selectedAdminId) {
+      setAssignedRoleIds([]);
+      isRolesInitializedRef.current = false;
+      lastLoadedAdminIdRef.current = null;
+      return;
     }
     
-    // Mark as initialized after first render with roles
-    if (assignedRoleIds.length > 0) {
-      isRolesInitializedRef.current = true;
+    // Don't reload if we already loaded for this admin
+    if (lastLoadedAdminIdRef.current === selectedAdminId) {
+      return;
     }
+    
+    const loadRolesForAdmin = async () => {
+      try {
+        console.log('� Loading roles for Super Admin:', selectedAdminId);
+        const response = await fetch(`/api/enterprise-admin/super-admins/${selectedAdminId}/roles`, {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.ok && Array.isArray(data.roleIds)) {
+            setAssignedRoleIds(data.roleIds);
+            console.log('✅ Loaded', data.roleIds.length, 'roles for Super Admin');
+          } else {
+            // No roles assigned yet - start with empty
+            setAssignedRoleIds([]);
+            console.log('📋 No roles assigned to Super Admin yet');
+          }
+        } else {
+          console.warn('⚠️ Failed to load roles, starting with empty');
+          setAssignedRoleIds([]);
+        }
+        
+        lastLoadedAdminIdRef.current = selectedAdminId;
+        isRolesInitializedRef.current = true;
+      } catch (error) {
+        console.error('❌ Error loading roles:', error);
+        setAssignedRoleIds([]);
+      }
+    };
+    
+    loadRolesForAdmin();
+  }, [selectedAdminId]);
+
+  // Save assigned role IDs to database for the selected Super Admin (debounced)
+  useEffect(() => {
+    if (!selectedAdminId || !isRolesInitializedRef.current) {
+      return;
+    }
+    
+    // Clear existing timer
+    if (rolesSaveTimerRef.current) {
+      clearTimeout(rolesSaveTimerRef.current);
+    }
+    
+    // Debounce save to database
+    rolesSaveTimerRef.current = setTimeout(async () => {
+      try {
+        console.log('💾 Saving', assignedRoleIds.length, 'roles to Super Admin:', selectedAdminId);
+        const response = await fetch(`/api/enterprise-admin/super-admins/${selectedAdminId}/assign-roles`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ roleIds: assignedRoleIds })
+        });
+        
+        if (response.ok) {
+          console.log('✅ Roles saved to Super Admin');
+        } else {
+          console.error('❌ Failed to save roles to Super Admin');
+        }
+      } catch (error) {
+        console.error('❌ Error saving roles:', error);
+      }
+    }, 500); // 500ms debounce
     
     // Cleanup timer on unmount
     return () => {
@@ -208,7 +267,7 @@ export default function Page() {
         clearTimeout(rolesSaveTimerRef.current);
       }
     };
-  }, [assignedRoleIds]);
+  }, [assignedRoleIds, selectedAdminId]);
 
   // Compute whether there are unsaved changes by comparing current selection with initial state
   const hasChanges = useMemo(() => {
@@ -316,14 +375,34 @@ export default function Page() {
       setLoading(true);
       setError(null);
       try {
-        const [modsRes, usersRes, regRes, rolesRes] = await Promise.all([
+        // Load different data based on user role
+        const [modsRes, usersRes, regRes, rolesRes, clientsRes] = await Promise.all([
           fetch("/api/enterprise-admin/master-modules", { credentials: "include" }),
           fetch("/api/enterprise-admin/super-admins", { credentials: "include" }),
           fetch("/layout_registry.json").catch(() => new Response("{}")),
           fetch("/api/reports/roles-users", { credentials: "include" }).catch(() => new Response("{}")),
+          // Load clients for SUPER_ADMIN
+          fetch("/api/system/clients", { credentials: "include" }).catch(() => new Response("{}")),
         ]);
         const modsJson = await modsRes.json().catch(() => ({}));
         const rolesJson = await rolesRes.json().catch(() => ({}));
+        
+        // Load clients for SUPER_ADMIN
+        const clientsJson = await clientsRes.json().catch(() => ({}));
+        if (clientsJson.success && Array.isArray(clientsJson.data)) {
+          const clientsList = clientsJson.data.map((c: any) => ({
+            id: c.id,
+            name: c.name || c.legal_name || c.trade_name || 'Unnamed Client',
+            email: c.email,
+            client_code: c.client_code,
+            productType: c.productType,
+            status: c.status,
+            is_active: c.is_active !== false,
+          })) as Client[];
+          console.log('📋 Loaded clients:', clientsList.length);
+          setClients(clientsList);
+        }
+        
         let usersJson: any = {};
         if (usersRes.ok) {
           usersJson = await usersRes.json().catch(() => ({}));
@@ -334,7 +413,10 @@ export default function Page() {
             usersJson = await alt.json().catch(() => ({}));
             setAuthHint('Super Admins loaded via fallback. For strict mode, ensure your role is ENTERPRISE_ADMIN.');
           } else if (usersRes.status === 403 || usersRes.status === 401) {
-            setAuthHint('Access to Super Admins is forbidden. Ensure you are logged in as ENTERPRISE_ADMIN.');
+            // Don't show error hint for SUPER_ADMIN - they manage clients, not super admins
+            if (!isSuperAdmin) {
+              setAuthHint('Access to Super Admins is forbidden. Ensure you are logged in as ENTERPRISE_ADMIN.');
+            }
           }
         }
   const registryData = await regRes.json().catch(() => ({}));
@@ -355,57 +437,8 @@ export default function Page() {
         console.log('📋 Loaded roles:', rolesData.length, rolesData);
         setAllRoles(rolesData);
         
-        // Load assigned role IDs from database API
-        try {
-          const roleAssignRes = await fetch('/api/admin/role-assignments', { credentials: 'include' });
-          if (roleAssignRes.ok) {
-            const roleAssignJson = await roleAssignRes.json();
-            if (roleAssignJson.ok && Array.isArray(roleAssignJson.assignedRoleIds)) {
-              // Filter to only include IDs that exist in current roles
-              const validIds = roleAssignJson.assignedRoleIds.filter((id: number) => 
-                rolesData.some(r => r.id === id)
-              );
-              if (validIds.length > 0) {
-                setAssignedRoleIds(validIds);
-                console.log('📋 Loaded assigned roles from database:', validIds.length);
-              } else {
-                // No assignments in DB - default to all roles
-                const allIds = rolesData.map(r => r.id);
-                setAssignedRoleIds(allIds);
-                // Save to database
-                await fetch('/api/admin/role-assignments', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  credentials: 'include',
-                  body: JSON.stringify({ roleIds: allIds })
-                });
-                console.log('📋 Initialized all roles as assigned in database:', allIds.length);
-              }
-            } else {
-              // API returned but no data - default to all roles
-              const allIds = rolesData.map(r => r.id);
-              setAssignedRoleIds(allIds);
-            }
-          } else {
-            // API failed - fallback to localStorage or all roles
-            console.log('⚠️ Role assignments API not available, using fallback');
-            const storageKey = 'enterprise-admin-assigned-roles';
-            const savedRoleIds = localStorage.getItem(storageKey);
-            if (savedRoleIds) {
-              const parsed = JSON.parse(savedRoleIds);
-              if (Array.isArray(parsed)) {
-                const validIds = parsed.filter((id: number) => rolesData.some(r => r.id === id));
-                setAssignedRoleIds(validIds.length > 0 ? validIds : rolesData.map(r => r.id));
-              }
-            } else {
-              setAssignedRoleIds(rolesData.map(r => r.id));
-            }
-          }
-        } catch (roleAssignError) {
-          console.error('Failed to load role assignments:', roleAssignError);
-          // Fallback to all roles
-          setAssignedRoleIds(rolesData.map(r => r.id));
-        }
+        // Note: Role assignments are now loaded per Super Admin when one is selected
+        // See the useEffect with selectedAdminId dependency
 
         let mods = arr<any>(modsJson, "modules").map((m) => ({
           id: Number.isFinite(Number(m.id)) ? Number(m.id) : String(m.id ?? m.module_name ?? ""),
@@ -1151,40 +1184,82 @@ export default function Page() {
           </div>
         </div>
 
-        {/* 2. Super Admins */}
+        {/* 2. Users column - Clients for SUPER_ADMIN, Super Admins for ENTERPRISE_ADMIN */}
         <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
           <div className="text-sm font-semibold mb-2 flex items-center justify-between">
-            <span>Super Admins</span>
-            <span className="text-xs font-normal text-gray-500">{superAdmins.length}</span>
+            <span>{isSuperAdmin ? 'Clients' : 'Super Admins'}</span>
+            <span className="text-xs font-normal text-gray-500">
+              {isSuperAdmin ? clients.length : superAdmins.length}
+            </span>
           </div>
           <div className="space-y-1 max-h-[520px] overflow-y-auto">
-            {filteredAdmins.length === 0 && (
-              <div className="text-xs text-gray-500">No Super Admins</div>
+            {isSuperAdmin ? (
+              /* Show Clients for SUPER_ADMIN */
+              <>
+                {clients.length === 0 && (
+                  <div className="text-xs text-gray-500">No Clients found</div>
+                )}
+                {clients.map((c) => (
+                  <button
+                    key={c.id}
+                    onClick={() => setSelectedClientId(c.id)}
+                    className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition ${
+                      selectedClientId === c.id
+                        ? "border-blue-500 bg-blue-100 dark:bg-blue-900/40 ring-2 ring-blue-300 shadow-sm"
+                        : "border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:bg-blue-50/50"
+                    }`}
+                    title={c.email || c.client_code}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        {selectedClientId === c.id && <span className="text-blue-600 font-bold">✓</span>}
+                        <span className={`truncate font-medium ${selectedClientId === c.id ? 'text-blue-700 dark:text-blue-300' : ''}`}>
+                          {c.name}
+                        </span>
+                      </div>
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${
+                        c.is_active 
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                          : 'bg-gray-100 text-gray-500 dark:bg-gray-800'
+                      }`}>
+                        {c.status || (c.is_active ? 'Active' : 'Inactive')}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </>
+            ) : (
+              /* Show Super Admins for ENTERPRISE_ADMIN */
+              <>
+                {filteredAdmins.length === 0 && (
+                  <div className="text-xs text-gray-500">No Super Admins</div>
+                )}
+                {filteredAdmins.map((a) => (
+                  <button
+                    key={a.id}
+                    onClick={() => setSelectedAdminId(a.id)}
+                    className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition ${
+                      selectedAdminId === a.id
+                        ? "border-blue-500 bg-blue-100 dark:bg-blue-900/40 ring-2 ring-blue-300 shadow-sm"
+                        : "border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:bg-blue-50/50"
+                    }`}
+                    title={a.email}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        {selectedAdminId === a.id && <span className="text-blue-600 font-bold">✓</span>}
+                        <span className={`truncate font-medium ${selectedAdminId === a.id ? 'text-blue-700 dark:text-blue-300' : ''}`}>
+                          {a.name || a.email || String(a.id)}
+                        </span>
+                      </div>
+                      <span className="text-[10px] text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
+                        {a.role || "SUPER_ADMIN"}
+                      </span>
+                    </div>
+                  </button>
+                ))}
+              </>
             )}
-            {filteredAdmins.map((a) => (
-              <button
-                key={a.id}
-                onClick={() => setSelectedAdminId(a.id)}
-                className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition ${
-                  selectedAdminId === a.id
-                    ? "border-blue-500 bg-blue-100 dark:bg-blue-900/40 ring-2 ring-blue-300 shadow-sm"
-                    : "border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:bg-blue-50/50"
-                }`}
-                title={a.email}
-              >
-                <div className="flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2">
-                    {selectedAdminId === a.id && <span className="text-blue-600 font-bold">✓</span>}
-                    <span className={`truncate font-medium ${selectedAdminId === a.id ? 'text-blue-700 dark:text-blue-300' : ''}`}>
-                      {a.name || a.email || String(a.id)}
-                    </span>
-                  </div>
-                  <span className="text-[10px] text-gray-500 bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded">
-                    {a.role || "SUPER_ADMIN"}
-                  </span>
-                </div>
-              </button>
-            ))}
           </div>
         </div>
 
@@ -1206,6 +1281,14 @@ export default function Page() {
           <div className="space-y-1 max-h-[520px] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
             {/* Top section always shows only assigned/allocated roles */}
             {(() => {
+              if (!selectedAdminId) {
+                return (
+                  <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
+                    ⚠️ Select a Super Admin to view/manage their roles
+                  </div>
+                );
+              }
+              
               const rolesToShow = rolesForSelectedAdmin.filter(r => assignedRoleIds.includes(r.id));
               
               if (rolesToShow.length === 0) {

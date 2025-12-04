@@ -97,6 +97,8 @@ export default function EnterpriseAdminSidebar({ className = '' }: EnterpriseAdm
   { id: 'system-health', label: 'System Health', icon: FiActivity, href: '/enterprise-admin/monitoring/system-health' },
   { id: 'performance', label: 'Performance Metrics', icon: FiTrendingUp, href: '/enterprise-admin/monitoring/performance' },
   { id: 'database-health', label: 'Database Health', icon: FiDatabase, href: '/enterprise-admin/monitoring/database' },
+  // Security Operations Center
+  { id: 'security-ops', label: '🛡️ Security Operations', icon: FiShield, href: '/enterprise-admin/security-operations' },
   ];
 
   const isActive = (href: string) => {

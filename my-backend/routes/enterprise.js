@@ -343,7 +343,7 @@ router.patch('/super-admins/:id', async (req, res) => {
     if (name) updateData.name = name;
     if (email) updateData.email = email;
     if (is_active !== undefined) updateData.is_active = is_active;
-    if (password) updateData.password = bcrypt.hashSync(password, 10);
+    if (password) updateData.password_hash = bcrypt.hashSync(password, 10);
 
     const superAdmin = await prisma.superAdmin.update({
       where: { id: parseInt(req.params.id) },
@@ -362,7 +362,7 @@ router.patch('/super-admins/:id', async (req, res) => {
       message: 'Super admin updated successfully',
       superAdmin: {
         ...superAdmin,
-        password: undefined
+        password_hash: undefined
       }
     });
   } catch (error) {

@@ -5,8 +5,18 @@ import SuperAdminShell from '@/components/layouts/SuperAdminShell';
 import ClientManagementTabs from '@/components/common/ClientManagementTabs';
 import { FiGrid, FiUsers, FiFile, FiUserPlus } from 'react-icons/fi';
 import { useToast } from '@/components/ui/toast';
+import { useAuth } from '@/contexts/AuthContext';
 
 export const dynamic = 'force-dynamic';
+
+// Client type for SUPER_ADMIN view
+type Client = {
+  id: number;
+  name: string;
+  email: string;
+  status: string;
+  createdAt: string;
+};
 
 type Module = {
   id: number | string;
@@ -46,9 +56,14 @@ type RoleReport = {
 
 export default function RolesUsersReportPage() {
   const { toast } = useToast();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.userType === 'SUPER_ADMIN';
+  
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<RoleReport[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
+  const [clients, setClients] = useState<Client[]>([]);
+  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
   const [summary, setSummary] = useState<ReportSummary | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedModuleName, setSelectedModuleName] = useState<string | null>(null);
@@ -113,10 +128,19 @@ export default function RolesUsersReportPage() {
     setError(null);
 
     try {
-      const [rolesRes, modulesRes] = await Promise.all([
+      const fetchPromises: Promise<Response>[] = [
         fetch('/api/reports/roles-users', { credentials: 'include' }),
         fetch('/api/enterprise-admin/master-modules', { credentials: 'include' }),
-      ]);
+      ];
+      
+      // For SUPER_ADMIN, also load clients
+      if (isSuperAdmin) {
+        fetchPromises.push(fetch('/api/system/clients', { credentials: 'include' }));
+      }
+
+      const responses = await Promise.all(fetchPromises);
+      const [rolesRes, modulesRes] = responses;
+      const clientsRes = responses[2];
 
       if (!rolesRes.ok) {
         throw new Error(`Failed to load report: ${rolesRes.statusText}`);
@@ -141,6 +165,19 @@ export default function RolesUsersReportPage() {
             : [];
 
       setModules(modsList);
+      
+      // Load clients for SUPER_ADMIN
+      if (isSuperAdmin && clientsRes) {
+        const clientsData = await clientsRes.json().catch(() => ({}));
+        const clientsList: Client[] = Array.isArray(clientsData.data)
+          ? clientsData.data
+          : Array.isArray(clientsData.clients)
+            ? clientsData.clients
+            : Array.isArray(clientsData)
+              ? clientsData
+              : [];
+        setClients(clientsList);
+      }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
@@ -152,7 +189,7 @@ export default function RolesUsersReportPage() {
 
   useEffect(() => {
     loadReport();
-  }, []);
+  }, [isSuperAdmin]);
 
 
   const filteredModules = useMemo(() => {
@@ -452,19 +489,10 @@ export default function RolesUsersReportPage() {
           <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-2 border-l-4 border-l-green-400">
             <div className="flex items-center justify-between">
               <div>
-                <div className="text-xs text-green-600 dark:text-green-400">Total Admins</div>
-                <div className="text-lg font-bold text-green-900 dark:text-green-100">{allUsers.length}</div>
+                <div className="text-xs text-green-600 dark:text-green-400">{isSuperAdmin ? 'Total Clients' : 'Total Admins'}</div>
+                <div className="text-lg font-bold text-green-900 dark:text-green-100">{isSuperAdmin ? clients.length : allUsers.length}</div>
               </div>
               <FiUsers className="w-4 h-4 text-green-500" />
-            </div>
-          </div>
-          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md p-2 border-l-4 border-l-purple-400">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs text-purple-600 dark:text-purple-400">Total Modules</div>
-                <div className="text-lg font-bold text-purple-900 dark:text-purple-100">{filteredModules.length}</div>
-              </div>
-              <FiGrid className="w-4 h-4 text-purple-500" />
             </div>
           </div>
           <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-2 border-l-4 border-l-blue-400">
@@ -474,6 +502,15 @@ export default function RolesUsersReportPage() {
                 <div className="text-lg font-bold text-blue-900 dark:text-blue-100">{summary?.totalRoles || 0}</div>
               </div>
               <FiFile className="w-4 h-4 text-blue-500" />
+            </div>
+          </div>
+          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md p-2 border-l-4 border-l-purple-400">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs text-purple-600 dark:text-purple-400">Total Modules</div>
+                <div className="text-lg font-bold text-purple-900 dark:text-purple-100">{filteredModules.length}</div>
+              </div>
+              <FiGrid className="w-4 h-4 text-purple-500" />
             </div>
           </div>
           <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-md p-2 border-l-4 border-l-orange-400">
@@ -507,40 +544,97 @@ export default function RolesUsersReportPage() {
           </div>
         )}
 
-        {/* Four Column Layout: Users | Modules | Roles | Pages */}
+        {/* Four Column Layout: Clients/Users | Modules | Roles | Pages */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {/* 1. Users - Shows admin users only */}
+          {/* 1. Clients (for SUPER_ADMIN) or Users */}
           <div className="rounded-lg border bg-white dark:bg-gray-900 p-3">
             <div className="space-y-1 max-h-[520px] overflow-y-auto">
-              {allUsers.length === 0 && <div className="text-xs text-gray-500">No users found</div>}
-              {allUsers.map((user, idx) => (
-                <button
-                  type="button"
-                  onClick={() => {
-                    setSelectedUserId(user.userId);
-                    setSelectedRoleId(user.roleId);
-                  }}
-                  key={user.userId}
-                  className={`text-left w-full relative pl-2 rounded-md border p-3 hover:bg-gray-50 dark:hover:bg-gray-800 ${selectedUserId === user.userId ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700'}`}
-                >
-                  <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${colorForIndex(idx)}`} />
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{user.username}</div>
-                      <div className="text-[10px] text-blue-600 dark:text-blue-400 truncate mt-0.5">{user.email}</div>
-                      <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 mr-1">
-                          {user.roleDisplayName}
-                        </span>
+              {isSuperAdmin ? (
+                <>
+                  {clients.length === 0 && <div className="text-xs text-gray-500">No clients found</div>}
+                  {clients.map((client, idx) => (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedClientId(client.id);
+                      }}
+                      key={client.id}
+                      className={`text-left w-full relative pl-2 rounded-md border p-3 hover:bg-gray-50 dark:hover:bg-gray-800 ${selectedClientId === client.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700'}`}
+                    >
+                      <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${colorForIndex(idx)}`} />
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{client.name}</div>
+                          <div className="text-[10px] text-blue-600 dark:text-blue-400 truncate mt-0.5">{client.email}</div>
+                          <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded mr-1 ${client.status === 'ACTIVE' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300'}`}>
+                              {client.status}
+                            </span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                  </div>
-                </button>
-              ))}
+                    </button>
+                  ))}
+                </>
+              ) : (
+                <>
+                  {allUsers.length === 0 && <div className="text-xs text-gray-500">No users found</div>}
+                  {allUsers.map((user, idx) => (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSelectedUserId(user.userId);
+                        setSelectedRoleId(user.roleId);
+                      }}
+                      key={user.userId}
+                      className={`text-left w-full relative pl-2 rounded-md border p-3 hover:bg-gray-50 dark:hover:bg-gray-800 ${selectedUserId === user.userId ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700'}`}
+                    >
+                      <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${colorForIndex(idx)}`} />
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{user.username}</div>
+                          <div className="text-[10px] text-blue-600 dark:text-blue-400 truncate mt-0.5">{user.email}</div>
+                          <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 mr-1">
+                              {user.roleDisplayName}
+                            </span>
+                          </div>
+                        </div>
+                      </div>
+                    </button>
+                  ))}
+                </>
+              )}
             </div>
           </div>
 
-          {/* 2. Modules */}
+          {/* 2. Roles */}
+          <div className="rounded-lg border bg-white dark:bg-gray-900 p-3">
+            <div className="space-y-1 max-h-[520px] overflow-y-auto">
+              {filteredRoles.length === 0 && <div className="text-xs text-gray-500">No Roles</div>}
+              {filteredRoles.map((r, idx) => {
+                const isSelected = selectedRoleId === r.roleId;
+                const barColor = colorForIndex(idx);
+                return (
+                  <button
+                    key={r.roleId}
+                    onClick={() => { setSelectedRoleId(r.roleId); }}
+                    className={`relative pl-2 w-full text-left rounded-md border px-3 py-2 text-xs transition ${isSelected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'}`}
+                    title={r.roleName}
+                  >
+                    <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${barColor}`} />
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate font-medium">{r.roleDisplayName}</span>
+                      <span className={`inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full text-xs font-semibold ${r.userCount > 0 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>{r.userCount}</span>
+                    </div>
+                    <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">{r.roleName}</div>
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* 3. Modules */}
           <div className="rounded-lg border bg-white dark:bg-gray-900 p-3">
             <div className="space-y-1 max-h-[520px] overflow-y-auto">
               {filteredModules.length === 0 && <div className="text-xs text-gray-500">No Modules</div>}
@@ -583,32 +677,6 @@ export default function RolesUsersReportPage() {
                         </span>
                       </div>
                     </div>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 3. Roles */}
-          <div className="rounded-lg border bg-white dark:bg-gray-900 p-3">
-            <div className="space-y-1 max-h-[520px] overflow-y-auto">
-              {filteredRoles.length === 0 && <div className="text-xs text-gray-500">No Roles</div>}
-              {filteredRoles.map((r, idx) => {
-                const isSelected = selectedRoleId === r.roleId;
-                const barColor = colorForIndex(idx);
-                return (
-                  <button
-                    key={r.roleId}
-                    onClick={() => { setSelectedRoleId(r.roleId); }}
-                    className={`relative pl-2 w-full text-left rounded-md border px-3 py-2 text-xs transition ${isSelected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'}`}
-                    title={r.roleName}
-                  >
-                    <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${barColor}`} />
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="truncate font-medium">{r.roleDisplayName}</span>
-                      <span className={`inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full text-xs font-semibold ${r.userCount > 0 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>{r.userCount}</span>
-                    </div>
-                    <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">{r.roleName}</div>
                   </button>
                 );
               })}
