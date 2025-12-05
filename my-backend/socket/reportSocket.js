@@ -12,6 +12,15 @@
 
 const jwt = require('jsonwebtoken');
 
+// Try to load monitoring service for system-health reports
+let monitoringService = null;
+try {
+  const { getMonitoringService } = require('../services/monitoringService');
+  monitoringService = getMonitoringService();
+} catch (e) {
+  console.warn('[ReportSocket] Monitoring service not available:', e.message);
+}
+
 // Store active subscriptions
 const reportSubscriptions = new Map();
 
@@ -389,6 +398,25 @@ async function getReportData(reportType, filters, organizationId) {
       };
       
     case 'system-health':
+      // Use real monitoring data if available
+      if (monitoringService) {
+        try {
+          const fullSummary = monitoringService.getFullSummary();
+          return {
+            system: fullSummary.system,
+            db: fullSummary.database,
+            http: fullSummary.http,
+            sentry: fullSummary.sentry,
+            backup: fullSummary.backup,
+            tenants: fullSummary.tenants,
+            thresholds: fullSummary.thresholds,
+            timestamp: fullSummary.timestamp,
+          };
+        } catch (e) {
+          console.warn('[ReportSocket] Failed to get monitoring data:', e.message);
+        }
+      }
+      // Fallback to simulated data
       return {
         status: 'healthy',
         uptime: process.uptime(),

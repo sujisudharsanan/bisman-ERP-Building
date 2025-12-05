@@ -4,6 +4,8 @@
  * BISMAN ERP - Live Monitoring Dashboard
  * Enterprise Admin - Real-time System & Tenant Metrics
  * 
+ * Now with Socket.IO for true real-time updates!
+ * 
  * Displays:
  * - System health status
  * - Database metrics
@@ -14,6 +16,8 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { useReportContext } from '@/contexts/ReportContext';
 import {
   Activity,
   AlertTriangle,
@@ -33,6 +37,8 @@ import {
   Zap,
   BarChart3,
   Timer,
+  Wifi,
+  WifiOff,
 } from 'lucide-react';
 
 // ============================================================================
@@ -305,6 +311,10 @@ export default function LiveMonitoringDashboard() {
   const [autoRefresh, setAutoRefresh] = useState(true);
   const [refreshInterval, setRefreshInterval] = useState(10000); // 10 seconds
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [updateFlash, setUpdateFlash] = useState(false);
+
+  // Socket.IO integration for real-time updates
+  const { connected, connecting, subscribe, unsubscribe, onReportUpdate } = useReportContext();
 
   // Get backend URL from environment or use relative path
   const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
@@ -342,18 +352,58 @@ export default function LiveMonitoringDashboard() {
     }
   }, [API_BASE_URL]);
 
-  // Initial fetch and auto-refresh
+  // Subscribe to Socket.IO updates for system-health
+  useEffect(() => {
+    if (connected) {
+      subscribe('system-health');
+      
+      const unsubscribeCallback = onReportUpdate('system-health', (socketData) => {
+        if (socketData) {
+          // Merge socket data with existing data (socketData comes from socket with db/database naming)
+          const incoming = socketData as Record<string, unknown>;
+          setData(prev => {
+            if (!prev) return prev;
+            return {
+              ...prev,
+              system: (incoming.system as typeof prev.system) || prev.system,
+              database: (incoming.db as typeof prev.database) || (incoming.database as typeof prev.database) || prev.database,
+              http: (incoming.http as typeof prev.http) || prev.http,
+              sentry: (incoming.sentry as typeof prev.sentry) || prev.sentry,
+              backup: (incoming.backup as typeof prev.backup) || prev.backup,
+              tenants: (incoming.tenants as typeof prev.tenants) || prev.tenants,
+              thresholds: (incoming.thresholds as typeof prev.thresholds) || prev.thresholds,
+              timestamp: (incoming.timestamp as number) || Date.now(),
+            };
+          });
+          setLastRefresh(new Date());
+          // Flash effect to indicate real-time update
+          setUpdateFlash(true);
+          setTimeout(() => setUpdateFlash(false), 500);
+        }
+      });
+
+      return () => {
+        unsubscribe('system-health');
+        unsubscribeCallback();
+      };
+    }
+  }, [connected, subscribe, unsubscribe, onReportUpdate]);
+
+  // Initial fetch
   useEffect(() => {
     fetchMetrics();
   }, [fetchMetrics]);
 
-  // Auto-refresh interval
+  // Fallback polling when socket not connected or as backup
   useEffect(() => {
+    // Only use polling if socket is NOT connected, or as a slower backup
     if (!autoRefresh) return;
     
-    const interval = setInterval(fetchMetrics, refreshInterval);
-    return () => clearInterval(interval);
-  }, [fetchMetrics, autoRefresh, refreshInterval]);
+    // If connected via socket, use longer polling interval as backup
+    const interval = connected ? 60000 : refreshInterval;
+    const timer = setInterval(fetchMetrics, interval);
+    return () => clearInterval(timer);
+  }, [fetchMetrics, autoRefresh, refreshInterval, connected]);
 
   if (loading && !data) {
     return (
@@ -391,12 +441,40 @@ export default function LiveMonitoringDashboard() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-900 text-white p-6">
+    <div className={`min-h-screen bg-slate-900 text-white p-6 transition-colors duration-300 ${updateFlash ? 'bg-slate-800' : ''}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div>
           <div className="flex items-center gap-3">
             <h1 className="text-2xl font-bold">Live Monitoring Dashboard</h1>
+            {/* Socket.IO Connection Status */}
+            <div className="flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium"
+              style={{
+                backgroundColor: connected ? 'rgba(34, 197, 94, 0.2)' : connecting ? 'rgba(234, 179, 8, 0.2)' : 'rgba(239, 68, 68, 0.2)',
+                color: connected ? '#22c55e' : connecting ? '#eab308' : '#ef4444'
+              }}
+            >
+              {connected ? (
+                <>
+                  <Wifi className="w-3 h-3" />
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                  </span>
+                  Live
+                </>
+              ) : connecting ? (
+                <>
+                  <RefreshCw className="w-3 h-3 animate-spin" />
+                  Connecting...
+                </>
+              ) : (
+                <>
+                  <WifiOff className="w-3 h-3" />
+                  Polling
+                </>
+              )}
+            </div>
             {isRefreshing && (
               <span className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-500/20 text-blue-400 text-xs rounded-full">
                 <RefreshCw className="w-3 h-3 animate-spin" />
@@ -407,6 +485,7 @@ export default function LiveMonitoringDashboard() {
           <p className="text-slate-400 text-sm">
             Last updated: {lastRefresh.toLocaleTimeString()} 
             {autoRefresh && <span className="ml-2 text-green-400">• Auto-refresh ON</span>}
+            {connected && <span className="ml-2 text-cyan-400">• Socket.IO Connected</span>}
           </p>
         </div>
         <div className="flex items-center gap-4">
