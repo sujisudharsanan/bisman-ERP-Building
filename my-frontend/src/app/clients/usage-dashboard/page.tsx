@@ -219,7 +219,7 @@ function QuotaProgressBar({
   used: number;
   limit: number;
   unit: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   formatValue?: (n: number) => string;
 }) {
   const percentage = Math.min((used / limit) * 100, 100);
