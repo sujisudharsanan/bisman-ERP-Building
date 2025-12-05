@@ -374,9 +374,9 @@ const OverviewSection: React.FC<{
 }> = ({ scanResult, cacheHealth, rateLimitStats }) => {
   const totalBlocked = rateLimitStats.reduce((sum, s) => sum + s.blocked, 0);
   const issuesCount = scanResult ? (
-    scanResult.unprotectedRoutes.filter(r => r.risk !== 'LOW').length +
-    scanResult.rawSqlUsage.length +
-    scanResult.auditAnalysis.filter(a => a.risk !== 'LOW').length
+    (scanResult.unprotectedRoutes || []).filter(r => r.risk !== 'LOW').length +
+    (scanResult.rawSqlUsage || []).length +
+    (scanResult.auditAnalysis || []).filter(a => a.risk !== 'LOW').length
   ) : 0;
 
   return (
@@ -435,8 +435,8 @@ const SecurityScanSection: React.FC<{
         <CollapsibleSection
           title="Route Security Analysis"
           icon={<Route className="w-4 h-4 text-blue-500" />}
-          badge={scanResult.unprotectedRoutes.filter(r => r.risk !== 'LOW').length}
-          badgeColor={scanResult.unprotectedRoutes.some(r => r.risk === 'HIGH' || r.risk === 'CRITICAL') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}
+          badge={(scanResult.unprotectedRoutes || []).filter(r => r.risk !== 'LOW').length}
+          badgeColor={(scanResult.unprotectedRoutes || []).some(r => r.risk === 'HIGH' || r.risk === 'CRITICAL') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}
           defaultOpen
         >
           <div className="overflow-x-auto">
@@ -452,7 +452,7 @@ const SecurityScanSection: React.FC<{
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {scanResult.unprotectedRoutes.map((route, idx) => (
+                {(scanResult.unprotectedRoutes || []).map((route, idx) => (
                   <tr key={idx} className="hover:bg-gray-50">
                     <td className="px-3 py-2">
                       <span className={`px-2 py-0.5 rounded text-xs font-mono ${
@@ -478,17 +478,17 @@ const SecurityScanSection: React.FC<{
         <CollapsibleSection
           title="Raw SQL Usage Detection"
           icon={<FileCode className="w-4 h-4 text-orange-500" />}
-          badge={scanResult.rawSqlUsage.length}
-          badgeColor={scanResult.rawSqlUsage.length > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}
+          badge={(scanResult.rawSqlUsage || []).length}
+          badgeColor={(scanResult.rawSqlUsage || []).length > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}
         >
-          {scanResult.rawSqlUsage.length === 0 ? (
+          {(scanResult.rawSqlUsage || []).length === 0 ? (
             <div className="flex items-center space-x-2 text-green-600">
               <CheckCircle className="w-5 h-5" />
               <span>No raw SQL injection risks detected</span>
             </div>
           ) : (
             <div className="space-y-3">
-              {scanResult.rawSqlUsage.map((sql, idx) => (
+              {(scanResult.rawSqlUsage || []).map((sql, idx) => (
                 <div key={idx} className={`p-3 rounded-lg border ${getRiskColor(sql.risk)}`}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-mono text-sm">{sql.file}:{sql.line}</span>
@@ -506,10 +506,10 @@ const SecurityScanSection: React.FC<{
         <CollapsibleSection
           title="Audit Log Analysis"
           icon={<Eye className="w-4 h-4 text-purple-500" />}
-          badge={scanResult.auditAnalysis.length}
+          badge={(scanResult.auditAnalysis || []).length}
         >
           <div className="space-y-2">
-            {scanResult.auditAnalysis.map((item, idx) => (
+            {(scanResult.auditAnalysis || []).map((item, idx) => (
               <div key={idx} className={`flex items-center justify-between p-3 rounded-lg border ${getRiskColor(item.risk)}`}>
                 <div>
                   <span className="font-medium">{item.type}</span>
@@ -528,24 +528,24 @@ const SecurityScanSection: React.FC<{
         <CollapsibleSection
           title="Database Connections"
           icon={<Database className="w-4 h-4 text-green-500" />}
-          badge={`${scanResult.connectionInfo.active}/${scanResult.connectionInfo.maxConnections}`}
-          badgeColor={scanResult.connectionInfo.status === 'healthy' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}
+          badge={scanResult.connectionInfo ? `${scanResult.connectionInfo.active}/${scanResult.connectionInfo.maxConnections}` : 'N/A'}
+          badgeColor={scanResult.connectionInfo?.status === 'healthy' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}
         >
           <div className="grid grid-cols-4 gap-4">
             <div className="text-center p-3 bg-blue-50 rounded-lg">
-              <div className="text-2xl font-bold text-blue-600">{scanResult.connectionInfo.active}</div>
+              <div className="text-2xl font-bold text-blue-600">{scanResult.connectionInfo?.active ?? 0}</div>
               <div className="text-xs text-gray-600">Active</div>
             </div>
             <div className="text-center p-3 bg-gray-50 rounded-lg">
-              <div className="text-2xl font-bold text-gray-600">{scanResult.connectionInfo.idle}</div>
+              <div className="text-2xl font-bold text-gray-600">{scanResult.connectionInfo?.idle ?? 0}</div>
               <div className="text-xs text-gray-600">Idle</div>
             </div>
             <div className="text-center p-3 bg-yellow-50 rounded-lg">
-              <div className="text-2xl font-bold text-yellow-600">{scanResult.connectionInfo.waiting}</div>
+              <div className="text-2xl font-bold text-yellow-600">{scanResult.connectionInfo?.waiting ?? 0}</div>
               <div className="text-xs text-gray-600">Waiting</div>
             </div>
             <div className="text-center p-3 bg-green-50 rounded-lg">
-              <div className="text-2xl font-bold text-green-600">{scanResult.connectionInfo.maxConnections}</div>
+              <div className="text-2xl font-bold text-green-600">{scanResult.connectionInfo?.maxConnections ?? 0}</div>
               <div className="text-xs text-gray-600">Max</div>
             </div>
           </div>
