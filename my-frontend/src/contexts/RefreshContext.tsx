@@ -92,7 +92,15 @@ export function useRefreshContext() {
 }
 
 /**
+ * Safe version that returns null if not in provider (for optional integration)
+ */
+export function useRefreshContextSafe() {
+  return useContext(RefreshContext);
+}
+
+/**
  * Hook for pages/components to register their refresh logic
+ * Safe to use even without RefreshProvider (will silently skip registration)
  * 
  * @example
  * ```tsx
@@ -107,18 +115,36 @@ export function useRefreshContext() {
  * ```
  */
 export function usePageRefresh(key: string, refreshFn: () => Promise<void> | void) {
-  const { registerRefresh, unregisterRefresh } = useRefreshContext();
+  const context = useRefreshContextSafe();
 
   useEffect(() => {
-    registerRefresh(key, refreshFn);
-    return () => unregisterRefresh(key);
-  }, [key, refreshFn, registerRefresh, unregisterRefresh]);
+    if (!context) return; // Not wrapped in RefreshProvider, skip
+    context.registerRefresh(key, refreshFn);
+    return () => context.unregisterRefresh(key);
+  }, [key, refreshFn, context]);
 }
 
 /**
  * Hook for getting the refresh trigger function (for refresh buttons)
+ * Safe to use even without RefreshProvider - returns fallback values
  */
 export function useRefreshTrigger() {
-  const { refreshAll, isRefreshing, lastRefresh, registeredCount } = useRefreshContext();
-  return { refreshAll, isRefreshing, lastRefresh, registeredCount };
+  const context = useRefreshContextSafe();
+  
+  if (!context) {
+    // Not wrapped in RefreshProvider, return fallback that does page reload
+    return {
+      refreshAll: async () => { window.location.reload(); },
+      isRefreshing: false,
+      lastRefresh: null,
+      registeredCount: 0,
+    };
+  }
+  
+  return {
+    refreshAll: context.refreshAll,
+    isRefreshing: context.isRefreshing,
+    lastRefresh: context.lastRefresh,
+    registeredCount: context.registeredCount,
+  };
 }

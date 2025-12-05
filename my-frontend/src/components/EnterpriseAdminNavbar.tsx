@@ -67,20 +67,8 @@ export default function EnterpriseAdminNavbar({ onMenuToggle, onRefresh }: Enter
   const pathname = usePathname();
   const { logout } = useAuth();
   const pageName = getPageName(pathname || '');
-  
-  // Try to use RefreshContext, fallback gracefully if not available
-  let contextRefresh: (() => Promise<void>) | undefined;
-  let isRefreshing = false;
-  let registeredCount = 0;
-  
-  try {
-    const refreshContext = useRefreshTrigger();
-    contextRefresh = refreshContext.refreshAll;
-    isRefreshing = refreshContext.isRefreshing;
-    registeredCount = refreshContext.registeredCount;
-  } catch {
-    // Not wrapped in RefreshProvider, will use fallback
-  }
+  // Use safe refresh hook that works with or without RefreshProvider
+  const { refreshAll: contextRefresh, isRefreshing, registeredCount } = useRefreshTrigger();
 
   const handleLogout = async () => {
     try {
@@ -95,10 +83,8 @@ export default function EnterpriseAdminNavbar({ onMenuToggle, onRefresh }: Enter
   const handleRefresh = () => {
     if (onRefresh) {
       onRefresh();
-    } else if (contextRefresh && registeredCount > 0) {
-      contextRefresh();
     } else {
-      window.location.reload();
+      contextRefresh();
     }
   };
 

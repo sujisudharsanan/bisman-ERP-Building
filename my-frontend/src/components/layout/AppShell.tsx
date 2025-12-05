@@ -4,6 +4,7 @@ import React, { useEffect, useState, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { RefreshProvider } from '@/contexts/RefreshContext';
 
 // Use dynamic imports for TopNavbar and Sidebar to prevent SSR prerender errors
 // These components depend on client-side hooks and contexts that aren't available during static generation
@@ -25,8 +26,6 @@ const Sidebar = dynamic(() => import('./Sidebar').then(mod => ({ default: mod.de
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const [sidebarOpen, setSidebarOpen] = useState(true);
-
-  
 
   const excludedPrefixes = useMemo(
     () => [
@@ -70,13 +69,14 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   }, []);
 
   if (!shouldUseLocalShell) {
-    return <>{children}</>;
+    return <RefreshProvider>{children}</RefreshProvider>;
   }
 
   const toggleSidebar = () => setSidebarOpen((s) => !s);
 
   return (
-    <ErrorBoundary>
+    <RefreshProvider>
+      <ErrorBoundary>
       <div
         className="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col theme-transition"
         style={{ ['--sidebar-width' as any]: sidebarOpen ? '13rem' : '4rem' }}
@@ -97,5 +97,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </div>
     </ErrorBoundary>
+    </RefreshProvider>
   );
 }
