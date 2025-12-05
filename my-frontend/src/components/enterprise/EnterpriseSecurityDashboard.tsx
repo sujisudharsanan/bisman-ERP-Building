@@ -373,10 +373,16 @@ const OverviewSection: React.FC<{
   rateLimitStats: RateLimitStats[];
 }> = ({ scanResult, cacheHealth, rateLimitStats }) => {
   const totalBlocked = rateLimitStats.reduce((sum, s) => sum + s.blocked, 0);
+  
+  // Safe array extraction with proper type checking
+  const routes = Array.isArray(scanResult?.unprotectedRoutes) ? scanResult.unprotectedRoutes : [];
+  const sqlIssues = Array.isArray(scanResult?.rawSqlUsage) ? scanResult.rawSqlUsage : [];
+  const auditIssues = Array.isArray(scanResult?.auditAnalysis) ? scanResult.auditAnalysis : [];
+  
   const issuesCount = scanResult ? (
-    (scanResult.unprotectedRoutes || []).filter(r => r.risk !== 'LOW').length +
-    (scanResult.rawSqlUsage || []).length +
-    (scanResult.auditAnalysis || []).filter(a => a.risk !== 'LOW').length
+    routes.filter(r => r.risk !== 'LOW').length +
+    sqlIssues.length +
+    auditIssues.filter(a => a.risk !== 'LOW').length
   ) : 0;
 
   return (
@@ -418,7 +424,13 @@ const SecurityScanSection: React.FC<{
   scanResult: SecurityScanResult | null;
   onScan: () => void;
   loading: boolean;
-}> = ({ scanResult, onScan, loading }) => (
+}> = ({ scanResult, onScan, loading }) => {
+  // Safe array extraction
+  const routes = Array.isArray(scanResult?.unprotectedRoutes) ? scanResult.unprotectedRoutes : [];
+  const sqlIssues = Array.isArray(scanResult?.rawSqlUsage) ? scanResult.rawSqlUsage : [];
+  const auditIssues = Array.isArray(scanResult?.auditAnalysis) ? scanResult.auditAnalysis : [];
+  
+  return (
   <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6 mb-6">
     <SectionHeader
       title="Security Scan Results"
@@ -435,8 +447,8 @@ const SecurityScanSection: React.FC<{
         <CollapsibleSection
           title="Route Security Analysis"
           icon={<Route className="w-4 h-4 text-blue-500" />}
-          badge={(scanResult.unprotectedRoutes || []).filter(r => r.risk !== 'LOW').length}
-          badgeColor={(scanResult.unprotectedRoutes || []).some(r => r.risk === 'HIGH' || r.risk === 'CRITICAL') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}
+          badge={routes.filter(r => r.risk !== 'LOW').length}
+          badgeColor={routes.some(r => r.risk === 'HIGH' || r.risk === 'CRITICAL') ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}
           defaultOpen
         >
           <div className="overflow-x-auto">
@@ -452,7 +464,7 @@ const SecurityScanSection: React.FC<{
                 </tr>
               </thead>
               <tbody className="divide-y divide-gray-100">
-                {(scanResult.unprotectedRoutes || []).map((route, idx) => (
+                {routes.map((route, idx) => (
                   <tr key={idx} className="hover:bg-gray-50">
                     <td className="px-3 py-2">
                       <span className={`px-2 py-0.5 rounded text-xs font-mono ${
@@ -478,17 +490,17 @@ const SecurityScanSection: React.FC<{
         <CollapsibleSection
           title="Raw SQL Usage Detection"
           icon={<FileCode className="w-4 h-4 text-orange-500" />}
-          badge={(scanResult.rawSqlUsage || []).length}
-          badgeColor={(scanResult.rawSqlUsage || []).length > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}
+          badge={sqlIssues.length}
+          badgeColor={sqlIssues.length > 0 ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}
         >
-          {(scanResult.rawSqlUsage || []).length === 0 ? (
+          {sqlIssues.length === 0 ? (
             <div className="flex items-center space-x-2 text-green-600">
               <CheckCircle className="w-5 h-5" />
               <span>No raw SQL injection risks detected</span>
             </div>
           ) : (
             <div className="space-y-3">
-              {(scanResult.rawSqlUsage || []).map((sql, idx) => (
+              {sqlIssues.map((sql, idx) => (
                 <div key={idx} className={`p-3 rounded-lg border ${getRiskColor(sql.risk)}`}>
                   <div className="flex items-center justify-between mb-2">
                     <span className="font-mono text-sm">{sql.file}:{sql.line}</span>
@@ -506,10 +518,10 @@ const SecurityScanSection: React.FC<{
         <CollapsibleSection
           title="Audit Log Analysis"
           icon={<Eye className="w-4 h-4 text-purple-500" />}
-          badge={(scanResult.auditAnalysis || []).length}
+          badge={auditIssues.length}
         >
           <div className="space-y-2">
-            {(scanResult.auditAnalysis || []).map((item, idx) => (
+            {auditIssues.map((item, idx) => (
               <div key={idx} className={`flex items-center justify-between p-3 rounded-lg border ${getRiskColor(item.risk)}`}>
                 <div>
                   <span className="font-medium">{item.type}</span>
@@ -553,7 +565,8 @@ const SecurityScanSection: React.FC<{
       </div>
     )}
   </div>
-);
+  );
+};
 
 const ServiceTableUsageSection: React.FC<{
   usage: ServiceTableUsage[];
