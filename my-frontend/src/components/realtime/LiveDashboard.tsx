@@ -609,6 +609,21 @@ export function ActiveUsersWidget({ className = '' }: { className?: string }) {
   );
 }
 
+export function PerformanceWidget({ className = '' }: { className?: string }) {
+  return (
+    <LiveKPICard
+      title="System Performance"
+      reportType="system-health"
+      dataKey="uptime"
+      icon={<Activity className="w-6 h-6 text-cyan-600" />}
+      iconBgColor="bg-cyan-100 dark:bg-cyan-900/30"
+      suffix="%"
+      showTrend={false}
+      className={className}
+    />
+  );
+}
+
 // Export all components
 export default {
   ConnectionIndicator,
@@ -620,5 +635,6 @@ export default {
   RevenueWidget,
   OrdersWidget,
   InventoryWidget,
-  ActiveUsersWidget
+  ActiveUsersWidget,
+  PerformanceWidget
 };
