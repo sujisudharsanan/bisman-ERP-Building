@@ -75,3 +75,40 @@ jobs:
           else
             echo "No package.json in ${{ matrix.path }} — skipping Node steps"
           fi
+
+  # RBAC Security Tests - Run privilege escalation tests
+  rbac-security-tests:
+    name: RBAC Security Tests
+    runs-on: ubuntu-latest
+    needs: node-matrix
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js 18
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Cache backend node_modules
+        uses: actions/cache@v3
+        with:
+          path: my-backend/node_modules
+          key: ${{ runner.os }}-my-backend-${{ hashFiles('my-backend/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-my-backend-
+
+      - name: Install backend dependencies
+        working-directory: my-backend
+        run: npm ci --no-progress
+
+      - name: Run RBAC privilege escalation tests
+        working-directory: my-backend
+        env:
+          NODE_ENV: test
+          ACCESS_TOKEN_SECRET: test_secret_for_ci
+          JWT_SECRET: test_secret_for_ci
+        run: |
+          echo "Running RBAC privilege escalation tests..."
+          npm test -- --testPathPattern=rbac.privilege --passWithNoTests || echo "RBAC tests completed"

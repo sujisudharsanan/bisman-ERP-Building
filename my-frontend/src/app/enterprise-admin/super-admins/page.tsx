@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   FiUsers,
   FiEdit,
@@ -18,6 +18,7 @@ import {
 } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { usePageRefresh } from '@/contexts/RefreshContext';
 
 interface Module {
   id: string;
@@ -56,6 +57,7 @@ export default function SuperAdminManagementPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [availableModules, setAvailableModules] = useState<Module[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isDataRefreshing, setIsDataRefreshing] = useState(false);
 
   // Module assignment modal
   const [showModuleModal, setShowModuleModal] = useState(false);
@@ -68,6 +70,20 @@ export default function SuperAdminManagementPage() {
   const businessERPModules = availableModules.filter((m) => m.businessCategory === 'Business ERP');
   const pumpManagementModules = availableModules.filter((m) => m.businessCategory === 'Pump Management');
 
+  const loadData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setIsDataRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
+    await Promise.all([loadMasterModules(), loadSuperAdmins()]);
+    setIsLoading(false);
+    setIsDataRefreshing(false);
+  }, []);
+
+  // Register refresh handler
+  usePageRefresh('enterprise-super-admins', () => loadData(true));
+
   useEffect(() => {
     if (loading) return;
     if (!user) {
@@ -76,17 +92,11 @@ export default function SuperAdminManagementPage() {
     }
 
     loadData();
-  }, [user, loading, router]);
+  }, [user, loading, router, loadData]);
 
   useEffect(() => {
     filterSuperAdmins();
   }, [searchQuery, superAdmins]);
-
-  const loadData = async () => {
-    setIsLoading(true);
-    await Promise.all([loadMasterModules(), loadSuperAdmins()]);
-    setIsLoading(false);
-  };
 
   const loadMasterModules = async () => {
     try {

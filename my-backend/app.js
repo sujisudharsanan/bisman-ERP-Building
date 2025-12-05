@@ -43,6 +43,16 @@ let prisma;
 try {
   prisma = getPrisma();
   console.log('[app.js] Prisma client loaded via singleton');
+  
+  // Wrap Prisma with monitoring (optional, for query duration tracking)
+  try {
+    const { wrapPrismaWithMonitoring, startDbHealthMonitor } = require('./lib/dbMonitoring');
+    prisma = wrapPrismaWithMonitoring(prisma);
+    // Start periodic database health monitoring (every 30 seconds)
+    startDbHealthMonitor(prisma, 30000);
+  } catch (monitoringError) {
+    console.warn('[app.js] Database monitoring not available:', monitoringError.message);
+  }
 } catch (prismaError) {
   console.error('[app.js] Warning: Prisma initialization failed:', prismaError.message);
   console.error('[app.js] Database operations will be unavailable');
@@ -63,6 +73,8 @@ const privilegeService = require('./services/privilegeService')
 const TenantGuard = require('./middleware/tenantGuard') // ✅ SECURITY: Multi-tenant isolation
 const { authenticate, requireRole } = require('./middleware/auth') // ✅ Authentication middleware
 const { setTenantContext } = require('./middleware/tenantContext') // ✅ RLS tenant context
+const { adminIpAllowlist } = require('./middleware/adminIpAllowlist') // ✅ IP allowlist for admin consoles
+const { loginBruteForceProtection, signupBruteForceProtection, verifyCaptcha } = require('./middleware/bruteForceProtection') // ✅ Brute force protection
 
 const app = express()
 
@@ -86,13 +98,69 @@ function generateRefreshToken(payload) {
 // This is crucial for express-rate-limit to work correctly.
 app.set('trust proxy', 1);
 
-// Basic security middleware
-// Note: Disable CSP here because Next.js injects inline/runtime scripts that a strict CSP would block.
-// We can re-enable a tuned CSP later once the app is fully stable.
+// ============================================================================
+// SECURITY HEADERS - Helmet Configuration
+// ============================================================================
+const isProduction = process.env.NODE_ENV === 'production';
+
 app.use(helmet({
-  contentSecurityPolicy: false,
-  crossOriginEmbedderPolicy: false,
-}))
+  // Content Security Policy - Restrict resource loading
+  contentSecurityPolicy: isProduction ? {
+    directives: {
+      defaultSrc: ["'self'"],
+      scriptSrc: ["'self'", "'unsafe-inline'", "'unsafe-eval'"], // Required for Next.js
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      imgSrc: ["'self'", "data:", "https:", "blob:"],
+      fontSrc: ["'self'", "data:", "https:"],
+      connectSrc: ["'self'", process.env.FRONTEND_URL, "wss:", "https:"].filter(Boolean),
+      frameSrc: ["'self'"],
+      objectSrc: ["'none'"],
+      baseUri: ["'self'"],
+      formAction: ["'self'"],
+      upgradeInsecureRequests: [],
+    },
+  } : false, // Disable CSP in development for easier debugging
+  
+  // X-Frame-Options - Prevent clickjacking
+  frameguard: { action: 'deny' },
+  
+  // X-XSS-Protection - Enable browser XSS filtering
+  xssFilter: true,
+  
+  // X-Content-Type-Options - Prevent MIME sniffing
+  noSniff: true,
+  
+  // Referrer-Policy - Control referrer information
+  referrerPolicy: { policy: 'strict-origin-when-cross-origin' },
+  
+  // HSTS - Force HTTPS (1 year, include subdomains, preload)
+  hsts: isProduction ? {
+    maxAge: 31536000,
+    includeSubDomains: true,
+    preload: true
+  } : false,
+  
+  // X-DNS-Prefetch-Control
+  dnsPrefetchControl: { allow: false },
+  
+  // X-Download-Options (IE specific)
+  ieNoOpen: true,
+  
+  // Cross-Origin-Embedder-Policy
+  crossOriginEmbedderPolicy: false, // Disabled for compatibility with external resources
+  
+  // Cross-Origin-Resource-Policy
+  crossOriginResourcePolicy: { policy: 'same-origin' },
+  
+  // Origin-Agent-Cluster
+  originAgentCluster: true,
+  
+  // X-Permitted-Cross-Domain-Policies
+  permittedCrossDomainPolicies: { permittedPolicies: 'none' },
+}));
+
+console.log('[app.js] ✅ Security headers enabled (Helmet)');
+console.log('[app.js] 🔒 X-Frame-Options: DENY, X-XSS-Protection: Enabled, HSTS:', isProduction ? 'Enabled' : 'Disabled (dev)');
 
 // ✅ PERFORMANCE OPTIMIZATION: Maximum Response Compression (GZIP)
 // Reduces API response sizes by ~80-90% with maximum compression
@@ -721,6 +789,17 @@ try {
   }
 }
 
+// Admin Usage & Quota routes (per-tenant metering)
+try {
+  const adminUsageRoutes = require('./routes/adminUsage')
+  app.use('/api/admin/usage', adminUsageRoutes)
+  console.log('✅ Admin Usage routes loaded at /api/admin/usage')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Admin Usage routes not loaded:', e && e.message)
+  }
+}
+
 // Audit routes (for Service-Table usage tracking)
 try {
   const auditRoutes = require('./routes/admin/auditRoutes')
@@ -751,6 +830,101 @@ try {
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Auth routes not loaded:', e && e.message)
+  }
+}
+
+// Self-serve tenant onboarding routes
+try {
+  const onboardingRoutes = require('./routes/onboarding')
+  app.use('/api/onboard', onboardingRoutes)
+  console.log('✅ Tenant onboarding routes loaded at /api/onboard')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Onboarding routes not loaded:', e && e.message)
+  }
+}
+
+// Billing routes (Stripe integration)
+try {
+  const billingRoutes = require('./routes/billing')
+  app.use('/api/billing', billingRoutes)
+  console.log('✅ Billing routes loaded at /api/billing')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Billing routes not loaded:', e && e.message)
+  }
+}
+
+// Stripe webhook (raw body required)
+try {
+  const stripeWebhook = require('./routes/webhooks/stripeWebhook')
+  app.use('/api/webhooks/stripe', stripeWebhook)
+  console.log('✅ Stripe webhook loaded at /api/webhooks/stripe')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Stripe webhook not loaded:', e && e.message)
+  }
+}
+
+// Analytics routes
+try {
+  const analyticsRoutes = require('./routes/analytics')
+  app.use('/api/analytics', analyticsRoutes)
+  console.log('✅ Analytics routes loaded at /api/analytics')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Analytics routes not loaded:', e && e.message)
+  }
+}
+
+// Tenant Dashboard Admin routes
+try {
+  const tenantDashboardRoutes = require('./routes/admin/tenantDashboard')
+  app.use('/api/admin/tenants', tenantDashboardRoutes)
+  console.log('✅ Tenant dashboard routes loaded at /api/admin/tenants')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Tenant dashboard routes not loaded:', e && e.message)
+  }
+}
+
+// Monitoring routes (Prometheus metrics, health checks, per-tenant analytics)
+try {
+  const monitoringRoutes = require('./routes/monitoring')
+  const { metricsMiddleware } = require('./middleware/metricsMiddleware')
+  
+  // Apply metrics collection middleware globally
+  app.use(metricsMiddleware)
+  
+  // Mount monitoring routes
+  app.use('/metrics', monitoringRoutes) // Prometheus endpoint
+  app.use('/api/monitoring', monitoringRoutes)
+  console.log('✅ Monitoring routes loaded (Prometheus + per-tenant analytics)')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Monitoring routes not loaded:', e && e.message)
+  }
+}
+
+// Usage metering middleware (track per-tenant API usage)
+try {
+  const { usageMeter } = require('./middleware/usageMeter')
+  app.use(usageMeter)
+  console.log('✅ Usage metering middleware loaded')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Usage metering middleware not loaded:', e && e.message)
+  }
+}
+
+// Tenant quota/throttling middleware
+try {
+  const { tenantQuota } = require('./middleware/tenantQuota')
+  app.use(tenantQuota)
+  console.log('✅ Tenant quota middleware loaded')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Tenant quota middleware not loaded:', e && e.message)
   }
 }
 
@@ -816,20 +990,20 @@ try {
   const enterpriseAdminNotifications = require('./routes/enterprise-admin-Notifications')
   const enterpriseAdminSupport = require('./routes/enterprise-admin-Support')
   
-  app.use('/api/enterprise-admin/dashboard', authenticate, setTenantContext, enterpriseAdminDashboard)
-  app.use('/api/enterprise-admin/organizations', authenticate, setTenantContext, enterpriseAdminOrganizations)
-  app.use('/api/enterprise-admin/modules', authenticate, setTenantContext, enterpriseAdminModules)
-  app.use('/api/enterprise-admin/billing', authenticate, setTenantContext, enterpriseAdminBilling)
-  app.use('/api/enterprise-admin/audit', authenticate, setTenantContext, enterpriseAdminAudit)
-  app.use('/api/enterprise-admin/reports', authenticate, setTenantContext, enterpriseAdminReports)
-  app.use('/api/enterprise-admin/ai', authenticate, setTenantContext, enterpriseAdminAI)
-  app.use('/api/enterprise-admin/logs', authenticate, setTenantContext, enterpriseAdminLogs)
-  app.use('/api/enterprise-admin/users', authenticate, setTenantContext, enterpriseAdminUsers)
-  app.use('/api/enterprise-admin/super-admins', authenticate, setTenantContext, enterpriseAdminSuperAdmins)
-  app.use('/api/enterprise-admin/settings', authenticate, setTenantContext, enterpriseAdminSettings)
-  app.use('/api/enterprise-admin/integrations', authenticate, setTenantContext, enterpriseAdminIntegrations)
-  app.use('/api/enterprise-admin/notifications', authenticate, setTenantContext, enterpriseAdminNotifications)
-  app.use('/api/enterprise-admin/support', authenticate, setTenantContext, enterpriseAdminSupport)
+  app.use('/api/enterprise-admin/dashboard', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminDashboard)
+  app.use('/api/enterprise-admin/organizations', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminOrganizations)
+  app.use('/api/enterprise-admin/modules', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminModules)
+  app.use('/api/enterprise-admin/billing', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminBilling)
+  app.use('/api/enterprise-admin/audit', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminAudit)
+  app.use('/api/enterprise-admin/reports', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminReports)
+  app.use('/api/enterprise-admin/ai', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminAI)
+  app.use('/api/enterprise-admin/logs', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminLogs)
+  app.use('/api/enterprise-admin/users', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminUsers)
+  app.use('/api/enterprise-admin/super-admins', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminSuperAdmins)
+  app.use('/api/enterprise-admin/settings', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminSettings)
+  app.use('/api/enterprise-admin/integrations', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminIntegrations)
+  app.use('/api/enterprise-admin/notifications', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminNotifications)
+  app.use('/api/enterprise-admin/support', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminSupport)
   
   console.log('✅ Enterprise Admin Management routes loaded (14 modules)')
 } catch (e) {
@@ -1439,7 +1613,8 @@ app.get('/api/enterprise-admin/master-modules', authenticate, requireRole(['ENTE
     
   if (req.user.userType === 'SUPER_ADMIN') {
       // Super Admin should only see modules assigned by Enterprise Admin
-      console.log('[master-modules] Super Admin access - filtering by assigned modules');
+      // PLUS always-accessible modules (common, chat)
+      console.log('[master-modules] Super Admin access - filtering by assigned modules + always-accessible');
       console.log('[master-modules] Super Admin ID:', req.user.id);
       console.log('[master-modules] Assigned modules:', req.user.assignedModules);
       
@@ -1452,17 +1627,19 @@ app.get('/api/enterprise-admin/master-modules', authenticate, requireRole(['ENTE
       const assignedModuleIds = moduleAssignments.map(ma => ma.module_id);
       console.log('[master-modules] Assigned module IDs:', assignedModuleIds);
       
-      // Fetch only assigned modules
+      // Fetch assigned modules OR always-accessible modules
       dbModules = await prisma.module.findMany({
         where: {
-          id: {
-            in: assignedModuleIds
-          }
+          OR: [
+            { id: { in: assignedModuleIds } },
+            { is_always_accessible: true }
+          ]
         },
         orderBy: {
           id: 'asc'
         }
       });
+      console.log('[master-modules] Including always-accessible modules. Total:', dbModules.length);
     } else {
       // Enterprise Admin and Admin can see all modules
       console.log('[master-modules] Admin/Enterprise Admin access - showing all modules');
@@ -1679,13 +1856,20 @@ app.get('/api/auth/me/permissions', authenticate, async (req, res) => {
       const assignedModules = [];
       const pagePermissions = {};
 
-      // ✅ AUTO-ASSIGN super-admin module to all Super Admins
-      const superAdminModule = MASTER_MODULES.find(m => m.id === 'super-admin');
-      if (superAdminModule) {
-        assignedModules.push('super-admin');
-        pagePermissions['super-admin'] = superAdminModule.pages.map(p => p.id);
-        console.log(`📄 [PERMISSIONS] AUTO-ASSIGNED super-admin module with ${superAdminModule.pages.length} pages`);
+      // ✅ AUTO-ASSIGN always-accessible modules (common, chat) to all Super Admins
+      // These are modules that every user should have access to
+      const alwaysAccessibleModules = ['common', 'chat'];
+      for (const moduleId of alwaysAccessibleModules) {
+        const configModule = MASTER_MODULES.find(m => m.id === moduleId);
+        if (configModule) {
+          assignedModules.push(moduleId);
+          pagePermissions[moduleId] = configModule.pages?.map(p => p.id) || [];
+          console.log(`📄 [PERMISSIONS] AUTO-ASSIGNED always-accessible module: ${moduleId} with ${pagePermissions[moduleId].length} pages`);
+        }
       }
+      
+      // NOTE: super-admin module is NOT auto-assigned anymore
+      // Enterprise Admin must explicitly assign modules to each Super Admin
 
       superAdmin.moduleAssignments.forEach(assignment => {
         const module = assignment.module;
@@ -3547,5 +3731,50 @@ app.use(errorHandler);
     console.warn('⚠️ Error tables initialization failed:', err.message);
   }
 })();
+
+// Initialize Job Queue Worker
+// ============================================================================
+try {
+  require('./jobs/onboardingJobs'); // Register handlers
+  const { startWorker } = require('./jobs/jobQueue');
+  if (process.env.ENABLE_JOB_WORKER !== 'false') {
+    startWorker(5000); // Poll every 5 seconds
+    console.log('✅ Job queue worker started');
+  }
+} catch (err) {
+  console.warn('⚠️ Job queue initialization failed:', err.message);
+}
+
+// ============================================================================
+// Initialize Scheduled Jobs (Trial Expiry, Daily Aggregation)
+// ============================================================================
+try {
+  if (process.env.ENABLE_SCHEDULED_JOBS !== 'false') {
+    const { startTrialExpiryJob } = require('./jobs/trialExpiryJob');
+    const { startDailyAggregationJob } = require('./jobs/aggregateDailyUsageJob');
+    
+    startTrialExpiryJob();
+    startDailyAggregationJob();
+    console.log('✅ Scheduled jobs started (trial expiry, daily aggregation)');
+  }
+} catch (err) {
+  console.warn('⚠️ Scheduled jobs initialization failed:', err.message);
+}
+
+// ============================================================================
+// Initialize Alert Jobs (Quota Alerts, Weekly Audit Reports)
+// ============================================================================
+try {
+  if (process.env.ENABLE_ALERT_JOBS !== 'false') {
+    const { startQuotaAlertJob } = require('./jobs/quotaAlertJob');
+    const { startWeeklyAuditJob } = require('./jobs/weeklyAuditJob');
+    
+    startQuotaAlertJob();
+    startWeeklyAuditJob();
+    console.log('✅ Alert jobs started (quota alerts, weekly audit)');
+  }
+} catch (err) {
+  console.warn('⚠️ Alert jobs initialization failed:', err.message);
+}
 
 module.exports = app

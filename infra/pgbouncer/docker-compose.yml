@@ -1,0 +1,116 @@
+# PgBouncer Docker Compose Configuration
+# =======================================
+# Deploys PgBouncer as a connection pooler between application and PostgreSQL
+
+version: '3.8'
+
+services:
+  pgbouncer:
+    image: edoburu/pgbouncer:1.21.0
+    container_name: bisman-pgbouncer
+    restart: unless-stopped
+    
+    environment:
+      # PostgreSQL backend settings
+      - PG_HOST=${PG_HOST:-postgres}
+      - PG_PORT=${PG_PORT:-5432}
+      - PG_DATABASE=${PG_DATABASE:-bisman_prod}
+      - PG_USER=${PG_USER:-bisman_app}
+      - PG_PASSWORD=${PG_PASSWORD}
+      
+      # PgBouncer settings
+      - POOL_MODE=transaction
+      - DEFAULT_POOL_SIZE=${PGBOUNCER_POOL_SIZE:-20}
+      - MIN_POOL_SIZE=5
+      - RESERVE_POOL_SIZE=5
+      - MAX_CLIENT_CONN=${PGBOUNCER_MAX_CLIENT_CONN:-500}
+      - MAX_DB_CONNECTIONS=${PGBOUNCER_MAX_DB_CONN:-90}
+      
+      # Logging
+      - LOG_CONNECTIONS=1
+      - LOG_DISCONNECTIONS=1
+      
+      # TLS (for RDS, set server_tls_sslmode=require)
+      - SERVER_TLS_SSLMODE=${PG_SSLMODE:-prefer}
+      
+      # Admin access
+      - ADMIN_USERS=pgbouncer,stats
+      - STATS_USERS=pgbouncer,stats
+    
+    ports:
+      - "${PGBOUNCER_PORT:-6432}:6432"
+    
+    volumes:
+      # Mount custom configuration
+      - ./pgbouncer.ini:/etc/pgbouncer/pgbouncer.ini:ro
+      - ./userlist.txt:/etc/pgbouncer/userlist.txt:ro
+      
+      # For AWS RDS TLS (mount CA bundle)
+      # - ./rds-ca-bundle.pem:/etc/ssl/certs/rds-ca-bundle.pem:ro
+      
+      # Logs (optional - for persistent logging)
+      - pgbouncer-logs:/var/log/pgbouncer
+    
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -h localhost -p 6432 -U ${PG_USER:-bisman_app}"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    
+    networks:
+      - bisman-network
+    
+    # Resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+        reservations:
+          cpus: '0.1'
+          memory: 64M
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  # Optional: PgBouncer metrics exporter for Prometheus
+  pgbouncer-exporter:
+    image: prometheuscommunity/pgbouncer-exporter:v0.7.0
+    container_name: bisman-pgbouncer-exporter
+    restart: unless-stopped
+    profiles:
+      - monitoring
+    
+    environment:
+      - PGBOUNCER_EXPORTER_HOST=pgbouncer
+      - PGBOUNCER_EXPORTER_PORT=6432
+      - PGBOUNCER_EXPORTER_USER=stats
+      - PGBOUNCER_EXPORTER_PASS=${PGBOUNCER_STATS_PASSWORD:-stats}
+    
+    ports:
+      - "9127:9127"
+    
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+    
+    networks:
+      - bisman-network
+    
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "5m"
+        max-file: "2"
+
+networks:
+  bisman-network:
+    external: true
+
+volumes:
+  pgbouncer-logs:
+    driver: local

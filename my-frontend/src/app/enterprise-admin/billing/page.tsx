@@ -1,14 +1,22 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { usePageRefresh } from '@/contexts/RefreshContext';
 
 export default function Page() {
   const [overview,setOverview]=useState<any>(null);
   const [trends,setTrends]=useState<any[]>([]);
   const [analytics,setAnalytics]=useState<any>(null);
   const [loading,setLoading]=useState(true);
+  const [isDataRefreshing,setIsDataRefreshing]=useState(false);
   const [err,setErr]=useState<string|null>(null);
-  useEffect(()=>{(async()=>{
-    try{ setLoading(true);
+
+  const fetchBilling = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setIsDataRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       const [o,t,a] = await Promise.all([
         fetch('/api/enterprise-admin/billing/overview',{credentials:'include'}).then(r=>r.json()),
         fetch('/api/enterprise-admin/billing/revenue-trends?months=6',{credentials:'include'}).then(r=>r.json()),
@@ -17,9 +25,20 @@ export default function Page() {
       setOverview(o.overview);
       setTrends(t.trends||[]);
       setAnalytics(a.analytics);
-    }catch(e:any){ setErr(e.message||'Failed to load billing'); }
-    finally{ setLoading(false); }
-  })();},[]);
+    } catch(e:any) { 
+      setErr(e.message||'Failed to load billing'); 
+    } finally { 
+      setLoading(false);
+      setIsDataRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchBilling();
+  }, [fetchBilling]);
+
+  // Register with global refresh context
+  usePageRefresh('billing', () => fetchBilling(true));
   return (
     <div className="space-y-6 text-gray-900 dark:text-gray-100 p-6">
       <h1 className="text-2xl font-semibold">Billing</h1>

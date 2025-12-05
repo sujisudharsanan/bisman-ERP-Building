@@ -1,0 +1,91 @@
+;; PgBouncer User Authentication File
+;; ===================================
+;; Format: "username" "password-hash"
+;;
+;; Password hash formats:
+;;   - md5<md5hash>  : MD5 hash of password+username
+;;   - scram-sha-256$<iterations>:<salt>$<storedKey>:<serverKey>
+;;   - plaintext     : Plain password (NOT RECOMMENDED)
+;;
+;; ============================================================================
+;; GENERATING MD5 HASHES
+;; ============================================================================
+;;
+;; Method 1: Using pg_md5 utility (if installed)
+;;   pg_md5 --username=myuser mypassword
+;;
+;; Method 2: Using PostgreSQL
+;;   SELECT 'md5' || md5('mypassword' || 'myuser');
+;;
+;; Method 3: Using bash
+;;   echo -n "mypasswordmyuser" | md5sum | awk '{print "md5"$1}'
+;;
+;; Method 4: Using Python
+;;   python3 -c "import hashlib; print('md5' + hashlib.md5(b'mypassword' + b'myuser').hexdigest())"
+;;
+;; ============================================================================
+;; IMPORTANT NOTES
+;; ============================================================================
+;;
+;; 1. The hash is MD5(password + username), NOT MD5(username + password)
+;; 2. Username in hash must match exactly (case-sensitive)
+;; 3. Usernames should match PostgreSQL usernames
+;; 4. File permissions should be 0600 (owner read/write only)
+;;
+;; ============================================================================
+;; USER ENTRIES
+;; ============================================================================
+
+;; Application database user
+;; Replace with your actual credentials
+;; Example: password "Demo@123" for user "bisman_app"
+;; Generate: echo -n "Demo@123bisman_app" | md5sum
+"bisman_app" "md5xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+;; Read-only replica user (if using read replicas)
+"bisman_readonly" "md5xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+;; Migration user (for schema changes - direct connection preferred)
+"bisman_admin" "md5xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+;; PgBouncer admin user (for SHOW commands)
+;; This user doesn't need to exist in PostgreSQL
+;; Used for health checks and monitoring
+"pgbouncer" "md5xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+;; Stats user (for monitoring tools)
+"stats" "md5xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+;; ============================================================================
+;; PRODUCTION EXAMPLE (replace hashes with real values)
+;; ============================================================================
+;;
+;; To generate for production:
+;;
+;; 1. Set your password:
+;;    export DB_PASSWORD="your-secure-password"
+;;    export DB_USER="bisman_app"
+;;
+;; 2. Generate hash:
+;;    echo -n "${DB_PASSWORD}${DB_USER}" | md5sum | awk '{print "md5"$1}'
+;;
+;; 3. Replace the placeholder hash above
+;;
+;; ============================================================================
+;; SECURITY RECOMMENDATIONS
+;; ============================================================================
+;;
+;; 1. Use strong, unique passwords (24+ characters)
+;; 2. Store passwords in secrets manager (AWS Secrets Manager, Vault, etc.)
+;; 3. Rotate passwords regularly
+;; 4. Set file permissions: chmod 600 userlist.txt
+;; 5. In production, generate this file from secrets at deploy time
+;;
+;; Example deployment script:
+;;
+;;   #!/bin/bash
+;;   DB_USER=$(aws secretsmanager get-secret-value --secret-id bisman/db-user --query SecretString --output text)
+;;   DB_PASS=$(aws secretsmanager get-secret-value --secret-id bisman/db-pass --query SecretString --output text)
+;;   HASH=$(echo -n "${DB_PASS}${DB_USER}" | md5sum | awk '{print "md5"$1}')
+;;   echo "\"${DB_USER}\" \"${HASH}\"" > /etc/pgbouncer/userlist.txt
+;;   chmod 600 /etc/pgbouncer/userlist.txt

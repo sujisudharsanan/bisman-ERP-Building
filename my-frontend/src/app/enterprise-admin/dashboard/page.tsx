@@ -95,12 +95,18 @@ export default function EnterpriseAdminDashboard() {
     lastBackup: '',
   });
   const [isLoading, setIsLoading] = useState(true);
+  const [isDataRefreshing, setIsDataRefreshing] = useState(false); // For data-only refresh
   // Avoid SSR->CSR text mismatch by not rendering a live time on the server
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Fetch all dashboard data
-  const fetchDashboardData = useCallback(async () => {
-    setIsLoading(true);
+  // isRefresh=true means it's a manual refresh (show spinners on values only)
+  const fetchDashboardData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setIsDataRefreshing(true);
+    } else {
+      setIsLoading(true);
+    }
     try {
       const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
 
@@ -168,11 +174,13 @@ export default function EnterpriseAdminDashboard() {
       console.error('Error fetching dashboard data:', error);
     } finally {
       setIsLoading(false);
+      setIsDataRefreshing(false);
     }
   }, []);
 
   // Register this component's refresh function with the shell's refresh button
-  usePageRefresh('enterprise-dashboard', fetchDashboardData);
+  // When triggered from navbar, it's a data-only refresh (no full page reload)
+  usePageRefresh('enterprise-dashboard', () => fetchDashboardData(true));
 
   useEffect(() => {
     // Wait for auth state to resolve before deciding
@@ -261,7 +269,7 @@ export default function EnterpriseAdminDashboard() {
           <div className="flex items-center justify-between mb-8">
             <div>
               <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-2">
-                Enterprise Dashboard
+                BISMAN Corporation Dashboard
               </h1>
               <p className="text-gray-600 dark:text-gray-400">
                 System-wide overview and analytics
@@ -282,7 +290,7 @@ export default function EnterpriseAdminDashboard() {
               subtext="Active Super Admin Accounts"
               icon={ShieldCheck}
               color={COLORS.businessErp}
-              isLoading={isLoading}
+              isLoading={isLoading || isDataRefreshing}
             />
             <KPICard
               title="Total Modules"
@@ -290,7 +298,7 @@ export default function EnterpriseAdminDashboard() {
               subtext="Across Business ERP & Pump Management"
               icon={Layers}
               color={COLORS.pumpManagement}
-              isLoading={isLoading}
+              isLoading={isLoading || isDataRefreshing}
             />
             <KPICard
               title="Active Tenants"
@@ -298,7 +306,7 @@ export default function EnterpriseAdminDashboard() {
               subtext="Registered ERP Clients"
               icon={Building}
               color="#3b82f6"
-              isLoading={isLoading}
+              isLoading={isLoading || isDataRefreshing}
             />
             <KPICard
               title="System Health"
@@ -306,7 +314,7 @@ export default function EnterpriseAdminDashboard() {
               subtext="System Infrastructure Status"
               icon={Activity}
               color={stats.systemHealth === 'operational' ? COLORS.success : COLORS.warning}
-              isLoading={isLoading}
+              isLoading={isLoading || isDataRefreshing}
             />
           </div>
 
@@ -322,9 +330,9 @@ export default function EnterpriseAdminDashboard() {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Super Admin Distribution
               </h3>
-              {isLoading ? (
+              {(isLoading || isDataRefreshing) ? (
                 <div className="h-64 flex items-center justify-center">
-                  <div className="animate-pulse text-gray-400">Loading chart...</div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height={250}>
@@ -360,9 +368,9 @@ export default function EnterpriseAdminDashboard() {
               <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">
                 Module Usage Trends
               </h3>
-              {isLoading ? (
+              {(isLoading || isDataRefreshing) ? (
                 <div className="h-64 flex items-center justify-center">
-                  <div className="animate-pulse text-gray-400">Loading chart...</div>
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-pink-600"></div>
                 </div>
               ) : (
                 <ResponsiveContainer width="100%" height={250}>

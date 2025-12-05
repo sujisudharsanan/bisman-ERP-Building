@@ -8,7 +8,7 @@ async function main() {
   const roles = await prisma.role.createMany({
     data: [
       { key: 'SUPER_ADMIN', name: 'Super Admin' },
-      { key: 'ENTERPRISE_ADMIN', name: 'Enterprise Admin' },
+      { key: 'ENTERPRISE_ADMIN', name: 'BISMAN Corporation' },
       { key: 'ORG_ADMIN', name: 'Organization Admin' },
       { key: 'ORG_USER', name: 'Organization User' },
     ],
@@ -25,7 +25,7 @@ async function main() {
   const enterpriseAdmin = await prisma.user.upsert({
     where: { email: 'enterprise@erp.local' },
     update: {},
-    create: { email: 'enterprise@erp.local', name: 'Enterprise Admin', password },
+    create: { email: 'enterprise@erp.local', name: 'BISMAN Corporation', password },
   });
 
   // Attach roles

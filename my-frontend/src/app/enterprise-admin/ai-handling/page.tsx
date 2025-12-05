@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   Brain,
@@ -21,6 +21,7 @@ import {
 // Navbar and Sidebar are injected by the enterprise-admin layout
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { usePageRefresh } from '@/contexts/RefreshContext';
 
 interface AIModel {
   id: string;
@@ -44,6 +45,7 @@ export default function AIHandlingPage() {
   const { user } = useAuth();
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(true);
+  const [isDataRefreshing, setIsDataRefreshing] = useState(false);
   const [metrics, setMetrics] = useState<AIMetrics>({
     totalRequests: 0,
     successRate: 0,
@@ -62,19 +64,12 @@ export default function AIHandlingPage() {
     setMounted(true);
   }, []);
 
-  useEffect(() => {
-    if (!mounted) return;
-    if (!user || user.role !== 'ENTERPRISE_ADMIN') {
-      router.push('/auth/login');
-      return;
+  const fetchAIData = useCallback(async (isRefresh = false) => {
+    if (isRefresh) {
+      setIsDataRefreshing(true);
+    } else {
+      setIsLoading(true);
     }
-  fetchAIData();
-  fetchSettings();
-  fetchAllModules();
-  }, [user, router, mounted]);
-
-  const fetchAIData = async () => {
-    setIsLoading(true);
     try {
       const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
       const [metricsRes, modelsRes] = await Promise.all([
@@ -99,8 +94,23 @@ export default function AIHandlingPage() {
       console.error('Error fetching AI data:', error);
     } finally {
       setIsLoading(false);
+      setIsDataRefreshing(false);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+    if (!user || user.role !== 'ENTERPRISE_ADMIN') {
+      router.push('/auth/login');
+      return;
+    }
+    fetchAIData();
+    fetchSettings();
+    fetchAllModules();
+  }, [user, router, mounted, fetchAIData]);
+
+  // Register with global refresh context
+  usePageRefresh('ai-handling', () => fetchAIData(true));
 
   const fetchSettings = async () => {
     try {

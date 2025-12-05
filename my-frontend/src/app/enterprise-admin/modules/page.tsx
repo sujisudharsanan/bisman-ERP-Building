@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { FiUsers, FiPackage, FiGrid, FiCheckCircle, FiUnlock, FiExternalLink, FiShield } from "react-icons/fi";
+import { FiUsers, FiPackage, FiGrid, FiCheckCircle, FiUnlock, FiExternalLink, FiShield, FiPlus, FiX } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
+import { usePageRefresh } from "@/contexts/RefreshContext";
 
 type Module = {
   id: number | string;
@@ -153,6 +154,7 @@ export default function Page() {
   const isSuperAdmin = user?.role?.toUpperCase() === 'SUPER_ADMIN' || user?.userType === 'SUPER_ADMIN';
   
   const [loading, setLoading] = useState(true);
+  const [isDataRefreshing, setIsDataRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [modules, setModules] = useState<Module[]>([]);
   const [superAdmins, setSuperAdmins] = useState<SuperAdmin[]>([]);
@@ -174,6 +176,19 @@ export default function Page() {
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   const [bottomView, setBottomView] = useState<'roles' | 'modules'>('modules'); // What to show in bottom section
   const [assignedRoleIds, setAssignedRoleIds] = useState<number[]>([]); // Roles assigned to selected Super Admin
+  
+  // Create Super Admin modal state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    username: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    productType: 'BUSINESS_ERP' as 'BUSINESS_ERP' | 'PUMP_ERP'
+  });
+  const [createError, setCreateError] = useState<string | null>(null);
+  const [isCreating, setIsCreating] = useState(false);
+  
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedRef = useRef<string>(''); // Track last saved state to avoid duplicate saves
   const isInitialLoadRef = useRef<boolean>(true); // Flag to skip auto-save on initial page selection
@@ -252,12 +267,21 @@ export default function Page() {
         });
         
         if (response.ok) {
-          console.log('✅ Roles saved to Super Admin');
+          const data = await response.json();
+          console.log('✅ Roles saved to Super Admin:', data.message || 'Success');
         } else {
-          console.error('❌ Failed to save roles to Super Admin');
+          const errorText = await response.text().catch(() => 'Unknown error');
+          console.error('❌ Failed to save roles to Super Admin:', response.status, errorText);
+          // Show user-friendly error
+          if (typeof window !== 'undefined') {
+            alert(`Failed to save roles: ${response.status === 500 ? 'Server error - please check if database table exists' : errorText}`);
+          }
         }
       } catch (error) {
         console.error('❌ Error saving roles:', error);
+        if (typeof window !== 'undefined') {
+          alert(`Error saving roles: ${error instanceof Error ? error.message : 'Network error'}`);
+        }
       }
     }, 500); // 500ms debounce
     
@@ -371,8 +395,12 @@ export default function Page() {
   }, [selectedPageIds, selectedAdminId, selectedModuleId, savePagePermissions]);
 
   useEffect(() => {
-    const load = async () => {
-      setLoading(true);
+    const load = async (isRefresh = false) => {
+      if (isRefresh) {
+        setIsDataRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       setError(null);
       try {
         // Load different data based on user role
@@ -497,10 +525,31 @@ export default function Page() {
         setError(e?.message || "Failed to load data");
       } finally {
         setLoading(false);
+        setIsDataRefreshing(false);
       }
     };
     load();
   }, []);
+
+  // Register with global refresh context
+  usePageRefresh('modules', () => {
+    const refreshLoad = async () => {
+      setIsDataRefreshing(true);
+      setError(null);
+      try {
+        const [modsRes, usersRes] = await Promise.all([
+          fetch("/api/enterprise-admin/master-modules", { credentials: "include" }),
+          fetch("/api/enterprise-admin/super-admins", { credentials: "include" }),
+        ]);
+        const modsJson = await modsRes.json().catch(() => ({}));
+        const usersJson = await usersRes.json().catch(() => ({}));
+        // Update state as needed
+      } finally {
+        setIsDataRefreshing(false);
+      }
+    };
+    refreshLoad();
+  });
 
   const categoryCounts = useMemo(() => {
     const list = Array.isArray(modules) ? modules : [];
@@ -1116,6 +1165,113 @@ export default function Page() {
     }
   };
 
+  // Create Super Admin function
+  const handleCreateSuperAdmin = async () => {
+    setCreateError(null);
+    
+    // Validate form
+    if (!createForm.username.trim()) {
+      setCreateError('Username is required');
+      return;
+    }
+    if (!createForm.email.trim()) {
+      setCreateError('Email is required');
+      return;
+    }
+    if (!createForm.email.includes('@')) {
+      setCreateError('Please enter a valid email address');
+      return;
+    }
+    if (!createForm.password) {
+      setCreateError('Password is required');
+      return;
+    }
+    if (createForm.password.length < 6) {
+      setCreateError('Password must be at least 6 characters');
+      return;
+    }
+    if (createForm.password !== createForm.confirmPassword) {
+      setCreateError('Passwords do not match');
+      return;
+    }
+    
+    try {
+      setIsCreating(true);
+      const response = await fetch('/api/enterprise-admin/super-admins', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          username: createForm.username.trim(),
+          email: createForm.email.trim().toLowerCase(),
+          password: createForm.password,
+          productType: createForm.productType
+        })
+      });
+      
+      const result = await response.json();
+      
+      if (!response.ok) {
+        setCreateError(result.message || 'Failed to create Super Admin');
+        return;
+      }
+      
+      console.log('✅ Super Admin created:', result);
+      
+      // Refresh the super admins list
+      const usersRes = await fetch("/api/enterprise-admin/super-admins", { credentials: "include" });
+      if (usersRes.ok) {
+        const usersJson = await usersRes.json().catch(() => ({}));
+        const admins = arr<any>(usersJson, "superAdmins").map((a) => {
+          const pagePerms: Record<string, string[]> = (() => {
+            if (a.pagePermissions && typeof a.pagePermissions === 'object') return a.pagePermissions as Record<string, string[]>;
+            const perms: Record<string, string[]> = {};
+            const assigned = Array.isArray(a.assignedModules) ? a.assignedModules : (Array.isArray(a.moduleAssignments) ? a.moduleAssignments : []);
+            assigned.forEach((item: any) => {
+              if (item && typeof item === 'object') {
+                const midRaw = item.module_id ?? item.moduleId ?? item.id ?? item.module?.id;
+                const pages = item.assigned_pages ?? item.page_permissions ?? item.pages;
+                if (midRaw != null && Array.isArray(pages)) {
+                  const mid = String(Number.isFinite(Number(midRaw)) ? Number(midRaw) : midRaw);
+                  perms[mid] = pages.map((p: any) => String(p));
+                }
+              }
+            });
+            return perms;
+          })();
+
+          return {
+            id: Number(a.id),
+            name: a.username ?? a.name,
+            email: a.email,
+            role: a.role ?? "SUPER_ADMIN",
+            productType: a.productType,
+            assignedModules: pickAssignedArray(a)
+              .map((x: any) => normalizeAssigned(x))
+              .filter((v: any) => v !== null),
+            pagePermissions: pagePerms,
+          } as SuperAdmin;
+        }) as SuperAdmin[];
+        setSuperAdmins(admins);
+      }
+      
+      // Reset form and close modal
+      setCreateForm({
+        username: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        productType: 'BUSINESS_ERP'
+      });
+      setShowCreateModal(false);
+    } catch (error) {
+      console.error('Error creating Super Admin:', error);
+      setCreateError('An error occurred while creating Super Admin');
+    } finally {
+      setIsCreating(false);
+    }
+  };
+
   if (loading) return <div className="p-4">Loading…</div>;
   if (error) return <div className="p-4 text-red-600">{error}</div>;
 
@@ -1187,7 +1343,18 @@ export default function Page() {
         {/* 2. Users column - Clients for SUPER_ADMIN, Super Admins for ENTERPRISE_ADMIN */}
         <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
           <div className="text-sm font-semibold mb-2 flex items-center justify-between">
-            <span>{isSuperAdmin ? 'Clients' : 'Super Admins'}</span>
+            <div className="flex items-center gap-2">
+              <span>{isSuperAdmin ? 'Clients' : 'Super Admins'}</span>
+              {!isSuperAdmin && (
+                <button
+                  onClick={() => setShowCreateModal(true)}
+                  className="p-1 rounded-md bg-green-500 hover:bg-green-600 text-white transition"
+                  title="Create Super Admin"
+                >
+                  <FiPlus className="w-3 h-3" />
+                </button>
+              )}
+            </div>
             <span className="text-xs font-normal text-gray-500">
               {isSuperAdmin ? clients.length : superAdmins.length}
             </span>
@@ -1454,17 +1621,21 @@ export default function Page() {
                   All Roles Overview
                   <span className="text-xs font-normal text-gray-500">({allRoles.length} roles)</span>
                 </div>
-                {/* Add/Remove button - prominent placement */}
-                <button
-                  onClick={() => setIsRoleAssignMode(!isRoleAssignMode)}
-                  className={`text-sm font-semibold px-4 py-1.5 rounded-lg transition flex items-center gap-2 shadow-sm ${
-                    isRoleAssignMode
-                      ? "bg-green-600 text-white hover:bg-green-700"
-                      : "bg-purple-600 text-white hover:bg-purple-700"
-                  }`}
-                >
-                  {isRoleAssignMode ? "✓ Done" : "Add/Remove"}
-                </button>
+                {/* Add/Remove button - only show when Super Admin is selected */}
+                {selectedAdminId ? (
+                  <button
+                    onClick={() => setIsRoleAssignMode(!isRoleAssignMode)}
+                    className={`text-sm font-semibold px-4 py-1.5 rounded-lg transition flex items-center gap-2 shadow-sm ${
+                      isRoleAssignMode
+                        ? "bg-green-600 text-white hover:bg-green-700"
+                        : "bg-purple-600 text-white hover:bg-purple-700"
+                    }`}
+                  >
+                    {isRoleAssignMode ? "✓ Done" : "Add/Remove Roles"}
+                  </button>
+                ) : (
+                  <span className="text-xs text-gray-500 italic">Select a Super Admin to assign roles</span>
+                )}
               </div>
               <div className="flex items-center gap-3 text-xs">
                 <span className="flex items-center gap-1">
@@ -1489,8 +1660,8 @@ export default function Page() {
                 
                 return (
                   <div key={role.id} className="relative">
-                    {/* Show +/- button overlay when in role assign mode */}
-                    {isRoleAssignMode && (
+                    {/* Show +/- button overlay when in role assign mode AND Super Admin is selected */}
+                    {isRoleAssignMode && selectedAdminId && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -1512,7 +1683,7 @@ export default function Page() {
                     )}
                     <button
                       onClick={() => {
-                        if (isRoleAssignMode) {
+                        if (isRoleAssignMode && selectedAdminId) {
                           setAssignedRoleIds(prev => 
                             prev.includes(role.id) 
                               ? prev.filter(id => id !== role.id)
@@ -1715,6 +1886,98 @@ export default function Page() {
           </>
         )}
       </div>
+
+      {/* Create Super Admin Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-md mx-4">
+            <div className="flex items-center justify-between p-4 border-b dark:border-gray-700">
+              <h3 className="text-lg font-semibold">Create Super Admin</h3>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md"
+              >
+                <FiX className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-4 space-y-4">
+              {createError && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/30 text-red-600 dark:text-red-400 rounded-md text-sm">
+                  {createError}
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium mb-1">Username</label>
+                <input
+                  type="text"
+                  value={createForm.username}
+                  onChange={(e) => setCreateForm({ ...createForm, username: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+                  placeholder="Enter username"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Email</label>
+                <input
+                  type="email"
+                  value={createForm.email}
+                  onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+                  placeholder="Enter email"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Password</label>
+                <input
+                  type="password"
+                  value={createForm.password}
+                  onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+                  placeholder="Enter password (min 6 chars)"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Confirm Password</label>
+                <input
+                  type="password"
+                  value={createForm.confirmPassword}
+                  onChange={(e) => setCreateForm({ ...createForm, confirmPassword: e.target.value })}
+                  className="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+                  placeholder="Confirm password"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium mb-1">Product Type</label>
+                <select
+                  value={createForm.productType}
+                  onChange={(e) => setCreateForm({ ...createForm, productType: e.target.value as 'BUSINESS_ERP' | 'PUMP_ERP' })}
+                  className="w-full px-3 py-2 border rounded-md dark:bg-gray-700 dark:border-gray-600"
+                >
+                  <option value="BUSINESS_ERP">BISMAN ERP</option>
+                  <option value="PUMP_ERP">PUMP ERP</option>
+                </select>
+              </div>
+              <div className="flex gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex-1 px-4 py-2 border rounded-md hover:bg-gray-50 dark:hover:bg-gray-700"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCreateSuperAdmin}
+                  disabled={isCreating}
+                  className="flex-1 px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 disabled:opacity-50"
+                >
+                  {isCreating ? 'Creating...' : 'Create'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

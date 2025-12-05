@@ -1,8 +1,9 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState, useCallback } from 'react';
 import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, Filter, Info, Search, ShieldAlert, User } from 'lucide-react';
 import { formatAbsolute, formatRelative } from '@/lib/time';
+import { usePageRefresh } from '@/contexts/RefreshContext';
 
 type Log = {
   id: string;
@@ -36,6 +37,7 @@ export default function ActivityLogsPage() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [cursor, setCursor] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [isDataRefreshing, setIsDataRefreshing] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   const grouped = useMemo(() => {
@@ -49,8 +51,12 @@ export default function ActivityLogsPage() {
     return Object.entries(map);
   }, [logs]);
 
-  const fetchLogs = async (append = false) => {
-    setLoading(true);
+  const fetchLogs = useCallback(async (append = false, isRefresh = false) => {
+    if (isRefresh) {
+      setIsDataRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     try {
       const params = new URLSearchParams();
       if (q) params.set('q', q);
@@ -67,13 +73,17 @@ export default function ActivityLogsPage() {
       }
     } finally {
       setLoading(false);
+      setIsDataRefreshing(false);
     }
-  };
+  }, [q, severity, actorId, range, cursor]);
 
   useEffect(() => {
-    fetchLogs(false);
+    fetchLogs(false, false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Register with global refresh context
+  usePageRefresh('activity-logs', () => fetchLogs(false, true));
 
   return (
     <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">

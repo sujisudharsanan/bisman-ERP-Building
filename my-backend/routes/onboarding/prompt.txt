@@ -1,0 +1,35 @@
+Create an Express route `POST /api/onboard` that:
+- Accepts company name, admin email, plan (trial/free).
+- Creates tenant row (UUID), default tenant settings, default roles, and admin user (password hashed).
+- Generates trial_expires_at if plan=trial (e.g., now +14 days).
+- Sends onboarding email (SMTP) and returns tenant_id and admin credentials (do not return raw password in production).
+- Enqueue background job to provision tenant resources (S3 prefix, DB schema if per-tenant).
+- Add idempotency key support to prevent double creation from retries.
+
+Onboarding sequence (summary):
+1. Validate request, check email uniqueness globally or per-tenant.
+2. Create tenant (UUID), create default roles in rbac_roles scoped to tenant.
+3. Create admin user in users with is_active=true.
+4. Create tenant_usage starter row.
+5. If trial plan -> set trial_expires_at.
+6. Send email with next steps and login link.
+7. Optional: create Stripe Customer & attach trial plan (see billing next).
+
+Request body:
+{
+  "companyName": "Acme Corp",
+  "adminEmail": "admin@acme.com",
+  "adminName": "John Doe",
+  "plan": "trial",          // "trial" | "free"
+  "idempotencyKey": "uuid"  // optional, for retry safety
+}
+
+Response:
+{
+  "success": true,
+  "tenantId": "uuid",
+  "adminUserId": "uuid",
+  "temporaryPassword": "xxx",  // Only in non-production
+  "loginUrl": "https://app.bisman.io/login?tenant=xxx",
+  "trialExpiresAt": "2025-01-19T00:00:00Z"  // if plan=trial
+}

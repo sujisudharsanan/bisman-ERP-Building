@@ -40,7 +40,7 @@ export default function StandardLoginPage() {
       accounts: [
         {
           id: 1,
-          name: 'Enterprise Admin',
+          name: 'BISMAN Corporation',
           email: 'enterprise@bisman.erp',
           password: 'enterprise123',
           role: 'ENTERPRISE_ADMIN',
@@ -530,6 +530,19 @@ export default function StandardLoginPage() {
               </div>
             </div>
           </form>
+
+          {/* Sign Up Link */}
+          <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700 text-center">
+            <p className="text-sm text-slate-600 dark:text-slate-400">
+              Don't have an account?{' '}
+              <a 
+                href="/signup" 
+                className="text-violet-600 dark:text-violet-400 hover:underline font-semibold"
+              >
+                Start your free trial
+              </a>
+            </p>
+          </div>
 
           {/* Demo Credentials - Hierarchical */}
           <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700">

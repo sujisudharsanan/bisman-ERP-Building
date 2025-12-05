@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Building2, Search, Filter, Plus, MoreVertical, Users, 
   HardDrive, Edit, Trash2, Power, UserCog, AlertCircle,
   CheckCircle, Clock, XCircle, TrendingUp, Calendar
 } from 'lucide-react';
+import { usePageRefresh } from '@/contexts/RefreshContext';
 
 interface Organization {
   id: number;
@@ -25,6 +26,7 @@ interface Organization {
 export default function OrganizationsPage() {
   const [organizations, setOrganizations] = useState<Organization[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDataRefreshing, setIsDataRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
@@ -42,15 +44,14 @@ export default function OrganizationsPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [actionType, setActionType] = useState<'toggle' | 'delete' | null>(null);
 
-  useEffect(() => {
-    fetchOrganizations();
-    fetchStats();
-  }, [currentPage, filterStatus, filterPlan, searchQuery]);
-
-  const fetchOrganizations = async () => {
+  const fetchOrganizations = useCallback(async (isRefresh = false) => {
     try {
-      setLoading(true);
-  setError(null as any);
+      if (isRefresh) {
+        setIsDataRefreshing(true);
+      } else {
+        setLoading(true);
+      }
+      setError(null as any);
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '10',
@@ -73,10 +74,11 @@ export default function OrganizationsPage() {
       setError('Failed to load organizations');
     } finally {
       setLoading(false);
+      setIsDataRefreshing(false);
     }
-  };
+  }, [currentPage, filterStatus, filterPlan, searchQuery]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const response = await fetch('/api/enterprise-admin/organizations/stats', {
         credentials: 'include'
@@ -89,7 +91,15 @@ export default function OrganizationsPage() {
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     }
-  };
+  }, []);
+
+  useEffect(() => {
+    fetchOrganizations();
+    fetchStats();
+  }, [fetchOrganizations, fetchStats]);
+
+  // Register with global refresh context
+  usePageRefresh('organizations', () => fetchOrganizations(true));
 
   const handleToggleStatus = async (org: Organization) => {
     try {
@@ -175,7 +185,7 @@ export default function OrganizationsPage() {
       {error && (
         <div className="p-3 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300">
           {error}
-          <button onClick={fetchOrganizations} className="ml-3 underline">Retry</button>
+          <button onClick={() => fetchOrganizations()} className="ml-3 underline">Retry</button>
         </div>
       )}
       {/* Header */}

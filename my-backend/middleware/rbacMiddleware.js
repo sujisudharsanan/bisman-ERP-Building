@@ -517,6 +517,114 @@ async function invalidateAllPermissions() {
 }
 
 /**
+ * Get user's maximum role level from database
+ * @param {number|string} userId - User ID
+ * @returns {Promise<number>} - Maximum role level (0 if no roles)
+ */
+async function getUserMaxRoleLevel(userId) {
+  const prisma = getPrisma();
+  
+  try {
+    const result = await prisma.$queryRaw`
+      SELECT MAX(r.level) as max_level
+      FROM rbac_user_roles ur
+      JOIN rbac_roles r ON ur.role_id = r.id
+      WHERE ur.user_id = ${parseInt(userId)}
+    `;
+    
+    const maxLevel = result?.[0]?.max_level;
+    // Handle bigint conversion
+    if (typeof maxLevel === 'bigint') {
+      return Number(maxLevel);
+    }
+    return Number(maxLevel || 0);
+  } catch (error) {
+    console.error('[rbacMiddleware] getUserMaxRoleLevel error:', error);
+    return 0;
+  }
+}
+
+/**
+ * Middleware to require a minimum role level for access
+ * 
+ * Use this to protect sensitive operations that require a certain role level.
+ * For example, assigning permissions requires level >= 80 (Admin).
+ * 
+ * @param {number} minLevel - Minimum role level required
+ * @returns {Function} Express middleware
+ * 
+ * @example
+ * // Protect bulk permission assignment (requires Admin level 80+)
+ * router.put('/roles/:id/permissions',
+ *   authenticate,
+ *   requireRoleLevelAbove(80),
+ *   bulkAssignPermissions
+ * );
+ * 
+ * // Protect role creation (requires Super Admin level 90+)
+ * router.post('/roles',
+ *   authenticate,
+ *   requireRoleLevelAbove(90),
+ *   createRole
+ * );
+ */
+function requireRoleLevelAbove(minLevel) {
+  return async (req, res, next) => {
+    try {
+      // Check authentication
+      if (!req.user || !req.user.id) {
+        return res.status(401).json({
+          success: false,
+          error: {
+            message: 'Authentication required',
+            code: 'AUTH_REQUIRED'
+          },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      const userId = req.user.id;
+      const userLevel = await getUserMaxRoleLevel(userId);
+
+      // Attach level to request for downstream use
+      req.userRoleLevel = userLevel;
+
+      if (userLevel < minLevel) {
+        console.warn(
+          `[rbacMiddleware] Role level violation: user ${userId} has level ${userLevel}, ` +
+          `requires ${minLevel} for ${req.method} ${req.originalUrl}`
+        );
+        
+        return res.status(403).json({
+          success: false,
+          error: {
+            message: 'Insufficient role level for this operation',
+            code: 'ROLE_LEVEL_TOO_LOW',
+            details: {
+              required: minLevel,
+              current: userLevel
+            }
+          },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('[rbacMiddleware] requireRoleLevelAbove error:', error);
+      return res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to verify role level',
+          code: 'ROLE_LEVEL_CHECK_ERROR'
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+  };
+}
+
+/**
  * Attach permissions to request (for frontend to use)
  */
 async function attachPermissions(req, res, next) {
@@ -543,10 +651,12 @@ module.exports = {
   requireRole,
   revalidateOnWrite,
   attachPermissions,
+  requireRoleLevelAbove,
 
   // Permission helpers
   getUserPermissions,
   hasPermission,
+  getUserMaxRoleLevel,
 
   // Cache invalidation
   invalidateUserPermissions,
@@ -564,7 +674,7 @@ module.exports = {
  * EXAMPLE USAGE - Copy/paste into your routes
  * ============================================================================
  *
- * const { requirePermission, requireRole } = require('../middleware/rbacMiddleware');
+ * const { requirePermission, requireRole, requireRoleLevelAbove } = require('../middleware/rbacMiddleware');
  *
  * // Basic permission check
  * router.post('/finance/invoice', requirePermission('create', 'module:finance'), createInvoice);
@@ -578,6 +688,20 @@ module.exports = {
  *
  * // Role-based check (alternative)
  * router.get('/admin/users', requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN']), listUsers);
+ *
+ * // Role level check (for privilege-sensitive operations)
+ * // Level 80 = Admin, Level 90 = Super Admin, Level 100 = Enterprise Admin
+ * router.put('/roles/:id/permissions',
+ *   authenticate,
+ *   requireRoleLevelAbove(80),  // Requires Admin level or higher
+ *   bulkAssignPermissions
+ * );
+ *
+ * router.post('/roles',
+ *   authenticate,
+ *   requireRoleLevelAbove(90),  // Requires Super Admin level or higher
+ *   createRole
+ * );
  *
  * // Combine multiple permissions
  * router.get('/dashboard/summary',

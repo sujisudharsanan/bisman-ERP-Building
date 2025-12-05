@@ -1,0 +1,39 @@
+Design a minimal telemetry pipeline:
+- Capture events (api_request, user_login, file_upload) to Postgres table events or to an analytics queue (Kafka / Kinesis).
+- Provide a lightweight events table schema and an example `trackEvent` function used throughout services.
+- Provide a job `aggregateDailyUsage` that runs nightly to compute per-tenant metrics and populate `tenant_usage`.
+- Provide endpoints to fetch aggregated usage for dashboards and CSV export for audit.
+
+Minimal events table (Prisma):
+```prisma
+model Event {
+  id        Int      @id @default(autoincrement())
+  tenantId  String?  @db.Uuid
+  eventType String
+  payload   Json
+  createdAt DateTime @default(now())
+  @@index([tenantId, createdAt])
+}
+```
+
+lib/analytics.js:
+```javascript
+const { prismaPrimary } = require('../lib/prisma');
+async function trackEvent({ tenantId, eventType, payload }) {
+  return prismaPrimary.event.create({ data: { tenantId, eventType, payload }});
+}
+```
+
+Aggregation job:
+Aggregate events into tenant_usage daily using GROUP BY tenantId counting event types.
+
+Event Types:
+- api_request: Track API endpoint usage
+- user_login: Track user authentication events
+- user_logout: Track logouts
+- file_upload: Track storage usage
+- file_delete: Track file deletions
+- report_generated: Track report generation
+- export_data: Track data exports
+- import_data: Track data imports
+- error_occurred: Track application errors

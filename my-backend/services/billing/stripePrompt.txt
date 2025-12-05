@@ -1,0 +1,41 @@
+Generate Node.js code for Stripe integration to:
+- Create Stripe Customer when tenant is created.
+- Create subscription with trial_period_days for trial users.
+- Implement webhook route /api/webhooks/stripe to handle payment succeeded, invoice.payment_failed, customer.subscription.deleted events.
+- On subscription status changes, update tenant plan and quotas in DB and send audit logs.
+- Secure webhook endpoint with Stripe signature check.
+
+Minimal steps & snippets:
+
+Install: npm install stripe
+
+Create customer:
+```javascript
+const stripe = require('stripe')(process.env.STRIPE_SECRET);
+
+async function createCustomerForTenant(tenant) {
+  const customer = await stripe.customers.create({
+    email: tenant.adminEmail,
+    metadata: { tenantId: tenant.id }
+  });
+  // store stripeCustomerId in tenants table
+}
+```
+
+Create subscription with trial:
+```javascript
+await stripe.subscriptions.create({
+  customer: stripeCustomerId,
+  items: [{ price: process.env.STRIPE_PRICE_ID }],
+  trial_period_days: 14
+});
+```
+
+Webhook handling: verify signature, parse event types, update DB accordingly.
+
+Environment variables needed:
+- STRIPE_SECRET_KEY
+- STRIPE_WEBHOOK_SECRET
+- STRIPE_PRICE_ID_FREE
+- STRIPE_PRICE_ID_PRO
+- STRIPE_PRICE_ID_ENTERPRISE

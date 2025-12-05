@@ -5,6 +5,8 @@ export { PrivilegeManagement } from './PrivilegeManagement';
 export { RoleSelector } from './RoleSelector';
 export { UserSelector } from './UserSelector';  
 export { PrivilegeTable } from './PrivilegeTable';
+export { default as PermissionTreePicker, generatePermissionId, parsePermissionId } from './PermissionTreePicker';
+export type { Module, Page, Action, PermissionTreePickerProps } from './PermissionTreePicker';
 
 // Re-export types for convenience
 export type {

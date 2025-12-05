@@ -17,6 +17,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { usePageRefresh } from '@/contexts/RefreshContext';
 import {
   Shield,
   AlertTriangle,
@@ -1026,6 +1027,9 @@ const EnterpriseSecurityDashboard: React.FC<EnterpriseSecurityDashboardProps> = 
       console.error('Failed to mark suspicious:', error);
     }
   }, []);
+
+  // Register with navbar refresh button
+  usePageRefresh('enterprise-security-dashboard', fetchAllData);
 
   // Initial load
   useEffect(() => {

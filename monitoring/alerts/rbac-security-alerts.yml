@@ -1,0 +1,229 @@
+# RBAC Security Alert Rules
+# 
+# Prometheus alerting rules for detecting suspicious RBAC activity
+# and potential privilege escalation attempts.
+#
+# These alerts complement the existing ERP alerts and focus specifically
+# on role-based access control security monitoring.
+#
+# Prerequisites:
+# - Metrics must be exposed by the backend application
+# - Custom metrics: rbac_permission_changes_total, rbac_role_level_violations_total
+# - Audit log metrics (if using Prometheus exporter for audit data)
+
+groups:
+  # =========================================================
+  # RBAC Permission Change Alerts
+  # =========================================================
+  - name: rbac_permission_alerts
+    interval: 30s
+    rules:
+      # Alert: High volume of role permission changes
+      # Detects when someone is making many permission changes in a short time
+      - alert: HighVolumeRolePermissionChanges
+        expr: |
+          sum(rate(rbac_permission_changes_total[5m])) by (user_id) > 0.1
+        for: 2m
+        labels:
+          severity: warning
+          category: security
+          component: rbac
+        annotations:
+          summary: "High volume of RBAC permission changes"
+          description: "User {{ $labels.user_id }} has made more than 10 permission changes in the last 5 minutes"
+          runbook_url: "https://docs.bisman.com/security/rbac-alerts#high-volume-changes"
+          action: "Review audit logs for user {{ $labels.user_id }} and verify changes are legitimate"
+
+      # Alert: Burst of role permission changes (short-term spike)
+      # Detects rapid permission changes that might indicate scripted attacks
+      - alert: BurstRolePermissionChanges
+        expr: |
+          sum(increase(rbac_permission_changes_total[1m])) by (user_id) > 5
+        for: 1m
+        labels:
+          severity: critical
+          category: security
+          component: rbac
+        annotations:
+          summary: "Burst of RBAC permission changes detected"
+          description: "User {{ $labels.user_id }} made {{ $value }} permission changes in the last minute"
+          runbook_url: "https://docs.bisman.com/security/rbac-alerts#burst-changes"
+          action: "Immediately investigate user {{ $labels.user_id }} activity. Consider temporary account suspension."
+
+      # Alert: Permission changes to admin-level roles
+      # Detects modifications to high-privilege roles
+      - alert: AdminRoleModified
+        expr: |
+          increase(rbac_permission_changes_total{role_level=">=80"}[5m]) > 0
+        for: 0m
+        labels:
+          severity: warning
+          category: security
+          component: rbac
+        annotations:
+          summary: "Admin-level role permissions modified"
+          description: "Permissions for role {{ $labels.role_name }} (level {{ $labels.role_level }}) were modified"
+          runbook_url: "https://docs.bisman.com/security/rbac-alerts#admin-role-modified"
+          action: "Verify this change was authorized via change management process"
+
+  # =========================================================
+  # Privilege Escalation Attempt Alerts
+  # =========================================================
+  - name: rbac_escalation_alerts
+    interval: 15s
+    rules:
+      # Alert: Role level violation detected
+      # Someone tried to assign permissions above their level
+      - alert: RoleLevelViolationAttempt
+        expr: |
+          increase(rbac_role_level_violations_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: security
+          component: rbac
+        annotations:
+          summary: "Privilege escalation attempt detected"
+          description: "{{ $value }} role level violation attempts in the last 5 minutes"
+          runbook_url: "https://docs.bisman.com/security/rbac-alerts#privilege-escalation"
+          action: "Review audit logs for ROLE_LEVEL_VIOLATION events. May indicate attack or misconfiguration."
+
+      # Alert: Multiple role level violations from same user
+      # Repeated attempts to escalate privileges
+      - alert: RepeatedPrivilegeEscalationAttempts
+        expr: |
+          sum(increase(rbac_role_level_violations_total[15m])) by (user_id) > 3
+        for: 0m
+        labels:
+          severity: critical
+          category: security
+          component: rbac
+        annotations:
+          summary: "Repeated privilege escalation attempts"
+          description: "User {{ $labels.user_id }} has made {{ $value }} privilege escalation attempts in 15 minutes"
+          runbook_url: "https://docs.bisman.com/security/rbac-alerts#repeated-escalation"
+          action: "Immediately suspend user {{ $labels.user_id }} and investigate. This may be an active attack."
+
+      # Alert: Cross-tenant access attempt
+      # User tried to modify roles in another tenant
+      - alert: CrossTenantAccessAttempt
+        expr: |
+          increase(rbac_cross_tenant_violations_total[5m]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: security
+          component: rbac
+        annotations:
+          summary: "Cross-tenant access attempt detected"
+          description: "{{ $value }} cross-tenant access violations in the last 5 minutes"
+          runbook_url: "https://docs.bisman.com/security/rbac-alerts#cross-tenant"
+          action: "Critical security event. Review audit logs for CROSS_TENANT_VIOLATION events immediately."
+
+  # =========================================================
+  # RBAC System Health Alerts
+  # =========================================================
+  - name: rbac_system_alerts
+    interval: 30s
+    rules:
+      # Alert: RBAC permission check failures
+      # Backend is having trouble checking permissions
+      - alert: RBACPermissionCheckFailures
+        expr: |
+          rate(rbac_permission_check_errors_total[5m]) > 0.01
+        for: 2m
+        labels:
+          severity: warning
+          category: availability
+          component: rbac
+        annotations:
+          summary: "RBAC permission check failures"
+          description: "{{ $value | humanizePercentage }} of permission checks are failing"
+          runbook_url: "https://docs.bisman.com/security/rbac-alerts#check-failures"
+          action: "Check database connectivity and RBAC service health"
+
+      # Alert: Cache invalidation queue backlog
+      # Permission cache isn't being cleared fast enough
+      - alert: RBACCacheInvalidationBacklog
+        expr: |
+          rbac_cache_invalidation_queue_size > 100
+        for: 2m
+        labels:
+          severity: warning
+          category: availability
+          component: rbac
+        annotations:
+          summary: "RBAC cache invalidation backlog"
+          description: "{{ $value }} pending cache invalidations in queue"
+          runbook_url: "https://docs.bisman.com/security/rbac-alerts#cache-backlog"
+          action: "Check Redis connectivity and invalidation worker health"
+
+      # Alert: No permission cache invalidations in a while
+      # Might indicate Redis pub/sub is broken
+      - alert: RBACCacheInvalidationStale
+        expr: |
+          time() - rbac_last_cache_invalidation_timestamp > 3600
+        for: 5m
+        labels:
+          severity: info
+          category: availability
+          component: rbac
+        annotations:
+          summary: "No recent RBAC cache invalidations"
+          description: "No cache invalidations in the last {{ $value | humanizeDuration }}"
+          runbook_url: "https://docs.bisman.com/security/rbac-alerts#cache-stale"
+          action: "This may be normal if no permission changes occurred. Verify Redis pub/sub is working."
+
+  # =========================================================
+  # Audit Log Alerts
+  # =========================================================
+  - name: rbac_audit_alerts
+    interval: 60s
+    rules:
+      # Alert: Missing audit logs
+      # Audit logging might be broken
+      - alert: RBACAuditLogFailures
+        expr: |
+          rate(rbac_audit_log_errors_total[5m]) > 0
+        for: 2m
+        labels:
+          severity: warning
+          category: compliance
+          component: rbac
+        annotations:
+          summary: "RBAC audit logging failures"
+          description: "{{ $value }} audit log write failures in the last 5 minutes"
+          runbook_url: "https://docs.bisman.com/security/rbac-alerts#audit-failures"
+          action: "Audit logging is required for compliance. Fix immediately."
+
+      # Alert: Unusual pattern - role creation spike
+      # Many new roles being created
+      - alert: UnusualRoleCreation
+        expr: |
+          sum(increase(rbac_role_created_total[1h])) > 10
+        for: 5m
+        labels:
+          severity: warning
+          category: security
+          component: rbac
+        annotations:
+          summary: "Unusual number of roles created"
+          description: "{{ $value }} new roles created in the last hour"
+          runbook_url: "https://docs.bisman.com/security/rbac-alerts#role-creation"
+          action: "Review role creation activity. May indicate automation or misconfiguration."
+
+      # Alert: Enterprise-level changes
+      # Changes to top-level admin permissions
+      - alert: EnterpriseAdminChanges
+        expr: |
+          increase(rbac_permission_changes_total{role_level="100"}[1h]) > 0
+        for: 0m
+        labels:
+          severity: critical
+          category: security
+          component: rbac
+        annotations:
+          summary: "Enterprise Admin permissions modified"
+          description: "Enterprise-level (level 100) permissions were modified"
+          runbook_url: "https://docs.bisman.com/security/rbac-alerts#enterprise-changes"
+          action: "Enterprise Admin changes require immediate review. Verify via change management."

@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { usePageRefresh } from '@/contexts/RefreshContext';
 
 export default function Page() {
   const [integrations,setIntegrations]=useState<any[]>([]);
@@ -7,11 +8,16 @@ export default function Page() {
   const [apiKeys,setApiKeys]=useState<any[]>([]);
   const [webhooks,setWebhooks]=useState<any[]>([]);
   const [loading,setLoading]=useState(true);
+  const [isDataRefreshing,setIsDataRefreshing]=useState(false);
   const [error,setError]=useState<string|null>(null);
 
-  useEffect(()=>{(async()=>{
-    try{
-      setLoading(true);
+  const fetchIntegrations = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setIsDataRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       const [i,s,k,w] = await Promise.all([
         fetch('/api/enterprise-admin/integrations',{credentials:'include'}).then(r=>r.json()),
         fetch('/api/enterprise-admin/integrations/sso',{credentials:'include'}).then(r=>r.json()),
@@ -22,9 +28,20 @@ export default function Page() {
       setSso(s.ssoConfig);
       setApiKeys(k.apiKeys||[]);
       setWebhooks(w.webhooks||[]);
-    }catch(e:any){ setError(e.message||'Failed to load integrations'); }
-    finally{ setLoading(false); }
-  })();},[]);
+    } catch(e:any) { 
+      setError(e.message||'Failed to load integrations'); 
+    } finally { 
+      setLoading(false);
+      setIsDataRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchIntegrations();
+  }, [fetchIntegrations]);
+
+  // Register with global refresh context
+  usePageRefresh('integrations', () => fetchIntegrations(true));
 
   return (
     <div className="space-y-6 text-gray-900 dark:text-gray-100 p-6">

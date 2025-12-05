@@ -1,0 +1,360 @@
+# BISMAN ERP - SLA Alert Rules
+# Deploy to: monitoring/prometheus/rules/sla_alerts.yml
+
+groups:
+  # ============================================================================
+  # Availability & Error Rate Alerts
+  # ============================================================================
+  - name: sla.availability
+    interval: 30s
+    rules:
+      # CRITICAL: High 5xx error rate
+      - alert: High5xxErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{job="backend",status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="backend"}[5m]))
+          ) > 0.01
+        for: 5m
+        labels:
+          severity: critical
+          team: backend
+          slo: availability
+        annotations:
+          summary: "High 5xx error rate detected"
+          description: |
+            5xx error rate is {{ $value | humanizePercentage }} (threshold: 1%).
+            This is consuming error budget rapidly.
+          runbook_url: "https://docs.bisman.io/runbooks/high-error-rate"
+          dashboard_url: "https://grafana.bisman.io/d/sla/sla-dashboard"
+
+      # WARNING: Elevated 5xx error rate
+      - alert: Elevated5xxErrorRate
+        expr: |
+          (
+            sum(rate(http_requests_total{job="backend",status=~"5.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="backend"}[5m]))
+          ) > 0.005
+        for: 10m
+        labels:
+          severity: warning
+          team: backend
+          slo: availability
+        annotations:
+          summary: "Elevated 5xx error rate"
+          description: "5xx error rate is {{ $value | humanizePercentage }} (threshold: 0.5%)."
+
+      # CRITICAL: Service availability below threshold
+      - alert: ServiceAvailabilityLow
+        expr: |
+          (
+            sum(rate(http_requests_total{job="backend",status=~"2..|3.."}[5m]))
+            /
+            sum(rate(http_requests_total{job="backend"}[5m]))
+          ) < 0.95
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+          slo: availability
+        annotations:
+          summary: "Service availability critically low"
+          description: "Availability is {{ $value | humanizePercentage }}. SLO target is 99.9%."
+
+      # CRITICAL: Service completely down
+      - alert: ServiceDown
+        expr: |
+          sum(rate(http_requests_total{job="backend"}[1m])) == 0
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+          slo: availability
+        annotations:
+          summary: "Backend service appears to be down"
+          description: "No requests received in the last minute. Service may be unreachable."
+
+  # ============================================================================
+  # Latency Alerts
+  # ============================================================================
+  - name: sla.latency
+    interval: 30s
+    rules:
+      # CRITICAL: p95 latency too high
+      - alert: HighP95Latency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{job="backend"}[5m])) by (le)
+          ) > 2
+        for: 5m
+        labels:
+          severity: critical
+          team: backend
+          slo: latency
+        annotations:
+          summary: "p95 latency exceeds 2 seconds"
+          description: "p95 latency is {{ $value | humanizeDuration }}. SLO target is < 2s."
+          runbook_url: "https://docs.bisman.io/runbooks/high-latency"
+
+      # WARNING: p95 latency elevated
+      - alert: ElevatedP95Latency
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{job="backend"}[5m])) by (le)
+          ) > 1
+        for: 10m
+        labels:
+          severity: warning
+          team: backend
+          slo: latency
+        annotations:
+          summary: "p95 latency exceeds 1 second"
+          description: "p95 latency is {{ $value | humanizeDuration }}. Consider investigating."
+
+      # WARNING: p99 latency very high
+      - alert: HighP99Latency
+        expr: |
+          histogram_quantile(0.99,
+            sum(rate(http_request_duration_seconds_bucket{job="backend"}[5m])) by (le)
+          ) > 5
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+          slo: latency
+        annotations:
+          summary: "p99 latency exceeds 5 seconds"
+          description: "p99 latency is {{ $value | humanizeDuration }}. Outlier requests are very slow."
+
+      # INFO: Specific endpoint slow
+      - alert: SlowEndpoint
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(http_request_duration_seconds_bucket{job="backend"}[5m])) by (le, endpoint)
+          ) > 3
+        for: 15m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Endpoint {{ $labels.endpoint }} is slow"
+          description: "p95 latency for {{ $labels.endpoint }} is {{ $value | humanizeDuration }}."
+
+  # ============================================================================
+  # Database Alerts
+  # ============================================================================
+  - name: sla.database
+    interval: 30s
+    rules:
+      # CRITICAL: Database connection errors
+      - alert: DatabaseConnectionErrors
+        expr: |
+          rate(db_connection_errors_total[5m]) > 0.1
+        for: 2m
+        labels:
+          severity: critical
+          team: backend
+          slo: availability
+        annotations:
+          summary: "Database connection errors detected"
+          description: "{{ $value }} connection errors per second. Database may be unreachable."
+          runbook_url: "https://docs.bisman.io/runbooks/database-errors"
+
+      # CRITICAL: Database unreachable
+      - alert: DatabaseUnreachable
+        expr: |
+          rate(db_connection_errors_total[1m]) > 1
+        for: 1m
+        labels:
+          severity: critical
+          team: backend
+          slo: availability
+        annotations:
+          summary: "Database appears unreachable"
+          description: "More than 1 connection error per second. Immediate action required."
+
+      # WARNING: Connection pool exhaustion
+      - alert: DatabasePoolExhausted
+        expr: |
+          db_connection_pool_active / db_connection_pool_size > 0.9
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "Connection pool is {{ $value | humanizePercentage }} utilized."
+
+      # WARNING: Slow queries
+      - alert: SlowDatabaseQueries
+        expr: |
+          histogram_quantile(0.95,
+            sum(rate(db_query_duration_seconds_bucket[5m])) by (le)
+          ) > 1
+        for: 10m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Database queries are slow"
+          description: "p95 query duration is {{ $value | humanizeDuration }}."
+
+  # ============================================================================
+  # Backup Alerts
+  # ============================================================================
+  - name: sla.backup
+    interval: 60s
+    rules:
+      # CRITICAL: Backup too old
+      - alert: BackupTooOld
+        expr: |
+          (time() - backup_last_success_timestamp) / 3600 > 24
+        for: 30m
+        labels:
+          severity: critical
+          team: infrastructure
+          slo: durability
+        annotations:
+          summary: "Last successful backup is more than 24 hours old"
+          description: "Last backup was {{ $value | humanizeDuration }} ago. Data loss risk."
+          runbook_url: "https://docs.bisman.io/runbooks/backup-failure"
+
+      # WARNING: Backup stale
+      - alert: BackupStale
+        expr: |
+          (time() - backup_last_success_timestamp) / 3600 > 12
+        for: 30m
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "Last backup is more than 12 hours old"
+          description: "Last backup was {{ $value | humanizeDuration }} ago."
+
+      # CRITICAL: Backup failure
+      - alert: BackupFailure
+        expr: |
+          increase(backup_failure_total[1h]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          team: infrastructure
+          slo: durability
+        annotations:
+          summary: "Backup failure detected"
+          description: "{{ $value }} backup failures in the last hour."
+
+      # WARNING: Low backup success rate
+      - alert: LowBackupSuccessRate
+        expr: |
+          (
+            sum(increase(backup_success_total[7d]))
+            /
+            (sum(increase(backup_success_total[7d])) + sum(increase(backup_failure_total[7d])))
+          ) < 0.95
+        for: 1h
+        labels:
+          severity: warning
+          team: infrastructure
+        annotations:
+          summary: "Backup success rate below 95%"
+          description: "Backup success rate is {{ $value | humanizePercentage }} over last 7 days."
+
+  # ============================================================================
+  # Error Budget Alerts
+  # ============================================================================
+  - name: sla.error_budget
+    interval: 60s
+    rules:
+      # WARNING: Error budget low
+      - alert: ErrorBudgetLow
+        expr: |
+          (
+            1 - (
+              1 - (
+                sum(rate(http_requests_total{job="backend",status=~"2..|3.."}[30d]))
+                /
+                sum(rate(http_requests_total{job="backend"}[30d]))
+              )
+            ) / 0.001
+          ) * 100 < 25
+        for: 1h
+        labels:
+          severity: warning
+          team: backend
+          slo: error_budget
+        annotations:
+          summary: "Error budget below 25%"
+          description: "Only {{ $value }}% of monthly error budget remaining. Consider freezing deployments."
+
+      # CRITICAL: Error budget nearly exhausted
+      - alert: ErrorBudgetCritical
+        expr: |
+          (
+            1 - (
+              1 - (
+                sum(rate(http_requests_total{job="backend",status=~"2..|3.."}[30d]))
+                /
+                sum(rate(http_requests_total{job="backend"}[30d]))
+              )
+            ) / 0.001
+          ) * 100 < 10
+        for: 30m
+        labels:
+          severity: critical
+          team: backend
+          slo: error_budget
+        annotations:
+          summary: "Error budget nearly exhausted"
+          description: "Only {{ $value }}% of monthly error budget remaining. Feature freeze recommended."
+
+      # INFO: High error budget burn rate
+      - alert: HighErrorBudgetBurnRate
+        expr: |
+          (
+            sum(rate(http_requests_total{job="backend",status=~"5.."}[1h]))
+            /
+            sum(rate(http_requests_total{job="backend"}[1h]))
+          ) / 0.001 * 720 > 2
+        for: 1h
+        labels:
+          severity: warning
+          team: backend
+          slo: error_budget
+        annotations:
+          summary: "Error budget burning faster than expected"
+          description: "At current rate, error budget will be exhausted in {{ 720 / $value }} hours."
+
+  # ============================================================================
+  # Tenant Quota Alerts
+  # ============================================================================
+  - name: sla.tenant_quota
+    interval: 60s
+    rules:
+      # WARNING: Tenant hitting rate limits
+      - alert: TenantRateLimited
+        expr: |
+          sum(rate(tenant_quota_exceeded_total[5m])) by (tenant_id) > 1
+        for: 5m
+        labels:
+          severity: warning
+          team: backend
+        annotations:
+          summary: "Tenant {{ $labels.tenant_id }} hitting rate limits"
+          description: "{{ $value }} rate limit hits per second. Consider quota increase."
+
+      # INFO: High quota utilization
+      - alert: TenantHighQuotaUsage
+        expr: |
+          sum(increase(tenant_api_calls_total[1d])) by (tenant_id)
+          /
+          on(tenant_id) group_left tenant_daily_quota > 0.9
+        for: 1h
+        labels:
+          severity: info
+          team: backend
+        annotations:
+          summary: "Tenant {{ $labels.tenant_id }} at 90% of daily quota"
+          description: "Consider upgrading tenant plan or increasing quota."

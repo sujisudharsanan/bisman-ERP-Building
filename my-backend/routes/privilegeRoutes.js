@@ -8,6 +8,7 @@ const privilegeService = require('../services/privilegeService');
 const rbacService = require('../services/rbacService');
 const authMiddleware = require('../middleware/auth');
 const rbacMiddleware = require('../middleware/rbac');
+const { requireRoleLevelAbove } = require('../middleware/rbacMiddleware');
 
 // Note: Authentication middleware is applied per route instead of globally
 // to avoid blocking login and health endpoints
@@ -119,6 +120,100 @@ router.patch('/roles/:roleId/status', authMiddleware.authenticate, rbacMiddlewar
     res.status(500).json({ success: false, error: { message: 'Failed to update role status', code: 'DATABASE_ERROR' }, timestamp: new Date().toISOString() })
   }
 })
+
+// PUT /api/privileges/roles/:roleId/permissions - Bulk assign permissions to a role
+router.put('/roles/:roleId/permissions',
+  authMiddleware.authenticate,
+  rbacMiddleware.requireRole(['Super Admin', 'Admin']),
+  requireRoleLevelAbove(80), // Requires Admin level (80) or higher
+  [
+    body('permissionIds').isArray().withMessage('permissionIds must be an array'),
+    body('permissionIds.*').isInt({ min: 1 }).withMessage('Each permission ID must be a positive integer')
+  ],
+  handleValidationErrors,
+  async (req, res) => {
+    try {
+      const { roleId } = req.params;
+      const { permissionIds } = req.body;
+      const assignerId = req.user.id;
+
+      // Validate roleId
+      const roleIdInt = parseInt(roleId, 10);
+      if (isNaN(roleIdInt) || roleIdInt < 1) {
+        return res.status(400).json({
+          success: false,
+          error: {
+            message: 'Invalid role ID',
+            code: 'INVALID_ROLE_ID'
+          },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      // Build assigner context from JWT for tenant scoping
+      const assignerContext = {
+        userType: req.user.userType || req.user.role || 'USER',
+        tenantId: req.user.tenant_id || req.user.tenantId || null,
+        level: req.user.level || null
+      };
+
+      // Call the service method with tenant context
+      const result = await rbacService.assignPermissionsToRole(roleIdInt, assignerId, permissionIds, assignerContext);
+
+      // Log the privilege change for audit (secondary audit with additional context)
+      try {
+        await privilegeService.logPrivilegeChange({
+          user_id: assignerId,
+          action: 'UPDATE',
+          entity_type: 'ROLE_PERMISSIONS',
+          entity_id: roleId,
+          old_values: {},
+          new_values: { 
+            permissionIds, 
+            assigned: result.assigned,
+            tenantId: assignerContext.tenantId,
+            userType: assignerContext.userType
+          },
+          ip_address: req.ip,
+          user_agent: req.get('User-Agent')
+        });
+      } catch (auditError) {
+        console.warn('Failed to log audit trail:', auditError.message);
+      }
+
+      res.json({
+        success: true,
+        data: result,
+        message: `Successfully assigned ${result.assigned} permissions to role`,
+        timestamp: new Date().toISOString()
+      });
+
+    } catch (error) {
+      console.error('Error assigning permissions to role:', error);
+
+      // Handle custom errors from rbacService
+      if (error.status && error.code) {
+        return res.status(error.status).json({
+          success: false,
+          error: {
+            message: error.message,
+            code: error.code
+          },
+          timestamp: new Date().toISOString()
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        error: {
+          message: 'Failed to assign permissions to role',
+          code: 'PERMISSION_ASSIGNMENT_ERROR'
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+  }
+);
 
 // GET /api/health/database - Database health check
 

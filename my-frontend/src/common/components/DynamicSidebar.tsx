@@ -415,10 +415,19 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
                           pathname?.startsWith('/user-settings') ||
                           pathname?.startsWith('/common/user-settings');
 
+  // Check if user has access to about-me page
+  const hasAboutMeAccess = useMemo(() => {
+    // Enterprise Admin always has access
+    const isEnterprise = user?.role === 'ENTERPRISE_ADMIN' || user?.roleName === 'ENTERPRISE_ADMIN';
+    if (isEnterprise) return true;
+    // Check if about-me page is in allowed pages
+    return userAllowedPages.includes('about-me') || userAllowedPages.includes('common-about-me');
+  }, [user?.role, user?.roleName, userAllowedPages]);
+
   return (
     <div className={`py-4 ${className}`}>
-      {/* User Profile Section - Hide on dashboard and user settings pages */}
-      {user && !hideProfileInSidebar && (
+      {/* User Profile Section - Only show if user has access to about-me page */}
+      {user && !hideProfileInSidebar && hasAboutMeAccess && (
         <div className="px-2 mb-4">
           <div 
             className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -476,18 +485,8 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
       {/* Flat page list (no module headers) */}
       {!isLoadingPermissions && (
         <div className="space-y-1 px-2">
-          {/* Dashboard shortcut as first item */}
-          <Link
-            href={dashboardPath}
-            className={`flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors ${
-              isActivePath(dashboardPath)
-                ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
-                : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
-            }`}
-            title="Dashboard"
-          >
-            <span className="flex-1 truncate">Dashboard</span>
-          </Link>
+          {/* Dashboard is now part of visiblePages - no hardcoded shortcut */}
+          {/* Only show pages that user has explicit permission for */}
           {visiblePages.map(page => renderPageLink(page))}
         </div>
       )}

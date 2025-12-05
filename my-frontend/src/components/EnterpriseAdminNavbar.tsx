@@ -105,7 +105,7 @@ export default function EnterpriseAdminNavbar({ onMenuToggle, onRefresh }: Enter
             <HeaderLogo />
             <div className="flex flex-col">
               <h1 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
-                Enterprise Admin
+                BISMAN Corporation
               </h1>
               <span className="text-xs text-gray-500 dark:text-gray-400">
                 {pageName}

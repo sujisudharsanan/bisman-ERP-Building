@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Users, Search, Filter, Plus, MoreVertical, Edit, Trash2,
   Power, Mail, Shield, Building2, Download, Upload, CheckSquare,
   XCircle, CheckCircle, Clock, AlertCircle, UserX, Key
 } from 'lucide-react';
+import { usePageRefresh } from '@/contexts/RefreshContext';
 
 interface User {
   id: number;
@@ -25,6 +26,7 @@ interface User {
 export default function UsersManagementPage() {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isDataRefreshing, setIsDataRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterOrg, setFilterOrg] = useState('');
   const [filterRole, setFilterRole] = useState('all');
@@ -43,14 +45,13 @@ export default function UsersManagementPage() {
     byRole: [] as { role: string; count: number }[]
   });
 
-  useEffect(() => {
-    fetchUsers();
-    fetchStats();
-  }, [currentPage, filterRole, filterStatus, searchQuery, filterOrg]);
-
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async (isRefresh = false) => {
     try {
-      setLoading(true);
+      if (isRefresh) {
+        setIsDataRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       const params = new URLSearchParams({
         page: currentPage.toString(),
         limit: '20',
@@ -73,10 +74,11 @@ export default function UsersManagementPage() {
       console.error('Failed to fetch users:', error);
     } finally {
       setLoading(false);
+      setIsDataRefreshing(false);
     }
-  };
+  }, [currentPage, filterRole, filterStatus, searchQuery, filterOrg]);
 
-  const fetchStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       const response = await fetch('/api/enterprise-admin/users/stats/overview', {
         credentials: 'include'
@@ -89,7 +91,17 @@ export default function UsersManagementPage() {
     } catch (error) {
       console.error('Failed to fetch stats:', error);
     }
-  };
+  }, []);
+
+  // Register refresh handler for navbar refresh button
+  usePageRefresh('enterprise-users', async () => {
+    await Promise.all([fetchUsers(true), fetchStats()]);
+  });
+
+  useEffect(() => {
+    fetchUsers();
+    fetchStats();
+  }, [fetchUsers, fetchStats]);
 
   const handleBulkAction = async (action: string, value?: string) => {
     if (selectedUsers.length === 0) return;
@@ -341,7 +353,7 @@ export default function UsersManagementPage() {
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-indigo-500"
           >
             <option value="all">All Roles</option>
-            <option value="ENTERPRISE_ADMIN">Enterprise Admin</option>
+            <option value="ENTERPRISE_ADMIN">BISMAN Corporation</option>
             <option value="SUPER_ADMIN">Super Admin</option>
             <option value="ADMIN">Admin</option>
             <option value="MANAGER">Manager</option>

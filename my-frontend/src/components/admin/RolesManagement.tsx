@@ -1,14 +1,133 @@
 // Roles Management Component
 'use client';
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRoles } from '../../hooks/useRBAC';
-import { Plus, Edit, Trash2, Shield, Users as UsersIcon } from 'lucide-react';
+import { Plus, Edit, Trash2, Shield, Users as UsersIcon, AlertCircle } from 'lucide-react';
+import PermissionTreePicker from '../privilege-management/PermissionTreePicker';
+import type { Module } from '../privilege-management/PermissionTreePicker';
+
+// Feature flag for the permission tree picker
+const FEATURE_ROLE_PAGE_PICKER = process.env.NEXT_PUBLIC_FEATURE_ROLE_PAGE_PICKER === 'true';
+
+// Role level options
+const ROLE_LEVELS = [
+  { value: 10, label: 'Basic (10)', description: 'Standard user access' },
+  { value: 30, label: 'Staff (30)', description: 'Basic staff permissions' },
+  { value: 50, label: 'Manager (50)', description: 'Team management access' },
+  { value: 70, label: 'Senior Manager (70)', description: 'Department-wide access' },
+  { value: 80, label: 'Admin (80)', description: 'Administrative privileges' },
+  { value: 90, label: 'Super Admin (90)', description: 'Full business admin' },
+  { value: 100, label: 'Enterprise Admin (100)', description: 'System-wide access' },
+];
+
+// Sample modules structure - in production, fetch from API
+const SAMPLE_MODULES: Module[] = [
+  {
+    id: 'dashboard',
+    name: 'Dashboard',
+    description: 'Main dashboard and overview',
+    pages: [
+      {
+        id: 'overview',
+        name: 'Overview',
+        actions: [
+          { id: 'view', name: 'View' },
+          { id: 'export', name: 'Export Data' },
+        ]
+      },
+      {
+        id: 'analytics',
+        name: 'Analytics',
+        actions: [
+          { id: 'view', name: 'View' },
+          { id: 'create', name: 'Create Reports' },
+        ]
+      }
+    ]
+  },
+  {
+    id: 'users',
+    name: 'User Management',
+    description: 'Manage system users',
+    pages: [
+      {
+        id: 'list',
+        name: 'User List',
+        actions: [
+          { id: 'view', name: 'View' },
+          { id: 'create', name: 'Create' },
+          { id: 'edit', name: 'Edit' },
+          { id: 'delete', name: 'Delete' },
+        ]
+      },
+      {
+        id: 'roles',
+        name: 'Role Assignment',
+        actions: [
+          { id: 'view', name: 'View' },
+          { id: 'assign', name: 'Assign Roles' },
+        ]
+      }
+    ]
+  },
+  {
+    id: 'inventory',
+    name: 'Inventory',
+    description: 'Inventory management',
+    pages: [
+      {
+        id: 'products',
+        name: 'Products',
+        actions: [
+          { id: 'view', name: 'View' },
+          { id: 'create', name: 'Create' },
+          { id: 'edit', name: 'Edit' },
+          { id: 'delete', name: 'Delete' },
+        ]
+      },
+      {
+        id: 'stock',
+        name: 'Stock Management',
+        actions: [
+          { id: 'view', name: 'View Stock' },
+          { id: 'adjust', name: 'Adjust Stock' },
+          { id: 'transfer', name: 'Transfer Stock' },
+        ]
+      }
+    ]
+  },
+  {
+    id: 'finance',
+    name: 'Finance',
+    description: 'Financial management',
+    pages: [
+      {
+        id: 'invoices',
+        name: 'Invoices',
+        actions: [
+          { id: 'view', name: 'View' },
+          { id: 'create', name: 'Create' },
+          { id: 'approve', name: 'Approve' },
+        ]
+      },
+      {
+        id: 'payments',
+        name: 'Payments',
+        actions: [
+          { id: 'view', name: 'View' },
+          { id: 'process', name: 'Process' },
+        ]
+      }
+    ]
+  }
+];
 
 interface Role {
   id: number;
   name: string;
   slug: string;
   description: string;
+  level?: number;
   is_active: boolean;
   created_at: string;
 }
@@ -194,20 +313,45 @@ function CreateRoleModal({
   onSubmit,
 }: {
   onClose: () => void;
-  onSubmit: (data: { name: string; description: string }) => Promise<void>;
+  onSubmit: (data: { name: string; description: string; level?: number; permission_ids?: string[] }) => Promise<void>;
 }) {
-  const [formData, setFormData] = useState({ name: '', description: '' });
+  const [formData, setFormData] = useState({ 
+    name: '', 
+    description: '',
+    level: 10 // Default to Basic level
+  });
+  const [selectedPermissions, setSelectedPermissions] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!formData.name.trim()) return;
 
+    // Validate: if permission picker is enabled, require at least one permission
+    if (FEATURE_ROLE_PAGE_PICKER && selectedPermissions.length === 0) {
+      setError('Please select at least one permission for this role');
+      return;
+    }
+
     try {
       setSubmitting(true);
-      await onSubmit(formData);
-    } catch (error) {
-      // Error is handled by parent component
+      setError(null);
+      await onSubmit({
+        ...formData,
+        permission_ids: selectedPermissions.length > 0 ? selectedPermissions : undefined
+      });
+    } catch (err: any) {
+      // Handle specific error codes
+      if (err.code === 'ROLE_LEVEL_TOO_LOW') {
+        setError('You do not have sufficient privileges to create a role at this level');
+      } else if (err.code === 'ROLE_LEVEL_VIOLATION') {
+        setError('Cannot assign permissions that require a higher role level than yours');
+      } else if (err.code === 'PERMISSIONS_NOT_FOUND') {
+        setError('Some selected permissions are invalid');
+      } else {
+        setError(err.message || 'Failed to create role');
+      }
     } finally {
       setSubmitting(false);
     }
@@ -215,61 +359,121 @@ function CreateRoleModal({
 
   return (
     <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-lg shadow-lg max-w-md w-full">
-        <div className="p-6">
-          <h3 className="text-lg font-medium text-gray-900 mb-4">
+      <div className="bg-white dark:bg-gray-900 rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-hidden flex flex-col">
+        <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+          <h3 className="text-lg font-medium text-gray-900 dark:text-gray-100">
             Create New Role
           </h3>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            Define the role name, level, and permissions
+          </p>
+        </div>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
+          <div className="space-y-6">
+            {/* Error display */}
+            {error && (
+              <div className="flex items-start gap-2 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
+                <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
+              </div>
+            )}
+
+            {/* Role Name */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Role Name *
               </label>
               <input
                 type="text"
                 value={formData.name}
-                onChange={e =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                onChange={e => setFormData({ ...formData, name: e.target.value })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="e.g., Manager, Staff, Viewer"
                 required
               />
             </div>
 
+            {/* Description */}
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                 Description
               </label>
               <textarea
                 value={formData.description}
-                onChange={e =>
-                  setFormData({ ...formData, description: e.target.value })
-                }
-                rows={3}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                onChange={e => setFormData({ ...formData, description: e.target.value })}
+                rows={2}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                 placeholder="Describe the role's purpose and responsibilities"
               />
             </div>
 
-            <div className="flex justify-end space-x-3 pt-4">
+            {/* Role Level */}
+            <div>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Role Level *
+              </label>
+              <select
+                value={formData.level}
+                onChange={e => setFormData({ ...formData, level: parseInt(e.target.value) })}
+                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+              >
+                {ROLE_LEVELS.map(level => (
+                  <option key={level.value} value={level.value}>
+                    {level.label} - {level.description}
+                  </option>
+                ))}
+              </select>
+              <p className="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                Higher levels have more privileges. You can only create roles at or below your own level.
+              </p>
+            </div>
+
+            {/* Permission Tree Picker (behind feature flag) */}
+            {FEATURE_ROLE_PAGE_PICKER && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Permissions
+                </label>
+                <div className="border border-gray-200 dark:border-gray-700 rounded-lg p-4">
+                  <PermissionTreePicker
+                    modules={SAMPLE_MODULES}
+                    selected={selectedPermissions}
+                    onChange={setSelectedPermissions}
+                    showDescriptions={false}
+                  />
+                </div>
+              </div>
+            )}
+          </div>
+        </form>
+
+        {/* Footer */}
+        <div className="p-6 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+          <div className="flex justify-between items-center">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              {FEATURE_ROLE_PAGE_PICKER && (
+                <span>{selectedPermissions.length} permissions selected</span>
+              )}
+            </div>
+            <div className="flex gap-3">
               <button
                 type="button"
                 onClick={onClose}
-                className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 rounded-md hover:bg-gray-200 transition-colors"
+                className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-700 rounded-md hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors"
               >
                 Cancel
               </button>
               <button
                 type="submit"
-                disabled={submitting || !formData.name.trim()}
+                onClick={handleSubmit}
+                disabled={submitting || !formData.name.trim() || (FEATURE_ROLE_PAGE_PICKER && selectedPermissions.length === 0)}
                 className="px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
               >
                 {submitting ? 'Creating...' : 'Create Role'}
               </button>
             </div>
-          </form>
+          </div>
         </div>
       </div>
     </div>

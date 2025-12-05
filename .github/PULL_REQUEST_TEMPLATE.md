@@ -92,6 +92,15 @@ Relates to #
 - [ ] CSRF protection maintained
 - [ ] Authentication/authorization checks present
 
+### RBAC Changes (if applicable)
+<!-- Complete if this PR modifies roles, permissions, or access control -->
+- [ ] Server validation present (`validateRoleLevel`)
+- [ ] Tests (privilege escalation) pass
+- [ ] Audit logs created on change
+- [ ] Redis cache invalidation triggered
+- [ ] Feature flag `FEATURE_ROLE_PAGE_PICKER` set before enabling UI
+- [ ] See full checklist: [.github/rbac-feature-checklist.md](.github/rbac-feature-checklist.md)
+
 ### Performance
 - [ ] No unnecessary re-renders
 - [ ] Optimized database queries

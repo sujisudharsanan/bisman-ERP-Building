@@ -1,0 +1,40 @@
+[Unit]
+Description=PgBouncer Connection Pooler
+Documentation=https://www.pgbouncer.org/
+After=network.target postgresql.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pgbouncer
+Group=pgbouncer
+
+# Configuration file
+Environment=PGBOUNCER_CONF=/etc/pgbouncer/pgbouncer.ini
+
+# Load environment variables
+EnvironmentFile=-/etc/pgbouncer/pgbouncer.env
+
+# Main process
+ExecStart=/usr/bin/pgbouncer ${PGBOUNCER_CONF}
+ExecReload=/bin/kill -HUP $MAINPID
+
+# Restart policy
+Restart=on-failure
+RestartSec=5
+StartLimitBurst=3
+StartLimitIntervalSec=60
+
+# Security hardening
+NoNewPrivileges=yes
+PrivateTmp=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/log/pgbouncer /var/run/pgbouncer
+
+# Resource limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

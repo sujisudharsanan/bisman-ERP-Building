@@ -1,0 +1,33 @@
+Write a scheduled job that:
+- Runs every hour, finds tenants where trial_expires_at < now and has no active subscription.
+- Marks tenant as `trial_expired=true` and reduces quotas to free-tier.
+- Send email to tenant admins asking to upgrade with a one-click payment link (Stripe Checkout).
+- Ensure job is idempotent and logs audit events.
+
+Cron example (node-cron):
+```javascript
+const cron = require('node-cron');
+cron.schedule('0 * * * *', async () => { await runTrialExpiryJob(); });
+```
+
+Job Requirements:
+1. Query tenants where:
+   - trial_expires_at < NOW()
+   - trial_expired = false OR NULL
+   - subscription_status IS NULL or NOT IN ('active', 'trialing')
+
+2. For each expired tenant:
+   - Set trial_expired = true
+   - Set plan = 'free'
+   - Update quotas to free tier limits
+   - Create audit log entry
+
+3. Send upgrade email with:
+   - One-click Stripe Checkout link
+   - Features comparison (trial vs free)
+   - Urgency messaging
+
+4. Idempotency:
+   - Skip tenants already marked as trial_expired
+   - Use database transaction for atomicity
+   - Log all operations for debugging

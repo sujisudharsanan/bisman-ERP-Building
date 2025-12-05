@@ -7,10 +7,41 @@ Complete monitoring infrastructure for performance tracking, alerting, and obser
 This monitoring stack provides:
 - **Real-time metrics** via Prometheus
 - **Visualization** via Grafana dashboards
-- **Database monitoring** via PostgreSQL exporter
-- **Container metrics** via cAdvisor
-- **Redis caching metrics**
-- **Custom application metrics**
+- **Database monitoring** via PostgreSQL exporter + custom metrics
+- **Per-tenant analytics** for usage and error tracking
+- **Comprehensive alerting** for critical system events
+- **Sentry integration** for error tracking
+
+## 📊 Key Metrics Tracked
+
+| Category | Metrics |
+|----------|---------|
+| **Database** | Connection health, errors, query duration, pool usage |
+| **HTTP/API** | Request rate, 5xx errors, response time, per-path stats |
+| **Rate Limiting** | Rate limit hits, blocked requests |
+| **System** | CPU usage, memory, event loop lag |
+| **Backup** | Last success/failure, staleness |
+| **Per-Tenant** | Requests, errors, error rate, last activity |
+| **Sentry** | New issues, unresolved count |
+
+## 🚨 Alert Categories
+
+### Critical Alerts (PagerDuty + Slack)
+- Database connection failures
+- 5xx error rate > 5%
+- Backup failures
+- Application down
+
+### Warning Alerts (Slack)
+- High CPU/Memory (>80%)
+- Elevated error rate (2-5%)
+- Slow database queries
+- Rate limit spikes
+
+### Per-Tenant Alerts
+- Individual tenant error rate > 10%
+- Tenant-specific outages
+- Inactive tenants (health check)
 
 ## 🚀 Quick Start
 
@@ -34,13 +65,48 @@ docker-compose -f docker-compose.monitoring.yml logs -f
 | **Prometheus** | http://localhost:9090 | None |
 | **cAdvisor** | http://localhost:8080 | None |
 
-### 3. Install Backend Metrics Dependencies
+### 3. API Endpoints
+
+| Endpoint | Auth | Description |
+|----------|------|-------------|
+| `GET /metrics` | None | Prometheus metrics |
+| `GET /api/monitoring/health` | None | Health check |
+| `GET /api/monitoring/summary` | Admin | Full metrics summary |
+| `GET /api/monitoring/database` | Admin | DB health details |
+| `GET /api/monitoring/http` | Admin | HTTP metrics |
+| `GET /api/monitoring/system` | Admin | CPU/Memory/Event loop |
+| `GET /api/monitoring/tenants` | Admin | Per-tenant metrics |
+| `GET /api/monitoring/tenants/:id` | Admin/Owner | Single tenant metrics |
+| `GET /api/monitoring/tenants-error-rates` | Admin | Error rates ranking |
+| `GET /api/monitoring/sentry` | Admin | Sentry issue metrics |
+| `GET /api/monitoring/backup` | Admin | Backup status |
+
+### 4. Environment Variables
+
+```bash
+# Alert Thresholds
+ALERT_DB_ERROR_RATE=0.01          # 1% database error threshold
+ALERT_5XX_RATE=0.05               # 5% HTTP error threshold
+ALERT_RATE_LIMIT_HITS=100         # Rate limit hits per minute
+ALERT_CPU_PERCENT=80              # CPU usage threshold
+ALERT_MEMORY_PERCENT=85           # Memory usage threshold
+ALERT_EVENT_LOOP_LAG=100          # Event loop lag (ms)
+ALERT_BACKUP_MAX_AGE=24           # Backup staleness (hours)
+
+# Alertmanager Configuration
+SLACK_WEBHOOK_URL=https://hooks.slack.com/...
+PAGERDUTY_SERVICE_KEY=...
+SMTP_USERNAME=...
+SMTP_PASSWORD=...
+```
+
+### 5. Install Backend Metrics Dependencies
 ```bash
 cd my-backend
 npm install prom-client express-prom-bundle
 ```
 
-### 4. Add Prometheus Middleware to Backend
+### 6. Add Prometheus Middleware to Backend
 Add to `my-backend/index.js` or `my-backend/app.js`:
 
 ```javascript

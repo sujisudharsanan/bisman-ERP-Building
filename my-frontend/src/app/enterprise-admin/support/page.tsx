@@ -1,22 +1,41 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { usePageRefresh } from '@/contexts/RefreshContext';
 
 export default function Page() {
   const [tickets,setTickets]=useState<any[]>([]);
   const [metrics,setMetrics]=useState<any>(null);
   const [loading,setLoading]=useState(true);
+  const [isDataRefreshing,setIsDataRefreshing]=useState(false);
   const [err,setErr]=useState<string|null>(null);
-  useEffect(()=>{(async()=>{
-    try{ setLoading(true);
+
+  const fetchSupport = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setIsDataRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       const [t,m] = await Promise.all([
         fetch('/api/enterprise-admin/support/tickets?limit=20',{credentials:'include'}).then(r=>r.json()),
         fetch('/api/enterprise-admin/support/metrics',{credentials:'include'}).then(r=>r.json()),
       ]);
       setTickets(t.tickets||[]);
       setMetrics(m.metrics);
-    }catch(e:any){ setErr(e.message||'Failed to load support'); }
-    finally{ setLoading(false); }
-  })();},[]);
+    } catch(e:any) { 
+      setErr(e.message||'Failed to load support'); 
+    } finally { 
+      setLoading(false);
+      setIsDataRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSupport();
+  }, [fetchSupport]);
+
+  // Register with global refresh context
+  usePageRefresh('support', () => fetchSupport(true));
 
   return (
     <div className="space-y-6 text-gray-900 dark:text-gray-100 p-6">

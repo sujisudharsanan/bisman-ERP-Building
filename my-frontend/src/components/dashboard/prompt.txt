@@ -1,0 +1,125 @@
+# Tenant Dashboard Frontend Components
+
+## Overview
+Create React/TypeScript components to display per-tenant metrics for admin dashboards.
+
+## API Endpoints (Backend)
+```
+GET /api/admin/tenants/:id/usage?from=YYYY-MM-DD&to=YYYY-MM-DD
+GET /api/admin/tenants/:id/billing
+GET /api/admin/tenants/:id/metrics?days=30
+GET /api/admin/tenants/:id/summary
+POST /api/admin/tenants/:id/upgrade { plan: "pro" | "enterprise" }
+```
+
+## Components to Create
+
+### 1. QuotaUsageBar
+Display current quota usage with progress bars:
+- API calls (today vs daily limit)
+- Storage used (bytes vs limit)
+- Active users (count vs limit)
+
+Colors:
+- Green: < 60%
+- Yellow: 60-80%
+- Red: > 80%
+
+### 2. BillingStatusCard
+Show billing information:
+- Current plan badge (Free/Pro/Enterprise)
+- Subscription status (Active/Trial/Canceling/Payment Failed)
+- Next invoice date and amount
+- Trial days remaining (if applicable)
+- Upgrade button → Opens Stripe Checkout
+
+### 3. SLAComplianceCard
+Display SLA metrics:
+- Availability % gauge (target: 99.9%)
+- P95 Latency gauge (target: < 1s)
+- Error rate gauge (target: < 0.5%)
+- Error budget remaining bar
+- Overall compliance status (Compliant/At Risk/Breached)
+
+### 4. UsageChart
+Line chart showing:
+- Daily API calls over time
+- Errors over time
+- Active users trend
+
+### 5. TenantDashboardPage
+Container component that:
+- Fetches all data on mount
+- Displays alerts at top (trial expiring, payment failed, quota warning)
+- Arranges cards in responsive grid
+- Handles loading and error states
+
+## Sample API Responses
+
+### Usage Response
+```json
+{
+  "success": true,
+  "data": {
+    "tenant": { "id": "...", "name": "Acme Corp", "plan": "pro" },
+    "quotaUsage": {
+      "apiCallsToday": 4500,
+      "apiCallsLimit": 50000,
+      "apiCallsPercent": 9,
+      "storageUsed": 524288000,
+      "storageLimit": 10737418240,
+      "storagePercent": 5,
+      "activeUsers": 8,
+      "activeUsersLimit": 25,
+      "activeUsersPercent": 32
+    },
+    "dailyBreakdown": [...]
+  }
+}
+```
+
+### Billing Response
+```json
+{
+  "success": true,
+  "data": {
+    "subscription": {
+      "plan": "pro",
+      "status": "active",
+      "currentPeriodEnd": "2025-01-05T00:00:00Z",
+      "cancelAtPeriodEnd": false
+    },
+    "pricing": { "price": 49, "currency": "USD", "interval": "month" },
+    "trial": { "endsAt": null, "expired": false, "daysRemaining": 0 },
+    "nextInvoice": { "date": "2025-01-05", "amount": 49, "currency": "USD" }
+  }
+}
+```
+
+### Metrics Response
+```json
+{
+  "success": true,
+  "data": {
+    "metrics": {
+      "availability": { "current": 99.95, "target": 99.9, "compliant": true },
+      "p95Latency": { "current": 450, "target": 1000, "compliant": true },
+      "errorRate": { "current": 0.05, "target": 0.5, "compliant": true }
+    },
+    "errorBudget": {
+      "total": 43.2,
+      "remaining": 38.5,
+      "percentRemaining": 89
+    },
+    "sla": { "compliant": true, "tier": "pro" }
+  }
+}
+```
+
+## Design Guidelines
+- Use existing design system components
+- Support dark mode
+- Mobile-responsive layout
+- Skeleton loaders for loading states
+- Toast notifications for errors
+- Refresh button to reload data

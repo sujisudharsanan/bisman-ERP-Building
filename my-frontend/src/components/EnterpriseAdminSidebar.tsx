@@ -22,6 +22,7 @@ import {
   FiMonitor,
   FiTrendingUp,
   FiDatabase,
+  FiLock,
 } from 'react-icons/fi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -94,11 +95,13 @@ export default function EnterpriseAdminSidebar({ className = '' }: EnterpriseAdm
   { id: 'notifications', label: 'Notifications', icon: FiBell, href: '/enterprise-admin/notifications' },
   // Monitoring & Observability
   { id: 'monitoring', label: 'System Monitoring', icon: FiMonitor, href: '/enterprise-admin/monitoring' },
+  { id: 'live-monitoring', label: '📊 Live Metrics', icon: FiActivity, href: '/enterprise-admin/monitoring/live' },
   { id: 'system-health', label: 'System Health', icon: FiActivity, href: '/enterprise-admin/monitoring/system-health' },
   { id: 'performance', label: 'Performance Metrics', icon: FiTrendingUp, href: '/enterprise-admin/monitoring/performance' },
   { id: 'database-health', label: 'Database Health', icon: FiDatabase, href: '/enterprise-admin/monitoring/database' },
   // Security Operations Center
   { id: 'security-ops', label: '🛡️ Security Operations', icon: FiShield, href: '/enterprise-admin/security-operations' },
+  { id: 'rbac-security', label: '🔐 RBAC Security', icon: FiLock, href: '/enterprise-admin/rbac-security' },
   ];
 
   const isActive = (href: string) => {

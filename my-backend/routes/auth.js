@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 const { getPrisma } = require('../lib/prisma');
 const { AppError, ERROR_CODES, asyncHandler } = require('../middleware/errorHandler');
 const { auditService } = require('../services/auditService');
+// Security: Brute force protection with CAPTCHA
+const { loginBruteForceProtection, verifyCaptcha } = require('../middleware/bruteForceProtection');
 // Rate limiter import removed - all rate limiting disabled for development
 
 let prisma = null;
@@ -37,9 +39,9 @@ function generateRefreshToken(payload) {
 /**
  * Multi-Tenant Login Endpoint
  * Handles: Enterprise Admin, Super Admin, and Regular Users
- * RATE LIMITER REMOVED - No rate limiting in development
+ * Protected by brute force detection with CAPTCHA requirement when threshold exceeded
  */
-router.post('/login', asyncHandler(async (req, res) => {
+router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
   // Validation
@@ -366,15 +368,18 @@ router.get('/login', (req, res) => {
  * Set HTTP-only cookies for tokens
  */
 function setCookies(res, accessToken, refreshToken) {
+  // SECURITY: Enforce strict cookie settings
+  // - Secure: Always true in production (requires HTTPS)
+  // - SameSite: Strict in production for CSRF protection, Lax in dev for cross-origin testing
   const isProduction = process.env.NODE_ENV === 'production';
-  const cookieSecure = isProduction;
-  const sameSitePolicy = isProduction ? 'none' : 'lax';
+  const cookieSecure = isProduction || process.env.FORCE_SECURE_COOKIES === 'true';
+  const sameSitePolicy = isProduction ? 'strict' : 'lax';
   const cookieDomain = process.env.COOKIE_DOMAIN || undefined;
 
   const cookieOptions = {
-    httpOnly: true,
-    secure: cookieSecure,
-    sameSite: sameSitePolicy,
+    httpOnly: true,           // Prevent XSS access to cookies
+    secure: cookieSecure,     // Only send over HTTPS
+    sameSite: sameSitePolicy, // CSRF protection
     path: '/',
     ...(cookieDomain ? { domain: cookieDomain } : {}),
   };

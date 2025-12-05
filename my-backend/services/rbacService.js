@@ -1,7 +1,22 @@
 // RBAC Service - Role-Based Access Control using standalone RBAC tables
 const { getPrisma } = require('../lib/prisma')
+const auditService = require('./auditService')
+const rbacMetrics = require('../lib/rbacMetrics')
 
 const prisma = getPrisma()
+
+// Role level constants for global/platform roles
+const GLOBAL_ROLE_LEVELS = {
+  ENTERPRISE_ADMIN: 100,
+  SUPER_ADMIN: 90
+}
+
+// Error codes for tenant validation
+const TENANT_ERRORS = {
+  CROSS_TENANT_VIOLATION: 'CROSS_TENANT_VIOLATION',
+  TENANT_MISMATCH: 'TENANT_MISMATCH',
+  GLOBAL_ROLE_MODIFICATION: 'GLOBAL_ROLE_MODIFICATION'
+}
 
 class RBACService {
   // =============== ROLES ===============
@@ -356,6 +371,571 @@ class RBACService {
     } catch (error) {
       console.error('Error checking admin status:', error)
       return false
+    }
+  }
+
+  // =============== ROLE LEVEL VALIDATION ===============
+  /**
+   * Validates that the assigner has sufficient role level to perform an action.
+   * @param {number|string} assignerId - The user ID of the assigner
+   * @param {number|number[]} requiredLevel - The required level (or array of permission IDs to check levels for)
+   * @returns {Promise<boolean>} - Returns true if validation passes
+   * @throws {{ status: number, code: string, message: string }} - Throws on level violation
+   */
+  async validateRoleLevel(assignerId, requiredLevel) {
+    try {
+      // Fetch the maximum role level for the assigner
+      const assignerResult = await prisma.$queryRaw`
+        SELECT MAX(r.level) as max_level
+        FROM rbac_user_roles ur
+        JOIN rbac_roles r ON ur.role_id = r.id
+        WHERE ur.user_id = ${assignerId}
+      `
+
+      const assignerMaxLevel = assignerResult?.[0]?.max_level
+      
+      // Handle bigint conversion
+      const toNum = (v) => (typeof v === 'bigint' ? Number(v) : Number(v || 0))
+      const normalizedAssignerLevel = toNum(assignerMaxLevel)
+
+      // If no role found for assigner, they have no authority
+      if (assignerMaxLevel == null || normalizedAssignerLevel === 0) {
+        // Record metric for this violation
+        rbacMetrics.recordRoleLevelViolation({
+          userId: assignerId,
+          attemptedLevel: Array.isArray(requiredLevel) ? 'multiple' : requiredLevel,
+          userLevel: 0
+        })
+        
+        const error = {
+          status: 403,
+          code: 'ROLE_LEVEL_VIOLATION',
+          message: 'Assigner has no role assigned and cannot assign roles'
+        }
+        throw error
+      }
+
+      let targetLevel
+
+      // If requiredLevel is an array (permission IDs), get the max level required
+      if (Array.isArray(requiredLevel)) {
+        if (requiredLevel.length === 0) {
+          return true // No permissions to check
+        }
+        
+        // Get the maximum level required by any of the permissions
+        // Check both the role level AND the min_role_level column
+        const permissionResult = await prisma.$queryRaw`
+          SELECT 
+            GREATEST(
+              COALESCE(MAX(r.level), 0),
+              COALESCE(MAX(p.min_role_level), 0)
+            ) as max_level
+          FROM rbac_permissions p
+          LEFT JOIN rbac_roles r ON p.role_id = r.id
+          WHERE p.id = ANY(${requiredLevel}::int[])
+        `
+        targetLevel = toNum(permissionResult?.[0]?.max_level)
+      } else {
+        // requiredLevel is a direct level number
+        targetLevel = toNum(requiredLevel)
+      }
+
+      // Validate: assigner's level must be >= required level
+      if (normalizedAssignerLevel < targetLevel) {
+        // Record metric for privilege escalation attempt
+        rbacMetrics.recordRoleLevelViolation({
+          userId: assignerId,
+          attemptedLevel: targetLevel,
+          userLevel: normalizedAssignerLevel
+        })
+        
+        const error = {
+          status: 403,
+          code: 'ROLE_LEVEL_VIOLATION',
+          message: 'Assigner cannot create or assign role above their level'
+        }
+        throw error
+      }
+
+      return true
+    } catch (error) {
+      // Re-throw custom errors as-is
+      if (error.code === 'ROLE_LEVEL_VIOLATION') {
+        throw error
+      }
+      console.error('Error validating role level:', error)
+      throw {
+        status: 500,
+        code: 'ROLE_LEVEL_CHECK_FAILED',
+        message: 'Failed to validate role level'
+      }
+    }
+  }
+
+  /**
+   * Gets the maximum role level for a user
+   * @param {number|string} userId - The user ID
+   * @returns {Promise<number>} - The maximum role level (0 if no roles assigned)
+   */
+  async getUserMaxLevel(userId) {
+    try {
+      const result = await prisma.$queryRaw`
+        SELECT MAX(r.level) as max_level
+        FROM rbac_user_roles ur
+        JOIN rbac_roles r ON ur.role_id = r.id
+        WHERE ur.user_id = ${userId}
+      `
+      const toNum = (v) => (typeof v === 'bigint' ? Number(v) : Number(v || 0))
+      return toNum(result?.[0]?.max_level)
+    } catch (error) {
+      console.error('Error getting user max level:', error)
+      return 0
+    }
+  }
+
+  // =============== TENANT SCOPING ===============
+  
+  /**
+   * Gets the tenant ID for a user, with support for Enterprise/Super Admins who are global
+   * @param {number|string} userId - The user ID
+   * @param {string} [userType] - Optional user type hint ('ENTERPRISE_ADMIN', 'SUPER_ADMIN', or regular)
+   * @returns {Promise<{ tenantId: string|null, isGlobal: boolean, userType: string }>}
+   */
+  async getUserTenantInfo(userId, userType = null) {
+    try {
+      // Check if user is an Enterprise Admin (global - no tenant)
+      if (userType === 'ENTERPRISE_ADMIN') {
+        return { tenantId: null, isGlobal: true, userType: 'ENTERPRISE_ADMIN' }
+      }
+      
+      // Check if user is a Super Admin (can manage multiple tenants but has a product scope)
+      if (userType === 'SUPER_ADMIN') {
+        const superAdmin = await prisma.$queryRaw`
+          SELECT id, "productType" FROM super_admins WHERE id = ${userId}
+        `
+        if (superAdmin && superAdmin.length > 0) {
+          return { tenantId: null, isGlobal: true, userType: 'SUPER_ADMIN', productType: superAdmin[0].productType }
+        }
+      }
+      
+      // Regular user - get their tenant_id
+      const user = await prisma.$queryRaw`
+        SELECT id, tenant_id, role FROM users WHERE id = ${userId}
+      `
+      
+      if (!user || user.length === 0) {
+        return { tenantId: null, isGlobal: false, userType: 'UNKNOWN' }
+      }
+      
+      return {
+        tenantId: user[0].tenant_id,
+        isGlobal: false,
+        userType: 'USER',
+        role: user[0].role
+      }
+    } catch (error) {
+      console.error('Error getting user tenant info:', error)
+      return { tenantId: null, isGlobal: false, userType: 'UNKNOWN' }
+    }
+  }
+
+  /**
+   * Gets the tenant ID for a role (if tenant_id column exists)
+   * Returns null for global/shared roles
+   * @param {number|string} roleId - The role ID
+   * @returns {Promise<{ tenantId: string|null, isGlobalRole: boolean, roleName: string, level: number }>}
+   */
+  async getRoleTenantInfo(roleId) {
+    try {
+      // First check if the role has a tenant_id column (may not exist in older schemas)
+      let result
+      try {
+        result = await prisma.$queryRaw`
+          SELECT id, name, level, tenant_id FROM rbac_roles WHERE id = ${parseInt(roleId)}
+        `
+      } catch (e) {
+        // Fallback: tenant_id column might not exist
+        result = await prisma.$queryRaw`
+          SELECT id, name, level FROM rbac_roles WHERE id = ${parseInt(roleId)}
+        `
+      }
+      
+      if (!result || result.length === 0) {
+        return null
+      }
+      
+      const role = result[0]
+      const toNum = (v) => (typeof v === 'bigint' ? Number(v) : Number(v || 0))
+      const level = toNum(role.level)
+      
+      // Roles with level >= 90 are considered global (Super Admin level and above)
+      const isGlobalRole = level >= GLOBAL_ROLE_LEVELS.SUPER_ADMIN
+      
+      return {
+        tenantId: role.tenant_id || null,
+        isGlobalRole,
+        roleName: role.name,
+        level
+      }
+    } catch (error) {
+      console.error('Error getting role tenant info:', error)
+      return null
+    }
+  }
+
+  /**
+   * Validates tenant scoping for role permission operations.
+   * Ensures users can only modify roles within their tenant (unless they're global admins).
+   * 
+   * Rules:
+   * - Enterprise Admins (level 100): Can modify any role
+   * - Super Admins (level 90): Can modify roles within their product scope
+   * - Tenant Admins/Users: Can only modify roles in their own tenant
+   * - No one can modify global roles except Enterprise/Super Admins
+   * 
+   * @param {number|string} assignerId - The user making the modification
+   * @param {number|string} roleId - The role being modified
+   * @param {Object} [assignerContext] - Optional context with userType, tenantId from JWT
+   * @returns {Promise<{ valid: boolean, reason?: string }>}
+   * @throws {{ status: number, code: string, message: string }} - On tenant violation
+   */
+  async validateTenantScope(assignerId, roleId, assignerContext = {}) {
+    try {
+      // Get assigner info
+      const assignerInfo = await this.getUserTenantInfo(
+        assignerId,
+        assignerContext.userType || null
+      )
+      
+      // Override with context if provided (from JWT)
+      if (assignerContext.tenantId) {
+        assignerInfo.tenantId = assignerContext.tenantId
+      }
+      
+      // Get role info
+      const roleInfo = await this.getRoleTenantInfo(roleId)
+      
+      if (!roleInfo) {
+        throw {
+          status: 404,
+          code: 'ROLE_NOT_FOUND',
+          message: `Role with ID ${roleId} not found`
+        }
+      }
+      
+      // Enterprise Admins can do anything
+      if (assignerInfo.userType === 'ENTERPRISE_ADMIN' || assignerInfo.isGlobal && assignerContext.level >= GLOBAL_ROLE_LEVELS.ENTERPRISE_ADMIN) {
+        console.log(`[rbacService] Enterprise Admin ${assignerId} modifying role ${roleId} - allowed`)
+        return { valid: true }
+      }
+      
+      // Super Admins can modify roles at their level or below
+      if (assignerInfo.userType === 'SUPER_ADMIN' || assignerInfo.isGlobal) {
+        // Super Admin cannot modify Enterprise Admin level roles
+        if (roleInfo.level >= GLOBAL_ROLE_LEVELS.ENTERPRISE_ADMIN) {
+          throw {
+            status: 403,
+            code: TENANT_ERRORS.GLOBAL_ROLE_MODIFICATION,
+            message: 'Cannot modify Enterprise Admin level roles'
+          }
+        }
+        console.log(`[rbacService] Super Admin ${assignerId} modifying role ${roleId} - allowed`)
+        return { valid: true }
+      }
+      
+      // For regular users, strict tenant scoping applies
+      
+      // Cannot modify global roles
+      if (roleInfo.isGlobalRole) {
+        throw {
+          status: 403,
+          code: TENANT_ERRORS.GLOBAL_ROLE_MODIFICATION,
+          message: 'Cannot modify global/platform-level roles'
+        }
+      }
+      
+      // If role has tenant_id, it must match assigner's tenant
+      if (roleInfo.tenantId && assignerInfo.tenantId) {
+        if (roleInfo.tenantId !== assignerInfo.tenantId) {
+          // Record cross-tenant violation metric
+          rbacMetrics.recordCrossTenantViolation({
+            userId: assignerId,
+            userTenant: assignerInfo.tenantId,
+            targetTenant: roleInfo.tenantId,
+            roleId
+          })
+          
+          throw {
+            status: 403,
+            code: TENANT_ERRORS.CROSS_TENANT_VIOLATION,
+            message: 'Cannot modify roles belonging to a different tenant'
+          }
+        }
+      }
+      
+      // If assigner has no tenant but role does, block
+      if (roleInfo.tenantId && !assignerInfo.tenantId && !assignerInfo.isGlobal) {
+        // Record as cross-tenant violation (user has no tenant)
+        rbacMetrics.recordCrossTenantViolation({
+          userId: assignerId,
+          userTenant: 'none',
+          targetTenant: roleInfo.tenantId,
+          roleId
+        })
+        
+        throw {
+          status: 403,
+          code: TENANT_ERRORS.TENANT_MISMATCH,
+          message: 'User without tenant cannot modify tenant-scoped roles'
+        }
+      }
+      
+      // If role has no tenant_id (shared role in single-tenant setup), 
+      // check that assigner has admin-level permissions
+      const assignerLevel = await this.getUserMaxLevel(assignerId)
+      if (assignerLevel < 80) {
+        throw {
+          status: 403,
+          code: 'ROLE_LEVEL_VIOLATION',
+          message: 'Insufficient role level to modify roles'
+        }
+      }
+      
+      console.log(`[rbacService] User ${assignerId} (tenant: ${assignerInfo.tenantId}) modifying role ${roleId} (tenant: ${roleInfo.tenantId}) - allowed`)
+      return { valid: true }
+      
+    } catch (error) {
+      // Re-throw custom errors as-is
+      if (error.status && error.code) {
+        throw error
+      }
+      console.error('Error validating tenant scope:', error)
+      throw {
+        status: 500,
+        code: 'TENANT_SCOPE_CHECK_FAILED',
+        message: 'Failed to validate tenant scope'
+      }
+    }
+  }
+
+  // =============== BULK PERMISSION ASSIGNMENT ===============
+  /**
+   * Assigns permissions to a role with privilege escalation protection.
+   * Validates role level AND tenant scope before assignment and uses transaction for atomicity.
+   * 
+   * @param {number|string} roleId - The role ID to assign permissions to
+   * @param {number|string} assignerId - The user ID of the person making the assignment
+   * @param {number[]} permissionIds - Array of permission IDs to assign
+   * @param {Object} [assignerContext] - Optional context from JWT (userType, tenantId, level)
+   * @returns {Promise<{ success: boolean, assigned: number, roleId: number }>}
+   * @throws {{ status: number, code: string, message: string }} - On validation or DB errors
+   */
+  async assignPermissionsToRole(roleId, assignerId, permissionIds, assignerContext = {}) {
+    const toNum = (v) => (typeof v === 'bigint' ? Number(v) : Number(v || 0))
+    
+    try {
+      // 1. Validate input
+      if (!roleId || !assignerId) {
+        throw {
+          status: 400,
+          code: 'INVALID_INPUT',
+          message: 'roleId and assignerId are required'
+        }
+      }
+
+      if (!Array.isArray(permissionIds)) {
+        throw {
+          status: 400,
+          code: 'INVALID_INPUT',
+          message: 'permissionIds must be an array'
+        }
+      }
+
+      // 2. TENANT SCOPING - Validate assigner can modify this role (critical for multi-tenant)
+      await this.validateTenantScope(assignerId, roleId, assignerContext)
+
+      // Empty array is valid - clears all permissions
+      if (permissionIds.length === 0) {
+        // Just clear existing permissions in a transaction
+        await prisma.$transaction(async (tx) => {
+          await tx.$executeRaw`
+            DELETE FROM rbac_permissions WHERE role_id = ${parseInt(roleId)}
+          `
+        })
+
+        // Publish invalidation event
+        await this._publishPermissionInvalidation(roleId)
+
+        // Log audit event even for clearing
+        await this._logPermissionChangeAudit(assignerId, roleId, [], 'UNKNOWN', assignerContext)
+
+        return { success: true, assigned: 0, roleId: parseInt(roleId) }
+      }
+
+      // 3. Verify all permission IDs exist and get their details
+      const existingPermissions = await prisma.$queryRaw`
+        SELECT 
+          p.id,
+          p.role_id,
+          p.action_id,
+          p.route_id,
+          r.level as role_level
+        FROM rbac_permissions p
+        JOIN rbac_roles r ON p.role_id = r.id
+        WHERE p.id = ANY(${permissionIds.map(id => parseInt(id))}::int[])
+      `
+
+      const foundIds = existingPermissions.map(p => toNum(p.id))
+      const missingIds = permissionIds.filter(id => !foundIds.includes(parseInt(id)))
+
+      if (missingIds.length > 0) {
+        throw {
+          status: 400,
+          code: 'PERMISSIONS_NOT_FOUND',
+          message: `Permission IDs not found: ${missingIds.join(', ')}`
+        }
+      }
+
+      // 4. Get the maximum level required by the permissions being assigned
+      const maxRequiredLevel = Math.max(...existingPermissions.map(p => toNum(p.role_level)))
+
+      // 5. Validate role level (assigner must have >= level of permissions being assigned)
+      await this.validateRoleLevel(assignerId, maxRequiredLevel)
+
+      // 6. Get the target role info
+      const targetRole = await prisma.$queryRaw`
+        SELECT id, name, level FROM rbac_roles WHERE id = ${parseInt(roleId)}
+      `
+
+      if (!targetRole || targetRole.length === 0) {
+        throw {
+          status: 404,
+          code: 'ROLE_NOT_FOUND',
+          message: `Role with ID ${roleId} not found`
+        }
+      }
+
+      // 7. Validate assigner can assign to this role level
+      await this.validateRoleLevel(assignerId, toNum(targetRole[0].level))
+
+      // 8. Build permission mappings from the source permissions
+      const mappings = existingPermissions.map(p => ({
+        role_id: parseInt(roleId),
+        action_id: toNum(p.action_id),
+        route_id: toNum(p.route_id),
+        granted: true
+      }))
+
+      // 9. Execute in transaction: delete existing, insert new
+      await prisma.$transaction(async (tx) => {
+        // Delete existing permissions for this role
+        await tx.$executeRaw`
+          DELETE FROM rbac_permissions WHERE role_id = ${parseInt(roleId)}
+        `
+
+        // Insert new permissions
+        for (const mapping of mappings) {
+          await tx.$executeRaw`
+            INSERT INTO rbac_permissions (role_id, action_id, route_id, granted, updated_at)
+            VALUES (${mapping.role_id}, ${mapping.action_id}, ${mapping.route_id}, ${mapping.granted}, NOW())
+            ON CONFLICT (role_id, action_id, route_id) 
+            DO UPDATE SET granted = ${mapping.granted}, updated_at = NOW()
+          `
+        }
+      })
+
+      // 10. Publish invalidation event
+      await this._publishPermissionInvalidation(roleId)
+
+      // 11. Log audit event for security tracking with tenant context
+      await this._logPermissionChangeAudit(assignerId, roleId, permissionIds, targetRole[0].name, assignerContext)
+
+      return {
+        success: true,
+        assigned: mappings.length,
+        roleId: parseInt(roleId)
+      }
+
+    } catch (error) {
+      // Re-throw custom errors as-is
+      if (error.status && error.code) {
+        throw error
+      }
+      console.error('Error assigning permissions to role:', error)
+      throw {
+        status: 500,
+        code: 'PERMISSION_ASSIGNMENT_FAILED',
+        message: 'Failed to assign permissions to role'
+      }
+    }
+  }
+
+  /**
+   * Publishes a permission invalidation event for cache clearing
+   * @private
+   * @param {number|string} roleId - The role ID that was updated
+   */
+  async _publishPermissionInvalidation(roleId) {
+    try {
+      // Try to use Redis pubsub if available
+      const { invalidateRole } = require('../cache/services/permissionInvalidator')
+      await invalidateRole(roleId)
+      
+      // Record cache invalidation metric
+      rbacMetrics.recordCacheInvalidation()
+      
+      console.log(`[rbacService] Published permissions:invalidate for role ${roleId}`)
+    } catch (error) {
+      // Redis might not be available - log and continue
+      console.warn('[rbacService] Could not publish permission invalidation:', error.message)
+    }
+  }
+
+  /**
+   * Logs an audit event for permission changes with tenant context
+   * @private
+   * @param {number|string} assignerId - The user who made the change
+   * @param {number|string} roleId - The role that was updated
+   * @param {number[]} permissionIds - The permission IDs that were assigned
+   * @param {string} roleName - The name of the role
+   * @param {Object} [assignerContext] - Optional context from JWT (userType, tenantId, level)
+   */
+  async _logPermissionChangeAudit(assignerId, roleId, permissionIds, roleName, assignerContext = {}) {
+    try {
+      // Record metric for permission change
+      const roleLevel = assignerContext.level || 0
+      rbacMetrics.recordPermissionChange({
+        userId: assignerId,
+        roleId,
+        roleName,
+        roleLevel,
+        action: 'update',
+        tenantId: assignerContext.tenantId || 'global'
+      })
+      
+      await auditService.logSecurityEvent('ROLE_PERMISSIONS_UPDATED', {
+        severity: 'INFO',
+        userId: parseInt(assignerId),
+        details: {
+          roleId: parseInt(roleId),
+          roleName,
+          permissionIds,
+          permissionCount: permissionIds.length,
+          action: 'BULK_PERMISSION_ASSIGNMENT',
+          timestamp: new Date().toISOString(),
+          // Include tenant context for forensics
+          tenantId: assignerContext.tenantId || null,
+          userType: assignerContext.userType || 'USER',
+          assignerLevel: assignerContext.level || null
+        }
+      })
+      console.log(`[rbacService] Audit log created for role ${roleId} permission update by user ${assignerId} (tenant: ${assignerContext.tenantId || 'global'})`)
+    } catch (error) {
+      // Record audit failure metric
+      rbacMetrics.recordAuditLogError('write_failed')
+      // Don't fail the operation due to audit logging failure
+      console.warn('[rbacService] Could not log audit event:', error.message)
     }
   }
 }

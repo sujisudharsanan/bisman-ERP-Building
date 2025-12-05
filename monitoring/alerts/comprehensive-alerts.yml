@@ -1,0 +1,369 @@
+# BISMAN ERP - Comprehensive Alert Rules
+# 
+# Alert Categories:
+# 1. Database - Connection errors, slow queries, pool exhaustion
+# 2. HTTP - 5xx error rates, high latency, rate limiting
+# 3. System - CPU, Memory, Disk, Event Loop
+# 4. Backup - Failures, staleness
+# 5. Security - Sentry issues, brute force, suspicious activity
+# 6. Per-Tenant - Individual tenant health
+
+groups:
+  # ============================================
+  # DATABASE ALERTS
+  # ============================================
+  - name: database_alerts
+    interval: 15s
+    rules:
+      # Database connection failures
+      - alert: DatabaseConnectionError
+        expr: erp_db_healthy == 0
+        for: 30s
+        labels:
+          severity: critical
+          component: database
+          runbook: "https://docs.bisman.io/runbooks/db-connection-error"
+        annotations:
+          summary: "Database connection is unhealthy"
+          description: "Database has been unreachable for more than 30 seconds"
+          action: "Check PostgreSQL server status, network connectivity, and connection pool"
+
+      # High database connection errors
+      - alert: DatabaseConnectionErrorSpike
+        expr: erp_db_connection_errors_total > 5
+        for: 1m
+        labels:
+          severity: critical
+          component: database
+        annotations:
+          summary: "Spike in database connection errors"
+          description: "{{ $value }} connection errors in the last 5 minutes"
+          action: "Check database logs, pool exhaustion, max_connections setting"
+
+      # Connection pool exhaustion
+      - alert: DatabasePoolExhaustion
+        expr: erp_db_active_connections > 80
+        for: 2m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Database connection pool nearly exhausted"
+          description: "{{ $value }} active connections (approaching limit)"
+          action: "Review connection pool settings, check for connection leaks"
+
+      # Slow database queries (from pg_exporter)
+      - alert: SlowDatabaseQueries
+        expr: pg_stat_activity_max_tx_duration > 5
+        for: 2m
+        labels:
+          severity: warning
+          component: database
+        annotations:
+          summary: "Long-running database transaction detected"
+          description: "Transaction running for {{ $value }} seconds"
+          action: "Check pg_stat_activity for blocking queries"
+
+  # ============================================
+  # HTTP/API ALERTS
+  # ============================================
+  - name: http_alerts
+    interval: 15s
+    rules:
+      # High 5xx error rate
+      - alert: High5xxErrorRate
+        expr: erp_http_error_rate > 0.05
+        for: 2m
+        labels:
+          severity: critical
+          component: api
+          pagerduty: "true"
+        annotations:
+          summary: "High HTTP 5xx error rate"
+          description: "Error rate is {{ $value | humanizePercentage }} (threshold: 5%)"
+          action: "Check application logs, recent deployments, external dependencies"
+
+      # Very high 5xx error rate (emergency)
+      - alert: Critical5xxErrorRate
+        expr: erp_http_error_rate > 0.20
+        for: 1m
+        labels:
+          severity: critical
+          component: api
+          pagerduty: "true"
+          escalate: "immediate"
+        annotations:
+          summary: "CRITICAL: 20%+ HTTP error rate"
+          description: "Error rate is {{ $value | humanizePercentage }} - possible outage"
+          action: "IMMEDIATE: Check for cascading failures, consider rollback"
+
+      # Elevated 5xx rate (warning)
+      - alert: Elevated5xxErrorRate
+        expr: erp_http_error_rate > 0.02 and erp_http_error_rate <= 0.05
+        for: 5m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "Elevated HTTP error rate"
+          description: "Error rate is {{ $value | humanizePercentage }}"
+          action: "Monitor closely, check logs for patterns"
+
+      # High API latency
+      - alert: HighAPILatency
+        expr: erp_http_avg_response_time_ms > 1000
+        for: 3m
+        labels:
+          severity: warning
+          component: api
+        annotations:
+          summary: "High API response latency"
+          description: "Average response time is {{ $value }}ms (threshold: 1000ms)"
+          action: "Check database performance, external API calls, caching"
+
+      # Rate limit hits spike
+      - alert: RateLimitSpike
+        expr: erp_rate_limit_hits_total > 100
+        for: 2m
+        labels:
+          severity: warning
+          component: security
+        annotations:
+          summary: "High rate limit hit count"
+          description: "{{ $value }} rate limit hits in the last 5 minutes"
+          action: "Check for DDoS, credential stuffing, or misconfigured clients"
+
+      # Sustained rate limiting (possible attack)
+      - alert: SustainedRateLimiting
+        expr: erp_rate_limit_hits_total > 500
+        for: 5m
+        labels:
+          severity: critical
+          component: security
+        annotations:
+          summary: "Sustained high rate limit activity - possible attack"
+          description: "{{ $value }} rate limit hits over 5 minutes"
+          action: "Review IP patterns, consider emergency blocking"
+
+  # ============================================
+  # SYSTEM RESOURCE ALERTS
+  # ============================================
+  - name: system_alerts
+    interval: 15s
+    rules:
+      # High CPU usage
+      - alert: HighCPUUsage
+        expr: erp_cpu_usage_percent > 80
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High CPU usage on app node"
+          description: "CPU usage is {{ $value | printf \"%.1f\" }}% (threshold: 80%)"
+          action: "Check for runaway processes, consider scaling"
+
+      # Critical CPU usage
+      - alert: CriticalCPUUsage
+        expr: erp_cpu_usage_percent > 95
+        for: 2m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Critical CPU usage - near saturation"
+          description: "CPU usage is {{ $value | printf \"%.1f\" }}%"
+          action: "Immediate: Scale horizontally or vertically"
+
+      # High memory usage
+      - alert: HighMemoryUsage
+        expr: erp_memory_usage_percent > 85
+        for: 5m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High memory usage on app node"
+          description: "Memory usage is {{ $value | printf \"%.1f\" }}% (threshold: 85%)"
+          action: "Check for memory leaks, consider garbage collection tuning"
+
+      # Critical memory usage
+      - alert: CriticalMemoryUsage
+        expr: erp_memory_usage_percent > 95
+        for: 2m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Critical memory usage - OOM risk"
+          description: "Memory usage is {{ $value | printf \"%.1f\" }}%"
+          action: "Immediate: Restart application, investigate memory leak"
+
+      # High event loop lag (Node.js specific)
+      - alert: HighEventLoopLag
+        expr: erp_event_loop_lag_ms > 100
+        for: 3m
+        labels:
+          severity: warning
+          component: system
+        annotations:
+          summary: "High event loop lag"
+          description: "Event loop lag is {{ $value | printf \"%.1f\" }}ms"
+          action: "Check for CPU-intensive sync operations, consider offloading"
+
+      # Low disk space (from node_exporter)
+      - alert: LowDiskSpace
+        expr: (node_filesystem_avail_bytes{fstype!~"tmpfs|fuse.lxcfs"} / node_filesystem_size_bytes) < 0.15
+        for: 5m
+        labels:
+          severity: critical
+          component: system
+        annotations:
+          summary: "Low disk space"
+          description: "Only {{ $value | humanizePercentage }} disk space remaining"
+          action: "Clean up logs/temp files, expand storage"
+
+  # ============================================
+  # BACKUP ALERTS
+  # ============================================
+  - name: backup_alerts
+    interval: 60s
+    rules:
+      # Backup is stale
+      - alert: BackupStale
+        expr: erp_backup_stale == 1
+        for: 1h
+        labels:
+          severity: critical
+          component: backup
+        annotations:
+          summary: "Database backup is stale"
+          description: "No successful backup in the last 24 hours"
+          action: "Check backup job status, storage availability"
+
+      # Recent backup failure
+      - alert: BackupFailed
+        expr: increase(erp_backup_failures_total[1h]) > 0
+        for: 5m
+        labels:
+          severity: critical
+          component: backup
+        annotations:
+          summary: "Database backup failed"
+          description: "Backup failure detected in the last hour"
+          action: "Check backup logs, storage credentials, disk space"
+
+  # ============================================
+  # SENTRY / ERROR TRACKING ALERTS
+  # ============================================
+  - name: sentry_alerts
+    interval: 60s
+    rules:
+      # New Sentry issues
+      - alert: SentryNewIssues
+        expr: erp_sentry_new_issues_1h > 5
+        for: 5m
+        labels:
+          severity: warning
+          component: errors
+        annotations:
+          summary: "Multiple new Sentry issues"
+          description: "{{ $value }} new error types in the last hour"
+          action: "Review Sentry dashboard, prioritize critical issues"
+
+      # Spike in Sentry issues
+      - alert: SentryIssueSpike
+        expr: erp_sentry_new_issues_1h > 20
+        for: 5m
+        labels:
+          severity: critical
+          component: errors
+        annotations:
+          summary: "Spike in Sentry issues - possible incident"
+          description: "{{ $value }} new error types in the last hour"
+          action: "Immediate triage required, check for new deployments"
+
+      # High unresolved issue count
+      - alert: SentryHighUnresolved
+        expr: erp_sentry_unresolved_issues > 100
+        for: 1h
+        labels:
+          severity: warning
+          component: errors
+        annotations:
+          summary: "High unresolved Sentry issue count"
+          description: "{{ $value }} unresolved issues"
+          action: "Schedule error triage session"
+
+  # ============================================
+  # PER-TENANT ALERTS
+  # ============================================
+  - name: tenant_alerts
+    interval: 30s
+    rules:
+      # Tenant with high error rate
+      - alert: TenantHighErrorRate
+        expr: erp_tenant_error_rate > 0.10
+        for: 5m
+        labels:
+          severity: warning
+          component: tenant
+        annotations:
+          summary: "Tenant {{ $labels.tenant }} has high error rate"
+          description: "Error rate is {{ $value | humanizePercentage }} for tenant {{ $labels.tenant }}"
+          action: "Check tenant-specific issues, contact customer if needed"
+
+      # Tenant with critical error rate
+      - alert: TenantCriticalErrorRate
+        expr: erp_tenant_error_rate > 0.25
+        for: 3m
+        labels:
+          severity: critical
+          component: tenant
+        annotations:
+          summary: "Tenant {{ $labels.tenant }} experiencing critical errors"
+          description: "Error rate is {{ $value | humanizePercentage }} - possible tenant-specific outage"
+          action: "Immediate investigation required for tenant {{ $labels.tenant }}"
+
+      # Inactive tenant (no traffic for extended period)
+      - alert: TenantInactive
+        expr: erp_tenant_requests_total == 0 and erp_tenant_requests_total offset 1d > 100
+        for: 4h
+        labels:
+          severity: info
+          component: tenant
+        annotations:
+          summary: "Previously active tenant is inactive"
+          description: "Tenant {{ $labels.tenant }} had traffic yesterday but none today"
+          action: "May indicate client issue or intentional downtime"
+
+  # ============================================
+  # APPLICATION HEALTH
+  # ============================================
+  - name: application_alerts
+    interval: 15s
+    rules:
+      # Application uptime check
+      - alert: ApplicationDown
+        expr: up{job="erp-backend"} == 0
+        for: 30s
+        labels:
+          severity: critical
+          component: application
+          pagerduty: "true"
+        annotations:
+          summary: "ERP Backend is down"
+          description: "Application is not responding to health checks"
+          action: "Check container/process status, logs, restart if necessary"
+
+      # Short uptime (recent restart)
+      - alert: ApplicationRecentRestart
+        expr: erp_uptime_seconds < 300 and erp_uptime_seconds > 0
+        for: 1m
+        labels:
+          severity: info
+          component: application
+        annotations:
+          summary: "Application recently restarted"
+          description: "Application has been running for only {{ $value }} seconds"
+          action: "Check if planned restart or crash recovery"

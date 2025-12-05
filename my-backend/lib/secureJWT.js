@@ -218,13 +218,16 @@ function getSecureCookieOptions(maxAge = 3600000) { // 1 hour default
     process.env.RAILWAY === '1' ||
     Boolean(process.env.PRODUCTION_MODE)
 
+  // SECURITY: Enforce strict cookie settings for session protection
+  const forceSecure = process.env.FORCE_SECURE_COOKIES === 'true';
+  
   return {
-    httpOnly: true,        // ✅ Prevents JavaScript access (XSS protection)
-    secure: isProduction,  // ✅ HTTPS only in production
-    sameSite: 'lax',      // ✅ CSRF protection
-    maxAge,                // ✅ Explicit expiration
-    path: '/',             // ✅ Available site-wide
-    ...(isProduction && { domain: process.env.COOKIE_DOMAIN }) // Set domain in production if needed
+    httpOnly: true,                          // ✅ Prevents JavaScript access (XSS protection)
+    secure: isProduction || forceSecure,     // ✅ HTTPS only in production
+    sameSite: isProduction ? 'strict' : 'lax', // ✅ Strict CSRF protection in production
+    maxAge,                                  // ✅ Explicit expiration
+    path: '/',                               // ✅ Available site-wide
+    ...(isProduction && process.env.COOKIE_DOMAIN && { domain: process.env.COOKIE_DOMAIN })
   }
 }
 

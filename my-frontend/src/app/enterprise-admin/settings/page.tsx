@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
+import { usePageRefresh } from "@/contexts/RefreshContext";
 
 type General = {
   systemName: string;
@@ -20,31 +21,41 @@ type Security = {
 export default function EnterpriseAdminSettings() {
   const [tab, setTab] = useState<'general'|'security'|'usage'|'maintenance'|'localization'|'overview'>('overview');
   const [loading, setLoading] = useState(true);
+  const [isDataRefreshing, setIsDataRefreshing] = useState(false);
   const [error, setError] = useState<string|null>(null);
   const [general, setGeneral] = useState<General | null>(null);
   const [security, setSecurity] = useState<Security | null>(null);
   const [overview, setOverview] = useState<any>(null);
 
-  useEffect(() => {
-    const init = async () => {
-      try {
+  const fetchSettings = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setIsDataRefreshing(true);
+      } else {
         setLoading(true);
-        const [g, s, o] = await Promise.all([
-          fetch('/api/enterprise-admin/settings/general', { credentials: 'include' }).then(r=>r.json()),
-          fetch('/api/enterprise-admin/settings/security', { credentials: 'include' }).then(r=>r.json()),
-          fetch('/api/enterprise-admin/settings/overview', { credentials: 'include' }).then(r=>r.json()),
-        ]);
-        setGeneral(g.settings);
-        setSecurity(s.settings);
-        setOverview(o.overview);
-      } catch (e:any) {
-        setError(e.message || 'Failed to load settings');
-      } finally {
-        setLoading(false);
       }
-    };
-    init();
+      const [g, s, o] = await Promise.all([
+        fetch('/api/enterprise-admin/settings/general', { credentials: 'include' }).then(r=>r.json()),
+        fetch('/api/enterprise-admin/settings/security', { credentials: 'include' }).then(r=>r.json()),
+        fetch('/api/enterprise-admin/settings/overview', { credentials: 'include' }).then(r=>r.json()),
+      ]);
+      setGeneral(g.settings);
+      setSecurity(s.settings);
+      setOverview(o.overview);
+    } catch (e:any) {
+      setError(e.message || 'Failed to load settings');
+    } finally {
+      setLoading(false);
+      setIsDataRefreshing(false);
+    }
   }, []);
+
+  useEffect(() => {
+    fetchSettings();
+  }, [fetchSettings]);
+
+  // Register with global refresh context
+  usePageRefresh('settings', () => fetchSettings(true));
 
   return (
     <div className="p-6 space-y-4">

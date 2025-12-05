@@ -1,0 +1,286 @@
+---
+# PgBouncer Kubernetes Deployment
+# =================================
+# Deploys PgBouncer as a connection pooler for PostgreSQL
+#
+# Prerequisites:
+#   - Kubernetes cluster
+#   - PostgreSQL database accessible
+#   - Secrets created for credentials
+#
+# Deploy:
+#   kubectl apply -f pgbouncer-k8s.yaml
+
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: bisman-infra
+  labels:
+    app.kubernetes.io/part-of: bisman-erp
+
+---
+# ConfigMap for PgBouncer configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: pgbouncer-config
+  namespace: bisman-infra
+data:
+  pgbouncer.ini: |
+    [databases]
+    * = host=${PG_HOST} port=${PG_PORT} dbname=${PG_DATABASE}
+
+    [pgbouncer]
+    listen_addr = 0.0.0.0
+    listen_port = 6432
+    auth_type = md5
+    auth_file = /etc/pgbouncer/userlist.txt
+    pool_mode = transaction
+    default_pool_size = 20
+    min_pool_size = 5
+    reserve_pool_size = 5
+    reserve_pool_timeout = 5
+    max_client_conn = 500
+    max_db_connections = 90
+    server_reset_query = DISCARD ALL
+    server_idle_timeout = 600
+    server_connect_timeout = 15
+    log_connections = 1
+    log_disconnections = 1
+    log_pooler_errors = 1
+    server_tls_sslmode = require
+    ignore_startup_parameters = extra_float_digits
+    admin_users = pgbouncer
+    stats_users = pgbouncer,stats
+
+---
+# Secret for database credentials
+apiVersion: v1
+kind: Secret
+metadata:
+  name: pgbouncer-secrets
+  namespace: bisman-infra
+type: Opaque
+stringData:
+  # Replace with actual values or use external secrets manager
+  PG_HOST: "your-postgres-host.rds.amazonaws.com"
+  PG_PORT: "5432"
+  PG_DATABASE: "bisman_prod"
+  PG_USER: "bisman_app"
+  PG_PASSWORD: "your-database-password"
+  # Generate with: echo -n "passwordusername" | md5sum | awk '{print "md5"$1}'
+  userlist.txt: |
+    "bisman_app" "md5xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+    "pgbouncer" "md5yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy"
+    "stats" "md5zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzz"
+
+---
+# Deployment
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer
+  namespace: bisman-infra
+  labels:
+    app: pgbouncer
+    app.kubernetes.io/name: pgbouncer
+    app.kubernetes.io/part-of: bisman-erp
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pgbouncer
+  template:
+    metadata:
+      labels:
+        app: pgbouncer
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9127"
+    spec:
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        fsGroup: 65534
+      
+      containers:
+        - name: pgbouncer
+          image: edoburu/pgbouncer:1.21.0
+          ports:
+            - containerPort: 6432
+              name: pgbouncer
+          
+          envFrom:
+            - secretRef:
+                name: pgbouncer-secrets
+          
+          env:
+            - name: POOL_MODE
+              value: "transaction"
+            - name: DEFAULT_POOL_SIZE
+              value: "20"
+            - name: MAX_CLIENT_CONN
+              value: "500"
+            - name: MAX_DB_CONNECTIONS
+              value: "90"
+            - name: LOG_CONNECTIONS
+              value: "1"
+            - name: LOG_DISCONNECTIONS
+              value: "1"
+          
+          volumeMounts:
+            - name: config
+              mountPath: /etc/pgbouncer/pgbouncer.ini
+              subPath: pgbouncer.ini
+            - name: secrets
+              mountPath: /etc/pgbouncer/userlist.txt
+              subPath: userlist.txt
+          
+          resources:
+            requests:
+              cpu: 100m
+              memory: 64Mi
+            limits:
+              cpu: 500m
+              memory: 256Mi
+          
+          livenessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -h
+                - localhost
+                - -p
+                - "6432"
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          
+          readinessProbe:
+            exec:
+              command:
+                - pg_isready
+                - -h
+                - localhost
+                - -p
+                - "6432"
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      
+      volumes:
+        - name: config
+          configMap:
+            name: pgbouncer-config
+        - name: secrets
+          secret:
+            secretName: pgbouncer-secrets
+            items:
+              - key: userlist.txt
+                path: userlist.txt
+                mode: 0600
+
+---
+# Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer
+  namespace: bisman-infra
+  labels:
+    app: pgbouncer
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6432
+      targetPort: 6432
+      protocol: TCP
+      name: pgbouncer
+  selector:
+    app: pgbouncer
+
+---
+# PodDisruptionBudget for high availability
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: pgbouncer-pdb
+  namespace: bisman-infra
+spec:
+  minAvailable: 1
+  selector:
+    matchLabels:
+      app: pgbouncer
+
+---
+# HorizontalPodAutoscaler (optional)
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: pgbouncer-hpa
+  namespace: bisman-infra
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: pgbouncer
+  minReplicas: 2
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target:
+          type: Utilization
+          averageUtilization: 70
+
+---
+# NetworkPolicy (restrict access to PgBouncer)
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: pgbouncer-network-policy
+  namespace: bisman-infra
+spec:
+  podSelector:
+    matchLabels:
+      app: pgbouncer
+  policyTypes:
+    - Ingress
+  ingress:
+    # Allow from backend namespace
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: bisman-backend
+      ports:
+        - protocol: TCP
+          port: 6432
+    # Allow from monitoring namespace (for metrics)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: monitoring
+      ports:
+        - protocol: TCP
+          port: 9127
+
+---
+# ServiceMonitor for Prometheus (if using prometheus-operator)
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: pgbouncer-monitor
+  namespace: bisman-infra
+  labels:
+    app: pgbouncer
+spec:
+  selector:
+    matchLabels:
+      app: pgbouncer
+  endpoints:
+    - port: pgbouncer
+      interval: 30s
+      path: /metrics

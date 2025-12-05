@@ -1,5 +1,6 @@
 "use client";
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
+import { usePageRefresh } from '@/contexts/RefreshContext';
 
 export default function Page() {
   const [system,setSystem]=useState<any>(null);
@@ -8,9 +9,16 @@ export default function Page() {
   const [adoption,setAdoption]=useState<any[]>([]);
   const [metrics,setMetrics]=useState<any>(null);
   const [loading,setLoading]=useState(true);
+  const [isDataRefreshing,setIsDataRefreshing]=useState(false);
   const [err,setErr]=useState<string|null>(null);
-  useEffect(()=>{(async()=>{
-    try{ setLoading(true);
+
+  const fetchReports = useCallback(async (isRefresh = false) => {
+    try {
+      if (isRefresh) {
+        setIsDataRefreshing(true);
+      } else {
+        setLoading(true);
+      }
       const [s,g,c,a,m] = await Promise.all([
         fetch('/api/enterprise-admin/reports/system-overview',{credentials:'include'}).then(r=>r.json()),
         fetch('/api/enterprise-admin/reports/user-growth?months=12',{credentials:'include'}).then(r=>r.json()),
@@ -23,9 +31,20 @@ export default function Page() {
       setClientActivity(c.activity||[]);
       setAdoption(a.adoption||[]);
       setMetrics(m.metrics);
-    }catch(e:any){ setErr(e.message||'Failed to load reports'); }
-    finally{ setLoading(false); }
-  })();},[]);
+    } catch(e:any) { 
+      setErr(e.message||'Failed to load reports'); 
+    } finally { 
+      setLoading(false);
+      setIsDataRefreshing(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchReports();
+  }, [fetchReports]);
+
+  // Register with global refresh context
+  usePageRefresh('reports', () => fetchReports(true));
   return (
     <div className="space-y-6 text-gray-900 dark:text-gray-100 p-6">
       <h1 className="text-2xl font-semibold">Reports</h1>

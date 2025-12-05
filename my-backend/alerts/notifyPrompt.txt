@@ -1,0 +1,61 @@
+# Alerting & Reports System
+
+## Overview
+Notify ops when tenant exceeds quotas or SLA. Generate automated weekly audit reports.
+
+## Alert Types
+
+### 1. Quota Threshold Alerts (>80% usage)
+- API calls approaching daily limit
+- Storage approaching limit
+- Active users approaching limit
+
+### 2. SLA Violation Alerts
+- Availability dropped below threshold
+- Error rate exceeded threshold
+- P95 latency exceeded threshold
+- Error budget nearly exhausted (<20%)
+
+### 3. Billing Alerts
+- Payment failed
+- Trial expiring (7 days before)
+- Subscription about to lapse
+
+## Implementation
+
+### Hourly Alert Check Job
+Scans `tenant_usage` and `client_daily_usage` tables:
+1. Check quota usage percentages
+2. Compare against 80% threshold
+3. Send alerts to tenant admin + ops
+
+### Weekly Audit Report (CSV)
+Run every Sunday at midnight:
+1. Query events table for critical events:
+   - User logins (success/failure)
+   - Role changes
+   - Billing changes
+   - Data exports
+2. Generate CSV per tenant
+3. Email to tenant admin
+
+### Email Templates
+- quota_warning.html
+- sla_violation.html
+- payment_failed.html
+- trial_expiring.html
+- weekly_audit.html
+
+## Recipients
+- Tenant admin: tenant's primary admin user
+- Ops team: OPS_ALERT_EMAIL env var
+
+## Suggested Environment Variables
+```
+OPS_ALERT_EMAIL=ops@company.com
+ALERT_SMTP_HOST=smtp.example.com
+ALERT_SMTP_PORT=587
+ALERT_SMTP_USER=alerts@company.com
+ALERT_SMTP_PASS=secret
+ALERT_FROM_EMAIL="Alerts <alerts@company.com>"
+```

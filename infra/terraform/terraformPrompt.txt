@@ -1,0 +1,58 @@
+# Terraform Infrastructure Prompt
+
+## Overview
+Generate Terraform configurations for a production-ready AWS infrastructure
+that includes PostgreSQL with read replicas, Redis caching, and container
+orchestration with PgBouncer connection pooling.
+
+## Components to Provision
+
+### 1. RDS PostgreSQL with Read Replica
+- Primary instance: db.r6g.large (or configurable)
+- Read replica in different AZ
+- Multi-AZ for primary
+- Automated backups (7 days retention)
+- Performance Insights enabled
+- Parameter group for connection pooling compatibility
+- Security group with app access only
+
+### 2. ElastiCache Redis Cluster
+- Cluster mode enabled for horizontal scaling
+- Multi-AZ with automatic failover
+- Redis 7.x
+- r6g.large nodes (or configurable)
+- At-rest and in-transit encryption
+- Security group with app access only
+
+### 3. ECS/Fargate Service
+- Application containers with PgBouncer sidecar
+- Task definitions with environment variables
+- Service discovery for internal communication
+- Auto-scaling based on CPU/memory
+- Health checks and rolling updates
+
+### 4. AWS Secrets Manager
+- Database credentials
+- Redis auth token
+- Application secrets (JWT, Stripe, etc.)
+- Automatic rotation for DB credentials
+
+### 5. Networking
+- VPC with public/private subnets
+- NAT Gateway for private subnet egress
+- Application Load Balancer
+- Route 53 for DNS (optional)
+
+## Environment Variables Output
+```
+DATABASE_URL=postgresql://user:pass@primary.endpoint:5432/dbname?sslmode=require
+DATABASE_URL_REPLICA=postgresql://user:pass@replica.endpoint:5432/dbname?sslmode=require
+REDIS_URL=redis://auth@elasticache.endpoint:6379
+```
+
+## Security Requirements
+- All secrets in Secrets Manager (not in task definitions)
+- TLS everywhere (RDS, Redis, ALB)
+- Private subnets for databases
+- WAF on ALB
+- VPC Flow Logs enabled

@@ -3,6 +3,9 @@
  * Ensures all required environment variables are set for production
  */
 
+// Variables that are derived from DATABASE_URL and don't need separate warnings
+const dbDerivedVars = ['DB_USER', 'DB_PASSWORD', 'DB_HOST', 'DB_PORT', 'DB_NAME'];
+
 const requiredEnvVars = {
   NODE_ENV: {
     required: true,
@@ -20,23 +23,28 @@ const requiredEnvVars = {
   DB_USER: {
     required: false,
     description: 'Database user (extracted from DATABASE_URL if not provided)',
+    silent: true, // Don't warn - derived from DATABASE_URL
   },
   DB_PASSWORD: {
     required: false,
     description: 'Database password (extracted from DATABASE_URL if not provided)',
+    silent: true, // Don't warn - derived from DATABASE_URL
   },
   DB_HOST: {
     required: false,
     description: 'Database host (extracted from DATABASE_URL if not provided)',
+    silent: true, // Don't warn - derived from DATABASE_URL
   },
   DB_PORT: {
     required: false,
     description: 'Database port (extracted from DATABASE_URL if not provided)',
     default: '5432',
+    silent: true, // Don't warn - derived from DATABASE_URL
   },
   DB_NAME: {
     required: false,
     description: 'Database name (extracted from DATABASE_URL if not provided)',
+    silent: true, // Don't warn - derived from DATABASE_URL
   },
   JWT_SECRET: {
     required: true,
@@ -55,10 +63,12 @@ const requiredEnvVars = {
   FRONTEND_URLS: {
     required: false,
     description: 'Multiple frontend URLs for CORS (comma-separated)',
+    silent: true, // Optional - FRONTEND_URL is sufficient
   },
   OTP_HASH_SECRET: {
     required: false,
     description: 'Secret for OTP hashing (generates default if not provided)',
+    silent: true, // Auto-generated if missing
   },
   DISABLE_RATE_LIMIT: {
     required: false,
@@ -68,6 +78,7 @@ const requiredEnvVars = {
   REDIS_URL: {
     required: false,
     description: 'Redis URL for rate limiting and caching',
+    silent: true, // Optional - falls back to in-memory store
   },
 };
 
@@ -87,8 +98,12 @@ function validateEnvVars() {
       }
     } else if (!config.required && !value && config.default) {
       process.env[key] = config.default;
-      warnings.push(`Using default for ${key}: ${config.default}`);
-    } else if (!config.required && !value) {
+      // Only log default usage if not silent
+      if (!config.silent) {
+        warnings.push(`Using default for ${key}: ${config.default}`);
+      }
+    } else if (!config.required && !value && !config.silent) {
+      // Only warn about missing optional vars if not marked as silent
       warnings.push(`Optional environment variable not set: ${key} - ${config.description}`);
     }
   });
