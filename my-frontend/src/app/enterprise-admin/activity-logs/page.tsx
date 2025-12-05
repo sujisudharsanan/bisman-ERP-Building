@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useCallback } from 'react';
-import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, Filter, Info, Search, ShieldAlert, User } from 'lucide-react';
+import { AlertCircle, CheckCircle2, ChevronDown, ChevronRight, Filter, Info, Search, ShieldAlert, User, Wifi, WifiOff } from 'lucide-react';
 import { formatAbsolute, formatRelative } from '@/lib/time';
 import { usePageRefresh } from '@/contexts/RefreshContext';
+import { useReportContext } from '@/contexts/ReportContext';
+import { motion, AnimatePresence } from 'framer-motion';
 
 type Log = {
   id: string;
@@ -39,6 +41,52 @@ export default function ActivityLogsPage() {
   const [loading, setLoading] = useState(false);
   const [isDataRefreshing, setIsDataRefreshing] = useState(false);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [newLogCount, setNewLogCount] = useState(0);
+
+  // Socket.IO for real-time log streaming
+  const { connected, subscribe, unsubscribe, onReportUpdate } = useReportContext();
+
+  // Subscribe to real-time activity logs
+  useEffect(() => {
+    if (connected) {
+      subscribe('active-users' as any);
+      
+      // Listen for new logs via socket (backend emits recentActivity, not recentLogs)
+      const unsubscribeCallback = onReportUpdate('active-users' as any, (data) => {
+        const recentData = data?.recentActivity || data?.recentLogs || [];
+        if (Array.isArray(recentData) && recentData.length > 0) {
+          // Map backend format to our Log type
+          const mappedLogs: Log[] = recentData.map((item: any) => ({
+            id: item.id || `${Date.now()}-${Math.random()}`,
+            timestamp: item.timestamp || item.lastSeen || new Date().toISOString(),
+            action: item.action || item.activity || 'Activity Update',
+            target: item.target || item.resource || null,
+            actorId: item.userId || item.actorId || null,
+            actor: item.actor || { id: item.userId, name: item.userName, email: item.email },
+            severity: item.severity || 'info',
+            meta: item.meta || item.metadata || null,
+          }));
+
+          // Prepend new logs and highlight them
+          setLogs(prev => {
+            const newLogs = mappedLogs.filter(
+              (newLog: Log) => !prev.some(existingLog => existingLog.id === newLog.id)
+            );
+            if (newLogs.length > 0) {
+              setNewLogCount(c => c + newLogs.length);
+              return [...newLogs, ...prev];
+            }
+            return prev;
+          });
+        }
+      });
+
+      return () => {
+        unsubscribe('active-users' as any);
+        unsubscribeCallback();
+      };
+    }
+  }, [connected, subscribe, unsubscribe, onReportUpdate]);
 
   const grouped = useMemo(() => {
     const map: Record<string, Log[]> = {};
@@ -86,7 +134,41 @@ export default function ActivityLogsPage() {
   usePageRefresh('activity-logs', () => fetchLogs(false, true));
 
   return (
-    <div className="p-6 grid grid-cols-1 lg:grid-cols-4 gap-6">
+    <div className="p-6">
+      {/* Header with live indicator */}
+      <div className="flex items-center justify-between mb-6">
+        <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Activity Logs</h1>
+        <div className="flex items-center gap-4">
+          {newLogCount > 0 && (
+            <motion.button
+              initial={{ scale: 0 }}
+              animate={{ scale: 1 }}
+              onClick={() => { setNewLogCount(0); window.scrollTo({ top: 0, behavior: 'smooth' }); }}
+              className="px-3 py-1 text-sm bg-blue-600 text-white rounded-full"
+            >
+              {newLogCount} new logs
+            </motion.button>
+          )}
+          <div className="flex items-center gap-2 text-sm">
+            {connected ? (
+              <>
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                </span>
+                <span className="text-green-600 dark:text-green-400">Live</span>
+              </>
+            ) : (
+              <>
+                <WifiOff className="w-4 h-4 text-gray-400" />
+                <span className="text-gray-500">Connecting...</span>
+              </>
+            )}
+          </div>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
       {/* Filters */}
       <aside className="lg:col-span-1 bg-white dark:bg-slate-800 rounded-xl border border-slate-200 dark:border-slate-700 p-4 h-fit">
         <div className="flex items-center gap-2 font-semibold mb-3"><Filter className="w-4 h-4"/> Filters</div>
@@ -173,6 +255,7 @@ export default function ActivityLogsPage() {
           </div>
         ) : null}
       </section>
+      </div>
     </div>
   );
 }

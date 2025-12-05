@@ -6,6 +6,7 @@ import { AuthProvider } from '../contexts/AuthContext';
 import { PermissionProvider } from '../contexts/PermissionContext';
 import { ThemeProvider } from '../contexts/ThemeContext';
 import { SocketProvider } from '../contexts/SocketContext';
+import { ReportProvider } from '../contexts/ReportContext';
 import { ColorThemeProvider } from '@/components/ColorThemeProvider';
 import GlobalRouteLoader from '@/components/loading/GlobalRouteLoader';
 import HealthBoot from '@/components/dev/HealthBoot';
@@ -77,6 +78,7 @@ export default function RootLayout({
           <ThemeProvider>
             <AuthProvider>
               <SocketProvider>
+                <ReportProvider>
                 <PermissionProvider>
                   <ToastProvider>
                   <RenderLogger />
@@ -121,6 +123,7 @@ export default function RootLayout({
               {/* Single-window chat removed; using existing ChatGuard integration */}
                   </ToastProvider>
                 </PermissionProvider>
+                </ReportProvider>
               </SocketProvider>
             </AuthProvider>
           </ThemeProvider>

@@ -77,6 +77,15 @@ async function start() {
     console.warn('[startup] ⚠️ Chat Socket.IO not initialized:', e.message);
   }
 
+  // Initialize Real-Time Report Socket handlers
+  try {
+    const { initializeReportSocket } = require('./socket/reportSocket');
+    initializeReportSocket(io);
+    console.log('[startup] ✅ Report Socket.IO handlers initialized (namespace: /reports)');
+  } catch (e) {
+    console.warn('[startup] ⚠️ Report Socket.IO not initialized:', e.message);
+  }
+
   // Socket.IO connection handler
   io.on('connection', (socket) => {
     console.log('[socket.io] Client connected:', socket.id);

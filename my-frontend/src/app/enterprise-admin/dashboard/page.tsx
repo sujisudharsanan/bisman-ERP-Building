@@ -29,6 +29,7 @@ import {
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { usePageRefresh } from '@/contexts/RefreshContext';
+import { useReportContext, ReportType } from '@/contexts/ReportContext';
 import ChatWidget from '@/modules/chat/components/AIWidget';
 // Navbar and Sidebar are provided by the enterprise-admin layout
 
@@ -78,6 +79,16 @@ const PIE_COLORS = [COLORS.businessErp, COLORS.pumpManagement, '#3b82f6', '#f973
 export default function EnterpriseAdminDashboard() {
   const { user, loading } = useAuth();
   const router = useRouter();
+  
+  // Socket.IO for real-time updates
+  const { 
+    connected: socketConnected, 
+    subscribe, 
+    unsubscribe, 
+    reportData, 
+    lastUpdate,
+    refresh: socketRefresh 
+  } = useReportContext();
 
   // State
   const [stats, setStats] = useState<DashboardStats>({
@@ -99,11 +110,62 @@ export default function EnterpriseAdminDashboard() {
   // Avoid SSR->CSR text mismatch by not rendering a live time on the server
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
+  // Report types to subscribe to for real-time updates
+  const reportTypes: ReportType[] = ['dashboard-kpi', 'active-users', 'system-health'];
+
+  // Subscribe to real-time reports when connected
+  useEffect(() => {
+    if (socketConnected) {
+      reportTypes.forEach(type => subscribe(type));
+    }
+    return () => {
+      if (socketConnected) {
+        reportTypes.forEach(type => unsubscribe(type));
+      }
+    };
+  }, [socketConnected, subscribe, unsubscribe]);
+
+  // Update state from socket data
+  useEffect(() => {
+    if (reportData['dashboard-kpi']) {
+      const kpi = reportData['dashboard-kpi'];
+      setStats(prev => ({
+        ...prev,
+        totalSuperAdmins: kpi.totalSuperAdmins ?? prev.totalSuperAdmins,
+        totalModules: kpi.totalModules ?? prev.totalModules,
+        activeTenants: kpi.activeTenants ?? prev.activeTenants,
+      }));
+    }
+    if (reportData['system-health']) {
+      const health = reportData['system-health'];
+      setSystemInsights(prev => ({
+        ...prev,
+        apiUptime: health.apiUptime ?? prev.apiUptime,
+        dbConnections: health.dbConnections ?? prev.dbConnections,
+      }));
+      if (health.status) {
+        setStats(prev => ({ ...prev, systemHealth: health.status }));
+      }
+    }
+    if (reportData['active-users']) {
+      // Update activity logs with real-time data
+      const activities = reportData['active-users'];
+      if (Array.isArray(activities)) {
+        setActivityLogs(activities.slice(0, 5));
+      }
+    }
+    if (lastUpdate['dashboard-kpi'] || lastUpdate['system-health']) {
+      setLastUpdated(new Date());
+    }
+  }, [reportData, lastUpdate]);
+
   // Fetch all dashboard data
   // isRefresh=true means it's a manual refresh (show spinners on values only)
   const fetchDashboardData = useCallback(async (isRefresh = false) => {
     if (isRefresh) {
       setIsDataRefreshing(true);
+      // Also trigger socket refresh for real-time data
+      reportTypes.forEach(type => socketRefresh(type));
     } else {
       setIsLoading(true);
     }
@@ -276,6 +338,25 @@ export default function EnterpriseAdminDashboard() {
               </p>
             </div>
             <div className="flex items-center gap-4">
+              {/* Real-time connection indicator */}
+              <div className="flex items-center gap-2 text-sm">
+                {socketConnected ? (
+                  <>
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+                    </span>
+                    <span className="text-green-600 dark:text-green-400">Live</span>
+                  </>
+                ) : (
+                  <>
+                    <span className="relative flex h-2 w-2">
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-gray-400"></span>
+                    </span>
+                    <span className="text-gray-500">Connecting...</span>
+                  </>
+                )}
+              </div>
               <div className="text-sm text-gray-500 dark:text-gray-400" suppressHydrationWarning>
                 Last updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : '—'}
               </div>
