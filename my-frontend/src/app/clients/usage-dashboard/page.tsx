@@ -286,7 +286,7 @@ function StatsCard({
   title: string;
   value: string | number;
   subtitle?: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: React.ComponentType<{ className?: string; style?: React.CSSProperties }>;
   color?: string;
   isLoading?: boolean;
 }) {
