@@ -170,9 +170,10 @@ try {
 
 // --- Security Alerting Middleware ---
 try {
-  const { createSecurityAlertingMiddleware } = require('./middleware/securityAlerting');
-  app.use(createSecurityAlertingMiddleware());
-  console.log('[app.js] ✅ Security alerting middleware enabled (failed auth/rate limit spike detection)');
+  const { authAttemptTracker, forbiddenTracker } = require('./middleware/securityAlerting');
+  app.use(authAttemptTracker);
+  app.use(forbiddenTracker);
+  console.log('[app.js] ✅ Security alerting middleware enabled (failed auth/forbidden tracking)');
 } catch (e) {
   console.warn('[app.js] Security alerting middleware not enabled:', e.message);
 }

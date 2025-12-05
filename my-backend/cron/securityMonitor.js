@@ -27,8 +27,8 @@ const SCHEDULES = {
   // Every 5 minutes: check audit volume
   AUDIT_VOLUME: '*/5 * * * *',
   
-  // Every minute: check for unknown DB connections
-  UNKNOWN_CONNECTIONS: '* * * * *',
+  // Every 6 hours: check for unknown DB connections (reduced from every minute)
+  UNKNOWN_CONNECTIONS: '0 */6 * * *',
   
   // Daily at 9 AM: credential rotation reminder
   CREDENTIAL_REMINDER: '0 9 * * *',

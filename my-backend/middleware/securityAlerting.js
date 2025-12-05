@@ -253,6 +253,20 @@ function forbiddenTracker(req, res, next) {
  */
 async function checkAuditVolume(pool) {
   try {
+    // First check if the table exists
+    const tableCheck = await pool.query(`
+      SELECT EXISTS (
+        SELECT FROM information_schema.tables 
+        WHERE table_name = 'audit_logs_dml'
+      ) as exists
+    `);
+
+    if (!tableCheck.rows[0].exists) {
+      // Table doesn't exist yet - skip silently (migration pending)
+      console.log('[checkAuditVolume] audit_logs_dml table not found - skipping (migration may be pending)');
+      return true;
+    }
+
     const result = await pool.query(`
       WITH current_hour AS (
         SELECT COUNT(*) as cnt
@@ -301,8 +315,10 @@ async function checkAuditVolume(pool) {
 async function checkUnknownDbConnections(pool) {
   const WHITELIST = [
     'bisman_erp_app',
+    'bisman_erp_backend',
     'bisman_erp_worker',
     'bisman_erp_migration',
+    'bisman_security_monitor',
     'pgAdmin 4',
     'pgAdmin',
     'psql',
@@ -310,6 +326,7 @@ async function checkUnknownDbConnections(pool) {
     'pg_dump',
     'pg_restore',
     'DBeaver',
+    'node',
     ''  // Empty string for some clients
   ];
 
