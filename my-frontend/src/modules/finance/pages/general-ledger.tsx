@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import SuperAdminLayout from '@/common/layouts/superadmin-layout';
 import { useAuth } from '@/common/hooks/useAuth';
-import { Search, Plus, RefreshCw } from '@/lib/ssr-safe-icons';
+import { Search, Plus } from '@/lib/ssr-safe-icons';
 
 export default function GeneralLedger() {
   const { hasAccess } = useAuth();
@@ -42,13 +42,6 @@ export default function GeneralLedger() {
             <p className="text-gray-600 dark:text-gray-400">Manage general ledger entries</p>
           </div>
           <div className="flex items-center space-x-2">
-            <button
-              onClick={() => setLoading(true)}
-              className="bg-blue-600 dark:bg-blue-500 text-white px-4 py-2 rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 flex items-center space-x-2"
-            >
-              <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              <span>Refresh</span>
-            </button>
             <button className="bg-green-600 dark:bg-green-500 text-white px-4 py-2 rounded-lg hover:bg-green-700 dark:hover:bg-green-600 flex items-center space-x-2">
               <Plus className="w-4 h-4" />
               <span>Add New</span>

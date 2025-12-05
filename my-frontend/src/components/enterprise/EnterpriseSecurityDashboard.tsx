@@ -264,9 +264,7 @@ const SectionHeader: React.FC<{
   title: string;
   icon: React.ReactNode;
   status?: 'healthy' | 'warning' | 'critical';
-  onRefresh?: () => void;
-  loading?: boolean;
-}> = ({ title, icon, status, onRefresh, loading }) => (
+}> = ({ title, icon, status }) => (
   <div className="flex items-center justify-between mb-4">
     <div className="flex items-center space-x-2">
       {icon}
@@ -281,15 +279,6 @@ const SectionHeader: React.FC<{
         </span>
       )}
     </div>
-    {onRefresh && (
-      <button
-        onClick={onRefresh}
-        disabled={loading}
-        className="p-2 text-gray-500 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors disabled:opacity-50"
-      >
-        <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-      </button>
-    )}
   </div>
 );
 
@@ -422,9 +411,7 @@ const OverviewSection: React.FC<{
 
 const SecurityScanSection: React.FC<{
   scanResult: SecurityScanResult | null;
-  onScan: () => void;
-  loading: boolean;
-}> = ({ scanResult, onScan, loading }) => {
+}> = ({ scanResult }) => {
   // Safe array extraction
   const routes = Array.isArray(scanResult?.unprotectedRoutes) ? scanResult.unprotectedRoutes : [];
   const sqlIssues = Array.isArray(scanResult?.rawSqlUsage) ? scanResult.rawSqlUsage : [];
@@ -437,8 +424,6 @@ const SecurityScanSection: React.FC<{
       icon={<Shield className="w-5 h-5 text-blue-600" />}
       status={scanResult?.overallRisk === 'CRITICAL' ? 'critical' :
               scanResult?.overallRisk === 'HIGH' ? 'warning' : 'healthy'}
-      onRefresh={onScan}
-      loading={loading}
     />
     
     {scanResult && (
@@ -586,7 +571,6 @@ const ServiceTableUsageSection: React.FC<{
       <SectionHeader
         title="Service → Table Access Tracking"
         icon={<Table className="w-5 h-5 text-indigo-600" />}
-        loading={loading}
       />
       
       <div className="flex space-x-2 mb-4">
@@ -837,8 +821,7 @@ const CleanupJobsSection: React.FC<{
 
 const AuditLogSection: React.FC<{
   logs: AuditLogEntry[];
-  loading: boolean;
-}> = ({ logs, loading }) => {
+}> = ({ logs }) => {
   const [expandedLog, setExpandedLog] = useState<string | null>(null);
 
   return (
@@ -846,7 +829,6 @@ const AuditLogSection: React.FC<{
       <SectionHeader
         title="Recent Audit Logs"
         icon={<Eye className="w-5 h-5 text-purple-600" />}
-        loading={loading}
       />
       
       <div className="space-y-2">
@@ -1078,14 +1060,6 @@ const EnterpriseSecurityDashboard: React.FC<EnterpriseSecurityDashboardProps> = 
                 </span>
               )}
               <button
-                onClick={fetchAllData}
-                disabled={loading.scan || loading.usage}
-                className="flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${(loading.scan || loading.usage) ? 'animate-spin' : ''}`} />
-                Refresh All
-              </button>
-              <button
                 onClick={() => {/* Export functionality */}}
                 className="flex items-center px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
               >
@@ -1109,8 +1083,6 @@ const EnterpriseSecurityDashboard: React.FC<EnterpriseSecurityDashboardProps> = 
         {/* Security Scan Results */}
         <SecurityScanSection
           scanResult={scanResult}
-          onScan={fetchSecurityScan}
-          loading={loading.scan}
         />
 
         {/* Service Table Usage */}
@@ -1135,7 +1107,6 @@ const EnterpriseSecurityDashboard: React.FC<EnterpriseSecurityDashboardProps> = 
         {/* Audit Logs */}
         <AuditLogSection
           logs={auditLogs}
-          loading={loading.audit}
         />
       </div>
     </div>

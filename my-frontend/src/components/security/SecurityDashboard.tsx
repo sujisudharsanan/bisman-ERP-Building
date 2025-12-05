@@ -201,12 +201,8 @@ const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
     await Promise.all([fetchTestResults(), fetchMonitoringData()]);
   }, [fetchTestResults, fetchMonitoringData]);
 
-  // Register with shell's refresh button
-  try {
-    usePageRefresh('security-dashboard', refreshAllData);
-  } catch {
-    // Not wrapped in RefreshProvider, ignore
-  }
+  // Register with shell's refresh button (safe even without RefreshProvider)
+  usePageRefresh('security-dashboard', refreshAllData);
 
   // Run all tests
   const runAllTests = async () => {
@@ -769,14 +765,6 @@ const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
           </button>
 
           <button
-            className="flex items-center justify-center space-x-2 p-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors"
-            onClick={fetchTestResults}
-          >
-            <RefreshCw className="w-4 h-4" />
-            <span>Refresh Results</span>
-          </button>
-
-          <button
             className="flex items-center justify-center space-x-2 p-3 bg-yellow-50 text-yellow-700 rounded-lg hover:bg-yellow-100 transition-colors"
             onClick={() => setExpandedTest(expandedTest ? null : 'all')}
           >
@@ -891,15 +879,8 @@ const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
       {/* Alerts Tab */}
       {activeTab === 'alerts' && (
         <>
-          <div className="mb-4 flex justify-between items-center">
+          <div className="mb-4">
             <h3 className="text-lg font-medium text-gray-900">Security Alerts</h3>
-            <button
-              onClick={fetchMonitoringData}
-              className="flex items-center space-x-1 px-3 py-1 text-sm bg-gray-100 hover:bg-gray-200 rounded transition-colors"
-            >
-              <RefreshCw className="w-4 h-4" />
-              <span>Refresh</span>
-            </button>
           </div>
 
           {alerts.length === 0 ? (

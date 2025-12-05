@@ -946,22 +946,6 @@ const SystemHealthDashboard: React.FC = () => {
             </div>
             <div className="flex items-center space-x-3">
               <button
-                onClick={() => setAutoRefresh(!autoRefresh)}
-                className={`px-4 py-2 rounded-lg flex items-center space-x-2 ${
-                  autoRefresh ? 'bg-blue-500 hover:bg-blue-600' : 'bg-gray-600 hover:bg-gray-700'
-                }`}
-              >
-                <RefreshCw className={`w-4 h-4 ${autoRefresh ? 'animate-spin' : ''}`} />
-                <span>{autoRefresh ? 'Auto-Refresh ON' : 'Auto-Refresh OFF'}</span>
-              </button>
-              <button
-                onClick={loadData}
-                className="px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 flex items-center space-x-2"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span>Refresh</span>
-              </button>
-              <button
                 onClick={() => setIsConfigModalOpen(true)}
                 className="px-4 py-2 bg-white text-blue-600 rounded-lg hover:bg-blue-50 flex items-center space-x-2"
               >

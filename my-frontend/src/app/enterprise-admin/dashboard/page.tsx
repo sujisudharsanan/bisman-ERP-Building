@@ -268,13 +268,6 @@ export default function EnterpriseAdminDashboard() {
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <button
-                onClick={fetchDashboardData}
-                className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-700 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
-              >
-                <RefreshCw className="w-4 h-4" />
-                <span className="text-sm font-medium">Refresh</span>
-              </button>
               <div className="text-sm text-gray-500 dark:text-gray-400" suppressHydrationWarning>
                 Last updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : '—'}
               </div>
