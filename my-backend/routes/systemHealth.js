@@ -57,13 +57,15 @@ router.post('/load-test', async (req, res) => {
 // Other existing routes...
 
 
-// Rate limiting for system health endpoints
+// Rate limiting for system health endpoints (relaxed for development)
+const isDev = process.env.NODE_ENV !== 'production';
 const systemHealthLimiter = rateLimit({
   windowMs: 60 * 1000, // 1 minute
-  max: 30, // 30 requests per minute per IP
+  max: isDev ? 200 : 30, // 200 requests per minute in dev, 30 in production
   message: 'Too many system health requests, please try again later.',
   standardHeaders: true,
   legacyHeaders: false,
+  skip: () => isDev, // Skip rate limiting entirely in development
 });
 
 // Apply authentication and rate limiting to all routes
@@ -72,7 +74,6 @@ router.use(systemHealthLimiter);
 
 // Role check middleware - only ENTERPRISE_ADMIN can access
 router.use((req, res, next) => {
-  const isDev = process.env.NODE_ENV !== 'production';
   const role = req.user && (req.user.role || req.user.roleName);
   const allowed = role === 'ENTERPRISE_ADMIN' || (isDev && role === 'SUPER_ADMIN');
   if (allowed) return next();

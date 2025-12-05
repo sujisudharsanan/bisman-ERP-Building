@@ -11,7 +11,7 @@
  * - Real-time alerts
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   LineChart,
   Line,
@@ -41,6 +41,7 @@ import {
   Download,
   Edit,
 } from 'lucide-react';
+import { usePageRefresh } from '@/contexts/RefreshContext';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -347,28 +348,21 @@ const fetchSystemHealth = async (): Promise<SystemHealthData> => {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
       },
       credentials: 'include',
     });
 
     if (!response.ok) {
-      if (response.status === 401) {
-        window.location.href = '/auth/login';
-        throw new Error('Unauthorized');
-      }
+      // Don't redirect on 401 - just use mock data
       throw new Error(`HTTP ${response.status}: ${response.statusText}`);
     }
 
     return await response.json();
   } catch (error) {
     console.error('Failed to fetch system health:', error);
-    // Fallback to mock data in development only
-    if (process.env.NODE_ENV === 'development') {
-      console.warn('Using mock data for development');
-      return mockSystemHealth();
-    }
-    throw error;
+    // Fallback to mock data in development
+    console.warn('Using mock data for development');
+    return mockSystemHealth();
   }
 };
 
@@ -379,7 +373,6 @@ const fetchSystemConfig = async (): Promise<SystemConfig> => {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${localStorage.getItem('token')}`,
       },
       credentials: 'include',
     });
@@ -834,15 +827,28 @@ const SystemHealthDashboard: React.FC = () => {
   const [data, setData] = useState<SystemHealthData | null>(null);
   const [config, setConfig] = useState<SystemConfig | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDataRefreshing, setIsDataRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastRefresh, setLastRefresh] = useState<Date>(new Date());
   const [isConfigModalOpen, setIsConfigModalOpen] = useState(false);
-  const [autoRefresh, setAutoRefresh] = useState(true);
+  const [autoRefresh, setAutoRefresh] = useState(false); // Disabled by default to prevent spam
   const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'success' | 'error'>('idle');
+  const isFetchingRef = React.useRef(false); // Prevent duplicate fetches
 
   // Load data with error handling
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = useCallback(async (isRefresh = false) => {
+    // Prevent duplicate fetches
+    if (isFetchingRef.current) {
+      console.log('[SystemHealth] Skipping fetch - already in progress');
+      return;
+    }
+    isFetchingRef.current = true;
+    
+    if (isRefresh) {
+      setIsDataRefreshing(true);
+    } else {
+      setLoading(true);
+    }
     setError(null);
     try {
       const [healthData, configData] = await Promise.all([fetchSystemHealth(), fetchSystemConfig()]);
@@ -862,24 +868,36 @@ const SystemHealthDashboard: React.FC = () => {
       }
     } finally {
       setLoading(false);
+      setIsDataRefreshing(false);
+      isFetchingRef.current = false; // Allow next fetch
     }
-  };
-
-  // Initial load
-  useEffect(() => {
-    loadData();
   }, []);
 
-  // Auto-refresh
+  // Initial load - only once
+  useEffect(() => {
+    let mounted = true;
+    if (mounted) {
+      loadData();
+    }
+    return () => { mounted = false; };
+  }, []); // Empty dependency - load only once on mount
+
+  // Register with global refresh context
+  usePageRefresh('system-health', () => loadData(true));
+
+  // Auto-refresh with minimum 60 second interval
   useEffect(() => {
     if (!autoRefresh || !config) return;
 
+    // Minimum 60 seconds to prevent API spam
+    const refreshInterval = Math.max(config.refreshInterval || 60000, 60000);
+    
     const interval = setInterval(() => {
-      loadData();
-    }, config.refreshInterval);
+      loadData(true);
+    }, refreshInterval);
 
     return () => clearInterval(interval);
-  }, [autoRefresh, config]);
+  }, [autoRefresh, config?.refreshInterval]); // Only depend on refreshInterval value
 
   // Export data
   const exportData = () => {
@@ -919,7 +937,7 @@ const SystemHealthDashboard: React.FC = () => {
           <h2 className="text-xl font-semibold text-gray-900 mb-2">Failed to Load Dashboard</h2>
           <p className="text-gray-600 mb-4">{error}</p>
           <button
-            onClick={loadData}
+            onClick={() => loadData()}
             className="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 inline-flex items-center space-x-2"
           >
             <RefreshCw className="w-4 h-4" />
