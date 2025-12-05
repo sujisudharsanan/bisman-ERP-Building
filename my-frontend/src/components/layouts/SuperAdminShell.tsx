@@ -8,6 +8,7 @@ const DynamicSidebar = dynamic(() => import('@/common/components/DynamicSidebar'
 import DarkModeToggle from '@/components/ui/DarkModeToggle';
 import { TopNavDbIndicator } from '@/components/user-management';
 import { useAuth } from '@/contexts/AuthContext';
+import { RefreshProvider, useRefreshTrigger } from '@/contexts/RefreshContext';
 
 type SuperAdminShellProps = {
   title?: string;
@@ -38,8 +39,17 @@ const HeaderLogo: React.FC = () => {
 };
 
 export default function SuperAdminShell({ title = 'Super Admin', children }: SuperAdminShellProps) {
+  return (
+    <RefreshProvider>
+      <SuperAdminShellInner title={title}>{children}</SuperAdminShellInner>
+    </RefreshProvider>
+  );
+}
+
+function SuperAdminShellInner({ title = 'Super Admin', children }: SuperAdminShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuth();
+  const { refreshAll, isRefreshing, registeredCount } = useRefreshTrigger();
   // Store resolved lucide icon components safely (capitalized keys)
   const [icons, setIcons] = useState<{ RefreshCw?: React.ComponentType<any>; LogOut?: React.ComponentType<any> }>({});
 
@@ -112,18 +122,19 @@ export default function SuperAdminShell({ title = 'Super Admin', children }: Sup
             </div>
             <div className="flex items-center gap-2">
               <button
-                onClick={() => window.location.reload()}
-                className="bg-blue-600 dark:bg-blue-500 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center gap-1.5 text-xs font-medium shadow-sm"
-                aria-label="Refresh"
-                title="Refresh"
+                onClick={refreshAll}
+                disabled={isRefreshing}
+                className={`bg-blue-600 dark:bg-blue-500 text-white px-3 py-1.5 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center gap-1.5 text-xs font-medium shadow-sm ${isRefreshing ? 'opacity-75 cursor-wait' : ''}`}
+                aria-label="Refresh data"
+                title={registeredCount > 0 ? `Refresh ${registeredCount} data source(s)` : 'Refresh page'}
               >
                   {/* Guard icon rendering - lazy-load lucide icon, fallback to simple SVG if undefined */}
                   {icons.RefreshCw ? (
-                    <icons.RefreshCw className="w-3.5 h-3.5" />
+                    <icons.RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
                   ) : (
-                    <svg className="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M23 4v6h-6"/><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M1 20v-6h6"/></svg>
+                    <svg className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} viewBox="0 0 24 24" fill="none" stroke="currentColor"><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M23 4v6h-6"/><path strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" d="M1 20v-6h6"/></svg>
                   )}
-                <span className="hidden sm:inline">Refresh</span>
+                <span className="hidden sm:inline">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
               </button>
               <button
                 onClick={handleLogout}

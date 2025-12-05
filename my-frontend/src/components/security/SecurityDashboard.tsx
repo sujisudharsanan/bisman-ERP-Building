@@ -23,6 +23,7 @@ import {
   Bell,
   TrendingUp,
 } from '@/lib/ssr-safe-icons';
+import { usePageRefresh } from '@/contexts/RefreshContext';
 
 interface TestResult {
   testId: string;
@@ -194,6 +195,18 @@ const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
       console.error('Error fetching monitoring data:', err);
     }
   }, []);
+
+  // Combined refresh function for all dashboard data
+  const refreshAllData = useCallback(async () => {
+    await Promise.all([fetchTestResults(), fetchMonitoringData()]);
+  }, [fetchTestResults, fetchMonitoringData]);
+
+  // Register with shell's refresh button
+  try {
+    usePageRefresh('security-dashboard', refreshAllData);
+  } catch {
+    // Not wrapped in RefreshProvider, ignore
+  }
 
   // Run all tests
   const runAllTests = async () => {

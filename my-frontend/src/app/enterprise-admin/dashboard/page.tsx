@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import {
   ShieldCheck,
@@ -28,6 +28,7 @@ import {
 } from 'recharts';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { usePageRefresh } from '@/contexts/RefreshContext';
 import ChatWidget from '@/modules/chat/components/AIWidget';
 // Navbar and Sidebar are provided by the enterprise-admin layout
 
@@ -98,7 +99,7 @@ export default function EnterpriseAdminDashboard() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
   // Fetch all dashboard data
-  const fetchDashboardData = async () => {
+  const fetchDashboardData = useCallback(async () => {
     setIsLoading(true);
     try {
       const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
@@ -168,7 +169,10 @@ export default function EnterpriseAdminDashboard() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
+
+  // Register this component's refresh function with the shell's refresh button
+  usePageRefresh('enterprise-dashboard', fetchDashboardData);
 
   useEffect(() => {
     // Wait for auth state to resolve before deciding

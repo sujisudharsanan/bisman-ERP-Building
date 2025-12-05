@@ -6,6 +6,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { LogOut, RefreshCw, Menu } from 'lucide-react';
 import DarkModeToggle from '@/components/ui/DarkModeToggle';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRefreshTrigger } from '@/contexts/RefreshContext';
 
 const HeaderLogo: React.FC = () => {
   const [logoError, setLogoError] = useState(false);
@@ -66,6 +67,20 @@ export default function EnterpriseAdminNavbar({ onMenuToggle, onRefresh }: Enter
   const pathname = usePathname();
   const { logout } = useAuth();
   const pageName = getPageName(pathname || '');
+  
+  // Try to use RefreshContext, fallback gracefully if not available
+  let contextRefresh: (() => Promise<void>) | undefined;
+  let isRefreshing = false;
+  let registeredCount = 0;
+  
+  try {
+    const refreshContext = useRefreshTrigger();
+    contextRefresh = refreshContext.refreshAll;
+    isRefreshing = refreshContext.isRefreshing;
+    registeredCount = refreshContext.registeredCount;
+  } catch {
+    // Not wrapped in RefreshProvider, will use fallback
+  }
 
   const handleLogout = async () => {
     try {
@@ -80,6 +95,8 @@ export default function EnterpriseAdminNavbar({ onMenuToggle, onRefresh }: Enter
   const handleRefresh = () => {
     if (onRefresh) {
       onRefresh();
+    } else if (contextRefresh && registeredCount > 0) {
+      contextRefresh();
     } else {
       window.location.reload();
     }
@@ -112,12 +129,13 @@ export default function EnterpriseAdminNavbar({ onMenuToggle, onRefresh }: Enter
           <div className="flex items-center gap-2">
             <button
               onClick={handleRefresh}
-              className="bg-blue-600 dark:bg-blue-500 text-white px-2 sm:px-3 py-1.5 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center gap-1.5 text-xs font-medium shadow-sm"
-              aria-label="Refresh"
-              title="Refresh"
+              disabled={isRefreshing}
+              className={`bg-blue-600 dark:bg-blue-500 text-white px-2 sm:px-3 py-1.5 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center gap-1.5 text-xs font-medium shadow-sm ${isRefreshing ? 'opacity-75 cursor-wait' : ''}`}
+              aria-label="Refresh data"
+              title={registeredCount > 0 ? `Refresh ${registeredCount} data source(s)` : 'Refresh page'}
             >
-              <RefreshCw className="w-3.5 h-3.5" />
-              <span className="hidden sm:inline">Refresh</span>
+              <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+              <span className="hidden sm:inline">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
             </button>
             <button
               onClick={handleLogout}
