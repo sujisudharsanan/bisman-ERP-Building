@@ -347,6 +347,9 @@ model Client {
   paymentRequests         PaymentRequest[]           @relation("ClientPaymentRequests")
   users                   User[]                     @relation("ClientUsers")
   events                  Event[]                    @relation("ClientEvents")
+  customers               Customer[]                 @relation("ClientCustomers")
+  vendors                 Vendor[]                   @relation("ClientVendors")
+  items                   Item[]                     @relation("ClientItems")
 
   @@index([super_admin_id], map: "idx_clients_super_admin")
   @@index([productType], map: "idx_clients_product_type")
@@ -1566,4 +1569,234 @@ model BillingWebhookEvent {
   @@index([status], map: "idx_billing_webhook_status")
   @@index([createdAt], map: "idx_billing_webhook_created")
   @@map("billing_webhook_events")
+}
+
+// =============================================================================
+// MASTER DATA - CUSTOMERS, VENDORS, ITEMS
+// =============================================================================
+
+/// Customer master data with Indian compliance (GSTIN, PAN, credit terms)
+model Customer {
+  id              Int       @id @default(autoincrement())
+  tenantId        String    @map("tenant_id") @db.Uuid
+  
+  /// Basic Information
+  code            String?   @db.VarChar(50)
+  name            String    @db.VarChar(200)
+  customerType    String    @default("business") @map("customer_type") @db.VarChar(20)
+  
+  /// Contact Information
+  email           String?   @db.VarChar(255)
+  phone           String?   @db.VarChar(20)
+  alternatePhone  String?   @map("alternate_phone") @db.VarChar(20)
+  website         String?   @db.VarChar(255)
+  contactPerson   String?   @map("contact_person") @db.VarChar(100)
+  
+  /// Tax Information (Indian Compliance)
+  gstin           String?   @db.VarChar(15)
+  pan             String?   @db.VarChar(10)
+  
+  /// Credit Terms
+  creditLimit     Decimal   @default(0) @map("credit_limit") @db.Decimal(15, 2)
+  creditDays      Int       @default(0) @map("credit_days")
+  creditUtilized  Decimal   @default(0) @map("credit_utilized") @db.Decimal(15, 2)
+  
+  /// Addresses (JSON for flexibility)
+  billingAddress  Json      @default("{}") @map("billing_address")
+  shippingAddress Json      @default("{}") @map("shipping_address")
+  sameAsShipping  Boolean   @default(true) @map("same_as_shipping")
+  
+  /// Additional
+  notes           String?   @db.Text
+  tags            String[]  @default([])
+  
+  /// Status
+  status          String    @default("active") @db.VarChar(20)
+  isActive        Boolean   @default(true) @map("is_active")
+  
+  /// Audit
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy       Int?      @map("created_by")
+  updatedBy       Int?      @map("updated_by")
+  
+  /// Relations
+  client          Client    @relation("ClientCustomers", fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@unique([tenantId, code], map: "uk_customers_tenant_code")
+  @@unique([tenantId, gstin], map: "uk_customers_tenant_gstin")
+  @@index([tenantId], map: "idx_customers_tenant")
+  @@index([tenantId, name], map: "idx_customers_name")
+  @@index([gstin], map: "idx_customers_gstin")
+  @@index([phone], map: "idx_customers_phone")
+  @@index([email], map: "idx_customers_email")
+  @@index([tenantId, customerType], map: "idx_customers_type")
+  @@index([tenantId, status], map: "idx_customers_status")
+  @@index([tenantId, isActive], map: "idx_customers_active")
+  @@index([tenantId, createdAt(sort: Desc)], map: "idx_customers_created")
+  @@map("customers")
+}
+
+/// Vendor/Supplier master data with Indian compliance (GSTIN, PAN, TAN, MSME, TDS)
+model Vendor {
+  id              Int       @id @default(autoincrement())
+  tenantId        String    @map("tenant_id") @db.Uuid
+  
+  /// Basic Information
+  code            String?   @db.VarChar(50)
+  name            String    @db.VarChar(200)
+  vendorType      String    @default("distributor") @map("vendor_type") @db.VarChar(30)
+  
+  /// Contact Information
+  email           String?   @db.VarChar(255)
+  phone           String?   @db.VarChar(20)
+  alternatePhone  String?   @map("alternate_phone") @db.VarChar(20)
+  website         String?   @db.VarChar(255)
+  contactPerson   String?   @map("contact_person") @db.VarChar(100)
+  
+  /// Tax Information (Indian Compliance)
+  gstin           String?   @db.VarChar(15)
+  pan             String?   @db.VarChar(10)
+  tan             String?   @db.VarChar(10)
+  
+  /// MSME
+  isMsme          Boolean   @default(false) @map("is_msme")
+  msmeNumber      String?   @map("msme_number") @db.VarChar(30)
+  
+  /// Payment Terms
+  paymentTerms    String    @default("net_30") @map("payment_terms") @db.VarChar(20)
+  creditDays      Int       @default(30) @map("credit_days")
+  
+  /// Bank Details (JSON)
+  bankDetails     Json      @default("{}") @map("bank_details")
+  
+  /// Addresses (JSON)
+  billingAddress  Json      @default("{}") @map("billing_address")
+  shippingAddress Json      @default("{}") @map("shipping_address")
+  
+  /// TDS
+  tdsApplicable   Boolean   @default(false) @map("tds_applicable")
+  tdsSection      String?   @map("tds_section") @db.VarChar(20)
+  tdsRate         Decimal   @default(0) @map("tds_rate") @db.Decimal(5, 2)
+  
+  /// Additional
+  notes           String?   @db.Text
+  tags            String[]  @default([])
+  
+  /// Status
+  status          String    @default("active") @db.VarChar(20)
+  isActive        Boolean   @default(true) @map("is_active")
+  
+  /// Audit
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy       Int?      @map("created_by")
+  updatedBy       Int?      @map("updated_by")
+  
+  /// Relations
+  client          Client    @relation("ClientVendors", fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@unique([tenantId, code], map: "uk_vendors_tenant_code")
+  @@unique([tenantId, gstin], map: "uk_vendors_tenant_gstin")
+  @@index([tenantId], map: "idx_vendors_tenant")
+  @@index([tenantId, name], map: "idx_vendors_name")
+  @@index([gstin], map: "idx_vendors_gstin")
+  @@index([phone], map: "idx_vendors_phone")
+  @@index([email], map: "idx_vendors_email")
+  @@index([tenantId, vendorType], map: "idx_vendors_type")
+  @@index([tenantId, status], map: "idx_vendors_status")
+  @@index([tenantId, isActive], map: "idx_vendors_active")
+  @@index([tenantId, isMsme], map: "idx_vendors_msme")
+  @@index([tenantId, createdAt(sort: Desc)], map: "idx_vendors_created")
+  @@map("vendors")
+}
+
+/// Item/Product master data with Indian tax codes (HSN/SAC) and inventory tracking
+model Item {
+  id                Int       @id @default(autoincrement())
+  tenantId          String    @map("tenant_id") @db.Uuid
+  
+  /// Basic Information
+  sku               String    @db.VarChar(50)
+  name              String    @db.VarChar(200)
+  barcode           String?   @db.VarChar(50)
+  itemType          String    @default("goods") @map("item_type") @db.VarChar(20)
+  
+  /// Category
+  categoryId        Int?      @map("category_id")
+  subcategoryId     Int?      @map("subcategory_id")
+  brandId           Int?      @map("brand_id")
+  
+  /// Tax Classification (Indian)
+  hsnCode           String?   @map("hsn_code") @db.VarChar(8)
+  sacCode           String?   @map("sac_code") @db.VarChar(6)
+  gstRate           Decimal   @default(18) @map("gst_rate") @db.Decimal(5, 2)
+  isTaxExempt       Boolean   @default(false) @map("is_tax_exempt")
+  
+  /// Pricing
+  purchasePrice     Decimal   @default(0) @map("purchase_price") @db.Decimal(15, 2)
+  sellingPrice      Decimal   @default(0) @map("selling_price") @db.Decimal(15, 2)
+  mrp               Decimal?  @db.Decimal(15, 2)
+  minSellingPrice   Decimal?  @map("min_selling_price") @db.Decimal(15, 2)
+  pricingTiers      Json      @default("[]") @map("pricing_tiers")
+  
+  /// Inventory
+  uom               String    @default("NOS") @db.VarChar(10)
+  trackInventory    Boolean   @default(true) @map("track_inventory")
+  inventoryMethod   String    @default("fifo") @map("inventory_method") @db.VarChar(20)
+  reorderLevel      Decimal   @default(0) @map("reorder_level") @db.Decimal(15, 3)
+  reorderQty        Decimal   @default(0) @map("reorder_qty") @db.Decimal(15, 3)
+  minStockLevel     Decimal   @default(0) @map("min_stock_level") @db.Decimal(15, 3)
+  maxStockLevel     Decimal?  @map("max_stock_level") @db.Decimal(15, 3)
+  openingStock      Decimal   @default(0) @map("opening_stock") @db.Decimal(15, 3)
+  currentStock      Decimal   @default(0) @map("current_stock") @db.Decimal(15, 3)
+  
+  /// Dimensions
+  weight            Decimal?  @db.Decimal(10, 3)
+  weightUnit        String    @default("kg") @map("weight_unit") @db.VarChar(5)
+  length            Decimal?  @db.Decimal(10, 2)
+  width             Decimal?  @db.Decimal(10, 2)
+  height            Decimal?  @db.Decimal(10, 2)
+  dimensionUnit     String    @default("cm") @map("dimension_unit") @db.VarChar(5)
+  
+  /// Description
+  shortDescription  String?   @map("short_description") @db.VarChar(255)
+  longDescription   String?   @map("long_description") @db.Text
+  
+  /// Media
+  imageUrl          String?   @map("image_url") @db.VarChar(500)
+  images            String[]  @default([])
+  
+  /// Additional
+  notes             String?   @db.Text
+  tags              String[]  @default([])
+  
+  /// Status
+  status            String    @default("active") @db.VarChar(20)
+  isActive          Boolean   @default(true) @map("is_active")
+  isSellable        Boolean   @default(true) @map("is_sellable")
+  isPurchasable     Boolean   @default(true) @map("is_purchasable")
+  
+  /// Audit
+  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+  createdBy         Int?      @map("created_by")
+  updatedBy         Int?      @map("updated_by")
+  
+  /// Relations
+  client            Client    @relation("ClientItems", fields: [tenantId], references: [id], onDelete: Cascade)
+  
+  @@unique([tenantId, sku], map: "uk_items_tenant_sku")
+  @@unique([tenantId, barcode], map: "uk_items_tenant_barcode")
+  @@index([tenantId], map: "idx_items_tenant")
+  @@index([tenantId, sku], map: "idx_items_sku")
+  @@index([barcode], map: "idx_items_barcode")
+  @@index([tenantId, name], map: "idx_items_name")
+  @@index([tenantId, itemType], map: "idx_items_type")
+  @@index([tenantId, categoryId], map: "idx_items_category")
+  @@index([hsnCode], map: "idx_items_hsn")
+  @@index([tenantId, status], map: "idx_items_status")
+  @@index([tenantId, isActive], map: "idx_items_active")
+  @@index([tenantId, createdAt(sort: Desc)], map: "idx_items_created")
+  @@map("items")
 }

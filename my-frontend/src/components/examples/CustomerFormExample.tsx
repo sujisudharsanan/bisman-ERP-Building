@@ -64,12 +64,12 @@ const creditLimitSchema = z
 // Customer Create Schema - SAME as backend
 const customerCreateSchema = z.object({
   name: z.string().min(1, 'Customer name is required').max(200, 'Name too long'),
+  customerType: z.enum(['individual', 'business', 'government', 'ngo']),
   email: emailSchema,
   phone: phoneSchema,
   alternatePhone: phoneSchema,
   gstin: gstinSchema,
   pan: panSchema,
-  customerType: z.enum(['individual', 'business', 'government', 'ngo']).default('business'),
   creditLimit: z.coerce.number().min(0).max(100000000).optional().or(z.literal('').transform(() => undefined)),
   creditDays: z.coerce.number().int().min(0).max(365).optional().or(z.literal('').transform(() => undefined)),
   billingAddress: z.object({
@@ -79,7 +79,7 @@ const customerCreateSchema = z.object({
     state: z.string().min(1, 'State required'),
     pinCode: pinCodeSchema,
     country: z.string().default('India'),
-  }).optional(),
+  }),
   notes: z.string().max(1000, 'Notes too long (max 1000 characters)').optional(),
 });
 
@@ -118,11 +118,12 @@ export default function CustomerFormExample({
     resolver: zodResolver(customerCreateSchema),
     defaultValues: {
       name: '',
+      customerType: 'business',
       email: '',
       phone: '',
+      alternatePhone: '',
       gstin: '',
       pan: '',
-      customerType: 'business',
       creditLimit: undefined,
       creditDays: undefined,
       billingAddress: {

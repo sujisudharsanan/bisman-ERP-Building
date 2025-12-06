@@ -424,7 +424,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     permissions: ['user-management'],
     roles: ['SUPER_ADMIN'],
     status: 'active',
-    showInSidebar: true,
+    showInSidebar: false, // Hidden - already mapped in Client Management
     description: 'Manage system permissions',
     order: 3,
   },
@@ -437,7 +437,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     permissions: ['user-management'],
     roles: ['SUPER_ADMIN'],
     status: 'active',
-    showInSidebar: true,
+    showInSidebar: false, // Hidden - already mapped in Client Management
     description: 'View comprehensive report of all roles and assigned users',
     order: 4,
   },

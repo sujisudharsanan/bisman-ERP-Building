@@ -2,7 +2,7 @@
 import React, { useState, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import API_BASE from '@/config/api';
-import { RefreshCw, Upload, X, FileText, Building2, Globe, CreditCard, Users, Shield, Calendar } from 'lucide-react';
+import { RefreshCw, Upload, X, FileText, Building2, Globe, CreditCard, Users, Shield, Calendar, Eye, EyeOff, Wand2 } from 'lucide-react';
 
 // International country data with phone codes and currency
 const COUNTRIES = [
@@ -82,7 +82,7 @@ export interface ClientFormValues {
   enabled_modules: string[];
   storage_limit_gb: number;
   // Admin user
-  admin_users: Array<{ email: string; name: string; role: string; password?: string }>;
+  admin_users: Array<{ email: string; name: string; role: string; password?: string; confirmPassword?: string }>;
 }
 
 export interface ClientFormProps {
@@ -153,6 +153,42 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
   const [activeTab, setActiveTab] = useState<'basic' | 'international' | 'subscription' | 'documents' | 'users'>('basic');
   const [dragActive, setDragActive] = useState(false);
   const [uploadedDocs, setUploadedDocs] = useState<Array<{ name: string; type: string; size: number; category: string; file?: File }>>([]);
+  const [showPasswords, setShowPasswords] = useState<Record<number, boolean>>({});
+
+  // Generate a secure random password
+  const generatePassword = () => {
+    const length = 12;
+    const uppercase = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    const lowercase = 'abcdefghijklmnopqrstuvwxyz';
+    const numbers = '0123456789';
+    const special = '!@#$%^&*';
+    const allChars = uppercase + lowercase + numbers + special;
+    
+    // Ensure at least one of each type
+    let password = 
+      uppercase[Math.floor(Math.random() * uppercase.length)] +
+      lowercase[Math.floor(Math.random() * lowercase.length)] +
+      numbers[Math.floor(Math.random() * numbers.length)] +
+      special[Math.floor(Math.random() * special.length)];
+    
+    // Fill remaining with random chars
+    for (let i = password.length; i < length; i++) {
+      password += allChars[Math.floor(Math.random() * allChars.length)];
+    }
+    
+    // Shuffle the password
+    return password.split('').sort(() => Math.random() - 0.5).join('');
+  };
+
+  const handleGeneratePassword = (idx: number) => {
+    const newPassword = generatePassword();
+    const updated = [...form.admin_users];
+    updated[idx].password = newPassword;
+    updated[idx].confirmPassword = newPassword;
+    setForm({ ...form, admin_users: updated });
+    // Show password when auto-generated
+    setShowPasswords(prev => ({ ...prev, [idx]: true }));
+  };
 
   // Get country info
   const selectedCountry = COUNTRIES.find(c => c.code === form.country_code) || COUNTRIES[0];
@@ -264,6 +300,24 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
         return;
       }
     }
+    
+    // Validate passwords match for all admin users (in create mode)
+    if (mode === 'create') {
+      for (let i = 0; i < form.admin_users.length; i++) {
+        const adminU = form.admin_users[i];
+        if (adminU.email) {
+          if (!adminU.password || adminU.password.length < 8) {
+            alert(`Password for ${adminU.email || `admin user ${i + 1}`} must be at least 8 characters`);
+            return;
+          }
+          if (adminU.password !== adminU.confirmPassword) {
+            alert(`Passwords do not match for ${adminU.email || `admin user ${i + 1}`}`);
+            return;
+          }
+        }
+      }
+    }
+    
     setLoading(true);
     try {
       const body: any = { ...form, name: form.legal_name || form.trade_name };
@@ -757,55 +811,108 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
             </p>
             
             {form.admin_users.map((adminU, idx) => (
-              <div key={idx} className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email *</label>
-                  <input 
-                    type="email" 
-                    placeholder="admin@company.com" 
-                    value={adminU.email} 
-                    onChange={(e) => updateAdminUser(idx, 'email', e.target.value)} 
-                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
-                  <input 
-                    placeholder="Full Name" 
-                    value={adminU.name} 
-                    onChange={(e) => updateAdminUser(idx, 'name', e.target.value)} 
-                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Password {mode === 'create' ? '*' : ''}
-                  </label>
-                  <input 
-                    type="password" 
-                    placeholder={mode === 'edit' ? '(leave blank to keep)' : 'Min 8 characters'}
-                    value={adminU.password || ''} 
-                    onChange={(e) => updateAdminUser(idx, 'password', e.target.value)} 
-                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700" 
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
-                  <select 
-                    value={adminU.role} 
-                    onChange={(e) => updateAdminUser(idx, 'role', e.target.value)} 
-                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700"
-                  >
-                    <option>Admin</option>
-                    <option>Manager</option>
-                    <option>User</option>
-                  </select>
-                </div>
-                {idx > 0 && registrationMode === 'permanent' && (
-                  <div className="flex items-end">
-                    <button onClick={() => removeAdminUser(idx)} className="px-3 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50">Remove</button>
+              <div key={idx} className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email *</label>
+                    <input 
+                      type="email" 
+                      placeholder="admin@company.com" 
+                      value={adminU.email} 
+                      onChange={(e) => updateAdminUser(idx, 'email', e.target.value)} 
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700" 
+                    />
                   </div>
-                )}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Name</label>
+                    <input 
+                      placeholder="Full Name" 
+                      value={adminU.name} 
+                      onChange={(e) => updateAdminUser(idx, 'name', e.target.value)} 
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700" 
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
+                    <select 
+                      value={adminU.role} 
+                      onChange={(e) => updateAdminUser(idx, 'role', e.target.value)} 
+                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700"
+                    >
+                      <option>Admin</option>
+                      <option>Manager</option>
+                      <option>User</option>
+                    </select>
+                  </div>
+                  {idx > 0 && registrationMode === 'permanent' && (
+                    <div className="flex items-end">
+                      <button onClick={() => removeAdminUser(idx)} className="px-3 py-2 text-red-600 border border-red-300 rounded-lg hover:bg-red-50">Remove</button>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Password Section */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Password {mode === 'create' ? '*' : ''}
+                    </label>
+                    <div className="relative">
+                      <input 
+                        type={showPasswords[idx] ? 'text' : 'password'}
+                        placeholder={mode === 'edit' ? '(leave blank to keep)' : 'Min 8 characters'}
+                        value={adminU.password || ''} 
+                        onChange={(e) => updateAdminUser(idx, 'password', e.target.value)} 
+                        className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 pr-10 bg-white dark:bg-gray-700" 
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowPasswords(prev => ({ ...prev, [idx]: !prev[idx] }))}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        {showPasswords[idx] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Confirm Password {mode === 'create' ? '*' : ''}
+                    </label>
+                    <div className="relative">
+                      <input 
+                        type={showPasswords[idx] ? 'text' : 'password'}
+                        placeholder="Re-enter password"
+                        value={adminU.confirmPassword || ''} 
+                        onChange={(e) => updateAdminUser(idx, 'confirmPassword', e.target.value)} 
+                        className={`w-full border rounded-lg p-2.5 pr-10 bg-white dark:bg-gray-700 ${
+                          adminU.password && adminU.confirmPassword && adminU.password !== adminU.confirmPassword 
+                            ? 'border-red-500' 
+                            : 'border-gray-300 dark:border-gray-600'
+                        }`}
+                      />
+                      <button 
+                        type="button"
+                        onClick={() => setShowPasswords(prev => ({ ...prev, [idx]: !prev[idx] }))}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                      >
+                        {showPasswords[idx] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                      </button>
+                    </div>
+                    {adminU.password && adminU.confirmPassword && adminU.password !== adminU.confirmPassword && (
+                      <p className="text-xs text-red-500 mt-1">Passwords do not match</p>
+                    )}
+                  </div>
+                  <div className="flex items-end">
+                    <button 
+                      type="button"
+                      onClick={() => handleGeneratePassword(idx)}
+                      className="flex items-center gap-2 px-4 py-2.5 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 transition-colors"
+                    >
+                      <Wand2 className="w-4 h-4" />
+                      Generate Password
+                    </button>
+                  </div>
+                </div>
               </div>
             ))}
           </div>

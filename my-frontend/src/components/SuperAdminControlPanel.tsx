@@ -1180,7 +1180,7 @@ const SuperAdminControlPanel: React.FC = () => {
               </button>
               <HeaderLogo />
               <h1 className="text-sm sm:text-base font-semibold text-gray-900 dark:text-gray-100">
-                Super Admin Control Panel
+                Retail Client Management
               </h1>
             </div>
             <div className="flex items-center gap-2">

@@ -51,12 +51,12 @@ export default function StandardLoginPage() {
         },
         {
           id: 2,
-          name: 'Business Super Admin',
+          name: 'Retail Client Admin',
           email: 'business_superadmin@bisman.demo',
           password: 'Super@123',
           role: 'SUPER_ADMIN',
           icon: Shield,
-          description: 'Multi-tenant admin'
+          description: 'Retail client management'
         },
         {
           id: 13,

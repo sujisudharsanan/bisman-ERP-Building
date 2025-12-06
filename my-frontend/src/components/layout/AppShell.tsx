@@ -30,7 +30,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const excludedPrefixes = useMemo(
     () => [
       '/auth',
+      '/landing',         // ✅ Added: Landing page - no shell (public marketing page)
       '/access-denied',   // ✅ Added: Full screen access denied page
+      '/signup',          // ✅ Added: Signup pages - no shell
+      '/onboarding',      // ✅ Added: Onboarding wizard pages - no shell
+      '/get-started',     // ✅ Added: Get started redirect page - no shell
+      '/login',           // ✅ Added: Login page - no shell
       '/super-admin',
       '/enterprise-admin',
       '/enterprise',
