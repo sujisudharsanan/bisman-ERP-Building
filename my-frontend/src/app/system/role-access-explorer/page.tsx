@@ -30,7 +30,7 @@ interface RoleData {
 
 const ROLES_DATA: Record<RoleKey, RoleData> = {
   'super-admin': {
-    name: 'Super Admin',
+    name: 'Retail Client Management',
     desc: 'Platform-level controller; can manage global configurations and all organizations.',
     permissions: [
       'Full CRUD on users, roles, modules',
@@ -285,7 +285,7 @@ export default function RoleAccessExplorerPage() {
                 onChange={(e) => setRole(e.target.value as RoleKey)}
                 className="w-full max-w-xs p-3 border border-slate-300 rounded-lg shadow-sm bg-white text-base font-medium focus:ring-2 focus:ring-blue-500 focus:outline-none dark:bg-slate-900 dark:text-slate-100 dark:border-slate-700"
               >
-                <option value="super-admin">Super Admin</option>
+                <option value="super-admin">Retail Client Management</option>
                 <option value="org-admin">Org Admin</option>
                 <option value="dept-manager">Department Manager</option>
                 <option value="team-lead">Team Lead</option>
@@ -336,7 +336,7 @@ export default function RoleAccessExplorerPage() {
                       <th scope="col" className="px-6 py-4 font-medium">
                         Action / Capability
                       </th>
-                      <th id="col-super-admin" className={thClass('super-admin')}>Super Admin</th>
+                      <th id="col-super-admin" className={thClass('super-admin')}>RCM</th>
                       <th id="col-org-admin" className={thClass('org-admin')}>Org Admin</th>
                       <th id="col-dept-manager" className={thClass('dept-manager')}>Dept Manager</th>
                       <th id="col-team-lead" className={thClass('team-lead')}>Team Lead</th>
@@ -639,7 +639,7 @@ export default function RoleAccessExplorerPage() {
             <div className="p-6 bg-white rounded-lg shadow-sm border border-slate-200 dark:bg-slate-900 dark:border-slate-700">
               <div className="pl-5 border-l-2 border-slate-300">
                 <div className="relative bg-white border-2 border-blue-500 rounded-lg px-4 py-3 shadow-sm font-semibold text-blue-700 dark:text-blue-300 dark:bg-slate-900">
-                  Super Admin
+                  Retail Client Management
                 </div>
                 <div className="mt-4 pl-5 border-l-2 border-slate-300">
                   <div className="relative bg-white border-2 border-blue-400 rounded-lg px-4 py-3 shadow-sm font-medium text-blue-600 dark:text-blue-300 dark:bg-slate-900">

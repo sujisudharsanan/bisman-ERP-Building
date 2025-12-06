@@ -354,7 +354,7 @@ export default function UsersManagementPage() {
           >
             <option value="all">All Roles</option>
             <option value="ENTERPRISE_ADMIN">BISMAN Corporation</option>
-            <option value="SUPER_ADMIN">Super Admin</option>
+            <option value="SUPER_ADMIN">Retail Client Management</option>
             <option value="ADMIN">Admin</option>
             <option value="MANAGER">Manager</option>
             <option value="USER">User</option>

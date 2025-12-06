@@ -69,7 +69,7 @@ const t = (key: string, options?: Record<string, any>): string => {
  */
 const getRoleDisplayName = (role: string): string => {
   const roleMap: Record<string, string> = {
-    'SUPER_ADMIN': 'Super Admin',
+    'SUPER_ADMIN': 'Retail Client Management',
     'ADMIN': 'Admin',
     'MANAGER': 'Manager',
     'STAFF': 'Staff',

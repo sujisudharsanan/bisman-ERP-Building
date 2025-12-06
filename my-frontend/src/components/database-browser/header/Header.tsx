@@ -134,7 +134,7 @@ export default function Header({
                 </AvatarFallback>
               </Avatar>
               <div className="hidden md:block text-left">
-                <p className="text-sm font-medium text-gray-900">Super Admin</p>
+                <p className="text-sm font-medium text-gray-900">Retail Client Mgmt</p>
                 <p className="text-xs text-gray-500">admin@bisman.com</p>
               </div>
               <ChevronDown className="w-4 h-4 text-gray-400" />

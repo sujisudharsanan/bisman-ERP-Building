@@ -135,7 +135,7 @@ const mockMetrics: RBACMetrics = {
   },
   roleDistribution: [
     { level: 100, name: 'Enterprise Admin', count: 1, activeUsers: 1 },
-    { level: 90, name: 'Super Admin', count: 1, activeUsers: 1 },
+    { level: 90, name: 'Retail Client Management', count: 1, activeUsers: 1 },
     { level: 80, name: 'Admin', count: 2, activeUsers: 2 },
     { level: 50, name: 'Manager', count: 3, activeUsers: 3 },
     { level: 30, name: 'Staff', count: 5, activeUsers: 5 },

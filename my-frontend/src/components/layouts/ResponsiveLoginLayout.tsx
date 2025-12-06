@@ -31,7 +31,7 @@ export const loginTabs: (BottomNavTab & TopTabsTab)[] = [
   },
   {
     id: 'super-admin',
-    label: 'Super Admin',
+    label: 'Retail Client Management',
     icon: UserCircle,
     path: '/auth/super-admin-login',
     description: 'System administrator'

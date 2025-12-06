@@ -38,6 +38,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       '/admin',
       '/system',          // ✅ Added: System pages use SuperAdminShell with DynamicSidebar
       '/hr',              // ✅ Added: HR pages use their own layout
+      '/qa',              // ✅ Added: QA Testing module uses standalone layout
       '/common',
       '/dashboard',
       '/staff',
@@ -60,13 +61,20 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   );
 
   const shouldUseLocalShell = useMemo(() => {
-    if (!pathname) return true;
+    if (!pathname) return false; // Changed: Return false when pathname is null to avoid showing shell during hydration
     return !excludedPrefixes.some((p) => pathname.startsWith(p));
   }, [pathname, excludedPrefixes]);
 
+  // Add a loading state to prevent flash of shell on excluded routes
+  const [mounted, setMounted] = useState(false);
   useEffect(() => {
-    // Align initial state or persist preference if needed later
+    setMounted(true);
   }, []);
+
+  // Don't render anything until mounted to prevent hydration mismatch
+  if (!mounted) {
+    return <RefreshProvider>{children}</RefreshProvider>;
+  }
 
   if (!shouldUseLocalShell) {
     return <RefreshProvider>{children}</RefreshProvider>;

@@ -271,7 +271,7 @@ export interface PageMetadata {
   // iconKey is a lucide-react component name string (e.g. "Settings", "Users")
   // resolved client-side; avoids importing lucide components during SSR.
   iconKey?: string;
-  module: 'system' | 'finance' | 'procurement' | 'operations' | 'compliance' | 'common' | 'pump-management' | 'hr' | 'super-admin' | 'enterprise-admin' | 'admin' | 'billing';
+  module: 'system' | 'finance' | 'procurement' | 'operations' | 'compliance' | 'common' | 'pump-management' | 'hr' | 'super-admin' | 'enterprise-admin' | 'admin' | 'billing' | 'qa';
   permissions: string[]; // Required permissions (OR logic)
   roles: string[]; // Recommended roles
   status: PageStatus;
@@ -367,6 +367,14 @@ export const MODULES: Record<string, ModuleMetadata> = {
     color: 'slate',
     order: 9,
   },
+  qa: {
+    id: 'qa',
+    name: 'QA & Testing',
+    icon: ClipboardCheck,
+    description: 'Quality assurance, bug tracking, and test management',
+    color: 'cyan',
+    order: 10,
+  },
   common: {
     id: 'common',
     name: 'Common',
@@ -382,7 +390,7 @@ export const MODULES: Record<string, ModuleMetadata> = {
  * All 73 pages (6 existing + 67 newly created)
  */
 export const PAGE_REGISTRY: PageMetadata[] = [
-  // ==================== SUPER ADMIN PAGES (separate from ADMIN) ====================
+  // ==================== RETAIL CLIENT MANAGEMENT PAGES ====================
   {
     id: 'super-admin-dashboard',
     name: 'Dashboard',
@@ -392,7 +400,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     permissions: ['user-management'],
     roles: ['SUPER_ADMIN'],
     status: 'active',
-    description: 'Super Admin Control Panel Dashboard',
+    description: 'Retail Client Management Dashboard',
     order: 0,
   },
   {
@@ -1737,6 +1745,70 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     description: 'Dashboard level analytics view',
     order: 15,
+  },
+  // ==================== QA & TESTING MODULE ====================
+  {
+    id: 'qa-dashboard',
+    name: 'QA Dashboard',
+    path: '/qa',
+    iconKey: "LayoutDashboard",
+    module: 'qa',
+    permissions: ['qa-access', 'authenticated'],
+    roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN', 'QA_TESTER', 'DEVELOPER'],
+    status: 'active',
+    description: 'QA Dashboard - overview of testing tasks and issues',
+    badge: 'New',
+    order: 1,
+  },
+  {
+    id: 'qa-test-tasks',
+    name: 'Test Tasks',
+    path: '/qa/test-tasks',
+    iconKey: "ClipboardList",
+    module: 'qa',
+    permissions: ['qa-access', 'authenticated'],
+    roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN', 'QA_TESTER', 'DEVELOPER'],
+    status: 'active',
+    description: 'View and manage test assignments',
+    order: 2,
+  },
+  {
+    id: 'qa-issues',
+    name: 'Bug Tracker',
+    path: '/qa/issues',
+    iconKey: "Bug",
+    module: 'qa',
+    permissions: ['qa-access', 'authenticated'],
+    roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN', 'QA_TESTER', 'DEVELOPER'],
+    status: 'active',
+    description: 'Track bugs and issues found during testing',
+    order: 3,
+  },
+  {
+    id: 'qa-new-task',
+    name: 'New Test Task',
+    path: '/qa/test-tasks/new',
+    iconKey: "Plus",
+    module: 'qa',
+    permissions: ['qa-access', 'authenticated'],
+    roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN'],
+    status: 'active',
+    showInSidebar: false,
+    description: 'Create a new test task',
+    order: 4,
+  },
+  {
+    id: 'qa-new-issue',
+    name: 'Report Issue',
+    path: '/qa/issues/new',
+    iconKey: "AlertCircle",
+    module: 'qa',
+    permissions: ['qa-access', 'authenticated'],
+    roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN', 'QA_TESTER', 'DEVELOPER'],
+    status: 'active',
+    showInSidebar: false,
+    description: 'Report a new bug or issue',
+    order: 5,
   },
 ];
 

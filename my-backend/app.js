@@ -822,6 +822,17 @@ try {
   }
 }
 
+// QA / Testing Module routes (bug tracking, test assignments)
+try {
+  const qaRoutes = require('./routes/qaRoutes')
+  app.use('/api/qa', qaRoutes)
+  console.log('✅ QA Module routes loaded at /api/qa')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('QA routes not loaded:', e && e.message)
+  }
+}
+
 // Multi-tenant authentication routes
 try {
   const authRoutes = require('./routes/auth')

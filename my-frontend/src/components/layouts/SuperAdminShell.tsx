@@ -38,7 +38,7 @@ const HeaderLogo: React.FC = () => {
   );
 };
 
-export default function SuperAdminShell({ title = 'Super Admin', children }: SuperAdminShellProps) {
+export default function SuperAdminShell({ title = 'Retail Client Management', children }: SuperAdminShellProps) {
   return (
     <RefreshProvider>
       <SuperAdminShellInner title={title}>{children}</SuperAdminShellInner>
@@ -46,7 +46,7 @@ export default function SuperAdminShell({ title = 'Super Admin', children }: Sup
   );
 }
 
-function SuperAdminShellInner({ title = 'Super Admin', children }: SuperAdminShellProps) {
+function SuperAdminShellInner({ title = 'Retail Client Management', children }: SuperAdminShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuth();
   const { refreshAll, isRefreshing, registeredCount } = useRefreshTrigger();

@@ -6,7 +6,7 @@
       "go_to_profile": "Go to profile"
     },
     "roles": {
-      "SUPER_ADMIN": "Super Admin",
+      "SUPER_ADMIN": "Retail Client Management",
       "ADMIN": "Admin",
       "MANAGER": "Manager",
       "STAFF": "Staff",

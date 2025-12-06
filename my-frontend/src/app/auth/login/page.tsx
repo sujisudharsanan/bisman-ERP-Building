@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { useAuth } from '@/contexts/AuthContext';
 import DarkModeToggle from '@/components/ui/DarkModeToggle';
 import { 
@@ -9,7 +10,8 @@ import {
   EyeOff,
   CheckCircle,
   User,
-  Shield
+  Shield,
+  Bug
 } from 'lucide-react';
 export default function StandardLoginPage() {
   const brandCandidates = ['/brand/bisman-logo.svg', '/brand/logo.svg', '/bisman_lockup.svg', '/bisman_logo.svg', '/bisman_logo.png'] as const;
@@ -599,6 +601,18 @@ export default function StandardLoginPage() {
             <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-3">
               All demo users • Password: Demo@123 • Click "Fill" to populate or "Login" to sign in directly
             </p>
+          </div>
+
+          {/* QA Testing Portal Link */}
+          <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
+            <Link 
+              href="/qa/login"
+              className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-lg text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors text-sm font-medium"
+            >
+              <Bug className="w-4 h-4" />
+              QA Testing Portal
+              <span className="text-[10px] text-violet-500 dark:text-violet-400 ml-1">(Standalone Access)</span>
+            </Link>
           </div>
 
           <div className="mt-6 text-xs text-slate-400 dark:text-slate-500 break-words">Not your computer? Use Private Browsing windows to sign in. Learn more about using Guest mode</div>
