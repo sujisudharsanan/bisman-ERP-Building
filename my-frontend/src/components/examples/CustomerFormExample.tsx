@@ -115,7 +115,8 @@ export default function CustomerFormExample({
     setError,
     reset,
   } = useForm<CustomerCreateInput>({
-    resolver: zodResolver(customerCreateSchema),
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    resolver: zodResolver(customerCreateSchema) as any,
     defaultValues: {
       name: '',
       customerType: 'business',
@@ -200,7 +201,7 @@ export default function CustomerFormExample({
   ];
 
   return (
-    <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
+    <form onSubmit={handleSubmit(onSubmit as any)} className="space-y-6">
       {/* Server Error Alert */}
       {serverError && (
         <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded">
