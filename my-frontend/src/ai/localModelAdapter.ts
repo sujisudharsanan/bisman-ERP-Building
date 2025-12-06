@@ -1,4 +1,4 @@
-// Local adapter now forwards to common ai client (railway/open-webui) so we can remove Ollama-specific code.
+// Local adapter forwards to common AI client (railway/open-webui).
 import { callChat, getEmbedding } from '@/lib/aiClient';
 
 export class LocalModelAdapter {

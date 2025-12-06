@@ -732,7 +732,7 @@ try {
 // CHAT MODULE - Modular Chat System 🚀
 // ===================================================================
 // Modular architecture with organized structure:
-// - AI Assistant: Ollama/rule-based intelligent responses
+// - AI Assistant: AI-powered intelligent responses
 // - Threads & Messages: Database-driven messaging system
 // - Calls: Jitsi Meet video/audio integration
 // - Real-time: Socket.IO for live updates

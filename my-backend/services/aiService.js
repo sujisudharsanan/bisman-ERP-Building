@@ -1,49 +1,25 @@
 /**
- * AI Service - Local LLM Integration with Ollama
+ * AI Service - Local LLM Integration
  * 
- * This service provides interface to local AI models (Mistral, Llama 3, etc.)
- * running via Ollama. Fully offline and free.
- * 
- * Prerequisites:
- * 1. Install Ollama: curl -fsSL https://ollama.com/install.sh | sh
- * 2. Pull model: ollama pull mistral (or llama3)
- * 3. Ensure Ollama is running: ollama serve
+ * This service provides interface to AI models.
  */
 
-// Try to import Ollama, with fallback for when langchain is not installed
-let Ollama;
-try {
-  const langchain = require('@langchain/community/llms/ollama');
-  Ollama = langchain.Ollama;
-} catch (e) {
-  // Fallback: create a mock class if langchain not installed
-  console.warn('[aiService] LangChain not installed. AI features will be limited.');
-  Ollama = class {
-    constructor(config) {
-      this.config = config;
-    }
-    async invoke(prompt) {
-      throw new Error('LangChain not installed. Run: npm install @langchain/community');
-    }
-  };
-}
-
 // Configuration
-const OLLAMA_BASE_URL = process.env.OLLAMA_BASE_URL || 'http://localhost:11434';
-const OLLAMA_MODEL = process.env.OLLAMA_MODEL || 'mistral';
+const AI_BASE_URL = process.env.AI_BASE_URL || 'http://localhost:11434';
+const AI_DEFAULT_MODEL = process.env.AI_DEFAULT_MODEL || 'llama3';
 const DEFAULT_TEMPERATURE = 0.7;
 const MAX_TOKENS = 2000;
 
 /**
- * Initialize Ollama client
+ * Initialize AI client configuration
  */
-function getOllamaClient(options = {}) {
-  return new Ollama({
-    baseUrl: OLLAMA_BASE_URL,
-    model: options.model || OLLAMA_MODEL,
+function getAIClientConfig(options = {}) {
+  return {
+    baseUrl: AI_BASE_URL,
+    model: options.model || AI_DEFAULT_MODEL,
     temperature: options.temperature || DEFAULT_TEMPERATURE,
     numPredict: options.maxTokens || MAX_TOKENS,
-  });
+  };
 }
 
 /**
@@ -54,30 +30,47 @@ function getOllamaClient(options = {}) {
  */
 async function askLocalAI(prompt, options = {}) {
   try {
-    const model = getOllamaClient(options);
+    const config = getAIClientConfig(options);
     
-    console.log('[aiService] Querying local AI:', {
-      model: options.model || OLLAMA_MODEL,
+    console.log('[aiService] Querying AI:', {
+      model: options.model || AI_DEFAULT_MODEL,
       promptLength: prompt.length
     });
 
-    const response = await model.invoke(prompt);
-    
-    console.log('[aiService] AI response received:', {
-      responseLength: response.length
+    // Call AI API endpoint
+    const response = await fetch(`${config.baseUrl}/api/generate`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: config.model,
+        prompt: prompt,
+        stream: false,
+        options: {
+          temperature: config.temperature,
+          num_predict: config.numPredict
+        }
+      })
     });
 
-    return response;
+    if (!response.ok) {
+      throw new Error(`AI service returned ${response.status}`);
+    }
+
+    const data = await response.json();
+    const result = data.response || data.message?.content || '';
+    
+    console.log('[aiService] AI response received:', {
+      responseLength: result.length
+    });
+
+    return result;
   } catch (error) {
     console.error('[aiService] Error querying AI:', error.message);
     
-    // Check if Ollama is running
+    // Check if AI service is running
     if (error.message.includes('ECONNREFUSED') || error.message.includes('fetch failed')) {
       throw new Error(
-        'Cannot connect to Ollama. Please ensure Ollama is installed and running:\n' +
-        '1. Install: curl -fsSL https://ollama.com/install.sh | sh\n' +
-        '2. Pull model: ollama pull mistral\n' +
-        '3. Start service: ollama serve'
+        'Cannot connect to AI service. Please ensure the AI service is configured and running.'
       );
     }
     
@@ -161,16 +154,16 @@ async function healthCheck() {
     
     return {
       status: 'healthy',
-      model: OLLAMA_MODEL,
-      baseUrl: OLLAMA_BASE_URL,
+      model: AI_DEFAULT_MODEL,
+      baseUrl: AI_BASE_URL,
       responsive: true,
       message: 'AI service is operational'
     };
   } catch (error) {
     return {
       status: 'unhealthy',
-      model: OLLAMA_MODEL,
-      baseUrl: OLLAMA_BASE_URL,
+      model: AI_DEFAULT_MODEL,
+      baseUrl: AI_BASE_URL,
       responsive: false,
       error: error.message,
       message: 'AI service is not available'
@@ -184,5 +177,5 @@ module.exports = {
   generateSQLQuery,
   summarizeText,
   healthCheck,
-  getOllamaClient
+  getAIClientConfig
 };

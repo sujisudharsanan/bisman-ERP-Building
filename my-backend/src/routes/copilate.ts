@@ -1,11 +1,12 @@
 /**
  * Copilate Smart Chat API Routes
  * AI-powered chat assistant for BISMAN ERP
- * Now integrated with Ollama AI backend for intelligent responses
+ * Integrated with AI backend for intelligent responses
  */
 
 import { Router, Request, Response } from 'express';
-import { authMiddleware } from '../middleware/auth';
+// Import auth middleware from the main middleware folder
+const { authMiddleware } = require('../../middleware/auth');
 import CopilateSmartAgent from '../services/copilateSmartAgent';
 
 const router = Router();

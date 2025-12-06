@@ -302,8 +302,8 @@ export default function AIHandlingPage() {
                   <div>
                     <label className="text-xs text-gray-500">Provider</label>
                     <select className="w-full border rounded px-2 py-1" value={settings.provider} onChange={e=>setSettings((s:any)=>({...s, provider: e.target.value}))}>
-                      <option value="local">Local (Ollama)</option>
-                      <option value="api">API (placeholder)</option>
+                      <option value="api">API</option>
+                      <option value="local">Local</option>
                     </select>
                   </div>
                   <div>

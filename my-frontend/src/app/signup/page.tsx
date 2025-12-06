@@ -944,9 +944,19 @@ export default function SignupPage() {
                   </div>
                 )}
 
+                <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg p-4 mb-6">
+                  <div className="text-left">
+                    <p className="font-semibold text-green-800 dark:text-green-300 mb-2">Your Login Credentials:</p>
+                    <div className="text-sm text-green-700 dark:text-green-400 space-y-1">
+                      <p><strong>Email:</strong> {formData.email}</p>
+                      <p><strong>Password:</strong> (as you entered during signup)</p>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-4">
                   <p className="text-sm text-gray-500 dark:text-gray-400">
-                    We've sent login instructions to <strong>{formData.email}</strong>
+                    ✅ You can login immediately with your credentials!
                   </p>
 
                   <button

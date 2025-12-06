@@ -1,5 +1,5 @@
 /*
-  Railway Ollama client
+  Railway AI client
   - Calls `${AI_BASE_URL}/api/generate`
   - Secure header: `x-ai-key: <AI_KEY>` when provided
   - Timeout + 3 retries (exp backoff)

@@ -10,7 +10,7 @@ export async function GET() {
   try {
     settings = JSON.parse(await fs.readFile(settingsFile, 'utf8'));
   } catch {
-    settings = { provider: 'local', model: process.env.OLLAMA_MODEL || 'llama3:8b' };
+    settings = { provider: 'api', model: process.env.AI_DEFAULT_MODEL || 'llama3:8b' };
   }
   const models = [
     { id: 'default', name: settings.model || 'llama3:8b', provider: settings.provider || 'local', status: 'active', usage: 0, avgResponseTime: 1200, lastUsed: new Date().toISOString() }

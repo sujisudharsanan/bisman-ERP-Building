@@ -82,7 +82,7 @@ export interface ClientFormValues {
   enabled_modules: string[];
   storage_limit_gb: number;
   // Admin user
-  admin_users: Array<{ email: string; name: string; role: string }>;
+  admin_users: Array<{ email: string; name: string; role: string; password?: string }>;
 }
 
 export interface ClientFormProps {
@@ -140,7 +140,7 @@ const defaultValues: ClientFormValues = {
   max_users: 5,
   enabled_modules: [],
   storage_limit_gb: 5,
-  admin_users: [{ email: '', name: '', role: 'Admin' }],
+  admin_users: [{ email: '', name: '', role: 'Admin', password: '' }],
 };
 
 export default function ClientForm({ initial, mode, clientId, onSuccess }: ClientFormProps) {
@@ -229,7 +229,7 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
   const addAdminUser = () => {
     setForm({
       ...form,
-      admin_users: [...form.admin_users, { email: '', name: '', role: 'User' }]
+      admin_users: [...form.admin_users, { email: '', name: '', role: 'User', password: '' }]
     });
   };
 
@@ -328,8 +328,33 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
       const res = await fetch(url, { method, credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Request failed');
+      
+      // Show success message with login credentials if admin was created
+      if (mode === 'create' && json.admin) {
+        const adminEmail = json.admin.email;
+        const adminUsername = json.admin.username;
+        const password = json.tempPassword || form.admin_users[0]?.password;
+        
+        let successMsg = registrationMode === 'quick' ? 'Trial started successfully!' : 'Client created successfully!';
+        successMsg += `\n\nAdmin Login Credentials:`;
+        successMsg += `\nEmail: ${adminEmail}`;
+        if (adminUsername && adminUsername !== adminEmail.split('@')[0]) {
+          successMsg += `\nUsername: ${adminUsername}`;
+        }
+        if (json.tempPassword) {
+          successMsg += `\nTemporary Password: ${json.tempPassword}`;
+          successMsg += `\n\n⚠️ Please save this password - it won't be shown again!`;
+        } else if (password) {
+          successMsg += `\nPassword: (as entered in the form)`;
+        }
+        successMsg += `\n\nThe user can login immediately.`;
+        
+        alert(successMsg);
+      } else {
+        alert(mode === 'create' ? (registrationMode === 'quick' ? 'Trial started' : 'Client created') : 'Client updated');
+      }
+      
       if (onSuccess) onSuccess(json);
-      alert(mode === 'create' ? (registrationMode === 'quick' ? 'Trial started' : 'Client created') : 'Client updated');
     } catch (e: any) {
       console.error(e);
       alert(e.message || 'Failed');
@@ -732,7 +757,7 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
             </p>
             
             {form.admin_users.map((adminU, idx) => (
-              <div key={idx} className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+              <div key={idx} className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email *</label>
                   <input 
@@ -749,6 +774,18 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
                     placeholder="Full Name" 
                     value={adminU.name} 
                     onChange={(e) => updateAdminUser(idx, 'name', e.target.value)} 
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700" 
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Password {mode === 'create' ? '*' : ''}
+                  </label>
+                  <input 
+                    type="password" 
+                    placeholder={mode === 'edit' ? '(leave blank to keep)' : 'Min 8 characters'}
+                    value={adminU.password || ''} 
+                    onChange={(e) => updateAdminUser(idx, 'password', e.target.value)} 
                     className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700" 
                   />
                 </div>

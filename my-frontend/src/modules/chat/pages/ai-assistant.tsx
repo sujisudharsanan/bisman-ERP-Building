@@ -377,7 +377,7 @@ export default function AIAssistantPage() {
               {aiHealth === 'unhealthy' && (
                 <div className="mt-3 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg">
                   <p className="text-sm text-red-700 dark:text-red-300">
-                    ⚠️ AI service is offline. Please ensure Ollama is installed and running.
+                    ⚠️ AI service is offline. Please check the AI service configuration.
                   </p>
                 </div>
               )}

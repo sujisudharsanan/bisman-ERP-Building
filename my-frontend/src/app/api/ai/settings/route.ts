@@ -12,8 +12,8 @@ async function readSettings() {
   } catch {
     return {
       enabled: true,
-      provider: 'local',
-      model: process.env.OLLAMA_MODEL || 'llama3:8b',
+      provider: 'api',
+      model: process.env.AI_DEFAULT_MODEL || 'llama3:8b',
       temperature: 0.2,
       tools: ['query-data','export-csv','create-task','raise-ticket'],
       domains: { finance: true, hr: true, inventory: true, procurement: true, pump: true, compliance: true },

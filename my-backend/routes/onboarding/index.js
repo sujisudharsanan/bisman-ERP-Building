@@ -13,10 +13,10 @@ const express = require('express');
 const router = express.Router();
 const { body, validationResult } = require('express-validator');
 const onboardingService = require('../../services/onboarding/onboardingService');
-const { rateLimiter } = require('../../middleware/rateLimiter');
+const { createAdaptiveRateLimiter } = require('../../middleware/advancedRateLimiter');
 
 // Rate limit: 10 onboarding attempts per IP per hour
-const onboardingLimiter = rateLimiter({
+const onboardingLimiter = createAdaptiveRateLimiter({
   windowMs: 60 * 60 * 1000, // 1 hour
   max: 10,
   message: { error: 'Too many signup attempts, please try again later' }
@@ -61,7 +61,11 @@ router.post('/',
       .optional()
       .isString()
       .isLength({ max: 50 })
-      .withMessage('Industry must be max 50 characters')
+      .withMessage('Industry must be max 50 characters'),
+    body('adminPassword')
+      .optional()
+      .isLength({ min: 8 })
+      .withMessage('Password must be at least 8 characters')
   ],
   async (req, res) => {
     try {
@@ -79,6 +83,7 @@ router.post('/',
         companyName,
         adminEmail,
         adminName,
+        adminPassword,
         plan,
         idempotencyKey,
         phone,
@@ -100,6 +105,7 @@ router.post('/',
         companyName,
         adminEmail,
         adminName,
+        adminPassword,
         plan,
         phone,
         timezone: timezone || 'UTC',
@@ -118,11 +124,14 @@ router.post('/',
         tenantId: result.tenantId,
         adminUserId: result.adminUserId,
         loginUrl: result.loginUrl,
-        message: 'Tenant created successfully. Check your email for login instructions.'
+        message: adminPassword 
+          ? 'Account created successfully. You can login now with your credentials.'
+          : 'Tenant created successfully. Check your email for login instructions.',
+        passwordSet: !!adminPassword
       };
 
-      // Include temporary password only in development
-      if (process.env.NODE_ENV !== 'production') {
+      // Include temporary password only if auto-generated and in development
+      if (!adminPassword && process.env.NODE_ENV !== 'production') {
         response.temporaryPassword = result.temporaryPassword;
       }
 

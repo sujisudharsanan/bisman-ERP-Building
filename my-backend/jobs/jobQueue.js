@@ -7,7 +7,7 @@
  * - AWS SQS
  */
 
-const redis = require('../lib/redis');
+const redis = require('../lib/redisClient');
 
 // In-memory queue for development
 const memoryQueue = [];

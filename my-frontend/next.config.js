@@ -12,8 +12,6 @@ const API_URL =
 
 const isCI = process.env.CI === 'true' || process.env.VERCEL === '1' || process.env.RAILWAY === '1';
 
-const MM_URL = process.env.MM_BASE_URL || 'http://localhost:8065';
-
 let nextConfig = {
   reactStrictMode: true, // re-enable to catch lifecycle issues early
   // swcMinify was removed in Next 13+; removing to avoid warnings
@@ -36,16 +34,6 @@ let nextConfig = {
   },
   async rewrites() {
     const rules = [];
-    // Mattermost proxy (always enabled)
-    rules.push(
-      { source: '/chat', destination: `${MM_URL}/` },
-      { source: '/chat/:path*', destination: `${MM_URL}/:path*` },
-      // MM webapp loads assets and calls APIs at absolute paths
-      { source: '/static/:path*', destination: `${MM_URL}/static/:path*` },
-      { source: '/plugins/:path*', destination: `${MM_URL}/plugins/:path*` },
-      // Ensure API v4 hits Mattermost before generic /api proxy below
-      { source: '/api/v4/:path*', destination: `${MM_URL}/api/v4/:path*` },
-    );
 
     // Prefer same-origin to avoid CORS; only rewrite if explicit external API_URL is provided.
     if (API_URL) {

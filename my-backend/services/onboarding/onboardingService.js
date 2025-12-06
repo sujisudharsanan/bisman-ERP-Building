@@ -14,8 +14,14 @@ const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
 const prisma = require('../../lib/prisma');
-const redis = require('../../lib/redis');
-const emailService = require('../email/emailService');
+const redis = require('../../lib/redisClient');
+// Optional email service - may not be configured in dev
+let emailService = null;
+try {
+  emailService = require('../emailService');
+} catch (err) {
+  console.warn('[Onboarding] Email service not available:', err.message);
+}
 const { enqueueJob } = require('../../jobs/jobQueue');
 
 // Trial period in days
@@ -172,6 +178,7 @@ async function createTenant(params) {
     companyName,
     adminEmail,
     adminName,
+    adminPassword,
     plan,
     phone,
     timezone,
@@ -200,7 +207,9 @@ async function createTenant(params) {
   // Generate IDs and credentials
   const tenantId = uuidv4();
   const adminUserId = uuidv4();
-  const temporaryPassword = generateTemporaryPassword();
+  // Use provided password or generate temporary one
+  const temporaryPassword = adminPassword || generateTemporaryPassword();
+  const mustChangePassword = !adminPassword; // Only require change if password was auto-generated
   const passwordHash = await bcrypt.hash(temporaryPassword, 12);
   const tenantSlug = generateTenantSlug(companyName);
 
@@ -263,7 +272,7 @@ async function createTenant(params) {
         role_id: adminRole.id,
         is_active: true,
         is_verified: false,
-        must_change_password: true,
+        must_change_password: mustChangePassword,
         created_at: new Date(),
         updated_at: new Date()
       }

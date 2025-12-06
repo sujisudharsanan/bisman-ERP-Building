@@ -83,8 +83,8 @@ router.post('/query', async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message,
-      hint: error.message.includes('Ollama') ? 
-        'Please ensure Ollama is installed and running. See documentation for setup instructions.' : 
+      hint: error.message.includes('ECONNREFUSED') ? 
+        'Please ensure the AI service is configured and running. See documentation for setup instructions.' : 
         undefined
     });
   }

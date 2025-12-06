@@ -7,8 +7,6 @@ import { clientEnv, serverEnv } from '../lib/env';
  */
 export const appConfig = {
   apiBaseUrl: clientEnv.NEXT_PUBLIC_API_URL || '/api',
-  mattermostBaseUrl: serverEnv.MM_BASE_URL,
-  demoTeamSlug: clientEnv.NEXT_PUBLIC_MM_TEAM_SLUG,
   isProduction: serverEnv.NODE_ENV === 'production',
   showConfigPanel: process.env.NEXT_PUBLIC_SHOW_CONFIG === '1',
   strictCspEnabled: process.env.CSP_STRICT === '1',
@@ -22,7 +20,6 @@ export type AppConfig = typeof appConfig;
 export function getPublicRuntimeConfig(): Partial<AppConfig> {
   return {
     apiBaseUrl: appConfig.apiBaseUrl,
-    demoTeamSlug: appConfig.demoTeamSlug,
     showConfigPanel: appConfig.showConfigPanel,
     strictCspEnabled: appConfig.strictCspEnabled,
   };

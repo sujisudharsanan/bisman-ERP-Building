@@ -36,7 +36,7 @@ router.post('/super-admins', authMiddleware, async (req: Request, res: Response)
       data: {
         name,
         email,
-        password: hashed,
+        password_hash: hashed,
         productType,
         created_by: enterprise_admin_id,
       },
@@ -401,7 +401,7 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
         data: {
           username,
           email: adminUser.email,
-          password: hashed,
+          password_hash: hashed,
           role: 'ADMIN',
           is_active: true,
           productType,

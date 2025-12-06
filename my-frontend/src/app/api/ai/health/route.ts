@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 
 const AI_BASE = (process.env.AI_BASE_URL || '').replace(/\/$/, '');
-const OLLAMA_URL = '' as unknown as string; // deprecated
 
 export async function GET() {
   // Only use AI_BASE_URL moving forward

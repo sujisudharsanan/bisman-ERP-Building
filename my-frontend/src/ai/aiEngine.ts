@@ -104,14 +104,12 @@ export class AIEngine {
 
 // Provider selection with sensible auto-detect:
 // 1) If NEXT_PUBLIC_AI_PROVIDER is set, respect it.
-// 2) If Ollama URL is provided, prefer local.
-// 3) Else if API key is present, use api.
-// 4) Fallback to local.
+// 2) If API key is present, use api.
+// 3) Fallback to local.
 const envProvider = (typeof process !== 'undefined' && (process.env.NEXT_PUBLIC_AI_PROVIDER as AIProvider)) || undefined;
 // Prefer API provider when AI_BASE_URL or AI_KEY is provided, else fallback to local adapter
 const hasApiKeyOrBase = typeof process !== 'undefined' && (!!process.env.AI_API_KEY || !!process.env.AI_BASE_URL);
-const hasOllama = typeof process !== 'undefined' && !!(process.env.NEXT_PUBLIC_OLLAMA_URL || process.env.OLLAMA_URL || process.env.OLLAMA_HOST);
-const resolvedProvider: AIProvider = envProvider || (hasApiKeyOrBase ? 'api' : hasOllama ? 'local' : 'api');
+const resolvedProvider: AIProvider = envProvider || (hasApiKeyOrBase ? 'api' : 'api');
 
 export const engine = new AIEngine({ provider: resolvedProvider });
 

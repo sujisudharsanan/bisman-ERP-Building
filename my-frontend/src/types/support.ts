@@ -26,7 +26,6 @@ export type TicketCategory =
   | 'data_mismatch'
   | 'payment_billing'
   | 'approvals_workflow'
-  | 'mattermost_chatbot'
   | 'calendar_scheduling'
   | 'erp_performance'
   | 'request_feature'

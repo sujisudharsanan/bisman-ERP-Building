@@ -10,7 +10,7 @@
 
 const { registerHandler } = require('./jobQueue');
 const prisma = require('../lib/prisma');
-const redis = require('../lib/redis');
+const redis = require('../lib/redisClient');
 
 // S3 client (optional)
 let s3Client = null;

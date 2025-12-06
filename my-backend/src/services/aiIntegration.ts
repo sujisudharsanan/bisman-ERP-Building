@@ -1,6 +1,6 @@
 /**
  * AI Backend Integration Wrapper
- * Connects Copilate Smart Agent with existing Ollama AI server
+ * Connects Copilate Smart Agent with AI server
  */
 
 import fetch from 'node-fetch';

@@ -28,8 +28,34 @@ function createInMemoryClient() {
     async del(k) {
       return store.delete(k) ? 1 : 0
     },
+    async setex(k, ttl, value) {
+      const expiresAt = Date.now() + ttl * 1000
+      store.set(k, { value, expiresAt })
+      return 'OK'
+    },
+    async hgetall(k) {
+      const v = store.get(k)
+      if (!v) return null
+      if (v.expiresAt && Date.now() > v.expiresAt) {
+        store.delete(k)
+        return null
+      }
+      return v.value
+    },
     async mget(...keys) {
       return keys.map(k => store.get(k)?.value ?? null)
+    },
+    async lpush(k, ...values) {
+      let arr = store.get(k)?.value || []
+      if (!Array.isArray(arr)) arr = []
+      arr.unshift(...values)
+      store.set(k, { value: arr, expiresAt: null })
+      return arr.length
+    },
+    async rpop(k) {
+      const v = store.get(k)
+      if (!v || !Array.isArray(v.value) || v.value.length === 0) return null
+      return v.value.pop()
     },
     scanStream() {
       const allKeys = Array.from(store.keys())
@@ -94,9 +120,25 @@ if (forceInMemory) {
         if (useInMemory) return mem.del(...args)
         try { return await real.del(...args) } catch (e) { useInMemory = true; return mem.del(...args) }
       },
+      async setex(...args) {
+        if (useInMemory) return mem.setex(...args)
+        try { return await real.setex(...args) } catch (e) { useInMemory = true; return mem.setex(...args) }
+      },
+      async hgetall(...args) {
+        if (useInMemory) return mem.hgetall(...args)
+        try { return await real.hgetall(...args) } catch (e) { useInMemory = true; return mem.hgetall(...args) }
+      },
       async mget(...args) {
         if (useInMemory) return mem.mget(...args)
         try { return await real.mget(...args) } catch (e) { useInMemory = true; return mem.mget(...args) }
+      },
+      async lpush(...args) {
+        if (useInMemory) return mem.lpush(...args)
+        try { return await real.lpush(...args) } catch (e) { useInMemory = true; return mem.lpush(...args) }
+      },
+      async rpop(...args) {
+        if (useInMemory) return mem.rpop(...args)
+        try { return await real.rpop(...args) } catch (e) { useInMemory = true; return mem.rpop(...args) }
       },
       scanStream(...args) {
         if (useInMemory) return mem.scanStream(...args)

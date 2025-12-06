@@ -35,10 +35,9 @@ Timeline: Initial development
 ```
 
 Multiple experimental chatbots were created:
-- Mattermost integration
 - Local AI assistant
 - Simple pattern matching
-- Railway Ollama integration
+- Railway AI integration
 
 **Problem:** Too many different systems, inconsistent features
 
@@ -80,7 +79,7 @@ Location: /routes/unified-chat.js
 **Result:** 
 - Intelligent Chat was **disabled** (commented out)
 - Unified Chat became the **active** system
-- Old Mattermost/AI integrations were removed
+- Old AI integrations were removed
 
 ---
 
