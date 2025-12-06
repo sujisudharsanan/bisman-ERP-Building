@@ -90,8 +90,6 @@ export default function RootLayout({
                     <div className="grid grid-cols-2 gap-x-2 gap-y-1">
                       <span className="text-gray-500 dark:text-gray-400">API Base:</span>
                       <span className="truncate" title={appConfig.apiBaseUrl}>{appConfig.apiBaseUrl}</span>
-                      <span className="text-gray-500 dark:text-gray-400">Team Slug:</span>
-                      <span>{appConfig.demoTeamSlug}</span>
                       <span className="text-gray-500 dark:text-gray-400">Strict CSP:</span>
                       <span>{appConfig.strictCspEnabled ? 'on' : 'off'}</span>
                       <span className="text-gray-500 dark:text-gray-400">Env:</span>
