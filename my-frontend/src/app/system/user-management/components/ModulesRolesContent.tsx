@@ -3,6 +3,7 @@
 // Cache bust: 2025-12-03-2320
 import React, { useState, useEffect, useMemo } from 'react';
 import { FiGrid, FiUsers, FiFile, FiUserPlus } from 'react-icons/fi';
+import { useAuth } from '@/contexts/AuthContext';
 
 type Module = {
   id: number | string;
@@ -41,6 +42,7 @@ type RoleReport = {
 };
 
 export default function ModulesRolesContent() {
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [reportData, setReportData] = useState<RoleReport[]>([]);
   const [modules, setModules] = useState<Module[]>([]);
@@ -120,11 +122,27 @@ export default function ModulesRolesContent() {
     loadReport();
   }, []);
 
+  // Get current user's role for module filtering
+  const currentUserRoleForModules = useMemo(() => {
+    const role = user?.role || user?.roleName || '';
+    return role.toLowerCase().replace(/[_-]+/g, ' ').trim();
+  }, [user]);
+
   const filteredModules = useMemo(() => {
     const isPump = (m: Module) =>
       (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP';
-    return modules.filter(m => !isPump(m));
-  }, [modules]);
+    
+    // Also exclude modules that match the current user's role
+    // e.g., Super Admin can't assign "Super Admin Module" to others
+    const isOwnRoleModule = (m: Module) => {
+      if (!currentUserRoleForModules) return false;
+      const moduleName = (m.display_name || m.name || m.module_name || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
+      // Check if module name contains the user's role (e.g., "super admin module" contains "super admin")
+      return moduleName.includes(currentUserRoleForModules);
+    };
+    
+    return modules.filter(m => !isPump(m) && !isOwnRoleModule(m));
+  }, [modules, currentUserRoleForModules]);
 
   // Helpers to map roles to modules
   const normalize = (s: string) => s.replace(/[_-]+/g, ' ').toLowerCase();
@@ -156,20 +174,44 @@ export default function ModulesRolesContent() {
     return keys.some(k => a.includes(k) || b.includes(k));
   };
 
+  // Get current user's role name for filtering (normalized for comparison)
+  const currentUserRole = useMemo(() => {
+    const role = user?.role || user?.roleName || '';
+    return role.toLowerCase().replace(/[_-]+/g, ' ').trim();
+  }, [user]);
+
   // Filter roles: first by Enterprise Admin allowed roles, then by selected module
   const filteredRoles = useMemo(() => {
     // First, filter by allowed roles from Enterprise Admin
     // If allowedRoleIds is empty, show all roles (backward compatibility)
     let roles = reportData;
+    
+    // Users cannot assign their own EXACT role to others
+    // e.g., Super Admin can't assign Super Admin, Admin can't assign Admin
+    // But Super Admin CAN assign Admin (they are different roles)
+    roles = roles.filter(r => {
+      const roleName = (r.roleName || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
+      const roleDisplayName = (r.roleDisplayName || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
+      
+      // Exclude only if EXACT match with current user's role
+      if (currentUserRole && (
+        roleName === currentUserRole || 
+        roleDisplayName === currentUserRole
+      )) {
+        return false;
+      }
+      return true;
+    });
+    
     if (allowedRoleIds.length > 0) {
-      roles = reportData.filter(r => allowedRoleIds.includes(r.roleId));
+      roles = roles.filter(r => allowedRoleIds.includes(r.roleId));
     }
     
     // Then filter by selected module
     if (!selectedModuleName) return roles;
     const mod = filteredModules.find(mm => mm.module_name === selectedModuleName) || null;
     return roles.filter(r => roleMatchesModule(r, mod));
-  }, [reportData, selectedModuleName, filteredModules, allowedRoleIds]);
+  }, [reportData, selectedModuleName, filteredModules, allowedRoleIds, currentUserRole]);
 
   // Helper: count pages for module
   const getModulePageCount = (m: Module): number => {

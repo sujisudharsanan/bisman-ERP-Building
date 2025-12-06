@@ -384,6 +384,18 @@ export const MODULES: Record<string, ModuleMetadata> = {
 export const PAGE_REGISTRY: PageMetadata[] = [
   // ==================== SUPER ADMIN PAGES (separate from ADMIN) ====================
   {
+    id: 'super-admin-dashboard',
+    name: 'Dashboard',
+    path: '/super-admin',
+    iconKey: "LayoutDashboard",
+    module: 'super-admin',
+    permissions: ['user-management'],
+    roles: ['SUPER_ADMIN'],
+    status: 'active',
+    description: 'Super Admin Control Panel Dashboard',
+    order: 0,
+  },
+  {
     id: 'super-admin-user-management',
     name: 'Client Management',
     path: '/super-admin/system/user-management',
@@ -403,8 +415,8 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     module: 'super-admin',
     permissions: ['user-management'],
     roles: ['SUPER_ADMIN'],
-    status: 'disabled',
-    showInSidebar: false,
+    status: 'active',
+    showInSidebar: true,
     description: 'Manage system permissions',
     order: 3,
   },
@@ -416,8 +428,8 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     module: 'super-admin',
     permissions: ['user-management'],
     roles: ['SUPER_ADMIN'],
-    status: 'disabled',
-    showInSidebar: false,
+    status: 'active',
+    showInSidebar: true,
     description: 'View comprehensive report of all roles and assigned users',
     order: 4,
   },
@@ -514,6 +526,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     permissions: ['authenticated'],
     roles: ['SUPER_ADMIN'],
     status: 'active',
+    showInSidebar: false, // Hidden from sidebar - accessible via user menu
     description: 'View and edit your profile',
     order: 12,
   },
@@ -1519,20 +1532,9 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     iconKey: "User",
     module: 'common',
     permissions: ['authenticated'],
-    roles: ['ALL'],
+    roles: ['ADMIN', 'HUB_INCHARGE', 'FINANCE_OFFICER', 'HR_MANAGER', 'INVENTORY_MANAGER', 'LEGAL_OFFICER'], // Exclude SUPER_ADMIN - they have their own
     status: 'active',
-    description: 'View and edit your profile',
-    order: 1,
-  },
-  {
-    id: 'common-about-me',
-    name: 'About Me',
-    path: '/common/about-me',
-    iconKey: "User",
-    module: 'common',
-    permissions: ['authenticated'],
-    roles: ['ALL'],
-    status: 'active',
+    showInSidebar: false, // Hidden from sidebar - accessible via user menu
     description: 'View and edit your profile',
     order: 1,
   },
@@ -1657,7 +1659,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     permissions: ['admin-billing'],
     roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN'],
     status: 'active',
-    showInSidebar: false, // Dynamic route, not shown in sidebar
+    showInSidebar: true, // Now visible in sidebar
     description: 'Admin console for managing tenant billing',
     order: 100,
   },
@@ -1708,7 +1710,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     permissions: ['admin-usage'],
     roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN'],
     status: 'active',
-    showInSidebar: false, // Dynamic route with [id]
+    showInSidebar: true, // Now visible in sidebar
     description: 'View detailed usage for a specific user',
     order: 13,
   },

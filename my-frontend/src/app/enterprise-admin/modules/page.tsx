@@ -435,16 +435,15 @@ export default function Page() {
         if (usersRes.ok) {
           usersJson = await usersRes.json().catch(() => ({}));
         } else {
-          // Fallback to enterprise route (less strict) to keep UI functional in dev
-          const alt = await fetch("/api/enterprise/super-admins", { credentials: "include" });
-          if (alt.ok) {
-            usersJson = await alt.json().catch(() => ({}));
-            setAuthHint('Super Admins loaded via fallback. For strict mode, ensure your role is ENTERPRISE_ADMIN.');
-          } else if (usersRes.status === 403 || usersRes.status === 401) {
+          // SECURITY: Don't fallback to alternative endpoints - show error instead
+          console.warn('[EnterpriseModules] Could not load Super Admins:', usersRes.status, usersRes.statusText);
+          if (usersRes.status === 403 || usersRes.status === 401) {
             // Don't show error hint for SUPER_ADMIN - they manage clients, not super admins
             if (!isSuperAdmin) {
               setAuthHint('Access to Super Admins is forbidden. Ensure you are logged in as ENTERPRISE_ADMIN.');
             }
+          } else {
+            setAuthHint('Could not load Super Admins. Please try again or contact support.');
           }
         }
   const registryData = await regRes.json().catch(() => ({}));
@@ -1297,16 +1296,25 @@ export default function Page() {
           <div className="space-y-1">
             <button
               onClick={() => setCategory('business')}
-              className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition ${
+              className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition-all ${
                 category === 'business'
-                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 ring-2 ring-emerald-300"
+                  ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 ring-2 ring-emerald-400 dark:ring-emerald-600"
                   : "border-gray-200 dark:border-gray-700 hover:border-emerald-300 hover:bg-emerald-50/50"
               }`}
             >
               <div className="flex items-center gap-2">
                 <span className="text-lg">💼</span>
-                <div>
-                  <div className="font-medium">Business ERP</div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`font-medium ${category === 'business' ? 'text-emerald-700 dark:text-emerald-300' : ''}`}>Business ERP</span>
+                    {category === 'business' && (
+                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-emerald-500 text-white flex-shrink-0">
+                        <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </span>
+                    )}
+                  </div>
                   <div className="text-[10px] text-gray-500">
                     {modules.filter(m => 
                       !((m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP') ||
@@ -1318,16 +1326,25 @@ export default function Page() {
             </button>
             <button
               onClick={() => setCategory('pump')}
-              className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition ${
+              className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition-all ${
                 category === 'pump'
-                  ? "border-orange-500 bg-orange-50 dark:bg-orange-900/30 ring-2 ring-orange-300"
+                  ? "border-orange-500 bg-orange-50 dark:bg-orange-900/30 ring-2 ring-orange-400 dark:ring-orange-600"
                   : "border-gray-200 dark:border-gray-700 hover:border-orange-300 hover:bg-orange-50/50"
               }`}
             >
               <div className="flex items-center gap-2">
                 <span className="text-lg">⛽</span>
-                <div>
-                  <div className="font-medium">Pump Management</div>
+                <div className="flex-1">
+                  <div className="flex items-center gap-1.5">
+                    <span className={`font-medium ${category === 'pump' ? 'text-orange-700 dark:text-orange-300' : ''}`}>Pump Management</span>
+                    {category === 'pump' && (
+                      <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-orange-500 text-white flex-shrink-0">
+                        <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      </span>
+                    )}
+                  </div>
                   <div className="text-[10px] text-gray-500">
                     {modules.filter(m => 
                       ((m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP') ||
@@ -1572,12 +1589,19 @@ export default function Page() {
                       <div className="flex flex-col gap-1">
                         <div className="flex items-center justify-between gap-2">
                           <span className="truncate flex items-center gap-1.5">
-                            {isAlwaysAccessible ? (
-                              <FiUnlock className="text-blue-600 dark:text-blue-400 text-sm" />
-                            ) : (
-                              <FiPackage className="text-green-600 dark:text-green-400 text-sm" />
+                            {isSelected && (
+                              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-500 text-white flex-shrink-0">
+                                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                </svg>
+                              </span>
                             )}
-                            <span className="font-medium">{m.name}</span>
+                            {isAlwaysAccessible ? (
+                              <FiUnlock className={`text-sm ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-blue-600 dark:text-blue-400'}`} />
+                            ) : (
+                              <FiPackage className={`text-sm ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-green-600 dark:text-green-400'}`} />
+                            )}
+                            <span className={`font-medium ${isSelected ? 'text-blue-700 dark:text-blue-300' : ''}`}>{m.name}</span>
                           </span>
                           <span className="text-[10px] text-gray-500 shrink-0">
                             {m.pages?.length || 0} pages

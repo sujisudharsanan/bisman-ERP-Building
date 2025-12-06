@@ -83,26 +83,37 @@ export default function RolesUsersReportPage() {
     return ids.size;
   }, [reportData]);
 
-  // All users list - only show ADMIN role users for Super Admin context
+  // All users list - show all users from all roles (not just ADMIN)
   const allUsers = useMemo(() => {
     const usersMap = new Map<number, UserDetail & { roleName: string; roleDisplayName: string; roleId: number }>();
     for (const r of reportData) {
-      // Only include users with ADMIN role
-      if (r.roleName.toUpperCase() === 'ADMIN') {
-        for (const u of r.users) {
-          if (!usersMap.has(u.userId)) {
-            usersMap.set(u.userId, {
-              ...u,
-              roleName: r.roleName,
-              roleDisplayName: r.roleDisplayName,
-              roleId: r.roleId,
-            });
-          }
+      // Include users from all roles, not just ADMIN
+      for (const u of r.users) {
+        if (!usersMap.has(u.userId)) {
+          usersMap.set(u.userId, {
+            ...u,
+            roleName: r.roleName,
+            roleDisplayName: r.roleDisplayName,
+            roleId: r.roleId,
+          });
         }
       }
     }
     return Array.from(usersMap.values()).sort((a, b) => a.username.localeCompare(b.username));
   }, [reportData]);
+  
+  // Users for selected role (for Super Admin view)
+  const usersForSelectedRole = useMemo(() => {
+    if (!selectedRoleId) return [];
+    const role = reportData.find(r => r.roleId === selectedRoleId);
+    if (!role) return [];
+    return role.users.map(u => ({
+      ...u,
+      roleName: role.roleName,
+      roleDisplayName: role.roleDisplayName,
+      roleId: role.roleId,
+    }));
+  }, [reportData, selectedRoleId]);
 
   // Selected user with role info
   const selectedUserWithRole = useMemo(() => {
@@ -128,55 +139,84 @@ export default function RolesUsersReportPage() {
     setError(null);
 
     try {
-      const fetchPromises: Promise<Response>[] = [
-        fetch('/api/reports/roles-users', { credentials: 'include' }),
-        fetch('/api/enterprise-admin/master-modules', { credentials: 'include' }),
-      ];
+      // Fetch roles report
+      const rolesRes = await fetch('/api/reports/roles-users', { credentials: 'include' });
       
-      // For SUPER_ADMIN, also load clients
-      if (isSuperAdmin) {
-        fetchPromises.push(fetch('/api/system/clients', { credentials: 'include' }));
-      }
-
-      const responses = await Promise.all(fetchPromises);
-      const [rolesRes, modulesRes] = responses;
-      const clientsRes = responses[2];
-
       if (!rolesRes.ok) {
+        // Check if it's an auth issue
+        if (rolesRes.status === 401) {
+          throw new Error('Session expired. Please refresh the page and log in again.');
+        }
         throw new Error(`Failed to load report: ${rolesRes.statusText}`);
       }
 
       const rolesData = await rolesRes.json();
 
       if (rolesData.success) {
-        setReportData(rolesData.data);
+        setReportData(rolesData.data || []);
         setSummary(rolesData.summary);
       } else {
         throw new Error(rolesData.error || 'Failed to load report');
       }
 
-      const modulesData = await modulesRes.json().catch(() => ({}));
-      const modsList: Module[] = modulesData.ok && Array.isArray(modulesData.modules)
-        ? modulesData.modules
-        : Array.isArray(modulesData.data)
-          ? modulesData.data
-          : Array.isArray(modulesData)
-            ? modulesData
-            : [];
-
+      // Try to fetch modules - use fallback endpoints
+      let modsList: Module[] = [];
+      try {
+        // Try enterprise-admin endpoint first
+        const modulesRes = await fetch('/api/enterprise-admin/master-modules', { credentials: 'include' });
+        if (modulesRes.ok) {
+          const modulesData = await modulesRes.json();
+          modsList = modulesData.ok && Array.isArray(modulesData.modules)
+            ? modulesData.modules
+            : Array.isArray(modulesData.data)
+              ? modulesData.data
+              : Array.isArray(modulesData)
+                ? modulesData
+                : [];
+        }
+      } catch (modErr) {
+        console.warn('[RolesUsersReport] Could not load modules from enterprise-admin endpoint:', modErr);
+      }
+      
+      // If no modules found, try alternative endpoint
+      if (modsList.length === 0) {
+        try {
+          const altModulesRes = await fetch('/api/enterprise/modules', { credentials: 'include' });
+          if (altModulesRes.ok) {
+            const altModulesData = await altModulesRes.json();
+            modsList = Array.isArray(altModulesData.modules)
+              ? altModulesData.modules
+              : Array.isArray(altModulesData.data)
+                ? altModulesData.data
+                : Array.isArray(altModulesData)
+                  ? altModulesData
+                  : [];
+          }
+        } catch (altErr) {
+          console.warn('[RolesUsersReport] Could not load modules from /api/enterprise/modules:', altErr);
+        }
+      }
+      
       setModules(modsList);
       
       // Load clients for SUPER_ADMIN
-      if (isSuperAdmin && clientsRes) {
-        const clientsData = await clientsRes.json().catch(() => ({}));
-        const clientsList: Client[] = Array.isArray(clientsData.data)
-          ? clientsData.data
-          : Array.isArray(clientsData.clients)
-            ? clientsData.clients
-            : Array.isArray(clientsData)
-              ? clientsData
-              : [];
-        setClients(clientsList);
+      if (isSuperAdmin) {
+        try {
+          const clientsRes = await fetch('/api/system/clients', { credentials: 'include' });
+          if (clientsRes.ok) {
+            const clientsData = await clientsRes.json();
+            const clientsList: Client[] = Array.isArray(clientsData.data)
+              ? clientsData.data
+              : Array.isArray(clientsData.clients)
+                ? clientsData.clients
+                : Array.isArray(clientsData)
+                  ? clientsData
+                  : [];
+            setClients(clientsList);
+          }
+        } catch (clientErr) {
+          console.warn('[RolesUsersReport] Could not load clients:', clientErr);
+        }
       }
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
@@ -191,12 +231,27 @@ export default function RolesUsersReportPage() {
     loadReport();
   }, [isSuperAdmin]);
 
+  // Get current user's role for module filtering
+  const currentUserRoleForModules = useMemo(() => {
+    const role = user?.role || user?.roleName || '';
+    return role.toLowerCase().replace(/[_-]+/g, ' ').trim();
+  }, [user]);
 
   const filteredModules = useMemo(() => {
     const isPump = (m: Module) =>
       (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP';
-    return modules.filter(m => !isPump(m));
-  }, [modules]);
+    
+    // Also exclude modules that match the current user's role
+    // e.g., Super Admin can't assign "Super Admin Module" to others
+    const isOwnRoleModule = (m: Module) => {
+      if (!currentUserRoleForModules) return false;
+      const moduleName = (m.display_name || m.name || m.module_name || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
+      // Check if module name contains the user's role (e.g., "super admin module" contains "super admin")
+      return moduleName.includes(currentUserRoleForModules);
+    };
+    
+    return modules.filter(m => !isPump(m) && !isOwnRoleModule(m));
+  }, [modules, currentUserRoleForModules]);
 
   // Helpers to map roles to modules heuristically (until backend provides explicit mapping)
   const normalize = (s: string) => s.replace(/[_-]+/g, ' ').toLowerCase();
@@ -227,11 +282,30 @@ export default function RolesUsersReportPage() {
     return keys.some(k => a.includes(k) || b.includes(k));
   };
 
+  // Get current user's role name for filtering (normalized for comparison)
+  const currentUserRole = useMemo(() => {
+    const role = user?.role || user?.roleName || '';
+    return role.toLowerCase().replace(/[_-]+/g, ' ').trim();
+  }, [user]);
+
   const filteredRoles = useMemo(() => {
-    // Show all roles regardless of module selection
-    // The heuristic module-role matching was too strict and hiding valid roles
-    return reportData;
-  }, [reportData]);
+    // Users cannot assign their own EXACT role to others
+    // e.g., Super Admin can't assign Super Admin, Admin can't assign Admin
+    // But Super Admin CAN assign Admin (they are different roles)
+    return reportData.filter(r => {
+      const roleName = (r.roleName || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
+      const roleDisplayName = (r.roleDisplayName || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
+      
+      // Exclude only if EXACT match with current user's role
+      if (currentUserRole && (
+        roleName === currentUserRole || 
+        roleDisplayName === currentUserRole
+      )) {
+        return false;
+      }
+      return true;
+    });
+  }, [reportData, currentUserRole]);
 
   const selectedRole = useMemo(() => {
     if (!selectedRoleId) return null;
@@ -526,11 +600,21 @@ export default function RolesUsersReportPage() {
         {/* Error Display */}
         {error && (
           <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
-            <div className="flex items-center gap-2">
-              <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <span className="text-sm text-red-800 dark:text-red-200">{error}</span>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <span className="text-sm text-red-800 dark:text-red-200">{error}</span>
+              </div>
+              {(error.includes('Unauthorized') || error.includes('401') || error.includes('expired') || error.includes('Session')) && (
+                <button
+                  onClick={() => window.location.href = '/auth/login'}
+                  className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-md"
+                >
+                  Re-login
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -544,37 +628,113 @@ export default function RolesUsersReportPage() {
           </div>
         )}
 
-        {/* Four Column Layout: Clients/Users | Modules | Roles | Pages */}
+        {/* Four Column Layout: Clients/Users | Roles | Modules | Pages */}
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
           {/* 1. Clients (for SUPER_ADMIN) or Users */}
           <div className="rounded-lg border bg-white dark:bg-gray-900 p-3">
             <div className="space-y-1 max-h-[520px] overflow-y-auto">
               {isSuperAdmin ? (
                 <>
-                  {clients.length === 0 && <div className="text-xs text-gray-500">No clients found</div>}
-                  {clients.map((client, idx) => (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedClientId(client.id);
-                      }}
-                      key={client.id}
-                      className={`text-left w-full relative pl-2 rounded-md border p-3 hover:bg-gray-50 dark:hover:bg-gray-800 ${selectedClientId === client.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700'}`}
-                    >
-                      <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${colorForIndex(idx)}`} />
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{client.name}</div>
-                          <div className="text-[10px] text-blue-600 dark:text-blue-400 truncate mt-0.5">{client.email}</div>
-                          <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-                            <span className={`inline-flex items-center px-1.5 py-0.5 rounded mr-1 ${client.status === 'ACTIVE' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300'}`}>
-                              {client.status}
-                            </span>
+                  {/* Show header */}
+                  <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
+                    {selectedRoleId ? `Users in ${selectedRole?.roleDisplayName || 'Role'}` : 'Clients'}
+                  </div>
+                  
+                  {/* If a role is selected, show users of that role */}
+                  {selectedRoleId && usersForSelectedRole.length > 0 ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedUserId(null);
+                          // Keep the role selected
+                        }}
+                        className="w-full text-left text-[10px] text-blue-600 dark:text-blue-400 hover:underline mb-2"
+                      >
+                        ← Back to clients
+                      </button>
+                      {usersForSelectedRole.map((user, idx) => (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedUserId(user.userId);
+                          }}
+                          key={user.userId}
+                          className={`text-left w-full relative pl-2 rounded-md border p-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all ${selectedUserId === user.userId ? 'border-green-500 bg-green-50 dark:bg-green-900/30 ring-2 ring-green-400 dark:ring-green-600' : 'border-gray-200 dark:border-gray-700'}`}
+                        >
+                          <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${selectedUserId === user.userId ? 'bg-green-500' : colorForIndex(idx)}`} />
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-1.5">
+                                <span className={`text-xs font-medium truncate ${selectedUserId === user.userId ? 'text-green-700 dark:text-green-300' : 'text-gray-900 dark:text-gray-100'}`}>{user.username}</span>
+                                {selectedUserId === user.userId && (
+                                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-500 text-white flex-shrink-0">
+                                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                    </svg>
+                                  </span>
+                                )}
+                              </div>
+                              <div className="text-[10px] text-blue-600 dark:text-blue-400 truncate mt-0.5">{user.email}</div>
+                              {selectedUserId === user.userId && (
+                                <div className="text-[10px] text-green-600 dark:text-green-400 mt-1 font-medium">✓ Selected - Toggle pages on the right</div>
+                              )}
+                            </div>
                           </div>
-                        </div>
+                        </button>
+                      ))}
+                    </>
+                  ) : selectedRoleId && usersForSelectedRole.length === 0 ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setSelectedRoleId(null);
+                          setSelectedUserId(null);
+                        }}
+                        className="w-full text-left text-[10px] text-blue-600 dark:text-blue-400 hover:underline mb-2"
+                      >
+                        ← Back to clients
+                      </button>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border border-yellow-200 dark:border-yellow-800">
+                        No users found in this role. Assign users to this role first.
                       </div>
-                    </button>
-                  ))}
+                    </>
+                  ) : (
+                    <>
+                      {/* Show clients when no role is selected */}
+                      {clients.length === 0 && <div className="text-xs text-gray-500">No clients found</div>}
+                      {clients.map((client, idx) => (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setSelectedClientId(client.id);
+                          }}
+                          key={client.id}
+                          className={`text-left w-full relative pl-2 rounded-md border p-3 hover:bg-gray-50 dark:hover:bg-gray-800 ${selectedClientId === client.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700'}`}
+                        >
+                          <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${colorForIndex(idx)}`} />
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{client.name}</div>
+                              <div className="text-[10px] text-blue-600 dark:text-blue-400 truncate mt-0.5">{client.email}</div>
+                              <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded mr-1 ${client.status === 'ACTIVE' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300'}`}>
+                                  {client.status}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      ))}
+                      {/* Hint to select a role */}
+                      {clients.length > 0 && !selectedRoleId && (
+                        <div className="text-[10px] text-blue-600 dark:text-blue-400 mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
+                          💡 Select a role to see users for permission management
+                        </div>
+                      )}
+                    </>
+                  )}
                 </>
               ) : (
                 <>
@@ -614,20 +774,32 @@ export default function RolesUsersReportPage() {
               {filteredRoles.length === 0 && <div className="text-xs text-gray-500">No Roles</div>}
               {filteredRoles.map((r, idx) => {
                 const isSelected = selectedRoleId === r.roleId;
-                const barColor = colorForIndex(idx);
+                const barColor = isSelected ? 'bg-blue-500' : colorForIndex(idx);
                 return (
                   <button
                     key={r.roleId}
                     onClick={() => { setSelectedRoleId(r.roleId); }}
-                    className={`relative pl-2 w-full text-left rounded-md border px-3 py-2 text-xs transition ${isSelected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'}`}
+                    className={`relative pl-2 w-full text-left rounded-md border px-3 py-2 text-xs transition-all ${isSelected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-400 dark:ring-blue-600' : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'}`}
                     title={r.roleName}
                   >
                     <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${barColor}`} />
                     <div className="flex items-center justify-between gap-2">
-                      <span className="truncate font-medium">{r.roleDisplayName}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`truncate font-medium ${isSelected ? 'text-blue-700 dark:text-blue-300' : ''}`}>{r.roleDisplayName}</span>
+                        {isSelected && (
+                          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-500 text-white flex-shrink-0">
+                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </span>
+                        )}
+                      </div>
                       <span className={`inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full text-xs font-semibold ${r.userCount > 0 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>{r.userCount}</span>
                     </div>
-                    <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">{r.roleName}</div>
+                    <div className={`text-[10px] mt-1 ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>{r.roleName}</div>
+                    {isSelected && (
+                      <div className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 font-medium">✓ Selected - Now pick a user</div>
+                    )}
                   </button>
                 );
               })}
@@ -642,7 +814,7 @@ export default function RolesUsersReportPage() {
                 const isSelected = selectedModuleName === m.module_name;
                 const pageCount = getModulePageCount(m);
                 const usersCount = getModuleUsersCount(m);
-                const barColor = colorForIndex(idx);
+                const barColor = isSelected ? 'bg-purple-500' : colorForIndex(idx);
                 return (
                   <button
                     key={m.id}
@@ -662,12 +834,21 @@ export default function RolesUsersReportPage() {
                         }
                       });
                     }}
-                    className={`relative pl-2 w-full text-left rounded-md border p-3 transition ${isSelected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'}`}
+                    className={`relative pl-2 w-full text-left rounded-md border p-3 transition-all ${isSelected ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-400 dark:ring-purple-600' : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'}`}
                     title={m.display_name || m.name}
                   >
                     <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${barColor}`} />
                     <div className="flex items-center justify-between gap-2">
-                      <div className="text-xs truncate font-medium">{m.display_name || m.name}</div>
+                      <div className="flex items-center gap-1.5">
+                        <span className={`text-xs truncate font-medium ${isSelected ? 'text-purple-700 dark:text-purple-300' : ''}`}>{m.display_name || m.name}</span>
+                        {isSelected && (
+                          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-purple-500 text-white flex-shrink-0">
+                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center gap-1">
                         <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300" title="Pages in this module">
                           {pageCount}
@@ -677,6 +858,9 @@ export default function RolesUsersReportPage() {
                         </span>
                       </div>
                     </div>
+                    {isSelected && (
+                      <div className="text-[10px] text-purple-600 dark:text-purple-400 mt-1 font-medium">✓ Selected - Toggle pages on the right</div>
+                    )}
                   </button>
                 );
               })}
@@ -697,7 +881,11 @@ export default function RolesUsersReportPage() {
                       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-2">
                         {!selectedUserId && (
                           <div className="col-span-full rounded-md border border-yellow-300 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 p-2 text-xs text-yellow-800 dark:text-yellow-200">
-                            Select a user to enable page toggles.
+                            {isSuperAdmin && !selectedRoleId 
+                              ? '1️⃣ First, select a Role from column 2 to see users'
+                              : isSuperAdmin && selectedRoleId 
+                              ? '2️⃣ Now select a User from column 1 to enable page toggles'
+                              : 'Select a user to enable page toggles.'}
                           </div>
                         )}
                         {modulePages.map((page, idx) => {

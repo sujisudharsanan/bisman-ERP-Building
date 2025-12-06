@@ -224,9 +224,16 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
       // Enterprise Admin: enterprise-specific pages only
       pages = pages.filter(p => p.path.startsWith('/enterprise') || p.roles.includes('ENTERPRISE_ADMIN'));
     } else if (isSuperAdmin) {
-      // Super Admin: Only pages explicitly assigned by Enterprise Admin
-      // Filter by userAllowedPages which contains the specific page IDs from page_permissions
-      pages = pages.filter(p => userAllowedPages.includes(p.id));
+      // Super Admin: Pages explicitly assigned by Enterprise Admin
+      // PLUS core essential pages that should always be visible
+      const corePageIds = [
+        'super-admin-dashboard', // Dashboard must always show
+      ];
+      pages = pages.filter(p => 
+        userAllowedPages.includes(p.id) || 
+        corePageIds.includes(p.id) ||
+        (p.module === 'super-admin' && p.roles.includes('SUPER_ADMIN'))
+      );
       console.log('[Sidebar] Super Admin allowed pages:', userAllowedPages);
     } else {
       // Regular users: only explicitly allowed pages from DB

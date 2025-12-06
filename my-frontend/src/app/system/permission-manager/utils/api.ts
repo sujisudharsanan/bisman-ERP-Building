@@ -19,135 +19,89 @@ const fetchJson = async <T>(url: string): Promise<T> => {
 export const api = {
   // Fetch roles from backend DB and locally filter by query
   searchRoles: async (q: string): Promise<Role[]> => {
-    console.log('[PermissionManager] Fetching roles from users...');
+    console.log('[PermissionManager] Fetching roles from roles-users report (properly filtered)...');
     try {
-      // Get roles from users endpoint instead of empty rbac_roles table
-      const resp = await fetchJson<any>(`/api/system/users?limit=1000`);
-      console.log('[PermissionManager] Users response for roles:', resp);
+      // Use the roles-users report endpoint which has proper SUPER_ADMIN filtering
+      const resp = await fetchJson<any>(`/api/reports/roles-users`);
+      console.log('[PermissionManager] Roles-users report response:', resp);
       
-      const users = Array.isArray(resp?.data) ? resp.data : [];
-      console.log(`[PermissionManager] Found ${users.length} users`);
+      // The response has { success: true, data: [...], summary: {...} }
+      const rolesData = Array.isArray(resp?.data) ? resp.data : [];
+      console.log(`[PermissionManager] Found ${rolesData.length} roles from report`);
       
-      // Extract unique roles from users, excluding SUPER_ADMIN and ENTERPRISE_ADMIN
-      const roleMap = new Map<string, { count: number }>();
-      users.forEach((user: any) => {
-        const role = user.role;
-        if (role && role !== 'SUPER_ADMIN' && role !== 'ENTERPRISE_ADMIN') {
-          const existing = roleMap.get(role) || { count: 0 };
-          roleMap.set(role, { count: existing.count + 1 });
-        }
-      });
-      
-      const mapped: Role[] = Array.from(roleMap.entries()).map(([roleName, data]) => ({
-        id: roleName,
-        name: roleName,
-        userCount: data.count
+      // Map to our Role format
+      const mapped: Role[] = rolesData.map((r: any) => ({
+        id: r.roleName || r.roleId,
+        name: r.roleDisplayName || r.roleName,
+        userCount: r.userCount || 0
       }));
       
-      console.log('[PermissionManager] Extracted roles from users:', mapped.map(r => `${r.name} (${r.userCount} users)`));
+      console.log('[PermissionManager] Extracted roles:', mapped.map(r => `${r.name} (${r.userCount} users)`));
       
       if (!q) return mapped;
       const ql = q.toLowerCase();
       return mapped.filter(r => r.name.toLowerCase().includes(ql) || r.id.toLowerCase().includes(ql));
     } catch (error) {
-      console.error('[PermissionManager] Error fetching roles:', error);
-      // Fallback to original endpoint if users endpoint fails
-      console.log('[PermissionManager] Falling back to /api/privileges/roles');
-      const resp = await fetchJson<any>(`/api/privileges/roles`);
-      console.log('[PermissionManager] Roles response:', resp);
-      
-      const rows = Array.isArray(resp?.data) ? resp.data : Array.isArray(resp) ? resp : [];
-      console.log(`[PermissionManager] Found ${rows.length} roles in response`);
-      
-      const mapped: Role[] = rows.map((r: any) => ({
-        id: String(r.id),
-        name: r.name || String(r.id),
-        userCount: typeof r.user_count !== 'undefined' ? Number(r.user_count) : (typeof r.userCount !== 'undefined' ? Number(r.userCount) : undefined)
-      }));
-      
-      console.log('[PermissionManager] Mapped roles:', mapped.map(r => `${r.name} (ID: ${r.id}, ${r.userCount} users)`));
-      
-      if (!q) return mapped;
-      const ql = q.toLowerCase();
-      return mapped.filter(r => r.name.toLowerCase().includes(ql) || r.id.toLowerCase().includes(ql));
+      console.error('[PermissionManager] Error fetching from roles-users report:', error);
+      // SECURITY: Don't fallback to unfiltered endpoints - return empty instead
+      // This ensures SUPER_ADMIN only sees their assigned roles
+      console.warn('[PermissionManager] No fallback - returning empty to maintain security');
+      return [];
     }
   },
-  // Fetch users for a role from backend DB and locally filter by query
+  // Fetch users for a role from the roles-users report (properly filtered for SUPER_ADMIN)
   searchUsersByRole: async (roleKey: string, q: string, roleName?: string): Promise<User[]> => {
     console.log(`[PermissionManager] Fetching users for role: ${roleKey} (${roleName || 'no name'})`);
     
-    // Try with roleKey first; if empty, try roleName normalized
-    const tryFetch = async (key: string) => {
-      const url = `/api/privileges/users?role=${encodeURIComponent(key)}`;
-      console.log(`[PermissionManager] Fetching: ${url}`);
-      return fetchJson<any>(url);
-    };
-    
-    let resp: any = null;
     try {
-      resp = await tryFetch(roleKey);
-      console.log(`[PermissionManager] Response:`, resp);
+      // Use the roles-users report endpoint which already has users embedded and is properly filtered
+      const resp = await fetchJson<any>(`/api/reports/roles-users`);
+      console.log('[PermissionManager] Roles-users report response for users:', resp);
       
-      // If we got an empty result and have a roleName, try alternative formats
-      if (resp && Array.isArray(resp.data) && resp.data.length === 0 && roleName) {
-        console.log(`[PermissionManager] Got 0 users with roleKey ${roleKey}, trying roleName variants...`);
-        
-        // Try exact role name first (e.g., "Hub Incharge")
-        try {
-          console.log(`[PermissionManager] Trying exact roleName: ${roleName}`);
-          const resp2 = await tryFetch(roleName);
-          if (resp2 && Array.isArray(resp2.data) && resp2.data.length > 0) {
-            console.log(`[PermissionManager] Found users with exact roleName!`);
-            resp = resp2;
-          }
-        } catch (e2) {
-          // Continue to try other formats
-        }
-        
-        // If still empty, try normalized format (e.g., "HUB_INCHARGE")
-        if (resp.data.length === 0) {
-          const norm = roleName.replace(/[\s-]+/g, '_').toUpperCase();
-          console.log(`[PermissionManager] Trying normalized roleName: ${norm}`);
-          try {
-            const resp3 = await tryFetch(norm);
-            if (resp3 && Array.isArray(resp3.data) && resp3.data.length > 0) {
-              console.log(`[PermissionManager] Found users with normalized roleName!`);
-              resp = resp3;
-            }
-          } catch (e3) {
-            console.error(`[PermissionManager] All retry attempts failed`);
-          }
-        }
+      // Find the role in the report data
+      const rolesData = Array.isArray(resp?.data) ? resp.data : [];
+      const targetRole = rolesData.find((r: any) => {
+        const rName = (r.roleName || '').toLowerCase();
+        const rDisplay = (r.roleDisplayName || '').toLowerCase();
+        const searchKey = roleKey.toLowerCase();
+        const searchName = (roleName || '').toLowerCase();
+        return rName === searchKey || rDisplay === searchKey || rName === searchName || rDisplay === searchName;
+      });
+      
+      if (!targetRole) {
+        console.warn(`[PermissionManager] Role not found in report: ${roleKey}`);
+        return [];
       }
-    } catch (e1) {
-      console.error(`[PermissionManager] Error with roleKey ${roleKey}:`, e1);
-      if (roleName) {
-        const norm = roleName.replace(/[\s-]+/g, '_').toUpperCase();
-        console.log(`[PermissionManager] Retrying with normalized roleName: ${norm}`);
-        resp = await tryFetch(norm);
-        console.log(`[PermissionManager] Retry response:`, resp);
-      } else {
-        throw e1;
-      }
+      
+      // Extract users from the role
+      const roleUsers = Array.isArray(targetRole.users) ? targetRole.users : [];
+      console.log(`[PermissionManager] Found ${roleUsers.length} users for role ${roleKey}`);
+      
+      // Map to User format
+      const mapped: User[] = roleUsers.map((u: any) => {
+        const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ').trim();
+        const fromUsername = u?.username ? u.username.replace(/[._-]+/g, ' ').replace(/\s+/g, ' ').trim() : '';
+        const fromEmail = u?.email ? String(u.email).split('@')[0].replace(/[._-]+/g, ' ').replace(/\s+/g, ' ').trim() : '';
+        const titleCase = (s: string) => s ? s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') : '';
+        const display = fullName || titleCase(fromUsername) || titleCase(fromEmail) || u.username || u.email || String(u.userId || u.id);
+        return { 
+          id: String(u.userId || u.id), 
+          name: display, 
+          email: u.email, 
+          username: u.username 
+        };
+      });
+      
+      console.log(`[PermissionManager] Mapped to ${mapped.length} User objects:`, mapped.map(u => u.name));
+      
+      if (!q) return mapped;
+      const ql = q.toLowerCase();
+      return mapped.filter(u => (u.name && u.name.toLowerCase().includes(ql)) || (u.email && u.email.toLowerCase().includes(ql)) || u.id.toLowerCase().includes(ql));
+    } catch (error) {
+      console.error('[PermissionManager] Error fetching users from roles-users report:', error);
+      // SECURITY: Don't fallback to unfiltered endpoints - return empty instead
+      return [];
     }
-    
-    const rows = Array.isArray(resp?.data) ? resp.data : Array.isArray(resp) ? resp : [];
-    console.log(`[PermissionManager] Found ${rows.length} users in response`);
-    
-    const mapped: User[] = rows.map((u: any) => {
-      const fullName = [u.first_name, u.last_name].filter(Boolean).join(' ').trim();
-      const fromUsername = u?.username ? u.username.replace(/[._-]+/g, ' ').replace(/\s+/g, ' ').trim() : '';
-      const fromEmail = u?.email ? String(u.email).split('@')[0].replace(/[._-]+/g, ' ').replace(/\s+/g, ' ').trim() : '';
-      const titleCase = (s: string) => s ? s.split(' ').map(w => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()).join(' ') : '';
-      const display = fullName || titleCase(fromUsername) || titleCase(fromEmail) || u.username || u.email || String(u.id);
-      return { id: String(u.id), name: display, email: u.email, username: u.username };
-    });
-    
-    console.log(`[PermissionManager] Mapped to ${mapped.length} User objects:`, mapped.map(u => u.name));
-    
-    if (!q) return mapped;
-    const ql = q.toLowerCase();
-    return mapped.filter(u => (u.name && u.name.toLowerCase().includes(ql)) || (u.email && u.email.toLowerCase().includes(ql)) || u.id.toLowerCase().includes(ql));
   },
   // Fetch all users from backend DB (no role filter) and locally filter by query
   searchAllUsers: async (q: string): Promise<User[]> => {
