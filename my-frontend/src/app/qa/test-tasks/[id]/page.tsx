@@ -86,7 +86,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
 
   if (loading) {
     return (
-      <
+      <>
         <div className="p-6 max-w-4xl mx-auto">
           <div className="animate-pulse space-y-6">
             <div className="h-8 bg-gray-200 dark:bg-gray-700 rounded w-1/3" />
@@ -99,7 +99,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
 
   if (error || !task) {
     return (
-      <
+      <>
         <div className="p-6 max-w-4xl mx-auto">
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-6 text-center">
             <p className="text-red-600 dark:text-red-400">{error || 'Task not found'}</p>
@@ -113,7 +113,7 @@ export default function TaskDetailPage({ params }: { params: Promise<{ id: strin
   }
 
   return (
-    <
+    <>
       <div className="p-6 max-w-4xl mx-auto space-y-6">
         {/* Header */}
         <div className="flex items-start justify-between">
