@@ -41,7 +41,7 @@ interface DynamicSidebarProps {
 type IconComponent = React.ComponentType<any> | undefined;
 
 export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
   const [userAllowedPages, setUserAllowedPages] = useState<string[]>([]);
@@ -82,25 +82,30 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
 
   // Fetch user permissions from database
   useEffect(() => {
+    // Create abort controller for cleanup
+    const abortController = new AbortController();
+    let isMounted = true;
+
     const fetchUserPermissions = async () => {
+      // Wait for auth to complete loading before checking user
+      if (authLoading) {
+        return; // Don't do anything while auth is loading
+      }
+      
       if (!user?.id) {
-        setIsLoadingPermissions(false);
-        // Redirect to login if no user (after a brief delay to avoid flash)
-        const timer = setTimeout(() => {
-          if (!pathname?.includes('auth') && !pathname?.includes('login')) {
-            console.log('[Sidebar] No user detected, redirecting to login');
-            router.replace('/auth/login');
-          }
-        }, 500);
-        return () => clearTimeout(timer);
+        if (isMounted) setIsLoadingPermissions(false);
+        // Don't redirect from sidebar - let the page handle auth redirects
+        return;
       }
 
       // Enterprise Admin: Set enterprise modules directly
       if (user.role === 'ENTERPRISE_ADMIN' || user?.roleName === 'ENTERPRISE_ADMIN') {
         console.log('[Sidebar] Enterprise Admin detected - setting enterprise modules');
-        setSuperAdminModules(['enterprise-management']);
-        setUserAllowedPages([]); // Enterprise admin doesn't use page-level permissions
-        setIsLoadingPermissions(false);
+        if (isMounted) {
+          setSuperAdminModules(['enterprise-management']);
+          setUserAllowedPages([]); // Enterprise admin doesn't use page-level permissions
+          setIsLoadingPermissions(false);
+        }
         return;
       }
 
@@ -113,40 +118,47 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
           const response = await safeFetch(`${baseURL}/api/auth/me/permissions`, {
             credentials: 'include',
             timeoutMs: 8000,
+            signal: abortController.signal,
           });
 
+          if (!isMounted) return;
+          
           if (response.ok) {
             const result = await response.json();
             console.log('[Sidebar] Super Admin permissions:', result);
             
             const assignedModules = result.user?.permissions?.assignedModules || [];
             const pagePermissions = result.user?.permissions?.pagePermissions || {};
-            setSuperAdminModules(assignedModules);
+            if (isMounted) {
+              setSuperAdminModules(assignedModules);
             
-            // Use specific page permissions from Enterprise Admin assignment
-            // Only grant pages that are explicitly assigned, not all pages from modules
-            const allowedPageKeys: string[] = [];
-            Object.entries(pagePermissions).forEach(([moduleName, pages]) => {
-              if (Array.isArray(pages)) {
-                allowedPageKeys.push(...pages);
-              }
-            });
+              // Use specific page permissions from Enterprise Admin assignment
+              // Only grant pages that are explicitly assigned, not all pages from modules
+              const allowedPageKeys: string[] = [];
+              Object.entries(pagePermissions).forEach(([moduleName, pages]) => {
+                if (Array.isArray(pages)) {
+                  allowedPageKeys.push(...pages);
+                }
+              });
             
-            console.log('[Sidebar] Assigned modules:', assignedModules);
-            console.log('[Sidebar] Page permissions by module:', pagePermissions);
-            console.log('[Sidebar] Allowed pages:', allowedPageKeys.length, allowedPageKeys);
-            setUserAllowedPages(allowedPageKeys);
+              console.log('[Sidebar] Assigned modules:', assignedModules);
+              console.log('[Sidebar] Page permissions by module:', pagePermissions);
+              console.log('[Sidebar] Allowed pages:', allowedPageKeys.length, allowedPageKeys);
+              setUserAllowedPages(allowedPageKeys);
+            }
           } else {
             console.error('[Sidebar] Failed to fetch Super Admin permissions:', response.status);
             // Security: DO NOT grant access if API fails - show empty sidebar
-            setUserAllowedPages([]);
+            if (isMounted) setUserAllowedPages([]);
           }
-        } catch (error) {
+        } catch (error: any) {
+          // Ignore abort errors - they're expected during cleanup
+          if (error?.name === 'AbortError') return;
           console.error('[Sidebar] Error fetching Super Admin permissions:', error);
           // Security: DO NOT grant access if API fails - show empty sidebar
-          setUserAllowedPages([]);
+          if (isMounted) setUserAllowedPages([]);
         }
-        setIsLoadingPermissions(false);
+        if (isMounted) setIsLoadingPermissions(false);
         return;
       }
 
@@ -156,7 +168,10 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
         const response = await safeFetch(`/api/permissions?userId=${user.id}`, {
           credentials: 'include',
           timeoutMs: 8000,
+          signal: abortController.signal,
         });
+
+        if (!isMounted) return;
 
         if (response.ok) {
           const result = await response.json();
@@ -165,21 +180,29 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
           // Backend returns: { success: true, data: { userId, allowedPages } }
           const allowedPages = result.data?.allowedPages || result.allowedPages || [];
           console.log('[Sidebar] Extracted allowed pages:', allowedPages);
-          setUserAllowedPages(allowedPages);
+          if (isMounted) setUserAllowedPages(allowedPages);
         } else {
           console.error('[Sidebar] Failed to fetch permissions:', response.status);
-          setUserAllowedPages([]);
+          if (isMounted) setUserAllowedPages([]);
         }
-      } catch (error) {
+      } catch (error: any) {
+        // Ignore abort errors - they're expected during cleanup
+        if (error?.name === 'AbortError') return;
         console.error('[Sidebar] Error fetching permissions:', error);
-        setUserAllowedPages([]);
+        if (isMounted) setUserAllowedPages([]);
       } finally {
-        setIsLoadingPermissions(false);
+        if (isMounted) setIsLoadingPermissions(false);
       }
     };
 
     fetchUserPermissions();
-  }, [user?.id, isSuperAdmin]);
+    
+    // Cleanup function to abort fetch and prevent state updates
+    return () => {
+      isMounted = false;
+      abortController.abort();
+    };
+  }, [user?.id, isSuperAdmin, authLoading]);
 
   // Get user permissions based on database permissions
   const userPermissions = useMemo(() => {
@@ -244,8 +267,25 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
       console.log('[Sidebar] Super Admin allowed pages:', userAllowedPages);
     } else {
       // Regular users: only explicitly allowed pages from DB
-      // NO auto-grant for common module - must be explicitly assigned
-      pages = pages.filter(p => userAllowedPages.includes(p.id));
+      // Match by page ID, or derive ID from path (e.g., /admin/dashboard -> admin-dashboard)
+      pages = pages.filter(p => {
+        // Direct ID match
+        if (userAllowedPages.includes(p.id)) return true;
+        
+        // Derive ID from path: /admin/dashboard -> admin-dashboard
+        const pathId = p.path.replace(/^\//, '').replace(/\//g, '-');
+        if (userAllowedPages.includes(pathId)) return true;
+        
+        // Also check just the last segment: /admin/dashboard -> dashboard
+        const lastSegment = p.path.split('/').filter(Boolean).pop();
+        if (lastSegment && userAllowedPages.includes(lastSegment)) return true;
+        
+        return false;
+      });
+      
+      // Debug: Log what we're matching
+      console.log('[Sidebar] Registry page IDs:', pages.slice(0, 5).map(p => p.id));
+      console.log('[Sidebar] DB allowed pages:', userAllowedPages.slice(0, 5));
     }
 
     // Non-enterprise users should not see enterprise pages
@@ -486,8 +526,8 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
         </div>
       )}
 
-      {/* Loading State */}
-      {isLoadingPermissions && (
+      {/* Loading State - show while auth is loading OR permissions are loading */}
+      {(authLoading || isLoadingPermissions) && (
         <div className="px-3 py-8 text-center">
           <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-3" />
           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -497,7 +537,7 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
       )}
 
       {/* Flat page list (no module headers) */}
-      {!isLoadingPermissions && (
+      {!authLoading && !isLoadingPermissions && (
         <div className="space-y-1 px-2">
           {/* Dashboard is now part of visiblePages - no hardcoded shortcut */}
           {/* Only show pages that user has explicit permission for */}
@@ -505,8 +545,8 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
         </div>
       )}
 
-      {/* Empty State */}
-  {!isLoadingPermissions && visiblePages.length === 0 && (
+      {/* Empty State - only show when fully loaded and no pages */}
+      {!authLoading && !isLoadingPermissions && visiblePages.length === 0 && (
         <div className="px-3 py-8 text-center">
           <Circle className="w-12 h-12 text-gray-300 dark:text-gray-700 mx-auto mb-3" />
           <p className="text-sm text-gray-500 dark:text-gray-400">
