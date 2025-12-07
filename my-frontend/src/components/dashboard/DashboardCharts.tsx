@@ -396,7 +396,7 @@ export const DonutChart: React.FC<DonutChartProps> = ({
     const ctx = chartRef.current.getContext('2d');
     if (!ctx) return;
 
-    const config: ChartConfiguration = {
+    const config: ChartConfiguration<'doughnut'> = {
       type: 'doughnut',
       data: {
         labels,
