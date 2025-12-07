@@ -105,8 +105,11 @@ router.post('/clients', authMiddleware, async (req, res) => {
       status,
     } = req.body || {};
   if (!name && !legal_name && !trade_name) return res.status(400).json({ error: 'client name (name or legal_name/trade_name) required' });
-  const sid = super_admin_id || user?.super_admin_id;
+  const sid = super_admin_id || user?.super_admin_id || user?.id;
     if (!sid) return res.status(400).json({ error: 'super_admin_id missing' });
+    // Ensure super_admin_id is an integer
+    const parsedSid = typeof sid === 'string' ? parseInt(sid, 10) : sid;
+    if (isNaN(parsedSid)) return res.status(400).json({ error: 'super_admin_id must be a valid number' });
     const enterprise = {
       client_code, legal_name, trade_name, client_type, industry, business_size,
       registration_number, tax_id, legal_status, import_export_code, registration_year,
@@ -129,7 +132,7 @@ router.post('/clients', authMiddleware, async (req, res) => {
         name: name || legal_name || trade_name,
         productType,
         subscriptionPlan,
-        super_admin_id: sid,
+        super_admin_id: parsedSid,
   settings: { enterprise }
       }
     });
