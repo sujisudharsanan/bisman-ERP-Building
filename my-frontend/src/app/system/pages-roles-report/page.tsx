@@ -227,11 +227,8 @@ function QuickLinks({ links }: { links: Array<{ label: string; href: string; ico
   );
 }
 
-interface PagesRolesReportPageProps {
-  showAllPagesDefault?: boolean;
-}
-
-export default function PagesRolesReportPage({ showAllPagesDefault = false }: PagesRolesReportPageProps) {
+export default function PagesRolesReportPage() {
+  const showAllPagesDefault = false;
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
