@@ -86,10 +86,7 @@ export interface DashboardKPIs {
 }
 
 export async function fetchDashboardKPIs(): Promise<DashboardKPIs> {
-  return safeApiCall(async () => {
-    const res = await axios.get(`${API_BASE}/api/kpis`, { withCredentials: true });
-    return extractData(res, null) as DashboardKPIs;
-  }, {
+  const defaultKPIs: DashboardKPIs = {
     tenants: { total: 0, active: 0, pending: 0, suspended: 0, newThisMonth: 0 },
     users: { total: 0, active: 0, recentLogins: 0 },
     billing: { mrr: 0, activeSubscriptions: 0, churnRate: 0 },
@@ -97,7 +94,11 @@ export async function fetchDashboardKPIs(): Promise<DashboardKPIs> {
     audit: { eventsToday: 0 },
     health: { overall: 'unknown', database: 'unknown', api: 'healthy', uptime: 0 },
     timestamp: new Date().toISOString()
-  });
+  };
+  return safeApiCall(async () => {
+    const res = await axios.get(`${API_BASE}/api/kpis`, { withCredentials: true });
+    return extractData(res, defaultKPIs);
+  }, defaultKPIs);
 }
 
 // ============================================================================
