@@ -16,6 +16,9 @@ interface TaskCardProps {
 
 export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick, className = '' }) => {
   const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && task.status !== 'COMPLETED';
+  
+  // Generate display ID from unique_id or fallback to formatted id
+  const taskDisplayId = task.unique_id || task.serialNumber || `TSK-${String(task.id).padStart(5, '0')}`;
 
   return (
     <div
@@ -27,12 +30,22 @@ export const TaskCard: React.FC<TaskCardProps> = ({ task, onClick, className = '
         ${className}
       `}
     >
+      {/* Task ID Badge */}
+      <div className="flex items-center justify-between mb-2">
+        <span 
+          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-mono font-medium bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border border-gray-200 dark:border-gray-600"
+          title={`Task ID: ${taskDisplayId}`}
+        >
+          {taskDisplayId}
+        </span>
+        <PriorityBadge priority={task.priority} className="flex-shrink-0" />
+      </div>
+
       {/* Header */}
       <div className="flex items-start justify-between mb-2">
         <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100 line-clamp-2 flex-1">
           {task.title}
         </h3>
-        <PriorityBadge priority={task.priority} className="ml-2 flex-shrink-0" />
       </div>
 
       {/* Description */}

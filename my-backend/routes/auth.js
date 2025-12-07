@@ -120,6 +120,7 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
         const accessToken = generateAccessToken({
           id: enterpriseAdmin.id,
           email: enterpriseAdmin.email,
+          name: enterpriseAdmin.name,
           role: 'ENTERPRISE_ADMIN',
           userType: 'ENTERPRISE_ADMIN',
           productType: 'ALL'
@@ -212,6 +213,7 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
         const accessToken = generateAccessToken({
           id: superAdmin.id,
           email: superAdmin.email,
+          name: superAdmin.name,
           role: 'SUPER_ADMIN',
           userType: 'SUPER_ADMIN',
           productType: superAdmin.productType
@@ -291,6 +293,7 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
         const accessToken = generateAccessToken({
           id: regularUser.id,
           email: regularUser.email,
+          name: regularUser.username,
           role: regularUser.role,
           userType: 'USER',
           productType: regularUser.productType,

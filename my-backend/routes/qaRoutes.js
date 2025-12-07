@@ -318,6 +318,40 @@ router.get('/erp-sync-data', async (req, res) => {
     console.log('[QA ERP Sync] Fetching comprehensive ERP data...');
     const syncStartTime = Date.now();
 
+    // Check if RBAC tables exist
+    let tablesExist = true;
+    try {
+      await prisma.$queryRaw`SELECT 1 FROM rbac_roles LIMIT 1`;
+    } catch (e) {
+      tablesExist = false;
+    }
+
+    if (!tablesExist) {
+      // Return mock/empty data if RBAC tables don't exist
+      console.log('[QA ERP Sync] RBAC tables not found, returning empty data');
+      return res.json({
+        success: true,
+        syncedAt: new Date().toISOString(),
+        syncDuration: '0ms',
+        _notice: 'RBAC tables not yet created. Run migrations to enable full RBAC features.',
+        summary: {
+          totalRoles: 0,
+          totalPermissions: 0,
+          totalRoutes: 0,
+          totalActions: 0,
+          totalUsers: 0,
+          totalModules: 0,
+          totalUserRoleAssignments: 0,
+        },
+        roles: [],
+        roleHierarchy: [],
+        permissionMatrix: [],
+        routeMatrix: [],
+        actions: [],
+        modules: [],
+      });
+    }
+
     // Fetch all RBAC data in parallel for performance
     const [
       rbacRoles,

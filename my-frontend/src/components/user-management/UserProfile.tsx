@@ -899,6 +899,37 @@ export function UserProfile({ userId, currentUser }: UserProfileProps) {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            {/* User ID Banner */}
+            <div className="lg:col-span-3">
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-lg border border-blue-200 dark:border-blue-800 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 bg-blue-600 rounded-lg flex items-center justify-center">
+                      <Shield className="w-5 h-5 text-white" />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-blue-600 dark:text-blue-400 uppercase tracking-wide">
+                        User ID
+                      </label>
+                      <p className="text-lg font-mono font-bold text-blue-900 dark:text-blue-100">
+                        {user.unique_id || `USR-${String(user.id).padStart(6, '0')}`}
+                      </p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const uid = user.unique_id || `USR-${String(user.id).padStart(6, '0')}`;
+                      navigator.clipboard.writeText(uid);
+                    }}
+                    className="px-3 py-1.5 text-sm font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-800/50 rounded-md transition-colors"
+                    title="Copy User ID"
+                  >
+                    📋 Copy
+                  </button>
+                </div>
+              </div>
+            </div>
+
             {/* Basic Information */}
             <div className="lg:col-span-2 space-y-6">
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -907,6 +938,12 @@ export function UserProfile({ userId, currentUser }: UserProfileProps) {
                   <div>
                     <label className="text-sm font-medium text-gray-700">Full Name</label>
                     <p className="text-gray-900">{user.first_name} {user.last_name}</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium text-gray-700">System ID</label>
+                    <p className="text-gray-900 font-mono text-sm bg-gray-100 dark:bg-gray-800 px-2 py-1 rounded inline-block">
+                      #{user.id}
+                    </p>
                   </div>
                   <div>
                     <label className="text-sm font-medium text-gray-700">Employee ID</label>

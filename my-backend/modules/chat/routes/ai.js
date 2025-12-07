@@ -38,6 +38,7 @@ const sessionCache = new Map();
  * Middleware to extract user from request
  * Supports multiple auth methods for compatibility
  * UPDATED: Now reads JWT from cookies for authenticated users
+ * UPDATED: Supports super_admins, enterprise_admins, and users tables
  */
 const extractUser = async (req, res, next) => {
   try {
@@ -46,15 +47,21 @@ const extractUser = async (req, res, next) => {
                  req.user?.userId || 
                  req.headers['x-user-id'] || 
                  req.body.userId;
+    let userType = req.user?.userType || req.headers['x-user-type'] || req.body.userType || null;
+    let userName = null;
     
     // If no userId yet, try to extract from JWT token in cookies
     if (!userId && req.cookies?.access_token) {
       try {
         const jwt = require('jsonwebtoken');
         const token = req.cookies.access_token;
-        const decoded = jwt.verify(token, process.env.JWT_SECRET || 'your-secret-key');
+        // Use the same secret as auth.js: ACCESS_TOKEN_SECRET
+        const ACCESS_TOKEN_SECRET = process.env.ACCESS_TOKEN_SECRET || process.env.JWT_SECRET || 'dev_access_secret';
+        const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET);
         userId = decoded.id || decoded.userId;
-        console.log(`[UltimateChatAPI] Extracted userId from JWT: ${userId}`);
+        userType = decoded.userType || decoded.role || userType;
+        userName = decoded.name || decoded.username || null;
+        console.log(`[UltimateChatAPI] Extracted from JWT: userId=${userId}, userType=${userType}, name=${userName}`);
       } catch (jwtError) {
         console.warn('[UltimateChatAPI] JWT verification failed:', jwtError.message);
       }
@@ -65,30 +72,80 @@ const extractUser = async (req, res, next) => {
       console.log('[UltimateChatAPI] No userId provided, allowing guest access');
       req.userId = 0;
       req.userRole = 'guest';
+      req.userName = 'Guest';
+      req.userType = 'guest';
       return next();
     }
     
-    // Try to get user role from database
+    // Try to get user from appropriate table based on userType
     try {
-      const userQuery = await pool.query(
-        'SELECT id, role FROM users_enhanced WHERE id = $1',
-        [userId]
-      );
+      let userInfo = null;
       
-      if (userQuery.rows.length > 0) {
-        req.userId = parseInt(userId);
-        req.userRole = userQuery.rows[0].role;
-        console.log(`[UltimateChatAPI] User authenticated: ${req.userId} (${req.userRole})`);
+      // Check super_admins first if userType indicates super admin
+      if (userType === 'SUPER_ADMIN' || userType === 'super_admin') {
+        const superAdminQuery = await pool.query(
+          'SELECT id, name, email FROM super_admins WHERE id = $1',
+          [userId]
+        );
+        if (superAdminQuery.rows.length > 0) {
+          userInfo = {
+            id: superAdminQuery.rows[0].id,
+            name: superAdminQuery.rows[0].name,
+            role: 'SUPER_ADMIN'
+          };
+        }
+      }
+      
+      // Check enterprise_admins if userType indicates enterprise admin
+      if (!userInfo && (userType === 'ENTERPRISE_ADMIN' || userType === 'enterprise_admin')) {
+        const enterpriseAdminQuery = await pool.query(
+          'SELECT id, name, email FROM enterprise_admins WHERE id = $1',
+          [userId]
+        );
+        if (enterpriseAdminQuery.rows.length > 0) {
+          userInfo = {
+            id: enterpriseAdminQuery.rows[0].id,
+            name: enterpriseAdminQuery.rows[0].name,
+            role: 'ENTERPRISE_ADMIN'
+          };
+        }
+      }
+      
+      // Try users_enhanced or users table
+      if (!userInfo) {
+        const userQuery = await pool.query(
+          'SELECT id, username, role FROM users WHERE id = $1',
+          [userId]
+        );
+        if (userQuery.rows.length > 0) {
+          userInfo = {
+            id: userQuery.rows[0].id,
+            name: userQuery.rows[0].username,
+            role: userQuery.rows[0].role
+          };
+        }
+      }
+      
+      if (userInfo) {
+        req.userId = parseInt(userInfo.id);
+        req.userRole = userInfo.role;
+        req.userName = userName || userInfo.name;
+        req.userType = userType || userInfo.role;
+        console.log(`[UltimateChatAPI] User authenticated: ${req.userId} (${req.userRole}) - ${req.userName}`);
       } else {
-        // User not in DB, but allow as guest with provided ID
-        console.log(`[UltimateChatAPI] User ${userId} not found in DB, allowing as guest`);
+        // User not in DB, use JWT data if available
+        console.log(`[UltimateChatAPI] User ${userId} not found in DB, using JWT data`);
         req.userId = parseInt(userId);
-        req.userRole = 'guest';
+        req.userRole = userType || 'guest';
+        req.userName = userName || 'User';
+        req.userType = userType || 'guest';
       }
     } catch (dbError) {
-      console.warn('[UltimateChatAPI] DB lookup failed, allowing guest access:', dbError.message);
+      console.warn('[UltimateChatAPI] DB lookup failed:', dbError.message);
       req.userId = parseInt(userId);
-      req.userRole = 'guest';
+      req.userRole = userType || 'guest';
+      req.userName = userName || 'User';
+      req.userType = userType || 'guest';
     }
     
     next();
@@ -97,6 +154,8 @@ const extractUser = async (req, res, next) => {
     // Don't fail - allow guest access
     req.userId = 0;
     req.userRole = 'guest';
+    req.userName = 'Guest';
+    req.userType = 'guest';
     next();
   }
 };
@@ -120,6 +179,8 @@ router.post('/message', async (req, res) => {
     const { message, conversationId, sessionId } = req.body;
     const userId = req.userId;
     const userRole = req.userRole;
+    const userName = req.userName;
+    const userType = req.userType;
     
     if (!message || message.trim().length === 0) {
       return res.status(400).json({ 
@@ -182,7 +243,12 @@ router.post('/message', async (req, res) => {
     }
     
     // Process through unified chat engine (has NLP, spell check, database responses)
-    const result = await chat.processMessage(userId, cleanedMessage, actualSessionId);
+    // Pass userName and userType for proper context
+    const result = await chat.processMessage(userId, cleanedMessage, actualSessionId, {
+      userName,
+      userType,
+      userRole
+    });
     
     // Store in session history
     history.push({

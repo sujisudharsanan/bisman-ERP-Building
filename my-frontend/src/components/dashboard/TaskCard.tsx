@@ -12,9 +12,10 @@ interface TaskCardProps {
   color: string;
   onClick?: () => void;
   taskData?: any; // Full task object for onClick handler
+  taskId?: string | number; // Unique task ID for display
 }
 
-const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments, attachments, color, onClick }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments, attachments, color, onClick, taskId, taskData }) => {
   // Fixed: Pre-defined Tailwind classes instead of dynamic interpolation
   const colorClasses: Record<string, string> = {
     blue: 'from-blue-500 to-blue-600/70',
@@ -26,6 +27,10 @@ const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments
     teal: 'from-teal-500 to-teal-600/70',
     indigo: 'from-indigo-500 to-indigo-600/70',
   };
+  
+  // Generate display ID from taskId, taskData, or fallback
+  const displayTaskId = taskId || taskData?.unique_id || taskData?.serialNumber || 
+    (taskData?.id ? `TSK-${String(taskData.id).padStart(5, '0')}` : null);
 
   return (
     <div 
@@ -40,6 +45,14 @@ const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments
         }
       }}
     >
+      {/* Task ID Badge */}
+      {displayTaskId && (
+        <div className="mb-1.5">
+          <span className="inline-block px-1.5 py-0.5 text-[10px] font-mono font-medium bg-gray-800/50 text-gray-300 rounded border border-gray-600/50">
+            {displayTaskId}
+          </span>
+        </div>
+      )}
       <h3 className="font-bold mb-2 text-theme text-sm leading-tight">{title}</h3>
       <div className="space-y-2">
         {subItems.map(item => (

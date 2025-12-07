@@ -414,6 +414,7 @@ Type **"help"** to see all topics!`;
    */
   async getUserContext(userId) {
     try {
+      // First check chat_user_preferences with users table
       const result = await pool.query(`
         SELECT 
           cp.first_name,
@@ -429,42 +430,102 @@ Type **"help"** to see all topics!`;
         WHERE cp.user_id = $1
       `, [userId]);
       
-      if (result.rows.length === 0) {
-        // Create preferences for new user
-        const userResult = await pool.query(`
-          SELECT id, username, email, role 
-          FROM users 
-          WHERE id = $1
-        `, [userId]);
+      if (result.rows.length > 0) {
+        return {
+          firstName: result.rows[0].first_name,
+          visitCount: result.rows[0].visit_count,
+          lastVisit: result.rows[0].last_visit,
+          roleName: result.rows[0].role_name,
+          roleId: null,
+          settings: result.rows[0].settings || {},
+          isNew: false
+        };
+      }
+      
+      // Check super_admins table
+      const superAdminResult = await pool.query(`
+        SELECT id, name, email, 'SUPER_ADMIN' as role
+        FROM super_admins
+        WHERE id = $1
+      `, [userId]);
+      
+      if (superAdminResult.rows.length > 0) {
+        const user = superAdminResult.rows[0];
+        const firstName = user.name.split(' ')[0];
+        return {
+          firstName,
+          fullName: user.name,
+          visitCount: 0,
+          lastVisit: null,
+          roleName: 'SUPER_ADMIN',
+          userType: 'SUPER_ADMIN',
+          roleId: null,
+          isNew: true
+        };
+      }
+      
+      // Check enterprise_admins table
+      const enterpriseAdminResult = await pool.query(`
+        SELECT id, name, email, 'ENTERPRISE_ADMIN' as role
+        FROM enterprise_admins
+        WHERE id = $1
+      `, [userId]);
+      
+      if (enterpriseAdminResult.rows.length > 0) {
+        const user = enterpriseAdminResult.rows[0];
+        const firstName = user.name.split(' ')[0];
+        return {
+          firstName,
+          fullName: user.name,
+          visitCount: 0,
+          lastVisit: null,
+          roleName: 'ENTERPRISE_ADMIN',
+          userType: 'ENTERPRISE_ADMIN',
+          roleId: null,
+          isNew: true
+        };
+      }
+      
+      // Check regular users table
+      const userResult = await pool.query(`
+        SELECT id, username, email, role 
+        FROM users 
+        WHERE id = $1
+      `, [userId]);
+      
+      if (userResult.rows.length > 0) {
+        const user = userResult.rows[0];
+        const firstName = user.username.split(' ')[0];
         
-        if (userResult.rows.length > 0) {
-          const user = userResult.rows[0];
-          const firstName = user.username.split(' ')[0];
-          
+        // Create preferences for new user
+        try {
           await pool.query(`
             INSERT INTO chat_user_preferences (user_id, first_name, visit_count)
             VALUES ($1, $2, 0)
+            ON CONFLICT (user_id) DO NOTHING
           `, [userId, firstName]);
-          
-          return {
-            firstName,
-            visitCount: 0,
-            lastVisit: null,
-            roleName: user.role,
-            roleId: null,
-            isNew: true
-          };
+        } catch (insertError) {
+          console.warn('[UnifiedChat] Could not create chat preferences:', insertError.message);
         }
+        
+        return {
+          firstName,
+          visitCount: 0,
+          lastVisit: null,
+          roleName: user.role,
+          roleId: null,
+          isNew: true
+        };
       }
       
+      // User not found anywhere - return default
       return {
-        firstName: result.rows[0].first_name,
-        visitCount: result.rows[0].visit_count,
-        lastVisit: result.rows[0].last_visit,
-        roleName: result.rows[0].role_name,
+        firstName: 'User',
+        visitCount: 0,
+        lastVisit: null,
+        roleName: null,
         roleId: null,
-        settings: result.rows[0].settings || {},
-        isNew: false
+        isNew: true
       };
     } catch (error) {
       console.error('[UnifiedChat] Error getting user context:', error);
@@ -757,7 +818,7 @@ Type **"help"** to see all topics!`;
   /**
    * Generate dynamic response based on intent
    */
-  async generateResponse(userId, intent, message, userContext) {
+  async generateResponse(userId, intent, message, userContext, confidence = 0.5) {
     const { firstName, roleName } = userContext;
     
     // Get the training data for this intent
@@ -895,8 +956,12 @@ Type **"help"** to see all topics!`;
 
   /**
    * Process user message - MAIN ENTRY POINT
+   * @param {number} userId - User ID
+   * @param {string} message - User message
+   * @param {string|null} conversationId - Optional conversation ID
+   * @param {Object} extraContext - Optional extra context (userName, userType, userRole)
    */
-  async processMessage(userId, message, conversationId = null) {
+  async processMessage(userId, message, conversationId = null, extraContext = {}) {
     try {
       const startTime = Date.now();
       this.stats.totalMessages++;
@@ -906,8 +971,20 @@ Type **"help"** to see all topics!`;
         await this.init();
       }
       
-      // Get user context
-      const userContext = await this.getUserContext(userId);
+      // Get user context - merge with extra context from caller
+      let userContext = await this.getUserContext(userId);
+      
+      // Override with extraContext if provided (for super_admins, enterprise_admins)
+      if (extraContext.userName) {
+        userContext.firstName = extraContext.userName.split(' ')[0];
+        userContext.fullName = extraContext.userName;
+      }
+      if (extraContext.userType) {
+        userContext.userType = extraContext.userType;
+      }
+      if (extraContext.userRole) {
+        userContext.roleName = extraContext.userRole;
+      }
       
       // ========== PREPROCESSING PIPELINE (NEW) ==========
       // Use the new preprocessor for normalization, protected spans, and spell check
@@ -965,7 +1042,8 @@ Type **"help"** to see all topics!`;
         userId, 
         intent, 
         messageToProcess, 
-        userContext
+        userContext,
+        confidence
       );
       
       // For guest users (userId=0), skip database conversation saving

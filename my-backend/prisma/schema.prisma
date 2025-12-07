@@ -26,7 +26,6 @@ model User {
   productType            String?                 @default("BUSINESS_ERP") @db.VarChar(50)
   tenant_id              String?                 @db.Uuid
   super_admin_id         Int?
-  created_by             Int?
   createdAt              DateTime?               @default(now()) @map("created_at") @db.Timestamp(6)
   profile_pic_url        String?                 @map("profile_pic_url")
   updatedAt              DateTime?               @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)

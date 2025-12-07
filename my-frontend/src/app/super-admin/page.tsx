@@ -5,11 +5,12 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/hooks/useAuth';
 import PermissionGuard from '@/common/components/PermissionGuard';
+import SuperAdminLayout from '@/common/layouts/superadmin-layout';
 
-// ✅ PERFORMANCE: Lazy load the heavy SuperAdminControlPanel
-// This component is 12MB and should only load after authentication
-const SuperAdminControlPanel = dynamic(
-  () => import('@/components/SuperAdminControlPanel'),
+// ✅ PERFORMANCE: Lazy load the heavy SuperAdminDashboard
+// This component loads charts and aggregated data
+const SuperAdminDashboard = dynamic(
+  () => import('@/components/SuperAdminDashboard'),
   {
     loading: () => (
       <div className="flex items-center justify-center min-h-screen">
@@ -81,7 +82,9 @@ export default function SuperAdminPage() {
 
   return (
     <PermissionGuard requirePermissions={true}>
-      <SuperAdminControlPanel />
+      <SuperAdminLayout>
+        <SuperAdminDashboard />
+      </SuperAdminLayout>
     </PermissionGuard>
   );
 }

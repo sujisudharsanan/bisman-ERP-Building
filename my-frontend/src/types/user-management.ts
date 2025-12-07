@@ -42,6 +42,7 @@ export interface Branch {
 
 export interface User {
   id: string;
+  unique_id?: string;        // Human-readable unique ID (e.g., USR-20251207-00001)
   first_name: string;
   last_name: string;
   email: string; // Main email field for compatibility

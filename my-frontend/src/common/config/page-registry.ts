@@ -466,18 +466,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 5,
   },
   {
-    id: 'super-admin-role-access-explorer',
-    name: 'Role & Access Explorer',
-    path: '/super-admin/system/role-access-explorer',
-    iconKey: "FileText",
-    module: 'super-admin',
-    permissions: ['user-management'],
-    roles: ['SUPER_ADMIN'],
-    status: 'active',
-    description: 'Interactive matrix for roles and workflows',
-    order: 6,
-  },
-  {
     id: 'super-admin-backup-restore',
     name: 'Backup & Restore',
     path: '/super-admin/system/backup-restore',

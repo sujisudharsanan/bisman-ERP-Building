@@ -113,8 +113,20 @@ async function generatePublicCode(clientType: string): Promise<{ public_code: st
     where: { client_type_year: { client_type: ct, year } },
     update: { last_number: { increment: 1 } },
     create: { client_type: ct, year, last_number: 1 },
+  }).catch(async (e: any) => {
+    // Fallback: try raw SQL if upsert fails (e.g., unique constraint naming mismatch)
+    console.warn('[generatePublicCode] Prisma upsert failed, attempting raw SQL fallback:', e?.message);
+    const existing = await prisma.$queryRaw`
+      INSERT INTO client_sequences (client_type, year, last_number, updated_at)
+      VALUES (${ct}, ${year}, 1, NOW())
+      ON CONFLICT (client_type, year)
+      DO UPDATE SET last_number = client_sequences.last_number + 1, updated_at = NOW()
+      RETURNING *
+    ` as any[];
+    if (existing && existing[0]) return existing[0];
+    throw e;
   });
-  const num: bigint = seq.last_number;
+  const num: bigint = BigInt(seq.last_number);
   const padded = num.toString().padStart(6, '0');
   const prefixMap: Record<string, string> = { trial: 'TRIAL', temporary: 'TRIAL', free: 'FREE', paid: 'PAID', enterprise: 'ENT', company: 'CLT' };
   const prefix = prefixMap[ct] || 'CLT';
@@ -144,11 +156,16 @@ router.get('/clients/:id', authMiddleware, async (req: Request, res: Response) =
 
 // Create client (tenant owner or platform) with optional server-side client-id-service persistence
 router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
+  console.log('[Create Client] Request received:', { body: req.body, user: (req as any).user?.email });
   try {
     const user = (req as any).user;
     const role = user?.role;
+    console.log('[Create Client] User role:', role, 'User ID:', user?.id);
     const isAllowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
-    if (!isAllowed) return res.status(403).json({ error: 'Admin only' });
+    if (!isAllowed) {
+      console.log('[Create Client] Forbidden - role not allowed:', role);
+      return res.status(403).json({ error: 'Admin only' });
+    }
 
     const {
       name,
@@ -203,41 +220,44 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
     if (normTax && !/^[A-Z0-9]{10,15}$/.test(normTax)) {
       return res.status(400).json({ error: 'invalid_tax_id_format' });
     }
-    // Query potential duplicates by legal_name/trade_name/tax_id
-        // Note: legal_name/trade_name/tax_id are stored inside settings.enterprise JSON, so select settings
+    // Query potential duplicates by legal_name/trade_name/tax_id (using direct columns on Client model)
+    let duplicates: Array<{ id: string; legal_name: string | null; trade_name: string | null; tax_id: string | null; status: string | null }> = [];
+    try {
+      const orConditions: any[] = [];
+      if (normName) {
+        orConditions.push({ legal_name: { contains: normName, mode: 'insensitive' } });
+        orConditions.push({ trade_name: { contains: normName, mode: 'insensitive' } });
+      }
+      if (normTax) {
+        orConditions.push({ tax_id: { equals: normTax, mode: 'insensitive' } });
+      }
+      if (orConditions.length > 0) {
         const rawDuplicates = await prisma.client.findMany({
-          where: {
-            OR: [
-              normName ? { settings: { contains: { enterprise: { legal_name } } } } : undefined,
-              normName ? { settings: { contains: { enterprise: { trade_name } } } } : undefined,
-              normTax ? { settings: { contains: { enterprise: { tax_id: normTax } } } } : undefined,
-            ].filter(Boolean) as any,
-          },
+          where: { OR: orConditions },
           take: 5,
-          select: { id: true, settings: true }
-        }).catch(() => []);
-    
-        // Normalize results to a shape expected by downstream code (id, legal_name, trade_name, tax_id, status)
-        const duplicates = (rawDuplicates || []).map((r: any) => {
-          const ent = (r.settings && (r.settings.enterprise || r.settings)) || {};
-          return {
-            id: r.id,
-            legal_name: ent.legal_name || null,
-            trade_name: ent.trade_name || null,
-            tax_id: ent.tax_id || null,
-            status: ent.status || null,
-          };
+          select: { id: true, legal_name: true, trade_name: true, tax_id: true, status: true }
         });
-    
-        if (duplicates && duplicates.length > 0) {
-          // Return structured duplicate info (not blocking create unless exact critical match)
-          const exactTax = normTax && duplicates.find(d => (d.tax_id || '').toUpperCase() === normTax);
-          if (exactTax) {
-            return res.status(409).json({ error: 'duplicate_tax_id', duplicates });
-          }
-          // Soft warning via header; proceed but include list
-          res.setHeader('X-Duplicate-Warning', 'similar_client_detected');
-        }
+        duplicates = rawDuplicates.map((r: any) => ({
+          id: r.id,
+          legal_name: r.legal_name || null,
+          trade_name: r.trade_name || null,
+          tax_id: r.tax_id || null,
+          status: r.status || null,
+        }));
+      }
+    } catch (dupErr: any) {
+      console.warn('[Create client] Duplicate check failed, proceeding:', dupErr?.message);
+    }
+
+    if (duplicates && duplicates.length > 0) {
+      // Return structured duplicate info (not blocking create unless exact critical match)
+      const exactTax = normTax && duplicates.find(d => (d.tax_id || '').toUpperCase() === normTax);
+      if (exactTax) {
+        return res.status(409).json({ error: 'duplicate_tax_id', duplicates });
+      }
+      // Soft warning via header; proceed but include list
+      res.setHeader('X-Duplicate-Warning', 'similar_client_detected');
+    }
 
     if (!name && !legal_name && !trade_name) return res.status(400).json({ error: 'name or legal_name/trade_name required' });
     let sid = super_admin_id || user?.super_admin_id;
@@ -334,23 +354,62 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
     };
 
     let created: any;
-    // Generate public_code/client_number for full create (store inside enterprise.meta)
+    // Generate public_code/client_number for full create
     let publicCodeData: { public_code: string; client_number: bigint } | null = null;
     try { publicCodeData = await generatePublicCode((client_type || 'company').toString()); } catch (e) { console.warn('Public code gen failed', (e as any)?.message); }
     if (publicCodeData) {
-      (enterprise as any).meta = { ...(enterprise as any).meta, public_code: publicCodeData.public_code, client_number: publicCodeData.client_number };
+      (enterprise as any).meta = { ...(enterprise as any).meta, public_code: publicCodeData.public_code, client_number: Number(publicCodeData.client_number) };
     }
+
+    // Build the common client data object with all direct columns populated
+    const clientData: any = {
+      name: name || legal_name || trade_name,
+      productType,
+      subscriptionPlan,
+      super_admin_id: sid,
+      settings: { enterprise } as any,
+      // Populate direct columns from the schema
+      client_code: effectiveClientCode,
+      legal_name: legal_name || null,
+      trade_name: trade_name || null,
+      client_type: client_type || null,
+      industry: industry || null,
+      business_size: business_size || null,
+      registration_number: registration_number || null,
+      tax_id: normTax || tax_id || null,
+      legal_status: legal_status || null,
+      import_export_code: import_export_code || null,
+      registration_year: registration_year ? parseInt(registration_year, 10) : null,
+      status: status || 'Active',
+    };
+    // Add public_code and client_number if generated
+    if (publicCodeData) {
+      clientData.public_code = publicCodeData.public_code;
+      clientData.client_number = publicCodeData.client_number;
+    }
+    // Add addresses and contacts as JSON
+    if (primary_address || secondary_addresses) {
+      const addrArr: any[] = [];
+      if (primary_address && typeof primary_address === 'object') addrArr.push({ type: primary_address.type || 'registered', ...primary_address });
+      if (Array.isArray(secondary_addresses)) addrArr.push(...secondary_addresses);
+      if (addrArr.length > 0) clientData.addresses = addrArr;
+    }
+    if (primary_contact || secondary_contact) {
+      const contactArr: any[] = [];
+      if (primary_contact && (primary_contact.name || primary_contact.email)) contactArr.push({ ...primary_contact, primary: true });
+      if (secondary_contact && (secondary_contact.name || secondary_contact.email)) contactArr.push({ ...secondary_contact, primary: false });
+      if (contactArr.length > 0) clientData.contact_persons = contactArr;
+    }
+    if (financial_details) clientData.financial_details = financial_details;
+    if (bank_details) clientData.bank_details = bank_details;
+    if (documents) clientData.documents = documents;
+    if (system_access) clientData.system_access = system_access;
+    if (operational) clientData.operational = operational;
+    if (risk) clientData.risk = risk;
+
     if (adminUser || ensurePermissions) {
       await prisma.$transaction(async (tx) => {
-        created = await tx.client.create({
-          data: {
-            name: name || legal_name || trade_name,
-            productType,
-            subscriptionPlan,
-            super_admin_id: sid,
-            settings: { enterprise } as any,
-          },
-        });
+        created = await tx.client.create({ data: clientData });
         if (ensurePermissions) {
           const modules = await tx.module.findMany({ where: { is_active: true } });
           for (const m of modules) {
@@ -363,15 +422,7 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
         }
       });
   } else {
-      created = await prisma.client.create({
-        data: {
-          name: name || legal_name || trade_name,
-          productType,
-          subscriptionPlan,
-          super_admin_id: sid,
-          settings: { enterprise } as any,
-        },
-      });
+      created = await prisma.client.create({ data: clientData });
     }
 
     if (saveAsDraft && !adminUser) {
@@ -397,6 +448,7 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
       const hashed = await bcrypt.hash(password, 10);
       const emailPrefix = (adminUser.email && adminUser.email.split('@')[0]) || 'admin';
       const username = adminUser.username || emailPrefix;
+      console.log('[Create Client] Creating admin user:', { email: adminUser.email, username });
       adminCreated = await prisma.user.create({
         data: {
           username,
@@ -410,11 +462,13 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
           profile_pic_url: adminUser.profile_pic_url || null,
         },
       });
+      console.log('[Create Client] Admin user created:', adminCreated.id);
     }
   // Include effectiveClientCode separately for frontend even if underlying schema auto-populated differently.
+  console.log('[Create Client] Success - client created:', created?.id);
   res.status(201).json({ success: true, client_code: effectiveClientCode, public_code: (enterprise as any).meta?.public_code, data: created, admin: adminCreated ? { id: adminCreated.id, email: adminCreated.email, username: adminCreated.username } : null, tempPassword: generatedPassword });
   } catch (e: any) {
-    console.error('Create client error', e);
+    console.error('[Create Client] ERROR:', e.message, e.stack);
     // Handle unique constraint on client_code gracefully
     if (e.code === 'P2002' && e.meta?.target?.includes('client_code')) {
       return res.status(409).json({ error: 'Client code already exists (race condition). Retry.' });

@@ -10,6 +10,9 @@ const API_URL =
   process.env.NEXT_PUBLIC_API_BASE_URL ||
   null; // When null, we use same-origin and let Express/Next handle /api/*
 
+// For local development, default to localhost:5000 if no API_URL is set
+const BACKEND_URL = API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : null);
+
 const isCI = process.env.CI === 'true' || process.env.VERCEL === '1' || process.env.RAILWAY === '1';
 
 let nextConfig = {
@@ -35,10 +38,11 @@ let nextConfig = {
   async rewrites() {
     const rules = [];
 
-    // Prefer same-origin to avoid CORS; only rewrite if explicit external API_URL is provided.
-    if (API_URL) {
+    // Always proxy /api/* requests to backend (handles CORS automatically)
+    if (BACKEND_URL) {
+      console.log('[next.config.js] Proxying /api/* to:', BACKEND_URL);
       rules.push(
-        { source: '/api/:path*', destination: `${API_URL}/api/:path*` },
+        { source: '/api/:path*', destination: `${BACKEND_URL}/api/:path*` },
       );
     }
     return rules;

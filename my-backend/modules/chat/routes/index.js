@@ -32,6 +32,14 @@ const assistantRoutes = require('./assistant');
 const workflowsRoutes = require('./workflows');
 const preprocessorRoutes = require('./preprocessor');
 
+// Import training management routes (Advanced Training System)
+let trainingRoutes;
+try {
+  trainingRoutes = require('../../../routes/chat/training');
+} catch (e) {
+  console.warn('[Chat Module] Training routes not loaded:', e.message);
+}
+
 // Mount authenticated routes
 router.use('/ai', aiRoutes);        // /api/chat/ai/*
 router.use('/', aiRoutes);          // /api/chat/message (AI assistant) - mount at root since ai.js has /message route
@@ -41,5 +49,11 @@ router.use('/', preprocessorRoutes); // /api/chat/preprocess/*, /api/chat/dictio
 router.use('/threads', messagesRoutes); // /api/chat/threads/* (legacy)
 router.use('/', threadMessagesRoutes); // /api/chat/threads/:id/messages, /api/chat/messages/* (new DB-backed)
 router.use('/calls', callsRoutes);  // /api/chat/calls/*
+
+// Mount training management routes (Advanced Training System)
+if (trainingRoutes) {
+  router.use('/training', trainingRoutes); // /api/chat/training/*
+  console.log('✅ Chat Training routes loaded at /api/chat/training');
+}
 
 module.exports = router;

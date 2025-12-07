@@ -150,6 +150,51 @@ router.get('/history', authenticate, requireAdmin, async (req, res) => {
 });
 
 // ============================================================================
+// GET /api/deployment/trend - Get deployment trend data for charts
+// ============================================================================
+
+router.get('/trend', authenticate, requireAdmin, async (req, res) => {
+  try {
+    const { period = '7days' } = req.query;
+    const days = period === 'today' ? 24 : period === '7days' ? 7 : period === '14days' ? 14 : 30;
+    
+    // Generate trend data based on deployment history
+    // In a real implementation, this would query actual deployment records
+    const trend = [];
+    
+    for (let i = 0; i < days; i++) {
+      const date = new Date();
+      if (period === 'today') {
+        date.setHours(i, 0, 0, 0);
+      } else {
+        date.setDate(date.getDate() - (days - 1 - i));
+      }
+      
+      const dateStr = period === 'today' ? `${i}:00` : date.toISOString().split('T')[0];
+      
+      // For now, return zeros since we don't have deployment tracking yet
+      trend.push({
+        date: dateStr,
+        successful: 0,
+        failed: 0,
+        total: 0,
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: trend
+    });
+  } catch (error) {
+    console.error('[Deployment] Error fetching trend:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch deployment trend'
+    });
+  }
+});
+
+// ============================================================================
 // GET /api/deployment/history/:id - Get deployment detail
 // ============================================================================
 

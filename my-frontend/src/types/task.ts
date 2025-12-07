@@ -79,6 +79,8 @@ export interface TaskUser {
 
 export interface Task {
   id: number;
+  unique_id?: string;        // Human-readable unique ID (e.g., TSK-20251207-00001)
+  serialNumber?: string;     // Alternative serial number for task lookup
   title: string;
   description: string | null;
   status: TaskStatus;

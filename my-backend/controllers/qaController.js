@@ -222,7 +222,25 @@ exports.getTestTasks = async (req, res) => {
     const { status, priority, module, assigned_to, page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     
-    let whereClause = `WHERE (t.tenant_id = ${tenantId} OR t.tenant_id IS NULL)`;
+    // Check if QA tables exist
+    let tablesExist = true;
+    try {
+      await prisma.$queryRaw`SELECT 1 FROM qa_test_tasks LIMIT 1`;
+    } catch (e) {
+      tablesExist = false;
+    }
+
+    if (!tablesExist) {
+      return res.json({
+        tasks: [],
+        total: 0,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        _notice: 'QA tables not yet created'
+      });
+    }
+    
+    let whereClause = `WHERE (t.tenant_id = '${tenantId}' OR t.tenant_id IS NULL)`;
     if (status) whereClause += ` AND t.status = '${status}'`;
     if (priority) whereClause += ` AND t.priority = '${priority}'`;
     if (module) whereClause += ` AND t.module = '${module}'`;
@@ -442,7 +460,25 @@ exports.getIssues = async (req, res) => {
     const { status, severity, module, assigned_to, opened_by, task_id, page = 1, limit = 20 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     
-    let whereClause = `WHERE (i.tenant_id = ${tenantId} OR i.tenant_id IS NULL)`;
+    // Check if QA tables exist
+    let tablesExist = true;
+    try {
+      await prisma.$queryRaw`SELECT 1 FROM qa_issues LIMIT 1`;
+    } catch (e) {
+      tablesExist = false;
+    }
+
+    if (!tablesExist) {
+      return res.json({
+        issues: [],
+        total: 0,
+        page: parseInt(page),
+        limit: parseInt(limit),
+        _notice: 'QA tables not yet created'
+      });
+    }
+    
+    let whereClause = `WHERE (i.tenant_id = '${tenantId}' OR i.tenant_id IS NULL)`;
     if (status) whereClause += ` AND i.status = '${status}'`;
     if (severity) whereClause += ` AND i.severity = '${severity}'`;
     if (module) whereClause += ` AND i.module = '${module}'`;

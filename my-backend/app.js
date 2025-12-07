@@ -833,6 +833,17 @@ try {
   }
 }
 
+// SuperAdmin Dashboard routes (aggregated dashboard endpoints)
+try {
+  const superadminDashboardRoutes = require('./routes/superadminDashboard')
+  app.use('/api', superadminDashboardRoutes)
+  console.log('✅ SuperAdmin Dashboard routes loaded at /api')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('SuperAdmin Dashboard routes not loaded:', e && e.message)
+  }
+}
+
 // QA / Testing Module routes (bug tracking, test assignments)
 try {
   const qaRoutes = require('./routes/qaRoutes')
@@ -3464,6 +3475,28 @@ app.get('/api/auth/permissions', authenticate, async (req, res) => {
 
   try {
     const userId = req.user.id
+    
+    // Check if RBAC tables exist
+    let tablesExist = true;
+    try {
+      await prisma.$queryRaw`SELECT 1 FROM rbac_user_roles LIMIT 1`;
+    } catch (e) {
+      tablesExist = false;
+    }
+
+    if (!tablesExist) {
+      // Return basic permissions if RBAC tables don't exist
+      const permissions = [];
+      if (req.user.roleName === 'SUPER_ADMIN') {
+        permissions.push('*.*'); // All permissions wildcard
+      }
+      return res.json({ 
+        permissions,
+        role: req.user.roleName,
+        userId: req.user.id,
+        _notice: 'RBAC tables not available'
+      });
+    }
     
     // Get user permissions from database
     const userPermissions = await prisma.$queryRaw`
