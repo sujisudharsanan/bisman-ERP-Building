@@ -1,7 +1,7 @@
 'use client';
 
-import DeploymentToolsPage from '@/app/system/deployment-tools/page';
+import DeploymentCenter from '@/modules/system/pages/deployment-center';
 
 export default function SuperAdminDeploymentToolsPage() {
-  return <DeploymentToolsPage />;
+  return <DeploymentCenter />;
 }

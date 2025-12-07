@@ -70,6 +70,28 @@ exports.getDashboardStats = async (req, res) => {
       return res.status(401).json({ error: 'Unauthorized' });
     }
     
+    // Check if QA tables exist
+    let tablesExist = true;
+    try {
+      await prisma.$queryRaw`SELECT 1 FROM qa_test_tasks LIMIT 1`;
+    } catch (e) {
+      tablesExist = false;
+    }
+
+    if (!tablesExist) {
+      // Return empty stats if tables don't exist
+      return res.json({
+        stats: {
+          myTasks: 0,
+          myOpenIssues: 0,
+          assignedToMe: 0,
+          retestPending: 0
+        },
+        recentActivity: [],
+        _notice: 'QA tables not yet created. Run migrations to enable QA module.'
+      });
+    }
+    
     // Get my test tasks count by status
     const myTasks = await prisma.$queryRaw`
       SELECT status, COUNT(*)::int as count 
@@ -105,10 +127,13 @@ exports.getDashboardStats = async (req, res) => {
     `;
     
     res.json({
-      myTasks: myTasks.reduce((acc, row) => ({ ...acc, [row.status]: row.count }), {}),
-      myOpenIssues: myOpenIssues[0]?.count || 0,
-      assignedToMe: assignedToMe.reduce((acc, row) => ({ ...acc, [row.status]: row.count }), {}),
-      retestPending: retestPending[0]?.count || 0
+      stats: {
+        myTasks: Object.values(myTasks.reduce((acc, row) => ({ ...acc, [row.status]: row.count }), {})).reduce((a, b) => a + b, 0),
+        myOpenIssues: myOpenIssues[0]?.count || 0,
+        assignedToMe: Object.values(assignedToMe.reduce((acc, row) => ({ ...acc, [row.status]: row.count }), {})).reduce((a, b) => a + b, 0),
+        retestPending: retestPending[0]?.count || 0
+      },
+      recentActivity: []
     });
   } catch (error) {
     console.error('[QA] Dashboard error:', error);

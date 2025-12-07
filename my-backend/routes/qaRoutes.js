@@ -300,4 +300,251 @@ router.get('/modules', qaController.getModuleList);
  */
 router.get('/users', qaController.getAssignableUsers);
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// ERP SYNC DATA - Dynamic Role & Access Explorer Data
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/**
+ * @route   GET /api/qa/erp-sync-data
+ * @desc    Get real-time ERP system data for Role & Access Explorer
+ *          Includes: roles, permissions, routes, user-role mappings, actions, workflows
+ * @access  Private (QA_TESTER, QA_LEAD, QA_ADMIN or authenticated users)
+ */
+router.get('/erp-sync-data', async (req, res) => {
+  const { getPrisma } = require('../lib/prisma');
+  const prisma = getPrisma();
+
+  try {
+    console.log('[QA ERP Sync] Fetching comprehensive ERP data...');
+    const syncStartTime = Date.now();
+
+    // Fetch all RBAC data in parallel for performance
+    const [
+      rbacRoles,
+      rbacPermissions,
+      rbacRoutes,
+      rbacUserRoles,
+      rbacActions,
+      rbacRoleRoutes,
+      rbacRolePermissions,
+      totalUsers,
+      modules,
+    ] = await Promise.all([
+      // 1. All roles with their metadata
+      prisma.rbac_roles.findMany({
+        orderBy: { display_order: 'asc' },
+      }),
+      // 2. All permissions
+      prisma.rbac_permissions.findMany({
+        orderBy: { created_at: 'desc' },
+      }),
+      // 3. All routes/pages
+      prisma.rbac_routes.findMany({
+        orderBy: { route_order: 'asc' },
+      }),
+      // 4. User-role assignments (count per role)
+      prisma.rbac_user_roles.findMany({
+        select: {
+          role_id: true,
+          user_id: true,
+          is_active: true,
+        },
+      }),
+      // 5. Available actions
+      prisma.rbac_actions.findMany({
+        orderBy: { action_name: 'asc' },
+      }),
+      // 6. Role-route mappings (which roles can access which routes)
+      prisma.rbac_role_routes.findMany({
+        select: {
+          role_id: true,
+          route_id: true,
+          can_access: true,
+        },
+      }),
+      // 7. Role-permission mappings (which roles have which permissions)
+      prisma.rbac_role_permissions.findMany({
+        select: {
+          role_id: true,
+          permission_id: true,
+          can_create: true,
+          can_read: true,
+          can_update: true,
+          can_delete: true,
+        },
+      }),
+      // 8. Total user count
+      prisma.users.count(),
+      // 9. Module definitions
+      prisma.modules.findMany({
+        where: { is_active: true },
+        select: {
+          id: true,
+          name: true,
+          key: true,
+          is_active: true,
+        },
+      }),
+    ]);
+
+    // Build role summary with computed stats
+    const roleSummary = rbacRoles.map((role) => {
+      const rolePermissions = rbacRolePermissions.filter(rp => rp.role_id === role.id);
+      const roleRoutes = rbacRoleRoutes.filter(rr => rr.role_id === role.id && rr.can_access);
+      const roleUsers = rbacUserRoles.filter(ur => ur.role_id === role.id && ur.is_active);
+
+      // Calculate permission breakdown
+      let fullAccess = 0;
+      let partialAccess = 0;
+      let noAccess = 0;
+
+      rolePermissions.forEach((rp) => {
+        const hasAll = rp.can_create && rp.can_read && rp.can_update && rp.can_delete;
+        const hasNone = !rp.can_create && !rp.can_read && !rp.can_update && !rp.can_delete;
+        if (hasAll) fullAccess++;
+        else if (hasNone) noAccess++;
+        else partialAccess++;
+      });
+
+      return {
+        id: role.id,
+        name: role.role_name,
+        displayName: role.display_name || role.role_name,
+        description: role.description || 'No description available',
+        level: role.level || 0,
+        displayOrder: role.display_order || 999,
+        isActive: role.is_active,
+        isSystemRole: role.is_system_role || false,
+        parentRoleId: role.parent_role_id,
+        stats: {
+          totalPermissions: rolePermissions.length,
+          totalRoutes: roleRoutes.length,
+          totalUsers: roleUsers.length,
+          fullAccess,
+          partialAccess,
+          noAccess,
+          chartData: [fullAccess, partialAccess, noAccess],
+        },
+        permissions: rolePermissions.map((rp) => {
+          const perm = rbacPermissions.find(p => p.id === rp.permission_id);
+          return {
+            id: rp.permission_id,
+            name: perm?.permission_name || 'Unknown',
+            resource: perm?.resource || 'Unknown',
+            canCreate: rp.can_create,
+            canRead: rp.can_read,
+            canUpdate: rp.can_update,
+            canDelete: rp.can_delete,
+          };
+        }),
+        routes: roleRoutes.map((rr) => {
+          const route = rbacRoutes.find(r => r.id === rr.route_id);
+          return {
+            id: rr.route_id,
+            path: route?.route_path || 'Unknown',
+            name: route?.route_name || 'Unknown',
+            module: route?.module_key || 'Unknown',
+          };
+        }),
+      };
+    });
+
+    // Build comprehensive matrix data
+    const matrixData = rbacPermissions.slice(0, 50).map((perm) => {
+      const roleAccess = {};
+      rbacRoles.forEach((role) => {
+        const rolePermission = rbacRolePermissions.find(
+          rp => rp.role_id === role.id && rp.permission_id === perm.id
+        );
+        if (rolePermission) {
+          const hasAll = rolePermission.can_create && rolePermission.can_read && 
+                         rolePermission.can_update && rolePermission.can_delete;
+          const hasNone = !rolePermission.can_create && !rolePermission.can_read && 
+                          !rolePermission.can_update && !rolePermission.can_delete;
+          roleAccess[role.role_name] = hasAll ? 'full' : hasNone ? 'none' : 'partial';
+        } else {
+          roleAccess[role.role_name] = 'none';
+        }
+      });
+      return {
+        permissionName: perm.permission_name,
+        resource: perm.resource || 'General',
+        access: roleAccess,
+      };
+    });
+
+    // Route/page access matrix
+    const routeMatrix = rbacRoutes.slice(0, 50).map((route) => {
+      const roleAccess = {};
+      rbacRoles.forEach((role) => {
+        const roleRoute = rbacRoleRoutes.find(
+          rr => rr.role_id === role.id && rr.route_id === route.id
+        );
+        roleAccess[role.role_name] = roleRoute?.can_access ? 'yes' : 'no';
+      });
+      return {
+        routePath: route.route_path,
+        routeName: route.route_name,
+        module: route.module_key || 'Unknown',
+        access: roleAccess,
+      };
+    });
+
+    // Build hierarchy tree
+    const buildHierarchy = (roles, parentId = null) => {
+      return roles
+        .filter(r => r.parent_role_id === parentId)
+        .sort((a, b) => (a.display_order || 999) - (b.display_order || 999))
+        .map((role) => ({
+          id: role.id,
+          name: role.display_name || role.role_name,
+          level: role.level || 0,
+          children: buildHierarchy(roles, role.id),
+        }));
+    };
+
+    const roleHierarchy = buildHierarchy(rbacRoles);
+
+    const syncEndTime = Date.now();
+
+    // Response
+    res.json({
+      success: true,
+      syncedAt: new Date().toISOString(),
+      syncDuration: `${syncEndTime - syncStartTime}ms`,
+      summary: {
+        totalRoles: rbacRoles.length,
+        totalPermissions: rbacPermissions.length,
+        totalRoutes: rbacRoutes.length,
+        totalActions: rbacActions.length,
+        totalUsers,
+        totalModules: modules.length,
+        totalUserRoleAssignments: rbacUserRoles.length,
+      },
+      roles: roleSummary,
+      roleHierarchy,
+      permissionMatrix: matrixData,
+      routeMatrix,
+      actions: rbacActions.map((a) => ({
+        id: a.id,
+        name: a.action_name,
+        description: a.description,
+      })),
+      modules: modules.map((m) => ({
+        id: m.id,
+        name: m.name,
+        key: m.key,
+        isActive: m.is_active,
+      })),
+    });
+  } catch (error) {
+    console.error('[QA ERP Sync] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to sync ERP data',
+      details: error.message,
+    });
+  }
+});
+
 module.exports = router;

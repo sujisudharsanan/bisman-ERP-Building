@@ -9,13 +9,15 @@ import {
   ClipboardList, 
   AlertTriangle,
   LogOut,
-  Home
+  Home,
+  Shield
 } from 'lucide-react';
 
 const navItems = [
   { href: '/qa', label: 'Dashboard', icon: LayoutDashboard, exact: true },
   { href: '/qa/test-tasks', label: 'Test Tasks', icon: ClipboardList },
   { href: '/qa/issues', label: 'Issues', icon: AlertTriangle },
+  { href: '/qa/role-access-explorer', label: 'Role Explorer', icon: Shield, badge: 'Live' },
 ];
 
 export default function QALayout({ children }: { children: React.ReactNode }) {
@@ -70,6 +72,11 @@ export default function QALayout({ children }: { children: React.ReactNode }) {
                     >
                       <Icon className="w-4 h-4" />
                       {item.label}
+                      {item.badge && (
+                        <span className="px-1.5 py-0.5 text-[10px] font-semibold bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 rounded">
+                          {item.badge}
+                        </span>
+                      )}
                     </Link>
                   );
                 })}

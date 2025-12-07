@@ -145,6 +145,31 @@ router.get('/stats', authenticate, requireAdmin, async (req, res) => {
     const { hours = 24 } = req.query;
     const hoursInt = parseInt(hours);
 
+    // Check if fallback_logs table exists
+    let tableExists = false;
+    try {
+      await prisma.$queryRawUnsafe(`SELECT 1 FROM fallback_logs LIMIT 1`);
+      tableExists = true;
+    } catch (e) {
+      // Table doesn't exist
+    }
+
+    if (!tableExists) {
+      // Return empty stats if tables don't exist
+      const memoryStats = FallbackService?.getStats?.() || { totalFallbacks: 0, byModule: {}, bySeverity: {} };
+      return res.json({
+        success: true,
+        data: {
+          timeRange: `${hoursInt} hours`,
+          hourlyBreakdown: [],
+          moduleSummary: [],
+          recentAlerts: [],
+          memoryStats,
+          _notice: 'Fallback logging tables not yet created'
+        }
+      });
+    }
+
     // Get hourly breakdown
     const hourlyStats = await prisma.$queryRawUnsafe(`
       SELECT 
@@ -173,16 +198,21 @@ router.get('/stats', authenticate, requireAdmin, async (req, res) => {
       ORDER BY total DESC
     `);
 
-    // Get recent alerts
-    const recentAlerts = await prisma.$queryRawUnsafe(`
-      SELECT * FROM fallback_alerts 
-      WHERE alert_triggered_at > NOW() - INTERVAL '${hoursInt} hours'
-      ORDER BY alert_triggered_at DESC
-      LIMIT 20
-    `);
+    // Get recent alerts (check if table exists first)
+    let recentAlerts = [];
+    try {
+      recentAlerts = await prisma.$queryRawUnsafe(`
+        SELECT * FROM fallback_alerts 
+        WHERE alert_triggered_at > NOW() - INTERVAL '${hoursInt} hours'
+        ORDER BY alert_triggered_at DESC
+        LIMIT 20
+      `);
+    } catch (e) {
+      // fallback_alerts table doesn't exist
+    }
 
     // Get in-memory stats
-    const memoryStats = FallbackService.getStats();
+    const memoryStats = FallbackService?.getStats?.() || { totalFallbacks: 0, byModule: {}, bySeverity: {} };
 
     res.json({
       success: true,
@@ -355,6 +385,23 @@ router.get('/alerts', authenticate, requireAdmin, async (req, res) => {
   try {
     const { acknowledged } = req.query;
     
+    // Check if fallback_alerts table exists
+    let tableExists = false;
+    try {
+      await prisma.$queryRawUnsafe(`SELECT 1 FROM fallback_alerts LIMIT 1`);
+      tableExists = true;
+    } catch (e) {
+      // Table doesn't exist
+    }
+
+    if (!tableExists) {
+      return res.json({
+        success: true,
+        data: [],
+        _notice: 'Fallback alerts table not yet created'
+      });
+    }
+
     let whereClause = '';
     if (acknowledged !== undefined) {
       whereClause = `WHERE acknowledged = ${acknowledged === 'true'}`;

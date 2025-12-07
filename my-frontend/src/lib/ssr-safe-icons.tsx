@@ -270,6 +270,93 @@ export const Key = makeIcon(<path d="M3 11a4 4 0 110-8 4 4 0 010 8zM21 21l-6-6" 
 export const HelpCircle = makeIcon(<path d="M12 2a10 10 0 100 20 10 10 0 000-20zM10 10a2 2 0 114 0c0 2-2 2-2 4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />);
 export const MessageSquare = makeIcon(<path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />);
 
+// Fallback & Recovery icons
+export const Activity = makeIcon(
+  <path d="M22 12h-4l-3 9L9 3l-3 9H2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+);
+
+export const Server = makeIcon(
+  <>
+    <rect x="2" y="2" width="20" height="8" rx="2" strokeWidth="2" />
+    <rect x="2" y="14" width="20" height="8" rx="2" strokeWidth="2" />
+    <path d="M6 6h.01M6 18h.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </>
+);
+
+export const HardDrive = makeIcon(
+  <>
+    <path d="M22 12H2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <rect x="2" y="6" width="20" height="12" rx="2" strokeWidth="2" />
+    <circle cx="6" cy="12" r="0.5" fill="currentColor" />
+  </>
+);
+
+export const Wifi = makeIcon(
+  <>
+    <path d="M5 12.55a11 11 0 0114 0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M8.53 16.11a6 6 0 016.95 0" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M12 20h.01" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </>
+);
+
+export const Play = makeIcon(
+  <polygon points="5 3 19 12 5 21 5 3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+);
+
+export const Pause = makeIcon(
+  <>
+    <rect x="6" y="4" width="4" height="16" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <rect x="14" y="4" width="4" height="16" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </>
+);
+
+export const ChevronDown = makeIcon(
+  <path d="M6 9l6 6 6-6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+);
+
+export const ChevronUp = makeIcon(
+  <path d="M18 15l-6-6-6 6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+);
+
+export const ExternalLink = makeIcon(
+  <>
+    <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <polyline points="15 3 21 3 21 9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <line x1="10" y1="14" x2="21" y2="3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </>
+);
+
+export const Wrench = makeIcon(
+  <path d="M14.7 6.3a1 1 0 000 1.4l1.6 1.6a1 1 0 001.4 0l3.77-3.77a6 6 0 01-7.94 7.94l-6.91 6.91a2.12 2.12 0 01-3-3l6.91-6.91a6 6 0 017.94-7.94l-3.76 3.76z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+);
+
+export const ToggleLeft = makeIcon(
+  <>
+    <rect x="1" y="5" width="22" height="14" rx="7" strokeWidth="2" />
+    <circle cx="8" cy="12" r="3" strokeWidth="2" />
+  </>
+);
+
+export const Zap = makeIcon(
+  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+);
+
+export const Unlock = makeIcon(
+  <>
+    <rect x="3" y="11" width="18" height="11" rx="2" strokeWidth="2" />
+    <path d="M7 11V7a5 5 0 019.9-1" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </>
+);
+
+export const UserX = makeIcon(
+  <>
+    <path d="M16 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="8.5" cy="7" r="4" strokeWidth="2" />
+    <line x1="18" y1="8" x2="23" y2="13" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+    <line x1="23" y1="8" x2="18" y2="13" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+  </>
+);
+
 export default {
   Search,
   Plus,
@@ -299,4 +386,18 @@ export default {
   Key,
   HelpCircle,
   MessageSquare,
+  Activity,
+  Server,
+  HardDrive,
+  Wifi,
+  Play,
+  Pause,
+  ChevronDown,
+  ChevronUp,
+  ExternalLink,
+  Wrench,
+  ToggleLeft,
+  Zap,
+  Unlock,
+  UserX,
 };

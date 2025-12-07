@@ -264,7 +264,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto px-4">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
-              SME Agility Meets Enterprise Power
+              Scale Without Limits – ERP for Every Chapter
             </h2>
             <p className="text-gray-600 max-w-2xl mx-auto">
               Most ERPs force you to choose between simplicity and capability. BISMAN gives you both.
@@ -299,6 +299,49 @@ export default function LandingPage() {
                 <span className="text-4xl mb-4 block">{item.icon}</span>
                 <h3 className="text-xl font-bold text-gray-900 mb-2">{item.title}</h3>
                 <p className="text-gray-600">{item.description}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* Transformation Section - Before & After */}
+      <section className="py-20 bg-white overflow-hidden">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-gray-900 mb-4">
+              See the Transformation
+            </h2>
+            <p className="text-gray-600 max-w-2xl mx-auto">
+              From chaos to clarity. From spreadsheets to streamlined operations.
+            </p>
+          </div>
+
+          {/* Before & After Image */}
+          <div className="max-w-2xl mx-auto">
+            <div className="relative rounded-xl overflow-hidden shadow-lg border border-gray-100">
+              <Image 
+                src="/images/bisman-transformation.png" 
+                alt="BISMAN ERP Transformation - From cluttered office to organized digital workspace"
+                width={600}
+                height={300}
+                className="w-full h-auto object-contain"
+                priority
+              />
+            </div>
+          </div>
+
+          {/* Stats below image */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-6 mt-12">
+            {[
+              { value: '70%', label: 'Less time on data entry' },
+              { value: '3x', label: 'Faster decision making' },
+              { value: '100%', label: 'Data visibility' },
+              { value: '50%', label: 'Reduced operational costs' },
+            ].map((stat, i) => (
+              <div key={i} className="text-center">
+                <div className="text-3xl md:text-4xl font-bold text-[#102A4A]">{stat.value}</div>
+                <p className="text-gray-600 text-sm mt-1">{stat.label}</p>
               </div>
             ))}
           </div>

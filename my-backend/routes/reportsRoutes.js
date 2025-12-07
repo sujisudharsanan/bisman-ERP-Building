@@ -487,20 +487,28 @@ router.get('/pages-roles', async (req, res) => {
     
     console.log(`[PagesRolesReport] Found ${pages.length} pages in registry`);
 
+    // Check if showAll query param is passed (for super admin to see all pages)
+    const showAll = req.query.showAll === 'true';
+
     // Enterprise Admin approved pages filter
     // Only include pages that are listed in MASTER_MODULES (approved by Enterprise Admin)
-    try {
-      const { MASTER_MODULES } = require('../config/master-modules');
-      const approvedPages = (MASTER_MODULES || []).flatMap(m => Array.isArray(m.pages) ? m.pages : []);
-      const approvedIds = new Set(approvedPages.map(p => p.id));
-      const approvedPaths = new Set(approvedPages.map(p => p.path));
+    // Skip this filter if showAll=true
+    if (!showAll) {
+      try {
+        const { MASTER_MODULES } = require('../config/master-modules');
+        const approvedPages = (MASTER_MODULES || []).flatMap(m => Array.isArray(m.pages) ? m.pages : []);
+        const approvedIds = new Set(approvedPages.map(p => p.id));
+        const approvedPaths = new Set(approvedPages.map(p => p.path));
 
-      const beforeCount = pages.length;
-      pages = pages.filter(p => approvedIds.has(p.id) || approvedPaths.has(p.path));
-      const afterCount = pages.length;
-      console.log(`[PagesRolesReport] EA filter applied: ${beforeCount} -> ${afterCount} pages`);
-    } catch (e) {
-      console.warn('[PagesRolesReport] MASTER_MODULES not available, skipping EA approval filter');
+        const beforeCount = pages.length;
+        pages = pages.filter(p => approvedIds.has(p.id) || approvedPaths.has(p.path));
+        const afterCount = pages.length;
+        console.log(`[PagesRolesReport] EA filter applied: ${beforeCount} -> ${afterCount} pages`);
+      } catch (e) {
+        console.warn('[PagesRolesReport] MASTER_MODULES not available, skipping EA approval filter');
+      }
+    } else {
+      console.log(`[PagesRolesReport] showAll=true, skipping EA filter, showing all ${pages.length} pages`);
     }
     
     // Fetch all roles from database

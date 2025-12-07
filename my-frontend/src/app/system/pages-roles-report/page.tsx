@@ -227,7 +227,11 @@ function QuickLinks({ links }: { links: Array<{ label: string; href: string; ico
   );
 }
 
-export default function PagesRolesReportPage() {
+interface PagesRolesReportPageProps {
+  showAllPagesDefault?: boolean;
+}
+
+export default function PagesRolesReportPage({ showAllPagesDefault = false }: PagesRolesReportPageProps) {
   const [reportData, setReportData] = useState<ReportData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -235,18 +239,20 @@ export default function PagesRolesReportPage() {
   const [filterModule, setFilterModule] = useState('all');
   const [filterStatus, setFilterStatus] = useState('all');
   const [showOrphansOnly, setShowOrphansOnly] = useState(false);
+  const [showAllPages, setShowAllPages] = useState(showAllPagesDefault);
   const [expandedPages, setExpandedPages] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     fetchReport();
-  }, []);
+  }, [showAllPages]);
 
   const fetchReport = async () => {
     try {
       setLoading(true);
       setError(null);
       
-      const response = await fetch('/api/reports/pages-roles');
+      const url = showAllPages ? '/api/reports/pages-roles?showAll=true' : '/api/reports/pages-roles';
+      const response = await fetch(url);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -262,7 +268,8 @@ export default function PagesRolesReportPage() {
   };
 
   const handleExportCSV = () => {
-    window.location.href = '/api/reports/pages-roles/csv';
+    const url = showAllPages ? '/api/reports/pages-roles/csv?showAll=true' : '/api/reports/pages-roles/csv';
+    window.location.href = url;
   };
 
   const togglePageExpanded = (pageId: string) => {
@@ -485,7 +492,7 @@ export default function PagesRolesReportPage() {
           </div>
 
           {/* Orphan Filter */}
-          <div className="mt-4">
+          <div className="mt-4 flex flex-wrap gap-6">
             <label className="flex items-center gap-2 cursor-pointer">
               <input
                 type="checkbox"
@@ -495,6 +502,18 @@ export default function PagesRolesReportPage() {
               />
               <span className="text-sm text-gray-700 dark:text-gray-300">
                 Show orphan pages only (pages with no assigned roles)
+              </span>
+            </label>
+            
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={showAllPages}
+                onChange={(e) => setShowAllPages(e.target.checked)}
+                className="w-4 h-4 text-green-600 border-gray-300 rounded focus:ring-green-500 dark:border-gray-600 dark:focus:ring-green-400"
+              />
+              <span className="text-sm text-gray-700 dark:text-gray-300">
+                Show all pages (including unapproved/hidden)
               </span>
             </label>
           </div>

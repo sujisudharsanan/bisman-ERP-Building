@@ -822,6 +822,17 @@ try {
   }
 }
 
+// Deployment routes (for deployment management)
+try {
+  const deploymentRoutes = require('./routes/deployment')
+  app.use('/api/deployment', deploymentRoutes)
+  console.log('✅ Deployment routes loaded at /api/deployment')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Deployment routes not loaded:', e && e.message)
+  }
+}
+
 // QA / Testing Module routes (bug tracking, test assignments)
 try {
   const qaRoutes = require('./routes/qaRoutes')
@@ -830,6 +841,17 @@ try {
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('QA routes not loaded:', e && e.message)
+  }
+}
+
+// Backup & Restore API routes
+try {
+  const backupRoutes = require('./routes/backup')
+  app.use('/api/backup', backupRoutes)
+  console.log('✅ Backup & Restore routes loaded at /api/backup')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Backup routes not loaded:', e && e.message)
   }
 }
 
