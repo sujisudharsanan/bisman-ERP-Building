@@ -1,8 +1,8 @@
 'use client';
 
-import PagesRolesReportPage from '@/app/system/pages-roles-report/page';
+import PagesRolesReportContent from '@/components/reports/PagesRolesReportContent';
 
 export default function EnterpriseAdminPagesRolesReportPage() {
   // Enterprise Admin sees ALL pages (showAllPagesDefault=true)
-  return <PagesRolesReportPage showAllPagesDefault={true} />;
+  return <PagesRolesReportContent showAllPagesDefault={true} />;
 }
