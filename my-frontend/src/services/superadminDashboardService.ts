@@ -289,7 +289,7 @@ export async function fetchIncidentStats(): Promise<IncidentStats> {
     ]);
 
     const openIncidents = extractData(openRes, []);
-    const pendingActions = extractData(pendingRes, []);
+    const pendingActions = extractData<{ inProgress?: number }>(pendingRes, {});
 
     const openList = Array.isArray(openIncidents) ? openIncidents : [];
     const critical = openList.filter((i: any) => i.severity === 'critical').length;

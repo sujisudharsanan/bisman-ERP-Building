@@ -85,7 +85,14 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
     const fetchUserPermissions = async () => {
       if (!user?.id) {
         setIsLoadingPermissions(false);
-        return;
+        // Redirect to login if no user (after a brief delay to avoid flash)
+        const timer = setTimeout(() => {
+          if (!pathname?.includes('auth') && !pathname?.includes('login')) {
+            console.log('[Sidebar] No user detected, redirecting to login');
+            router.replace('/auth/login');
+          }
+        }, 500);
+        return () => clearTimeout(timer);
       }
 
       // Enterprise Admin: Set enterprise modules directly
