@@ -11,6 +11,7 @@ import type {
   BillingStats,
   RevenueTrendPoint,
   HealthSummary,
+  HealthStatus,
   DeploymentStats,
   DeploymentTrendPoint,
   IncidentStats,
@@ -213,14 +214,13 @@ export async function fetchHealthSummary(): Promise<HealthSummary> {
       axios.get(`${API_BASE}/api/health/database`, { withCredentials: true }).catch(() => ({ data: { status: 'unknown' } })),
       axios.get(`${API_BASE}/api/health/cache`, { withCredentials: true }).catch(() => ({ data: { status: 'unknown' } })),
     ]);
-
     return {
-      overall: 'healthy',
+      overall: 'healthy' as HealthStatus,
       uptime: 99.9,
       components: [
-        { name: 'API', status: extractData(apiRes, { status: 'unknown' }).status, lastCheck: new Date().toISOString() },
-        { name: 'Database', status: extractData(dbRes, { status: 'unknown' }).status, lastCheck: new Date().toISOString() },
-        { name: 'Cache', status: extractData(cacheRes, { status: 'unknown' }).status, lastCheck: new Date().toISOString() },
+        { name: 'API', status: extractData(apiRes, { status: 'unknown' }).status as HealthStatus, lastCheck: new Date().toISOString() },
+        { name: 'Database', status: extractData(dbRes, { status: 'unknown' }).status as HealthStatus, lastCheck: new Date().toISOString() },
+        { name: 'Cache', status: extractData(cacheRes, { status: 'unknown' }).status as HealthStatus, lastCheck: new Date().toISOString() },
       ],
     };
   }, {
@@ -235,13 +235,18 @@ export async function fetchHealthSummary(): Promise<HealthSummary> {
 // ============================================================================
 
 export async function fetchDeploymentStats(): Promise<DeploymentStats> {
+  interface DeploymentStatusResponse {
+    currentVersion?: string;
+    lastDeployTime?: string;
+    pipelineStatus?: 'idle' | 'running' | 'success' | 'failed';
+  }
   return safeApiCall(async () => {
     const [statusRes, historyRes] = await Promise.all([
       axios.get(`${API_BASE}/api/deployment/status`, { withCredentials: true }),
       axios.get(`${API_BASE}/api/deployment/history?period=today`, { withCredentials: true }),
     ]);
 
-    const status = extractData(statusRes, {});
+    const status = extractData<DeploymentStatusResponse>(statusRes, {});
     const history = extractData(historyRes, []);
 
     const deployments = Array.isArray(history) ? history : [];
@@ -431,7 +436,7 @@ export async function fetchBackupStats(): Promise<BackupStats> {
       axios.get(`${API_BASE}/api/backup?status=failed`, { withCredentials: true }).catch(() => ({ data: [] })),
     ]);
 
-    const status = extractData(statusRes, {});
+    const status = extractData<{ totalBackups?: number; lastBackupTime?: string; backupSizeGB?: number; scheduledBackups?: number }>(statusRes, {});
     const failed = extractData(failedRes, []);
 
     return {
