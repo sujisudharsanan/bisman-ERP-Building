@@ -52,6 +52,7 @@ const SYSTEM_PAGES = [
   { key: 'admin-sla-dashboard', name: 'SLA Dashboard', module: 'admin' },
   { key: 'admin-usage-dashboard', name: 'Usage Dashboard', module: 'admin' },
   { key: 'admin-user-usage', name: 'User Usage', module: 'admin' },
+  { key: 'admin-client-dashboard', name: 'Client Usage Dashboard', module: 'admin' },
 
   // ==================== QA PAGES ====================
   { key: 'qa', name: 'QA Module', module: 'qa' },

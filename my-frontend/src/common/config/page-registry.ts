@@ -1698,6 +1698,19 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 12,
   },
   {
+    id: 'admin-client-dashboard',
+    name: 'Client Usage Dashboard',
+    path: '/admin/client-dashboard',
+    iconKey: "LayoutDashboard",
+    module: 'admin',
+    permissions: ['admin-client-usage', 'authenticated'],
+    roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN'],
+    status: 'active',
+    showInSidebar: true,
+    description: 'Business health, money, customers, delivery & team metrics for all clients',
+    order: 13,
+  },
+  {
     id: 'admin-user-usage',
     name: 'User Usage Details',
     path: '/admin/user-usage',
@@ -1708,7 +1721,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     showInSidebar: true, // Now visible in sidebar
     description: 'View detailed usage for a specific user',
-    order: 13,
+    order: 14,
   },
   {
     id: 'analytics-dashboard',

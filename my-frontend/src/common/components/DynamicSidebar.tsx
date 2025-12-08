@@ -241,11 +241,32 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
     }
   }, [isLoadingPermissions, userPermissions, user?.id, pathname, router, isSuperAdmin]);
 
+  // Helper function to check if a page is allowed based on various matching strategies
+  const isPageAllowed = (page: PageMetadata, allowedPages: string[]): boolean => {
+    // Direct ID match
+    if (allowedPages.includes(page.id)) return true;
+    
+    // Derive ID from path: /admin/dashboard -> admin-dashboard
+    const pathId = page.path.replace(/^\//, '').replace(/\//g, '-');
+    if (allowedPages.includes(pathId)) return true;
+    
+    // Also check just the last segment: /admin/dashboard -> dashboard
+    const lastSegment = page.path.split('/').filter(Boolean).pop();
+    if (lastSegment && allowedPages.includes(lastSegment)) return true;
+    
+    // Check without module prefix: common-help-center -> help-center
+    const withoutModulePrefix = page.id.replace(/^(common|admin|super-admin|billing)-/, '');
+    if (allowedPages.includes(withoutModulePrefix)) return true;
+    
+    return false;
+  };
+
   // Compute a FLAT list of visible pages (no module headers), per requirements
   const visiblePages = useMemo<PageMetadata[]>(() => {
     if (!user) return [];
 
     const isEnterprise = user.role === 'ENTERPRISE_ADMIN' || user.roleName === 'ENTERPRISE_ADMIN';
+    const userRole = user.role || user.roleName || '';
 
   // Filter by status === 'active' AND showInSidebar !== false
   let pages = REGISTRY.filter(p => p.status === 'active' && p.showInSidebar !== false);
@@ -260,32 +281,29 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
         'super-admin-dashboard', // Dashboard must always show
       ];
       pages = pages.filter(p => 
-        userAllowedPages.includes(p.id) || 
+        isPageAllowed(p, userAllowedPages) || 
         corePageIds.includes(p.id) ||
-        (p.module === 'super-admin' && p.roles.includes('SUPER_ADMIN'))
+        (p.module === 'super-admin' && p.roles.includes('SUPER_ADMIN')) ||
+        // Always show pages with roles: ['ALL'] (common pages for all authenticated users)
+        p.roles.includes('ALL')
       );
       console.log('[Sidebar] Super Admin allowed pages:', userAllowedPages);
     } else {
-      // Regular users: only explicitly allowed pages from DB
-      // Match by page ID, or derive ID from path (e.g., /admin/dashboard -> admin-dashboard)
+      // Regular users: explicitly allowed pages from DB OR common pages with roles: ['ALL']
       pages = pages.filter(p => {
-        // Direct ID match
-        if (userAllowedPages.includes(p.id)) return true;
+        // Always include pages with roles: ['ALL'] (common pages for all authenticated users)
+        if (p.roles.includes('ALL')) return true;
         
-        // Derive ID from path: /admin/dashboard -> admin-dashboard
-        const pathId = p.path.replace(/^\//, '').replace(/\//g, '-');
-        if (userAllowedPages.includes(pathId)) return true;
+        // Include pages that match the user's role
+        if (p.roles.includes(userRole)) return true;
         
-        // Also check just the last segment: /admin/dashboard -> dashboard
-        const lastSegment = p.path.split('/').filter(Boolean).pop();
-        if (lastSegment && userAllowedPages.includes(lastSegment)) return true;
-        
-        return false;
+        // Check flexible matching for DB allowed pages
+        return isPageAllowed(p, userAllowedPages);
       });
       
       // Debug: Log what we're matching
-      console.log('[Sidebar] Registry page IDs:', pages.slice(0, 5).map(p => p.id));
-      console.log('[Sidebar] DB allowed pages:', userAllowedPages.slice(0, 5));
+      console.log('[Sidebar] Visible pages for user:', pages.slice(0, 10).map(p => p.id));
+      console.log('[Sidebar] DB allowed pages:', userAllowedPages.slice(0, 10));
     }
 
     // Non-enterprise users should not see enterprise pages
