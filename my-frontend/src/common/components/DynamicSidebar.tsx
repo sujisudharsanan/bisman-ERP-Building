@@ -35,12 +35,13 @@ const REGISTRY: PageMetadata[] = (() => {
 
 interface DynamicSidebarProps {
   className?: string;
+  collapsed?: boolean;
 }
 
 // Runtime icon map loaded client-side (lucide-react). We avoid SSR import.
 type IconComponent = React.ComponentType<any> | undefined;
 
-export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) {
+export default function DynamicSidebar({ className = '', collapsed = false }: DynamicSidebarProps) {
   const { user, loading: authLoading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
@@ -48,6 +49,12 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
   const [superAdminModules, setSuperAdminModules] = useState<string[]>([]);
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(true);
   const [iconMap, setIconMap] = useState<Record<string, IconComponent>>({});
+  
+  // Magnification effect state (macOS Dock style)
+  const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
+  
+  // Cache permissions in sessionStorage for faster subsequent loads
+  const cacheKey = user?.id ? `sidebar_perms_${user.id}` : null;
 
   // Load lucide-react icons once on client to resolve registry icon keys (strings)
   useEffect(() => {
@@ -98,6 +105,35 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
         return;
       }
 
+      // Try to load from localStorage cache first for instant display (persists across logout)
+      if (cacheKey && typeof localStorage !== 'undefined') {
+        try {
+          const cached = localStorage.getItem(cacheKey);
+          if (cached) {
+            const { pages, modules, timestamp } = JSON.parse(cached);
+            // Cache valid for 24 hours (persists across sessions for faster login)
+            if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
+              console.log('[Sidebar] Using localStorage cached permissions (instant load)');
+              if (isMounted) {
+                setUserAllowedPages(pages || []);
+                setSuperAdminModules(modules || []);
+                setIsLoadingPermissions(false);
+              }
+              
+              // Background refresh if cache is older than 5 minutes (stale-while-revalidate pattern)
+              if (Date.now() - timestamp > 5 * 60 * 1000) {
+                console.log('[Sidebar] Cache stale, refreshing in background...');
+                // Continue to fetch fresh data in background (don't return)
+              } else {
+                return; // Cache is fresh, skip API call
+              }
+            }
+          }
+        } catch (e) {
+          // Ignore cache errors
+        }
+      }
+
       // Enterprise Admin: Set enterprise modules directly
       if (user.role === 'ENTERPRISE_ADMIN' || user?.roleName === 'ENTERPRISE_ADMIN') {
         console.log('[Sidebar] Enterprise Admin detected - setting enterprise modules');
@@ -105,6 +141,16 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
           setSuperAdminModules(['enterprise-management']);
           setUserAllowedPages([]); // Enterprise admin doesn't use page-level permissions
           setIsLoadingPermissions(false);
+          // Cache it in localStorage (persists across logout)
+          if (cacheKey) {
+            try {
+              localStorage.setItem(cacheKey, JSON.stringify({
+                pages: [],
+                modules: ['enterprise-management'],
+                timestamp: Date.now()
+              }));
+            } catch (e) {}
+          }
         }
         return;
       }
@@ -117,7 +163,7 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
           const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
           const response = await safeFetch(`${baseURL}/api/auth/me/permissions`, {
             credentials: 'include',
-            timeoutMs: 8000,
+            timeoutMs: 3000, // Reduced timeout for faster failure
             signal: abortController.signal,
           });
 
@@ -145,6 +191,17 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
               console.log('[Sidebar] Page permissions by module:', pagePermissions);
               console.log('[Sidebar] Allowed pages:', allowedPageKeys.length, allowedPageKeys);
               setUserAllowedPages(allowedPageKeys);
+              
+              // Cache the result in localStorage (persists across logout)
+              if (cacheKey) {
+                try {
+                  localStorage.setItem(cacheKey, JSON.stringify({
+                    pages: allowedPageKeys,
+                    modules: assignedModules,
+                    timestamp: Date.now()
+                  }));
+                } catch (e) {}
+              }
             }
           } else {
             console.error('[Sidebar] Failed to fetch Super Admin permissions:', response.status);
@@ -167,7 +224,7 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
         // Use relative URL to leverage Next.js API proxy
         const response = await safeFetch(`/api/permissions?userId=${user.id}`, {
           credentials: 'include',
-          timeoutMs: 8000,
+          timeoutMs: 3000, // Reduced timeout for faster failure
           signal: abortController.signal,
         });
 
@@ -180,7 +237,19 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
           // Backend returns: { success: true, data: { userId, allowedPages } }
           const allowedPages = result.data?.allowedPages || result.allowedPages || [];
           console.log('[Sidebar] Extracted allowed pages:', allowedPages);
-          if (isMounted) setUserAllowedPages(allowedPages);
+          if (isMounted) {
+            setUserAllowedPages(allowedPages);
+            // Cache the result in localStorage (persists across logout for faster next login)
+            if (cacheKey) {
+              try {
+                localStorage.setItem(cacheKey, JSON.stringify({
+                  pages: allowedPages,
+                  modules: [],
+                  timestamp: Date.now()
+                }));
+              } catch (e) {}
+            }
+          }
         } else {
           console.error('[Sidebar] Failed to fetch permissions:', response.status);
           if (isMounted) setUserAllowedPages([]);
@@ -202,7 +271,7 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
       isMounted = false;
       abortController.abort();
     };
-  }, [user?.id, isSuperAdmin, authLoading]);
+  }, [user?.id, user?.role, user?.roleName, isSuperAdmin, authLoading, cacheKey]);
 
   // Get user permissions based on database permissions
   const userPermissions = useMemo(() => {
@@ -311,6 +380,12 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
       pages = pages.filter(p => !p.path.startsWith('/enterprise'));
     }
 
+    // Non-super-admin users should not see /system/* or /super-admin/* pages
+    // These are protected routes that only SUPER_ADMIN and ENTERPRISE_ADMIN can access
+    if (!isSuperAdmin && !isEnterprise) {
+      pages = pages.filter(p => !p.path.startsWith('/system') && !p.path.startsWith('/super-admin'));
+    }
+
     // Sort by explicit order then name
     pages.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name));
     return pages;
@@ -407,8 +482,8 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
     return null;
   };
 
-  // Render individual page link
-  const renderPageLink = (page: PageMetadata) => {
+  // Render individual page link with magnification effect
+  const renderPageLink = (page: PageMetadata, index: number) => {
     const isActive = isActivePath(page.path);
     const isDisabled = page.status === 'disabled' || page.status === 'coming-soon';
 
@@ -421,23 +496,106 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
     // Guard icon component
     Icon = safeComponent(Icon || Circle, page.iconKey || page.id, 'DynamicSidebar');
 
-  const linkClasses = `
-      flex items-center space-x-2 px-3 py-2 rounded-lg text-sm transition-colors
+    // Calculate magnification scale based on distance from hovered item (macOS Dock style)
+    const getMagnificationStyle = () => {
+      if (!collapsed || hoveredIndex === null) return {};
+      
+      const distance = Math.abs(index - hoveredIndex);
+      
+      // Scale factors: hovered = 1.35, adjacent = 1.15, two away = 1.05
+      let scale = 1;
+      if (distance === 0) scale = 1.35;
+      else if (distance === 1) scale = 1.15;
+      else if (distance === 2) scale = 1.05;
+      
+      return {
+        transform: `scale(${scale})`,
+        zIndex: distance === 0 ? 10 : 5 - distance,
+      };
+    };
+
+    // Collapsed mode - icon only with magnification effect
+    if (collapsed) {
+      const baseClasses = `
+        group relative flex items-center justify-center w-11 h-11 mx-auto rounded-2xl 
+        transition-all duration-200 ease-out cursor-pointer origin-center
+        ${isActive
+          ? 'bg-gradient-to-br from-blue-500 to-blue-600 text-white shadow-lg shadow-blue-500/30'
+          : isDisabled
+          ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50'
+          : 'text-gray-500 dark:text-gray-400 hover:bg-gradient-to-br hover:from-blue-500 hover:to-indigo-600 hover:text-white hover:shadow-xl hover:shadow-blue-500/25'
+        }
+      `;
+
+      const tooltipElement = (
+        <span className="
+          absolute left-full ml-4 px-3 py-2 
+          bg-gradient-to-r from-gray-900 to-gray-800 dark:from-white dark:to-gray-100
+          text-white dark:text-gray-900 
+          text-xs font-semibold rounded-xl 
+          opacity-0 invisible group-hover:opacity-100 group-hover:visible
+          pointer-events-none
+          transition-all duration-300 ease-out
+          whitespace-nowrap z-50
+          shadow-2xl shadow-black/20
+          -translate-x-2 group-hover:translate-x-0
+          backdrop-blur-sm
+        ">
+          {page.name}
+          <span className="absolute left-0 top-1/2 -translate-x-[6px] -translate-y-1/2 
+            w-3 h-3 bg-gray-900 dark:bg-white rotate-45 rounded-sm" />
+        </span>
+      );
+
+      if (isDisabled) {
+        return (
+          <div 
+            key={page.id} 
+            className={baseClasses}
+            style={getMagnificationStyle()}
+            onMouseEnter={() => setHoveredIndex(index)}
+            onMouseLeave={() => setHoveredIndex(null)}
+          >
+            <Icon className="w-5 h-5" />
+            {tooltipElement}
+          </div>
+        );
+      }
+
+      return (
+        <Link 
+          key={page.id} 
+          href={page.path} 
+          className={baseClasses}
+          style={getMagnificationStyle()}
+          onMouseEnter={() => setHoveredIndex(index)}
+          onMouseLeave={() => setHoveredIndex(null)}
+        >
+          <Icon className="w-5 h-5 transition-transform duration-200" />
+          {tooltipElement}
+        </Link>
+      );
+    }
+
+    // Expanded mode - full link with enhanced hover effects
+    const linkClasses = `
+      group flex items-center space-x-2.5 px-3 py-2 rounded-xl text-[13px] 
+      transition-all duration-200 ease-out
       ${isActive
-        ? 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 font-medium'
+        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium shadow-md shadow-blue-500/20'
         : isDisabled
-        ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed'
-        : 'text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800'
+        ? 'text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-50'
+        : 'text-gray-600 dark:text-gray-300 hover:bg-gradient-to-r hover:from-gray-100 hover:to-gray-50 dark:hover:from-gray-800 dark:hover:to-gray-800/50 hover:text-gray-900 dark:hover:text-white hover:translate-x-1 hover:shadow-sm'
       }
     `;
 
     const content = (
       <>
-  {/* Render icon safely; fallback to Circle if missing or invalid */}
-  {(() => {
-  // @ts-ignore guarded icon is always renderable
-  return <Icon className="w-4 h-4 flex-shrink-0" />;
-  })()}
+        {/* Render icon safely; fallback to Circle if missing or invalid */}
+        {(() => {
+          // @ts-ignore guarded icon is always renderable
+          return <Icon className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 ${!isActive && !isDisabled ? 'group-hover:scale-110 group-hover:rotate-6' : ''}`} />;
+        })()}
         <span className="flex-1 truncate">{page.name}</span>
         {renderStatusBadge(page)}
       </>
@@ -497,17 +655,17 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
   }, [user?.role, user?.roleName, userAllowedPages]);
 
   return (
-    <div className={`py-4 ${className}`}>
-      {/* User Profile Section - Only show if user has access to about-me page */}
-      {user && !hideProfileInSidebar && hasAboutMeAccess && (
-        <div className="px-2 mb-4">
+    <div className={`py-3 ${className}`}>
+      {/* User Profile Section - Only show if user has access to about-me page and not collapsed */}
+      {!collapsed && user && !hideProfileInSidebar && hasAboutMeAccess && (
+        <div className="px-2 mb-3">
           <div 
-            className="flex items-center gap-3 p-2 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            className="flex items-center gap-2 p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
             onClick={() => router.push('/common/about-me')}
             title="View profile"
           >
             {/* Profile Picture */}
-            <div className="w-10 h-10 rounded-full flex-shrink-0 overflow-hidden relative">
+            <div className="w-8 h-8 rounded-full flex-shrink-0 overflow-hidden relative">
               {profilePicUrl ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img 
@@ -546,53 +704,55 @@ export default function DynamicSidebar({ className = '' }: DynamicSidebarProps) 
 
       {/* Loading State - show while auth is loading OR permissions are loading */}
       {(authLoading || isLoadingPermissions) && (
-        <div className="px-3 py-8 text-center">
-          <div className="animate-spin w-8 h-8 border-4 border-blue-600 border-t-transparent rounded-full mx-auto mb-3" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">
-            Loading your permissions...
-          </p>
+        <div className={`${collapsed ? 'px-1 py-4' : 'px-3 py-8'} text-center`}>
+          <div className={`animate-spin ${collapsed ? 'w-6 h-6' : 'w-8 h-8'} border-4 border-blue-600 border-t-transparent rounded-full mx-auto ${collapsed ? '' : 'mb-3'}`} />
+          {!collapsed && (
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Loading your permissions...
+            </p>
+          )}
         </div>
       )}
 
       {/* Flat page list (no module headers) */}
       {!authLoading && !isLoadingPermissions && (
-        <div className="space-y-1 px-2">
+        <div 
+          className={`${collapsed ? 'space-y-1 py-2' : 'space-y-0.5 px-1.5'}`}
+          onMouseLeave={() => setHoveredIndex(null)}
+        >
           {/* Dashboard is now part of visiblePages - no hardcoded shortcut */}
           {/* Only show pages that user has explicit permission for */}
-          {visiblePages.map(page => renderPageLink(page))}
+          {visiblePages.map((page, index) => renderPageLink(page, index))}
         </div>
       )}
 
-      {/* Empty State - only show when fully loaded and no pages */}
-      {!authLoading && !isLoadingPermissions && visiblePages.length === 0 && (
-        <div className="px-3 py-8 text-center">
-          <Circle className="w-12 h-12 text-gray-300 dark:text-gray-700 mx-auto mb-3" />
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+      {/* Empty State - only show when fully loaded and no pages (hide when collapsed) */}
+      {!collapsed && !authLoading && !isLoadingPermissions && visiblePages.length === 0 && (
+        <div className="px-2 py-6 text-center">
+          <Circle className="w-10 h-10 text-gray-300 dark:text-gray-700 mx-auto mb-2" />
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             No pages available
           </p>
-          <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-            Contact your administrator for access
+          <p className="text-[10px] text-gray-400 dark:text-gray-500 mt-1">
+            Contact your administrator
           </p>
         </div>
       )}
 
-      {/* Footer Info */}
-      <div className="mt-6 px-3 pt-4 border-t border-gray-200 dark:border-gray-800">
-        <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
-          <Circle className="w-2 h-2 text-green-500 dark:text-green-400 fill-current" />
-          <span>All systems operational</span>
+      {/* Footer Info - Compact (hide when collapsed) */}
+      {!collapsed && (
+        <div className="mt-4 px-2 pt-3 border-t border-gray-200 dark:border-gray-800">
+          <div className="flex items-center space-x-1.5 text-[10px] text-gray-500 dark:text-gray-400">
+            <Circle className="w-1.5 h-1.5 text-green-500 dark:text-green-400 fill-current" />
+            <span>Systems operational</span>
+          </div>
+          {user && (
+            <div className="mt-1 text-[10px] text-gray-500 dark:text-gray-400 truncate">
+              <span className="font-medium text-gray-600 dark:text-gray-300">{user.roleName || user.role}</span>
+            </div>
+          )}
         </div>
-        {user && (
-          <div className="mt-2 text-xs text-gray-500 dark:text-gray-400">
-            Logged in as <span className="font-medium text-gray-700 dark:text-gray-300">{user.roleName || user.role}</span>
-          </div>
-        )}
-        {!isLoadingPermissions && userAllowedPages.length > 0 && (
-          <div className="mt-1 text-xs text-gray-500 dark:text-gray-400">
-            {userAllowedPages.length} permission{userAllowedPages.length !== 1 ? 's' : ''} granted
-          </div>
-        )}
-      </div>
+      )}
     </div>
   );
 }

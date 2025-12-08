@@ -1,12 +1,14 @@
-import type { Metadata } from 'next';
+'use client';
+
 import React from 'react';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
-export const metadata: Metadata = {
-  title: 'Hub Incharge Dashboard | BISMAN ERP',
-  description: 'Operational dashboard for Hub Incharge role in BISMAN ERP',
-};
-
+// Hub Incharge layout - Protected for operational staff roles
+// STAFF, HUB_INCHARGE, and higher roles (ADMIN, SUPER_ADMIN, ENTERPRISE_ADMIN) can access
 export default function HubInchargeLayout({ children }: { children: React.ReactNode }) {
-  // Server component wrapper solely to provide metadata override
-  return <>{children}</>;
+  return (
+    <ProtectedRoute allowedRoles={['STAFF', 'HUB_INCHARGE', 'ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN']}>
+      {children}
+    </ProtectedRoute>
+  );
 }

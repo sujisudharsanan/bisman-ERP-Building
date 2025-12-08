@@ -21,9 +21,8 @@ export default function TreasuryDashboardPage() {
       if (!user) {
         router.push('/auth/login');
       } else if (user.roleName !== 'TREASURY') {
-        // Redirect to appropriate dashboard based on role
-        if (user.roleName === 'SUPER_ADMIN') router.push('/super-admin');
-        else router.push('/dashboard');
+        // Redirect non-TREASURY users to their dashboard
+        router.push('/dashboard');
       }
     }
   }, [user, authLoading, router]);

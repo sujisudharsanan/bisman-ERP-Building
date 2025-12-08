@@ -19,19 +19,19 @@ export default function FinanceControllerDashboardPage() {
       if (!user) {
         router.push('/auth/login');
       } else if (user.roleName !== 'FINANCE_CONTROLLER') {
-        // Redirect to appropriate dashboard based on role
-        if (user.roleName === 'SUPER_ADMIN') router.push('/super-admin');
-        else router.push('/dashboard');
+        
+        
+        router.push('/dashboard');
       }
     }
   }, [user, authLoading, router]);
 
   if (authLoading || dataLoading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-gray-900 via-purple-900/20 to-gray-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-purple-500 mx-auto mb-4"></div>
-          <p className="text-white text-lg">Loading Finance Controller Dashboard...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-b-4 border-purple-500 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Loading Finance Controller Dashboard...</p>
         </div>
       </div>
     );

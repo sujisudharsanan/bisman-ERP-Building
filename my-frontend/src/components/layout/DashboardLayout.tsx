@@ -29,7 +29,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
     <ErrorBoundary>
       <div
         className="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col theme-transition"
-        style={{ ['--sidebar-width' as any]: sidebarOpen ? '13rem' : '4rem' }}
+        style={{ ['--sidebar-width' as any]: sidebarOpen ? '13rem' : '3.5rem' }}
       >
         {/* Top Navbar - Fixed at top */}
         <ErrorBoundary fallback={<div className="h-16 bg-red-100 dark:bg-red-900/20 flex items-center justify-center"><p className="text-red-600 text-sm">TopNavbar Error</p></div>}>
@@ -37,19 +37,16 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
         </ErrorBoundary>
 
   {/* Content Area with Sidebar - Add top padding for fixed navbar (global var) */}
-  <div className="flex flex-1 overflow-hidden content-under-navbar">{/* Uses --navbar-height */}
+  <div className="flex flex-1 content-under-navbar">{/* Uses --navbar-height */}
           {/* Sidebar - Beneath navbar */}
           <ErrorBoundary fallback={<div className="w-16 bg-red-100 dark:bg-red-900/20 flex items-center justify-center"><p className="text-red-600 text-xs">Sidebar Error</p></div>}>
             <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
           </ErrorBoundary>
 
-          {/* Main Content */}
+          {/* Main Content - Use CSS variable for consistent margin */}
           <main 
-            className={`
-              flex-1 overflow-auto transition-all duration-300
-              ${sidebarOpen ? 'ml-52' : 'ml-16'}
-              p-6
-            `}
+            className="flex-1 overflow-auto transition-all duration-300 p-6"
+            style={{ marginLeft: 'var(--sidebar-width)' }}
           >
             <ErrorBoundary fallback={
               <div className="p-8 text-center">

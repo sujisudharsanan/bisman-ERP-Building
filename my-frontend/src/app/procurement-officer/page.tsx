@@ -19,9 +19,9 @@ export default function ProcurementOfficerDashboardPage() {
       if (!user) {
         router.push('/auth/login');
       } else if (user.roleName !== 'PROCUREMENT_OFFICER') {
-        // Redirect to appropriate dashboard based on role
-        if (user.roleName === 'SUPER_ADMIN') router.push('/super-admin');
-        else router.push('/dashboard');
+        
+        
+        router.push('/dashboard');
       }
     }
   }, [user, authLoading, router]);

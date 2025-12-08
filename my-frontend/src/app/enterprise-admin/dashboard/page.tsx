@@ -253,16 +253,8 @@ export default function EnterpriseAdminDashboard() {
       return;
     }
 
-    const role = (user.role || user.roleName || '').toUpperCase();
-    if (role !== 'ENTERPRISE_ADMIN') {
-      // Send non-enterprise admins to their dashboards
-      if (role === 'SUPER_ADMIN') router.push('/super-admin');
-      else if (role === 'ADMIN') router.push('/admin');
-      else if (role === 'STAFF') router.push('/hub-incharge');
-      else router.push('/dashboard');
-      return;
-    }
-
+    // Layout's ProtectedRoute already handles role validation
+    // Just fetch data if user is authenticated
     fetchDashboardData();
   }, [user, loading, router]);
 

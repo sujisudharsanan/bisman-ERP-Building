@@ -100,7 +100,8 @@ export default function AIHandlingPage() {
 
   useEffect(() => {
     if (!mounted) return;
-    if (!user || user.role !== 'ENTERPRISE_ADMIN') {
+    // Layout's ProtectedRoute handles role validation
+    if (!user) {
       router.push('/auth/login');
       return;
     }

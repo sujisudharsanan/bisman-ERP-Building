@@ -19,9 +19,8 @@ export default function AccountsDashboardPage() {
       if (!user) {
         router.push('/auth/login');
       } else if (user.roleName !== 'ACCOUNTS') {
-        // Redirect to appropriate dashboard based on role
-        if (user.roleName === 'SUPER_ADMIN') router.push('/super-admin');
-        else router.push('/dashboard');
+        // Redirect non-ACCOUNTS users to their dashboard
+        router.push('/dashboard');
       }
     }
   }, [user, authLoading, router]);
@@ -30,8 +29,8 @@ export default function AccountsDashboardPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-gray-900 via-indigo-900/20 to-gray-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-16 w-16 border-b-4 border-indigo-500 mx-auto mb-4"></div>
-          <p className="text-white text-lg">Loading Accounts Dashboard...</p>
+          <div className="animate-spin rounded-full h-10 w-10 border-2 border-blue-600 border-t-transparent mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400 text-sm">Loading Accounts Dashboard...</p>
         </div>
       </div>
     );

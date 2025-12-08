@@ -1,25 +1,29 @@
 {
   "meta": {
     "version": "1.0.0",
-    "exportedAt": "2025-12-01T18:59:56.987Z",
+    "exportedAt": "2025-12-07T20:40:31.389Z",
     "source": "my-frontend/src/common/config/page-registry.ts",
     "generator": "scripts/export-page-registry.js"
   },
   "statistics": {
-    "totalPages": 87,
+    "totalPages": 101,
     "totalModules": 2,
     "pagesByModule": {
-      "super-admin": 13,
+      "super-admin": 12,
+      "enterprise-admin": 1,
       "hr": 1,
       "system": 11,
       "finance": 31,
       "procurement": 5,
       "operations": 13,
       "compliance": 9,
-      "common": 4
+      "common": 3,
+      "billing": 5,
+      "admin": 5,
+      "qa": 5
     },
     "pagesByStatus": {
-      "active": 85,
+      "active": 101,
       "coming-soon": 0,
       "disabled": 0
     }
@@ -40,6 +44,21 @@
   },
   "pages": [
     {
+      "id": "super-admin-dashboard",
+      "name": "Dashboard",
+      "path": "/super-admin",
+      "module": "super-admin",
+      "status": "active",
+      "description": "Retail Client Management Dashboard",
+      "order": 0,
+      "permissions": [
+        "user-management"
+      ],
+      "roles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
       "id": "super-admin-user-management",
       "name": "Client Management",
       "path": "/super-admin/system/user-management",
@@ -59,7 +78,7 @@
       "name": "Permission Manager",
       "path": "/super-admin/system/permission-manager",
       "module": "super-admin",
-      "status": "inactive",
+      "status": "active",
       "description": "Manage system permissions",
       "order": 3,
       "permissions": [
@@ -74,7 +93,7 @@
       "name": "Modules & Roles",
       "path": "/super-admin/system/roles-users-report",
       "module": "super-admin",
-      "status": "inactive",
+      "status": "active",
       "description": "View comprehensive report of all roles and assigned users",
       "order": 4,
       "permissions": [
@@ -90,7 +109,7 @@
       "path": "/super-admin/system/pages-roles-report",
       "module": "super-admin",
       "status": "active",
-      "description": "View all pages and their assigned roles",
+      "description": "View assigned pages and their roles (filtered by assignment)",
       "order": 5,
       "permissions": [
         "user-management"
@@ -100,18 +119,18 @@
       ]
     },
     {
-      "id": "super-admin-role-access-explorer",
-      "name": "Role & Access Explorer",
-      "path": "/super-admin/system/role-access-explorer",
-      "module": "super-admin",
+      "id": "enterprise-admin-pages-roles-report",
+      "name": "All Pages & Roles Report",
+      "path": "/enterprise-admin/system/pages-roles-report",
+      "module": "enterprise-admin",
       "status": "active",
-      "description": "Interactive matrix for roles and workflows",
-      "order": 6,
+      "description": "View ALL pages and their assigned roles (full system view)",
+      "order": 5,
       "permissions": [
-        "user-management"
+        "enterprise-admin"
       ],
       "roles": [
-        "SUPER_ADMIN"
+        "ENTERPRISE_ADMIN"
       ]
     },
     {
@@ -167,21 +186,6 @@
       "status": "active",
       "description": "Manage deployments and releases",
       "order": 10,
-      "permissions": [
-        "system-settings"
-      ],
-      "roles": [
-        "SUPER_ADMIN"
-      ]
-    },
-    {
-      "id": "super-admin-it-admin",
-      "name": "IT Admin",
-      "path": "/super-admin/system/it-admin",
-      "module": "super-admin",
-      "status": "active",
-      "description": "IT administration tools",
-      "order": 11,
       "permissions": [
         "system-settings"
       ],
@@ -386,12 +390,12 @@
       ]
     },
     {
-      "id": "fallback-logs",
-      "name": "Fallback Logs",
-      "path": "/super-admin/fallback-logs",
+      "id": "fallback-recovery",
+      "name": "Fallback & Recovery",
+      "path": "/super-admin/system/fallback-recovery",
       "module": "super-admin",
       "status": "active",
-      "description": "Monitor fallback events, errors, and system alerts",
+      "description": "Investigate failures, roll back to safety, and restore system stability",
       "order": 11,
       "permissions": [
         "system-settings"
@@ -1382,21 +1386,6 @@
       ]
     },
     {
-      "id": "common-about-me",
-      "name": "About Me",
-      "path": "/common/about-me",
-      "module": "common",
-      "status": "active",
-      "description": "View and edit your profile",
-      "order": 1,
-      "permissions": [
-        "authenticated"
-      ],
-      "roles": [
-        "ALL"
-      ]
-    },
-    {
       "id": "common-help-center",
       "name": "Help Center",
       "path": "/common/help-center",
@@ -1439,6 +1428,278 @@
       ],
       "roles": [
         "ALL"
+      ]
+    },
+    {
+      "id": "billing-invoices",
+      "name": "Invoices & Payments",
+      "path": "/billing/invoices",
+      "module": "billing",
+      "status": "active",
+      "description": "View and download invoices, payment history",
+      "order": 2,
+      "permissions": [
+        "billing-view",
+        "authenticated"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ADMIN",
+        "OWNER"
+      ]
+    },
+    {
+      "id": "billing-payment-method",
+      "name": "Payment Method",
+      "path": "/billing/payment-method",
+      "module": "billing",
+      "status": "active",
+      "description": "Manage payment methods and billing address",
+      "order": 3,
+      "permissions": [
+        "billing-manage",
+        "authenticated"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ADMIN",
+        "OWNER"
+      ]
+    },
+    {
+      "id": "billing-trial",
+      "name": "Trial Management",
+      "path": "/billing/trial",
+      "module": "billing",
+      "status": "active",
+      "description": "View trial status and manage trial period",
+      "order": 4,
+      "permissions": [
+        "billing-view",
+        "authenticated"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ADMIN",
+        "OWNER"
+      ]
+    },
+    {
+      "id": "billing-usage",
+      "name": "Usage & Overages",
+      "path": "/billing/usage",
+      "module": "billing",
+      "status": "active",
+      "description": "View usage metrics and overage charges",
+      "order": 5,
+      "permissions": [
+        "billing-view",
+        "authenticated"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ADMIN",
+        "OWNER"
+      ]
+    },
+    {
+      "id": "settings-billing",
+      "name": "Billing Settings",
+      "path": "/settings/billing",
+      "module": "billing",
+      "status": "active",
+      "description": "Manage subscription and billing preferences",
+      "order": 6,
+      "permissions": [
+        "billing-manage",
+        "authenticated"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ADMIN",
+        "OWNER"
+      ]
+    },
+    {
+      "id": "admin-sla-dashboard",
+      "name": "SLA Dashboard",
+      "path": "/admin/sla",
+      "module": "admin",
+      "status": "active",
+      "description": "Monitor SLA compliance and uptime metrics",
+      "order": 11,
+      "permissions": [
+        "admin-sla"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN"
+      ]
+    },
+    {
+      "id": "admin-audit-dashboard",
+      "name": "Audit Dashboard",
+      "path": "/admin/audit",
+      "module": "admin",
+      "status": "active",
+      "description": "Comprehensive audit logging and compliance tracking",
+      "order": 12,
+      "permissions": [
+        "admin-audit"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN"
+      ]
+    },
+    {
+      "id": "admin-user-usage",
+      "name": "User Usage Details",
+      "path": "/admin/user-usage",
+      "module": "admin",
+      "status": "active",
+      "description": "View detailed usage for a specific user",
+      "order": 13,
+      "permissions": [
+        "admin-usage"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN"
+      ]
+    },
+    {
+      "id": "analytics-dashboard",
+      "name": "Analytics Dashboard",
+      "path": "/analytics",
+      "module": "admin",
+      "status": "active",
+      "description": "Platform analytics and insights",
+      "order": 14,
+      "permissions": [
+        "admin-analytics",
+        "authenticated"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "dashboard-analytics",
+      "name": "Dashboard Analytics",
+      "path": "/dashboard/analytics",
+      "module": "admin",
+      "status": "active",
+      "description": "Dashboard level analytics view",
+      "order": 15,
+      "permissions": [
+        "admin-analytics",
+        "authenticated"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "qa-test-tasks",
+      "name": "Test Tasks",
+      "path": "/qa/test-tasks",
+      "module": "qa",
+      "status": "active",
+      "description": "View and manage test assignments",
+      "order": 2,
+      "permissions": [
+        "qa-access",
+        "authenticated"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN",
+        "ADMIN",
+        "QA_TESTER",
+        "DEVELOPER"
+      ]
+    },
+    {
+      "id": "qa-issues",
+      "name": "Bug Tracker",
+      "path": "/qa/issues",
+      "module": "qa",
+      "status": "active",
+      "description": "Track bugs and issues found during testing",
+      "order": 3,
+      "permissions": [
+        "qa-access",
+        "authenticated"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN",
+        "ADMIN",
+        "QA_TESTER",
+        "DEVELOPER"
+      ]
+    },
+    {
+      "id": "qa-new-task",
+      "name": "New Test Task",
+      "path": "/qa/test-tasks/new",
+      "module": "qa",
+      "status": "active",
+      "description": "Create a new test task",
+      "order": 4,
+      "permissions": [
+        "qa-access",
+        "authenticated"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "qa-new-issue",
+      "name": "Report Issue",
+      "path": "/qa/issues/new",
+      "module": "qa",
+      "status": "active",
+      "description": "Report a new bug or issue",
+      "order": 5,
+      "permissions": [
+        "qa-access",
+        "authenticated"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN",
+        "ADMIN",
+        "QA_TESTER",
+        "DEVELOPER"
+      ]
+    },
+    {
+      "id": "qa-role-access-explorer",
+      "name": "Role & Access Explorer",
+      "path": "/qa/role-access-explorer",
+      "module": "qa",
+      "status": "active",
+      "description": "Explore ERP roles, permissions, routes with live data sync",
+      "order": 6,
+      "permissions": [
+        "qa-access",
+        "authenticated"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN",
+        "ADMIN",
+        "QA_TESTER",
+        "DEVELOPER"
       ]
     }
   ]

@@ -19,9 +19,9 @@ export default function StoreInchargeDashboardPage() {
       if (!user) {
         router.push('/auth/login');
       } else if (user.roleName !== 'STORE_INCHARGE' && user.roleName !== 'STORE INCHARGE') {
-        // Redirect to appropriate dashboard based on role
-        if (user.roleName === 'SUPER_ADMIN') router.push('/super-admin');
-        else router.push('/dashboard');
+        
+        
+        router.push('/dashboard');
       }
     }
   }, [user, authLoading, router]);

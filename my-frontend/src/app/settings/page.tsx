@@ -1,9 +1,11 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import ThemeSelector from '@/components/ThemeSelector';
 
 export default function UserSettingsPage() {
+  const router = useRouter();
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
 
@@ -20,6 +22,10 @@ export default function UserSettingsPage() {
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
+      } else if (response.status === 401) {
+        // Not authenticated, redirect to login
+        router.push('/auth/login');
+        return;
       }
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
@@ -27,6 +33,13 @@ export default function UserSettingsPage() {
       setLoading(false);
     }
   };
+
+  // If no user after loading, redirect to login
+  useEffect(() => {
+    if (!loading && !user) {
+      router.push('/auth/login');
+    }
+  }, [loading, user, router]);
 
   if (loading) {
     return (

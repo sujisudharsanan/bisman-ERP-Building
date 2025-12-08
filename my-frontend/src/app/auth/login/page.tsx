@@ -258,7 +258,7 @@ export default function StandardLoginPage() {
             break;
           case 'ADMIN':
           case 'SYSTEM_ADMINISTRATOR':
-            targetPath = '/admin';
+            targetPath = '/admin/dashboard';
             break;
           case 'IT_ADMIN':
             targetPath = '/it-admin';

@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import dynamic from 'next/dynamic';
-import { FiChevronLeft, FiChevronRight } from 'react-icons/fi';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 
 // Dynamic import to prevent SSR issues with permission-based sidebar
@@ -33,50 +33,53 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
   
   return (
     <>
-      {/* Sidebar */}
+      {/* Apple-style Sidebar */}
       <aside
         className={`
-          fixed left-0 bg-white dark:bg-[#0c111b]
-          border-r border-gray-200 dark:border-gray-700 shadow-lg dark:shadow-none
-          transition-all duration-300 ease-in-out z-40
-          ${isOpen ? 'w-52' : 'w-16'}
+          fixed left-0 
+          bg-white dark:bg-[#0f0f1a]
+          border-r border-gray-200 dark:border-gray-800
+          transition-all duration-300 ease-in-out z-40 
+          flex flex-col
+          ${isOpen ? 'w-52' : 'w-14'}
         `}
-        style={{ top: 'var(--navbar-height)', height: 'calc(100vh - var(--navbar-height))' }}
+        style={{ 
+          top: 'var(--navbar-height)', 
+          height: 'calc(100vh - var(--navbar-height))' 
+        }}
         aria-label="Main sidebar"
       >
-        {/* Toggle Button */}
-        {onToggle && (
+        {/* Sidebar Content */}
+        <div className="flex-1 overflow-y-auto overflow-x-hidden">
+          <DynamicSidebar collapsed={!isOpen} />
+        </div>
+
+        {/* Toggle Button - At bottom of sidebar */}
+        <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0f0f1a]">
           <button
             onClick={onToggle}
-            className="absolute -right-3 top-6 w-6 h-6 bg-white dark:bg-gray-800 
-              border border-gray-200 dark:border-gray-700 rounded-full 
-              flex items-center justify-center shadow-md hover:shadow-lg
-              transition-all duration-200 hover:scale-110"
+            className={`
+              group w-full py-3 
+              flex items-center justify-center
+              text-gray-500 dark:text-gray-400
+              hover:bg-gradient-to-r hover:from-gray-100 hover:to-transparent 
+              dark:hover:from-gray-800 dark:hover:to-transparent
+              hover:text-gray-700 dark:hover:text-gray-200
+              transition-all duration-300 ease-out
+            `}
             aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
+            title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
           >
             {isOpen ? (
-              <FiChevronLeft className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              <div className="flex items-center gap-2 group-hover:-translate-x-0.5 transition-transform duration-200">
+                <ChevronLeft className="w-4 h-4 group-hover:scale-110 transition-transform" />
+                <span className="text-xs font-medium">Collapse</span>
+              </div>
             ) : (
-              <FiChevronRight className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              <ChevronRight className="w-5 h-5 group-hover:scale-125 group-hover:translate-x-0.5 transition-transform duration-200" />
             )}
           </button>
-        )}
-
-        {/* Sidebar Content - Use DynamicSidebar component */}
-        {isOpen && (
-          <div className="h-full overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-700">
-            <DynamicSidebar />
-          </div>
-        )}
-
-        {/* Sidebar Footer */}
-        {isOpen && (
-          <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-gray-200 dark:border-gray-700 bg-white dark:bg-[#0c111b]">
-            <div className="text-xs text-gray-400 dark:text-gray-300 text-center">
-              BISMAN ERP v1.0
-            </div>
-          </div>
-        )}
+        </div>
       </aside>
 
       {/* Mobile Overlay */}

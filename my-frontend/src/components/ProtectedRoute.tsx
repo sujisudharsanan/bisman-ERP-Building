@@ -66,7 +66,7 @@ export default function ProtectedRoute({
           console.log(`🚫 ProtectedRoute: User role "${userRole}" not in allowed roles [${allowedRoles.join(', ')}]`);
           redirectAttempted.current = true;
           setIsRedirecting(true);
-          router.push('/unauthorized');
+          router.push('/access-denied');
           return;
         }
       }

@@ -50,7 +50,7 @@ const DEMO_USERS: DemoUser[] = [
     department: 'Administration',
     icon: <Shield className="w-5 h-5" />,
     description: 'User management, roles, permissions, system configuration',
-    redirectPath: '/admin'
+    redirectPath: '/admin/dashboard'
   },
   {
     id: 'manager',
@@ -135,7 +135,7 @@ export default function StandardLoginPage() {
             break;
           case 'ADMIN':
           case 'SYSTEM_ADMINISTRATOR':
-            targetPath = '/admin';
+            targetPath = '/admin/dashboard';
             break;
           case 'IT_ADMIN':
             targetPath = '/it-admin';

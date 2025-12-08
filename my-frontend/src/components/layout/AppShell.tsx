@@ -32,6 +32,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       '/auth',
       '/landing',         // ✅ Added: Landing page - no shell (public marketing page)
       '/access-denied',   // ✅ Added: Full screen access denied page
+      '/unauthorized',    // ✅ Added: Full screen unauthorized/403 page
       '/signup',          // ✅ Added: Signup pages - no shell
       '/onboarding',      // ✅ Added: Onboarding wizard pages - no shell
       '/get-started',     // ✅ Added: Get started redirect page - no shell
@@ -92,18 +93,19 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       <ErrorBoundary>
       <div
         className="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col theme-transition"
-        style={{ ['--sidebar-width' as any]: sidebarOpen ? '13rem' : '4rem' }}
+        style={{ ['--sidebar-width' as any]: sidebarOpen ? '13rem' : '3.5rem' }}
       >
         <ErrorBoundary fallback={<div className="h-16 bg-red-100 dark:bg-red-900/20 flex items-center justify-center"><p className="text-red-600 text-sm">TopNavbar Error</p></div>}>
           <TopNavbar showThemeToggle />
         </ErrorBoundary>
 
-        <div className="flex flex-1 overflow-hidden">
+        <div className="flex flex-1">
           <ErrorBoundary fallback={<div className="w-16 bg-red-100 dark:bg-red-900/20 flex items-center justify-center"><p className="text-red-600 text-xs">Sidebar Error</p></div>}>
             <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
           </ErrorBoundary>
           <main
-            className={`flex-1 overflow-auto transition-all duration-300 ${sidebarOpen ? 'ml-52' : 'ml-16'} p-6`}
+            className="flex-1 overflow-auto transition-all duration-300 p-6"
+            style={{ marginLeft: 'var(--sidebar-width)' }}
           >
             {children}
           </main>

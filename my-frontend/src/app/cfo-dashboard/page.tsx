@@ -19,9 +19,8 @@ export default function CFODashboardPage() {
       if (!user) {
         router.push('/auth/login');
       } else if (user.roleName !== 'CFO') {
-        // Redirect to appropriate dashboard based on role
-        if (user.roleName === 'SUPER_ADMIN') router.push('/super-admin');
-        else router.push('/dashboard');
+        // Redirect non-CFO users to their dashboard
+        router.push('/dashboard');
       }
     }
   }, [user, authLoading, router]);

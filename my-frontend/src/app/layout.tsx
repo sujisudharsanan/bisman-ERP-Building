@@ -16,6 +16,7 @@ import ChatGuard from '@/modules/chat/components/ChatGuard';
 import GlobalErrorToast from '@/components/GlobalErrorToast';
 import React from 'react';
 import AppShell from '@/components/layout/AppShell';
+import SplashWrapper from '@/components/SplashWrapper';
 import { appConfig } from '@/config/appConfig';
 
 // Force all pages to be dynamically rendered (bypass static generation errors)
@@ -82,6 +83,7 @@ export default function RootLayout({
                 <PermissionProvider>
                   <ToastProvider>
                   <RenderLogger />
+                  <SplashWrapper companyName="BISMAN ERP">
                   <div className="min-h-screen pb-20 md:pb-0">
                     <AppShell>{children}</AppShell>
                 {appConfig.showConfigPanel && (
@@ -110,6 +112,7 @@ export default function RootLayout({
                   </div>
                 )}
               </div>
+              </SplashWrapper>
               {/* Global route change loader shown on every page */}
               <GlobalRouteLoader />
               {/* Global error toast notifications */}

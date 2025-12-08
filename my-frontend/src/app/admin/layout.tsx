@@ -1,20 +1,40 @@
 'use client';
 
+import { useState } from 'react';
 import { ThemeProvider } from '@/components/ThemeProvider';
-import DynamicSidebar from '@/common/components/DynamicSidebar';
+import Sidebar from '@/components/layout/Sidebar';
+import TopNavbar from '@/components/layout/TopNavbar';
+import { DockProvider } from '@/components/dock';
+import ProtectedRoute from '@/components/ProtectedRoute';
 
-// Admin layout with sidebar for admin pages
+// Admin layout with sidebar and top navbar
+// Protected: Only ADMIN, SUPER_ADMIN, and ENTERPRISE_ADMIN can access
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
+  const [sidebarOpen, setSidebarOpen] = useState(true);
+
   return (
-    <ThemeProvider>
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <DynamicSidebar />
-        <main className="lg:pl-64 min-h-screen">
-          <div className="p-4 md:p-6 lg:p-8">
-            {children}
+    <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN']}>
+      <ThemeProvider>
+        <DockProvider>
+          <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+            {/* Top Navigation */}
+            <TopNavbar showThemeToggle={true} fixed={true} />
+            
+            {/* Sidebar with toggle */}
+            <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+            
+            {/* Main content */}
+            <main 
+              className="min-h-[calc(100vh-3.5rem)] bg-gray-50 dark:bg-slate-900 transition-all duration-300"
+              style={{ marginLeft: sidebarOpen ? '13rem' : '3.5rem', marginTop: '3.5rem' }}
+            >
+              <div className="p-4 md:p-6 lg:p-8">
+                {children}
+              </div>
+            </main>
           </div>
-        </main>
-      </div>
-    </ThemeProvider>
+        </DockProvider>
+      </ThemeProvider>
+    </ProtectedRoute>
   );
 }

@@ -163,7 +163,7 @@ export default function UnifiedPaymentRequestPage() {
 			}
 
 			alert(isDraft ? 'Payment request saved as draft' : 'Payment request submitted for approval successfully!');
-			router.push('/super-admin'); // Navigate back to dashboard
+			router.back(); // Navigate back to previous page
 		} catch (e: any) {
 			console.error('Submit error:', e);
 			setError(e?.message || 'An error occurred');
