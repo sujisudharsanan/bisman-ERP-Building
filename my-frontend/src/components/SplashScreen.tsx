@@ -68,15 +68,15 @@ export default function SplashScreen({
         timeoutId = setTimeout(typeChar2, 30); // 30ms per char for "you"
       } else {
         setPhase('done');
-        // Start fade out 1 second after animation completes
+        // Start fade out 1.2 seconds after animation completes
         setTimeout(() => {
           setShowContent(false);
-        }, 1000);
-        // Complete and hide 1.5 seconds after animation completes
+        }, 1200);
+        // Complete and hide 2.7 seconds after animation completes (1.2s wait + 1.5s fade)
         setTimeout(() => {
           setIsVisible(false);
           onComplete?.();
-        }, 1500);
+        }, 2700);
       }
     };
     
@@ -174,7 +174,7 @@ export default function SplashScreen({
         }
         
         .splash-logo-container.fade-out {
-          animation: splashFadeOut 1s ease-out forwards;
+          animation: splashFadeOut 1.5s ease-in-out forwards;
         }
         
         .splash-bisman-logo {
@@ -202,20 +202,25 @@ export default function SplashScreen({
         @keyframes splashFadeOut {
           0% {
             opacity: 1;
-            transform: translateY(0);
+            transform: translateY(0) scale(1);
+          }
+          50% {
+            opacity: 0.6;
+            transform: translateY(8px) scale(0.98);
           }
           100% {
             opacity: 0;
-            transform: translateY(20px);
+            transform: translateY(20px) scale(0.95);
           }
         }
         
         .splash-hero-bg.fade-out {
-          animation: splashBgFadeOut 1s ease-out forwards;
+          animation: splashBgFadeOut 1.5s ease-in-out forwards;
         }
         
         @keyframes splashBgFadeOut {
           0% { opacity: 1; }
+          50% { opacity: 0.5; }
           100% { opacity: 0; }
         }
         
@@ -227,7 +232,7 @@ export default function SplashScreen({
         }
         
         .splash-title-heading.fade-out {
-          animation: splashFadeOut 1s ease-out forwards;
+          animation: splashFadeOut 1.5s ease-in-out forwards;
         }
         
         @media (min-width: 768px) {
