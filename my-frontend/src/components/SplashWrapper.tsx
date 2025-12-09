@@ -28,9 +28,10 @@ export default function SplashWrapper({ children, companyName = "BISMAN ERP" }: 
   useEffect(() => {
     if (authLoading || !isMounted) return; // Wait for auth to load and mount
     
-    // Don't show on auth pages (login, logout, etc.)
+    // Don't show on auth pages, landing page, or public pages
     const isAuthPage = pathname?.startsWith('/auth') || pathname?.startsWith('/login') || pathname === '/';
-    if (isAuthPage) {
+    const isLandingPage = pathname?.startsWith('/landing');
+    if (isAuthPage || isLandingPage) {
       setShowSplash(false);
       return;
     }
