@@ -22,64 +22,69 @@ export default function SplashScreen({
   const typePart2 = 'you';
 
   useEffect(() => {
+    let timeoutId: NodeJS.Timeout;
     let charIndex = 0;
-    let currentPhase: 'typing1' | 'pause' | 'deleting' | 'typing2' | 'done' = 'typing1';
     let pauseCount = 0;
     
-    const interval = setInterval(() => {
-      if (currentPhase === 'typing1') {
-        if (charIndex < typePart1.length) {
-          setDisplayedText(prefix + typePart1.slice(0, charIndex + 1));
-          charIndex++;
-        } else {
-          currentPhase = 'pause';
-          setPhase('pause');
-          pauseCount = 0;
-        }
-      } else if (currentPhase === 'pause') {
-        pauseCount++;
-        if (pauseCount >= 10) {
-          currentPhase = 'deleting';
-          setPhase('deleting');
-          charIndex = deleteWord.length;
-        }
-      } else if (currentPhase === 'deleting') {
-        if (charIndex > 0) {
-          charIndex--;
-          setDisplayedText(prefix + 'for ' + deleteWord.slice(0, charIndex));
-        } else {
-          currentPhase = 'typing2';
-          setPhase('typing2');
-          charIndex = 0;
-        }
-      } else if (currentPhase === 'typing2') {
-        if (charIndex < typePart2.length) {
-          setDisplayedText(prefix + 'for ' + typePart2.slice(0, charIndex + 1));
-          charIndex++;
-        } else {
-          currentPhase = 'done';
-          setPhase('done');
-          clearInterval(interval);
-        }
+    const typeChar1 = () => {
+      if (charIndex < typePart1.length) {
+        setDisplayedText(prefix + typePart1.slice(0, charIndex + 1));
+        charIndex++;
+        timeoutId = setTimeout(typeChar1, 25); // 25ms per char for typing
+      } else {
+        setPhase('pause');
+        pauseCount = 0;
+        timeoutId = setTimeout(doPause, 20);
       }
-    }, 50);
-
-    // Fade in complete at 200ms (content already visible, just animation settling)
-    // Start fade out at 2500ms
-    const fadeOutTimer = setTimeout(() => {
-      setShowContent(false);
-    }, 2500);
-
-    // Complete and hide at 3500ms
-    const completeTimer = setTimeout(() => {
-      setIsVisible(false);
-      onComplete?.();
-    }, duration);
+    };
+    
+    const doPause = () => {
+      pauseCount++;
+      if (pauseCount >= 10) { // 10 × 20ms = 200ms pause
+        setPhase('deleting');
+        charIndex = deleteWord.length;
+        timeoutId = setTimeout(deleteChar, 30);
+      } else {
+        timeoutId = setTimeout(doPause, 20);
+      }
+    };
+    
+    const deleteChar = () => {
+      if (charIndex > 0) {
+        charIndex--;
+        setDisplayedText(prefix + 'for ' + deleteWord.slice(0, charIndex));
+        timeoutId = setTimeout(deleteChar, 30); // 30ms per char for deleting
+      } else {
+        setPhase('typing2');
+        charIndex = 0;
+        timeoutId = setTimeout(typeChar2, 30);
+      }
+    };
+    
+    const typeChar2 = () => {
+      if (charIndex < typePart2.length) {
+        setDisplayedText(prefix + 'for ' + typePart2.slice(0, charIndex + 1));
+        charIndex++;
+        timeoutId = setTimeout(typeChar2, 30); // 30ms per char for "you"
+      } else {
+        setPhase('done');
+        // Start fade out 1 second after animation completes
+        setTimeout(() => {
+          setShowContent(false);
+        }, 1000);
+        // Complete and hide 1.5 seconds after animation completes
+        setTimeout(() => {
+          setIsVisible(false);
+          onComplete?.();
+        }, 1500);
+      }
+    };
+    
+    // Start typing
+    timeoutId = setTimeout(typeChar1, 25);
 
     return () => {
-      clearInterval(interval);
-      clearTimeout(fadeOutTimer);
-      clearTimeout(completeTimer);
+      clearTimeout(timeoutId);
     };
   }, [duration, onComplete]);
 
