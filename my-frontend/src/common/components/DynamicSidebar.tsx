@@ -416,7 +416,7 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
     // Super Admin / Admin roles
     if (hasFullAdmin(role)) return '/admin';
     if (role === 'ENTERPRISE_ADMIN') return '/enterprise-admin/dashboard';
-    if (role === 'ADMIN') return '/admin/dashboard';
+    if (role === 'ADMIN') return '/admin/client-dashboard';
     
     // Role-specific dashboards
     const rolePathMap: Record<string, string> = {
@@ -635,7 +635,7 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
   // Check if current page is a dashboard or user settings - hide profile on these pages
   const hideProfileInSidebar = pathname === '/hub-incharge' || 
                           pathname === '/super-admin' || 
-                          pathname === '/admin/dashboard' || 
+                          pathname === '/admin/client-dashboard' || 
                           pathname === '/enterprise-admin/dashboard' ||
                           pathname === '/admin' ||
                           pathname === '/enterprise-admin' ||

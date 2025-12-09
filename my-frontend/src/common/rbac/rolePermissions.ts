@@ -142,7 +142,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
       'audit-logs',
       'system-settings',
     ],
-    defaultRoute: '/admin/dashboard',
+    defaultRoute: '/admin/client-dashboard',
   },
   CFO: {
     role: 'CFO',

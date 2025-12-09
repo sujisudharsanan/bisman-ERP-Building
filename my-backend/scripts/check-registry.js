@@ -6,7 +6,7 @@ MASTER_MODULES.forEach(m => m.pages.forEach(p => registeredPaths.add(p.path)));
 
 const fsPages = [
   '/access-denied','/accounts','/accounts-payable','/admin','/admin/ai','/admin/ai-analytics',
-  '/admin/audit','/admin/billing','/admin/clients','/admin/dashboard','/admin/developer',
+  '/admin/audit','/admin/billing','/admin/clients','/admin/client-dashboard','/admin/developer',
   '/admin/integrations','/admin/modules','/admin/notifications','/admin/organizations',
   '/admin/permissions','/admin/rag-sources','/admin/reports','/admin/settings','/admin/support',
   '/admin/users','/ai-training','/assistant','/banker','/calendar','/cfo-dashboard','/chat',

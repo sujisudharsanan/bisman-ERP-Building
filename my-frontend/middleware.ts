@@ -11,8 +11,8 @@ export function middleware(req: NextRequest) {
     pathname.endsWith('.ico') || pathname.endsWith('.svg') || pathname.endsWith('.png') || pathname.endsWith('.jpg');
   if (staticOrApi) return NextResponse.next();
 
-  // Auth exemptions
-  if (pathname === '/debug-auth' || pathname.startsWith('/auth')) {
+  // Auth exemptions - public pages that don't require login
+  if (pathname === '/debug-auth' || pathname.startsWith('/auth') || pathname === '/landing') {
     const res = NextResponse.next();
     return attachSecurityHeaders(res, nonce);
   }

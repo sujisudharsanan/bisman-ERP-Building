@@ -17,10 +17,16 @@ export default function SplashWrapper({ children, companyName = "BISMAN ERP" }: 
   const pathname = usePathname();
   const [showSplash, setShowSplash] = useState(false);
   const [hasShownThisSession, setHasShownThisSession] = useState(false);
+  const [isMounted, setIsMounted] = useState(false);
+
+  // Mark component as mounted to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
 
   // Check if we should show splash (only after login, when user exists)
   useEffect(() => {
-    if (authLoading) return; // Wait for auth to load
+    if (authLoading || !isMounted) return; // Wait for auth to load and mount
     
     // Don't show on auth pages (login, logout, etc.)
     const isAuthPage = pathname?.startsWith('/auth') || pathname?.startsWith('/login') || pathname === '/';
@@ -43,7 +49,7 @@ export default function SplashWrapper({ children, companyName = "BISMAN ERP" }: 
     if (user && !hasShownThisSession) {
       setShowSplash(true);
     }
-  }, [user, authLoading, pathname, hasShownThisSession]);
+  }, [user, authLoading, pathname, hasShownThisSession, isMounted]);
 
   const onSplashComplete = () => {
     setShowSplash(false);
@@ -54,25 +60,24 @@ export default function SplashWrapper({ children, companyName = "BISMAN ERP" }: 
     } catch (e) {}
   };
 
-  // Don't block rendering while auth is loading
-  if (authLoading) {
-    return <>{children}</>;
-  }
+  // Only show splash after mount to avoid hydration issues
+  const shouldShowSplash = isMounted && showSplash;
 
-  return (
-    <>
-      {showSplash && (
+  // If splash is showing, render splash on top
+  if (shouldShowSplash) {
+    return (
+      <>
         <SplashScreen 
           companyName={companyName}
           subline="Designed for you"
           onComplete={onSplashComplete}
-          duration={1700}
+          duration={5000}
         />
-      )}
-      {/* Always render children but they appear after splash fades */}
-      <div className={showSplash ? 'opacity-0' : 'opacity-100 transition-opacity duration-300'}>
         {children}
-      </div>
-    </>
-  );
+      </>
+    );
+  }
+
+  // Just render children directly - no wrapper div
+  return <>{children}</>;
 }

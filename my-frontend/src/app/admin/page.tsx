@@ -9,7 +9,7 @@ export default function AdminPage() {
   const router = useRouter();
 
   // This page is just a redirect handler - it immediately redirects to the actual dashboard
-  // For best performance, login should redirect directly to /admin/dashboard
+  // For best performance, login should redirect directly to /admin/client-dashboard
   useEffect(() => {
     if (!authLoading) {
       if (!user) {
@@ -19,8 +19,8 @@ export default function AdminPage() {
       } else if (user.roleName === 'STAFF') {
         router.replace('/hub-incharge');
       } else {
-        // SUPER_ADMIN, ADMIN, and other roles go to admin dashboard
-        router.replace('/admin/dashboard');
+        // SUPER_ADMIN, ADMIN, and other roles go to admin client dashboard
+        router.replace('/admin/client-dashboard');
       }
     }
   }, [user, authLoading, router]);

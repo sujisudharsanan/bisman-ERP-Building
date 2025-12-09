@@ -211,6 +211,8 @@ export default function StandardLoginPage() {
           targetPath = '/enterprise-admin/dashboard';
         } else if (roleValue === 'SUPER_ADMIN') {
           targetPath = '/super-admin';
+        } else if (roleValue === 'ADMIN' || roleValue === 'SYSTEM_ADMINISTRATOR') {
+          targetPath = '/admin/client-dashboard';
         }
         
         window.location.replace(targetPath);
@@ -258,7 +260,7 @@ export default function StandardLoginPage() {
             break;
           case 'ADMIN':
           case 'SYSTEM_ADMINISTRATOR':
-            targetPath = '/admin/dashboard';
+            targetPath = '/admin/client-dashboard';
             break;
           case 'IT_ADMIN':
             targetPath = '/it-admin';

@@ -26,6 +26,8 @@ export default function DashboardPage() {
         router.push('/auth/login');
       } else if (user.roleName === 'STAFF') {
         router.push('/hub-incharge');
+      } else if (user.roleName === 'ADMIN' || user.roleName === 'SYSTEM_ADMINISTRATOR') {
+        router.push('/admin/client-dashboard');
       }
     }
   }, [user, authLoading, router]);
