@@ -68,10 +68,8 @@ export default function SplashWrapper({ children, companyName = "BISMAN ERP" }: 
     return (
       <>
         <SplashScreen 
-          companyName={companyName}
-          subline="Designed for you"
           onComplete={onSplashComplete}
-          duration={5000}
+          duration={3000}
         />
         {children}
       </>
