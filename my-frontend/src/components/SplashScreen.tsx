@@ -9,7 +9,7 @@ interface SplashScreenProps {
 
 export default function SplashScreen({
   onComplete,
-  duration = 3000
+  duration = 3500
 }: SplashScreenProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [showContent, setShowContent] = useState(true);
@@ -38,7 +38,7 @@ export default function SplashScreen({
         }
       } else if (currentPhase === 'pause') {
         pauseCount++;
-        if (pauseCount >= 1) {
+        if (pauseCount >= 10) {
           currentPhase = 'deleting';
           setPhase('deleting');
           charIndex = deleteWord.length;
@@ -64,10 +64,13 @@ export default function SplashScreen({
       }
     }, 50);
 
+    // Fade in complete at 200ms (content already visible, just animation settling)
+    // Start fade out at 2500ms
     const fadeOutTimer = setTimeout(() => {
       setShowContent(false);
-    }, 200);
+    }, 2500);
 
+    // Complete and hide at 3500ms
     const completeTimer = setTimeout(() => {
       setIsVisible(false);
       onComplete?.();

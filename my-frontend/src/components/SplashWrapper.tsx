@@ -69,7 +69,7 @@ export default function SplashWrapper({ children, companyName = "BISMAN ERP" }: 
       <>
         <SplashScreen 
           onComplete={onSplashComplete}
-          duration={3000}
+          duration={3500}
         />
         {children}
       </>
