@@ -140,7 +140,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       try {
         // Get all users (empty query will return all active users now)
         const response = await fetch('/api/chat-bot/search-users?q=');
-        if (response.ok) {
+  if (response.ok) {
           const data = await response.json();
           console.log('[Chat] API response:', data);
           const users = data.data?.map((u: any) => ({
@@ -157,10 +157,18 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           console.log('[Chat] User details:', users.map((u: ChatUser) => ({ id: u.id, name: u.name, role: u.roleName || u.role })));
         } else {
           const errorText = await response.text();
-          console.error('[Chat] Failed to load users - Status:', response.status, 'Response:', errorText);
+          // Treat 404 as a non-fatal case in development where the chat-bot user search route
+          // might not be present. Log as a warning to avoid triggering Next's dev overlay.
+          if (response.status === 404) {
+            console.warn('[Chat] Users API route not found (404) - this may be expected in dev. Response:', errorText);
+            setChatUsers([]);
+          } else {
+            console.error('[Chat] Failed to load users - Status:', response.status, 'Response:', errorText);
+          }
         }
       } catch (error) {
-        console.error('[Chat] Failed to load users:', error);
+        // Downgrade to warn for expected or recoverable failures so dev overlay doesn't block UI
+        console.warn('[Chat] Failed to load users (non-fatal):', error);
       }
     };
     loadUsers();
@@ -194,9 +202,12 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       }
     };
 
+    // Listen for both direct event (when chat is already open) and internal event (when chat just opened)
     window.addEventListener('openTaskInChat', handleOpenTaskInChat as EventListener);
+    window.addEventListener('openTaskInChatInternal', handleOpenTaskInChat as EventListener);
     return () => {
       window.removeEventListener('openTaskInChat', handleOpenTaskInChat as EventListener);
+      window.removeEventListener('openTaskInChatInternal', handleOpenTaskInChat as EventListener);
     };
   }, [openTasks, isFullscreen]);
 
@@ -224,9 +235,17 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         })) || [];
         setSearchResults(users);
         console.log('[Chat] Search results for "' + query + '":', users.length, 'users');
+      } else {
+        const errorText = await response.text();
+        if (response.status === 404) {
+          console.warn('[Chat] User search route not found (404) - treating as no results. Response:', errorText);
+          setSearchResults([]);
+        } else {
+          console.error('[Chat] User search failed - Status:', response.status, 'Response:', errorText);
+        }
       }
     } catch (error) {
-      console.error('[Chat] Search failed:', error);
+      console.warn('[Chat] Search failed (non-fatal):', error);
     } finally {
       setIsSearching(false);
     }
@@ -889,11 +908,11 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
   return (
     <div className={`flex overflow-hidden ${
       isFullscreen 
-        ? 'fixed inset-0 z-50 h-screen w-screen' 
+        ? 'fixed top-0 right-0 z-50 h-screen w-[33.33vw] shadow-2xl border-l border-gray-700/50' 
         : 'h-full rounded-lg'
     } bg-[#1e1e2e] dark:bg-[#1e1e2e]`}>
-      {/* Left Sidebar - 40% - Full height */}
-      <div className="bg-[#2b2d42] dark:bg-[#2b2d42] border-r border-gray-700/50 flex flex-col flex-shrink-0 w-[40%] h-full">
+      {/* Left Sidebar - 28% - Reduced for more room */}
+      <div className="bg-[#2b2d42] dark:bg-[#2b2d42] border-r border-gray-700/50 flex flex-col flex-shrink-0 w-[28%] h-full">
         {/* Sidebar Header */}
         <div className={`p-2.5 border-b border-gray-700/50 ${!isFullscreen ? 'rounded-tl-lg' : ''}`}>
           <div className="flex items-center gap-2">
@@ -1191,6 +1210,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         {activeView === 'task' && selectedTaskId ? (
           <TaskDetailView
             taskId={selectedTaskId}
+            currentUserId={(user as any)?.id}
             onClose={() => {
               setActiveView('mira');
               setSelectedTaskId(null);
@@ -1199,6 +1219,12 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
               // Update task status in open tasks panel
               setOpenTasks(prev => prev.map(t => 
                 t.id === taskId ? { ...t, status: 'COMPLETED' } : t
+              ));
+            }}
+            onCancel={(taskId) => {
+              // Update task status in open tasks panel
+              setOpenTasks(prev => prev.map(t => 
+                t.id === taskId ? { ...t, status: 'CANCELLED' } : t
               ));
             }}
           />

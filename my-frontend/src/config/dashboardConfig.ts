@@ -33,7 +33,7 @@ export interface RoleConfig {
 
 // Standard 4-column Kanban layout (most roles use this)
 const STANDARD_COLUMNS: ColumnConfig[] = [
-  { key: 'draft', title: 'DRAFT', dataKey: 'DRAFT', showCreate: true },
+  { key: 'assigned', title: 'ASSIGNED', dataKey: 'ASSIGNED', showCreate: true },
   { key: 'inProgress', title: 'IN PROGRESS', dataKey: 'IN_PROGRESS' },
   { key: 'needAttention', title: 'NEED ATTENTION', dataKey: 'EDITING' },
   { key: 'done', title: 'DONE', dataKey: 'DONE' },
@@ -41,7 +41,7 @@ const STANDARD_COLUMNS: ColumnConfig[] = [
 
 // Workflow-based columns (for hub/store incharge)
 const WORKFLOW_COLUMNS: ColumnConfig[] = [
-  { key: 'draft', title: 'DRAFT', dataKey: 'DRAFT', showCreate: true },
+  { key: 'assigned', title: 'ASSIGNED', dataKey: 'ASSIGNED', showCreate: true },
   { key: 'inProgress', title: 'IN PROGRESS', dataKey: 'IN_PROGRESS' },
   { key: 'needAttention', title: 'NEED ATTENTION', dataKey: 'EDITING' },
   { key: 'done', title: 'DONE', dataKey: 'DONE' },

@@ -20,7 +20,40 @@ export interface WorkflowTask {
   updated_at: string;
   confirmed_at?: string;
   completed_at?: string;
+  statusInfo?: {
+    isCreator: boolean;
+    isAssignee: boolean;
+    canComplete: boolean;
+    canCancel: boolean;
+  };
 }
+
+// Helper to transform task to Kanban format (moved to top level)
+const transformTaskForKanban = (task: any) => {
+  const priorityColors: Record<string, string> = {
+    LOW: 'blue',
+    MEDIUM: 'yellow',
+    HIGH: 'purple',
+    URGENT: 'pink'
+  };
+
+  const base = {
+    subItems: [
+      {
+        id: `${task.id}-desc`,
+        text: task.description || 'No description'
+      }
+    ],
+    progress: task.status === 'COMPLETED' ? 100 : 
+              task.status === 'IN_PROGRESS' ? 50 : 
+              task.status === 'IN_REVIEW' ? 75 : 0,
+    comments: task.message_count || 0,
+    attachments: task.attachment_count || 0,
+    color: priorityColors[task.priority?.toUpperCase() || 'MEDIUM'] || 'yellow',
+  };
+  // Keep original task data for drawer
+  return { ...base, ...task };
+};
 
 export interface UseWorkflowTasksReturn {
   tasks: WorkflowTask[];
@@ -30,11 +63,10 @@ export interface UseWorkflowTasksReturn {
   createTask: (task: Partial<WorkflowTask>) => Promise<WorkflowTask | null>;
   deleteTask: (taskId: string) => Promise<boolean>;
   groupedTasks: {
-    draft: any[];
-    confirmed: any[];
-    in_progress: any[];
-    editing: any[];
-    done: any[];
+    ASSIGNED: any[];
+    IN_PROGRESS: any[];
+    EDITING: any[];
+    DONE: any[];
   };
 }
 
@@ -42,14 +74,25 @@ export function useWorkflowTasks(): UseWorkflowTasksReturn {
   const [tasks, setTasks] = useState<WorkflowTask[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [groupedTasks, setGroupedTasks] = useState<{
+    ASSIGNED: any[];
+    IN_PROGRESS: any[];
+    EDITING: any[];
+    DONE: any[];
+  }>({
+    ASSIGNED: [],
+    IN_PROGRESS: [],
+    EDITING: [],
+    DONE: []
+  });
 
-  // Fetch all tasks
+  // Fetch all tasks from dashboard endpoint (pre-grouped by backend)
   const fetchTasks = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
 
-      const res = await fetch('/api/tasks', {
+      const res = await fetch('/api/tasks/dashboard', {
         credentials: 'include'
       });
 
@@ -58,9 +101,25 @@ export function useWorkflowTasks(): UseWorkflowTasksReturn {
       }
 
       const data = await res.json();
-      // Handle API response format: { success: true, data: [...] }
-      const taskList = Array.isArray(data) ? data : (data.data || []);
-      setTasks(taskList);
+      
+      // Backend returns grouped tasks: { success: true, data: { ASSIGNED: [], IN_PROGRESS: [], EDITING: [], DONE: [] } }
+      if (data.success && data.data) {
+        setGroupedTasks({
+          ASSIGNED: (data.data.ASSIGNED || []).map(transformTaskForKanban),
+          IN_PROGRESS: (data.data.IN_PROGRESS || []).map(transformTaskForKanban),
+          EDITING: (data.data.EDITING || []).map(transformTaskForKanban),
+          DONE: (data.data.DONE || []).map(transformTaskForKanban)
+        });
+        
+        // Flatten for tasks array
+        const allTasks = [
+          ...(data.data.ASSIGNED || []),
+          ...(data.data.IN_PROGRESS || []),
+          ...(data.data.EDITING || []),
+          ...(data.data.DONE || [])
+        ];
+        setTasks(allTasks);
+      }
     } catch (err) {
       console.error('Error fetching workflow tasks:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch tasks');
@@ -146,61 +205,6 @@ export function useWorkflowTasks(): UseWorkflowTasksReturn {
   useEffect(() => {
     fetchTasks();
   }, [fetchTasks]);
-
-  // Helper to transform task to Kanban format
-  const transformTaskForKanban = (task: WorkflowTask) => {
-    const priorityColors: Record<string, string> = {
-      low: 'blue',
-      medium: 'yellow',
-      high: 'purple',
-      urgent: 'pink'
-    };
-
-  const base = {
-      subItems: [
-        {
-          id: `${task.id}-desc`,
-          text: task.description || 'No description'
-        }
-      ],
-      progress: task.status === 'done' ? 100 : 
-                task.status === 'in_progress' ? (task.current_approver_level * 25) : 
-                task.status === 'confirmed' ? 25 : 0,
-      comments: 0, // Will be populated by API if needed
-      attachments: 0, // Will be populated by API if needed
-      color: priorityColors[task.priority || 'medium'],
-  } as const;
-  // Keep original task data for drawer; avoid overwriting id/title explicitly
-  return { ...base, ...task };
-  };
-
-  // Ensure tasks is always an array
-  const safeTasks = Array.isArray(tasks) ? tasks : [];
-
-  // Group tasks by status and transform for Kanban
-  // Map backend status (OPEN, IN_PROGRESS, etc) to frontend status (draft, in_progress, etc)
-  const statusMap: Record<string, string> = {
-    'OPEN': 'draft',
-    'PENDING': 'confirmed',
-    'IN_PROGRESS': 'in_progress',
-    'UNDER_REVIEW': 'editing',
-    'COMPLETED': 'done',
-    'CLOSED': 'done',
-    'CANCELLED': 'done'
-  };
-
-  const getStatus = (task: WorkflowTask) => {
-    const status = task.status?.toUpperCase() || 'OPEN';
-    return statusMap[status] || task.status?.toLowerCase() || 'draft';
-  };
-
-  const groupedTasks = {
-    draft: safeTasks.filter(t => getStatus(t) === 'draft').map(transformTaskForKanban),
-    confirmed: safeTasks.filter(t => getStatus(t) === 'confirmed').map(transformTaskForKanban),
-    in_progress: safeTasks.filter(t => getStatus(t) === 'in_progress').map(transformTaskForKanban),
-    editing: safeTasks.filter(t => getStatus(t) === 'editing').map(transformTaskForKanban),
-    done: safeTasks.filter(t => getStatus(t) === 'done').map(transformTaskForKanban)
-  };
 
   return {
     tasks,

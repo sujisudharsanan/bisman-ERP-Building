@@ -397,7 +397,10 @@ exports.getTasks = async (req, res) => {
 exports.getDashboardTasks = async (req, res) => {
   try {
     const userId = req.user.id;
+    console.log('[Dashboard] Fetching tasks for user:', userId);
     
+    // Fetch all tasks where user is creator, assignee, or approver
+    // DRAFT tasks only visible to creator, others visible to all parties
     const query = `
       SELECT 
         t.*,
@@ -408,31 +411,68 @@ exports.getDashboardTasks = async (req, res) => {
       FROM workflow_tasks t
       LEFT JOIN users creator ON t.creator_id = creator.id
       LEFT JOIN users assignee ON t.assignee_id = assignee.id
-      WHERE (t.creator_id = $1 OR t.assignee_id = $1 OR t.approver_id = $1)
+      WHERE (
+        (t.creator_id = $1) 
+        OR (t.assignee_id = $1 AND t.status != 'DRAFT') 
+        OR (t.approver_id = $1 AND t.status != 'DRAFT')
+      )
         AND t.status NOT IN ('ARCHIVED', 'CANCELLED')
       ORDER BY t.created_at DESC
     `;
     
     const result = await getDbPool().query(query, [userId]);
+    console.log('[Dashboard] Found', result.rows.length, 'tasks for user', userId);
+    result.rows.forEach(t => {
+      console.log(`  - Task ${t.id}: status=${t.status}, creator=${t.creator_id}, assignee=${t.assignee_id}`);
+    });
     
-    // Group by status
+    // Group by status with new logic:
+    // ASSIGNED: Tasks created by this user that are assigned to someone else (DRAFT, OPEN status)
+    // IN_PROGRESS: Tasks in active work (IN_PROGRESS status) - both creator and assignee see these
+    // EDITING: Tasks that need attention (IN_REVIEW, BLOCKED status)
+    // DONE: Completed tasks
     const groupedTasks = {
-      DRAFT: [],
-      IN_PROGRESS: [],
-      EDITING: [], // Map IN_REVIEW to EDITING
-      DONE: []
+      ASSIGNED: [],  // Tasks I created and assigned to others (waiting for them)
+      IN_PROGRESS: [], // Tasks being actively worked on
+      EDITING: [], // Tasks needing attention/review
+      DONE: [] // Completed tasks
     };
     
     result.rows.forEach(task => {
-      if (task.status === 'DRAFT') {
-        groupedTasks.DRAFT.push(task);
-      } else if (task.status === 'IN_PROGRESS' || task.status === 'OPEN') {
+      const isCreator = task.creator_id === userId;
+      const isAssignee = task.assignee_id === userId;
+      
+      // Add status info for UI
+      task.statusInfo = {
+        isCreator,
+        isAssignee,
+        canComplete: isAssignee && task.status !== 'COMPLETED',
+        canCancel: isCreator && task.status !== 'COMPLETED' && task.status !== 'CANCELLED'
+      };
+      
+      if (task.status === 'DRAFT' || task.status === 'OPEN') {
+        // DRAFT/OPEN tasks go to ASSIGNED column for the creator
+        // These are tasks waiting for assignee to pick up
+        if (isCreator) {
+          groupedTasks.ASSIGNED.push(task);
+        } else if (isAssignee) {
+          // Assignee sees OPEN tasks in IN_PROGRESS (they need to work on it)
+          groupedTasks.IN_PROGRESS.push(task);
+        }
+      } else if (task.status === 'IN_PROGRESS') {
         groupedTasks.IN_PROGRESS.push(task);
       } else if (task.status === 'IN_REVIEW' || task.status === 'BLOCKED') {
         groupedTasks.EDITING.push(task);
       } else if (task.status === 'COMPLETED') {
         groupedTasks.DONE.push(task);
       }
+    });
+    
+    console.log('[Dashboard] Grouped tasks:', {
+      ASSIGNED: groupedTasks.ASSIGNED.length,
+      IN_PROGRESS: groupedTasks.IN_PROGRESS.length,
+      EDITING: groupedTasks.EDITING.length,
+      DONE: groupedTasks.DONE.length
     });
     
     res.json({

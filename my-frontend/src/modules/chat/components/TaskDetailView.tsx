@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   X, 
   Download, 
@@ -17,7 +17,9 @@ import {
   Loader2,
   FileText,
   Image as ImageIcon,
-  File
+  File,
+  Send,
+  XCircle
 } from 'lucide-react';
 
 interface TaskAttachment {
@@ -61,12 +63,15 @@ interface TaskDetail {
   assignee?: TaskCreator;
   messages?: TaskMessage[];
   attachments?: TaskAttachment[];
+  creatorId?: number;
 }
 
 interface TaskDetailViewProps {
   taskId: string;
   onClose: () => void;
   onMarkComplete?: (taskId: string) => void;
+  onCancel?: (taskId: string, reason: string) => void;
+  currentUserId?: number;
 }
 
 const priorityColors: Record<string, { bg: string; text: string; border: string }> = {
@@ -84,9 +89,10 @@ const statusColors: Record<string, { bg: string; text: string }> = {
   BLOCKED: { bg: 'bg-red-500/20', text: 'text-red-400' },
   COMPLETED: { bg: 'bg-green-500/20', text: 'text-green-400' },
   DONE: { bg: 'bg-green-500/20', text: 'text-green-400' },
+  CANCELLED: { bg: 'bg-red-500/20', text: 'text-red-400' },
 };
 
-export default function TaskDetailView({ taskId, onClose, onMarkComplete }: TaskDetailViewProps) {
+export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCancel, currentUserId }: TaskDetailViewProps) {
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -97,10 +103,21 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete }: Task
   });
   const [previewAttachment, setPreviewAttachment] = useState<TaskAttachment | null>(null);
   const [completing, setCompleting] = useState(false);
+  const [cancelling, setCancelling] = useState(false);
+  const [showCancelDialog, setShowCancelDialog] = useState(false);
+  const [cancelReason, setCancelReason] = useState('');
+  const [newMessage, setNewMessage] = useState('');
+  const [sendingMessage, setSendingMessage] = useState(false);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     fetchTaskDetails();
   }, [taskId]);
+
+  useEffect(() => {
+    // Scroll to bottom when messages change
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [task?.messages]);
 
   const fetchTaskDetails = async () => {
     try {
@@ -168,6 +185,72 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete }: Task
     }
   };
 
+  const handleCancelTask = async () => {
+    if (!task || !cancelReason.trim()) return;
+    
+    try {
+      setCancelling(true);
+      
+      // First add the cancel message via Bey
+      const messageResponse = await fetch(`/api/tasks/${taskId}/messages`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          content: `Task cancelled by creator. Reason: ${cancelReason}`,
+          senderType: 'SYSTEM'
+        }),
+      });
+      
+      // Then update the status
+      const response = await fetch(`/api/tasks/${taskId}/status`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'CANCELLED' }),
+      });
+
+      if (response.ok) {
+        setTask(prev => prev ? { ...prev, status: 'CANCELLED' } : null);
+        onCancel?.(taskId, cancelReason);
+        setShowCancelDialog(false);
+        setCancelReason('');
+      }
+    } catch (err) {
+      console.error('Error cancelling task:', err);
+    } finally {
+      setCancelling(false);
+    }
+  };
+
+  const handleSendMessage = async () => {
+    if (!task || !newMessage.trim()) return;
+    
+    try {
+      setSendingMessage(true);
+      const response = await fetch(`/api/tasks/${taskId}/messages`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: newMessage }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        const newMsg = data.message || data.data || data;
+        setTask(prev => prev ? {
+          ...prev,
+          messages: [...(prev.messages || []), newMsg]
+        } : null);
+        setNewMessage('');
+      }
+    } catch (err) {
+      console.error('Error sending message:', err);
+    } finally {
+      setSendingMessage(false);
+    }
+  };
+
   const handleDownload = (attachment: TaskAttachment) => {
     const url = attachment.file_url || `/api/tasks/${taskId}/attachments/${attachment.id}/download`;
     window.open(url, '_blank');
@@ -201,6 +284,10 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete }: Task
       minute: '2-digit',
     });
   };
+
+  // Check if current user is the task creator
+  const isTaskCreator = currentUserId && task?.creator?.id === currentUserId;
+  const isTaskAssignee = currentUserId && task?.assignee?.id === currentUserId;
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -440,26 +527,131 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete }: Task
               ) : (
                 <p className="text-gray-500 text-sm italic">No messages yet</p>
               )}
+              <div ref={messagesEndRef} />
             </div>
           )}
         </div>
       </div>
 
-      {/* Action Footer */}
-      {!isCompleted && (
-        <div className="p-4 border-t border-gray-700/50 bg-[#252836]">
+      {/* Chat Input Box */}
+      <div className="p-3 border-t border-gray-700/50 bg-[#252836]">
+        <div className="flex items-center gap-2 bg-[#1e1e2e] rounded-lg px-3 py-2">
+          <input
+            type="text"
+            value={newMessage}
+            onChange={(e) => setNewMessage(e.target.value)}
+            onKeyPress={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                handleSendMessage();
+              }
+            }}
+            placeholder="Type a message..."
+            className="flex-1 bg-transparent text-white text-sm placeholder-gray-500 focus:outline-none"
+            disabled={sendingMessage}
+          />
           <button
-            onClick={handleMarkComplete}
-            disabled={completing}
-            className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 hover:bg-green-500 disabled:bg-green-600/50 text-white font-medium rounded-lg transition-colors"
+            onClick={handleSendMessage}
+            disabled={!newMessage.trim() || sendingMessage}
+            className="p-1.5 hover:bg-gray-700/30 rounded transition-colors disabled:opacity-50"
           >
-            {completing ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
+            {sendingMessage ? (
+              <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
             ) : (
-              <CheckCircle className="w-5 h-5" />
+              <Send className="w-4 h-4 text-blue-400" />
             )}
-            Mark as Complete
           </button>
+        </div>
+      </div>
+
+      {/* Action Footer - Shows different buttons based on user role */}
+      {!isCompleted && task.status !== 'CANCELLED' && (
+        <div className="p-4 border-t border-gray-700/50 bg-[#252836]">
+          {/* Creator sees Cancel button */}
+          {isTaskCreator ? (
+            <button
+              onClick={() => setShowCancelDialog(true)}
+              disabled={cancelling}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-red-600 hover:bg-red-500 disabled:bg-red-600/50 text-white font-medium rounded-lg transition-colors"
+            >
+              {cancelling ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <XCircle className="w-5 h-5" />
+              )}
+              Cancel Task
+            </button>
+          ) : (
+            /* Assignee/others see Mark as Complete button */
+            <button
+              onClick={handleMarkComplete}
+              disabled={completing}
+              className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 hover:bg-green-500 disabled:bg-green-600/50 text-white font-medium rounded-lg transition-colors"
+            >
+              {completing ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <CheckCircle className="w-5 h-5" />
+              )}
+              Mark as Complete
+            </button>
+          )}
+        </div>
+      )}
+
+      {/* Cancel Task Dialog - Requires note via Bey */}
+      {showCancelDialog && (
+        <div className="fixed inset-0 bg-black/80 z-50 flex items-center justify-center p-4">
+          <div className="bg-[#252836] rounded-lg w-full max-w-md overflow-hidden">
+            <div className="p-4 border-b border-gray-700">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white">
+                  🤖
+                </div>
+                <div>
+                  <h3 className="text-white font-semibold">Cancel Task</h3>
+                  <p className="text-gray-400 text-sm">Bey needs a reason to cancel this task</p>
+                </div>
+              </div>
+            </div>
+            <div className="p-4">
+              <div className="bg-[#1e1e2e] rounded-lg p-3 mb-4">
+                <p className="text-gray-300 text-sm mb-2">
+                  <span className="text-blue-400 font-medium">Bey:</span> Please provide a reason for cancelling task "{task?.title}". This will be recorded in the task history.
+                </p>
+              </div>
+              <textarea
+                value={cancelReason}
+                onChange={(e) => setCancelReason(e.target.value)}
+                placeholder="Enter cancellation reason..."
+                rows={3}
+                className="w-full bg-[#1e1e2e] border border-gray-700 rounded-lg p-3 text-white text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500 resize-none"
+              />
+              <div className="flex gap-3 mt-4">
+                <button
+                  onClick={() => {
+                    setShowCancelDialog(false);
+                    setCancelReason('');
+                  }}
+                  className="flex-1 py-2 bg-gray-700 hover:bg-gray-600 text-white font-medium rounded-lg transition-colors"
+                >
+                  Go Back
+                </button>
+                <button
+                  onClick={handleCancelTask}
+                  disabled={!cancelReason.trim() || cancelling}
+                  className="flex-1 py-2 bg-red-600 hover:bg-red-500 disabled:bg-red-600/50 disabled:cursor-not-allowed text-white font-medium rounded-lg transition-colors flex items-center justify-center gap-2"
+                >
+                  {cancelling ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <XCircle className="w-4 h-4" />
+                  )}
+                  Confirm Cancel
+                </button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

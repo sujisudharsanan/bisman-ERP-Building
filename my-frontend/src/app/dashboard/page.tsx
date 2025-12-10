@@ -117,7 +117,7 @@ export default function UnifiedDashboardPage() {
     if (statusFilter !== 'ALL') {
       // Map status filter to column title
       const statusColumnMap: Record<string, string[]> = {
-        'DRAFT': ['DRAFT'],
+        'ASSIGNED': ['ASSIGNED'],
         'IN_PROGRESS': ['IN PROGRESS', 'IN_PROGRESS'],
         'NEED_ATTENTION': ['NEED ATTENTION', 'NEED_ATTENTION', 'EDITING'],
         'DONE': ['DONE', 'COMPLETED'],
@@ -134,7 +134,7 @@ export default function UnifiedDashboardPage() {
   // Status filter options
   const statusOptions = [
     { value: 'ALL', label: 'All Status' },
-    { value: 'DRAFT', label: 'Draft' },
+    { value: 'ASSIGNED', label: 'Assigned' },
     { value: 'IN_PROGRESS', label: 'In Progress' },
     { value: 'NEED_ATTENTION', label: 'Need Attention' },
     { value: 'DONE', label: 'Done' },

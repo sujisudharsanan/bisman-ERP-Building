@@ -26,6 +26,25 @@ export default function ChatGuard() {
     return () => window.removeEventListener('spark:createTask', handleCreateTask);
   }, []);
 
+  // Listen for openTaskInChat event from dashboard task clicks
+  // Only when chat is closed - when open, ChatInterface handles it directly
+  useEffect(() => {
+    if (isChatOpen) return; // Let ChatInterface handle it when chat is open
+    
+    const handleOpenTask = (e: Event) => {
+      console.log('📋 Task click event received in ChatGuard - opening chat panel');
+      const detail = (e as CustomEvent).detail;
+      setIsChatOpen(true);
+      // Re-dispatch after ChatInterface mounts
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent('openTaskInChatInternal', { detail }));
+      }, 150);
+    };
+
+    window.addEventListener('openTaskInChat', handleOpenTask);
+    return () => window.removeEventListener('openTaskInChat', handleOpenTask);
+  }, [isChatOpen]);
+
   // Define public paths: auth pages and common entry screens
   const isPublic = useMemo(() => {
     const exactPublic = new Set<string>([
