@@ -149,7 +149,7 @@ const MASTER_MODULES = [
     businessCategory: 'Business ERP',
     // hideFromAssignment removed - now visible in Enterprise Admin allocation page
     pages: [
-      { id: 'dashboard', name: 'Admin Dashboard', path: '/admin/client-dashboard' },
+      { id: 'dashboard', name: 'Dashboard', path: '/admin/client-dashboard' },
       { id: 'users', name: 'Users Management', path: '/admin/users' },
       { id: 'clients', name: 'Clients', path: '/admin/clients' },
       { id: 'modules', name: 'Modules', path: '/admin/modules' },

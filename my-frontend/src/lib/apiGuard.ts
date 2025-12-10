@@ -8,10 +8,16 @@ import { cookies, headers } from 'next/headers';
  */
 export async function requireAuthCookie(names: string[] = ['token']): Promise<string | null> {
   const store = await cookies();
+  console.log('[apiGuard] Looking for cookies:', names.join(', '));
+  console.log('[apiGuard] All cookies:', store.getAll().map(c => c.name).join(', '));
   for (const name of names) {
     const v = store.get(name)?.value;
-    if (v) return v;
+    if (v) {
+      console.log('[apiGuard] Found cookie:', name, '- length:', v.length);
+      return v;
+    }
   }
+  console.log('[apiGuard] No auth cookie found');
   return null;
 }
 

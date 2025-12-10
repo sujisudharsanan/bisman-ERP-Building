@@ -16,7 +16,8 @@ import {
   TaskDashboardStats
 } from '@/types/task';
 
-const API_BASE_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:5000';
+// Use relative URLs to go through Next.js API proxy (which handles auth cookies)
+const API_BASE_URL = '';
 
 interface ApiResponse<T> {
   success: boolean;
@@ -25,23 +26,16 @@ interface ApiResponse<T> {
   message?: string;
 }
 
-// Get auth token
-const getAuthToken = () => {
-  return localStorage.getItem('token');
-};
-
-// API fetch wrapper
+// API fetch wrapper - uses credentials for cookie-based auth
 const apiFetch = async <T,>(
   endpoint: string,
   options: RequestInit = {}
 ): Promise<ApiResponse<T>> => {
-  const token = getAuthToken();
-  
   const response = await fetch(`${API_BASE_URL}${endpoint}`, {
     ...options,
+    credentials: 'include', // Include cookies for auth
     headers: {
       'Content-Type': 'application/json',
-      ...(token && { Authorization: `Bearer ${token}` }),
       ...options.headers,
     },
   });
@@ -49,7 +43,7 @@ const apiFetch = async <T,>(
   const data = await response.json();
   
   if (!response.ok) {
-    throw new Error(data.error || `API Error: ${response.status}`);
+    throw new Error(data.error || data.message || `API Error: ${response.status}`);
   }
 
   return data;

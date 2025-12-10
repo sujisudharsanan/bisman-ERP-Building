@@ -5,11 +5,15 @@ import React, { useEffect, useState } from 'react';
 interface SplashScreenProps {
   onComplete?: () => void;
   duration?: number;
+  clientLogo?: string;
+  clientName?: string;
 }
 
 export default function SplashScreen({
   onComplete,
-  duration = 3500
+  duration = 3500,
+  clientLogo,
+  clientName
 }: SplashScreenProps) {
   const [isVisible, setIsVisible] = useState(true);
   const [showContent, setShowContent] = useState(true);
@@ -267,6 +271,49 @@ export default function SplashScreen({
         .splash-for-you-text {
           color: #eab308;
         }
+        
+        .splash-client-branding {
+          margin-top: 1.5rem;
+          display: flex;
+          flex-direction: column;
+          align-items: center;
+          gap: 0.5rem;
+          animation: splashFadeIn 2s ease-out 0.5s both;
+        }
+        
+        .splash-client-branding.fade-out {
+          animation: splashFadeOut 1.5s ease-in-out forwards;
+        }
+        
+        .splash-client-logo {
+          width: 80px;
+          height: 80px;
+          object-fit: contain;
+          border-radius: 12px;
+          background: white;
+          padding: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+        }
+        
+        @media (min-width: 768px) {
+          .splash-client-logo {
+            width: 100px;
+            height: 100px;
+          }
+        }
+        
+        .splash-client-name {
+          font-size: 1rem;
+          font-weight: 500;
+          color: #666;
+          margin-top: 0.25rem;
+        }
+        
+        .splash-powered-by {
+          font-size: 0.75rem;
+          color: #999;
+          margin-top: 0.5rem;
+        }
       `}</style>
 
       <section className="splash-hero-section">
@@ -276,6 +323,20 @@ export default function SplashScreen({
           <div className={`splash-logo-container ${!showContent ? 'fade-out' : ''}`}>
             <img src="/brand/logo-2.svg" alt="Bisman ERP Solutions" className="splash-bisman-logo" />
           </div>
+          
+          {/* Client branding section - shows if client logo/name is available */}
+          {(clientLogo || clientName) && (
+            <div className={`splash-client-branding ${!showContent ? 'fade-out' : ''}`}>
+              {clientLogo && (
+                <img src={clientLogo} alt={clientName || 'Client'} className="splash-client-logo" />
+              )}
+              {clientName && (
+                <span className="splash-client-name">{clientName}</span>
+              )}
+              <span className="splash-powered-by">Powered by BISMAN ERP</span>
+            </div>
+          )}
+          
           <h2 className={`splash-title-heading ${!showContent ? 'fade-out' : ''}`}>
             <span className="splash-typing-text">
               {displayedText.split('').map((char, index) => {

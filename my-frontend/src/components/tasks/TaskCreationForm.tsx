@@ -5,10 +5,20 @@
 
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { CreateTaskInput, TaskPriority } from '@/types/task';
 import { useTaskAPI } from '@/hooks/useTaskAPI';
 import { PriorityBadge } from './PriorityBadge';
+import { Search, User, X, Loader2 } from 'lucide-react';
+
+interface UserResult {
+  id: number;
+  username: string;
+  email: string;
+  fullName: string;
+  role: string;
+  profilePic: string | null;
+}
 
 interface TaskCreationFormProps {
   onTaskCreated?: (task: any) => void;
@@ -28,6 +38,88 @@ export const TaskCreationForm: React.FC<TaskCreationFormProps> = ({
   const [files, setFiles] = useState<File[]>([]);
   const [showPreview, setShowPreview] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // User search state
+  const [userSearchQuery, setUserSearchQuery] = useState('');
+  const [userSearchResults, setUserSearchResults] = useState<UserResult[]>([]);
+  const [selectedUser, setSelectedUser] = useState<UserResult | null>(null);
+  const [isSearching, setIsSearching] = useState(false);
+  const [showUserDropdown, setShowUserDropdown] = useState(false);
+  const userSearchRef = useRef<HTMLDivElement>(null);
+  const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userSearchRef.current && !userSearchRef.current.contains(event.target as Node)) {
+        setShowUserDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  // Search users API call
+  const searchUsers = useCallback(async (query: string) => {
+    if (query.length < 1) {
+      setUserSearchResults([]);
+      return;
+    }
+    
+    setIsSearching(true);
+    try {
+      const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}&limit=10`, {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setUserSearchResults(data.users || []);
+      }
+    } catch (err) {
+      console.error('Error searching users:', err);
+    } finally {
+      setIsSearching(false);
+    }
+  }, []);
+
+  // Debounced search
+  const handleUserSearchChange = (value: string) => {
+    setUserSearchQuery(value);
+    setShowUserDropdown(true);
+    
+    // Clear previous timeout
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    
+    // Debounce search
+    searchTimeoutRef.current = setTimeout(() => {
+      searchUsers(value);
+    }, 300);
+  };
+
+  // Select a user from dropdown
+  const handleSelectUser = (user: UserResult) => {
+    setSelectedUser(user);
+    setFormData({ ...formData, assigneeId: user.id });
+    setUserSearchQuery('');
+    setShowUserDropdown(false);
+    setUserSearchResults([]);
+  };
+
+  // Clear selected user
+  const handleClearUser = () => {
+    setSelectedUser(null);
+    setFormData({ ...formData, assigneeId: undefined });
+  };
+
+  // Load initial users when dropdown opens
+  const handleSearchFocus = () => {
+    setShowUserDropdown(true);
+    if (userSearchResults.length === 0 && !userSearchQuery) {
+      searchUsers('');
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -126,21 +218,109 @@ export const TaskCreationForm: React.FC<TaskCreationFormProps> = ({
           </div>
         </div>
 
-        {/* Assignee ID (temporary - will be replaced with user picker) */}
-        <div>
+        {/* Assignee - Searchable User Picker */}
+        <div ref={userSearchRef}>
           <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-            Assignee ID *
+            Assign To *
           </label>
-          <input
-            type="number"
-            value={formData.assigneeId || ''}
-            onChange={(e) => setFormData({ ...formData, assigneeId: parseInt(e.target.value) })}
-            className="w-full px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                     bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                     focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-            placeholder="Enter user ID..."
-            required
-          />
+          
+          {/* Selected User Display */}
+          {selectedUser ? (
+            <div className="flex items-center justify-between p-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-700">
+              <div className="flex items-center gap-3">
+                {selectedUser.profilePic ? (
+                  <img 
+                    src={selectedUser.profilePic} 
+                    alt={selectedUser.fullName}
+                    className="w-8 h-8 rounded-full object-cover"
+                  />
+                ) : (
+                  <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center">
+                    <User className="w-4 h-4 text-white" />
+                  </div>
+                )}
+                <div>
+                  <p className="font-medium text-gray-900 dark:text-gray-100">{selectedUser.fullName}</p>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">{selectedUser.role} • {selectedUser.email}</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={handleClearUser}
+                className="p-1 hover:bg-gray-200 dark:hover:bg-gray-600 rounded-full transition-colors"
+              >
+                <X className="w-4 h-4 text-gray-500" />
+              </button>
+            </div>
+          ) : (
+            /* Search Input */
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                {isSearching ? (
+                  <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                ) : (
+                  <Search className="w-4 h-4 text-gray-400" />
+                )}
+              </div>
+              <input
+                type="text"
+                value={userSearchQuery}
+                onChange={(e) => handleUserSearchChange(e.target.value)}
+                onFocus={handleSearchFocus}
+                className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                         bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                         focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Search users by name or email..."
+              />
+              
+              {/* Dropdown Results */}
+              {showUserDropdown && (
+                <div className="absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                  {isSearching ? (
+                    <div className="p-3 text-center text-gray-500">
+                      <Loader2 className="w-5 h-5 animate-spin mx-auto mb-1" />
+                      <span className="text-sm">Searching...</span>
+                    </div>
+                  ) : userSearchResults.length > 0 ? (
+                    userSearchResults.map((user) => (
+                      <button
+                        key={user.id}
+                        type="button"
+                        onClick={() => handleSelectUser(user)}
+                        className="w-full flex items-center gap-3 p-3 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-left"
+                      >
+                        {user.profilePic ? (
+                          <img 
+                            src={user.profilePic} 
+                            alt={user.fullName}
+                            className="w-8 h-8 rounded-full object-cover"
+                          />
+                        ) : (
+                          <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center flex-shrink-0">
+                            <span className="text-white text-sm font-medium">
+                              {user.fullName?.charAt(0)?.toUpperCase() || 'U'}
+                            </span>
+                          </div>
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <p className="font-medium text-gray-900 dark:text-gray-100 truncate">{user.fullName}</p>
+                          <p className="text-xs text-gray-500 dark:text-gray-400 truncate">{user.role} • {user.email}</p>
+                        </div>
+                      </button>
+                    ))
+                  ) : userSearchQuery ? (
+                    <div className="p-3 text-center text-gray-500 text-sm">
+                      No users found matching "{userSearchQuery}"
+                    </div>
+                  ) : (
+                    <div className="p-3 text-center text-gray-500 text-sm">
+                      Type to search for users...
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Due Date */}

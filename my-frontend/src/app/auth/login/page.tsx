@@ -212,7 +212,7 @@ export default function StandardLoginPage() {
         } else if (roleValue === 'SUPER_ADMIN') {
           targetPath = '/super-admin';
         } else if (roleValue === 'ADMIN' || roleValue === 'SYSTEM_ADMINISTRATOR') {
-          targetPath = '/admin/client-dashboard';
+          targetPath = '/admin';
         }
         
         window.location.replace(targetPath);
@@ -242,108 +242,32 @@ export default function StandardLoginPage() {
 
         // Normalize role name - handle both 'role' and 'roleName' fields
         const roleValue = (user.roleName || user.role || '').toUpperCase().replace(/\s+/g, '_');
-        console.log('🔍 Login - User role detected:', roleValue, 'Raw user data:', { role: user.role, roleName: user.roleName });
+        console.log('🔍 Login - User role detected:', roleValue);
 
-        // Role-based redirection - route to independent role dashboards
-        let targetPath = '/dashboard'; // Default fallback
+        // Simplified role-based redirection
+        // Only admin roles have specialized dashboards, everyone else goes to unified /dashboard
+        let targetPath = '/dashboard'; // Default for ALL standard roles
+        
         switch (roleValue) {
-          // Enterprise Management
+          // Admin roles keep their specialized dashboards
           case 'ENTERPRISE_ADMIN':
             targetPath = '/enterprise-admin/dashboard';
-            console.log('✅ Redirecting ENTERPRISE_ADMIN to:', targetPath);
             break;
-            
-          // System Administration
           case 'SUPER_ADMIN':
             targetPath = '/super-admin';
-            console.log('✅ Redirecting SUPER_ADMIN to:', targetPath);
             break;
           case 'ADMIN':
           case 'SYSTEM_ADMINISTRATOR':
-            targetPath = '/admin/client-dashboard';
+            targetPath = '/admin';
             break;
-          case 'IT_ADMIN':
-            targetPath = '/it-admin';
-            break;
-            
-          // Finance Roles → Independent Finance Dashboards
-          case 'CFO':
-            targetPath = '/cfo-dashboard';
-            break;
-          case 'FINANCE_CONTROLLER':
-            targetPath = '/finance-controller';
-            break;
-          case 'TREASURY':
-            targetPath = '/treasury';
-            break;
-          case 'ACCOUNTS':
-            targetPath = '/accounts';
-            break;
-          case 'ACCOUNTS_PAYABLE':
-            targetPath = '/accounts-payable';
-            break;
-          case 'ACCOUNTS_RECEIVABLE':
-            targetPath = '/accounts';
-            break;
-          case 'BANKER':
-            targetPath = '/banker';
-            break;
-            
-          // Procurement Roles → Procurement Dashboard
-          case 'PROCUREMENT_OFFICER':
-          case 'PROCUREMENT_HEAD':
-          case 'PROCUREMENT_MANAGER':
-          case 'SUPPLIER_MANAGER':
-            targetPath = '/procurement-officer';
-            break;
-            
-          // Operations Roles → Independent Operations Dashboards
-          case 'OPERATIONS_MANAGER':
-          case 'WAREHOUSE_MANAGER':
-          case 'LOGISTICS_MANAGER':
-          case 'INVENTORY_CONTROLLER':
-            targetPath = '/operations-manager';
-            break;
-          case 'HUB_INCHARGE':
-            targetPath = '/hub-incharge';
-            break;
-          case 'STORE_INCHARGE':
-            targetPath = '/store-incharge';
-            break;
-            
-          // Compliance & Legal → Independent Dashboards
-          case 'COMPLIANCE':
-          case 'COMPLIANCE_OFFICER':
-            targetPath = '/compliance-officer';
-            break;
-          case 'LEGAL':
-          case 'LEGAL_HEAD':
-          case 'RISK_MANAGER':
-            targetPath = '/legal';
-            break;
-            
-          // Staff → Staff Dashboard
-          case 'STAFF':
-            targetPath = '/staff';
-            break;
-            
-          // Manager & Operations Manager → Same Dashboard
-          // Note: MANAGER is legacy role name, both redirect to operations-manager
-          case 'MANAGER':
-          case 'OPERATIONS_MANAGER':
-            targetPath = '/operations-manager';
-            break;
-            
           default:
-            // For any other role, default to dashboard
-            console.warn('⚠️ Unknown role, using default dashboard:', roleValue);
+            // ALL other roles (CFO, STAFF, HUB_INCHARGE, STORE_INCHARGE, etc.)
+            // go to the unified dashboard which handles role-specific rendering
             targetPath = '/dashboard';
             break;
         }
         
         console.log('🎯 Final redirect path:', targetPath);
-        console.log('🍪 Checking cookies before redirect...');
-        console.log('🍪 Document cookies:', document.cookie);
         
         // Use location.replace for a clean navigation with cookies
         window.location.replace(targetPath);
@@ -603,18 +527,6 @@ export default function StandardLoginPage() {
             <p className="text-[10px] text-slate-400 dark:text-slate-500 mt-3">
               All demo users • Password: Demo@123 • Click "Fill" to populate or "Login" to sign in directly
             </p>
-          </div>
-
-          {/* QA Testing Portal Link */}
-          <div className="mt-6 pt-4 border-t border-slate-200 dark:border-slate-700">
-            <Link 
-              href="/qa/login"
-              className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-violet-50 dark:bg-violet-900/20 border border-violet-200 dark:border-violet-800 rounded-lg text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/30 transition-colors text-sm font-medium"
-            >
-              <Bug className="w-4 h-4" />
-              QA Testing Portal
-              <span className="text-[10px] text-violet-500 dark:text-violet-400 ml-1">(Standalone Access)</span>
-            </Link>
           </div>
 
           <div className="mt-6 text-xs text-slate-400 dark:text-slate-500 break-words">Not your computer? Use Private Browsing windows to sign in. Learn more about using Guest mode</div>

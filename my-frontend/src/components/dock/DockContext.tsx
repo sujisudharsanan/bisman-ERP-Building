@@ -42,7 +42,7 @@ const DEFAULT_PREFERENCES: DockPreferences = {
 
 // Default modules available in dock
 export const DOCK_MODULES: DockModule[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: 'LayoutDashboard', href: '/admin/client-dashboard', shortcut: '⌘+1' },
+  { id: 'dashboard', label: 'Dashboard', icon: 'LayoutDashboard', href: '/admin', shortcut: '⌘+1' },
   { id: 'money', label: 'Money', icon: 'Wallet', href: '/admin/money', shortcut: '⌘+2' },
   { id: 'customers', label: 'Customers', icon: 'Users', href: '/admin/customers', shortcut: '⌘+3' },
   { id: 'delivery', label: 'Delivery', icon: 'Truck', href: '/admin/delivery', shortcut: '⌘+4' },

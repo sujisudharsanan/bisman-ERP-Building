@@ -371,9 +371,10 @@ export const MODULES: Record<string, ModuleMetadata> = {
     id: 'qa',
     name: 'QA & Testing',
     icon: ClipboardCheck,
-    description: 'Quality assurance, bug tracking, and test management',
+    description: 'Quality assurance, bug tracking, and test management (Internal use only)',
     color: 'cyan',
     order: 10,
+    hidden: true, // Hidden from all users - internal testing module only
   },
   common: {
     id: 'common',
@@ -1699,8 +1700,8 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   },
   {
     id: 'admin-client-dashboard',
-    name: 'Client Usage Dashboard',
-    path: '/admin/client-dashboard',
+    name: 'Dashboard',
+    path: '/admin',
     iconKey: "LayoutDashboard",
     module: 'admin',
     permissions: ['admin-client-usage', 'authenticated'],
@@ -1708,7 +1709,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     showInSidebar: true,
     description: 'Business health, money, customers, delivery & team metrics for all clients',
-    order: 13,
+    order: 1,
   },
   {
     id: 'admin-user-usage',
@@ -1747,7 +1748,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'Dashboard level analytics view',
     order: 15,
   },
-  // ==================== QA & TESTING MODULE ====================
+  // ==================== QA & TESTING MODULE (HIDDEN - Internal Testing Only) ====================
   {
     id: 'qa-dashboard',
     name: 'QA Dashboard',
@@ -1757,6 +1758,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     permissions: ['qa-access', 'authenticated'],
     roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN', 'QA_TESTER', 'DEVELOPER'],
     status: 'active',
+    showInSidebar: false, // Hidden - QA module is for internal testing only
     description: 'QA Dashboard - overview of testing tasks and issues',
     badge: 'New',
     order: 1,
@@ -1770,6 +1772,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     permissions: ['qa-access', 'authenticated'],
     roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN', 'QA_TESTER', 'DEVELOPER'],
     status: 'active',
+    showInSidebar: false, // Hidden - QA module is for internal testing only
     description: 'View and manage test assignments',
     order: 2,
   },
@@ -1782,6 +1785,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     permissions: ['qa-access', 'authenticated'],
     roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN', 'QA_TESTER', 'DEVELOPER'],
     status: 'active',
+    showInSidebar: false, // Hidden - QA module is for internal testing only
     description: 'Track bugs and issues found during testing',
     order: 3,
   },
@@ -1820,6 +1824,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     permissions: ['qa-access', 'authenticated'],
     roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN', 'QA_TESTER', 'DEVELOPER'],
     status: 'active',
+    showInSidebar: false, // Hidden - QA module is for internal testing only
     badge: 'Live',
     description: 'Explore ERP roles, permissions, routes with live data sync',
     order: 6,

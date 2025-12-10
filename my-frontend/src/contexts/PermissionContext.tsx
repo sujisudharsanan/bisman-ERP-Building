@@ -72,8 +72,10 @@ export function PermissionProvider({ children }: PermissionProviderProps) {
     if (loading) return false;
     if (!user) return false;
 
-    // Super admin has all permissions
-    if (user.roleName === 'SUPER_ADMIN') return true;
+    // Super admin, Enterprise admin, and Admin have all permissions
+    if (user.roleName === 'SUPER_ADMIN' || user.role === 'SUPER_ADMIN') return true;
+    if (user.roleName === 'ENTERPRISE_ADMIN' || user.role === 'ENTERPRISE_ADMIN') return true;
+    if (user.roleName === 'ADMIN' || user.role === 'ADMIN') return true;
 
     // Create permission key in format: route.action
     const permissionKey = `${featureKey}.${action}`;

@@ -11,7 +11,7 @@ export default function AdminSettingsPage() {
       {/* Header */}
       <div className="flex items-center gap-4 mb-8">
         <Link
-          href="/admin/client-dashboard"
+          href="/admin"
           className="p-2 rounded-lg bg-slate-800/50 hover:bg-slate-700 text-gray-400 hover:text-white transition-colors"
         >
           <ArrowLeft size={20} />

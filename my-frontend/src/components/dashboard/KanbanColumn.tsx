@@ -17,6 +17,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = 
       'DRAFT': 'text-gray-400',
       'IN PROGRESS': 'text-blue-400',
       'EDITING': 'text-cyan-400',
+      'NEED ATTENTION': 'text-orange-400',
       'DONE': 'text-green-400',
     };
     return colors[title] || 'text-gray-400';

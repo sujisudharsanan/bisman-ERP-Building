@@ -107,8 +107,14 @@ class QueryMonitor {
 // Global query monitor instance
 const queryMonitor = new QueryMonitor()
 
+// Singleton pool instance
+let poolInstance = null
+
 // Secure database configuration
 const createSecurePool = (databaseUrl) => {
+  // Return existing pool if already created
+  if (poolInstance) return poolInstance
+  
   const useSsl = (process.env.NODE_ENV === 'production') || (process.env.PGSSLMODE === 'require')
   const pool = new Pool({
     connectionString: databaseUrl,
@@ -166,7 +172,23 @@ const createSecurePool = (databaseUrl) => {
     }
   }
 
+  // Store the pool instance as singleton
+  poolInstance = pool
   return pool
+}
+
+// Get the existing pool or create one
+const getPool = () => {
+  if (poolInstance) return poolInstance
+  
+  // Auto-create from DATABASE_URL if available
+  const databaseUrl = process.env.DATABASE_URL
+  if (databaseUrl) {
+    return createSecurePool(databaseUrl)
+  }
+  
+  console.warn('[database] No pool available - DATABASE_URL not set')
+  return null
 }
 
 // Secure query wrapper with parameter validation
@@ -194,5 +216,12 @@ const executeQuery = async (pool, query, params = []) => {
 module.exports = {
   createSecurePool,
   executeQuery,
-  queryMonitor
+  queryMonitor,
+  getPool,
+  // Proxy object that lazily gets pool - for backwards compatibility with `require('./database').query()`
+  get query() {
+    const pool = getPool()
+    if (!pool) throw new Error('Database pool not initialized')
+    return pool.query.bind(pool)
+  }
 }

@@ -79,8 +79,12 @@ export async function POST(request: NextRequest) {
   try {
     // Get auth token from cookies
     const authToken = await requireAuthCookie(['authToken', 'token', 'access_token']);
+    
+    console.log('[POST /api/tasks] Auth token found:', authToken ? 'YES (length: ' + authToken.length + ')' : 'NO');
+    console.log('[POST /api/tasks] Backend URL:', BACKEND_URL);
 
     if (!authToken) {
+      console.log('[POST /api/tasks] No auth token - returning 401');
       return NextResponse.json(
         { success: false, error: 'Not authenticated' },
         { status: 401 }

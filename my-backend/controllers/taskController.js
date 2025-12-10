@@ -3,8 +3,17 @@
  * Business logic for task management with approval hierarchy
  */
 
-const pool = require('../middleware/database');
+const { getPool } = require('../middleware/database');
 const { validationResult } = require('express-validator');
+
+// Lazy pool getter
+const getDbPool = () => {
+  const pool = getPool();
+  if (!pool) {
+    throw new Error('Database connection not available');
+  }
+  return pool;
+};
 
 // ============================================
 // HELPER FUNCTIONS
@@ -14,6 +23,7 @@ const { validationResult } = require('express-validator');
  * Check if user has permission to access/modify task
  */
 const hasTaskPermission = async (taskId, userId, action = 'view') => {
+  const pool = getDbPool();
   const query = `
     SELECT t.*, 
            tp.user_id as participant_id,
@@ -23,7 +33,7 @@ const hasTaskPermission = async (taskId, userId, action = 'view') => {
     WHERE t.id = $1
   `;
   
-  const result = await pool.query(query, [taskId, userId]);
+  const result = await getDbPool().query(query, [taskId, userId]);
   
   if (result.rows.length === 0) {
     return { hasPermission: false, message: 'Task not found' };
@@ -76,7 +86,7 @@ const checkForDuplicates = async (title, assigneeId, creatorId, excludeTaskId = 
     params.push(excludeTaskId);
   }
   
-  const result = await pool.query(query, params);
+  const result = await getDbPool().query(query, params);
   return result.rows;
 };
 
@@ -90,7 +100,7 @@ const createSystemMessage = async (taskId, messageText, userId) => {
     RETURNING *
   `;
   
-  const result = await pool.query(query, [taskId, userId, messageText]);
+  const result = await getDbPool().query(query, [taskId, userId, messageText]);
   return result.rows[0];
 };
 
@@ -113,7 +123,7 @@ const getTaskWithDetails = async (taskId) => {
     WHERE t.id = $1
   `;
   
-  const result = await pool.query(query, [taskId]);
+  const result = await getDbPool().query(query, [taskId]);
   return result.rows[0];
 };
 
@@ -125,7 +135,7 @@ const getTaskWithDetails = async (taskId) => {
  * Create a new task
  */
 exports.createTask = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -322,11 +332,11 @@ exports.getTasks = async (req, res) => {
     query += ` ORDER BY t.created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
     params.push(limit, offset);
     
-    const result = await pool.query(query, params);
+    const result = await getDbPool().query(query, params);
     
     // Get total count
     const countQuery = query.split('ORDER BY')[0].replace(/SELECT .* FROM/, 'SELECT COUNT(*) FROM');
-    const countResult = await pool.query(countQuery, params.slice(0, -2));
+    const countResult = await getDbPool().query(countQuery, params.slice(0, -2));
     
     res.json({
       success: true,
@@ -367,7 +377,7 @@ exports.getDashboardTasks = async (req, res) => {
       ORDER BY t.created_at DESC
     `;
     
-    const result = await pool.query(query, [userId]);
+    const result = await getDbPool().query(query, [userId]);
     
     // Group by status
     const groupedTasks = {
@@ -425,7 +435,7 @@ exports.getTaskStats = async (req, res) => {
         AND status NOT IN ('ARCHIVED', 'CANCELLED')
     `;
     
-    const result = await pool.query(query, [userId]);
+    const result = await getDbPool().query(query, [userId]);
     const stats = result.rows[0];
     
     // Calculate completion rate
@@ -487,7 +497,7 @@ exports.getTaskById = async (req, res) => {
       WHERE tm.task_id = $1
       ORDER BY tm.created_at ASC
     `;
-    const messages = await pool.query(messagesQuery, [taskId]);
+    const messages = await getDbPool().query(messagesQuery, [taskId]);
     
     // Get attachments
     const attachmentsQuery = `
@@ -495,7 +505,7 @@ exports.getTaskById = async (req, res) => {
       WHERE task_id = $1
       ORDER BY uploaded_at DESC
     `;
-    const attachments = await pool.query(attachmentsQuery, [taskId]);
+    const attachments = await getDbPool().query(attachmentsQuery, [taskId]);
     
     res.json({
       success: true,
@@ -519,7 +529,7 @@ exports.getTaskById = async (req, res) => {
  * Update task
  */
 exports.updateTask = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -653,7 +663,7 @@ exports.updateTask = async (req, res) => {
  * Delete/Archive task
  */
 exports.deleteTask = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -733,7 +743,7 @@ exports.getMyTasks = async (req, res) => {
       ORDER BY t.priority DESC, t.due_date ASC NULLS LAST
     `;
     
-    const result = await pool.query(query, [userId]);
+    const result = await getDbPool().query(query, [userId]);
     
     res.json({
       success: true,
@@ -771,7 +781,7 @@ exports.getCreatedByMe = async (req, res) => {
       ORDER BY t.created_at DESC
     `;
     
-    const result = await pool.query(query, [userId]);
+    const result = await getDbPool().query(query, [userId]);
     
     res.json({
       success: true,
@@ -810,7 +820,7 @@ exports.getPendingApproval = async (req, res) => {
       ORDER BY t.created_at ASC
     `;
     
-    const result = await pool.query(query, [userId]);
+    const result = await getDbPool().query(query, [userId]);
     
     res.json({
       success: true,
@@ -927,7 +937,7 @@ exports.getTaskMessages = async (req, res) => {
       ORDER BY tm.created_at ASC
     `;
     
-    const result = await pool.query(query, [taskId]);
+    const result = await getDbPool().query(query, [taskId]);
     
     res.json({
       success: true,
@@ -947,7 +957,7 @@ exports.getTaskMessages = async (req, res) => {
  * Add a message to task
  */
 exports.addTaskMessage = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -1024,7 +1034,7 @@ exports.addTaskMessage = async (req, res) => {
  * Edit a message
  */
 exports.editTaskMessage = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -1093,7 +1103,7 @@ exports.editTaskMessage = async (req, res) => {
  * Delete a message
  */
 exports.deleteTaskMessage = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -1175,7 +1185,7 @@ exports.markMessageAsRead = async (req, res) => {
     }
     
     // Update read status
-    await pool.query(
+    await getDbPool().query(
       `UPDATE task_messages 
        SET is_read = true, read_at = NOW()
        WHERE id = $1 AND task_id = $2`,
@@ -1227,7 +1237,7 @@ exports.getTaskAttachments = async (req, res) => {
       ORDER BY ta.uploaded_at DESC
     `;
     
-    const result = await pool.query(query, [taskId]);
+    const result = await getDbPool().query(query, [taskId]);
     
     res.json({
       success: true,
@@ -1247,7 +1257,7 @@ exports.getTaskAttachments = async (req, res) => {
  * Add attachments to task
  */
 exports.addTaskAttachments = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -1321,7 +1331,7 @@ exports.addTaskAttachments = async (req, res) => {
  * Delete an attachment
  */
 exports.deleteAttachment = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -1392,7 +1402,7 @@ exports.deleteAttachment = async (req, res) => {
  * Start working on a task
  */
 exports.startTask = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -1464,7 +1474,7 @@ exports.startTask = async (req, res) => {
  * Complete a task
  */
 exports.completeTask = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -1534,7 +1544,7 @@ exports.completeTask = async (req, res) => {
  * Reopen a completed task
  */
 exports.reopenTask = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -1611,7 +1621,7 @@ exports.reopenTask = async (req, res) => {
  * Submit task for review
  */
 exports.submitForReview = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -1688,7 +1698,7 @@ exports.submitForReview = async (req, res) => {
  * Approve a task
  */
 exports.approveTask = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -1765,7 +1775,7 @@ exports.approveTask = async (req, res) => {
  * Reject a task
  */
 exports.rejectTask = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -1845,7 +1855,7 @@ exports.rejectTask = async (req, res) => {
  * Block a task
  */
 exports.blockTask = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -1910,7 +1920,7 @@ exports.blockTask = async (req, res) => {
  * Unblock a task
  */
 exports.unblockTask = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -2008,7 +2018,7 @@ exports.getTaskParticipants = async (req, res) => {
       ORDER BY tp.added_at ASC
     `;
     
-    const result = await pool.query(query, [taskId]);
+    const result = await getDbPool().query(query, [taskId]);
     
     res.json({
       success: true,
@@ -2028,7 +2038,7 @@ exports.getTaskParticipants = async (req, res) => {
  * Add participant to task
  */
 exports.addTaskParticipant = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -2128,7 +2138,7 @@ exports.addTaskParticipant = async (req, res) => {
  * Remove participant from task
  */
 exports.removeTaskParticipant = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -2223,7 +2233,7 @@ exports.getTaskHistory = async (req, res) => {
       ORDER BY th.changed_at DESC
     `;
     
-    const result = await pool.query(query, [taskId]);
+    const result = await getDbPool().query(query, [taskId]);
     
     res.json({
       success: true,
@@ -2271,7 +2281,7 @@ exports.getTaskDependencies = async (req, res) => {
       ORDER BY td.created_at ASC
     `;
     
-    const result = await pool.query(query, [taskId]);
+    const result = await getDbPool().query(query, [taskId]);
     
     res.json({
       success: true,
@@ -2291,7 +2301,7 @@ exports.getTaskDependencies = async (req, res) => {
  * Add task dependency
  */
 exports.addTaskDependency = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -2383,7 +2393,7 @@ exports.addTaskDependency = async (req, res) => {
  * Remove task dependency
  */
 exports.removeTaskDependency = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -2473,7 +2483,7 @@ exports.getTaskTemplates = async (req, res) => {
     
     query += ` ORDER BY tt.template_name ASC`;
     
-    const result = await pool.query(query, params);
+    const result = await getDbPool().query(query, params);
     
     res.json({
       success: true,
@@ -2493,7 +2503,7 @@ exports.getTaskTemplates = async (req, res) => {
  * Create task template
  */
 exports.createTaskTemplate = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -2558,7 +2568,7 @@ exports.createTaskTemplate = async (req, res) => {
  * Create task from template
  */
 exports.createTaskFromTemplate = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -2660,7 +2670,7 @@ exports.createTaskFromTemplate = async (req, res) => {
  * Reassign task to different user
  */
 exports.reassignTask = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -2787,7 +2797,7 @@ exports.getAssignableUsers = async (req, res) => {
     
     query += ` ORDER BY username ASC LIMIT 100`;
     
-    const result = await pool.query(query, params);
+    const result = await getDbPool().query(query, params);
     
     res.json({
       success: true,
@@ -2905,11 +2915,11 @@ exports.searchTasks = async (req, res) => {
     query += ` ORDER BY t.created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
     params.push(limit, offset);
     
-    const result = await pool.query(query, params);
+    const result = await getDbPool().query(query, params);
     
     // Get total count
     const countQuery = query.split('ORDER BY')[0].replace(/SELECT .* FROM/, 'SELECT COUNT(*) FROM');
-    const countResult = await pool.query(countQuery, params.slice(0, -2));
+    const countResult = await getDbPool().query(countQuery, params.slice(0, -2));
     
     res.json({
       success: true,
@@ -2964,7 +2974,7 @@ exports.searchTaskBySerialNumber = async (req, res) => {
              OR EXISTS (SELECT 1 FROM task_participants WHERE task_id = t.id AND user_id = $2))
     `;
     
-    const result = await pool.query(query, [serialNumber, userId]);
+    const result = await getDbPool().query(query, [serialNumber, userId]);
     
     if (result.rows.length === 0) {
       return res.status(404).json({
@@ -2995,7 +3005,7 @@ exports.searchTaskBySerialNumber = async (req, res) => {
  * Bulk update tasks
  */
 exports.bulkUpdateTasks = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');
@@ -3090,7 +3100,7 @@ exports.bulkUpdateTasks = async (req, res) => {
  * Bulk delete/archive tasks
  */
 exports.bulkDeleteTasks = async (req, res) => {
-  const client = await pool.connect();
+  const client = await getDbPool().connect();
   
   try {
     await client.query('BEGIN');

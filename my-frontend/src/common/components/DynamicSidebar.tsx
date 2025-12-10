@@ -388,7 +388,16 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
 
     // Sort by explicit order then name
     pages.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name));
-    return pages;
+    
+    // Deduplicate pages by id (prevent duplicate entries in sidebar)
+    const seenIds = new Set<string>();
+    const uniquePages = pages.filter(p => {
+      if (seenIds.has(p.id)) return false;
+      seenIds.add(p.id);
+      return true;
+    });
+    
+    return uniquePages;
   }, [user, userAllowedPages, isSuperAdmin, superAdminModules]);
 
   // Remove toggle function - modules will always be expanded
@@ -416,7 +425,7 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
     // Super Admin / Admin roles
     if (hasFullAdmin(role)) return '/admin';
     if (role === 'ENTERPRISE_ADMIN') return '/enterprise-admin/dashboard';
-    if (role === 'ADMIN') return '/admin/client-dashboard';
+    if (role === 'ADMIN') return '/admin';
     
     // Role-specific dashboards
     const rolePathMap: Record<string, string> = {
@@ -635,7 +644,7 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
   // Check if current page is a dashboard or user settings - hide profile on these pages
   const hideProfileInSidebar = pathname === '/hub-incharge' || 
                           pathname === '/super-admin' || 
-                          pathname === '/admin/client-dashboard' || 
+                          pathname === '/admin' || 
                           pathname === '/enterprise-admin/dashboard' ||
                           pathname === '/admin' ||
                           pathname === '/enterprise-admin' ||
