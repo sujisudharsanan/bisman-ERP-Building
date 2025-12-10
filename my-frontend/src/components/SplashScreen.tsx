@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 
 interface SplashScreenProps {
   onComplete?: () => void;
@@ -19,6 +19,13 @@ export default function SplashScreen({
   const [showContent, setShowContent] = useState(true);
   const [displayedText, setDisplayedText] = useState('Designed ');
   const [phase, setPhase] = useState<'typing1' | 'pause' | 'deleting' | 'typing2' | 'done'>('typing1');
+  const hasRun = useRef(false);
+  const onCompleteRef = useRef(onComplete);
+  
+  // Keep ref updated
+  useEffect(() => {
+    onCompleteRef.current = onComplete;
+  }, [onComplete]);
   
   const prefix = 'Designed ';
   const typePart1 = 'for genius';
@@ -26,6 +33,10 @@ export default function SplashScreen({
   const typePart2 = 'you';
 
   useEffect(() => {
+    // Prevent re-running if already executed
+    if (hasRun.current) return;
+    hasRun.current = true;
+    
     let timeoutId: NodeJS.Timeout;
     let charIndex = 0;
     let pauseCount = 0;
@@ -79,7 +90,7 @@ export default function SplashScreen({
         // Complete and hide 2.7 seconds after animation completes (1.2s wait + 1.5s fade)
         setTimeout(() => {
           setIsVisible(false);
-          onComplete?.();
+          onCompleteRef.current?.();
         }, 2700);
       }
     };
@@ -90,7 +101,7 @@ export default function SplashScreen({
     return () => {
       clearTimeout(timeoutId);
     };
-  }, [duration, onComplete]);
+  }, []); // Empty dependency array - run only once
 
   if (!isVisible) return null;
 
