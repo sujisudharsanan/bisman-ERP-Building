@@ -58,7 +58,9 @@ export function useWorkflowTasks(): UseWorkflowTasksReturn {
       }
 
       const data = await res.json();
-      setTasks(data);
+      // Handle API response format: { success: true, data: [...] }
+      const taskList = Array.isArray(data) ? data : (data.data || []);
+      setTasks(taskList);
     } catch (err) {
       console.error('Error fetching workflow tasks:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch tasks');
@@ -81,7 +83,9 @@ export function useWorkflowTasks(): UseWorkflowTasksReturn {
         throw new Error('Failed to create task');
       }
 
-      const newTask = await res.json();
+      const response = await res.json();
+      // Handle API response format: { success: true, data: {...} }
+      const newTask = response.data || response;
       setTasks(prev => [newTask, ...prev]);
       return newTask;
     } catch (err) {
@@ -170,13 +174,32 @@ export function useWorkflowTasks(): UseWorkflowTasksReturn {
   return { ...base, ...task };
   };
 
+  // Ensure tasks is always an array
+  const safeTasks = Array.isArray(tasks) ? tasks : [];
+
   // Group tasks by status and transform for Kanban
+  // Map backend status (OPEN, IN_PROGRESS, etc) to frontend status (draft, in_progress, etc)
+  const statusMap: Record<string, string> = {
+    'OPEN': 'draft',
+    'PENDING': 'confirmed',
+    'IN_PROGRESS': 'in_progress',
+    'UNDER_REVIEW': 'editing',
+    'COMPLETED': 'done',
+    'CLOSED': 'done',
+    'CANCELLED': 'done'
+  };
+
+  const getStatus = (task: WorkflowTask) => {
+    const status = task.status?.toUpperCase() || 'OPEN';
+    return statusMap[status] || task.status?.toLowerCase() || 'draft';
+  };
+
   const groupedTasks = {
-    draft: tasks.filter(t => t.status === 'draft').map(transformTaskForKanban),
-    confirmed: tasks.filter(t => t.status === 'confirmed').map(transformTaskForKanban),
-    in_progress: tasks.filter(t => t.status === 'in_progress').map(transformTaskForKanban),
-    editing: tasks.filter(t => t.status === 'editing').map(transformTaskForKanban),
-    done: tasks.filter(t => t.status === 'done').map(transformTaskForKanban)
+    draft: safeTasks.filter(t => getStatus(t) === 'draft').map(transformTaskForKanban),
+    confirmed: safeTasks.filter(t => getStatus(t) === 'confirmed').map(transformTaskForKanban),
+    in_progress: safeTasks.filter(t => getStatus(t) === 'in_progress').map(transformTaskForKanban),
+    editing: safeTasks.filter(t => getStatus(t) === 'editing').map(transformTaskForKanban),
+    done: safeTasks.filter(t => getStatus(t) === 'done').map(transformTaskForKanban)
   };
 
   return {

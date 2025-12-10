@@ -3,7 +3,6 @@
 import React, { useEffect, useState } from 'react';
 import Sidebar from './Sidebar';
 import TopNavbar from './TopNavbar';
-import { HubInchargeBottomBar } from '@/components/hub-incharge/HubInchargeTabs';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 interface DashboardLayoutProps {
@@ -58,13 +57,6 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
             </ErrorBoundary>
           </main>
         </div>
-
-        {/* Bottom bar for hub-incharge role */}
-        {(role === 'STAFF' || role?.toLowerCase().includes('hub') || role?.toLowerCase().includes('incharge')) && (
-          <ErrorBoundary fallback={null}>
-            <HubInchargeBottomBar />
-          </ErrorBoundary>
-        )}
       </div>
     </ErrorBoundary>
   );

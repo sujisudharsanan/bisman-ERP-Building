@@ -28,7 +28,7 @@ const hasTaskPermission = async (taskId, userId, action = 'view') => {
     SELECT t.*, 
            tp.user_id as participant_id,
            tp.can_edit, tp.can_comment, tp.can_approve
-    FROM tasks t
+    FROM workflow_tasks t
     LEFT JOIN task_participants tp ON t.id = tp.task_id AND tp.user_id = $2
     WHERE t.id = $1
   `;
@@ -73,7 +73,7 @@ const checkForDuplicates = async (title, assigneeId, creatorId, excludeTaskId = 
   
   let query = `
     SELECT id, title, status, created_at
-    FROM tasks
+    FROM workflow_tasks
     WHERE LOWER(title) = LOWER($1)
       AND assignee_id = $2
       AND status NOT IN ('COMPLETED', 'CANCELLED', 'ARCHIVED')
@@ -116,7 +116,7 @@ const getTaskWithDetails = async (taskId) => {
       approver.id as approver_id, approver.username as approver_name, approver.email as approver_email,
       (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
       (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
-    FROM tasks t
+    FROM workflow_tasks t
     LEFT JOIN users creator ON t.creator_id = creator.id
     LEFT JOIN users assignee ON t.assignee_id = assignee.id
     LEFT JOIN users approver ON t.approver_id = approver.id
@@ -190,7 +190,7 @@ exports.createTask = async (req, res) => {
     
     // Create task
     const taskQuery = `
-      INSERT INTO tasks (
+      INSERT INTO workflow_tasks (
         title, description, serial_number, creator_id, assignee_id, approver_id,
         priority, due_date, estimated_hours, requires_approval,
         approval_status, organization_id, department_id, status
@@ -282,7 +282,7 @@ exports.getTasks = async (req, res) => {
         approver.username as approver_name,
         (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
         (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
-      FROM tasks t
+      FROM workflow_tasks t
       LEFT JOIN users creator ON t.creator_id = creator.id
       LEFT JOIN users assignee ON t.assignee_id = assignee.id
       LEFT JOIN users approver ON t.approver_id = approver.id
@@ -329,19 +329,55 @@ exports.getTasks = async (req, res) => {
       params.push(`%${search}%`);
     }
     
+    // Build count query first (simpler query without joins)
+    let countQuery = `SELECT COUNT(*) FROM workflow_tasks t WHERE 1=1`;
+    const countParams = [];
+    let countParamIdx = 0;
+    
+    if (status) {
+      countParamIdx++;
+      countQuery += ` AND t.status = $${countParamIdx}`;
+      countParams.push(status);
+    }
+    if (priority) {
+      countParamIdx++;
+      countQuery += ` AND t.priority = $${countParamIdx}`;
+      countParams.push(priority);
+    }
+    if (assigneeId) {
+      countParamIdx++;
+      countQuery += ` AND t.assignee_id = $${countParamIdx}`;
+      countParams.push(assigneeId);
+    }
+    if (creatorId) {
+      countParamIdx++;
+      countQuery += ` AND t.creator_id = $${countParamIdx}`;
+      countParams.push(creatorId);
+    }
+    if (approverId) {
+      countParamIdx++;
+      countQuery += ` AND t.approver_id = $${countParamIdx}`;
+      countParams.push(approverId);
+    }
+    if (search) {
+      countParamIdx++;
+      countQuery += ` AND (LOWER(t.title) LIKE LOWER($${countParamIdx}) OR LOWER(t.description) LIKE LOWER($${countParamIdx}))`;
+      countParams.push(`%${search}%`);
+    }
+    
     query += ` ORDER BY t.created_at DESC LIMIT $${paramCount + 1} OFFSET $${paramCount + 2}`;
     params.push(limit, offset);
     
     const result = await getDbPool().query(query, params);
     
     // Get total count
-    const countQuery = query.split('ORDER BY')[0].replace(/SELECT .* FROM/, 'SELECT COUNT(*) FROM');
-    const countResult = await getDbPool().query(countQuery, params.slice(0, -2));
+    const countResult = await getDbPool().query(countQuery, countParams);
+    const total = countResult.rows[0] ? parseInt(countResult.rows[0].count) : 0;
     
     res.json({
       success: true,
       data: result.rows,
-      total: parseInt(countResult.rows[0].count),
+      total: total,
       page: parseInt(page),
       pageSize: parseInt(limit)
     });
@@ -369,7 +405,7 @@ exports.getDashboardTasks = async (req, res) => {
         assignee.username as assignee_name,
         (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
         (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
-      FROM tasks t
+      FROM workflow_tasks t
       LEFT JOIN users creator ON t.creator_id = creator.id
       LEFT JOIN users assignee ON t.assignee_id = assignee.id
       WHERE (t.creator_id = $1 OR t.assignee_id = $1 OR t.approver_id = $1)
@@ -430,7 +466,7 @@ exports.getTaskStats = async (req, res) => {
         COUNT(CASE WHEN status = 'COMPLETED' THEN 1 END) as completed_count,
         COUNT(CASE WHEN due_date < NOW() AND status NOT IN ('COMPLETED', 'CANCELLED', 'ARCHIVED') THEN 1 END) as overdue_count,
         COUNT(*) as total_tasks
-      FROM tasks
+      FROM workflow_tasks
       WHERE (creator_id = $1 OR assignee_id = $1 OR approver_id = $1)
         AND status NOT IN ('ARCHIVED', 'CANCELLED')
     `;
@@ -623,7 +659,7 @@ exports.updateTask = async (req, res) => {
     }
     
     const query = `
-      UPDATE tasks
+      UPDATE workflow_tasks
       SET ${updates.join(', ')}, updated_at = NOW()
       WHERE id = $1
       RETURNING *
@@ -690,7 +726,7 @@ exports.deleteTask = async (req, res) => {
     
     // Archive instead of hard delete
     await client.query(
-      `UPDATE tasks SET status = 'ARCHIVED', updated_at = NOW() WHERE id = $1`,
+      `UPDATE workflow_tasks SET status = 'ARCHIVED', updated_at = NOW() WHERE id = $1`,
       [taskId]
     );
     
@@ -735,7 +771,7 @@ exports.getMyTasks = async (req, res) => {
         approver.username as approver_name,
         (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
         (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
-      FROM tasks t
+      FROM workflow_tasks t
       LEFT JOIN users creator ON t.creator_id = creator.id
       LEFT JOIN users approver ON t.approver_id = approver.id
       WHERE t.assignee_id = $1
@@ -773,7 +809,7 @@ exports.getCreatedByMe = async (req, res) => {
         approver.username as approver_name,
         (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
         (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
-      FROM tasks t
+      FROM workflow_tasks t
       LEFT JOIN users assignee ON t.assignee_id = assignee.id
       LEFT JOIN users approver ON t.approver_id = approver.id
       WHERE t.creator_id = $1
@@ -811,7 +847,7 @@ exports.getPendingApproval = async (req, res) => {
         assignee.username as assignee_name,
         (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
         (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
-      FROM tasks t
+      FROM workflow_tasks t
       LEFT JOIN users creator ON t.creator_id = creator.id
       LEFT JOIN users assignee ON t.assignee_id = assignee.id
       WHERE t.approver_id = $1
@@ -1436,7 +1472,7 @@ exports.startTask = async (req, res) => {
     
     // Update status
     await client.query(
-      `UPDATE tasks SET status = 'IN_PROGRESS', started_at = NOW(), updated_at = NOW() WHERE id = $1`,
+      `UPDATE workflow_tasks SET status = 'IN_PROGRESS', started_at = NOW(), updated_at = NOW() WHERE id = $1`,
       [taskId]
     );
     
@@ -1502,7 +1538,7 @@ exports.completeTask = async (req, res) => {
     
     // Update status
     await client.query(
-      `UPDATE tasks SET status = 'COMPLETED', progress = 100, completed_at = NOW(), updated_at = NOW() WHERE id = $1`,
+      `UPDATE workflow_tasks SET status = 'COMPLETED', progress = 100, completed_at = NOW(), updated_at = NOW() WHERE id = $1`,
       [taskId]
     );
     
@@ -1579,7 +1615,7 @@ exports.reopenTask = async (req, res) => {
     
     // Update status
     await client.query(
-      `UPDATE tasks SET status = 'IN_PROGRESS', completed_at = NULL, updated_at = NOW() WHERE id = $1`,
+      `UPDATE workflow_tasks SET status = 'IN_PROGRESS', completed_at = NULL, updated_at = NOW() WHERE id = $1`,
       [taskId]
     );
     
@@ -1656,7 +1692,7 @@ exports.submitForReview = async (req, res) => {
     
     // Update status
     await client.query(
-      `UPDATE tasks SET status = 'IN_REVIEW', approval_status = 'PENDING', updated_at = NOW() WHERE id = $1`,
+      `UPDATE workflow_tasks SET status = 'IN_REVIEW', approval_status = 'PENDING', updated_at = NOW() WHERE id = $1`,
       [taskId]
     );
     
@@ -1733,7 +1769,7 @@ exports.approveTask = async (req, res) => {
     
     // Update approval status
     await client.query(
-      `UPDATE tasks SET approval_status = 'APPROVED', approved_at = NOW(), updated_at = NOW() WHERE id = $1`,
+      `UPDATE workflow_tasks SET approval_status = 'APPROVED', approved_at = NOW(), updated_at = NOW() WHERE id = $1`,
       [taskId]
     );
     
@@ -1817,7 +1853,7 @@ exports.rejectTask = async (req, res) => {
     
     // Update status
     await client.query(
-      `UPDATE tasks SET approval_status = 'REJECTED', status = 'IN_PROGRESS', updated_at = NOW() WHERE id = $1`,
+      `UPDATE workflow_tasks SET approval_status = 'REJECTED', status = 'IN_PROGRESS', updated_at = NOW() WHERE id = $1`,
       [taskId]
     );
     
@@ -1882,7 +1918,7 @@ exports.blockTask = async (req, res) => {
     
     // Update status
     await client.query(
-      `UPDATE tasks SET status = 'BLOCKED', updated_at = NOW() WHERE id = $1`,
+      `UPDATE workflow_tasks SET status = 'BLOCKED', updated_at = NOW() WHERE id = $1`,
       [taskId]
     );
     
@@ -1949,7 +1985,7 @@ exports.unblockTask = async (req, res) => {
     
     // Update status back to IN_PROGRESS
     await client.query(
-      `UPDATE tasks SET status = 'IN_PROGRESS', updated_at = NOW() WHERE id = $1`,
+      `UPDATE workflow_tasks SET status = 'IN_PROGRESS', updated_at = NOW() WHERE id = $1`,
       [taskId]
     );
     
@@ -2328,7 +2364,7 @@ exports.addTaskDependency = async (req, res) => {
     
     // Verify the dependency task exists
     const dependencyTask = await client.query(
-      'SELECT id, title FROM tasks WHERE id = $1',
+      'SELECT id, title FROM workflow_tasks WHERE id = $1',
       [dependsOnTaskId]
     );
     
@@ -2601,7 +2637,7 @@ exports.createTaskFromTemplate = async (req, res) => {
     
     // Create task from template
     const taskQuery = `
-      INSERT INTO tasks (
+      INSERT INTO workflow_tasks (
         title, description, creator_id, assignee_id, approver_id,
         priority, due_date, estimated_hours, requires_approval,
         approval_status, organization_id, department_id, status
@@ -2717,7 +2753,7 @@ exports.reassignTask = async (req, res) => {
     
     // Update assignee
     await client.query(
-      `UPDATE tasks SET assignee_id = $1, updated_at = NOW() WHERE id = $2`,
+      `UPDATE workflow_tasks SET assignee_id = $1, updated_at = NOW() WHERE id = $2`,
       [newAssigneeId, taskId]
     );
     
@@ -2847,7 +2883,7 @@ exports.searchTasks = async (req, res) => {
         approver.username as approver_name,
         (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
         (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
-      FROM tasks t
+      FROM workflow_tasks t
       LEFT JOIN users creator ON t.creator_id = creator.id
       LEFT JOIN users assignee ON t.assignee_id = assignee.id
       LEFT JOIN users approver ON t.approver_id = approver.id
@@ -2965,7 +3001,7 @@ exports.searchTaskBySerialNumber = async (req, res) => {
         (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
         (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count,
         (SELECT COUNT(*) FROM task_participants WHERE task_id = t.id) as participant_count
-      FROM tasks t
+      FROM workflow_tasks t
       LEFT JOIN users creator ON t.creator_id = creator.id
       LEFT JOIN users assignee ON t.assignee_id = assignee.id
       LEFT JOIN users approver ON t.approver_id = approver.id
@@ -3063,7 +3099,7 @@ exports.bulkUpdateTasks = async (req, res) => {
     // Perform bulk update
     paramCount++;
     const query = `
-      UPDATE tasks
+      UPDATE workflow_tasks
       SET ${updateFields.join(', ')}, updated_at = NOW()
       WHERE id = ANY($${paramCount})
       RETURNING id
@@ -3129,7 +3165,7 @@ exports.bulkDeleteTasks = async (req, res) => {
     
     // Archive tasks (soft delete)
     const query = `
-      UPDATE tasks
+      UPDATE workflow_tasks
       SET status = 'ARCHIVED', updated_at = NOW()
       WHERE id = ANY($1)
       RETURNING id
