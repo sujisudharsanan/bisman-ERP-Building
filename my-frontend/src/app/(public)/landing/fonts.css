@@ -1,0 +1,94 @@
+/* Self-hosted fonts for landing page - faster than Google Fonts CDN */
+
+/* Global font smoothing for sharp text */
+html, body {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  font-feature-settings: "kern" 1;
+  font-kerning: normal;
+}
+
+/* Jost - for headings */
+@font-face {
+  font-family: 'Jost';
+  font-style: normal;
+  font-weight: 500;
+  font-display: optional;
+  src: url('/fonts/jost-500.woff2') format('woff2');
+  size-adjust: 100%;
+}
+
+@font-face {
+  font-family: 'Jost';
+  font-style: normal;
+  font-weight: 600;
+  font-display: optional;
+  src: url('/fonts/jost-600.woff2') format('woff2');
+  size-adjust: 100%;
+}
+
+@font-face {
+  font-family: 'Jost';
+  font-style: normal;
+  font-weight: 700;
+  font-display: optional;
+  src: url('/fonts/jost-700.woff2') format('woff2');
+  size-adjust: 100%;
+}
+
+/* Open Sans - for body text */
+@font-face {
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 400;
+  font-display: optional;
+  src: url('/fonts/opensans-400.woff2') format('woff2');
+  size-adjust: 100%;
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 500;
+  font-display: optional;
+  src: url('/fonts/opensans-500.woff2') format('woff2');
+  size-adjust: 100%;
+}
+
+@font-face {
+  font-family: 'Open Sans';
+  font-style: normal;
+  font-weight: 600;
+  font-display: optional;
+  src: url('/fonts/opensans-600.woff2') format('woff2');
+  size-adjust: 100%;
+}
+
+/* Poppins - for UI elements */
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 400;
+  font-display: optional;
+  src: url('/fonts/poppins-400.woff2') format('woff2');
+  size-adjust: 100%;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 500;
+  font-display: optional;
+  src: url('/fonts/poppins-500.woff2') format('woff2');
+  size-adjust: 100%;
+}
+
+@font-face {
+  font-family: 'Poppins';
+  font-style: normal;
+  font-weight: 600;
+  font-display: optional;
+  src: url('/fonts/poppins-600.woff2') format('woff2');
+  size-adjust: 100%;
+}

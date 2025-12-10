@@ -1,7 +1,7 @@
-import { redirect } from 'next/navigation';
+import LandingPage from './(public)/landing/page';
 
-// Server component: redirect to the public landing page.
-// Users can access login from the landing page CTA buttons.
+// Serve the landing page directly at the root URL "/"
+// No redirect needed - faster page load
 export default function Home() {
-  redirect('/landing');
+  return <LandingPage />;
 }
