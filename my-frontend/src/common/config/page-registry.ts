@@ -289,6 +289,7 @@ export interface ModuleMetadata {
   description: string;
   color: string; // Tailwind color class
   order: number;
+  hidden?: boolean; // Hide module from sidebar navigation
 }
 
 /**
