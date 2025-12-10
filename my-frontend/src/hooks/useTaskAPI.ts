@@ -288,15 +288,12 @@ export const useTaskAPI = () => {
     setLoading(true);
     setError(null);
     try {
-      const token = getAuthToken();
       const formData = new FormData();
       files.forEach(file => formData.append('files', file));
 
       const response = await fetch(`${API_BASE_URL}/api/tasks/${taskId}/attachments`, {
         method: 'POST',
-        headers: {
-          ...(token && { Authorization: `Bearer ${token}` }),
-        },
+        credentials: 'include', // Use cookie-based auth
         body: formData,
       });
 
