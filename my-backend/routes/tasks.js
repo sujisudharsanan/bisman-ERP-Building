@@ -92,6 +92,17 @@ router.get(
 );
 
 /**
+ * @route   GET /api/tasks/:id/quick-view
+ * @desc    Get task details with messages for quick view panel
+ * @access  Private
+ */
+router.get(
+  '/:id/quick-view',
+  authenticate,
+  taskController.getTaskQuickView
+);
+
+/**
  * @route   GET /api/tasks/:id
  * @desc    Get single task by ID (with messages and attachments)
  * @access  Private

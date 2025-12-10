@@ -61,6 +61,7 @@ export default function SplashWrapper({ children, companyName = "BISMAN ERP" }: 
   const [minTimeElapsed, setMinTimeElapsed] = useState(false);
   const [clientBranding, setClientBranding] = useState<ClientBranding | null>(null);
   const splashStartTime = useRef<number | null>(null);
+  const emergencyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // Mark component as mounted and load saved branding
   useEffect(() => {
@@ -70,6 +71,23 @@ export default function SplashWrapper({ children, companyName = "BISMAN ERP" }: 
     if (savedBranding) {
       setClientBranding(savedBranding);
     }
+    
+    // Emergency timeout - force close splash after 8 seconds no matter what
+    emergencyTimeoutRef.current = setTimeout(() => {
+      console.warn('⚠️ SplashWrapper: Emergency timeout triggered - forcing splash close');
+      setShowSplash(false);
+      setShouldHideSplash(true);
+      setHasShownThisSession(true);
+      try {
+        sessionStorage.setItem(SPLASH_SHOWN_KEY, 'true');
+      } catch {}
+    }, 8000);
+    
+    return () => {
+      if (emergencyTimeoutRef.current) {
+        clearTimeout(emergencyTimeoutRef.current);
+      }
+    };
   }, []);
 
   // Save client branding when user is loaded
@@ -103,7 +121,9 @@ export default function SplashWrapper({ children, companyName = "BISMAN ERP" }: 
 
   // Complete splash when both animation is done AND minimum time has elapsed AND auth is loaded
   useEffect(() => {
+    console.log('🎬 SplashWrapper state:', { animationComplete, minTimeElapsed, authLoading, showSplash });
     if (animationComplete && minTimeElapsed && !authLoading) {
+      console.log('✅ SplashWrapper: All conditions met, completing splash');
       completeSplash();
     }
   }, [animationComplete, minTimeElapsed, authLoading]);

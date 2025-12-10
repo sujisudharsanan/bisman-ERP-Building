@@ -13,8 +13,9 @@
  * 4. Admin roles (ADMIN, SUPER_ADMIN, ENTERPRISE_ADMIN) redirect to their specialized dashboards
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
+import { Search, Filter, X } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import KanbanColumn from '@/components/dashboard/KanbanColumn';
 import RightPanel from '@/components/dashboard/RightPanel';
@@ -33,6 +34,8 @@ export default function UnifiedDashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const [showTaskForm, setShowTaskForm] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('ALL');
   
   // Get role-specific configuration
   const roleName = user?.roleName || user?.role || '';
@@ -96,9 +99,65 @@ export default function UnifiedDashboardPage() {
     return dashboardData[dataKey as keyof typeof dashboardData] || [];
   };
 
+  // Filter tasks based on search query and status filter
+  const getFilteredTasksForColumn = (dataKey: string, columnTitle: string) => {
+    let tasks = getTasksForColumn(dataKey);
+    
+    // Apply search filter
+    if (searchQuery.trim()) {
+      const query = searchQuery.toLowerCase().trim();
+      tasks = tasks.filter((task: any) => 
+        task.title?.toLowerCase().includes(query) ||
+        task.description?.toLowerCase().includes(query) ||
+        task.subItems?.some((item: any) => item.text?.toLowerCase().includes(query))
+      );
+    }
+    
+    // Apply status filter
+    if (statusFilter !== 'ALL') {
+      // Map status filter to column title
+      const statusColumnMap: Record<string, string[]> = {
+        'DRAFT': ['DRAFT'],
+        'IN_PROGRESS': ['IN PROGRESS', 'IN_PROGRESS'],
+        'NEED_ATTENTION': ['NEED ATTENTION', 'NEED_ATTENTION', 'EDITING'],
+        'DONE': ['DONE', 'COMPLETED'],
+      };
+      const allowedColumns = statusColumnMap[statusFilter] || [statusFilter];
+      if (!allowedColumns.includes(columnTitle) && !allowedColumns.includes(dataKey)) {
+        return [];
+      }
+    }
+    
+    return tasks;
+  };
+
+  // Status filter options
+  const statusOptions = [
+    { value: 'ALL', label: 'All Status' },
+    { value: 'DRAFT', label: 'Draft' },
+    { value: 'IN_PROGRESS', label: 'In Progress' },
+    { value: 'NEED_ATTENTION', label: 'Need Attention' },
+    { value: 'DONE', label: 'Done' },
+  ];
+
   // Handle task creation
   const handleCreateTask = () => {
     setShowTaskForm(true);
+  };
+
+  // Handle task click - dispatch event to open task in chat
+  const handleTaskClick = (task: any) => {
+    // Dispatch custom event to open task in chat panel
+    const event = new CustomEvent('openTaskInChat', {
+      detail: {
+        id: task.id,
+        title: task.title,
+        status: task.status || 'DRAFT',
+        priority: task.priority,
+        description: task.description,
+      }
+    });
+    window.dispatchEvent(event);
   };
 
   return (
@@ -117,6 +176,63 @@ export default function UnifiedDashboardPage() {
             </div>
           )}
           
+          {/* Search Bar and Status Filter */}
+          <div className="mb-4 px-3 md:px-4">
+            <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+              {/* Search Input */}
+              <div className="relative flex-1 max-w-md">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search tasks..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-10 py-2 bg-panel/80 backdrop-blur-sm border border-theme rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+              
+              {/* Status Filter Dropdown */}
+              <div className="relative">
+                <div className="flex items-center gap-2">
+                  <Filter className="w-4 h-4 text-gray-400" />
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="bg-panel/80 backdrop-blur-sm border border-theme rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none pr-8 cursor-pointer"
+                  >
+                    {statusOptions.map((option) => (
+                      <option key={option.value} value={option.value} className="bg-gray-800">
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              
+              {/* Active filter indicator */}
+              {(searchQuery || statusFilter !== 'ALL') && (
+                <button
+                  onClick={() => {
+                    setSearchQuery('');
+                    setStatusFilter('ALL');
+                  }}
+                  className="flex items-center gap-1 px-3 py-2 text-xs text-indigo-400 hover:text-indigo-300 bg-indigo-500/10 rounded-lg border border-indigo-500/30"
+                >
+                  <X className="w-3 h-3" />
+                  Clear Filters
+                </button>
+              )}
+            </div>
+          </div>
+          
           <main className="flex-1 flex flex-col overflow-hidden min-h-0">
             <div className="w-full flex-1 overflow-hidden">
               <div className="flex justify-between gap-3 md:gap-5 mb-1 ml-3 md:ml-4 mr-3 md:mr-4 h-full">
@@ -127,9 +243,10 @@ export default function UnifiedDashboardPage() {
                       <div key={column.key}>
                         <KanbanColumn
                           title={column.title}
-                          tasks={getTasksForColumn(column.dataKey)}
+                          tasks={getFilteredTasksForColumn(column.dataKey, column.title)}
                           showCreate={column.showCreate && config.allowTaskCreation}
                           onCreate={column.showCreate ? handleCreateTask : undefined}
+                          onTaskClick={handleTaskClick}
                         />
                       </div>
                     ))}

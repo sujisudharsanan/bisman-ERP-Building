@@ -15,6 +15,7 @@ import {
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import CallControls from './CallControls';
+import TaskDetailView from './TaskDetailView';
 import { Theme } from 'emoji-picker-react';
 import { useOcrUpload, isBillFile } from '@/hooks/useOcrUpload';
 
@@ -164,6 +165,40 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
     };
     loadUsers();
   }, []);
+
+  // Listen for task open events from dashboard
+  useEffect(() => {
+    const handleOpenTaskInChat = (event: CustomEvent) => {
+      const task = event.detail;
+      if (task && task.id) {
+        console.log('[Chat] Opening task from dashboard:', task);
+        // Add to open tasks panel
+        const taskForPanel: Task = {
+          id: String(task.id),
+          title: task.title || 'Untitled Task',
+          status: task.status || 'DRAFT',
+          priority: task.priority
+        };
+        if (!openTasks.find(t => t.id === taskForPanel.id)) {
+          setOpenTasks(prev => [...prev, taskForPanel]);
+          setIsTaskPanelExpanded(true);
+        }
+        // Switch to task view
+        setActiveView('task');
+        setSelectedTaskId(String(task.id));
+        setSelectedUserId(null);
+        // If chat is minimized, expand it
+        if (!isFullscreen) {
+          setIsFullscreen(true);
+        }
+      }
+    };
+
+    window.addEventListener('openTaskInChat', handleOpenTaskInChat as EventListener);
+    return () => {
+      window.removeEventListener('openTaskInChat', handleOpenTaskInChat as EventListener);
+    };
+  }, [openTasks, isFullscreen]);
 
   // Real-time user search with debouncing
   const searchUsers = async (query: string) => {
@@ -1152,6 +1187,23 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           </div>
         </div>
 
+        {/* Task Detail View - Show when a task is selected */}
+        {activeView === 'task' && selectedTaskId ? (
+          <TaskDetailView
+            taskId={selectedTaskId}
+            onClose={() => {
+              setActiveView('mira');
+              setSelectedTaskId(null);
+            }}
+            onMarkComplete={(taskId) => {
+              // Update task status in open tasks panel
+              setOpenTasks(prev => prev.map(t => 
+                t.id === taskId ? { ...t, status: 'COMPLETED' } : t
+              ));
+            }}
+          />
+        ) : (
+        <>
         {/* Messages */}
         <div 
           ref={chatContainerRef}
@@ -1783,6 +1835,8 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             )}
           </div>
         </div>
+        </>
+        )}
       </div>
     </div>
   );

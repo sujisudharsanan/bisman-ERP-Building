@@ -8,22 +8,29 @@ import React, { useEffect, useState, useRef } from 'react';
 import { X, Send, CheckCircle, XCircle, RefreshCw, Eye, Paperclip, Calendar } from 'lucide-react';
 
 interface Task {
-  id: string;
+  id: string | number;
   title: string;
   description?: string;
   status: string;
-  creator_id: string;
-  creator_type: string;
-  current_approver_level: number;
-  approver_id?: string;
+  creator_id?: string | number;
+  creator_type?: string;
+  current_approver_level?: number;
+  approver_id?: string | number;
   approver_type?: string;
   priority?: string;
   due_date?: string;
+  dueDate?: string;
   tags?: string[];
-  created_at: string;
-  updated_at: string;
+  created_at?: string;
+  createdAt?: string;
+  updated_at?: string;
+  updatedAt?: string;
   confirmed_at?: string;
   completed_at?: string;
+  messages?: any[];
+  attachments?: any[];
+  creator?: { id: number; username: string; first_name?: string; last_name?: string };
+  assignee?: { id: number; username: string; first_name?: string; last_name?: string };
 }
 
 interface HistoryItem {
@@ -127,37 +134,52 @@ export default function TaskChatDrawer({
       setLoading(true);
       setError(null);
 
-      // Fetch task with available actions
-      const taskRes = await fetch(`/api/tasks/${taskId}`, {
+      // Use quick-view endpoint which is designed for this use case
+      const taskRes = await fetch(`/api/tasks/${taskId}/quick-view`, {
         credentials: 'include'
       });
       
       if (!taskRes.ok) {
-        throw new Error('Failed to fetch task');
+        const errorData = await taskRes.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to fetch task');
       }
 
       const taskData = await taskRes.json();
-      setTask(taskData.task);
+      // Handle response format: { success: true, task: {...}, messages: [...] }
+      const taskInfo = taskData.task || taskData.data || taskData;
+      setTask(taskInfo);
       setAvailableActions(taskData.availableActions || []);
 
-      // Fetch history
-      const historyRes = await fetch(`/api/tasks/${taskId}/history`, {
-        credentials: 'include'
-      });
-      
-      if (historyRes.ok) {
-        const historyData = await historyRes.json();
-        setHistory(historyData);
+      // Use messages from quick-view response as comments
+      if (taskData.messages && Array.isArray(taskData.messages)) {
+        setComments(taskData.messages.map((m: any) => ({
+          id: m.id,
+          task_id: taskId,
+          user_id: m.senderId,
+          user_type: m.senderType || 'user',
+          user_name: m.senderName || 'User',
+          comment: m.content,
+          comment_type: 'comment',
+          is_internal: false,
+          created_at: m.createdAt
+        })));
       }
 
-      // Fetch comments
-      const commentsRes = await fetch(`/api/tasks/${taskId}/comments`, {
-        credentials: 'include'
-      });
-      
-      if (commentsRes.ok) {
-        const commentsData = await commentsRes.json();
-        setComments(commentsData);
+      // Fetch history separately (optional, may not exist)
+      try {
+        const historyRes = await fetch(`/api/tasks/${taskId}/history`, {
+          credentials: 'include'
+        });
+        
+        if (historyRes.ok) {
+          const historyData = await historyRes.json();
+          // Handle both response formats
+          const historyItems = historyData.data || historyData;
+          setHistory(Array.isArray(historyItems) ? historyItems : []);
+        }
+      } catch (historyErr) {
+        console.warn('History fetch failed, using empty history');
+        setHistory([]);
       }
 
       setLoading(false);
@@ -343,10 +365,10 @@ export default function TaskChatDrawer({
             <p className="text-sm text-gray-700 dark:text-gray-300 mb-3">{task.description}</p>
           )}
           
-          {task.due_date && (
+          {(task.due_date || task.dueDate) && (
             <div className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400 mb-2">
               <Calendar className="w-4 h-4" />
-              <span>Due: {new Date(task.due_date).toLocaleDateString()}</span>
+              <span>Due: {new Date(task.due_date || task.dueDate!).toLocaleDateString()}</span>
             </div>
           )}
 

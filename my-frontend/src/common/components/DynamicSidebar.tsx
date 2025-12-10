@@ -370,9 +370,10 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
         return isPageAllowed(p, userAllowedPages);
       });
       
-      // Debug: Log what we're matching
-      console.log('[Sidebar] Visible pages for user:', pages.slice(0, 10).map(p => p.id));
-      console.log('[Sidebar] DB allowed pages:', userAllowedPages.slice(0, 10));
+      // Debug: Log what we're matching (show more items for debugging)
+      console.log('[Sidebar] Visible pages for user:', pages.map(p => p.id));
+      console.log('[Sidebar] DB allowed pages:', userAllowedPages);
+      console.log('[Sidebar] Total visible pages count:', pages.length);
     }
 
     // Non-enterprise users should not see enterprise pages

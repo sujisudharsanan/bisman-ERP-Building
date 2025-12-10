@@ -263,11 +263,9 @@ export default function BismanFloatingWidget({
               strokeWidth="3"
               fill="none"
               strokeLinecap="butt"
+              style={{ originX: '50%', originY: '0%' }}
               animate={{ 
-                scaleY: hover || smile ? 1.2 : 1,
-                d: smile 
-                  ? "M -10 0 Q 0 10 10 0"  // Bigger smile
-                  : "M -10 0 Q 0 8 10 0",   // Normal smile
+                scaleY: smile || hover ? 1.25 : 1,
               }}
               transition={{ duration: 0.3, ease: "easeInOut" }}
             />
@@ -278,6 +276,7 @@ export default function BismanFloatingWidget({
               strokeWidth="2"
               fill="none"
               strokeLinecap="butt"
+              initial={{ opacity: 0 }}
               animate={{ 
                 opacity: smile || hover ? 0.95 : 0,
                 strokeWidth: smile || hover ? 2.5 : 2,

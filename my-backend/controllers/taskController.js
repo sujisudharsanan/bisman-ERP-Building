@@ -497,6 +497,116 @@ exports.getTaskStats = async (req, res) => {
 };
 
 /**
+ * Get task quick view (optimized for workbench panel)
+ */
+exports.getTaskQuickView = async (req, res) => {
+  try {
+    const taskId = req.params.id;
+    const userId = req.user.id;
+    
+    // Get task with details
+    const taskQuery = `
+      SELECT 
+        t.*,
+        creator.id as creator_id, creator.username as creator_name, 
+        creator.first_name as creator_first_name, creator.last_name as creator_last_name,
+        assignee.id as assignee_id, assignee.username as assignee_name,
+        assignee.first_name as assignee_first_name, assignee.last_name as assignee_last_name,
+        (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
+        (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
+      FROM workflow_tasks t
+      LEFT JOIN users creator ON t.creator_id = creator.id
+      LEFT JOIN users assignee ON t.assignee_id = assignee.id
+      WHERE t.id = $1
+    `;
+    const taskResult = await getDbPool().query(taskQuery, [taskId]);
+    
+    if (taskResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Task not found'
+      });
+    }
+    
+    const taskRow = taskResult.rows[0];
+    
+    // Get messages (limited for quick view)
+    const messagesQuery = `
+      SELECT 
+        tm.id,
+        tm.task_id,
+        tm.sender_id,
+        tm.message_text as content,
+        tm.message_type,
+        tm.is_system_message,
+        tm.created_at,
+        u.username as sender_name,
+        u.first_name as sender_first_name,
+        u.last_name as sender_last_name
+      FROM task_messages tm
+      LEFT JOIN users u ON tm.sender_id = u.id
+      WHERE tm.task_id = $1
+      ORDER BY tm.created_at ASC
+      LIMIT 100
+    `;
+    const messagesResult = await getDbPool().query(messagesQuery, [taskId]);
+    
+    // Transform to API format
+    const task = {
+      id: taskRow.id,
+      title: taskRow.title,
+      description: taskRow.description,
+      status: taskRow.status,
+      priority: taskRow.priority || 'MEDIUM',
+      creatorId: taskRow.creator_id,
+      assigneeId: taskRow.assignee_id,
+      dueDate: taskRow.due_date,
+      createdAt: taskRow.created_at,
+      updatedAt: taskRow.updated_at,
+      messageCount: parseInt(taskRow.message_count || 0),
+      attachmentCount: parseInt(taskRow.attachment_count || 0),
+      creator: taskRow.creator_name ? {
+        id: taskRow.creator_id,
+        username: taskRow.creator_name,
+        firstName: taskRow.creator_first_name,
+        lastName: taskRow.creator_last_name,
+      } : null,
+      assignee: taskRow.assignee_name ? {
+        id: taskRow.assignee_id,
+        username: taskRow.assignee_name,
+        firstName: taskRow.assignee_first_name,
+        lastName: taskRow.assignee_last_name,
+      } : null,
+    };
+    
+    const messages = messagesResult.rows.map(row => ({
+      id: row.id,
+      senderId: row.sender_id,
+      senderName: row.sender_first_name && row.sender_last_name 
+        ? `${row.sender_first_name} ${row.sender_last_name}`
+        : row.sender_name || 'System',
+      senderType: row.is_system_message ? 'system' : 'user',
+      content: row.content,
+      createdAt: row.created_at,
+    }));
+    
+    res.json({
+      success: true,
+      task,
+      messages,
+    });
+    
+  } catch (error) {
+    console.error('Error fetching task quick view:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch task',
+      details: error.message
+    });
+  }
+};
+
+/**
  * Get single task by ID
  */
 exports.getTaskById = async (req, res) => {

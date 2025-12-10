@@ -1572,6 +1572,18 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'Submit and track payment requests',
     order: 5,
   },
+  {
+    id: 'task-workbench',
+    name: 'Task Workbench',
+    path: '/dashboard/workbench',
+    iconKey: "LayoutDashboard",
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL', 'ADMIN', 'SUPER_ADMIN'],
+    status: 'active',
+    description: 'Manage your tasks with draft, in-progress, needs attention, and done views',
+    order: 1, // Show at top of common pages
+  },
 
   // ==================== BILLING PAGES ====================
   {

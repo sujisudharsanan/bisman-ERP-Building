@@ -972,6 +972,17 @@ try {
   }
 }
 
+// Task Workbench routes (protected) - must be before general task routes
+try {
+  const taskWorkbenchRoutes = require('./routes/taskWorkbenchRoutes')
+  app.use('/api/tasks/workbench', authenticate, setTenantContext, taskWorkbenchRoutes)
+  console.log('✅ Task Workbench routes loaded (protected)')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Task Workbench routes not loaded:', e && e.message)
+  }
+}
+
 // Task Management routes (protected)
 try {
   const taskRoutes = require('./routes/tasks')
