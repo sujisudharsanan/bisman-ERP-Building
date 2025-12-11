@@ -1,0 +1,45 @@
+{
+  "task": {
+    "title": "E2E Test Task",
+    "description": "Created by Cypress E2E test",
+    "priority": "MEDIUM",
+    "status": "OPEN",
+    "tags": ["e2e", "test", "automated"]
+  },
+  "comment": {
+    "content": "This is an E2E test comment",
+    "messageType": "COMMENT"
+  },
+  "testUsers": {
+    "hubIncharge": {
+      "email": "arun.kumar@bisman.demo",
+      "password": "Demo@123",
+      "role": "HUB_INCHARGE"
+    },
+    "staff": {
+      "email": "staff@bisman.demo",
+      "password": "Demo@123",
+      "role": "STAFF"
+    },
+    "viewer": {
+      "email": "viewer@bisman.demo",
+      "password": "Demo@123",
+      "role": "VIEWER"
+    }
+  },
+  "tenantId": "00000000-0000-0000-0000-000000000001",
+  "slo": {
+    "kanbanApi": 1000,
+    "kanbanRender": 3000,
+    "taskList": 500,
+    "singleTask": 200,
+    "statusChange": 500
+  },
+  "statuses": ["OPEN", "IN_PROGRESS", "COMPLETED"],
+  "priorities": ["LOW", "MEDIUM", "HIGH"],
+  "validTransitions": {
+    "OPEN": ["IN_PROGRESS", "COMPLETED"],
+    "IN_PROGRESS": ["COMPLETED"],
+    "COMPLETED": []
+  }
+}

@@ -1,0 +1,10 @@
+This is a sample text file for E2E testing.
+Created by Cypress automated tests.
+Used to test file upload functionality.
+
+Test data:
+- Timestamp: AUTO_GENERATED
+- Purpose: Attachment upload testing
+- Format: Plain text
+
+Lorem ipsum dolor sit amet, consectetur adipiscing elit.
