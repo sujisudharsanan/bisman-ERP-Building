@@ -205,6 +205,19 @@ const emitAttachmentDeleted = (io, taskId, attachmentId, deleterId) => {
 };
 
 /**
+ * Emit task position changed event (for Kanban drag-and-drop)
+ */
+const emitTaskPositionChanged = (io, taskId, status, position, tenantId) => {
+  // Notify task room
+  io.to(`task:${taskId}`).emit('task:position_changed', { taskId, status, position });
+  
+  // Notify tenant for Kanban board sync
+  if (tenantId) {
+    io.to(`tenant:${tenantId}`).emit('task:position_changed', { taskId, status, position });
+  }
+};
+
+/**
  * Emit bulk tasks updated event
  */
 const emitBulkTasksUpdated = (io, taskIds, updates, updaterId) => {
@@ -227,6 +240,7 @@ module.exports = {
   emitMessageUpdated,
   emitMessageDeleted,
   emitStatusChanged,
+  emitTaskPositionChanged,
   emitTaskApproved,
   emitTaskRejected,
   emitTaskReassigned,
