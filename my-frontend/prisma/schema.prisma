@@ -22,8 +22,8 @@ model User {
 }
 
 model Role {
-  id          String       @id @default(cuid())
-  key         String       @unique // SUPER_ADMIN, ENTERPRISE_ADMIN, ORG_ADMIN, ORG_USER
+  id          String          @id @default(cuid())
+  key         String          @unique // SUPER_ADMIN, ENTERPRISE_ADMIN, ORG_ADMIN, ORG_USER
   name        String
   users       UserRole[]
   memberships Membership[]
@@ -124,17 +124,18 @@ model AllowedModule {
   role      Role   @relation(fields: [roleId], references: [id])
   roleId    String
   moduleKey String
+
   @@unique([roleId, moduleKey])
 }
 
 model RagSource {
-  id              String   @id @default(cuid())
+  id              String      @id @default(cuid())
   fileName        String
   path            String
   tags            String[]
   uploadedBy      String
-  embeddingStatus String   @default("pending") // pending|ready|failed
-  createdAt       DateTime @default(now())
+  embeddingStatus String      @default("pending") // pending|ready|failed
+  createdAt       DateTime    @default(now())
   embeddings      Embedding[]
 }
 
@@ -152,11 +153,122 @@ model AiUsageLog {
 }
 
 model Embedding {
-  id         String     @id @default(cuid())
-  source     RagSource  @relation(fields: [sourceId], references: [id])
+  id         String    @id @default(cuid())
+  source     RagSource @relation(fields: [sourceId], references: [id])
   sourceId   String
   chunkIndex Int
   vector     Json
-  createdAt  DateTime   @default(now())
+  createdAt  DateTime  @default(now())
+
   @@unique([sourceId, chunkIndex])
+}
+
+// ============================================
+// WORKFLOW TASKS (Kanban System)
+// ============================================
+
+model WorkflowTask {
+  id           String       @id @default(uuid()) @db.Uuid
+  tenantId     Int?         @map("tenant_id")
+  serialNumber String?      @map("serial_number")
+  title        String
+  description  String?      @db.Text
+  status       TaskStatus   @default(OPEN)
+  priority     TaskPriority @default(MEDIUM)
+  position     Int          @default(0)
+
+  creatorId  Int     @map("creator_id")
+  assigneeId Int?    @map("assignee_id")
+  approverId String? @map("approver_id") @db.Uuid
+
+  dueDate     DateTime? @map("due_date")
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  archivedAt  DateTime? @map("archived_at")
+
+  tags       String[] @default([])
+  progress   Int      @default(0)
+  isArchived Boolean  @default(false) @map("is_archived")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  messages    TaskMessage[]
+  attachments TaskAttachment[]
+
+  @@index([tenantId])
+  @@index([creatorId])
+  @@index([assigneeId])
+  @@index([status])
+  @@index([createdAt])
+  @@map("workflow_tasks")
+}
+
+model TaskMessage {
+  id              String  @id @default(uuid()) @db.Uuid
+  taskId          String  @map("task_id") @db.Uuid
+  tenantId        Int?    @map("tenant_id")
+  senderId        Int     @map("sender_id")
+  content         String  @db.Text
+  messageType     String  @default("TEXT") @map("message_type")
+  isSystemMessage Boolean @default(false) @map("is_system_message")
+  replyToId       String? @map("reply_to_id") @db.Uuid
+  isEdited        Boolean @default(false) @map("is_edited")
+
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  task    WorkflowTask  @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  replyTo TaskMessage?  @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies TaskMessage[] @relation("MessageReplies")
+
+  @@index([taskId])
+  @@index([tenantId])
+  @@index([senderId])
+  @@map("task_messages")
+}
+
+model TaskAttachment {
+  id              String  @id @default(uuid()) @db.Uuid
+  taskId          String  @map("task_id") @db.Uuid
+  tenantId        Int?    @map("tenant_id")
+  filename        String
+  originalName    String  @map("original_name")
+  fileUrl         String  @map("file_url")
+  fileType        String? @map("file_type")
+  fileSize        Int     @map("file_size")
+  mimeType        String? @map("mime_type")
+  storageProvider String  @default("LOCAL") @map("storage_provider")
+  storageKey      String? @map("storage_key")
+  uploadedBy      Int     @map("uploaded_by")
+
+  createdAt DateTime @default(now()) @map("created_at")
+
+  task WorkflowTask @relation(fields: [taskId], references: [id], onDelete: Cascade)
+
+  @@index([taskId])
+  @@index([tenantId])
+  @@map("task_attachments")
+}
+
+// Task status enum
+enum TaskStatus {
+  DRAFT
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  IN_REVIEW
+  BLOCKED
+  COMPLETED
+  CANCELLED
+  ARCHIVED
+}
+
+// Task priority enum
+enum TaskPriority {
+  LOW
+  MEDIUM
+  HIGH
+  URGENT
+  CRITICAL
 }

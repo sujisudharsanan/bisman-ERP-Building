@@ -29,7 +29,7 @@ async function createTestUser(data) {
     data: {
       username: data.username || 'testuser',
       email: data.email || `test-${Date.now()}@example.com`,
-      password: hashedPassword,
+      password_hash: hashedPassword,
       role: data.role || 'SUPER_ADMIN',
       tenant_id: data.tenant_id,
       createdAt: new Date()
@@ -307,7 +307,8 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
         data: {
           module_name: 'test_module',
           display_name: 'Test Module',
-          is_active: true
+          is_active: true,
+          route: '/test-module'
         }
       });
       testModuleId = module.id;

@@ -1080,6 +1080,15 @@ try {
   console.warn('Task Workflow System routes not loaded:', e && e.message);
 }
 
+// Task V2 API routes (NEW - Enhanced with TanStack Query support)
+try {
+  const tasksV2Routes = require('./routes/tasksV2');
+  app.use('/api/v2/tasks', authenticate, setTenantContext, tasksV2Routes);
+  console.log('✅ Task V2 API routes loaded (enhanced with React Query support)');
+} catch (e) {
+  console.warn('Task V2 API routes not loaded:', e && e.message);
+}
+
 // Audit Monitoring routes (protected - admin only)
 try {
   const auditRoutes = require('./routes/audit');

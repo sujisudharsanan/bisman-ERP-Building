@@ -1,6 +1,7 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
+import { Toaster } from 'sonner';
 
 type Toast = { id: string; title?: string; description?: string; variant?: 'default'|'success'|'destructive' };
 
@@ -16,7 +17,17 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ toast }}>
       {children}
-      {/* Simple toaster */}
+      {/* Sonner toaster for modern toast notifications */}
+      <Toaster 
+        position="bottom-right"
+        richColors
+        closeButton
+        duration={4000}
+        toastOptions={{
+          className: 'dark:bg-slate-800 dark:text-slate-100'
+        }}
+      />
+      {/* Legacy simple toaster - for backwards compatibility */}
       <div className="fixed bottom-4 right-4 space-y-2 z-[60]">
         {items.map(i => (
           <div key={i.id} className={`px-4 py-3 rounded-md shadow text-sm bg-white dark:bg-slate-800 border ${i.variant==='destructive' ? 'border-red-400 text-red-700 dark:text-red-300' : i.variant==='success' ? 'border-green-400 text-green-700 dark:text-green-300' : 'border-slate-300 text-slate-800 dark:text-slate-200'}`}>

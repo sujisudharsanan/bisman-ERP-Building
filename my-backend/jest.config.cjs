@@ -21,4 +21,8 @@ module.exports = {
   // Force exit to avoid lingering async handles in legacy scripts; remove after full cleanup
   forceExit: true,
   detectOpenHandles: true,
+  // Mock uuid module since it's ESM and Jest can't parse it without babel
+  moduleNameMapper: {
+    '^uuid$': '<rootDir>/__mocks__/uuid.js'
+  },
 };

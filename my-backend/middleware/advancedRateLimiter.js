@@ -281,6 +281,46 @@ const expensiveOperationLimiter = rateLimit({
   store: getRateLimitStore('expensive'),
 });
 
+/**
+ * TASK CREATION LIMITER
+ * Prevents abuse of task creation endpoint
+ */
+const taskCreationLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: process.env.TASK_CREATE_RATE_LIMIT || 30, // 30 task creations per minute
+  message: {
+    error: 'Task creation rate limit exceeded',
+    message: 'You are creating tasks too quickly. Please slow down.',
+    type: 'TASK_CREATE_RATE_LIMIT'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: advancedKeyGenerator,
+  handler: rateLimitHandler,
+  skip: skipRateLimit,
+  store: getRateLimitStore('task-create'),
+});
+
+/**
+ * UPLOAD LIMITER
+ * Prevents abuse of file upload endpoints
+ */
+const uploadLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: process.env.UPLOAD_RATE_LIMIT || 10, // 10 uploads per minute
+  message: {
+    error: 'Upload rate limit exceeded',
+    message: 'You are uploading files too quickly. Please wait before uploading more.',
+    type: 'UPLOAD_RATE_LIMIT'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: advancedKeyGenerator,
+  handler: rateLimitHandler,
+  skip: skipRateLimit,
+  store: getRateLimitStore('upload'),
+});
+
 // ============================================================================
 // ADAPTIVE RATE LIMITER - Adjusts based on user behavior
 // ============================================================================
@@ -333,6 +373,10 @@ module.exports = {
   publicLimiter,
   expensiveOperationLimiter,
   
+  // Task-specific rate limiters
+  taskCreationLimiter,
+  uploadLimiter,
+  
   // Utility functions
   createAdaptiveRateLimiter,
   advancedKeyGenerator,
@@ -342,7 +386,7 @@ module.exports = {
   redisClient,
   closeRedis: () => {
     if (redisClient) {
-      try { redisClient.disconnect(); } catch {}
+      try { redisClient.disconnect(); } catch { /* ignore */ }
     }
   }
 };

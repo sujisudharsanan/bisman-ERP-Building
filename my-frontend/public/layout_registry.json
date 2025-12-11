@@ -1,12 +1,12 @@
 {
   "meta": {
     "version": "1.0.0",
-    "exportedAt": "2025-12-07T20:40:31.389Z",
+    "exportedAt": "2025-12-11T05:12:03.108Z",
     "source": "my-frontend/src/common/config/page-registry.ts",
     "generator": "scripts/export-page-registry.js"
   },
   "statistics": {
-    "totalPages": 101,
+    "totalPages": 103,
     "totalModules": 2,
     "pagesByModule": {
       "super-admin": 12,
@@ -17,13 +17,13 @@
       "procurement": 5,
       "operations": 13,
       "compliance": 9,
-      "common": 3,
+      "common": 4,
       "billing": 5,
-      "admin": 5,
+      "admin": 6,
       "qa": 5
     },
     "pagesByStatus": {
-      "active": 101,
+      "active": 103,
       "coming-soon": 0,
       "disabled": 0
     }
@@ -1431,6 +1431,23 @@
       ]
     },
     {
+      "id": "task-workbench",
+      "name": "Task Workbench",
+      "path": "/dashboard/workbench",
+      "module": "common",
+      "status": "active",
+      "description": "Manage your tasks with draft, in-progress, needs attention, and done views",
+      "order": 1,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL",
+        "ADMIN",
+        "SUPER_ADMIN"
+      ]
+    },
+    {
       "id": "billing-invoices",
       "name": "Invoices & Payments",
       "path": "/billing/invoices",
@@ -1553,13 +1570,31 @@
       ]
     },
     {
+      "id": "admin-client-dashboard",
+      "name": "Dashboard",
+      "path": "/admin",
+      "module": "admin",
+      "status": "active",
+      "description": "Business health, money, customers, delivery & team metrics for all clients",
+      "order": 1,
+      "permissions": [
+        "admin-client-usage",
+        "authenticated"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN",
+        "ADMIN"
+      ]
+    },
+    {
       "id": "admin-user-usage",
       "name": "User Usage Details",
       "path": "/admin/user-usage",
       "module": "admin",
       "status": "active",
       "description": "View detailed usage for a specific user",
-      "order": 13,
+      "order": 14,
       "permissions": [
         "admin-usage"
       ],

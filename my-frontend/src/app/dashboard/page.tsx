@@ -13,16 +13,19 @@
  * 4. Admin roles (ADMIN, SUPER_ADMIN, ENTERPRISE_ADMIN) redirect to their specialized dashboards
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Filter, X } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import KanbanColumn from '@/components/dashboard/KanbanColumn';
 import RightPanel from '@/components/dashboard/RightPanel';
 import { TaskCreationForm } from '@/components/tasks/TaskCreationForm';
+import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 import { useAuth } from '@/hooks/useAuth';
 import { useDashboardData } from '@/hooks/useDashboardData';
-import { useWorkflowTasks } from '@/hooks/useWorkflowTasks';
+import { useKanbanTasks, useUpdateTaskPosition, taskKeys } from '@/hooks/useTasks';
+import { useTaskSocket } from '@/hooks/useTaskSocket';
+import { useQueryClient } from '@tanstack/react-query';
 import { 
   getDashboardConfig, 
   isAdminRole, 
@@ -33,20 +36,55 @@ import {
 export default function UnifiedDashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
+  const queryClient = useQueryClient();
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   
   // Get role-specific configuration
   const roleName = user?.roleName || user?.role || '';
   const config = getDashboardConfig(roleName);
   
-  // Fetch data based on config (standard or workflow tasks)
+  // Fetch data using new React Query hooks
   const { dashboardData, loading: standardLoading } = useDashboardData(roleName || 'USER');
-  const { groupedTasks, loading: workflowLoading } = useWorkflowTasks();
+  const { data: kanbanData, isLoading: kanbanLoading, refetch: refetchKanban } = useKanbanTasks();
+  const updatePosition = useUpdateTaskPosition();
+  
+  // Real-time socket updates
+  useTaskSocket({
+    enabled: !!user,
+    onTaskCreated: useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
+    }, [queryClient]),
+    onTaskUpdated: useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
+    }, [queryClient]),
+    onTaskDeleted: useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
+    }, [queryClient]),
+    onTaskMoved: useCallback(() => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
+    }, [queryClient]),
+  });
+  
+  // Transform kanban data for compatibility with existing Kanban columns
+  const groupedTasks = useMemo(() => {
+    if (!kanbanData) {
+      return { ASSIGNED: [], IN_PROGRESS: [], EDITING: [], DONE: [] };
+    }
+    
+    // Map NEED_ATTENTION to EDITING for backwards compatibility
+    return {
+      ASSIGNED: kanbanData.ASSIGNED || [],
+      IN_PROGRESS: kanbanData.IN_PROGRESS || [],
+      EDITING: kanbanData.NEED_ATTENTION || [], // Map to EDITING for old column config
+      DONE: kanbanData.DONE || [],
+    };
+  }, [kanbanData]);
   
   // Use appropriate loading state
-  const dataLoading = config.useWorkflowTasks ? workflowLoading : standardLoading;
+  const dataLoading = config.useWorkflowTasks ? kanbanLoading : standardLoading;
 
   // Handle authentication and admin redirects
   React.useEffect(() => {
@@ -101,12 +139,12 @@ export default function UnifiedDashboardPage() {
 
   // Filter tasks based on search query and status filter
   const getFilteredTasksForColumn = (dataKey: string, columnTitle: string) => {
-    let tasks = getTasksForColumn(dataKey);
+    let tasks: any[] = getTasksForColumn(dataKey);
     
     // Apply search filter
     if (searchQuery.trim()) {
       const query = searchQuery.toLowerCase().trim();
-      tasks = tasks.filter((task: any) => 
+      tasks = tasks.filter((task) => 
         task.title?.toLowerCase().includes(query) ||
         task.description?.toLowerCase().includes(query) ||
         task.subItems?.some((item: any) => item.text?.toLowerCase().includes(query))
@@ -145,19 +183,9 @@ export default function UnifiedDashboardPage() {
     setShowTaskForm(true);
   };
 
-  // Handle task click - dispatch event to open task in chat
+  // Handle task click - open task detail drawer
   const handleTaskClick = (task: any) => {
-    // Dispatch custom event to open task in chat panel
-    const event = new CustomEvent('openTaskInChat', {
-      detail: {
-        id: task.id,
-        title: task.title,
-        status: task.status || 'DRAFT',
-        priority: task.priority,
-        description: task.description,
-      }
-    });
-    window.dispatchEvent(event);
+    setSelectedTaskId(task.id);
   };
 
   return (
@@ -273,11 +301,21 @@ export default function UnifiedDashboardPage() {
               onCancel={() => setShowTaskForm(false)} 
               onTaskCreated={() => {
                 setShowTaskForm(false);
-                window.location.reload();
+                // Invalidate and refetch instead of full page reload
+                refetchKanban();
               }}
             />
           </div>
         </div>
+      )}
+      
+      {/* Task Detail Drawer */}
+      {selectedTaskId && (
+        <TaskDetailDrawer
+          taskId={selectedTaskId}
+          isOpen={!!selectedTaskId}
+          onClose={() => setSelectedTaskId(null)}
+        />
       )}
     </DashboardLayout>
   );

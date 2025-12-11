@@ -1,0 +1,131 @@
+# Task Module Prometheus Alert Rules
+# =================================
+# Alerts for task workflow operations, status changes, and performance
+
+groups:
+- name: task_module.rules
+  rules:
+    # =========================================================================
+    # STATUS CHANGE ERROR ALERTS
+    # =========================================================================
+    
+    # Alert when task status change errors spike
+    - alert: TaskStatusChangeErrorsHigh
+      expr: increase(http_requests_total{handler=~"/api/v2/tasks/.*/status", status=~"5.."}[5m]) > 5
+      for: 5m
+      labels:
+        severity: warning
+        team: backend
+        module: tasks
+      annotations:
+        summary: "High error rate on task status changes"
+        description: "More than 5 status-change errors in the last 5m ({{ $value | printf \"%.0f\" }} errors). Check service logs or database connectivity."
+        runbook_url: "https://wiki.bisman.io/runbooks/task-status-errors"
+    
+    # Critical: Sustained status change errors
+    - alert: TaskStatusChangeErrorsCritical
+      expr: increase(http_requests_total{handler=~"/api/v2/tasks/.*/status", status=~"5.."}[15m]) > 20
+      for: 5m
+      labels:
+        severity: critical
+        team: backend
+        module: tasks
+      annotations:
+        summary: "Critical: Sustained task status change errors"
+        description: "More than 20 status-change errors in the last 15 minutes. Investigate immediately."
+        runbook_url: "https://wiki.bisman.io/runbooks/task-status-errors"
+    
+    # =========================================================================
+    # TASK CREATION ALERTS
+    # =========================================================================
+    
+    # High task creation error rate
+    - alert: TaskCreationErrorsHigh
+      expr: |
+        rate(http_requests_total{handler="/api/v2/tasks", method="POST", status=~"5.."}[5m]) 
+        / rate(http_requests_total{handler="/api/v2/tasks", method="POST"}[5m]) > 0.1
+      for: 5m
+      labels:
+        severity: warning
+        team: backend
+        module: tasks
+      annotations:
+        summary: "High task creation error rate (>10%)"
+        description: "Task creation error rate is {{ $value | printf \"%.2f\" }}%. Check database constraints or validation issues."
+    
+    # =========================================================================
+    # RATE LIMIT ALERTS
+    # =========================================================================
+    
+    # Too many rate limit hits on task endpoints
+    - alert: TaskRateLimitHitsHigh
+      expr: increase(http_requests_total{handler=~"/api/v2/tasks.*", status="429"}[10m]) > 50
+      for: 5m
+      labels:
+        severity: warning
+        team: security
+        module: tasks
+      annotations:
+        summary: "High rate limit hits on task endpoints"
+        description: "{{ $value | printf \"%.0f\" }} rate limit hits in the last 10m. Possible abuse or aggressive client behavior."
+    
+    # =========================================================================
+    # LATENCY ALERTS
+    # =========================================================================
+    
+    # Task list endpoint slow
+    - alert: TaskListLatencyHigh
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{handler="/api/v2/tasks", method="GET"}[5m])) > 2
+      for: 5m
+      labels:
+        severity: warning
+        team: backend
+        module: tasks
+      annotations:
+        summary: "Task list endpoint latency high (P95 > 2s)"
+        description: "P95 latency for task list is {{ $value | printf \"%.2f\" }}s. Check database query performance."
+    
+    # Kanban endpoint slow
+    - alert: KanbanLatencyHigh
+      expr: histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{handler="/api/v2/tasks/kanban"}[5m])) > 3
+      for: 5m
+      labels:
+        severity: warning
+        team: backend
+        module: tasks
+      annotations:
+        summary: "Kanban endpoint latency high (P95 > 3s)"
+        description: "P95 latency for kanban board is {{ $value | printf \"%.2f\" }}s. Consider query optimization or caching."
+    
+    # =========================================================================
+    # AUDIT LOG ALERTS
+    # =========================================================================
+    
+    # Task audit log write failures
+    - alert: TaskAuditLogWriteFailures
+      expr: increase(task_audit_log_write_errors_total[5m]) > 0
+      for: 2m
+      labels:
+        severity: warning
+        team: backend
+        module: audit
+      annotations:
+        summary: "Task audit log write failures detected"
+        description: "{{ $value | printf \"%.0f\" }} audit log write failures in the last 5m. Check database connectivity."
+    
+    # =========================================================================
+    # CROSS-TENANT ACCESS ALERTS (SECURITY)
+    # =========================================================================
+    
+    # Potential cross-tenant access attempt
+    - alert: TaskCrossTenantAccessAttempt
+      expr: increase(task_cross_tenant_access_blocked_total[5m]) > 0
+      for: 1m
+      labels:
+        severity: critical
+        team: security
+        module: tasks
+      annotations:
+        summary: "Cross-tenant task access attempt blocked"
+        description: "{{ $value | printf \"%.0f\" }} cross-tenant access attempts blocked. This could indicate a security issue."
+        runbook_url: "https://wiki.bisman.io/runbooks/security-cross-tenant"
