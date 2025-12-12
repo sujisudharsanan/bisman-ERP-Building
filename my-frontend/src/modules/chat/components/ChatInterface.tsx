@@ -139,19 +139,20 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
     const loadUsers = async () => {
       try {
         // Get all users (empty query will return all active users now)
-        const response = await fetch('/api/chat-bot/search-users?q=');
+        const response = await fetch('/api/users/search?q=&limit=50');
   if (response.ok) {
           const data = await response.json();
           console.log('[Chat] API response:', data);
-          const users = data.data?.map((u: any) => ({
+          // Backend returns { users: [...] } format
+          const users = (data.users || data.data || []).map((u: any) => ({
             id: u.id,
-            name: u.fullName || u.username,
+            name: u.fullName || u.username || u.email?.split('@')[0] || '',
             email: u.email,
-            avatar: u.profile_pic_url,
+            avatar: u.profile_pic_url || u.profilePic,
             isOnline: true,
             role: u.role,
-            roleName: u.roleName
-          })) || [];
+            roleName: u.roleName || u.role
+          }));
           setChatUsers(users);
           console.log('[Chat] Loaded users:', users.length, 'users');
           console.log('[Chat] User details:', users.map((u: ChatUser) => ({ id: u.id, name: u.name, role: u.roleName || u.role })));

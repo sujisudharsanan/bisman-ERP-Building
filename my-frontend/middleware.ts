@@ -52,22 +52,25 @@ export function middleware(req: NextRequest) {
 }
 
 function attachSecurityHeaders(res: NextResponse, nonce?: string) {
+  const jitsi = 'meet.jit.si';
   const cspDirectives = [
     "default-src 'self'",
-    nonce ? `script-src 'self' 'nonce-${nonce}'` : "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
+    nonce ? `script-src 'self' 'nonce-${nonce}' https://${jitsi}` : `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://${jitsi}`,
     nonce ? `style-src 'self' 'nonce-${nonce}'` : "style-src 'self' 'unsafe-inline'",
-    "img-src 'self' data: blob: https:",
+    `img-src 'self' data: blob: https: https://${jitsi}`,
     "font-src 'self' data:",
-    "connect-src 'self' https: wss:",
+    `connect-src 'self' https: wss: wss://${jitsi} https://${jitsi}`,
     "object-src 'none'",
+    `frame-src 'self' https://${jitsi}`,
     "frame-ancestors 'none'",
-    "base-uri 'self'"
+    "base-uri 'self'",
+    `media-src 'self' https://${jitsi}`
   ];
   res.headers.set('Content-Security-Policy', cspDirectives.join('; '));
-  res.headers.set('X-Frame-Options', 'DENY');
+  res.headers.set('X-Frame-Options', 'SAMEORIGIN');
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
+  res.headers.set('Permissions-Policy', `camera=(self "https://${jitsi}"), microphone=(self "https://${jitsi}"), geolocation=(), fullscreen=(self)`);
   res.headers.set('X-DNS-Prefetch-Control', 'off');
   if (nonce) res.headers.set('X-CSP-Nonce', nonce);
   return res;

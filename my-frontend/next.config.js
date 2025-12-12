@@ -50,7 +50,7 @@ let nextConfig = {
   async headers() {
     const isProd = process.env.NODE_ENV === 'production';
     if (!isProd) { return []; }
-    const jitsi = process.env.JITSI_PUBLIC_HOST || 'jitsi.internal.example';
+    const jitsi = process.env.JITSI_PUBLIC_HOST || 'meet.jit.si';
     const turn = process.env.TURN_PUBLIC_HOST || 'turn.internal.example';
     const strict = process.env.CSP_STRICT === '1';
     const nonceToken = 'nonce-PLACEHOLDER'; // Runtime replaced via middleware/body attribute
@@ -84,7 +84,7 @@ let nextConfig = {
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
           { key: 'Content-Security-Policy', value: baseDirectives.join('; ') },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), fullscreen=(), payment=()' }
+          { key: 'Permissions-Policy', value: `camera=(self "https://${jitsi}"), microphone=(self "https://${jitsi}"), geolocation=(), fullscreen=(self), payment=()` }
         ]
       },
       {
@@ -95,7 +95,7 @@ let nextConfig = {
           { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains; preload' },
           { key: 'Content-Security-Policy', value: baseDirectives.join('; ') },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=(), fullscreen=(), payment=()' }
+          { key: 'Permissions-Policy', value: `camera=(self "https://${jitsi}"), microphone=(self "https://${jitsi}"), geolocation=(), fullscreen=(self), payment=()` }
         ]
       }
     ];
