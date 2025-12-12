@@ -65,6 +65,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
   const [activeView, setActiveView] = useState<ActiveView>('mira');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
   const [chatUsers, setChatUsers] = useState<ChatUser[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState<ChatUser[]>([]);
@@ -733,24 +734,51 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
     const msgLower = newMessage.toLowerCase().trim();
     setNewMessage('');
 
-    // If chatting with a user (not Bey), just send the message - no AI response
+    // If chatting with a user (not Bey), use thread-based messaging
     if (activeView === 'user' && selectedUserId) {
-      // TODO: Implement direct messaging via socket/API to the selected user
-      // For now, just save the message without AI response
       console.log('[Chat] Direct message to user:', selectedUserId, messageToSend);
       
-      // Save conversation to database (user-to-user chat)
       try {
-        await fetch('/api/chat/direct-message', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          credentials: 'include',
-          body: JSON.stringify({
-            message: messageToSend,
-            recipientId: selectedUserId,
-            senderId: (user as any)?.id
-          })
-        });
+        let threadId = currentThreadId;
+        
+        // Create thread if it doesn't exist
+        if (!threadId) {
+          const createRes = await fetch('/api/chat/threads', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              title: `Chat`,
+              memberIds: [parseInt(selectedUserId)]
+            })
+          });
+          
+          if (createRes.ok) {
+            const createData = await createRes.json();
+            threadId = createData.data?.id;
+            setCurrentThreadId(threadId);
+          } else {
+            console.error('[Chat] Failed to create thread');
+            return;
+          }
+        }
+        
+        // Send message to thread
+        if (threadId) {
+          const msgRes = await fetch(`/api/chat/threads/${threadId}/messages`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({
+              content: messageToSend,
+              type: 'text'
+            })
+          });
+          
+          if (!msgRes.ok) {
+            console.error('[Chat] Failed to send message');
+          }
+        }
       } catch (error) {
         console.error('[Chat] Failed to send direct message:', error);
       }
@@ -978,15 +1006,51 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
               {displayUsers.map((chatUser) => (
                 <button
                   key={chatUser.id}
-                  onClick={() => {
+                  onClick={async () => {
                     setActiveView('user');
                     setSelectedUserId(chatUser.id);
                     setSelectedTaskId(null);
-                    // Clear messages when switching to direct chat (start fresh conversation)
                     setMessages([]);
-                    // Clear search after selecting user
+                    setCurrentThreadId(null);
                     setSearchQuery('');
                     setSearchResults([]);
+                    
+                    // Load or create thread with this user
+                    try {
+                      // First, get all threads and find one with this user
+                      const threadsRes = await fetch('/api/chat/threads', { credentials: 'include' });
+                      if (threadsRes.ok) {
+                        const threadsData = await threadsRes.json();
+                        const threads = threadsData.data || [];
+                        
+                        // Find existing 1-on-1 thread with this user
+                        const existingThread = threads.find((t: any) => 
+                          t.members?.length === 2 && 
+                          t.members.some((m: any) => m.id === chatUser.id)
+                        );
+                        
+                        if (existingThread) {
+                          setCurrentThreadId(existingThread.id);
+                          // Load messages for this thread
+                          const messagesRes = await fetch(`/api/chat/threads/${existingThread.id}/messages`, { credentials: 'include' });
+                          if (messagesRes.ok) {
+                            const messagesData = await messagesRes.json();
+                            const threadMessages = (messagesData.messages || []).map((m: any) => ({
+                              id: m.id,
+                              message: m.content,
+                              user_id: m.senderId,
+                              create_at: new Date(m.createdAt).getTime(),
+                              username: m.sender?.username || 'User',
+                              isBot: false
+                            }));
+                            setMessages(threadMessages);
+                          }
+                        }
+                        // If no thread exists, one will be created when first message is sent
+                      }
+                    } catch (error) {
+                      console.error('[Chat] Failed to load thread:', error);
+                    }
                   }}
                   className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-[#1e1e2e] transition-colors ${
                     activeView === 'user' && selectedUserId === chatUser.id ? 'bg-[#1e1e2e]' : ''

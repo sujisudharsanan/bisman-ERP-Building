@@ -43,8 +43,17 @@ export default function JitsiCallControls({
     const script = document.createElement('script');
     script.src = `https://${JITSI_DOMAIN}/external_api.js`;
     script.async = true;
-    script.onload = () => resolve(window.JitsiMeetExternalAPI);
-    script.onerror = reject;
+    script.onload = () => {
+      // Wait a bit for the API to be available
+      setTimeout(() => {
+        if (window.JitsiMeetExternalAPI) {
+          resolve(window.JitsiMeetExternalAPI);
+        } else {
+          reject(new Error('JitsiMeetExternalAPI not available after script load'));
+        }
+      }, 100);
+    };
+    script.onerror = (e) => reject(new Error('Failed to load Jitsi script'));
     document.body.appendChild(script);
   });
 
@@ -53,16 +62,17 @@ export default function JitsiCallControls({
       // Generate a unique room name for this call
       const roomName = `bisman-${threadId || 'general'}-${Date.now()}`;
       
+      // Expand container first so it has dimensions
+      setIsExpanded(true);
+      
       setCall({ 
         id: roomName, 
         room: roomName, 
         status: 'ringing' 
       });
       
-      setIsExpanded(true);
-      
-      // Auto-join after a brief delay
-      setTimeout(() => joinCall(roomName, type), 300);
+      // Auto-join after a brief delay to allow container to expand
+      setTimeout(() => joinCall(roomName, type), 500);
     } catch (e) { 
       onError?.(e as Error);
     }
@@ -72,9 +82,18 @@ export default function JitsiCallControls({
     const roomToJoin = roomName || call?.room;
     if (!roomToJoin) return;
     
+    // Ensure container is available
+    if (!containerRef.current) {
+      console.error('[Jitsi] Container ref not available');
+      onError?.(new Error('Call container not available'));
+      return;
+    }
+    
     setJoining(true);
     try {
+      console.log('[Jitsi] Loading external API...');
       const JitsiAPI = await loadExternalApi();
+      console.log('[Jitsi] API loaded, creating room:', roomToJoin);
       
       const api = new JitsiAPI(JITSI_DOMAIN, {
         roomName: roomToJoin,
@@ -103,11 +122,13 @@ export default function JitsiCallControls({
       });
 
       api.addEventListener('videoConferenceJoined', () => {
+        console.log('[Jitsi] Conference joined');
         setCall(c => c ? { ...c, status: 'active' } : null);
         setJoining(false);
       });
 
       api.addEventListener('readyToClose', () => {
+        console.log('[Jitsi] Conference closed');
         setCall(c => c ? { ...c, status: 'ended' } : null);
         setJitsiApi(null);
         setIsExpanded(false);
@@ -115,6 +136,7 @@ export default function JitsiCallControls({
 
       setJitsiApi(api);
     } catch (e) { 
+      console.error('[Jitsi] Error:', e);
       onError?.(e as Error);
       setJoining(false);
     }
