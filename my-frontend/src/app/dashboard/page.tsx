@@ -22,10 +22,10 @@ import RightPanel from '@/components/dashboard/RightPanel';
 import { TaskCreationForm } from '@/components/tasks/TaskCreationForm';
 import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 import { useAuth } from '@/hooks/useAuth';
-import { useDashboardData } from '@/hooks/useDashboardData';
-import { useKanbanTasks, useUpdateTaskPosition, taskKeys } from '@/hooks/useTasks';
+import { useKanbanTasks, taskKeys } from '@/hooks/useTasks';
 import { useTaskSocket } from '@/hooks/useTaskSocket';
 import { useQueryClient } from '@tanstack/react-query';
+import { ViewMode } from '@/lib/api/taskApi';
 import { 
   getDashboardConfig, 
   isAdminRole, 
@@ -41,15 +41,14 @@ export default function UnifiedDashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
+  const [viewMode, setViewMode] = useState<ViewMode>('all');
   
   // Get role-specific configuration
   const roleName = user?.roleName || user?.role || '';
   const config = getDashboardConfig(roleName);
   
-  // Fetch data using new React Query hooks
-  const { dashboardData, loading: standardLoading } = useDashboardData(roleName || 'USER');
-  const { data: kanbanData, isLoading: kanbanLoading, refetch: refetchKanban } = useKanbanTasks();
-  const updatePosition = useUpdateTaskPosition();
+  // Fetch kanban data with viewMode support (maker-checker)
+  const { data: kanbanData, isLoading: kanbanLoading, refetch: refetchKanban } = useKanbanTasks(viewMode);
   
   // Real-time socket updates
   useTaskSocket({
@@ -71,20 +70,24 @@ export default function UnifiedDashboardPage() {
   // Transform kanban data for compatibility with existing Kanban columns
   const groupedTasks = useMemo(() => {
     if (!kanbanData) {
-      return { ASSIGNED: [], IN_PROGRESS: [], EDITING: [], DONE: [] };
+      return { ASSIGNED: [], IN_PROGRESS: [], IN_REVIEW: [], EDITING: [], DONE: [] };
     }
     
-    // Map NEED_ATTENTION to EDITING for backwards compatibility
+    // Type assertion for kanban data structure
+    const data = kanbanData as unknown as Record<string, any[]>;
+    
+    // Map backend columns to display columns
+    // IN_REVIEW maps to NEED_ATTENTION for display, EDITING is kept as-is
     return {
-      ASSIGNED: kanbanData.ASSIGNED || [],
-      IN_PROGRESS: kanbanData.IN_PROGRESS || [],
-      EDITING: kanbanData.NEED_ATTENTION || [], // Map to EDITING for old column config
-      DONE: kanbanData.DONE || [],
+      ASSIGNED: data.ASSIGNED || [],
+      IN_PROGRESS: data.IN_PROGRESS || [],
+      EDITING: data.IN_REVIEW || data.EDITING || data.NEED_ATTENTION || [],
+      DONE: data.DONE || [],
     };
   }, [kanbanData]);
   
-  // Use appropriate loading state
-  const dataLoading = config.useWorkflowTasks ? kanbanLoading : standardLoading;
+  // Use kanban loading state
+  const dataLoading = kanbanLoading;
 
   // Handle authentication and admin redirects
   React.useEffect(() => {
@@ -129,12 +132,9 @@ export default function UnifiedDashboardPage() {
     return null;
   }
 
-  // Get tasks for a column based on config
+  // Get tasks for a column - now always uses maker-checker data
   const getTasksForColumn = (dataKey: string) => {
-    if (config.useWorkflowTasks) {
-      return groupedTasks[dataKey as keyof typeof groupedTasks] || [];
-    }
-    return dashboardData[dataKey as keyof typeof dashboardData] || [];
+    return groupedTasks[dataKey as keyof typeof groupedTasks] || [];
   };
 
   // Filter tasks based on search query and status filter
@@ -263,21 +263,26 @@ export default function UnifiedDashboardPage() {
           
           <main className="flex-1 flex flex-col overflow-hidden min-h-0">
             <div className="w-full flex-1 overflow-hidden">
+              {/* Standard Kanban View with Maker-Checker data source */}
               <div className="flex justify-between gap-3 md:gap-5 mb-1 ml-3 md:ml-4 mr-3 md:mr-4 h-full">
                 {/* Kanban Columns */}
                 <div className="flex-1 min-w-0 overflow-hidden">
                   <div className="grid gap-3 md:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 auto-rows-fr h-full overflow-y-auto pr-1 pb-0 mb-0 custom-scrollbar min-h-0">
-                    {config.columns.map((column) => (
-                      <div key={column.key}>
-                        <KanbanColumn
-                          title={column.title}
-                          tasks={getFilteredTasksForColumn(column.dataKey, column.title)}
-                          showCreate={column.showCreate && config.allowTaskCreation}
-                          onCreate={column.showCreate ? handleCreateTask : undefined}
-                          onTaskClick={handleTaskClick}
-                        />
-                      </div>
-                    ))}
+                    {config.columns.map((column) => {
+                      // Hide Create button in "My Work" view (tasks assigned TO me - I don't create here)
+                      const canShowCreate = column.showCreate && config.allowTaskCreation && viewMode !== 'my-work';
+                      return (
+                        <div key={column.key}>
+                          <KanbanColumn
+                            title={column.title}
+                            tasks={getFilteredTasksForColumn(column.dataKey, column.title)}
+                            showCreate={canShowCreate}
+                            onCreate={canShowCreate ? handleCreateTask : undefined}
+                            onTaskClick={handleTaskClick}
+                          />
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
                 

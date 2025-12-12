@@ -18,6 +18,7 @@ export interface Task {
   // Relations
   creator_id: number;
   assigned_to?: number;
+  assignee_id?: number;
   approver_id?: number;
   parent_id?: string;
   tenant_id?: string;
@@ -37,12 +38,30 @@ export interface Task {
   confirmed_at?: string;
   completed_at?: string;
   
+  // Maker-Checker fields
+  rejection_reason?: string;
+  rejection_count?: number;
+  version?: number | string;
+  previous_status?: string;
+  submitted_for_review_at?: string;
+  review_completed_at?: string;
+  last_status_change_at?: string;
+  updated_by?: number;
+  task_type?: string;
+  
+  // Populated names (from backend joins)
+  creator_name?: string;
+  assignee_name?: string;
+  
+  // UI helper counts (alternate naming)
+  comments?: number;
+  attachments?: number;
+  
   // Relations (populated)
   creator?: User;
   assignee?: User;
   approver?: User;
   messages?: TaskMessage[];
-  attachments?: TaskAttachment[];
   
   // UI helpers
   statusInfo?: TaskStatusInfo;
@@ -51,8 +70,11 @@ export interface Task {
 export type TaskStatus = 
   | 'ASSIGNED' 
   | 'IN_PROGRESS' 
+  | 'IN_REVIEW'
+  | 'EDITING'
   | 'NEED_ATTENTION' 
   | 'DONE'
+  | 'COMPLETED'
   | 'CANCELLED';
 
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
@@ -60,9 +82,21 @@ export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH' | 'URGENT';
 export interface TaskStatusInfo {
   isCreator: boolean;
   isAssignee: boolean;
+  availableActions: TaskAction[];
   canComplete: boolean;
-  canCancel: boolean;
+  canReject: boolean;
+  canSubmitForReview: boolean;
+  canStartWork: boolean;
 }
+
+export type TaskAction = 
+  | 'START_WORK' 
+  | 'SUBMIT_FOR_REVIEW' 
+  | 'APPROVE' 
+  | 'REJECT' 
+  | 'RESUBMIT';
+
+export type ViewMode = 'all' | 'my-work' | 'my-requests';
 
 export interface User {
   id: number;
@@ -97,8 +131,42 @@ export interface TaskAttachment {
 export interface KanbanData {
   ASSIGNED: Task[];
   IN_PROGRESS: Task[];
-  NEED_ATTENTION: Task[];
+  IN_REVIEW: Task[];
+  EDITING: Task[];
   DONE: Task[];
+  // Legacy field name for backwards compatibility
+  NEED_ATTENTION?: Task[];
+}
+
+export interface TransitionInput {
+  action: TaskAction;
+  reason?: string;
+  expectedVersion?: number;
+}
+
+export interface TransitionResponse {
+  task: Task;
+  transition: {
+    action: TaskAction;
+    from: string;
+    to: string;
+  };
+  message: string;
+}
+
+export interface TaskAuditEntry {
+  id: number;
+  task_id: number;
+  actor_id: number;
+  actor_name: string;
+  actor_role: string;
+  actor_email?: string;
+  action: string;
+  from_status: string;
+  to_status: string;
+  reason?: string;
+  metadata?: Record<string, any>;
+  created_at: string;
 }
 
 // ============================================
@@ -212,11 +280,39 @@ export const taskApi = {
   },
   
   /**
-   * Get Kanban board data
+   * Get Kanban board data (grouped by status for dashboard)
+   * @param viewMode - 'all' | 'my-work' | 'my-requests' for maker-checker views
    */
-  async getKanban(): Promise<KanbanData> {
-    const response = await fetch(`${API_BASE}/kanban`, { credentials: 'include' });
+  async getKanban(viewMode: ViewMode = 'all'): Promise<KanbanData> {
+    const url = viewMode !== 'all' 
+      ? `${API_BASE}/dashboard?viewMode=${viewMode}`
+      : `${API_BASE}/dashboard`;
+    const response = await fetch(url, { credentials: 'include' });
     return handleResponse<KanbanData>(response);
+  },
+  
+  /**
+   * Transition task status using maker-checker workflow
+   * Actions: START_WORK, SUBMIT_FOR_REVIEW, APPROVE, REJECT, RESUBMIT
+   */
+  async transition(taskId: string, input: TransitionInput): Promise<TransitionResponse> {
+    const response = await fetch(`${API_BASE}/${taskId}/transition`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(input)
+    });
+    return handleResponse<TransitionResponse>(response);
+  },
+  
+  /**
+   * Get task audit trail
+   */
+  async getAuditTrail(taskId: string): Promise<TaskAuditEntry[]> {
+    const response = await fetch(`${API_BASE}/${taskId}/audit`, {
+      credentials: 'include'
+    });
+    return handleResponse<TaskAuditEntry[]>(response);
   },
   
   /**

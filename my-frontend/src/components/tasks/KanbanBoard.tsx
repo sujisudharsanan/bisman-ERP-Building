@@ -110,7 +110,9 @@ export function KanbanBoard({ onTaskClick, onCreateTask }: KanbanBoardProps) {
   const findTask = useCallback((id: UniqueIdentifier): Task | undefined => {
     if (!displayData) return undefined;
     for (const status of Object.keys(displayData) as (keyof KanbanData)[]) {
-      const task = displayData[status].find(t => t.id === id);
+      const columnTasks = displayData[status];
+      if (!columnTasks) continue;
+      const task = columnTasks.find(t => t.id === id);
       if (task) return task;
     }
     return undefined;
@@ -120,7 +122,9 @@ export function KanbanBoard({ onTaskClick, onCreateTask }: KanbanBoardProps) {
   const findColumn = useCallback((id: UniqueIdentifier): KanbanStatus | undefined => {
     if (!displayData) return undefined;
     for (const status of Object.keys(displayData) as KanbanStatus[]) {
-      if (displayData[status].some(t => t.id === id)) {
+      const columnTasks = displayData[status as keyof KanbanData];
+      if (!columnTasks) continue;
+      if (columnTasks.some(t => t.id === id)) {
         return status;
       }
     }
@@ -154,14 +158,18 @@ export function KanbanBoard({ onTaskClick, onCreateTask }: KanbanBoardProps) {
       if (!prev) return prev;
       
       // Remove from source
-      const sourceItems = [...prev[activeColumn as keyof KanbanData]];
+      const sourceColumnData = prev[activeColumn as keyof KanbanData];
+      if (!sourceColumnData) return prev;
+      const sourceItems = [...sourceColumnData];
       const taskIndex = sourceItems.findIndex((t: Task) => t.id === activeId);
       if (taskIndex === -1) return prev;
       
       const [movedTask] = sourceItems.splice(taskIndex, 1);
       
       // Add to destination
-      const destItems = [...prev[overColumn as keyof KanbanData]];
+      const destColumnData = prev[overColumn as keyof KanbanData];
+      if (!destColumnData) return prev;
+      const destItems = [...destColumnData];
       const overIndex = destItems.findIndex((t: Task) => t.id === overId);
       
       // Insert at position
@@ -197,7 +205,7 @@ export function KanbanBoard({ onTaskClick, onCreateTask }: KanbanBoardProps) {
       return;
     }
 
-    const column = localKanban[overColumn as keyof KanbanData];
+    const column = localKanban[overColumn as keyof KanbanData] || [];
     const newIndex = column.findIndex((t: Task) => t.id === active.id);
 
     try {

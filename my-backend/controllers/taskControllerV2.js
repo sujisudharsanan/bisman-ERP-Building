@@ -13,7 +13,6 @@
 
 const { getPool } = require('../middleware/database');
 const path = require('path');
-const fs = require('fs');
 
 // Lazy pool getter
 const getDbPool = () => {
@@ -217,6 +216,7 @@ const getKanbanTasks = async (req, res) => {
   try {
     const userId = req.user.id;
     const tenantId = req.user.tenant_id;
+    const { viewMode = 'all' } = req.query; // 'all', 'my-work', 'my-requests'
     
     // Build query with mandatory tenant isolation
     let query = `
@@ -243,24 +243,36 @@ const getKanbanTasks = async (req, res) => {
       params.push(tenantId);
     }
     
-    // User can see tasks they created, are assigned to, or participate in
+    // View mode filtering for Maker-Checker dual view
     paramCount++;
-    query += ` AND (
-      t.creator_id = $${paramCount}
-      OR t.assignee_id = $${paramCount}
-      OR EXISTS (SELECT 1 FROM task_participants tp WHERE tp.task_id = t.id AND tp.user_id = $${paramCount})
-    )`;
-    params.push(userId);
+    if (viewMode === 'my-work') {
+      // Assignee view: Tasks I need to work on
+      query += ` AND t.assignee_id = $${paramCount}`;
+      params.push(userId);
+    } else if (viewMode === 'my-requests') {
+      // Creator view: Tasks I created and need to review/track
+      query += ` AND t.creator_id = $${paramCount}`;
+      params.push(userId);
+    } else {
+      // Default: all tasks user is involved in
+      query += ` AND (
+        t.creator_id = $${paramCount}
+        OR t.assignee_id = $${paramCount}
+        OR EXISTS (SELECT 1 FROM task_participants tp WHERE tp.task_id = t.id AND tp.user_id = $${paramCount})
+      )`;
+      params.push(userId);
+    }
     
     query += ` ORDER BY t.position ASC, t.created_at DESC`;
     
     const result = await getDbPool().query(query, params);
     
-    // Group by status for Kanban
+    // Group by status for Kanban with Maker-Checker awareness
     const grouped = {
       ASSIGNED: [],
       IN_PROGRESS: [],
-      NEED_ATTENTION: [],
+      IN_REVIEW: [],
+      EDITING: [],
       DONE: []
     };
     
@@ -268,12 +280,28 @@ const getKanbanTasks = async (req, res) => {
       const isCreator = task.creator_id === userId;
       const isAssignee = task.assignee_id === userId;
       
-      // Add role info
+      // Determine available actions based on maker-checker state machine
+      const availableActions = [];
+      if (isAssignee) {
+        if (task.status === 'ASSIGNED') availableActions.push('START_WORK');
+        if (task.status === 'IN_PROGRESS') availableActions.push('SUBMIT_FOR_REVIEW');
+        if (task.status === 'EDITING') availableActions.push('RESUBMIT');
+      }
+      if (isCreator) {
+        if (task.status === 'IN_REVIEW') {
+          availableActions.push('APPROVE', 'REJECT');
+        }
+      }
+      
+      // Add role and action info
       task.statusInfo = {
         isCreator,
         isAssignee,
-        canComplete: isAssignee && !['COMPLETED', 'DONE', 'CANCELLED'].includes(task.status),
-        canCancel: isCreator && !['COMPLETED', 'DONE', 'CANCELLED'].includes(task.status)
+        availableActions,
+        canComplete: isCreator && task.status === 'IN_REVIEW',
+        canReject: isCreator && task.status === 'IN_REVIEW',
+        canSubmitForReview: isAssignee && task.status === 'IN_PROGRESS',
+        canStartWork: isAssignee && task.status === 'ASSIGNED'
       };
       
       // Transform for Kanban display
@@ -288,25 +316,29 @@ const getKanbanTasks = async (req, res) => {
         CRITICAL: 'pink'
       }[task.priority] || 'blue';
       
-      // Group logic
-      if (['DRAFT', 'OPEN', 'ASSIGNED'].includes(task.status)) {
-        if (isCreator) {
-          grouped.ASSIGNED.push(task);
-        } else if (isAssignee) {
-          grouped.IN_PROGRESS.push(task);
-        }
-      } else if (task.status === 'IN_PROGRESS') {
+      // Group by status - Maker-Checker friendly
+      const status = task.status?.toUpperCase();
+      if (['DRAFT', 'OPEN', 'ASSIGNED'].includes(status)) {
+        grouped.ASSIGNED.push(task);
+      } else if (status === 'IN_PROGRESS') {
         grouped.IN_PROGRESS.push(task);
-      } else if (['IN_REVIEW', 'BLOCKED'].includes(task.status)) {
-        grouped.NEED_ATTENTION.push(task);
-      } else if (['COMPLETED', 'DONE'].includes(task.status)) {
+      } else if (status === 'IN_REVIEW') {
+        grouped.IN_REVIEW.push(task);
+      } else if (status === 'EDITING' || status === 'BLOCKED') {
+        grouped.EDITING.push(task);
+      } else if (['COMPLETED', 'DONE'].includes(status)) {
         grouped.DONE.push(task);
       }
     });
     
     res.json({
       success: true,
-      data: grouped
+      data: grouped,
+      viewMode,
+      meta: {
+        totalTasks: result.rows.length,
+        columns: Object.keys(grouped).map(k => ({ key: k, count: grouped[k].length }))
+      }
     });
     
   } catch (error) {
@@ -740,7 +772,6 @@ const updateTaskStatus = async (req, res) => {
     }
     
     // Update status
-    const completedAt = newStatus === 'COMPLETED' ? 'NOW()' : 'completed_at';
     const query = `
       UPDATE workflow_tasks
       SET status = $1, 
@@ -1235,6 +1266,291 @@ const logAudit = async (userId, action, tableName, recordId, oldValues, newValue
 };
 
 // ============================================
+// MAKER-CHECKER STATE TRANSITIONS
+// ============================================
+
+/**
+ * Maker-Checker valid state transitions
+ * ASSIGNED → IN_PROGRESS (Assignee)
+ * IN_PROGRESS → IN_REVIEW (Assignee submits for review)
+ * IN_REVIEW → DONE (Creator approves)
+ * IN_REVIEW → EDITING (Creator rejects → returns to IN_PROGRESS)
+ */
+const makerCheckerTransitions = {
+  'ASSIGNED': {
+    'IN_PROGRESS': { allowedRoles: ['assignee'], action: 'START_WORK' },
+  },
+  'IN_PROGRESS': {
+    'IN_REVIEW': { allowedRoles: ['assignee'], action: 'SUBMIT_FOR_REVIEW' },
+  },
+  'IN_REVIEW': {
+    'DONE': { allowedRoles: ['creator'], action: 'APPROVE' },
+    'IN_PROGRESS': { allowedRoles: ['creator'], action: 'REJECT' }, // Rejection sends back to IN_PROGRESS
+  },
+  'EDITING': {
+    'IN_REVIEW': { allowedRoles: ['assignee'], action: 'RESUBMIT' },
+  },
+};
+
+/**
+ * Log to task_audit table for compliance
+ */
+const logTaskAudit = async (taskId, actorId, actorName, actorRole, action, fromStatus, toStatus, reason, metadata, tenantId) => {
+  try {
+    await getDbPool().query(`
+      INSERT INTO task_audit (task_id, actor_id, actor_name, actor_role, action, from_status, to_status, reason, metadata, tenant_id, created_at)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, NOW())
+    `, [taskId, actorId, actorName, actorRole, action, fromStatus, toStatus, reason, metadata ? JSON.stringify(metadata) : null, tenantId]);
+  } catch (error) {
+    console.error('[TaskAudit] Failed to log:', error.message);
+  }
+};
+
+/**
+ * POST /api/v2/tasks/:id/transition
+ * Handle maker-checker state transitions with full validation
+ */
+const transitionTaskStatus = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const userId = req.user.id;
+    const userName = req.user.username || req.user.email;
+    const userRole = req.user.role;
+    const tenantId = req.user.tenant_id;
+    const { action, reason, expectedVersion } = req.body;
+    
+    if (!action) {
+      return res.status(400).json({
+        success: false,
+        error: 'Action is required',
+        validActions: ['START_WORK', 'SUBMIT_FOR_REVIEW', 'APPROVE', 'REJECT', 'RESUBMIT']
+      });
+    }
+    
+    // Get existing task with tenant isolation
+    let taskQuery = 'SELECT * FROM workflow_tasks WHERE id = $1';
+    const taskParams = [id];
+    
+    if (tenantId) {
+      taskQuery += ' AND tenant_id = $2';
+      taskParams.push(tenantId);
+    }
+    
+    const taskResult = await getDbPool().query(taskQuery, taskParams);
+    
+    if (taskResult.rows.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'Task not found'
+      });
+    }
+    
+    const task = taskResult.rows[0];
+    const currentStatus = (task.status || '').toUpperCase();
+    const currentVersion = task.version || 1;
+    
+    // Optimistic locking check
+    if (expectedVersion !== undefined && expectedVersion !== currentVersion) {
+      return res.status(409).json({
+        success: false,
+        error: 'Conflict: Task was modified by another user',
+        currentVersion,
+        expectedVersion,
+        hint: 'Refresh the task and try again'
+      });
+    }
+    
+    // Determine user's role in relation to task
+    const isCreator = task.creator_id === userId;
+    const isAssignee = task.assignee_id === userId;
+    
+    // Find the valid transition for the action
+    let targetStatus = null;
+    let transitionInfo = null;
+    const statusTransitions = makerCheckerTransitions[currentStatus];
+    
+    if (statusTransitions) {
+      for (const [toStatus, info] of Object.entries(statusTransitions)) {
+        if (info.action === action.toUpperCase()) {
+          targetStatus = toStatus;
+          transitionInfo = info;
+          break;
+        }
+      }
+    }
+    
+    if (!targetStatus || !transitionInfo) {
+      return res.status(400).json({
+        success: false,
+        error: `Invalid action "${action}" for current status "${currentStatus}"`,
+        currentStatus,
+        availableActions: statusTransitions 
+          ? Object.values(statusTransitions).map(t => t.action)
+          : []
+      });
+    }
+    
+    // Check role permission
+    const userTaskRole = isCreator ? 'creator' : (isAssignee ? 'assignee' : 'other');
+    if (!transitionInfo.allowedRoles.includes(userTaskRole)) {
+      return res.status(403).json({
+        success: false,
+        error: `Only ${transitionInfo.allowedRoles.join(' or ')} can perform "${action}"`,
+        yourRole: userTaskRole,
+        requiredRoles: transitionInfo.allowedRoles
+      });
+    }
+    
+    // Rejection requires reason
+    if (action.toUpperCase() === 'REJECT' && !reason) {
+      return res.status(400).json({
+        success: false,
+        error: 'Rejection reason is required',
+        hint: 'Provide a "reason" field explaining why the task is being rejected'
+      });
+    }
+    
+    // Build update query
+    const updateFields = [
+      'status = $1',
+      'previous_status = $2',
+      'updated_at = NOW()',
+      'updated_by = $3',
+      'version = version + 1',
+      'last_status_change_at = NOW()'
+    ];
+    const updateParams = [targetStatus, currentStatus, userId];
+    let paramCount = 3;
+    
+    // Action-specific fields
+    if (action.toUpperCase() === 'REJECT') {
+      updateFields.push(`rejection_reason = $${++paramCount}`);
+      updateParams.push(reason);
+      updateFields.push(`rejection_count = COALESCE(rejection_count, 0) + 1`);
+    }
+    
+    if (action.toUpperCase() === 'SUBMIT_FOR_REVIEW' || action.toUpperCase() === 'RESUBMIT') {
+      updateFields.push(`submitted_for_review_at = NOW()`);
+    }
+    
+    if (action.toUpperCase() === 'APPROVE') {
+      updateFields.push(`review_completed_at = NOW()`);
+      updateFields.push(`completed_at = NOW()`);
+    }
+    
+    updateParams.push(id);
+    const updateQuery = `
+      UPDATE workflow_tasks
+      SET ${updateFields.join(', ')}
+      WHERE id = $${paramCount + 1}
+      RETURNING *
+    `;
+    
+    const result = await getDbPool().query(updateQuery, updateParams);
+    const updatedTask = result.rows[0];
+    
+    // Log to task_audit table
+    await logTaskAudit(
+      parseInt(id),
+      userId,
+      userName,
+      userRole,
+      action.toUpperCase(),
+      currentStatus,
+      targetStatus,
+      reason || null,
+      { expectedVersion, newVersion: updatedTask.version },
+      tenantId
+    );
+    
+    // Create system message for status change
+    const messageText = reason 
+      ? `${userName} ${action.toLowerCase().replace(/_/g, ' ')}: ${currentStatus} → ${targetStatus}. Reason: ${reason}`
+      : `${userName} ${action.toLowerCase().replace(/_/g, ' ')}: ${currentStatus} → ${targetStatus}`;
+    
+    await getDbPool().query(`
+      INSERT INTO task_messages (task_id, sender_id, content, message_type, is_system_message, tenant_id)
+      VALUES ($1, $2, $3, 'STATUS_CHANGE', true, $4)
+    `, [id, userId, messageText, tenantId]);
+    
+    // Emit Socket.IO event
+    emitToTenant(tenantId, 'task:transition', { 
+      task: updatedTask,
+      transition: {
+        action: action.toUpperCase(),
+        from: currentStatus,
+        to: targetStatus,
+        actorId: userId,
+        actorName: userName,
+        reason
+      }
+    });
+    
+    res.json({
+      success: true,
+      data: updatedTask,
+      transition: {
+        action: action.toUpperCase(),
+        from: currentStatus,
+        to: targetStatus
+      },
+      message: `Task ${action.toLowerCase().replace(/_/g, ' ')} successful`
+    });
+    
+  } catch (error) {
+    console.error('[TaskController] transitionTaskStatus error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to transition task status',
+      details: error.message
+    });
+  }
+};
+
+/**
+ * GET /api/v2/tasks/:id/audit
+ * Get audit trail for a task
+ */
+const getTaskAuditTrail = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user.tenant_id;
+    
+    let query = `
+      SELECT 
+        ta.*,
+        u.email as actor_email
+      FROM task_audit ta
+      LEFT JOIN users u ON u.id = ta.actor_id
+      WHERE ta.task_id = $1
+    `;
+    const params = [id];
+    
+    if (tenantId) {
+      query += ' AND ta.tenant_id = $2';
+      params.push(tenantId);
+    }
+    
+    query += ' ORDER BY ta.created_at DESC';
+    
+    const result = await getDbPool().query(query, params);
+    
+    res.json({
+      success: true,
+      data: result.rows,
+      count: result.rows.length
+    });
+    
+  } catch (error) {
+    console.error('[TaskController] getTaskAuditTrail error:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get task audit trail'
+    });
+  }
+};
+
+// ============================================
 // EXPORTS
 // ============================================
 
@@ -1248,6 +1564,10 @@ module.exports = {
   updateTaskStatus,
   updateTaskPosition,
   deleteTask,
+  
+  // Maker-Checker Transitions
+  transitionTaskStatus,
+  getTaskAuditTrail,
   
   // Messages
   getTaskMessages,

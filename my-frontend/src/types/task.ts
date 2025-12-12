@@ -285,6 +285,7 @@ export interface CreateTaskInput {
   attachments?: File[];
   organizationId?: number;
   departmentId?: number;
+  tags?: string[];
 }
 
 export interface UpdateTaskInput {

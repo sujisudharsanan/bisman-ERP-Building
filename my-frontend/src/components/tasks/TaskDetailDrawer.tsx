@@ -30,7 +30,12 @@ import {
   Loader2,
   Pencil,
   Check,
-  ChevronDown
+  ChevronDown,
+  Play,
+  SendHorizonal,
+  RotateCcw,
+  ThumbsUp,
+  ThumbsDown
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { 
@@ -41,7 +46,8 @@ import {
   useUploadAttachment,
   useUpdateTaskStatus,
   useUpdateTask,
-  useDeleteTask
+  useDeleteTask,
+  useTransitionTask
 } from '@/hooks/useTasks';
 import { useTaskSocket } from '@/hooks/useTaskSocket';
 import { useAuth } from '@/hooks/useAuth';
@@ -71,11 +77,14 @@ const priorityConfig = {
   URGENT: { color: 'bg-red-100 text-red-700', icon: AlertCircle, label: 'Urgent' },
 };
 
-const statusConfig = {
+const statusConfig: Record<string, { color: string; icon: typeof User; label: string }> = {
   ASSIGNED: { color: 'bg-slate-100 text-slate-700', icon: User, label: 'Assigned' },
   IN_PROGRESS: { color: 'bg-blue-100 text-blue-700', icon: Clock, label: 'In Progress' },
+  IN_REVIEW: { color: 'bg-purple-100 text-purple-700', icon: Clock, label: 'In Review' },
+  EDITING: { color: 'bg-orange-100 text-orange-700', icon: AlertCircle, label: 'Needs Revision' },
   NEED_ATTENTION: { color: 'bg-amber-100 text-amber-700', icon: AlertCircle, label: 'Needs Attention' },
   DONE: { color: 'bg-green-100 text-green-700', icon: CheckCircle2, label: 'Completed' },
+  COMPLETED: { color: 'bg-green-100 text-green-700', icon: CheckCircle2, label: 'Completed' },
   CANCELLED: { color: 'bg-red-100 text-red-700', icon: XCircle, label: 'Cancelled' },
 };
 
@@ -110,6 +119,11 @@ export function TaskDetailDrawer({ taskId, isOpen, onClose, onTaskDeleted }: Tas
   const updateStatus = useUpdateTaskStatus();
   const updateTask = useUpdateTask();
   const deleteTask = useDeleteTask();
+  const transitionTask = useTransitionTask();
+  
+  // State for rejection comment
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectComment, setRejectComment] = useState('');
 
   // Socket for real-time updates
   const { connected, typingUsers, sendTyping } = useTaskSocket({
@@ -132,12 +146,22 @@ export function TaskDetailDrawer({ taskId, isOpen, onClose, onTaskDeleted }: Tas
     }
   }, [messages]);
 
-  // Check user permissions
+  // Check user permissions for Maker-Checker workflow
   const currentUserId = user?.id;
   const isCreator = task?.creator_id === currentUserId;
-  const isAssignee = task?.assigned_to === currentUserId;
-  const canComplete = isAssignee && task?.status !== 'DONE' && task?.status !== 'CANCELLED';
-  const canCancel = isCreator && task?.status !== 'DONE' && task?.status !== 'CANCELLED';
+  const isAssignee = task?.assignee_id === currentUserId || task?.assigned_to === currentUserId;
+  
+  // Maker-Checker workflow permissions
+  const taskStatus = task?.status || '';
+  const canAcceptAndStart = isAssignee && taskStatus === 'ASSIGNED';
+  const canSubmitForReview = isAssignee && taskStatus === 'IN_PROGRESS';
+  const canResubmit = isAssignee && (taskStatus === 'NEED_ATTENTION' || taskStatus === 'EDITING');
+  const canApprove = isCreator && taskStatus === 'IN_REVIEW';
+  const canReject = isCreator && taskStatus === 'IN_REVIEW';
+  const canCancel = isCreator && !['DONE', 'CANCELLED', 'COMPLETED'].includes(taskStatus);
+  
+  // Legacy permissions (kept for compatibility)
+  const canComplete = false; // Now uses workflow instead
 
   // Handle send message
   const handleSendMessage = async () => {
@@ -178,6 +202,54 @@ export function TaskDetailDrawer({ taskId, isOpen, onClose, onTaskDeleted }: Tas
       setShowActions(false);
     } catch (error) {
       console.error('Failed to update status:', error);
+    }
+  };
+
+  // Maker-Checker Workflow Actions
+  const handleAcceptAndStart = async () => {
+    if (!taskId) return;
+    try {
+      await transitionTask.mutateAsync({ id: taskId, action: 'START_WORK' });
+    } catch (error) {
+      console.error('Failed to start task:', error);
+    }
+  };
+
+  const handleSubmitForReview = async () => {
+    if (!taskId) return;
+    try {
+      await transitionTask.mutateAsync({ id: taskId, action: 'SUBMIT_FOR_REVIEW' });
+    } catch (error) {
+      console.error('Failed to submit for review:', error);
+    }
+  };
+
+  const handleApprove = async () => {
+    if (!taskId) return;
+    try {
+      await transitionTask.mutateAsync({ id: taskId, action: 'APPROVE' });
+    } catch (error) {
+      console.error('Failed to approve:', error);
+    }
+  };
+
+  const handleReject = async () => {
+    if (!taskId || !rejectComment.trim()) return;
+    try {
+      await transitionTask.mutateAsync({ id: taskId, action: 'REJECT', reason: rejectComment });
+      setShowRejectModal(false);
+      setRejectComment('');
+    } catch (error) {
+      console.error('Failed to reject:', error);
+    }
+  };
+
+  const handleResubmit = async () => {
+    if (!taskId) return;
+    try {
+      await transitionTask.mutateAsync({ id: taskId, action: 'RESUBMIT' });
+    } catch (error) {
+      console.error('Failed to resubmit:', error);
     }
   };
 
@@ -489,66 +561,109 @@ export function TaskDetailDrawer({ taskId, isOpen, onClose, onTaskDeleted }: Tas
                 )}
               </div>
 
-              {/* Action Buttons */}
-              <div className="flex gap-2 mt-4">
-                {canComplete && (
+              {/* Action Buttons - Maker-Checker Workflow */}
+              <div className="flex flex-col gap-2 mt-4">
+                {/* Worker Actions */}
+                {canAcceptAndStart && (
                   <button
-                    onClick={() => handleStatusChange('DONE')}
-                    disabled={updateStatus.isPending}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium"
+                    onClick={handleAcceptAndStart}
+                    disabled={transitionTask.isPending}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium transition-colors"
                   >
-                    <CheckCircle2 className="w-4 h-4" />
-                    Mark Complete
+                    {transitionTask.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4" />}
+                    Accept & Start
                   </button>
                 )}
-                {canCancel && (
+                
+                {canSubmitForReview && (
                   <button
-                    onClick={() => handleStatusChange('CANCELLED')}
-                    disabled={updateStatus.isPending}
-                    className="flex-1 flex items-center justify-center gap-2 px-3 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium"
+                    onClick={handleSubmitForReview}
+                    disabled={transitionTask.isPending}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:opacity-50 text-sm font-medium transition-colors"
                   >
-                    <XCircle className="w-4 h-4" />
-                    Cancel
+                    {transitionTask.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <SendHorizonal className="w-4 h-4" />}
+                    Submit for Review
                   </button>
                 )}
-                <div className="relative">
+                
+                {canResubmit && (
                   <button
-                    onClick={() => setShowActions(!showActions)}
-                    className="p-2 hover:bg-gray-100 rounded-lg"
+                    onClick={handleResubmit}
+                    disabled={transitionTask.isPending}
+                    className="flex items-center justify-center gap-2 px-4 py-2.5 bg-orange-600 text-white rounded-lg hover:bg-orange-700 disabled:opacity-50 text-sm font-medium transition-colors"
                   >
-                    <MoreVertical className="w-5 h-5" />
+                    {transitionTask.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <RotateCcw className="w-4 h-4" />}
+                    Resubmit for Review
                   </button>
-                  {showActions && (
-                    <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
-                      {task.status !== 'IN_PROGRESS' && (
-                        <button
-                          onClick={() => handleStatusChange('IN_PROGRESS')}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
-                        >
-                          <Clock className="w-4 h-4" />
-                          Mark In Progress
-                        </button>
-                      )}
-                      {task.status !== 'NEED_ATTENTION' && (
-                        <button
-                          onClick={() => handleStatusChange('NEED_ATTENTION')}
-                          className="w-full px-4 py-2 text-left text-sm hover:bg-gray-50 flex items-center gap-2"
-                        >
-                          <AlertCircle className="w-4 h-4" />
-                          Needs Attention
-                        </button>
-                      )}
-                      {isCreator && (
-                        <button
-                          onClick={handleDelete}
-                          className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
-                        >
-                          <Trash2 className="w-4 h-4" />
-                          Delete Task
-                        </button>
-                      )}
-                    </div>
+                )}
+                
+                {/* Manager/Checker Actions */}
+                {(canApprove || canReject) && (
+                  <div className="flex gap-2">
+                    {canApprove && (
+                      <button
+                        onClick={handleApprove}
+                        disabled={transitionTask.isPending}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-green-600 text-white rounded-lg hover:bg-green-700 disabled:opacity-50 text-sm font-medium transition-colors"
+                      >
+                        {transitionTask.isPending ? <Loader2 className="w-4 h-4 animate-spin" /> : <ThumbsUp className="w-4 h-4" />}
+                        Approve
+                      </button>
+                    )}
+                    {canReject && (
+                      <button
+                        onClick={() => setShowRejectModal(true)}
+                        disabled={transitionTask.isPending}
+                        className="flex-1 flex items-center justify-center gap-2 px-4 py-2.5 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium transition-colors"
+                      >
+                        <ThumbsDown className="w-4 h-4" />
+                        Request Changes
+                      </button>
+                    )}
+                  </div>
+                )}
+                
+                {/* Status indicator for IN_REVIEW (worker sees this) */}
+                {taskStatus === 'IN_REVIEW' && isAssignee && !isCreator && (
+                  <div className="flex items-center justify-center gap-2 px-4 py-2.5 bg-purple-100 text-purple-700 rounded-lg text-sm font-medium">
+                    <Clock className="w-4 h-4" />
+                    Awaiting Manager Approval
+                  </div>
+                )}
+                
+                {/* Additional Actions Dropdown */}
+                <div className="flex gap-2">
+                  {canCancel && (
+                    <button
+                      onClick={() => handleStatusChange('CANCELLED')}
+                      disabled={updateStatus.isPending}
+                      className="flex-1 flex items-center justify-center gap-2 px-3 py-2 border border-red-300 text-red-600 rounded-lg hover:bg-red-50 disabled:opacity-50 text-sm font-medium transition-colors"
+                    >
+                      <XCircle className="w-4 h-4" />
+                      Cancel Task
+                    </button>
                   )}
+                  <div className="relative">
+                    <button
+                      onClick={() => setShowActions(!showActions)}
+                      className="p-2 hover:bg-gray-100 rounded-lg border border-gray-200"
+                    >
+                      <MoreVertical className="w-5 h-5" />
+                    </button>
+                    {showActions && (
+                      <div className="absolute right-0 top-full mt-1 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-10">
+                        {isCreator && (
+                          <button
+                            onClick={handleDelete}
+                            className="w-full px-4 py-2 text-left text-sm text-red-600 hover:bg-red-50 flex items-center gap-2"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                            Delete Task
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>
@@ -711,6 +826,49 @@ export function TaskDetailDrawer({ taskId, isOpen, onClose, onTaskDeleted }: Tas
                 <Send className="w-5 h-5" />
               )}
             </button>
+          </div>
+        </div>
+      )}
+      
+      {/* Rejection Modal */}
+      {showRejectModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-[60]">
+          <div className="bg-white rounded-xl shadow-2xl w-[400px] max-w-[90%] p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-2">Request Changes</h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Please provide feedback on what needs to be revised.
+            </p>
+            <textarea
+              value={rejectComment}
+              onChange={(e) => setRejectComment(e.target.value)}
+              placeholder="Enter your feedback..."
+              className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent text-sm"
+              rows={4}
+              autoFocus
+            />
+            <div className="flex gap-3 mt-4">
+              <button
+                onClick={() => {
+                  setShowRejectModal(false);
+                  setRejectComment('');
+                }}
+                className="flex-1 px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 text-sm font-medium"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleReject}
+                disabled={!rejectComment.trim() || transitionTask.isPending}
+                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 text-sm font-medium flex items-center justify-center gap-2"
+              >
+                {transitionTask.isPending ? (
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                ) : (
+                  <ThumbsDown className="w-4 h-4" />
+                )}
+                Send Feedback
+              </button>
+            </div>
           </div>
         </div>
       )}

@@ -67,15 +67,38 @@ export function useTaskSocket(options: UseTaskSocketOptions = {}) {
     // Only connect if authenticated and enabled
     if (!isAuthenticated || !user || !enabled) return;
 
-    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || '';
+    // Get auth token from localStorage or cookies
+    const token = typeof window !== 'undefined' 
+      ? (localStorage.getItem('accessToken') || 
+         localStorage.getItem('token') ||
+         document.cookie.split(';').find(c => c.trim().startsWith('accessToken='))?.split('=')[1])
+      : null;
+
+    if (!token) {
+      console.warn('[TaskSocket] No auth token found, skipping real-time connection');
+      return;
+    }
+
+    // Socket server runs on the backend, not the frontend
+    const socketUrl = process.env.NEXT_PUBLIC_SOCKET_URL || process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
     
-    // Use cookie-based auth (credentials: 'include' in fetch, withCredentials in socket)
-    const socket = io(`${socketUrl}/tasks`, {
+    // Skip socket connection if URL is empty or not configured properly
+    if (!socketUrl || socketUrl === '') {
+      console.warn('[TaskSocket] No socket URL configured, skipping real-time updates');
+      return;
+    }
+    
+    console.log('[TaskSocket] Connecting to:', socketUrl);
+    
+    // Connect to root namespace with auth token
+    const socket = io(socketUrl, {
+      auth: { token },
       withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionDelay: 1000,
+      reconnectionDelay: 2000,
       reconnectionAttempts: 5,
+      timeout: 10000,
     });
 
     socket.on('connect', () => {
@@ -89,7 +112,12 @@ export function useTaskSocket(options: UseTaskSocketOptions = {}) {
     });
 
     socket.on('connect_error', (error) => {
-      console.error('[TaskSocket] Connection error:', error.message);
+      // Don't spam console with connection errors - socket is optional for basic functionality
+      if (error.message !== 'Authentication error: No token provided') {
+        console.warn('[TaskSocket] Connection failed (real-time updates disabled):', error.message);
+      }
+      // Socket connection is optional - dashboard works without it
+      setConnected(false);
     });
 
     // Store socket reference
@@ -134,12 +162,52 @@ export function useTaskSocket(options: UseTaskSocketOptions = {}) {
       onTaskUpdated?.(task);
     });
 
-    // Status changed
+    // Status changed (camelCase - legacy)
     socket.on('task:statusChanged', ({ task, previousStatus, newStatus }) => {
       console.log('[TaskSocket] Status changed:', task.id, previousStatus, '->', newStatus);
       updateTaskInCache(task);
       invalidateKanban();
       onTaskUpdated?.(task);
+    });
+
+    // Status changed (snake_case - backend)
+    socket.on('task:status_changed', ({ task }) => {
+      console.log('[TaskSocket] Status changed (backend):', task?.id);
+      if (task) {
+        updateTaskInCache(task);
+        invalidateKanban();
+        onTaskUpdated?.(task);
+      }
+    });
+
+    // Task approved (maker-checker workflow)
+    socket.on('task:approved', ({ task }) => {
+      console.log('[TaskSocket] Task approved:', task?.id);
+      if (task) {
+        updateTaskInCache(task);
+        invalidateKanban();
+        onTaskUpdated?.(task);
+      }
+    });
+
+    // Task rejected (maker-checker workflow)
+    socket.on('task:rejected', ({ task, reason }) => {
+      console.log('[TaskSocket] Task rejected:', task?.id, 'reason:', reason);
+      if (task) {
+        updateTaskInCache(task);
+        invalidateKanban();
+        onTaskUpdated?.(task);
+      }
+    });
+
+    // Task reassigned
+    socket.on('task:reassigned', ({ task }) => {
+      console.log('[TaskSocket] Task reassigned:', task?.id);
+      if (task) {
+        updateTaskInCache(task);
+        invalidateKanban();
+        onTaskUpdated?.(task);
+      }
     });
 
     // Position changed
@@ -159,12 +227,35 @@ export function useTaskSocket(options: UseTaskSocketOptions = {}) {
       onTaskDeleted?.(deletedId);
     });
 
-    // New message
+    // New message (camelCase - legacy)
     socket.on('task:newMessage', ({ taskId: msgTaskId, message }) => {
       console.log('[TaskSocket] New message on task:', msgTaskId);
       addMessageToCache(msgTaskId, message);
       invalidateTask(msgTaskId); // Update message count
       onNewMessage?.(msgTaskId, message);
+    });
+
+    // New message (snake_case - backend)
+    socket.on('task:message', ({ taskId: msgTaskId, message }) => {
+      console.log('[TaskSocket] New message (backend) on task:', msgTaskId);
+      if (message) {
+        addMessageToCache(msgTaskId, message);
+        invalidateTask(msgTaskId);
+        invalidateMessages(msgTaskId);
+        onNewMessage?.(msgTaskId, message);
+      }
+    });
+
+    // Message updated
+    socket.on('task:message:updated', ({ taskId: msgTaskId }) => {
+      console.log('[TaskSocket] Message updated on task:', msgTaskId);
+      invalidateMessages(msgTaskId);
+    });
+
+    // Message deleted
+    socket.on('task:message:deleted', ({ taskId: msgTaskId }) => {
+      console.log('[TaskSocket] Message deleted on task:', msgTaskId);
+      invalidateMessages(msgTaskId);
     });
 
     // New attachment
@@ -195,9 +286,16 @@ export function useTaskSocket(options: UseTaskSocketOptions = {}) {
       socket.off('task:created');
       socket.off('task:updated');
       socket.off('task:statusChanged');
+      socket.off('task:status_changed');
+      socket.off('task:approved');
+      socket.off('task:rejected');
+      socket.off('task:reassigned');
       socket.off('task:positionChanged');
       socket.off('task:deleted');
       socket.off('task:newMessage');
+      socket.off('task:message');
+      socket.off('task:message:updated');
+      socket.off('task:message:deleted');
       socket.off('task:newAttachment');
       socket.off('task:userTyping');
     };

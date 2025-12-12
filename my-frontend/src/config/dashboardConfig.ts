@@ -72,7 +72,7 @@ export const DASHBOARD_CONFIGS: Record<string, RoleConfig> = {
     accentColor: 'border-cyan-500',
     loadingText: 'Loading Store Dashboard...',
     showRightPanel: true,
-    useWorkflowTasks: false,
+    useWorkflowTasks: true,
     allowTaskCreation: true,
     welcomeMessage: 'Welcome to your Store Operations Dashboard',
   },

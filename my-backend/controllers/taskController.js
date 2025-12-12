@@ -4,7 +4,6 @@
  */
 
 const { getPool } = require('../middleware/database');
-const { validationResult } = require('express-validator');
 
 // Lazy pool getter
 const getDbPool = () => {
@@ -23,7 +22,6 @@ const getDbPool = () => {
  * Check if user has permission to access/modify task
  */
 const hasTaskPermission = async (taskId, userId, action = 'view') => {
-  const pool = getDbPool();
   const query = `
     SELECT t.*, 
            tp.user_id as participant_id,
@@ -92,15 +90,17 @@ const checkForDuplicates = async (title, assigneeId, creatorId, excludeTaskId = 
 
 /**
  * Create system message
+ * @param {Object} client - Database client (for transactions) or null to use pool
  */
-const createSystemMessage = async (taskId, messageText, userId) => {
+const createSystemMessage = async (taskId, messageText, userId, client = null) => {
   const query = `
-    INSERT INTO task_messages (task_id, sender_id, message_text, message_type, is_system_message)
+    INSERT INTO task_messages (task_id, sender_id, content, message_type, is_system_message)
     VALUES ($1, $2, $3, 'SYSTEM', true)
     RETURNING *
   `;
   
-  const result = await getDbPool().query(query, [taskId, userId, messageText]);
+  const db = client || getDbPool();
+  const result = await db.query(query, [taskId, userId, messageText]);
   return result.rows[0];
 };
 
@@ -218,11 +218,12 @@ exports.createTask = async (req, res) => {
       }
     }
     
-    // Create initial system message
+    // Create initial system message (use client for transaction)
     await createSystemMessage(
       task.id,
       `Task created by ${req.user.username}`,
-      creatorId
+      creatorId,
+      client
     );
     
     await client.query('COMMIT');
@@ -542,7 +543,6 @@ exports.getTaskStats = async (req, res) => {
 exports.getTaskQuickView = async (req, res) => {
   try {
     const taskId = req.params.id;
-    const userId = req.user.id;
     
     // Get task with details
     const taskQuery = `
@@ -576,7 +576,7 @@ exports.getTaskQuickView = async (req, res) => {
         tm.id,
         tm.task_id,
         tm.sender_id,
-        tm.message_text as content,
+        tm.content,
         tm.message_type,
         tm.is_system_message,
         tm.created_at,
@@ -815,7 +815,7 @@ exports.updateTask = async (req, res) => {
       RETURNING *
     `;
     
-    const result = await client.query(query, params);
+    await client.query(query, params);
     
     await client.query('COMMIT');
     
@@ -1170,7 +1170,7 @@ exports.addTaskMessage = async (req, res) => {
     
     // Add message
     const query = `
-      INSERT INTO task_messages (task_id, sender_id, message_text, message_type)
+      INSERT INTO task_messages (task_id, sender_id, content, message_type)
       VALUES ($1, $2, $3, $4)
       RETURNING *
     `;
@@ -1253,7 +1253,7 @@ exports.editTaskMessage = async (req, res) => {
     // Update message
     const updateQuery = `
       UPDATE task_messages
-      SET message_text = $1, is_edited = true, updated_at = NOW()
+      SET content = $1, is_edited = true, edited_at = NOW()
       WHERE id = $2
       RETURNING *
     `;
@@ -2640,7 +2640,6 @@ exports.removeTaskDependency = async (req, res) => {
  */
 exports.getTaskTemplates = async (req, res) => {
   try {
-    const userId = req.user.id;
     const { organizationId, departmentId } = req.query;
     
     let query = `
@@ -3017,7 +3016,6 @@ exports.searchTasks = async (req, res) => {
       approverId,
       dateFrom,
       dateTo,
-      tags,
       page = 1,
       limit = 50
     } = req.query;

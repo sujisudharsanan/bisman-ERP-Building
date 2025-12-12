@@ -80,6 +80,13 @@ router.get('/', authenticateToken, taskController.listTasks);
 router.get('/kanban', authenticateToken, taskController.getKanbanTasks);
 
 /**
+ * @route   GET /api/v2/tasks/dashboard
+ * @desc    Get tasks grouped for Dashboard (alias for kanban with viewMode support)
+ * @access  Private
+ */
+router.get('/dashboard', authenticateToken, taskController.getKanbanTasks);
+
+/**
  * @route   GET /api/v2/tasks/:id
  * @desc    Get single task by ID
  * @access  Private
@@ -106,6 +113,20 @@ router.put('/:id', authenticateToken, taskController.updateTask);
  * @access  Private
  */
 router.patch('/:id/status', authenticateToken, taskController.updateTaskStatus);
+
+/**
+ * @route   POST /api/v2/tasks/:id/transition
+ * @desc    Maker-Checker state transition (START_WORK, SUBMIT_FOR_REVIEW, APPROVE, REJECT)
+ * @access  Private
+ */
+router.post('/:id/transition', authenticateToken, taskController.transitionTaskStatus);
+
+/**
+ * @route   GET /api/v2/tasks/:id/audit
+ * @desc    Get task audit trail
+ * @access  Private
+ */
+router.get('/:id/audit', authenticateToken, taskController.getTaskAuditTrail);
 
 /**
  * @route   PATCH /api/v2/tasks/:id/position

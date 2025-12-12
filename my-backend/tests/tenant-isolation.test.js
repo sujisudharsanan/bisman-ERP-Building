@@ -6,6 +6,9 @@
  * to prevent cross-tenant data leakage.
  */
 
+/* eslint-env jest */
+/* global describe, test, expect, beforeAll, afterAll */
+
 const request = require('supertest');
 const { getPrisma } = require('../lib/prisma');
 const TenantGuard = require('../middleware/tenantGuard');
@@ -227,6 +230,13 @@ describe('🔒 Tenant Isolation Test Suite - Phase 1', () => {
 
       const tenantIds = [...new Set(users.map(u => u.tenant_id).filter(Boolean))];
       expect(tenantIds.length).toBeGreaterThanOrEqual(2); // At least Tenant A and B
+    });
+
+    test('Enterprise token should be valid for cross-tenant access', () => {
+      expect(enterpriseToken).toBeDefined();
+      const decoded = jwt.verify(enterpriseToken, ACCESS_TOKEN_SECRET);
+      expect(decoded.role).toBe('ENTERPRISE_ADMIN');
+      expect(decoded.tenant_id).toBeNull();
     });
   });
 

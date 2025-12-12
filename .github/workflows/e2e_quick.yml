@@ -23,7 +23,6 @@ jobs:
         working-directory: my-frontend
 
     env:
-      CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
       CI: true
 
     steps:
@@ -57,16 +56,18 @@ jobs:
           sleep 5
 
       - name: Run Quick E2E Tests
+        run: |
+          export CYPRESS_BASE_URL="${CYPRESS_BASE_URL:-http://localhost:3000}"
+          export CYPRESS_API_URL="${CYPRESS_API_URL:-http://localhost:4000}"
+          npm run e2e:quick
         env:
-          CYPRESS_BASE_URL: ${{ secrets.CYPRESS_BASE_URL || 'http://localhost:3001' }}
-          CYPRESS_API_URL: ${{ secrets.CYPRESS_API_URL || 'http://localhost:5000' }}
-          CYPRESS_TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL || 'arun.kumar@bisman.demo' }}
-          CYPRESS_TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD || 'Demo@123' }}
+          CYPRESS_BASE_URL: ${{ secrets.CYPRESS_BASE_URL }}
+          CYPRESS_API_URL: ${{ secrets.CYPRESS_API_URL }}
+          CYPRESS_TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
+          CYPRESS_TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
           CYPRESS_HUB_INCHARGE_EMAIL: ${{ secrets.HUB_INCHARGE_EMAIL }}
           CYPRESS_STAFF_EMAIL: ${{ secrets.STAFF_EMAIL }}
           CYPRESS_VIEWER_EMAIL: ${{ secrets.VIEWER_EMAIL }}
-        run: |
-          npm run e2e:quick
 
       - name: Upload Cypress Screenshots
         uses: actions/upload-artifact@v4
@@ -123,13 +124,15 @@ jobs:
         run: npm ci
 
       - name: Run Full E2E Suite (no perf)
+        run: |
+          export CYPRESS_BASE_URL="${CYPRESS_BASE_URL:-http://localhost:3000}"
+          export CYPRESS_API_URL="${CYPRESS_API_URL:-http://localhost:4000}"
+          npm run e2e:no-perf
         env:
-          CYPRESS_BASE_URL: ${{ secrets.CYPRESS_BASE_URL || 'http://localhost:3001' }}
-          CYPRESS_API_URL: ${{ secrets.CYPRESS_API_URL || 'http://localhost:5000' }}
+          CYPRESS_BASE_URL: ${{ secrets.CYPRESS_BASE_URL }}
+          CYPRESS_API_URL: ${{ secrets.CYPRESS_API_URL }}
           CYPRESS_TEST_USER_EMAIL: ${{ secrets.TEST_USER_EMAIL }}
           CYPRESS_TEST_USER_PASSWORD: ${{ secrets.TEST_USER_PASSWORD }}
-        run: |
-          npm run e2e:no-perf
 
       - name: Upload Artifacts
         uses: actions/upload-artifact@v4

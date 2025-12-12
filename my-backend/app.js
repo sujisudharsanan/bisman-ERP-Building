@@ -391,6 +391,15 @@ app.use(express.json())
 app.use(cookieParser())
 
 // =============================
+// Attach Socket.IO to request object for controllers
+// =============================
+app.use((req, res, next) => {
+  // Attach io from app.get('io') or global.io for controllers to use
+  req.io = req.app.get('io') || global.io;
+  next();
+});
+
+// =============================
 // Request Latency & Error Metrics
 // =============================
 let reqStats = { count: 0, errorCount: 0, totalLatency: 0 };

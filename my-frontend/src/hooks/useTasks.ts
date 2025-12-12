@@ -7,7 +7,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
-import { taskApi, Task, KanbanData, CreateTaskInput, UpdateTaskInput, UpdateStatusInput, UpdatePositionInput, CreateMessageInput, TaskMessage, TaskAttachment, ListTasksParams } from '@/lib/api/taskApi';
+import { taskApi, Task, KanbanData, CreateTaskInput, UpdateTaskInput, UpdateStatusInput, UpdatePositionInput, CreateMessageInput, TaskMessage, TaskAttachment, ListTasksParams, TaskAction } from '@/lib/api/taskApi';
 
 // ============================================
 // QUERY KEYS
@@ -42,10 +42,10 @@ export function useTasks(params?: ListTasksParams) {
 /**
  * Fetch Kanban board data
  */
-export function useKanbanTasks() {
+export function useKanbanTasks(viewMode: 'all' | 'my-work' | 'my-requests' = 'all') {
   return useQuery({
-    queryKey: taskKeys.kanban(),
-    queryFn: taskApi.getKanban,
+    queryKey: [...taskKeys.kanban(), viewMode],
+    queryFn: () => taskApi.getKanban(viewMode),
     staleTime: 30 * 1000,
   });
 }
@@ -190,20 +190,25 @@ export function useUpdateTaskStatus() {
         // Find and remove task from current column
         let movedTask: Task | undefined;
         for (const status of Object.keys(newKanban) as (keyof KanbanData)[]) {
-          const taskIndex = newKanban[status].findIndex(t => t.id === id);
+          const columnTasks = newKanban[status];
+          if (!columnTasks) continue;
+          const taskIndex = columnTasks.findIndex(t => t.id === id);
           if (taskIndex !== -1) {
-            [movedTask] = newKanban[status].splice(taskIndex, 1);
+            [movedTask] = columnTasks.splice(taskIndex, 1);
             break;
           }
         }
         
         // Add to new column
         if (movedTask && input.status in newKanban) {
-          newKanban[input.status as keyof KanbanData].unshift({
-            ...movedTask,
-            status: input.status,
-            updated_at: new Date().toISOString(),
-          });
+          const targetColumn = newKanban[input.status as keyof KanbanData];
+          if (targetColumn) {
+            targetColumn.unshift({
+              ...movedTask,
+              status: input.status,
+              updated_at: new Date().toISOString(),
+            });
+          }
         }
         
         queryClient.setQueryData(taskKeys.kanban(), newKanban);
@@ -251,9 +256,11 @@ export function useUpdateTaskPosition() {
         let sourceColumn: keyof KanbanData | undefined;
         
         for (const status of Object.keys(newKanban) as (keyof KanbanData)[]) {
-          const taskIndex = newKanban[status].findIndex(t => t.id === id);
+          const columnTasks = newKanban[status];
+          if (!columnTasks) continue;
+          const taskIndex = columnTasks.findIndex(t => t.id === id);
           if (taskIndex !== -1) {
-            [movedTask] = newKanban[status].splice(taskIndex, 1);
+            [movedTask] = columnTasks.splice(taskIndex, 1);
             sourceColumn = status;
             break;
           }
@@ -262,6 +269,9 @@ export function useUpdateTaskPosition() {
         // Insert at new position
         if (movedTask && input.status in newKanban) {
           const targetColumn = input.status as keyof KanbanData;
+          const targetColumnTasks = newKanban[targetColumn];
+          if (!targetColumnTasks) return { previousKanban };
+          
           const updatedTask = {
             ...movedTask,
             status: input.status,
@@ -269,7 +279,7 @@ export function useUpdateTaskPosition() {
           };
           
           // Copy target array
-          const targetTasks = [...newKanban[targetColumn]];
+          const targetTasks = [...targetColumnTasks];
           
           // Insert at position
           targetTasks.splice(input.position, 0, updatedTask);
@@ -317,7 +327,10 @@ export function useDeleteTask() {
       if (previousKanban) {
         const newKanban = { ...previousKanban };
         for (const status of Object.keys(newKanban) as (keyof KanbanData)[]) {
-          newKanban[status] = newKanban[status].filter(t => t.id !== id);
+          const columnTasks = newKanban[status];
+          if (columnTasks) {
+            newKanban[status] = columnTasks.filter(t => t.id !== id);
+          }
         }
         queryClient.setQueryData(taskKeys.kanban(), newKanban);
       }
@@ -407,6 +420,55 @@ export function useUploadAttachment(taskId: string) {
         description: err.message || 'Could not upload the attachment.',
       });
     },
+  });
+}
+
+// ============================================
+// MAKER-CHECKER WORKFLOW MUTATIONS
+// ============================================
+
+/**
+ * Transition task using maker-checker workflow
+ * Actions: START_WORK, SUBMIT_FOR_REVIEW, APPROVE, REJECT, RESUBMIT
+ */
+export function useTransitionTask() {
+  const queryClient = useQueryClient();
+  
+  return useMutation({
+    mutationFn: ({ id, action, reason }: { id: string; action: TaskAction; reason?: string }) => 
+      taskApi.transition(id, { action, reason }),
+    onSuccess: (result, { action }) => {
+      const actionMessages: Record<string, string> = {
+        START_WORK: 'Task started',
+        SUBMIT_FOR_REVIEW: 'Submitted for review',
+        APPROVE: 'Task approved',
+        REJECT: 'Task sent back for revision',
+        RESUBMIT: 'Task resubmitted for review',
+      };
+      toast.success(actionMessages[action] || 'Task updated');
+    },
+    onError: (err: Error) => {
+      toast.error('Failed to update task', {
+        description: err.message || 'Could not transition the task.',
+      });
+    },
+    onSettled: (_, __, { id }) => {
+      queryClient.invalidateQueries({ queryKey: taskKeys.detail(id) });
+      queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
+      queryClient.invalidateQueries({ queryKey: taskKeys.lists() });
+    },
+  });
+}
+
+/**
+ * Fetch audit trail for a task
+ */
+export function useTaskAuditTrail(taskId: string | null) {
+  return useQuery({
+    queryKey: [...taskKeys.detail(taskId || ''), 'audit'],
+    queryFn: () => taskApi.getAuditTrail(taskId || ''),
+    enabled: !!taskId,
+    staleTime: 60 * 1000, // 1 minute
   });
 }
 
