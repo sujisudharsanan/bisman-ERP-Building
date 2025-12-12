@@ -19,6 +19,7 @@ import TaskDetailView from './TaskDetailView';
 import { Theme } from 'emoji-picker-react';
 import { useOcrUpload, isBillFile } from '@/hooks/useOcrUpload';
 import { useChatSocket } from '../hooks/useChatSocket';
+import { useSoundNotification } from '../hooks/useSoundNotification';
 
 // Dynamically import EmojiPicker to avoid SSR issues
 const EmojiPicker = dynamic(
@@ -101,6 +102,10 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
   // OCR Upload Hook
   const { uploadBill, isUploading, isProcessing, progress, error: ocrError, result: ocrResult, reset: resetOcr } = useOcrUpload();
   const [processingBillId, setProcessingBillId] = useState<string | null>(null);
+  const [newMessageNotification, setNewMessageNotification] = useState<{username: string; message: string} | null>(null);
+
+  // Sound Notification Hook
+  const { playMessageSound, playCallRingtone, stopCallRingtone, playCallEndSound } = useSoundNotification();
 
   // Handle incoming socket messages
   const handleSocketMessage = useCallback((data: { threadId: string; message: any }) => {
@@ -129,8 +134,20 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         if (prev.some(m => m.id === newMsg.id)) return prev;
         return [...prev, newMsg];
       });
+      
+      // Show notification for new message
+      setNewMessageNotification({
+        username: msg.sender?.username || 'User',
+        message: msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : msg.content
+      });
+      
+      // Auto-hide notification after 3 seconds
+      setTimeout(() => setNewMessageNotification(null), 3000);
+      
+      // Play message notification sound
+      playMessageSound();
     }
-  }, [currentThreadId, user?.id]);
+  }, [currentThreadId, user?.id, playMessageSound]);
 
   // Chat Socket Hook for real-time messaging
   const { connected: socketConnected, joinThread, leaveThread, sendTyping } = useChatSocket({
@@ -279,7 +296,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         const data = await response.json();
         // Backend returns { users: [...] } format
         const users = (data.users || data.data || []).map((u: any) => ({
-          id: u.id,
+          id: String(u.id), // Ensure ID is string for consistent comparison
           name: u.fullName || u.username || u.email?.split('@')[0] || '',
           email: u.email,
           avatar: u.profile_pic_url || u.profilePic,
@@ -766,6 +783,102 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
     }
   };
 
+  // Format call duration for display
+  const formatCallDuration = (seconds: number): string => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    if (mins > 0) {
+      return `${mins} min ${secs} sec`;
+    }
+    return `${secs} sec`;
+  };
+
+  // Handle call start - add message to chat
+  const handleCallStart = async (callType: 'audio' | 'video', roomName: string) => {
+    const callMessage: Message = {
+      id: `call-start-${Date.now()}`,
+      message: `📞 ${callType === 'video' ? 'Video' : 'Audio'} call started`,
+      user_id: String(user?.id),
+      create_at: Date.now(),
+      username: (user as any)?.name || 'You',
+      isBot: false
+    };
+    setMessages(prev => [...prev, callMessage]);
+    
+    // Send call message to thread if we have one
+    if (currentThreadId) {
+      try {
+        await fetch(`/api/chat/threads/${currentThreadId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            content: `📞 Started a ${callType} call. Join: ${window.location.origin}/call/${roomName}`,
+            type: 'call'
+          })
+        });
+      } catch (error) {
+        console.error('[Chat] Failed to send call message:', error);
+      }
+    }
+  };
+
+  // Handle call end - add message to chat with duration or missed status
+  const handleCallEnd = async (duration: number, wasAnswered: boolean) => {
+    let callEndMessage: Message;
+    let messageContent: string;
+    
+    if (wasAnswered && duration > 0) {
+      // Call was answered - show duration
+      messageContent = `📞 Call ended • Duration: ${formatCallDuration(duration)}`;
+      callEndMessage = {
+        id: `call-end-${Date.now()}`,
+        message: messageContent,
+        user_id: String(user?.id),
+        create_at: Date.now(),
+        username: (user as any)?.name || 'You',
+        isBot: false
+      };
+    } else {
+      // Call was not answered - show missed
+      messageContent = `📞 Missed call`;
+      callEndMessage = {
+        id: `call-missed-${Date.now()}`,
+        message: messageContent,
+        user_id: String(user?.id),
+        create_at: Date.now(),
+        username: (user as any)?.name || 'You',
+        isBot: false
+      };
+    }
+    
+    setMessages(prev => [...prev, callEndMessage]);
+    
+    // Send call end message to thread if we have one
+    if (currentThreadId) {
+      try {
+        await fetch(`/api/chat/threads/${currentThreadId}/messages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            content: messageContent,
+            type: 'call'
+          })
+        });
+      } catch (error) {
+        console.error('[Chat] Failed to send call end message:', error);
+      }
+    }
+  };
+
+  // Handle missed call
+  const handleCallMissed = async () => {
+    // This is called in addition to handleCallEnd when wasAnswered is false
+    // Can be used for additional missed call handling like notifications
+    console.log('[Chat] Call was missed');
+  };
+
   // Send a message to the intelligent chat engine
   const sendMessage = async () => {
     if (!newMessage.trim() || thinking) return;
@@ -992,6 +1105,28 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         ? 'fixed top-0 right-0 z-50 h-screen w-[33.33vw] shadow-2xl border-l border-gray-700/50' 
         : 'h-full rounded-lg'
     } bg-[#1e1e2e] dark:bg-[#1e1e2e]`}>
+      
+      {/* New Message Notification Toast */}
+      {newMessageNotification && (
+        <div className="fixed top-4 right-4 z-[100] animate-slide-in-right">
+          <div className="bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-3 max-w-sm">
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
+              💬
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="font-medium text-sm">{newMessageNotification.username}</p>
+              <p className="text-xs text-blue-100 truncate">{newMessageNotification.message}</p>
+            </div>
+            <button 
+              onClick={() => setNewMessageNotification(null)}
+              className="text-white/70 hover:text-white"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+      )}
+      
       {/* Left Sidebar - 28% - Reduced for more room */}
       <div className="bg-[#2b2d42] dark:bg-[#2b2d42] border-r border-gray-700/50 flex flex-col flex-shrink-0 w-[28%] h-full">
         {/* Sidebar Header */}
@@ -1001,6 +1136,11 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
               B
             </div>
             <span className="text-white font-semibold truncate text-[13px]">Business ERP</span>
+            {/* Socket connection indicator */}
+            <div 
+              className={`w-2 h-2 rounded-full ml-auto ${socketConnected ? 'bg-green-500' : 'bg-red-500'}`}
+              title={socketConnected ? 'Connected' : 'Disconnected'}
+            />
           </div>
         </div>
 
@@ -1075,7 +1215,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                         // Find existing 1-on-1 thread with this user
                         const existingThread = threads.find((t: any) => 
                           t.members?.length === 2 && 
-                          t.members.some((m: any) => m.id === chatUser.id)
+                          t.members.some((m: any) => String(m.id) === String(chatUser.id))
                         );
                         
                         if (existingThread) {
@@ -1087,7 +1227,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                             const threadMessages = (messagesData.messages || []).map((m: any) => ({
                               id: m.id,
                               message: m.content,
-                              user_id: m.senderId,
+                              user_id: String(m.senderId), // Ensure string for comparison
                               create_at: new Date(m.createdAt).getTime(),
                               username: m.sender?.username || 'User',
                               isBot: false
@@ -1294,6 +1434,9 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
               <CallControls 
                 threadId={activeView === 'user' ? selectedUserId || undefined : selectedTaskId || undefined}
                 onError={(error) => console.error('Jitsi error:', error)}
+                onCallStart={handleCallStart}
+                onCallEnd={handleCallEnd}
+                onCallMissed={handleCallMissed}
               />
             )}
             
@@ -1368,17 +1511,55 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             </div>
           )}
           
-          {messages.map((message) => (
+          {messages.map((message) => {
+            // Check if message is from current user - works for both bot chat and user chat
+            const isFromCurrentUser = !message.isBot && (
+              message.user_id === String(user?.id) || 
+              message.user_id === (user as any)?.id ||
+              message.user_id === 'current-user'
+            );
+            
+            // Check if this is a call message
+            const isCallMessage = message.message.startsWith('📞');
+            const isMissedCall = message.message.includes('Missed call');
+            
+            // Special rendering for call messages
+            if (isCallMessage) {
+              return (
+                <div 
+                  key={message.id} 
+                  className="flex justify-center my-2"
+                >
+                  <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${
+                    isMissedCall 
+                      ? 'bg-red-500/20 border border-red-500/30' 
+                      : 'bg-green-500/20 border border-green-500/30'
+                  }`}>
+                    <span className={`text-lg ${isMissedCall ? 'text-red-400' : 'text-green-400'}`}>
+                      {isMissedCall ? '📵' : '📞'}
+                    </span>
+                    <span className={`text-sm font-medium ${isMissedCall ? 'text-red-300' : 'text-green-300'}`}>
+                      {message.message.replace('📞 ', '')}
+                    </span>
+                    <span className="text-[10px] text-gray-500 ml-2">
+                      {formatTime(message.create_at)}
+                    </span>
+                  </div>
+                </div>
+              );
+            }
+            
+            return (
             <div 
               key={message.id} 
-              className={`flex gap-2 sm:gap-3 items-start ${!message.isBot ? 'flex-row-reverse' : ''}`}
+              className={`flex gap-2 sm:gap-3 items-start ${isFromCurrentUser ? 'flex-row-reverse' : ''}`}
             >
               {/* Avatar */}
               {message.isBot ? (
                 <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white flex-shrink-0">
                   <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
                 </div>
-              ) : (
+              ) : isFromCurrentUser ? (
                 <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-full flex-shrink-0 overflow-hidden bg-blue-600">
                   {(user as any)?.profile_pic_url ? (
                     <img 
@@ -1392,13 +1573,19 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                     </div>
                   )}
                 </div>
+              ) : (
+                <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-full flex-shrink-0 overflow-hidden bg-green-600">
+                  <div className="w-full h-full bg-green-600 flex items-center justify-center text-white text-[10px] sm:text-xs md:text-sm font-bold">
+                    {getUserInitials(message.username)}
+                  </div>
+                </div>
               )}
 
               {/* Message Content */}
-              <div className={`flex-1 max-w-[70%] ${!message.isBot ? 'flex flex-col items-end' : ''}`}>
-                <div className={`flex items-baseline gap-1 mb-0.5 ${!message.isBot ? 'flex-row-reverse' : ''}`}>
+              <div className={`flex-1 max-w-[70%] ${isFromCurrentUser ? 'flex flex-col items-end' : ''}`}>
+                <div className={`flex items-baseline gap-1 mb-0.5 ${isFromCurrentUser ? 'flex-row-reverse' : ''}`}>
                   <span className="font-semibold text-[11px] text-white">
-                    {message.isBot ? 'Bey' : message.username || 'You'}
+                    {message.isBot ? 'Bey' : isFromCurrentUser ? 'You' : (message.username || 'User')}
                   </span>
                   <span className="text-[9px] text-gray-500">
                     {formatTime(message.create_at)}
@@ -1407,7 +1594,9 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                 <div className={`${
                   message.isBot 
                     ? 'text-gray-300' 
-                    : 'bg-blue-600 text-white rounded-2xl px-2.5 py-1.5'
+                    : isFromCurrentUser
+                      ? 'bg-blue-600 text-white rounded-2xl px-2.5 py-1.5'
+                      : 'bg-gray-700 text-white rounded-2xl px-2.5 py-1.5'
                 } text-[13px] leading-relaxed whitespace-pre-wrap break-words`}>
                   {message.message}
                 </div>
@@ -1441,7 +1630,8 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                 )}
               </div>
             </div>
-          ))}
+          );
+          })}
           
           {/* Inline Task Creation Form */}
           {showTaskForm && activeView === 'mira' && (
