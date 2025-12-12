@@ -127,6 +127,13 @@ export default function JitsiCallControls({
         setJoining(false);
       });
 
+      api.addEventListener('videoConferenceLeft', () => {
+        console.log('[Jitsi] Conference left');
+        setCall(c => c ? { ...c, status: 'ended' } : null);
+        setJitsiApi(null);
+        setIsExpanded(false);
+      });
+
       api.addEventListener('readyToClose', () => {
         console.log('[Jitsi] Conference closed');
         setCall(c => c ? { ...c, status: 'ended' } : null);
@@ -134,7 +141,18 @@ export default function JitsiCallControls({
         setIsExpanded(false);
       });
 
+      api.addEventListener('errorOccurred', (e: any) => {
+        console.error('[Jitsi] Error occurred:', e);
+        onError?.(new Error(e?.error?.message || 'Jitsi error'));
+      });
+
+      // Log when iframe is ready
+      api.addEventListener('browserSupport', (support: any) => {
+        console.log('[Jitsi] Browser support:', support);
+      });
+
       setJitsiApi(api);
+      console.log('[Jitsi] API instance created');
     } catch (e) { 
       console.error('[Jitsi] Error:', e);
       onError?.(e as Error);
@@ -246,12 +264,15 @@ export default function JitsiCallControls({
       {/* Jitsi Container */}
       <div 
         ref={containerRef} 
-        className={`jitsi-container transition-all duration-300 overflow-hidden rounded-lg ${
-          isExpanded && call && call.status !== 'ended' ? 'mt-2' : ''
+        className={`jitsi-container transition-all duration-300 overflow-hidden rounded-lg border ${
+          isExpanded && call && call.status !== 'ended' 
+            ? 'mt-2 border-blue-500 bg-gray-900' 
+            : 'border-transparent'
         }`}
         style={{ 
           width: '100%', 
-          height: isExpanded && call && call.status !== 'ended' ? 480 : 0 
+          height: isExpanded && call && call.status !== 'ended' ? 480 : 0,
+          minHeight: isExpanded && call && call.status !== 'ended' ? 480 : 0
         }}
       />
     </div>

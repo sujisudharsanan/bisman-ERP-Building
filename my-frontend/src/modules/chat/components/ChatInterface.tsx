@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { 
   Send, 
@@ -18,6 +18,7 @@ import CallControls from './CallControls';
 import TaskDetailView from './TaskDetailView';
 import { Theme } from 'emoji-picker-react';
 import { useOcrUpload, isBillFile } from '@/hooks/useOcrUpload';
+import { useChatSocket } from '../hooks/useChatSocket';
 
 // Dynamically import EmojiPicker to avoid SSR issues
 const EmojiPicker = dynamic(
@@ -100,6 +101,54 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
   // OCR Upload Hook
   const { uploadBill, isUploading, isProcessing, progress, error: ocrError, result: ocrResult, reset: resetOcr } = useOcrUpload();
   const [processingBillId, setProcessingBillId] = useState<string | null>(null);
+
+  // Handle incoming socket messages
+  const handleSocketMessage = useCallback((data: { threadId: string; message: any }) => {
+    console.log('[ChatInterface] Socket message received:', data);
+    
+    // Only add message if it's for the current thread and not from current user
+    if (data.threadId === currentThreadId && data.message) {
+      const msg = data.message;
+      
+      // Skip if it's our own message (already added locally)
+      if (msg.senderId === user?.id || msg.sender?.id === user?.id) {
+        return;
+      }
+      
+      const newMsg: Message = {
+        id: msg.id || `socket-${Date.now()}`,
+        message: msg.content,
+        user_id: msg.senderId || msg.sender?.id,
+        create_at: new Date(msg.createdAt).getTime(),
+        username: msg.sender?.username || 'User',
+        isBot: false
+      };
+      
+      setMessages(prev => {
+        // Avoid duplicates
+        if (prev.some(m => m.id === newMsg.id)) return prev;
+        return [...prev, newMsg];
+      });
+    }
+  }, [currentThreadId, user?.id]);
+
+  // Chat Socket Hook for real-time messaging
+  const { connected: socketConnected, joinThread, leaveThread, sendTyping } = useChatSocket({
+    onNewMessage: handleSocketMessage
+  });
+
+  // Join/leave thread when currentThreadId changes
+  useEffect(() => {
+    if (currentThreadId && socketConnected) {
+      console.log('[ChatInterface] Joining socket thread:', currentThreadId);
+      joinThread(currentThreadId);
+      
+      return () => {
+        console.log('[ChatInterface] Leaving socket thread:', currentThreadId);
+        leaveThread(currentThreadId);
+      };
+    }
+  }, [currentThreadId, socketConnected, joinThread, leaveThread]);
 
   // Auto-resize textarea with expansion
   useEffect(() => {

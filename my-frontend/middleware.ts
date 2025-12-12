@@ -53,24 +53,25 @@ export function middleware(req: NextRequest) {
 
 function attachSecurityHeaders(res: NextResponse, nonce?: string) {
   const jitsi = 'meet.jit.si';
+  const jitsiWildcard = '*.jitsi.net';
   const cspDirectives = [
     "default-src 'self'",
-    nonce ? `script-src 'self' 'nonce-${nonce}' https://${jitsi}` : `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://${jitsi}`,
+    nonce ? `script-src 'self' 'nonce-${nonce}' https://${jitsi} https://${jitsiWildcard}` : `script-src 'self' 'unsafe-inline' 'unsafe-eval' https://${jitsi} https://${jitsiWildcard}`,
     nonce ? `style-src 'self' 'nonce-${nonce}'` : "style-src 'self' 'unsafe-inline'",
-    `img-src 'self' data: blob: https: https://${jitsi}`,
+    `img-src 'self' data: blob: https: https://${jitsi} https://${jitsiWildcard}`,
     "font-src 'self' data:",
-    `connect-src 'self' https: wss: wss://${jitsi} https://${jitsi}`,
+    `connect-src 'self' https: wss: wss://${jitsi} https://${jitsi} wss://${jitsiWildcard} https://${jitsiWildcard}`,
     "object-src 'none'",
-    `frame-src 'self' https://${jitsi}`,
+    `frame-src 'self' https://${jitsi} https://${jitsiWildcard}`,
     "frame-ancestors 'none'",
     "base-uri 'self'",
-    `media-src 'self' https://${jitsi}`
+    `media-src 'self' https://${jitsi} https://${jitsiWildcard} blob:`
   ];
   res.headers.set('Content-Security-Policy', cspDirectives.join('; '));
   res.headers.set('X-Frame-Options', 'SAMEORIGIN');
   res.headers.set('X-Content-Type-Options', 'nosniff');
   res.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.headers.set('Permissions-Policy', `camera=(self "https://${jitsi}"), microphone=(self "https://${jitsi}"), geolocation=(), fullscreen=(self)`);
+  res.headers.set('Permissions-Policy', `camera=(self "https://${jitsi}"), microphone=(self "https://${jitsi}"), geolocation=(), fullscreen=(self "https://${jitsi}")`);
   res.headers.set('X-DNS-Prefetch-Control', 'off');
   if (nonce) res.headers.set('X-CSP-Nonce', nonce);
   return res;

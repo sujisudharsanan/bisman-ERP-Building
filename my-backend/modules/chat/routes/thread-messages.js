@@ -458,10 +458,13 @@ router.post('/threads/:threadId/messages', async (req, res) => {
     // Emit real-time event if socket.io is available
     const io = req.app.get('io');
     if (io) {
-      io.to(`/chat`).emit('chat:message', {
+      // Emit to the chat namespace's thread room
+      const chatNamespace = io.of('/chat');
+      chatNamespace.to(`thread:${threadId}`).emit('chat:message:new', {
         threadId,
         message
       });
+      console.log(`[Socket] Emitting message to thread:${threadId}`);
     }
 
     res.status(201).json(message);
@@ -498,8 +501,9 @@ router.put('/messages/:messageId', async (req, res) => {
 
     // Emit real-time event
     const io = req.app.get('io');
-    if (io) {
-      io.to(`/chat`).emit('chat:message:edited', {
+    if (io && updatedMessage.threadId) {
+      const chatNamespace = io.of('/chat');
+      chatNamespace.to(`thread:${updatedMessage.threadId}`).emit('chat:message:edited', {
         messageId,
         message: updatedMessage
       });
@@ -527,10 +531,12 @@ router.delete('/messages/:messageId', async (req, res) => {
 
     await messageService.deleteMessage(messageId, userId);
 
-    // Emit real-time event
+    // Emit real-time event - note: we don't have threadId here easily
     const io = req.app.get('io');
     if (io) {
-      io.to(`/chat`).emit('chat:message:deleted', {
+      // For delete, broadcast to all connections in chat namespace
+      const chatNamespace = io.of('/chat');
+      chatNamespace.emit('chat:message:deleted', {
         messageId
       });
     }
