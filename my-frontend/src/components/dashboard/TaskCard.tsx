@@ -15,15 +15,15 @@ interface TaskCardProps {
   taskId?: string | number;
 }
 
-// Refined status configuration with proper color semantics
+// Refined status configuration with proper color semantics - shortened labels for compact display
 const statusConfig: Record<string, { label: string; bgColor: string; textColor: string; borderColor: string; icon: React.ReactNode }> = {
   DRAFT: { label: 'Draft', bgColor: 'bg-slate-500/10', textColor: 'text-slate-400', borderColor: 'border-l-slate-400', icon: <Clock size={10} /> },
   OPEN: { label: 'Open', bgColor: 'bg-blue-500/10', textColor: 'text-blue-400', borderColor: 'border-l-blue-400', icon: <AlertCircle size={10} /> },
   ASSIGNED: { label: 'Assigned', bgColor: 'bg-blue-500/10', textColor: 'text-blue-400', borderColor: 'border-l-blue-400', icon: <User size={10} /> },
-  IN_PROGRESS: { label: 'In Progress', bgColor: 'bg-amber-500/10', textColor: 'text-amber-400', borderColor: 'border-l-amber-400', icon: <Clock size={10} /> },
-  IN_REVIEW: { label: 'Awaiting Approval', bgColor: 'bg-purple-500/10', textColor: 'text-purple-400', borderColor: 'border-l-purple-400', icon: <Clock size={10} /> },
-  NEED_ATTENTION: { label: 'Needs Attention', bgColor: 'bg-red-500/10', textColor: 'text-red-400', borderColor: 'border-l-red-400', icon: <AlertTriangle size={10} /> },
-  EDITING: { label: 'Needs Revision', bgColor: 'bg-orange-500/10', textColor: 'text-orange-400', borderColor: 'border-l-orange-400', icon: <AlertTriangle size={10} /> },
+  IN_PROGRESS: { label: 'Working', bgColor: 'bg-amber-500/10', textColor: 'text-amber-400', borderColor: 'border-l-amber-400', icon: <Clock size={10} /> },
+  IN_REVIEW: { label: 'Review', bgColor: 'bg-purple-500/10', textColor: 'text-purple-400', borderColor: 'border-l-purple-400', icon: <Clock size={10} /> },
+  NEED_ATTENTION: { label: 'Attention', bgColor: 'bg-red-500/10', textColor: 'text-red-400', borderColor: 'border-l-red-400', icon: <AlertTriangle size={10} /> },
+  EDITING: { label: 'Revise', bgColor: 'bg-orange-500/10', textColor: 'text-orange-400', borderColor: 'border-l-orange-400', icon: <AlertTriangle size={10} /> },
   BLOCKED: { label: 'Blocked', bgColor: 'bg-red-500/10', textColor: 'text-red-400', borderColor: 'border-l-red-500', icon: <AlertCircle size={10} /> },
   COMPLETED: { label: 'Done', bgColor: 'bg-green-500/10', textColor: 'text-green-400', borderColor: 'border-l-green-400', icon: <CheckCircle size={10} /> },
   DONE: { label: 'Done', bgColor: 'bg-green-500/10', textColor: 'text-green-400', borderColor: 'border-l-green-400', icon: <CheckCircle size={10} /> },
@@ -64,7 +64,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments
       {/* Header Row: Status Badge + Task ID */}
       <div className="flex items-center justify-between gap-2 mb-2">
         {/* Status Badge - Primary */}
-        <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full ${statusInfo.bgColor} ${statusInfo.textColor}`}>
+        <span className={`inline-flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded-full whitespace-nowrap ${statusInfo.bgColor} ${statusInfo.textColor}`}>
           {statusInfo.icon}
           {statusInfo.label}
         </span>

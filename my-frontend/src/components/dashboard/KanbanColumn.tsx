@@ -57,9 +57,9 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = 
   const awaitingApprovalCount = tasks.filter(t => t.status === 'IN_REVIEW').length;
 
   return (
-    <div className="relative flex flex-col flex-1 min-w-[13rem] max-w-[17rem] p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700/50 shadow-sm">
+    <div className="relative flex flex-col flex-1 min-w-[13rem] max-w-[17rem] max-h-[calc(100vh-200px)] p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700/50 shadow-sm">
       {/* Column Header */}
-      <div className="flex items-center justify-between mb-4">
+      <div className="flex items-center justify-between mb-4 flex-shrink-0">
         <div className="flex items-center gap-2 flex-1 flex-wrap">
           <h2 className={`font-semibold text-sm uppercase tracking-wide ${columnStyle.textColor}`}>{title}</h2>
           {/* Count badge */}
@@ -84,8 +84,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = 
         )}
       </div>
       
-      {/* Task Cards or Empty State */}
-      <div className="space-y-3 flex-1">
+      {/* Task Cards or Empty State - Scrollable container with max height */}
+      <div className="space-y-3 flex-1 overflow-y-auto custom-scrollbar pr-1">
         {tasks.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-8 text-center">
             {emptyState.icon}

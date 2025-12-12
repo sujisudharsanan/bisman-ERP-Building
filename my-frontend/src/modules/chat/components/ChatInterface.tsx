@@ -178,6 +178,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
   useEffect(() => {
     const handleOpenTaskInChat = (event: CustomEvent) => {
       const task = event.detail;
+      console.log('[Chat] Received openTaskInChat event:', task);
       if (task && task.id) {
         console.log('[Chat] Opening task from dashboard:', task);
         // Add to open tasks panel
@@ -187,18 +188,19 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           status: task.status || 'DRAFT',
           priority: task.priority
         };
-        if (!openTasks.find(t => t.id === taskForPanel.id)) {
-          setOpenTasks(prev => [...prev, taskForPanel]);
-          setIsTaskPanelExpanded(true);
-        }
+        setOpenTasks(prev => {
+          if (prev.find(t => t.id === taskForPanel.id)) {
+            return prev; // Already exists
+          }
+          return [...prev, taskForPanel];
+        });
+        setIsTaskPanelExpanded(true);
         // Switch to task view
         setActiveView('task');
         setSelectedTaskId(String(task.id));
         setSelectedUserId(null);
         // If chat is minimized, expand it
-        if (!isFullscreen) {
-          setIsFullscreen(true);
-        }
+        setIsFullscreen(true);
       }
     };
 
@@ -209,7 +211,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       window.removeEventListener('openTaskInChat', handleOpenTaskInChat as EventListener);
       window.removeEventListener('openTaskInChatInternal', handleOpenTaskInChat as EventListener);
     };
-  }, [openTasks, isFullscreen]);
+  }, []); // No dependencies - event handler uses functional updates
 
   // Real-time user search with debouncing
   const searchUsers = async (query: string) => {
@@ -221,18 +223,19 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
 
     setIsSearching(true);
     try {
-      const response = await fetch(`/api/chat-bot/search-users?q=${encodeURIComponent(query)}`);
+      const response = await fetch(`/api/users/search?q=${encodeURIComponent(query)}&limit=20`);
       if (response.ok) {
         const data = await response.json();
-        const users = data.data?.map((u: any) => ({
+        // Backend returns { users: [...] } format
+        const users = (data.users || data.data || []).map((u: any) => ({
           id: u.id,
-          name: u.fullName || u.username,
+          name: u.fullName || u.username || u.email?.split('@')[0] || '',
           email: u.email,
-          avatar: u.profile_pic_url,
+          avatar: u.profile_pic_url || u.profilePic,
           isOnline: true,
           role: u.role,
-          roleName: u.roleName
-        })) || [];
+          roleName: u.roleName || u.role
+        }));
         setSearchResults(users);
         console.log('[Chat] Search results for "' + query + '":', users.length, 'users');
       } else {

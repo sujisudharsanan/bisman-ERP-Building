@@ -21,9 +21,10 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend,
 
 type RightPanelProps = {
   mode?: 'sidebar' | 'inline' | 'dock';
+  hideProfile?: boolean;
 };
 
-const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar' }) => {
+const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar', hideProfile = false }) => {
   const { user } = useAuth();
   const router = useRouter();
   
@@ -152,7 +153,8 @@ const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar' }) => {
     <aside className={containerClass}>
   <div className={isInline ? 'w-full flex justify-end' : ''}>
        <div className={wrapperClass}>
-    {/* User Profile Section */}
+    {/* User Profile Section - hidden when displayed in top bar */}
+  {!hideProfile && (
   <ConnectedCard type="profile" className={`p-1 sm:p-1 ${cardGap} order-1 xl:col-span-1 xl:col-start-1`}>
   <div 
     className="flex items-center justify-between pr-0 flex-shrink-0 cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/30 rounded-lg transition-colors -m-1 p-1"
@@ -201,6 +203,7 @@ const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar' }) => {
         </div>
       </div>
     </ConnectedCard>
+  )}
 
       {/* Completed Tasks Chart */}
   <ConnectedCard type="completedTasks" className={`p-1 sm:p-1 ${cardGap} order-3 xl:col-span-1 xl:col-start-2`}>

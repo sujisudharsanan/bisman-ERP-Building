@@ -177,24 +177,20 @@ exports.createTask = async (req, res) => {
       });
     }
     
-    // Check for duplicates
+    // Check for duplicates (warn but don't block)
     const duplicates = await checkForDuplicates(title, assigneeId, creatorId);
+    const hasDuplicateWarning = duplicates.length > 0;
     
-    if (duplicates.length > 0) {
-      return res.status(409).json({
-        success: false,
-        error: 'A similar task already exists',
-        duplicate: duplicates[0]
-      });
-    }
+    // Get tenant_id from the user
+    const tenantId = req.user.tenant_id || null;
     
     // Create task
     const taskQuery = `
       INSERT INTO workflow_tasks (
         title, description, serial_number, creator_id, assignee_id, approver_id,
         priority, due_date, estimated_hours, requires_approval,
-        approval_status, organization_id, department_id, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+        approval_status, organization_id, department_id, status, tenant_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
       RETURNING *
     `;
     
@@ -202,7 +198,7 @@ exports.createTask = async (req, res) => {
       title, description || '', serialNumber, creatorId, assigneeId, approverId,
       priority, dueDate || null, estimatedHours || null, requiresApproval,
       requiresApproval ? 'PENDING' : 'NOT_REQUIRED',
-      organizationId || null, departmentId || null, status
+      organizationId || null, departmentId || null, status, tenantId
     ]);
     
     const task = taskResult.rows[0];
@@ -238,11 +234,21 @@ exports.createTask = async (req, res) => {
       emitTaskCreated(io, fullTask, creatorId);
     }
     
-    res.status(201).json({
+    // Include warning if duplicate found
+    const response = {
       success: true,
       data: fullTask,
-      message: 'Task created successfully'
-    });
+      message: hasDuplicateWarning 
+        ? 'Task created successfully. Note: A similar task already exists.' 
+        : 'Task created successfully'
+    };
+    
+    if (hasDuplicateWarning) {
+      response.warning = 'A similar task with the same title already exists for this assignee';
+      response.existingTask = duplicates[0];
+    }
+    
+    res.status(201).json(response);
     
   } catch (error) {
     await client.query('ROLLBACK');

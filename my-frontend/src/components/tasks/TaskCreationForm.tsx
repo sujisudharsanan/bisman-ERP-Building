@@ -129,10 +129,15 @@ export const TaskCreationForm: React.FC<TaskCreationFormProps> = ({
       return;
     }
 
-    const task = await createTask(formData as CreateTaskInput);
+    const result = await createTask(formData as CreateTaskInput);
     
-    if (task && onTaskCreated) {
-      onTaskCreated(task);
+    if (result.task && onTaskCreated) {
+      // Show warning toast/alert if duplicate was detected
+      if (result.warning) {
+        alert(`⚠️ Warning: ${result.warning}\n\nTask was created anyway.`);
+      }
+      
+      onTaskCreated(result.task);
       // Reset form
       setFormData({
         title: '',
@@ -140,6 +145,7 @@ export const TaskCreationForm: React.FC<TaskCreationFormProps> = ({
         priority: TaskPriority.MEDIUM,
       });
       setFiles([]);
+      setSelectedUser(null);
     }
   };
 

@@ -15,12 +15,11 @@
 
 import React, { useState, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Filter, X } from 'lucide-react';
+import { Search, Filter, X, User, Briefcase } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import KanbanColumn from '@/components/dashboard/KanbanColumn';
 import RightPanel from '@/components/dashboard/RightPanel';
 import { TaskCreationForm } from '@/components/tasks/TaskCreationForm';
-import { TaskDetailDrawer } from '@/components/tasks/TaskDetailDrawer';
 import { useAuth } from '@/hooks/useAuth';
 import { useKanbanTasks, taskKeys } from '@/hooks/useTasks';
 import { useTaskSocket } from '@/hooks/useTaskSocket';
@@ -40,8 +39,7 @@ export default function UnifiedDashboardPage() {
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
-  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
-  const [viewMode, setViewMode] = useState<ViewMode>('all');
+  const [viewMode, setViewMode] = useState<ViewMode>('my-work');
   
   // Get role-specific configuration
   const roleName = user?.roleName || user?.role || '';
@@ -183,30 +181,48 @@ export default function UnifiedDashboardPage() {
     setShowTaskForm(true);
   };
 
-  // Handle task click - open task detail drawer
+  // Handle task click - open in chat panel instead of drawer
   const handleTaskClick = (task: any) => {
-    setSelectedTaskId(task.id);
+    // Dispatch event to open task in chat interface
+    // The chat handler expects the task object directly in event.detail
+    window.dispatchEvent(new CustomEvent('openTaskInChat', { 
+      detail: task
+    }));
   };
 
   return (
     <DashboardLayout role={roleName || 'USER'}>
       <div className="h-full max-w-full min-h-0">
         <div className="w-full min-h-0">
-          {/* Optional welcome message */}
-          {config.welcomeMessage && (
-            <div className="mb-4 px-4">
-              <h1 className="text-lg font-semibold text-gray-800 dark:text-gray-200">
-                {config.welcomeMessage}
-              </h1>
-              <p className="text-sm text-gray-500 dark:text-gray-400">
-                {config.displayName} Dashboard
-              </p>
-            </div>
-          )}
-          
-          {/* Search Bar and Status Filter */}
+          {/* Search Bar, Status Filter, and Profile */}
           <div className="mb-4 px-3 md:px-4">
             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
+              {/* View Mode Toggle - My Work / My Requests (no All tab) */}
+              <div className="flex items-center bg-white dark:bg-slate-800/80 backdrop-blur-sm border border-gray-200 dark:border-slate-700 rounded-lg p-1">
+                <button
+                  onClick={() => setViewMode('my-work')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === 'my-work'
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  <User className="w-4 h-4" />
+                  <span>My Work</span>
+                </button>
+                <button
+                  onClick={() => setViewMode('my-requests')}
+                  className={`flex items-center gap-2 px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
+                    viewMode === 'my-requests'
+                      ? 'bg-indigo-600 text-white'
+                      : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200'
+                  }`}
+                >
+                  <Briefcase className="w-4 h-4" />
+                  <span>My Requests</span>
+                </button>
+              </div>
+              
               {/* Search Input */}
               <div className="relative flex-1 max-w-md">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
@@ -258,6 +274,47 @@ export default function UnifiedDashboardPage() {
                   Clear Filters
                 </button>
               )}
+              
+              {/* User Profile Section - moved from right panel, width matches RightPanel dock mode */}
+              <div 
+                className="hidden lg:flex items-center justify-between ml-auto w-44 sm:w-48 md:w-52 lg:w-52 xl:w-52 px-2 py-1 bg-panel/60 backdrop-blur-sm border border-theme rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700/30 transition-colors"
+                onClick={() => router.push('/common/about-me')}
+                title="View profile"
+              >
+                <div className="flex-1 min-w-0 mr-2">
+                  <h3 className="text-sm font-bold text-theme truncate">
+                    {user?.username 
+                      ? user.username.split('_').map((word: string) => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')
+                      : user?.email?.split('@')[0] || 'User'}
+                  </h3>
+                  <p className="text-xs text-muted truncate">
+                    {user?.roleName?.replace(/_/g, ' ') || user?.role?.replace(/_/g, ' ') || 'User'}
+                  </p>
+                </div>
+                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 overflow-hidden relative">
+                  {user?.profile_pic_url ? (
+                    <>
+                      <img 
+                        src={user.profile_pic_url.startsWith('/uploads/') 
+                          ? user.profile_pic_url.replace('/uploads/', '/api/secure-files/') 
+                          : user.profile_pic_url} 
+                        alt="Profile" 
+                        className="w-full h-full object-cover absolute inset-0 z-10"
+                        onError={(e) => {
+                          e.currentTarget.style.display = 'none';
+                        }}
+                      />
+                      <span className="text-white font-bold text-sm">
+                        {(user?.name || user?.username || user?.email || 'U')[0].toUpperCase()}
+                      </span>
+                    </>
+                  ) : (
+                    <span className="text-white font-bold text-sm">
+                      {(user?.name || user?.username || user?.email || 'U')[0].toUpperCase()}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
           
@@ -286,10 +343,10 @@ export default function UnifiedDashboardPage() {
                   </div>
                 </div>
                 
-                {/* Right Panel */}
+                {/* Right Panel - profile hidden since it's now in top bar */}
                 {config.showRightPanel && (
                   <div className="flex-none hidden lg:block h-full">
-                    <RightPanel mode="dock" />
+                    <RightPanel mode="dock" hideProfile />
                   </div>
                 )}
               </div>
@@ -306,21 +363,15 @@ export default function UnifiedDashboardPage() {
               onCancel={() => setShowTaskForm(false)} 
               onTaskCreated={() => {
                 setShowTaskForm(false);
-                // Invalidate and refetch instead of full page reload
+                // Invalidate all kanban queries (both view modes) and refetch current view
+                queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
                 refetchKanban();
+                // Switch to "My Requests" to show the newly created task
+                setViewMode('my-requests');
               }}
             />
           </div>
         </div>
-      )}
-      
-      {/* Task Detail Drawer */}
-      {selectedTaskId && (
-        <TaskDetailDrawer
-          taskId={selectedTaskId}
-          isOpen={!!selectedTaskId}
-          onClose={() => setSelectedTaskId(null)}
-        />
       )}
     </DashboardLayout>
   );

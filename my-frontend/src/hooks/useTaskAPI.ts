@@ -24,6 +24,15 @@ interface ApiResponse<T> {
   data?: T;
   error?: string;
   message?: string;
+  warning?: string;
+  existingTask?: { id: number; title: string; status: string };
+}
+
+// Task creation result including warnings
+export interface CreateTaskResult {
+  task: Task | null;
+  warning?: string;
+  existingTask?: { id: number; title: string; status: string };
 }
 
 // API fetch wrapper - uses credentials for cookie-based auth
@@ -52,21 +61,33 @@ const apiFetch = async <T,>(
 export const useTaskAPI = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [warning, setWarning] = useState<string | null>(null);
 
-  // Create task
-  const createTask = useCallback(async (taskData: CreateTaskInput): Promise<Task | null> => {
+  // Create task (returns task and optional warning for duplicates)
+  const createTask = useCallback(async (taskData: CreateTaskInput): Promise<CreateTaskResult> => {
     setLoading(true);
     setError(null);
+    setWarning(null);
     try {
       const response = await apiFetch<Task>('/api/tasks', {
         method: 'POST',
         body: JSON.stringify(taskData),
       });
-      return response.data || null;
+      
+      // Set warning if duplicate detected
+      if (response.warning) {
+        setWarning(response.warning);
+      }
+      
+      return {
+        task: response.data || null,
+        warning: response.warning,
+        existingTask: response.existingTask,
+      };
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to create task';
       setError(errorMessage);
-      return null;
+      return { task: null };
     } finally {
       setLoading(false);
     }
@@ -314,6 +335,7 @@ export const useTaskAPI = () => {
   return {
     loading,
     error,
+    warning,
     createTask,
     getDashboardTasks,
     getTaskStats,
