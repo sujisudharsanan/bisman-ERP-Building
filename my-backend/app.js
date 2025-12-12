@@ -1664,9 +1664,10 @@ app.post('/api/logout', async (req, res) => {
 if (process.env.NODE_ENV !== 'production') {
   app.post('/api/dev/reset-limiter', (req, res) => {
     try {
-      authLimiter.resetAll && authLimiter.resetAll()
+      // Use imported limiters if available
+      if (strictLoginLimiter?.resetKey) strictLoginLimiter.resetKey(req.ip);
       res.json({ ok: true, message: 'Rate limiter reset for development' })
-    } catch (err) {
+    } catch (_err) {
       res.json({ ok: true, message: 'Rate limiter reset attempted' })
     }
   })
@@ -3761,10 +3762,11 @@ if (process.env.DEBUG_ROUTES) {
 if (process.env.NODE_ENV !== 'production') {
   app.post('/api/dev/clear-rate-limits', (req, res) => {
     try {
-      loginLimiter.resetAll && loginLimiter.resetAll()
-      apiLimiter.resetAll && apiLimiter.resetAll()
-      console.log('[DEV] All rate limits have been reset.')
-      res.status(200).send('All rate limits cleared.')
+      // Use imported limiters safely
+      if (strictLoginLimiter?.resetKey) strictLoginLimiter.resetKey(req.ip);
+      if (standardApiLimiter?.resetKey) standardApiLimiter.resetKey(req.ip);
+      console.log('[DEV] Rate limits have been reset for IP:', req.ip)
+      res.status(200).send('Rate limits cleared.')
     } catch (error) {
       console.error('Error clearing rate limits:', error)
       res.status(500).send('Failed to clear rate limits.')
