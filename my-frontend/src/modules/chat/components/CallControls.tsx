@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useEffect, useRef, useState, useCallback } from 'react';
-import { Phone, Video, PhoneOff, Share2, Loader2, Clock } from 'lucide-react';
+import { Phone, Video, PhoneOff, Share2, Loader2, Clock, Mic, MicOff, VideoOff, Camera, CheckCircle, Minimize2, Maximize2, X, UserPlus } from 'lucide-react';
 import { useSoundNotification } from '../hooks/useSoundNotification';
+import { useChatSocket } from '../hooks/useChatSocket';
 
 interface Call {
   id: string;
@@ -16,10 +17,17 @@ interface JitsiCallControlsProps {
   apiBase?: string;
   threadId?: string;
   token?: string;
+  taskTitle?: string; // For displaying "Start Call - Task TSK-00035"
+  participantName?: string; // Auto-populated from logged-in user
+  targetUserIds?: number[]; // Users to invite to the call
+  socket?: any; // Optional socket instance
+  joinRoomName?: string | null; // Room to auto-join (for accepting incoming calls)
+  joinCallType?: 'audio' | 'video'; // Type of call to join
   onError?: (error: Error) => void;
   onCallStart?: (callType: 'audio' | 'video', roomName: string) => void;
   onCallEnd?: (duration: number, wasAnswered: boolean) => void;
   onCallMissed?: () => void;
+  onCallJoined?: () => void; // Called when successfully joined an incoming call
   className?: string;
 }
 
@@ -32,19 +40,31 @@ declare global {
 export default function JitsiCallControls({ 
   apiBase = '/api', 
   threadId, 
-  token, 
+  token,
+  taskTitle,
+  participantName = 'User',
+  targetUserIds = [],
+  socket: externalSocket,
+  joinRoomName = null,
+  joinCallType = 'video',
   onError,
   onCallStart,
   onCallEnd,
   onCallMissed,
+  onCallJoined,
   className = ''
 }: JitsiCallControlsProps) {
   const [call, setCall] = useState<Call | null>(null);
   const [joining, setJoining] = useState(false);
   const [jitsiApi, setJitsiApi] = useState<any>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isVideoOff, setIsVideoOff] = useState(false);
   const [callDuration, setCallDuration] = useState(0);
   const [wasAnswered, setWasAnswered] = useState(false);
+  const [devicesReady, setDevicesReady] = useState(true); // Device status
+  const [showInviteToast, setShowInviteToast] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
 
@@ -87,6 +107,35 @@ export default function JitsiCallControls({
     };
   }, [call?.status, call?.startTime]);
 
+  // Auto-join room when joinRoomName is provided (for accepting incoming calls)
+  useEffect(() => {
+    if (joinRoomName && !call && !joining) {
+      console.log('[CallControls] Auto-joining room for incoming call:', joinRoomName);
+      
+      // Set up the call state and expand the container
+      setIsExpanded(true);
+      setIsMinimized(false);
+      
+      setCall({ 
+        id: joinRoomName, 
+        room: joinRoomName, 
+        status: 'ringing',
+        type: joinCallType
+      });
+      
+      setJoining(true);
+      
+      // Join the call after a brief delay
+      setTimeout(() => {
+        joinCallRef.current?.(joinRoomName, joinCallType);
+        onCallJoined?.();
+      }, 300);
+    }
+  }, [joinRoomName, joinCallType, call, joining, onCallJoined]);
+
+  // Keep a ref to joinCall for use in useEffect
+  const joinCallRef = useRef<((roomName?: string, callType?: 'audio' | 'video') => Promise<void>) | null>(null);
+
   const JITSI_DOMAIN = 'meet.jit.si'; // Using public Jitsi instance
 
   const loadExternalApi = (): Promise<any> => new Promise((resolve, reject) => {
@@ -115,6 +164,7 @@ export default function JitsiCallControls({
       
       // Expand container first so it has dimensions
       setIsExpanded(true);
+      setIsMinimized(false);
       
       // Play ringtone while connecting
       playCallRingtone();
@@ -126,13 +176,32 @@ export default function JitsiCallControls({
         type
       });
       
+      setJoining(true);
+      
+      // Send call invitation to other users via socket
+      if (externalSocket && threadId && targetUserIds.length > 0) {
+        console.log('[Call] Socket available:', !!externalSocket);
+        console.log('[Call] Socket connected:', externalSocket?.connected);
+        console.log('[Call] Sending call invite to users:', targetUserIds, 'in thread:', threadId);
+        externalSocket.emit('chat:call:invite', {
+          threadId,
+          roomName,
+          callType: type,
+          targetUserIds
+        });
+        console.log('[Call] Call invite emitted');
+      } else {
+        console.warn('[Call] Cannot send invite - socket:', !!externalSocket, 'threadId:', threadId, 'targetUserIds:', targetUserIds);
+      }
+      
       // Notify parent about call start (for sending message in chat)
       onCallStart?.(type, roomName);
       
       // Auto-join after a brief delay to allow container to expand
-      setTimeout(() => joinCall(roomName, type), 500);
+      setTimeout(() => joinCall(roomName, type), 300);
     } catch (e) { 
       stopCallRingtone();
+      setJoining(false);
       onError?.(e as Error);
     }
   };
@@ -158,34 +227,125 @@ export default function JitsiCallControls({
         roomName: roomToJoin,
         parentNode: containerRef.current,
         width: '100%',
-        height: 480,
+        height: '100%',
+        userInfo: {
+          displayName: participantName, // Auto-populate from logged-in user
+        },
         configOverwrite: {
-          startWithAudioMuted: callType === 'video' ? false : false,
+          startWithAudioMuted: false,
           startWithVideoMuted: callType === 'audio' ? true : false,
-          prejoinPageEnabled: false,
+          prejoinPageEnabled: false, // Skip "Enter your name" step
           disableDeepLinking: true,
           enableWelcomePage: false,
           enableClosePage: false,
+          hideConferenceSubject: true, // Hide meeting ID
+          hideConferenceTimer: true,
+          subject: ' ', // Empty subject
+          defaultLocalDisplayName: participantName,
+          defaultRemoteDisplayName: 'Participant',
+          disableInviteFunctions: true,
+          toolbarButtons: [], // Hide all toolbar buttons - we have our own
+          disableProfile: true,
+          disablePolls: true,
+          disableReactions: true,
+          disableReactionsModeration: true,
+          disableSelfView: callType === 'audio', // Hide self view for audio calls
+          doNotStoreRoom: true,
+          enableLobby: false,
+          hideLobbyButton: true,
+          notifications: [],
+          disableJoinLeaveSounds: true,
         },
         interfaceConfigOverwrite: {
-          TOOLBAR_BUTTONS: [
-            'microphone', 'camera', 'closedcaptions', 'desktop', 'fullscreen',
-            'fodeviceselection', 'hangup', 'profile', 'chat', 'recording',
-            'livestreaming', 'etherpad', 'sharedvideo', 'settings', 'raisehand',
-            'videoquality', 'filmstrip', 'stats', 'shortcuts',
-            'tileview', 'download', 'help', 'mute-everyone',
-          ],
+          TOOLBAR_BUTTONS: callType === 'audio' 
+            ? [] // No toolbar for audio calls
+            : ['camera', 'microphone'], // Minimal for video
           SHOW_JITSI_WATERMARK: false,
           SHOW_WATERMARK_FOR_GUESTS: false,
+          SHOW_BRAND_WATERMARK: false,
+          BRAND_WATERMARK_LINK: '',
+          DEFAULT_LOGO_URL: '',
+          DEFAULT_WELCOME_PAGE_LOGO_URL: '',
+          HIDE_INVITE_MORE_HEADER: true,
+          DISPLAY_WELCOME_FOOTER: false,
+          DISPLAY_WELCOME_PAGE_ADDITIONAL_CARD: false,
+          DISPLAY_WELCOME_PAGE_CONTENT: false,
+          DISPLAY_WELCOME_PAGE_TOOLBAR_ADDITIONAL_CONTENT: false,
+          GENERATE_ROOMNAMES_ON_WELCOME_PAGE: false,
+          MOBILE_APP_PROMO: false,
+          SHOW_CHROME_EXTENSION_BANNER: false,
+          SHOW_PROMOTIONAL_CLOSE_PAGE: false,
+          VIDEO_LAYOUT_FIT: 'both',
+          VERTICAL_FILMSTRIP: false,
+          FILM_STRIP_MAX_HEIGHT: 0,
+          TILE_VIEW_MAX_COLUMNS: 2,
+          DISABLE_VIDEO_BACKGROUND: true,
+          DISABLE_FOCUS_INDICATOR: true,
+          HIDE_KICK_BUTTON_FOR_GUESTS: true,
+          TOOLBAR_ALWAYS_VISIBLE: false,
+          INITIAL_TOOLBAR_TIMEOUT: 0,
+          TOOLBAR_TIMEOUT: 0,
+          filmStripOnly: callType === 'audio', // Minimal for audio
+          SETTINGS_SECTIONS: [],
         }
       });
 
       api.addEventListener('videoConferenceJoined', () => {
-        console.log('[Jitsi] Conference joined');
+        console.log('[Jitsi] Conference joined - call is now active');
         stopCallRingtone(); // Stop ringtone when connected
         setWasAnswered(true); // Mark call as answered
         setCall(c => c ? { ...c, status: 'active', startTime: Date.now() } : null);
         setJoining(false);
+      });
+
+      // Also listen for participantJoined as backup
+      api.addEventListener('participantJoined', (participant: any) => {
+        console.log('[Jitsi] Participant joined:', participant);
+        stopCallRingtone();
+        setWasAnswered(true);
+        setCall(c => c ? { ...c, status: 'active', startTime: c.startTime || Date.now() } : null);
+        setJoining(false);
+      });
+
+      // Listen for when local tracks are ready (means we're in the call)
+      api.addEventListener('cameraError', () => {
+        console.log('[Jitsi] Camera error - but still connected');
+        // Even with camera error, mark as connected
+        setCall(c => c && c.status === 'ringing' ? { ...c, status: 'active', startTime: Date.now() } : c);
+        setJoining(false);
+        stopCallRingtone();
+      });
+
+      // Fallback: Mark as connected after iframe loads (5 seconds timeout)
+      setTimeout(() => {
+        setCall(c => {
+          if (c && c.status === 'ringing') {
+            console.log('[Jitsi] Fallback: marking call as active after timeout');
+            stopCallRingtone();
+            setJoining(false);
+            return { ...c, status: 'active', startTime: Date.now() };
+          }
+          return c;
+        });
+      }, 5000);
+
+      // Track mute state changes
+      api.addEventListener('audioMuteStatusChanged', (data: { muted: boolean }) => {
+        console.log('[Jitsi] Audio mute changed:', data.muted);
+        setIsMuted(data.muted);
+        // If we get mute events, we're definitely connected
+        setCall(c => c && c.status === 'ringing' ? { ...c, status: 'active', startTime: c.startTime || Date.now() } : c);
+        setJoining(false);
+        stopCallRingtone();
+      });
+
+      api.addEventListener('videoMuteStatusChanged', (data: { muted: boolean }) => {
+        console.log('[Jitsi] Video mute changed:', data.muted);
+        setIsVideoOff(data.muted);
+        // If we get mute events, we're definitely connected
+        setCall(c => c && c.status === 'ringing' ? { ...c, status: 'active', startTime: c.startTime || Date.now() } : c);
+        setJoining(false);
+        stopCallRingtone();
       });
 
       api.addEventListener('videoConferenceLeft', () => {
@@ -194,6 +354,7 @@ export default function JitsiCallControls({
         setCall(c => c ? { ...c, status: 'ended' } : null);
         setJitsiApi(null);
         setIsExpanded(false);
+        setIsMinimized(false);
       });
 
       api.addEventListener('readyToClose', () => {
@@ -202,6 +363,7 @@ export default function JitsiCallControls({
         setCall(c => c ? { ...c, status: 'ended' } : null);
         setJitsiApi(null);
         setIsExpanded(false);
+        setIsMinimized(false);
       });
 
       api.addEventListener('errorOccurred', (e: any) => {
@@ -223,6 +385,9 @@ export default function JitsiCallControls({
       setJoining(false);
     }
   };
+
+  // Update ref so useEffect can call joinCall
+  joinCallRef.current = joinCall;
 
   const endCall = async () => {
     if (!call) return;
@@ -248,15 +413,41 @@ export default function JitsiCallControls({
     jitsiApi?.dispose();
     setJitsiApi(null);
     setIsExpanded(false);
+    setIsMinimized(false);
     setCallDuration(0);
     setWasAnswered(false); // Reset for next call
+    setIsMuted(false);
+    setIsVideoOff(false);
   };
 
   const shareCallLink = () => {
     if (!call) return;
     const link = `${window.location.origin}/call/${call.room}`;
     navigator.clipboard.writeText(link);
-    // You could add a toast notification here
+    setShowInviteToast(true);
+    setTimeout(() => setShowInviteToast(false), 2000);
+  };
+
+  const toggleMute = () => {
+    jitsiApi?.executeCommand('toggleAudio');
+  };
+
+  const toggleVideo = () => {
+    jitsiApi?.executeCommand('toggleVideo');
+  };
+
+  const invitePeople = () => {
+    // Opens Jitsi's invite dialog or copies link
+    if (jitsiApi) {
+      try {
+        jitsiApi.executeCommand('toggleShareScreen'); // Open share/invite
+      } catch {
+        // Fallback to copy link
+        shareCallLink();
+      }
+    } else {
+      shareCallLink();
+    }
   };
 
   // Cleanup on unmount
@@ -314,69 +505,232 @@ export default function JitsiCallControls({
         )}
       </div>
 
-      {/* Call Modal Overlay - Fixed position so it's always visible */}
-      {call && call.status !== 'ended' && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
-          <div className="bg-[#1e1e2e] rounded-xl shadow-2xl w-full max-w-4xl mx-4 overflow-hidden">
-            {/* Call Header */}
-            <div className="flex items-center justify-between p-4 border-b border-gray-700">
+      {/* Invite Toast */}
+      {showInviteToast && (
+        <div className="fixed top-4 right-4 z-[60] bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg text-sm animate-fade-in">
+          ✓ Invite link copied!
+        </div>
+      )}
+
+      {/* Minimized Call Banner - Top Right Corner */}
+      {call && call.status !== 'ended' && isMinimized && (
+        <div 
+          onClick={() => setIsMinimized(false)}
+          className="fixed top-4 right-4 z-50 cursor-pointer"
+        >
+          <div className="flex items-center gap-3 bg-[#1a1a2e] border border-gray-700/50 rounded-full px-4 py-2 shadow-2xl hover:bg-[#2b2d42] transition-all">
+            {/* Pulsing indicator */}
+            <div className="relative">
+              <div className={`w-3 h-3 rounded-full ${call.status === 'active' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
+              <div className={`absolute inset-0 w-3 h-3 rounded-full ${call.status === 'active' ? 'bg-green-500' : 'bg-blue-500'} animate-ping opacity-50`}></div>
+            </div>
+            
+            {/* Call info */}
+            <div className="flex items-center gap-2">
+              {call.type === 'video' ? (
+                <Video className="w-4 h-4 text-blue-400" />
+              ) : (
+                <Phone className="w-4 h-4 text-green-400" />
+              )}
+              <span className="text-white text-sm font-medium">
+                {call.status === 'active' ? formatDuration(callDuration) : (joining ? 'Ringing...' : 'Connecting...')}
+              </span>
+            </div>
+            
+            {/* End call button */}
+            <button
+              onClick={(e) => { e.stopPropagation(); endCall(); }}
+              className="p-1.5 bg-red-600 hover:bg-red-700 rounded-full transition-colors"
+            >
+              <PhoneOff className="w-3.5 h-3.5 text-white" />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Call Modal Overlay - Compact call window */}
+      {call && call.status !== 'ended' && !isMinimized && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
+          <div className={`bg-[#1a1a2e] rounded-2xl shadow-2xl overflow-hidden border border-gray-700/30 transition-all duration-300 ${
+            call.type === 'video' && isExpanded 
+              ? 'w-full max-w-2xl mx-4' 
+              : call.type === 'video'
+                ? 'w-80'
+                : 'w-72'
+          }`}>
+            {/* Compact Call Header */}
+            <div className="flex items-center justify-between px-4 py-3 bg-gradient-to-r from-[#2b2d42] to-[#1e1e2e]">
               <div className="flex items-center gap-3">
-                {call.status === 'ringing' && (
-                  <>
-                    <div className="w-3 h-3 bg-blue-500 rounded-full animate-pulse"></div>
-                    <span className="text-blue-400 font-medium">
-                      {joining ? 'Connecting...' : 'Call starting...'}
-                    </span>
-                    {joining && <Loader2 className="w-5 h-5 animate-spin text-blue-400" />}
-                  </>
-                )}
-                {call.status === 'active' && (
-                  <>
-                    <div className="w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
-                    <span className="text-green-400 font-medium">
-                      {call.type === 'video' ? 'Video' : 'Audio'} Call
-                    </span>
-                    <div className="flex items-center gap-1.5 px-2 py-0.5 bg-gray-800 rounded-full">
-                      <Clock className="w-4 h-4 text-gray-400" />
-                      <span className="text-white font-mono text-sm">{formatDuration(callDuration)}</span>
-                    </div>
-                  </>
-                )}
+                {/* Call Type Icon */}
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  call.status === 'ringing' ? 'bg-blue-500/20' : 'bg-green-500/20'
+                }`}>
+                  {call.type === 'video' ? (
+                    <Video className={`w-5 h-5 ${call.status === 'ringing' ? 'text-blue-400' : 'text-green-400'}`} />
+                  ) : (
+                    <Phone className={`w-5 h-5 ${call.status === 'ringing' ? 'text-blue-400' : 'text-green-400'}`} />
+                  )}
+                </div>
+                
+                <div className="flex flex-col">
+                  <span className="text-white font-medium text-sm">
+                    {taskTitle || participantName || 'Call'}
+                  </span>
+                  <span className="text-xs flex items-center gap-1.5">
+                    {call.status !== 'active' ? (
+                      <span className="text-blue-400 flex items-center gap-1">
+                        {joining ? (
+                          <>
+                            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse inline-block"></span>
+                            Ringing...
+                          </>
+                        ) : (
+                          <>
+                            <Loader2 className="w-3 h-3 animate-spin" />
+                            Connecting...
+                          </>
+                        )}
+                      </span>
+                    ) : (
+                      <span className="text-green-400 font-mono flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-green-500 inline-block"></span>
+                        {formatDuration(callDuration)}
+                      </span>
+                    )}
+                  </span>
+                </div>
               </div>
               
-              <div className="flex items-center gap-2">
+              {/* Header Actions */}
+              <div className="flex items-center gap-1">
+                {/* Minimize button */}
                 <button
-                  onClick={shareCallLink}
-                  className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm text-white transition-colors flex items-center gap-2"
+                  onClick={() => setIsMinimized(true)}
+                  className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded transition-colors"
+                  title="Minimize"
                 >
-                  <Share2 className="w-4 h-4" />
-                  Share Link
+                  <Minimize2 className="w-4 h-4" />
                 </button>
-                <button
-                  onClick={() => setIsExpanded(!isExpanded)}
-                  className="px-3 py-1.5 bg-gray-700 hover:bg-gray-600 rounded-lg text-sm text-white transition-colors"
-                >
-                  {isExpanded ? 'Minimize' : 'Expand'}
-                </button>
-                <button
-                  onClick={endCall}
-                  className="px-3 py-1.5 bg-red-600 hover:bg-red-700 rounded-lg text-sm text-white transition-colors flex items-center gap-2"
-                >
-                  <PhoneOff className="w-4 h-4" />
-                  End Call
-                </button>
+                
+                {/* Expand for video calls */}
+                {call.type === 'video' && (
+                  <button
+                    onClick={() => setIsExpanded(!isExpanded)}
+                    className="p-1.5 text-gray-400 hover:text-white hover:bg-gray-700/50 rounded transition-colors"
+                    title={isExpanded ? 'Shrink' : 'Expand'}
+                  >
+                    <Maximize2 className="w-4 h-4" />
+                  </button>
+                )}
               </div>
             </div>
             
-            {/* Jitsi Container */}
-            <div 
-              ref={containerRef} 
-              className="jitsi-container bg-gray-900"
-              style={{ 
-                width: '100%', 
-                height: isExpanded ? 600 : 480
-              }}
-            />
+            {/* Video Container (only for video calls) */}
+            {call.type === 'video' && (
+              <div 
+                ref={containerRef} 
+                className="jitsi-container bg-[#0d0d14]"
+                style={{ 
+                  width: '100%', 
+                  height: isExpanded ? 360 : 200
+                }}
+              />
+            )}
+            
+            {/* Audio Call UI - Compact avatar display */}
+            {call.type === 'audio' && (
+              <div className="flex flex-col items-center py-8 bg-gradient-to-b from-[#1a1a2e] to-[#0d0d14]">
+                {/* Hidden Jitsi container for audio */}
+                <div ref={containerRef} className="hidden" style={{ width: 0, height: 0 }} />
+                
+                {/* Avatar */}
+                <div className="relative mb-4">
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-green-500 to-green-600 flex items-center justify-center text-white text-2xl font-bold shadow-lg shadow-green-500/20">
+                    {(participantName || 'U').split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
+                  </div>
+                  {call.status !== 'active' && (
+                    <div className="absolute -inset-2 rounded-full border-2 border-green-500 animate-ping opacity-30"></div>
+                  )}
+                  {call.status === 'active' && (
+                    <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-green-500 rounded-full border-2 border-[#1a1a2e] flex items-center justify-center">
+                      <Phone className="w-2.5 h-2.5 text-white" />
+                    </div>
+                  )}
+                </div>
+                
+                {/* Call Info */}
+                <p className="text-white font-medium mb-1">{participantName || 'Calling...'}</p>
+                <div className="text-gray-500 text-sm">
+                  {call.status === 'active' ? (
+                    <span className="text-green-400 font-mono">{formatDuration(callDuration)}</span>
+                  ) : joining ? (
+                    <span className="flex items-center gap-1 text-blue-400">
+                      <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse inline-block"></span>
+                      Ringing...
+                    </span>
+                  ) : (
+                    <span className="flex items-center gap-1">
+                      <Loader2 className="w-3 h-3 animate-spin" />
+                      Connecting...
+                    </span>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            {/* Call Controls */}
+            <div className="flex items-center justify-center gap-3 py-4 bg-[#1a1a2e] border-t border-gray-700/30">
+              {/* Mute Toggle */}
+              <button
+                onClick={toggleMute}
+                className={`p-3 rounded-full transition-all ${
+                  isMuted ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700/50 hover:bg-gray-600/50'
+                }`}
+                title={isMuted ? 'Unmute' : 'Mute'}
+              >
+                {isMuted ? <MicOff className="w-5 h-5 text-white" /> : <Mic className="w-5 h-5 text-white" />}
+              </button>
+              
+              {/* Video Toggle (only for video calls) */}
+              {call.type === 'video' && (
+                <button
+                  onClick={toggleVideo}
+                  className={`p-3 rounded-full transition-all ${
+                    isVideoOff ? 'bg-red-600 hover:bg-red-700' : 'bg-gray-700/50 hover:bg-gray-600/50'
+                  }`}
+                  title={isVideoOff ? 'Turn on camera' : 'Turn off camera'}
+                >
+                  {isVideoOff ? <VideoOff className="w-5 h-5 text-white" /> : <Camera className="w-5 h-5 text-white" />}
+                </button>
+              )}
+              
+              {/* End Call */}
+              <button
+                onClick={endCall}
+                className="p-4 bg-red-600 hover:bg-red-700 rounded-full text-white transition-all shadow-lg shadow-red-500/30 hover:scale-105"
+                title="End Call"
+              >
+                <PhoneOff className="w-6 h-6" />
+              </button>
+              
+              {/* Add People */}
+              <button
+                onClick={invitePeople}
+                className="p-3 bg-gray-700/50 hover:bg-gray-600/50 rounded-full text-white transition-all"
+                title="Add People"
+              >
+                <UserPlus className="w-5 h-5" />
+              </button>
+              
+              {/* Share Link */}
+              <button
+                onClick={shareCallLink}
+                className="p-3 bg-gray-700/50 hover:bg-gray-600/50 rounded-full text-white transition-all"
+                title="Copy Invite Link"
+              >
+                <Share2 className="w-5 h-5" />
+              </button>
+            </div>
           </div>
         </div>
       )}

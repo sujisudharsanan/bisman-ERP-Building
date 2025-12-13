@@ -5,6 +5,8 @@
 
 export { default as ChatInterface } from './ChatInterface'
 export { default as CallControls } from './CallControls'
+export { default as IncomingCall } from './IncomingCall'
+export type { IncomingCallData } from './IncomingCall'
 export { default as FloatingWidget } from './FloatingWidget'
 export { default as ChatGuard } from './ChatGuard'
 export { default as AIWidget } from './AIWidget'

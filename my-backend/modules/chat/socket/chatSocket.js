@@ -33,8 +33,10 @@ const initializeChatSocket = (io) => {
   chatNamespace.on('connection', (socket) => {
     console.log(`[Chat] User connected: ${socket.username} (ID: ${socket.userId})`);
     
-    // Join user's personal room
-    socket.join(`user:${socket.userId}`);
+    // Join user's personal room (always use string for consistency)
+    const userRoom = `user:${String(socket.userId)}`;
+    socket.join(userRoom);
+    console.log(`[Chat] User ${socket.username} joined personal room: ${userRoom}`);
     
     // Join a thread
     socket.on('chat:join', (threadId) => {
@@ -120,6 +122,101 @@ const initializeChatSocket = (io) => {
         lastSeen: new Date()
       });
     });
+    
+    // ===== CALL SIGNALING =====
+    
+    // Initiate a call - notify the target user(s)
+    socket.on('chat:call:invite', (data) => {
+      const { threadId, roomName, callType, targetUserIds } = data;
+      
+      console.log(`[Chat] 📞 Call invite from ${socket.username} (ID: ${socket.userId})`);
+      console.log(`[Chat] Target users:`, targetUserIds, `(types: ${targetUserIds?.map(id => typeof id)})`);
+      console.log(`[Chat] All connected sockets in /chat namespace:`);
+      
+      // Debug: List all connected sockets and their rooms
+      chatNamespace.sockets.forEach((s, id) => {
+        const rooms = Array.from(s.rooms);
+        console.log(`  - Socket ${id}: user=${s.userId} (${s.username}), rooms=[${rooms.join(', ')}]`);
+      });
+      
+      const callData = {
+        callId: roomName,
+        roomName,
+        threadId,
+        callType,
+        callerId: socket.userId,
+        callerName: socket.username,
+        timestamp: new Date()
+      };
+      
+      // Notify each target user about the incoming call
+      if (targetUserIds && Array.isArray(targetUserIds)) {
+        targetUserIds.forEach(userId => {
+          // Convert both to same type for comparison
+          const targetId = String(userId);
+          const callerId = String(socket.userId);
+          
+          if (targetId !== callerId) {
+            console.log(`[Chat] Emitting to room: user:${targetId}`);
+            chatNamespace.to(`user:${targetId}`).emit('chat:call:incoming', callData);
+            console.log(`[Chat] ✅ Call notification sent to user:${targetId}`);
+          }
+        });
+      }
+      
+      // Also broadcast to the thread
+      socket.to(`thread:${threadId}`).emit('chat:call:incoming', callData);
+    });
+    
+    // Accept a call - notify the caller
+    socket.on('chat:call:accept', (data) => {
+      const { callId, roomName, callerId } = data;
+      
+      console.log(`[Chat] Call accepted by ${socket.username} for call ${callId}`);
+      
+      // Notify the caller that their call was accepted
+      chatNamespace.to(`user:${callerId}`).emit('chat:call:accepted', {
+        callId,
+        roomName,
+        acceptedBy: socket.userId,
+        acceptedByName: socket.username,
+        timestamp: new Date()
+      });
+    });
+    
+    // Reject a call - notify the caller
+    socket.on('chat:call:reject', (data) => {
+      const { callId, callerId, reason = 'declined' } = data;
+      
+      console.log(`[Chat] Call rejected by ${socket.username} for call ${callId}`);
+      
+      // Notify the caller that their call was rejected
+      chatNamespace.to(`user:${callerId}`).emit('chat:call:rejected', {
+        callId,
+        rejectedBy: socket.userId,
+        rejectedByName: socket.username,
+        reason,
+        timestamp: new Date()
+      });
+    });
+    
+    // End a call - notify all participants
+    socket.on('chat:call:end', (data) => {
+      const { callId, threadId, duration } = data;
+      
+      console.log(`[Chat] Call ended by ${socket.username}: ${callId}`);
+      
+      // Notify everyone in the thread that the call has ended
+      chatNamespace.to(`thread:${threadId}`).emit('chat:call:ended', {
+        callId,
+        endedBy: socket.userId,
+        endedByName: socket.username,
+        duration,
+        timestamp: new Date()
+      });
+    });
+    
+    // ===== END CALL SIGNALING =====
     
     // Handle disconnection
     socket.on('disconnect', (reason) => {

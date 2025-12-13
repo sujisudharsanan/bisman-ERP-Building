@@ -11,10 +11,16 @@ import {
   Maximize2,
   Minimize2,
   X,
-  Settings
+  Settings,
+  Phone,
+  Plus,
+  Link2,
+  CheckSquare,
+  ExternalLink
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import CallControls from './CallControls';
+import IncomingCall, { IncomingCallData } from './IncomingCall';
 import TaskDetailView from './TaskDetailView';
 import { Theme } from 'emoji-picker-react';
 import { useOcrUpload, isBillFile } from '@/hooks/useOcrUpload';
@@ -53,7 +59,7 @@ interface Task {
   priority?: string;
 }
 
-type ActiveView = 'mira' | 'user' | 'task';
+type ActiveView = 'bey' | 'user' | 'task';
 
 interface CleanChatInterfaceProps {
   onClose?: () => void;
@@ -64,7 +70,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
   const [messages, setMessages] = useState<Message[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [thinking, setThinking] = useState(false);
-  const [activeView, setActiveView] = useState<ActiveView>('mira');
+  const [activeView, setActiveView] = useState<ActiveView>('bey');
   const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
   const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [currentThreadId, setCurrentThreadId] = useState<string | null>(null);
@@ -91,6 +97,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
   });
   const [taskAttachments, setTaskAttachments] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
+  const [showQuickActions, setShowQuickActions] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -98,6 +105,13 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
   const emojiPickerRef = useRef<HTMLDivElement>(null);
   const chatContainerRef = useRef<HTMLDivElement>(null);
   const shouldTriggerTaskCreation = useRef(false);
+  
+  // Separate state for Bey AI messages (persists when switching between chats)
+  const beyMessagesRef = useRef<Message[]>([]);
+  
+  // Incoming call state
+  const [incomingCall, setIncomingCall] = useState<IncomingCallData | null>(null);
+  const [activeCallRoom, setActiveCallRoom] = useState<string | null>(null);
 
   // OCR Upload Hook
   const { uploadBill, isUploading, isProcessing, progress, error: ocrError, result: ocrResult, reset: resetOcr } = useOcrUpload();
@@ -110,28 +124,36 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
   // Handle incoming socket messages
   const handleSocketMessage = useCallback((data: { threadId: string; message: any }) => {
     console.log('[ChatInterface] Socket message received:', data);
+    console.log('[ChatInterface] Current thread:', currentThreadId, 'Message thread:', data.threadId);
     
     // Only add message if it's for the current thread and not from current user
-    if (data.threadId === currentThreadId && data.message) {
+    // Compare as strings to handle number/string mismatches
+    if (String(data.threadId) === String(currentThreadId) && data.message) {
       const msg = data.message;
       
       // Skip if it's our own message (already added locally)
-      if (msg.senderId === user?.id || msg.sender?.id === user?.id) {
+      if (String(msg.senderId) === String(user?.id) || String(msg.sender?.id) === String(user?.id)) {
+        console.log('[ChatInterface] Skipping own message');
         return;
       }
       
       const newMsg: Message = {
         id: msg.id || `socket-${Date.now()}`,
         message: msg.content,
-        user_id: msg.senderId || msg.sender?.id,
+        user_id: String(msg.senderId || msg.sender?.id),
         create_at: new Date(msg.createdAt).getTime(),
         username: msg.sender?.username || 'User',
         isBot: false
       };
       
+      console.log('[ChatInterface] Adding new message:', newMsg);
+      
       setMessages(prev => {
         // Avoid duplicates
-        if (prev.some(m => m.id === newMsg.id)) return prev;
+        if (prev.some(m => m.id === newMsg.id)) {
+          console.log('[ChatInterface] Duplicate message, skipping');
+          return prev;
+        }
         return [...prev, newMsg];
       });
       
@@ -146,13 +168,104 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       
       // Play message notification sound
       playMessageSound();
+    } else {
+      console.log('[ChatInterface] Message not for current thread or no message data');
     }
   }, [currentThreadId, user?.id, playMessageSound]);
 
+  // Handle incoming call - always show regardless of current view
+  const handleIncomingCall = useCallback((data: IncomingCallData) => {
+    console.log('[ChatInterface] 🔔 Incoming call received:', data);
+    console.log('[ChatInterface] Current activeCallRoom:', activeCallRoom);
+    console.log('[ChatInterface] Current user id:', user?.id, 'Caller id:', data.callerId);
+    
+    // Don't show if it's from ourselves or if we're already in a call
+    if (String(data.callerId) === String(user?.id)) {
+      console.log('[ChatInterface] Ignoring call from self');
+      return;
+    }
+    
+    if (!activeCallRoom) {
+      setIncomingCall(data);
+    }
+  }, [activeCallRoom]);
+
+  // Handle call accepted by other user
+  const handleCallAccepted = useCallback((data: { callId: string; roomName: string; acceptedBy: number; acceptedByName: string }) => {
+    console.log('[ChatInterface] Call accepted by:', data.acceptedByName);
+    // The person who initiated the call will see this when someone accepts
+  }, []);
+
+  // Handle call rejected by other user
+  const handleCallRejected = useCallback((data: { callId: string; rejectedBy: number; rejectedByName: string; reason: string }) => {
+    console.log('[ChatInterface] Call rejected by:', data.rejectedByName);
+  }, []);
+
   // Chat Socket Hook for real-time messaging
-  const { connected: socketConnected, joinThread, leaveThread, sendTyping } = useChatSocket({
-    onNewMessage: handleSocketMessage
+  const { connected: socketConnected, socket: chatSocket, joinThread, leaveThread, sendTyping } = useChatSocket({
+    onNewMessage: handleSocketMessage,
+    onIncomingCall: handleIncomingCall,
+    onCallAccepted: handleCallAccepted,
+    onCallRejected: handleCallRejected
   });
+
+  // Handle accepting incoming call
+  const handleAcceptIncomingCall = useCallback((call: IncomingCallData) => {
+    console.log('[ChatInterface] Accepting call:', call.callId);
+    console.log('[ChatInterface] Call data:', call);
+    setIncomingCall(null);
+    
+    // Set the caller as selected user so CallControls will be rendered
+    setSelectedUserId(String(call.callerId));
+    setActiveView('user');
+    
+    // Set the room to join - this triggers CallControls to auto-join
+    setActiveCallRoom(call.roomName);
+    
+    // Notify the caller that we accepted
+    if (chatSocket) {
+      chatSocket.emit('chat:call:accept', {
+        callId: call.callId,
+        roomName: call.roomName,
+        callerId: call.callerId
+      });
+    }
+    
+    // Navigate to the thread
+    if (call.threadId) {
+      setCurrentThreadId(call.threadId);
+    }
+  }, [chatSocket]);
+
+  // Handle rejecting incoming call
+  const handleRejectIncomingCall = useCallback((call: IncomingCallData) => {
+    console.log('[ChatInterface] Rejecting call:', call.callId);
+    setIncomingCall(null);
+    
+    // Notify the caller that we rejected
+    if (chatSocket) {
+      chatSocket.emit('chat:call:reject', {
+        callId: call.callId,
+        callerId: call.callerId,
+        reason: 'declined'
+      });
+    }
+  }, [chatSocket]);
+
+  // Handle call timeout
+  const handleCallTimeout = useCallback((call: IncomingCallData) => {
+    console.log('[ChatInterface] Call timed out:', call.callId);
+    setIncomingCall(null);
+    
+    // Notify the caller that we didn't answer
+    if (chatSocket) {
+      chatSocket.emit('chat:call:reject', {
+        callId: call.callId,
+        callerId: call.callerId,
+        reason: 'no_answer'
+      });
+    }
+  }, [chatSocket]);
 
   // Join/leave thread when currentThreadId changes
   useEffect(() => {
@@ -201,28 +314,62 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
     };
   }, [showEmojiPicker]);
 
-  // Load chat users
+  // Load chat users - only those with existing conversations
   useEffect(() => {
     const loadUsers = async () => {
       try {
+        // First, get all chat threads to know who has conversations
+        const threadsRes = await fetch('/api/chat/threads', { credentials: 'include' });
+        let threadUserIds: Set<string> = new Set();
+        
+        if (threadsRes.ok) {
+          const threadsData = await threadsRes.json();
+          const threads = threadsData.data || [];
+          // Extract user IDs from thread members (users we have conversations with)
+          threads.forEach((thread: any) => {
+            if (thread.members && thread.members.length === 2) {
+              thread.members.forEach((member: any) => {
+                if (String(member.id) !== String(user?.id)) {
+                  threadUserIds.add(String(member.id));
+                }
+              });
+            }
+          });
+        }
+        
         // Get all users (empty query will return all active users now)
         const response = await fetch('/api/users/search?q=&limit=50');
   if (response.ok) {
           const data = await response.json();
           console.log('[Chat] API response:', data);
           // Backend returns { users: [...] } format
-          const users = (data.users || data.data || []).map((u: any) => ({
-            id: u.id,
-            name: u.fullName || u.username || u.email?.split('@')[0] || '',
-            email: u.email,
-            avatar: u.profile_pic_url || u.profilePic,
-            isOnline: true,
-            role: u.role,
-            roleName: u.roleName || u.role
-          }));
+          const users = (data.users || data.data || [])
+            .map((u: any) => ({
+              id: String(u.id), // Ensure ID is always a string
+              name: u.fullName || u.username || u.email?.split('@')[0] || '',
+              email: u.email,
+              avatar: u.profile_pic_url || u.profilePic,
+              isOnline: true,
+              role: u.role,
+              roleName: u.roleName || u.role,
+              hasConversation: threadUserIds.has(String(u.id))
+            }))
+            // Filter out Admin users only, show all other users
+            .filter((u: ChatUser & { hasConversation?: boolean }) => {
+              const roleName = (u.roleName || u.role || '').toLowerCase();
+              const isAdmin = roleName === 'admin' || roleName === 'super_admin' || roleName === 'superadmin';
+              // Show user if not admin (show all users, not just those with conversations)
+              return !isAdmin;
+            })
+            // Sort users with conversations first
+            .sort((a: ChatUser & { hasConversation?: boolean }, b: ChatUser & { hasConversation?: boolean }) => {
+              if (a.hasConversation && !b.hasConversation) return -1;
+              if (!a.hasConversation && b.hasConversation) return 1;
+              return (a.name || '').localeCompare(b.name || '');
+            });
           setChatUsers(users);
-          console.log('[Chat] Loaded users:', users.length, 'users');
-          console.log('[Chat] User details:', users.map((u: ChatUser) => ({ id: u.id, name: u.name, role: u.roleName || u.role })));
+          console.log('[Chat] Loaded users:', users.length, 'users (conversations first)');
+          console.log('[Chat] User details:', users.map((u: ChatUser & { hasConversation?: boolean }) => ({ id: u.id, name: u.name, role: u.roleName || u.role, hasChat: u.hasConversation })));
         } else {
           const errorText = await response.text();
           // Treat 404 as a non-fatal case in development where the chat-bot user search route
@@ -240,7 +387,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       }
     };
     loadUsers();
-  }, []);
+  }, [user]);
 
   // Listen for task open events from dashboard
   useEffect(() => {
@@ -295,15 +442,22 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       if (response.ok) {
         const data = await response.json();
         // Backend returns { users: [...] } format
-        const users = (data.users || data.data || []).map((u: any) => ({
-          id: String(u.id), // Ensure ID is string for consistent comparison
-          name: u.fullName || u.username || u.email?.split('@')[0] || '',
-          email: u.email,
-          avatar: u.profile_pic_url || u.profilePic,
-          isOnline: true,
-          role: u.role,
-          roleName: u.roleName || u.role
-        }));
+        const users = (data.users || data.data || [])
+          .map((u: any) => ({
+            id: String(u.id), // Ensure ID is string for consistent comparison
+            name: u.fullName || u.username || u.email?.split('@')[0] || '',
+            email: u.email,
+            avatar: u.profile_pic_url || u.profilePic,
+            isOnline: true,
+            role: u.role,
+            roleName: u.roleName || u.role
+          }))
+          // Filter out Admin users from search results
+          .filter((u: ChatUser) => {
+            const roleName = (u.roleName || u.role || '').toLowerCase();
+            const isAdmin = roleName === 'admin' || roleName === 'super_admin' || roleName === 'superadmin';
+            return !isAdmin;
+          });
         setSearchResults(users);
         console.log('[Chat] Search results for "' + query + '":', users.length, 'users');
       } else {
@@ -353,7 +507,8 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
   // Helper to find selected user from all known users
   const getSelectedUser = (userId: string | null): ChatUser | undefined => {
     if (!userId) return undefined;
-    return chatUsers.find(u => u.id === userId) || searchResults.find(u => u.id === userId);
+    // Use String() comparison to handle type mismatches (number vs string IDs)
+    return chatUsers.find(u => String(u.id) === String(userId)) || searchResults.find(u => String(u.id) === String(userId));
   };
 
   // Load tasks
@@ -380,14 +535,14 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
 
   // Load personalized greeting with pending tasks
   useEffect(() => {
-    if (user && activeView === 'mira' && messages.length === 0) {
+    if (user && activeView === 'bey' && messages.length === 0) {
       loadGreeting();
     }
   }, [user, activeView]);
 
-  // Load previous conversation when switching to Mira
+  // Load previous conversation when switching to Bey
   useEffect(() => {
-    if (user && activeView === 'mira' && !conversationId) {
+    if (user && activeView === 'bey' && !conversationId) {
       loadLatestConversation();
     }
   }, [user, activeView]);
@@ -398,9 +553,9 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       console.log('✨ External trigger for task creation - setting flag');
       shouldTriggerTaskCreation.current = true;
       
-      // Switch to Mira view if not already there
-      if (activeView !== 'mira') {
-        setActiveView('mira');
+      // Switch to Bey view if not already there
+      if (activeView !== 'bey') {
+        setActiveView('bey');
       }
     };
 
@@ -410,7 +565,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
 
   // Handle task creation when component is ready
   useEffect(() => {
-    if (shouldTriggerTaskCreation.current && user && activeView === 'mira') {
+    if (shouldTriggerTaskCreation.current && user && activeView === 'bey') {
       console.log('✨ Triggering task creation now that component is ready');
       shouldTriggerTaskCreation.current = false;
       
@@ -433,7 +588,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         const botMessage: Message = {
           id: `bot-${Date.now()}`,
           message: "✨ Great! Let's create a new task.\n\nPlease fill in the form below and I'll create the task for you! 📝",
-          user_id: 'mira',
+          user_id: 'bey',
           create_at: Date.now(),
           username: 'Bey',
           isBot: true
@@ -517,7 +672,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         const analyzingMsg: Message = {
           id: `bot-analyzing-${Date.now()}`,
           message: `� Analyzing ${billFiles.length} bill/invoice file(s)...\n\nI'll extract the data and pre-fill the task form for you!`,
-          user_id: 'mira',
+          user_id: 'bey',
           create_at: Date.now(),
           username: 'Bey',
           isBot: true
@@ -552,7 +707,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                 `• Amount: ${parsed.currency || '₹'}${parsed.totalAmount || 'N/A'}\n` +
                 `• Date: ${parsed.invoiceDate || 'N/A'}\n\n` +
                 `I've pre-filled the task form. Please review and submit! 📝`,
-              user_id: 'mira',
+              user_id: 'bey',
               create_at: Date.now(),
               username: 'Bey',
               isBot: true
@@ -566,7 +721,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           const errorMsg: Message = {
             id: `bot-ocr-error-${Date.now()}`,
             message: `⚠️ I couldn't extract data from the bill automatically.\n\nPlease fill in the task details manually. The bill is still attached.`,
-            user_id: 'mira',
+            user_id: 'bey',
             create_at: Date.now(),
             username: 'Bey',
             isBot: true
@@ -578,7 +733,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         const botMsg: Message = {
           id: `bot-${Date.now()}`,
           message: `�📎 Added ${droppedFiles.length} file(s) to the task`,
-          user_id: 'mira',
+          user_id: 'bey',
           create_at: Date.now(),
           username: 'Bey',
           isBot: true
@@ -603,7 +758,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         const analyzingMsg: Message = {
           id: `bot-analyzing-${Date.now()}`,
           message: `� Analyzing ${billFiles.length} bill/invoice file(s)...\n\nI'll extract the data and pre-fill the task form for you!`,
-          user_id: 'mira',
+          user_id: 'bey',
           create_at: Date.now(),
           username: 'Bey',
           isBot: true
@@ -638,7 +793,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                 `• Amount: ${parsed.currency || '₹'}${parsed.totalAmount || 'N/A'}\n` +
                 `• Date: ${parsed.invoiceDate || 'N/A'}\n\n` +
                 `I've pre-filled the task form. Please review and submit! 📝`,
-              user_id: 'mira',
+              user_id: 'bey',
               create_at: Date.now(),
               username: 'Bey',
               isBot: true
@@ -652,7 +807,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           const errorMsg: Message = {
             id: `bot-ocr-error-${Date.now()}`,
             message: `⚠️ I couldn't extract data from the bill automatically.\n\nPlease fill in the task details manually. The bill is still attached.`,
-            user_id: 'mira',
+            user_id: 'bey',
             create_at: Date.now(),
             username: 'Bey',
             isBot: true
@@ -664,7 +819,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         const botMsg: Message = {
           id: `bot-${Date.now()}`,
           message: `�📎 Added ${selectedFiles.length} file(s) to the task`,
-          user_id: 'mira',
+          user_id: 'bey',
           create_at: Date.now(),
           username: 'Bey',
           isBot: true
@@ -692,7 +847,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         const greetingMessage: Message = {
           id: `bot-greeting-${Date.now()}`,
           message: data.greeting || 'Hello! How can I help you today?',
-          user_id: 'mira',
+          user_id: 'bey',
           create_at: Date.now(),
           isBot: true
         };
@@ -704,7 +859,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         const welcomeMessage: Message = {
           id: `bot-welcome-${Date.now()}`,
           message: `Hey ${firstName}! 👋 I'm Bey, your intelligent assistant for BISMAN ERP. How can I help you today?`,
-          user_id: 'mira',
+          user_id: 'bey',
           create_at: Date.now(),
           username: 'Bey',
           isBot: true
@@ -719,7 +874,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       const welcomeMessage: Message = {
         id: `bot-welcome-${Date.now()}`,
         message: `Hey ${firstName}! 👋 I'm Bey, your intelligent assistant for BISMAN ERP. How can I help you today?`,
-        user_id: 'mira',
+        user_id: 'bey',
         create_at: Date.now(),
         username: 'Bey',
         isBot: true
@@ -730,6 +885,9 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
 
   const loadLatestConversation = async () => {
     try {
+      // Only load if we're in Bey view
+      if (activeView !== 'bey') return;
+      
       const response = await fetch('/api/chat/conversation/latest', {
         credentials: 'include'
       });
@@ -737,8 +895,18 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       if (response.ok) {
         const data = await response.json();
         if (data.conversationId && data.messages && data.messages.length > 0) {
+          // Filter to only include messages that are part of Bey conversation
+          // (has isBot flag or is a user message to bot)
+          const beyMessages = data.messages.filter((m: Message) => 
+            m.isBot === true || m.isBot === false // All messages from this API are Bey conversations
+          );
           setConversationId(data.conversationId);
-          setMessages(data.messages);
+          setMessages(beyMessages);
+          console.log('[Chat] Loaded Bey conversation:', beyMessages.length, 'messages');
+        } else {
+          // No conversation found, show empty
+          setMessages([]);
+          setConversationId(null);
         }
       }
     } catch (error) {
@@ -793,8 +961,11 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
     return `${secs} sec`;
   };
 
-  // Handle call start - add message to chat
+  // Handle call start - add message to chat (only in user chat view)
   const handleCallStart = async (callType: 'audio' | 'video', roomName: string) => {
+    // Only add call messages in user chat view
+    if (activeView !== 'user') return;
+    
     const callMessage: Message = {
       id: `call-start-${Date.now()}`,
       message: `📞 ${callType === 'video' ? 'Video' : 'Audio'} call started`,
@@ -823,8 +994,11 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
     }
   };
 
-  // Handle call end - add message to chat with duration or missed status
+  // Handle call end - add message to chat with duration or missed status (only in user chat view)
   const handleCallEnd = async (duration: number, wasAnswered: boolean) => {
+    // Only add call messages in user chat view
+    if (activeView !== 'user') return;
+    
     let callEndMessage: Message;
     let messageContent: string;
     
@@ -883,17 +1057,68 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
   const sendMessage = async () => {
     if (!newMessage.trim() || thinking) return;
 
+    const messageToSend = newMessage.trim();
+    const msgLower = messageToSend.toLowerCase();
+    
+    // Handle slash commands
+    if (messageToSend.startsWith('/')) {
+      // /status done command - mark task as complete
+      if (msgLower.startsWith('/status done') && activeView === 'task' && selectedTaskId) {
+        setNewMessage('');
+        const systemMsg: Message = {
+          id: `system-${Date.now()}`,
+          message: '✅ System: Task status updated to COMPLETED',
+          user_id: 'system',
+          create_at: Date.now(),
+          username: 'System',
+          isBot: true
+        };
+        setMessages(prev => [...prev, systemMsg]);
+        
+        // Update task status via API
+        try {
+          await fetch(`/api/tasks/${selectedTaskId}/status`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ status: 'DONE' })
+          });
+          // Update local tasks
+          setOpenTasks(prev => prev.map(t => t.id === selectedTaskId ? { ...t, status: 'DONE' } : t));
+          setTasks(prev => prev.map(t => t.id === selectedTaskId ? { ...t, status: 'DONE' } : t));
+        } catch (error) {
+          console.error('[Chat] Failed to update task status:', error);
+        }
+        return;
+      }
+      
+      // /link task command - link a task
+      if (msgLower.startsWith('/link task ')) {
+        const taskId = messageToSend.substring(11).trim();
+        if (taskId) {
+          setNewMessage('');
+          const linkMsg: Message = {
+            id: `user-${Date.now()}`,
+            message: `📋 Linked task: ${taskId}`,
+            user_id: (user as any)?.id || 'current-user',
+            create_at: Date.now(),
+            username: 'You'
+          };
+          setMessages(prev => [...prev, linkMsg]);
+        }
+        return;
+      }
+    }
+
     const userMessage: Message = {
       id: `user-${Date.now()}`,
-      message: newMessage,
+      message: messageToSend,
       user_id: (user as any)?.id || 'current-user',
       create_at: Date.now(),
       username: 'You'
     };
 
     setMessages(prev => [...prev, userMessage]);
-    const messageToSend = newMessage;
-    const msgLower = newMessage.toLowerCase().trim();
     setNewMessage('');
 
     // If chatting with a user (not Bey), use thread-based messaging
@@ -958,7 +1183,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       const botMessage: Message = {
         id: `bot-${Date.now()}`,
         message: "✨ Great! Let's create a new task.\n\nPlease fill in the form below and I'll create the task for you! 📝",
-        user_id: 'mira',
+        user_id: 'bey',
         create_at: Date.now(),
         username: 'Bey',
         isBot: true
@@ -990,7 +1215,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         const botMessage: Message = {
           id: `bot-${Date.now()}`,
           message: data.response || data.reply || data.message || "I'm here to help! Could you rephrase that?",
-          user_id: 'mira',
+          user_id: 'bey',
           create_at: Date.now(),
           username: data.persona?.name || 'Bey',
           isBot: true
@@ -1005,9 +1230,9 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         const botMessage: Message = {
           id: `bot-error-${Date.now()}`,
           message: "Oops! Something went wrong on my end. Mind trying that again? 😅",
-          user_id: 'mira',
+          user_id: 'bey',
           create_at: Date.now(),
-          username: 'Mira',
+          username: 'Bey',
           isBot: true
         };
         setMessages(prev => [...prev, botMessage]);
@@ -1017,9 +1242,9 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       const botMessage: Message = {
         id: `bot-error-${Date.now()}`,
         message: "Hmm, I'm having trouble connecting right now. Can you try again in a moment?",
-        user_id: 'mira',
+        user_id: 'bey',
         create_at: Date.now(),
-        username: 'Mira',
+        username: 'Bey',
         isBot: true
       };
       setMessages(prev => [...prev, botMessage]);
@@ -1106,6 +1331,17 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         : 'h-full rounded-lg'
     } bg-[#1e1e2e] dark:bg-[#1e1e2e]`}>
       
+      {/* Incoming Call Modal */}
+      {incomingCall && (
+        <IncomingCall
+          call={incomingCall}
+          onAccept={handleAcceptIncomingCall}
+          onReject={handleRejectIncomingCall}
+          onTimeout={handleCallTimeout}
+          timeoutDuration={30}
+        />
+      )}
+      
       {/* New Message Notification Toast */}
       {newMessageNotification && (
         <div className="fixed top-4 right-4 z-[100] animate-slide-in-right">
@@ -1129,63 +1365,74 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       
       {/* Left Sidebar - 28% - Reduced for more room */}
       <div className="bg-[#2b2d42] dark:bg-[#2b2d42] border-r border-gray-700/50 flex flex-col flex-shrink-0 w-[28%] h-full">
-        {/* Sidebar Header */}
-        <div className={`p-2.5 border-b border-gray-700/50 ${!isFullscreen ? 'rounded-tl-lg' : ''}`}>
-          <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded bg-blue-600 flex items-center justify-center text-white font-bold text-xs">
+        {/* Sidebar Header with Integrated Search */}
+        <div className={`p-3 border-b border-gray-700/50 ${!isFullscreen ? 'rounded-tl-lg' : ''}`}>
+          <div className="flex items-center gap-2 mb-3">
+            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
               B
             </div>
-            <span className="text-white font-semibold truncate text-[13px]">Business ERP</span>
+            <div className="flex-1 min-w-0">
+              <span className="text-white font-semibold text-sm">BISMAN ERP</span>
+            </div>
             {/* Socket connection indicator */}
             <div 
-              className={`w-2 h-2 rounded-full ml-auto ${socketConnected ? 'bg-green-500' : 'bg-red-500'}`}
+              className={`w-2 h-2 rounded-full ${socketConnected ? 'bg-green-500' : 'bg-red-500'}`}
               title={socketConnected ? 'Connected' : 'Disconnected'}
             />
           </div>
-        </div>
-
-        {/* Search */}
-        <div className="p-2.5">
+          
+          {/* Integrated Search Bar */}
           <div className="relative">
             <input
               type="text"
-              placeholder="Search users..."
+              placeholder="Search contacts..."
               value={searchQuery}
               onChange={handleSearchChange}
-              className="w-full px-2.5 py-1.5 bg-[#1e1e2e] border border-gray-700/50 rounded text-gray-300 text-[12px] placeholder-gray-500 focus:outline-none focus:border-blue-500"
+              className="w-full px-3 py-2 bg-[#1e1e2e] border border-gray-700/50 rounded-lg text-gray-300 text-sm placeholder-gray-500 focus:outline-none focus:border-blue-500/50 focus:ring-1 focus:ring-blue-500/20 transition-all"
             />
             {isSearching && (
-              <div className="absolute right-2 top-1/2 -translate-y-1/2">
-                <div className="w-3 h-3 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+              <div className="absolute right-3 top-1/2 -translate-y-1/2">
+                <div className="w-4 h-4 border-2 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
               </div>
             )}
           </div>
           {searchQuery && searchResults.length === 0 && !isSearching && (
-            <p className="text-gray-500 text-[10px] mt-1 px-1">No users found</p>
+            <p className="text-gray-500 text-xs mt-2 px-1">No contacts found</p>
           )}
         </div>
 
         {/* Chat List */}
         <div className="flex-1 overflow-y-auto" style={{ height: openTasks.length > 0 ? `calc(100% - ${getTaskPanelHeight()})` : 'auto' }}>
-          {/* Mira AI */}
+          {/* Bey AI Assistant */}
           <button
-            onClick={() => {
-              setActiveView('mira');
+            onClick={async () => {
+              // Always clear messages first to prevent showing old data
+              setMessages([]);
+              setConversationId(null); // Reset to trigger fresh load
+              
+              setActiveView('bey');
               setSelectedUserId(null);
               setSelectedTaskId(null);
+              setCurrentThreadId(null);
+              
+              // Always load fresh Bey conversation from API
+              if (user) {
+                await loadLatestConversation();
+              }
             }}
-            className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-[#1e1e2e] transition-colors ${
-              activeView === 'mira' ? 'bg-[#1e1e2e]' : ''
+            className={`w-full flex items-center gap-3 px-3 py-3 hover:bg-[#1e1e2e] transition-colors ${
+              activeView === 'bey' ? 'bg-[#1e1e2e] border-l-2 border-blue-500' : ''
             }`}
           >
             <div className="relative flex-shrink-0">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white">
-                <Sparkles className="w-4 h-4" />
+              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                <Sparkles className="w-5 h-5" />
               </div>
-              <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#2b2d42]"></div>
+              <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-[#2b2d42]"></div>
             </div>
             <div className="flex-1 text-left min-w-0">
-              <p className="text-white text-[13px] font-medium truncate">Bey</p>
+              <p className="text-white text-sm font-semibold">Bey</p>
+              <p className="text-gray-500 text-xs">AI Assistant</p>
             </div>
           </button>
 
@@ -1196,11 +1443,15 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                 <button
                   key={chatUser.id}
                   onClick={async () => {
-                    setActiveView('user');
-                    setSelectedUserId(chatUser.id);
-                    setSelectedTaskId(null);
+                    // Clear everything first - reset all state
                     setMessages([]);
                     setCurrentThreadId(null);
+                    setConversationId(null); // Clear Bey conversation ID
+                    
+                    // Then set the new view
+                    setActiveView('user');
+                    setSelectedUserId(String(chatUser.id));
+                    setSelectedTaskId(null);
                     setSearchQuery('');
                     setSearchResults([]);
                     
@@ -1241,22 +1492,39 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                       console.error('[Chat] Failed to load thread:', error);
                     }
                   }}
-                  className={`w-full flex items-center gap-2 px-3 py-2 hover:bg-[#1e1e2e] transition-colors ${
+                  className={`w-full flex items-center gap-3 px-3 py-2.5 hover:bg-[#1e1e2e] transition-colors ${
                     activeView === 'user' && selectedUserId === chatUser.id ? 'bg-[#1e1e2e]' : ''
                   }`}
                 >
+                  {/* Professional Avatar - Photo or Clean Initials */}
                   <div className="relative flex-shrink-0">
-                    <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-[10px] font-bold">
-                      {chatUser.name.slice(0, 2).toUpperCase()}
+                    {chatUser.avatar ? (
+                      <img 
+                        src={chatUser.avatar.startsWith('/uploads/') 
+                          ? chatUser.avatar.replace('/uploads/', '/api/secure-files/') 
+                          : chatUser.avatar}
+                        alt={chatUser.name}
+                        className="w-9 h-9 rounded-full object-cover border border-gray-600/50"
+                        onError={(e) => {
+                          // Fallback to initials on image load error
+                          (e.target as HTMLImageElement).style.display = 'none';
+                          (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden');
+                        }}
+                      />
+                    ) : null}
+                    <div className={`w-9 h-9 rounded-full bg-gray-600 flex items-center justify-center text-white text-xs font-semibold border border-gray-500/30 ${chatUser.avatar ? 'hidden' : ''}`}>
+                      {chatUser.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
                     </div>
+                    {/* Online Status Indicator */}
                     {chatUser.isOnline && (
                       <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#2b2d42]"></div>
                     )}
                   </div>
+                  {/* Name & Role with Professional Hierarchy */}
                   <div className="flex-1 text-left min-w-0">
-                    <p className="text-white text-[13px] truncate">{chatUser.name}</p>
+                    <p className="text-white text-sm font-medium truncate">{chatUser.name}</p>
                     {chatUser.roleName && (
-                      <p className="text-gray-500 text-[10px] truncate">{chatUser.roleName.replace(/_/g, ' ')}</p>
+                      <p className="text-gray-500 text-[11px] truncate capitalize">{chatUser.roleName.replace(/_/g, ' ').toLowerCase()}</p>
                     )}
                   </div>
                 </button>
@@ -1264,14 +1532,15 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             </>
           )}
 
-          {/* Tasks Section with Separator */}
+          {/* Tasks Section with Professional Design */}
           {tasks.length > 0 && (
             <>
-              <div className="px-3 py-2 mt-2">
-                <div className="border-t border-gray-700/50"></div>
+              <div className="px-3 py-2 mt-3">
+                <div className="border-t border-gray-700/30"></div>
               </div>
-              <div className="px-3 py-1">
-                <p className="text-gray-400 text-[10px] font-semibold uppercase tracking-wide">Tasks</p>
+              <div className="px-3 py-2 flex items-center justify-between">
+                <p className="text-gray-400 text-xs font-semibold">Recent Tasks</p>
+                <span className="text-gray-600 text-[10px]">{tasks.length}</span>
               </div>
               {tasks.slice(0, 5).map((task) => (
                 <button
@@ -1283,25 +1552,26 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                     addTaskToPanel(task);
                     setMessages([{
                       id: `task-info-${Date.now()}`,
-                      message: `**Task: ${task.title}**\n\nStatus: ${task.status}\nPriority: ${task.priority || 'N/A'}\n\nTask details and updates will appear here.`,
+                      message: `📋 **Task: ${task.title}**\n\nStatus: ${task.status}\nPriority: ${task.priority || 'N/A'}\n\nTask details and updates will appear here.`,
                       user_id: 'system',
                       create_at: Date.now(),
                       username: 'Task Info',
                       isBot: true
                     }]);
                   }}
-                  className={`w-full flex items-start gap-2 px-3 py-2 hover:bg-[#1e1e2e] transition-colors ${
-                    activeView === 'task' && selectedTaskId === task.id ? 'bg-[#1e1e2e]' : ''
+                  className={`w-full flex items-center gap-2.5 px-3 py-2.5 hover:bg-[#1e1e2e] transition-colors ${
+                    activeView === 'task' && selectedTaskId === task.id ? 'bg-[#1e1e2e] border-l-2 border-purple-500' : ''
                   }`}
                 >
-                  <div className={`w-1.5 h-1.5 rounded-full mt-1.5 flex-shrink-0 ${
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
                     task.status === 'DONE' ? 'bg-green-500' :
                     task.status === 'IN_PROGRESS' ? 'bg-blue-500' :
                     task.status === 'CONFIRMED' ? 'bg-yellow-500' :
-                    'bg-gray-400'
+                    'bg-gray-500'
                   }`}></div>
                   <div className="flex-1 text-left min-w-0">
-                    <p className="text-white text-[13px] truncate">{task.title}</p>
+                    <p className="text-white text-sm truncate">{task.title}</p>
+                    <p className="text-gray-500 text-[10px] capitalize">{task.status.toLowerCase().replace(/_/g, ' ')}</p>
                   </div>
                 </button>
               ))}
@@ -1309,40 +1579,49 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           )}
         </div>
 
-        {/* Open Tasks Panel - Dynamic Height */}
+        {/* Open Tasks Panel - Professional Minimalist Design */}
         <div 
           className="border-t border-gray-700/50 bg-[#1e1e2e] overflow-y-auto transition-all duration-300"
           style={{ height: getTaskPanelHeight() }}
         >
-          <div className="p-2.5 flex items-center justify-between border-b border-gray-700/50">
-            <span className="text-gray-400 text-[11px] font-semibold uppercase">Open Tasks ({openTasks.length})</span>
+          <div className="p-3 flex items-center justify-between border-b border-gray-700/50">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-300 text-xs font-semibold">Open Tasks</span>
+              {openTasks.length > 0 && (
+                <span className="px-1.5 py-0.5 bg-blue-600/20 text-blue-400 text-[10px] font-medium rounded">
+                  {openTasks.length}
+                </span>
+              )}
+            </div>
             {openTasks.length > 0 && (
               <button
                 onClick={() => setIsTaskPanelExpanded(!isTaskPanelExpanded)}
-                className="text-gray-400 hover:text-white text-[10px] transition-colors"
+                className="text-gray-400 hover:text-white text-xs transition-colors p-1 hover:bg-gray-700/30 rounded"
               >
-                {isTaskPanelExpanded ? '▼' : '▲'}
+                {isTaskPanelExpanded ? '−' : '+'}
               </button>
             )}
           </div>
           
           {openTasks.length === 0 ? (
-            <div className="p-3 text-center">
-              <p className="text-gray-500 text-[11px]">No tasks opened yet</p>
-              <p className="text-gray-600 text-[10px] mt-1">Click on tasks to view here</p>
+            <div className="p-4 text-center">
+              <div className="flex items-center justify-center gap-2 text-gray-500 text-xs">
+                <CheckSquare className="w-4 h-4 text-gray-600" />
+                <span>No pending tasks</span>
+              </div>
             </div>
           ) : (
-            <div className="p-1">
+            <div className="p-2">
               {openTasks.map((task) => (
                 <div
                   key={task.id}
-                  className="flex items-center gap-2 px-2 py-1.5 mb-1 bg-[#2b2d42] rounded hover:bg-[#353748] transition-colors group"
+                  className="flex items-center gap-2.5 px-2.5 py-2 mb-1 bg-[#2b2d42]/50 rounded-lg hover:bg-[#353748] transition-colors group border border-transparent hover:border-gray-700/50"
                 >
-                  <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                  <div className={`w-2 h-2 rounded-full flex-shrink-0 ${
                     task.status === 'DONE' ? 'bg-green-500' :
                     task.status === 'IN_PROGRESS' ? 'bg-blue-500' :
                     task.status === 'CONFIRMED' ? 'bg-yellow-500' :
-                    'bg-gray-400'
+                    'bg-gray-500'
                   }`}></div>
                   <button
                     onClick={() => {
@@ -1352,12 +1631,12 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                     }}
                     className="flex-1 text-left min-w-0"
                   >
-                    <p className="text-white text-[11px] truncate">{task.title}</p>
-                    <p className="text-gray-500 text-[9px]">{task.status}</p>
+                    <p className="text-white text-xs font-medium truncate">{task.title}</p>
+                    <p className="text-gray-500 text-[10px] capitalize">{task.status.toLowerCase().replace(/_/g, ' ')}</p>
                   </button>
                   <button
                     onClick={() => removeTaskFromPanel(task.id)}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-400 hover:text-red-400"
+                    className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-500 hover:text-red-400 p-1"
                     title="Remove from panel"
                   >
                     <X className="w-3 h-3" />
@@ -1368,62 +1647,97 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           )}
         </div>
 
-        {/* Sidebar Settings */}
-        <div className="p-2.5 border-t border-gray-700/50">
-          <button className="text-gray-400 hover:text-white text-[11px] transition-colors">
-            ⚙️ Settings
+        {/* Sidebar Footer */}
+        <div className="p-3 border-t border-gray-700/50">
+          <button className="flex items-center gap-2 text-gray-400 hover:text-white text-xs transition-colors w-full px-2 py-2 rounded-lg hover:bg-gray-700/30">
+            <Settings className="w-4 h-4" />
+            <span>Settings</span>
           </button>
         </div>
       </div>
 
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
-        {/* Chat Header */}
-        <div className={`h-12 px-3 bg-[#1e1e2e] border-b border-gray-700/50 flex items-center justify-between ${!isFullscreen ? 'rounded-tr-lg' : ''}`}>
-          <div className="flex items-center gap-2">
-            {activeView === 'mira' && (
+        {/* Chat Header - Professional Design */}
+        <div className={`h-14 px-4 bg-[#2b2d42] border-b border-gray-700/50 flex items-center justify-between ${!isFullscreen ? 'rounded-tr-lg' : ''}`}>
+          <div className="flex items-center gap-3">
+            {activeView === 'bey' && (
               <>
                 <div className="relative">
-                  <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white">
-                    <Sparkles className="w-4 h-4" />
+                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
+                    <Sparkles className="w-5 h-5" />
                   </div>
-                  <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#1e1e2e]"></div>
+                  <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-[#2b2d42]"></div>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-white text-[13px]">
-                    Bey
-                  </h3>
-                  <p className="text-gray-400 text-[10px]">Your AI Assistant</p>
+                  <h3 className="font-semibold text-white text-sm">Bey</h3>
+                  <p className="text-gray-400 text-xs">Your AI Assistant • Always available</p>
                 </div>
               </>
             )}
             {activeView === 'user' && selectedUserId && (
               <>
-                <div className="w-8 h-8 rounded-full bg-gradient-to-br from-green-400 to-blue-500 flex items-center justify-center text-white text-[10px] font-bold">
-                  {getSelectedUser(selectedUserId)?.name?.slice(0, 2).toUpperCase() || 'U'}
+                <div className="relative">
+                  {getSelectedUser(selectedUserId)?.avatar ? (
+                    <img 
+                      src={getSelectedUser(selectedUserId)?.avatar?.startsWith('/uploads/') 
+                        ? getSelectedUser(selectedUserId)?.avatar?.replace('/uploads/', '/api/secure-files/') 
+                        : getSelectedUser(selectedUserId)?.avatar}
+                      alt={getSelectedUser(selectedUserId)?.name}
+                      className="w-10 h-10 rounded-full object-cover border border-gray-600/50"
+                    />
+                  ) : (
+                    <div className="w-10 h-10 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm font-semibold border border-gray-500/30">
+                      {getSelectedUser(selectedUserId)?.name?.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase() || 'U'}
+                    </div>
+                  )}
+                  {getSelectedUser(selectedUserId)?.isOnline && (
+                    <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-[#2b2d42]"></div>
+                  )}
                 </div>
                 <div>
-                  <h3 className="font-semibold text-white text-[13px]">
+                  <h3 className="font-semibold text-white text-sm">
                     {getSelectedUser(selectedUserId)?.name || 'Unknown User'}
                   </h3>
-                  <p className="text-gray-400 text-[10px]">
-                    {getSelectedUser(selectedUserId)?.email || getSelectedUser(selectedUserId)?.roleName?.replace(/_/g, ' ') || 'Direct Message'}
+                  <p className="text-gray-400 text-xs capitalize">
+                    {getSelectedUser(selectedUserId)?.roleName?.replace(/_/g, ' ').toLowerCase() || getSelectedUser(selectedUserId)?.email || 'Direct Message'}
                   </p>
                 </div>
               </>
             )}
             {activeView === 'task' && selectedTaskId && (
               <>
-                <div className="w-8 h-8 rounded-lg bg-purple-600/20 flex items-center justify-center">
-                  <span className="text-base">📋</span>
+                <div className="w-9 h-9 rounded-lg bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
+                  <CheckSquare className="w-4 h-4 text-purple-400" />
                 </div>
-                <div>
-                  <h3 className="font-semibold text-white text-[13px]">
-                    {tasks.find(t => t.id === selectedTaskId)?.title}
-                  </h3>
-                  <p className="text-gray-400 text-[10px]">
-                    Status: {tasks.find(t => t.id === selectedTaskId)?.status}
-                  </p>
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-white text-sm truncate">
+                      {tasks.find(t => t.id === selectedTaskId)?.title}
+                    </h3>
+                    <button
+                      onClick={() => {
+                        // Open task in full detail view
+                        window.dispatchEvent(new CustomEvent('openTaskInChat', { detail: { id: selectedTaskId } }));
+                      }}
+                      className="p-1 hover:bg-gray-700/30 rounded transition-colors"
+                      title="View Task Details"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-gray-400 hover:text-white" />
+                    </button>
+                  </div>
+                  <div className="flex items-center gap-2 text-xs">
+                    <span className="text-gray-500">Chatting about:</span>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
+                      tasks.find(t => t.id === selectedTaskId)?.status === 'DONE' 
+                        ? 'bg-green-500/20 text-green-400' 
+                        : tasks.find(t => t.id === selectedTaskId)?.status === 'IN_PROGRESS'
+                        ? 'bg-blue-500/20 text-blue-400'
+                        : 'bg-gray-600/50 text-gray-400'
+                    }`}>
+                      {tasks.find(t => t.id === selectedTaskId)?.status?.replace(/_/g, ' ')}
+                    </span>
+                  </div>
                 </div>
               </>
             )}
@@ -1433,10 +1747,26 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             {(activeView === 'user' || activeView === 'task') && (
               <CallControls 
                 threadId={activeView === 'user' ? selectedUserId || undefined : selectedTaskId || undefined}
+                taskTitle={activeView === 'task' && selectedTaskId 
+                  ? tasks.find(t => t.id === selectedTaskId)?.title 
+                  : activeView === 'user' && selectedUserId 
+                    ? getSelectedUser(selectedUserId)?.name 
+                    : undefined}
+                participantName={(user as any)?.name || (user as any)?.fullName || (user as any)?.username || 'User'}
+                targetUserIds={selectedUserId ? [parseInt(selectedUserId)] : []}
+                socket={chatSocket}
+                joinRoomName={activeCallRoom}
+                joinCallType="video"
                 onError={(error) => console.error('Jitsi error:', error)}
                 onCallStart={handleCallStart}
-                onCallEnd={handleCallEnd}
+                onCallEnd={(duration, wasAnswered) => {
+                  handleCallEnd(duration, wasAnswered);
+                  setActiveCallRoom(null); // Clear active call when ended
+                }}
                 onCallMissed={handleCallMissed}
+                onCallJoined={() => {
+                  console.log('[ChatInterface] Successfully joined incoming call');
+                }}
               />
             )}
             
@@ -1472,7 +1802,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             taskId={selectedTaskId}
             currentUserId={(user as any)?.id}
             onClose={() => {
-              setActiveView('mira');
+              setActiveView('bey');
               setSelectedTaskId(null);
             }}
             onMarkComplete={(taskId) => {
@@ -1511,6 +1841,23 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             </div>
           )}
           
+          {/* Empty State - When no messages in user chat */}
+          {messages.length === 0 && activeView === 'user' && selectedUserId && (
+            <div className="flex-1 flex flex-col items-center justify-center h-full min-h-[300px]">
+              <div className="w-20 h-20 rounded-full bg-gradient-to-br from-gray-700 to-gray-800 flex items-center justify-center mb-4 shadow-lg">
+                <Send className="w-8 h-8 text-gray-500 transform -rotate-45" />
+              </div>
+              <h3 className="text-white text-lg font-medium mb-1">Start a conversation</h3>
+              <p className="text-gray-500 text-sm text-center max-w-[250px]">
+                Send a message to {chatUsers.find(u => u.id === selectedUserId)?.name || 'this user'}
+              </p>
+              <div className="mt-6 flex items-center gap-2 text-gray-600 text-xs">
+                <div className="w-1.5 h-1.5 rounded-full bg-green-500/50"></div>
+                <span>Messages are encrypted end-to-end</span>
+              </div>
+            </div>
+          )}
+          
           {messages.map((message) => {
             // Check if message is from current user - works for both bot chat and user chat
             const isFromCurrentUser = !message.isBot && (
@@ -1522,28 +1869,64 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             // Check if this is a call message
             const isCallMessage = message.message.startsWith('📞');
             const isMissedCall = message.message.includes('Missed call');
+            const isCallEnded = message.message.includes('Call ended');
+            const isCallStarted = message.message.includes('call started');
+            const isOutgoingCall = message.message.includes('outgoing') || isFromCurrentUser;
             
-            // Special rendering for call messages
+            // WhatsApp-style call message rendering
             if (isCallMessage) {
               return (
                 <div 
                   key={message.id} 
-                  className="flex justify-center my-2"
+                  className={`flex ${isOutgoingCall ? 'justify-end' : 'justify-start'} my-2`}
                 >
-                  <div className={`flex items-center gap-2 px-4 py-2 rounded-full ${
-                    isMissedCall 
-                      ? 'bg-red-500/20 border border-red-500/30' 
-                      : 'bg-green-500/20 border border-green-500/30'
-                  }`}>
-                    <span className={`text-lg ${isMissedCall ? 'text-red-400' : 'text-green-400'}`}>
-                      {isMissedCall ? '📵' : '📞'}
-                    </span>
-                    <span className={`text-sm font-medium ${isMissedCall ? 'text-red-300' : 'text-green-300'}`}>
-                      {message.message.replace('📞 ', '')}
-                    </span>
-                    <span className="text-[10px] text-gray-500 ml-2">
-                      {formatTime(message.create_at)}
-                    </span>
+                  <div className={`flex items-center gap-3 px-4 py-3 rounded-xl ${
+                    isOutgoingCall ? 'bg-[#005c4b]' : 'bg-[#2b2d42]'
+                  } shadow-sm max-w-[280px]`}>
+                    {/* Call Icon with Background */}
+                    <div className={`w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0 ${
+                      isMissedCall ? 'bg-red-500/20' : 
+                      isCallEnded ? 'bg-gray-600/30' : 
+                      'bg-green-500/20'
+                    }`}>
+                      {isMissedCall ? (
+                        <Phone className="w-5 h-5 text-red-400 transform rotate-[135deg]" />
+                      ) : isCallEnded ? (
+                        <Phone className="w-5 h-5 text-gray-400" />
+                      ) : (
+                        <Phone className="w-5 h-5 text-green-400" />
+                      )}
+                    </div>
+                    
+                    {/* Call Details */}
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm font-medium ${
+                        isMissedCall ? 'text-red-400' : 'text-white'
+                      }`}>
+                        {isMissedCall ? 'Missed call' : 
+                         isCallEnded ? 'Call ended' : 
+                         isOutgoingCall ? 'Outgoing call' : 'Incoming call'}
+                      </p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        {/* Arrow icon for direction */}
+                        <svg className={`w-3 h-3 ${
+                          isMissedCall ? 'text-red-400' : 
+                          isOutgoingCall ? 'text-green-400 rotate-45' : 'text-blue-400 -rotate-45'
+                        }`} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
+                          <path d="M5 12h14M12 5l7 7-7 7" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                        <span className="text-[11px] text-gray-400">
+                          {formatTime(message.create_at)}
+                        </span>
+                      </div>
+                    </div>
+                    
+                    {/* Callback button for missed calls */}
+                    {isMissedCall && (
+                      <button className="p-2 hover:bg-white/10 rounded-full transition-colors">
+                        <Phone className="w-4 h-4 text-green-400" />
+                      </button>
+                    )}
                   </div>
                 </div>
               );
@@ -1552,89 +1935,111 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             return (
             <div 
               key={message.id} 
-              className={`flex gap-2 sm:gap-3 items-start ${isFromCurrentUser ? 'flex-row-reverse' : ''}`}
+              className={`flex ${isFromCurrentUser ? 'justify-end' : 'justify-start'} mb-2`}
             >
-              {/* Avatar */}
-              {message.isBot ? (
-                <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white flex-shrink-0">
-                  <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 md:w-5 md:h-5" />
-                </div>
-              ) : isFromCurrentUser ? (
-                <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-full flex-shrink-0 overflow-hidden bg-blue-600">
-                  {(user as any)?.profile_pic_url ? (
-                    <img 
-                      src={(user as any).profile_pic_url.replace('/uploads/', '/api/secure-files/')} 
-                      alt={message.username || 'User'} 
-                      className="w-full h-full object-cover"
-                    />
-                  ) : (
-                    <div className="w-full h-full bg-blue-600 flex items-center justify-center text-white text-[10px] sm:text-xs md:text-sm font-bold">
-                      {getUserInitials(message.username)}
+              {/* Message Bubble Container */}
+              <div className={`relative ${
+                message.isBot 
+                  ? 'flex gap-2 items-start w-full' 
+                  : 'max-w-[80%]'
+              }`}>
+                {/* Bot Avatar - Only show for Bey assistant */}
+                {message.isBot && (
+                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white flex-shrink-0 mt-1">
+                    <Sparkles className="w-3 h-3" />
+                  </div>
+                )}
+                
+                {/* Message Bubble */}
+                <div className={`relative ${message.isBot ? 'flex-1' : ''} ${
+                  message.isBot 
+                    ? 'bg-transparent text-gray-100' 
+                    : isFromCurrentUser
+                      ? 'bg-[#005c4b] rounded-2xl rounded-tr-md px-3 py-2 shadow-sm'
+                      : 'bg-[#2b2d42] rounded-2xl rounded-tl-md px-3 py-2 shadow-sm'
+                }`}>
+                  {/* Bubble tail for first message or different sender */}
+                  {!message.isBot && (
+                    <div className={`absolute top-0 ${
+                      isFromCurrentUser 
+                        ? '-right-1.5 border-l-[8px] border-l-[#005c4b] border-t-[8px] border-t-transparent border-b-[0px]' 
+                        : '-left-1.5 border-r-[8px] border-r-[#2b2d42] border-t-[8px] border-t-transparent border-b-[0px]'
+                    } w-0 h-0`} style={{ borderStyle: 'solid' }} />
+                  )}
+                  
+                  {/* Sender name - show for received messages (not from current user, not bot) */}
+                  {!message.isBot && !isFromCurrentUser && (
+                    <p className="text-[11px] font-semibold mb-1 text-blue-400">
+                      {message.username || getSelectedUser(selectedUserId)?.name || 'User'}
+                    </p>
+                  )}
+                  
+                  {/* Message Text */}
+                  <div className={`leading-relaxed whitespace-pre-wrap break-words ${
+                    message.isBot ? 'text-sm text-gray-100' : 'text-[13px] text-white'
+                  }`}>
+                    {message.message}
+                  </div>
+                  
+                  {/* Time & Read Receipt - Only for user messages (WhatsApp style) */}
+                  {!message.isBot && (
+                    <div className={`flex items-center gap-1 mt-1 ${isFromCurrentUser ? 'justify-end' : 'justify-end'}`}>
+                      <span className="text-[10px] text-gray-400">
+                        {formatTime(message.create_at)}
+                      </span>
+                      {/* Double checkmark for sent messages */}
+                      {isFromCurrentUser && (
+                        <svg className="w-4 h-3 text-blue-400" viewBox="0 0 16 11" fill="none">
+                          <path d="M11.071 0.929L4.5 7.5L1.929 4.929" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                          <path d="M14.571 0.929L8 7.5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+                        </svg>
+                      )}
+                    </div>
+                  )}
+                  
+                  {/* Bot message time - subtle, at the end */}
+                  {message.isBot && (
+                    <div className="flex items-center justify-between mt-1">
+                      <span className="text-[10px] text-gray-500">
+                        {formatTime(message.create_at)}
+                      </span>
+                      {/* Feedback Buttons - Bottom of bot messages */}
+                      {activeView === 'bey' && (
+                        <div className="flex gap-1">
+                          <button
+                            onClick={() => handleFeedback(message.id, true)}
+                            className={`p-1 text-[11px] rounded transition-colors ${
+                              feedbackGiven.get(message.id) === true
+                                ? 'text-green-400'
+                                : 'text-gray-500 hover:text-green-400'
+                            }`}
+                            title="Helpful"
+                          >
+                            👍
+                          </button>
+                          <button
+                            onClick={() => handleFeedback(message.id, false)}
+                            className={`p-1 text-[11px] rounded transition-colors ${
+                              feedbackGiven.get(message.id) === false
+                                ? 'text-red-400'
+                                : 'text-gray-500 hover:text-red-400'
+                            }`}
+                            title="Not helpful"
+                          >
+                            👎
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              ) : (
-                <div className="w-7 h-7 sm:w-8 sm:h-8 md:w-9 md:h-9 rounded-full flex-shrink-0 overflow-hidden bg-green-600">
-                  <div className="w-full h-full bg-green-600 flex items-center justify-center text-white text-[10px] sm:text-xs md:text-sm font-bold">
-                    {getUserInitials(message.username)}
-                  </div>
-                </div>
-              )}
-
-              {/* Message Content */}
-              <div className={`flex-1 max-w-[70%] ${isFromCurrentUser ? 'flex flex-col items-end' : ''}`}>
-                <div className={`flex items-baseline gap-1 mb-0.5 ${isFromCurrentUser ? 'flex-row-reverse' : ''}`}>
-                  <span className="font-semibold text-[11px] text-white">
-                    {message.isBot ? 'Bey' : isFromCurrentUser ? 'You' : (message.username || 'User')}
-                  </span>
-                  <span className="text-[9px] text-gray-500">
-                    {formatTime(message.create_at)}
-                  </span>
-                </div>
-                <div className={`${
-                  message.isBot 
-                    ? 'text-gray-300' 
-                    : isFromCurrentUser
-                      ? 'bg-blue-600 text-white rounded-2xl px-2.5 py-1.5'
-                      : 'bg-gray-700 text-white rounded-2xl px-2.5 py-1.5'
-                } text-[13px] leading-relaxed whitespace-pre-wrap break-words`}>
-                  {message.message}
-                </div>
-                
-                {/* Feedback Buttons - Only for bot messages */}
-                {message.isBot && activeView === 'mira' && (
-                  <div className="flex gap-1 mt-1">
-                    <button
-                      onClick={() => handleFeedback(message.id, true)}
-                      className={`flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] rounded transition-colors ${
-                        feedbackGiven.get(message.id) === true
-                          ? 'bg-green-600/20 text-green-400'
-                          : 'bg-gray-700/30 text-gray-400 hover:bg-gray-700/50'
-                      }`}
-                      title="Helpful"
-                    >
-                      👍
-                    </button>
-                    <button
-                      onClick={() => handleFeedback(message.id, false)}
-                      className={`flex items-center gap-0.5 px-1.5 py-0.5 text-[10px] rounded transition-colors ${
-                        feedbackGiven.get(message.id) === false
-                          ? 'bg-red-600/20 text-red-400'
-                          : 'bg-gray-700/30 text-gray-400 hover:bg-gray-700/50'
-                      }`}
-                      title="Not helpful"
-                    >
-                      👎
-                    </button>
-                  </div>
-                )}
               </div>
             </div>
           );
           })}
           
           {/* Inline Task Creation Form */}
-          {showTaskForm && activeView === 'mira' && (
+          {showTaskForm && activeView === 'bey' && (
             <div className="flex gap-3">
               <div className="w-8 h-8 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white flex-shrink-0 mt-1">
                 <Sparkles className="w-4 h-4" />
@@ -1859,7 +2264,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                           const botMsg: Message = {
                             id: `bot-${Date.now()}`,
                             message: '⚠️ Please fill in the required fields: Title and Assignee',
-                            user_id: 'mira',
+                            user_id: 'bey',
                             create_at: Date.now(),
                             username: 'Bey',
                             isBot: true
@@ -1893,7 +2298,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                             const successMsg: Message = {
                               id: `bot-${Date.now()}`,
                               message: `✅ Task created and moved to IN PROGRESS!\n\n� ${taskFormData.serialNumber}\n�📝 "${taskFormData.title}"\n🎯 Priority: ${taskFormData.priority}\n👤 Assigned to: ${chatUsers.find(u => u.id === taskFormData.assigneeId)?.name}`,
-                              user_id: 'mira',
+                              user_id: 'bey',
                               create_at: Date.now(),
                               username: 'Bey',
                               isBot: true
@@ -1909,7 +2314,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                           const errorMsg: Message = {
                             id: `bot-${Date.now()}`,
                             message: '❌ Sorry, I couldn\'t create the task. Please try again or contact support.',
-                            user_id: 'mira',
+                            user_id: 'bey',
                             create_at: Date.now(),
                             username: 'Bey',
                             isBot: true
@@ -1927,7 +2332,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                           const botMsg: Message = {
                             id: `bot-${Date.now()}`,
                             message: '⚠️ Please enter a task title to save as draft',
-                            user_id: 'mira',
+                            user_id: 'bey',
                             create_at: Date.now(),
                             username: 'Bey',
                             isBot: true
@@ -1975,7 +2380,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                             const successMsg: Message = {
                               id: `bot-${Date.now()}`,
                               message: `💾 Task saved as draft!\n\n🔢 ${taskFormData.serialNumber}\n📝 "${taskFormData.title}"\n\nYou can find it in the DRAFT column and complete it later.`,
-                              user_id: 'mira',
+                              user_id: 'bey',
                               create_at: Date.now(),
                               username: 'Bey',
                               isBot: true
@@ -1992,7 +2397,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                           const errorMsg: Message = {
                             id: `bot-${Date.now()}`,
                             message: `❌ Sorry, I couldn't save the draft. Error: ${error.message}\n\nPlease try again.`,
-                            user_id: 'mira',
+                            user_id: 'bey',
                             create_at: Date.now(),
                             username: 'Bey',
                             isBot: true
@@ -2013,7 +2418,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                         const cancelMsg: Message = {
                           id: `bot-${Date.now()}`,
                           message: 'Task creation cancelled. How else can I help you?',
-                          user_id: 'mira',
+                          user_id: 'bey',
                           create_at: Date.now(),
                           username: 'Bey',
                           isBot: true
@@ -2059,19 +2464,19 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           <div ref={messagesEndRef} className="h-4" />
         </div>
 
-        {/* Message Input - Fixed at bottom */}
+        {/* Message Input - Fixed at bottom with Quick Actions */}
         <div className="bg-[#1e1e2e] border-t border-gray-700/50 flex-shrink-0">
           {/* Attached Files Preview */}
           {attachedFiles.length > 0 && (
-            <div className="p-3 pb-0">
-              <div className="mb-2 flex flex-wrap gap-2">
+            <div className="px-4 pt-3">
+              <div className="flex flex-wrap gap-2">
                 {attachedFiles.map((file, index) => (
-                  <div key={index} className="flex items-center gap-1.5 bg-[#2b2d42] rounded-lg px-2 py-1 text-xs text-gray-300 border border-gray-700/50">
-                    <Paperclip className="w-3 h-3" />
+                  <div key={index} className="flex items-center gap-1.5 bg-[#2b2d42] rounded-lg px-2.5 py-1.5 text-xs text-gray-300 border border-gray-700/50">
+                    <Paperclip className="w-3 h-3 text-gray-500" />
                     <span className="max-w-[150px] truncate">{file.name}</span>
                     <button
                       onClick={() => removeAttachedFile(index)}
-                      className="hover:text-red-400 transition-colors"
+                      className="hover:text-red-400 transition-colors ml-1"
                       title="Remove file"
                     >
                       <X className="w-3 h-3" />
@@ -2082,18 +2487,79 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             </div>
           )}
 
-          <div className="p-3 relative flex items-center gap-2">
-            {/* Settings icon - Left corner */}
-            <button
-              className="p-2 hover:bg-gray-700/30 rounded-lg transition-colors flex-shrink-0"
-              title="Settings"
-            >
-              <Settings className="w-5 h-5 text-gray-400" />
-            </button>
+          <div className="p-3 relative">
+            {/* Quick Actions Popup */}
+            {showQuickActions && (
+              <div className="absolute bottom-full left-3 mb-2 bg-[#2b2d42] rounded-lg shadow-xl border border-gray-700/50 overflow-hidden z-50 animate-in fade-in slide-in-from-bottom-2 duration-150">
+                <div className="p-1">
+                  <button
+                    onClick={() => {
+                      fileInputRef.current?.click();
+                      setShowQuickActions(false);
+                    }}
+                    className="flex items-center gap-3 w-full px-3 py-2 hover:bg-gray-700/50 rounded-lg transition-colors text-left"
+                  >
+                    <Paperclip className="w-4 h-4 text-blue-400" />
+                    <div>
+                      <p className="text-white text-sm font-medium">Attach File</p>
+                      <p className="text-gray-500 text-xs">Upload documents or images</p>
+                    </div>
+                  </button>
+                  
+                  {activeView === 'user' && (
+                    <button
+                      onClick={() => {
+                        // Trigger task linking dialog
+                        setNewMessage('/link task ');
+                        setShowQuickActions(false);
+                        textareaRef.current?.focus();
+                      }}
+                      className="flex items-center gap-3 w-full px-3 py-2 hover:bg-gray-700/50 rounded-lg transition-colors text-left"
+                    >
+                      <Link2 className="w-4 h-4 text-purple-400" />
+                      <div>
+                        <p className="text-white text-sm font-medium">Link Task</p>
+                        <p className="text-gray-500 text-xs">Reference a task in chat</p>
+                      </div>
+                    </button>
+                  )}
+                  
+                  {activeView === 'task' && selectedTaskId && (
+                    <button
+                      onClick={() => {
+                        setNewMessage('/status done');
+                        setShowQuickActions(false);
+                        textareaRef.current?.focus();
+                      }}
+                      className="flex items-center gap-3 w-full px-3 py-2 hover:bg-gray-700/50 rounded-lg transition-colors text-left"
+                    >
+                      <CheckSquare className="w-4 h-4 text-green-400" />
+                      <div>
+                        <p className="text-white text-sm font-medium">Mark Complete</p>
+                        <p className="text-gray-500 text-xs">Update task status to done</p>
+                      </div>
+                    </button>
+                  )}
+                </div>
+              </div>
+            )}
+            
+            <div className="flex items-end gap-2">
+              {/* Quick Actions Button */}
+              <button
+                onClick={() => setShowQuickActions(!showQuickActions)}
+                className={`p-2 rounded-lg transition-all flex-shrink-0 ${
+                  showQuickActions 
+                    ? 'bg-blue-600 text-white' 
+                    : 'hover:bg-gray-700/30 text-gray-400 hover:text-white'
+                }`}
+                title="Quick Actions"
+              >
+                <Plus className={`w-5 h-5 transition-transform ${showQuickActions ? 'rotate-45' : ''}`} />
+              </button>
 
-            {/* Input box - Aligned right */}
-            <div className="flex-1 flex justify-end">
-              <div className="w-[90%] flex items-start gap-2 bg-[#2b2d42] rounded-lg px-3 py-2 border border-gray-700/50 focus-within:border-blue-500 transition-all duration-200">
+              {/* Input Container */}
+              <div className="flex-1 flex items-end gap-2 bg-[#2b2d42] rounded-xl px-3 py-2 border border-gray-700/50 focus-within:border-blue-500/50 focus-within:ring-1 focus-within:ring-blue-500/20 transition-all">
                 {/* Hidden file input */}
                 <input
                   ref={fileInputRef}
@@ -2104,54 +2570,68 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                   accept="image/*,.pdf,.doc,.docx,.txt"
                 />
               
-              {/* Attachment button */}
-              <button
-                onClick={() => fileInputRef.current?.click()}
-                disabled={thinking}
-                className="p-0.5 hover:bg-gray-700/30 rounded transition-colors disabled:opacity-50 mt-0.5 flex-shrink-0"
-                title="Attach file"
-              >
-                <Paperclip className="w-4 h-4 text-gray-400" />
-              </button>
+                {/* Attachment button */}
+                <button
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={thinking}
+                  className="p-1 hover:bg-gray-700/30 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
+                  title="Attach file"
+                >
+                  <Paperclip className="w-4 h-4 text-gray-500 hover:text-gray-300" />
+                </button>
               
-              {/* Input box - Expands upward */}
-              <textarea
-                ref={textareaRef}
-                value={newMessage}
-                onChange={(e) => setNewMessage(e.target.value)}
-                onKeyPress={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    sendMessage();
-                  }
-                }}
-                placeholder="Type a message..."
-                rows={1}
-                disabled={thinking}
-                className="flex-1 bg-transparent resize-none focus:outline-none text-gray-200 placeholder-gray-500 text-[13px] max-h-[200px] overflow-y-auto disabled:opacity-50 leading-relaxed"
-                style={{ minHeight: '20px' }}
-              />
+                {/* Input box */}
+                <textarea
+                  ref={textareaRef}
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      sendMessage();
+                    }
+                  }}
+                  placeholder={activeView === 'task' ? 'Type a message about this task...' : 'Type a message...'}
+                  rows={1}
+                  disabled={thinking}
+                  className="flex-1 bg-transparent resize-none focus:outline-none text-gray-200 placeholder-gray-500 text-sm max-h-[200px] overflow-y-auto disabled:opacity-50 leading-relaxed py-0.5"
+                  style={{ minHeight: '24px' }}
+                />
               
-              {/* Emoji button */}
-              <button
-                onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-                disabled={thinking}
-                className="p-0.5 hover:bg-gray-700/30 rounded transition-colors disabled:opacity-50 mt-0.5 flex-shrink-0"
-                title="Add emoji"
-              >
-                <Smile className="w-4 h-4 text-gray-400" />
-              </button>
+                {/* Emoji button */}
+                <button
+                  onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+                  disabled={thinking}
+                  className="p-1 hover:bg-gray-700/30 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0"
+                  title="Add emoji"
+                >
+                  <Smile className="w-4 h-4 text-gray-500 hover:text-gray-300" />
+                </button>
+              </div>
               
-              {/* Send button */}
+              {/* Send button - Clean paper plane style */}
               <button
                 onClick={sendMessage}
                 disabled={!newMessage.trim() || thinking}
-                className="p-0.5 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed mt-0.5 flex-shrink-0"
+                className={`p-2.5 rounded-xl transition-all flex-shrink-0 ${
+                  newMessage.trim() && !thinking
+                    ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20'
+                    : 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
+                }`}
+                title="Send message"
               >
-                <Send className={`w-4 h-4 text-blue-500 ${thinking ? 'animate-pulse' : ''}`} />
+                <Send className={`w-4 h-4 ${thinking ? 'animate-pulse' : ''}`} />
               </button>
-              </div>
             </div>
+
+            {/* Slash Command Hint */}
+            {newMessage.startsWith('/') && (
+              <div className="mt-2 px-1">
+                <p className="text-gray-500 text-xs">
+                  💡 Commands: <code className="text-blue-400">/status done</code> • <code className="text-blue-400">/link task TSK-ID</code>
+                </p>
+              </div>
+            )}
 
             {/* Emoji Picker Popup */}
             {showEmojiPicker && (

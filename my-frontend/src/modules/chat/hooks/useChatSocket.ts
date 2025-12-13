@@ -4,6 +4,16 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import io, { Socket } from 'socket.io-client';
 
+export interface IncomingCallData {
+  callId: string;
+  roomName: string;
+  threadId: string;
+  callType: 'audio' | 'video';
+  callerId: number;
+  callerName: string;
+  timestamp: Date;
+}
+
 interface UseChatSocketOptions {
   token?: string;
   onNewMessage?: (data: { threadId: string; message: any }) => void;
@@ -11,10 +21,15 @@ interface UseChatSocketOptions {
   onUserJoined?: (data: { userId: string; username: string; threadId: string }) => void;
   onUserLeft?: (data: { userId: string; username: string; threadId: string }) => void;
   onPresenceUpdate?: (data: { userId: string; status: string; lastSeen: Date }) => void;
+  onIncomingCall?: (data: IncomingCallData) => void;
+  onCallAccepted?: (data: { callId: string; roomName: string; acceptedBy: number; acceptedByName: string }) => void;
+  onCallRejected?: (data: { callId: string; rejectedBy: number; rejectedByName: string; reason: string }) => void;
+  onCallEnded?: (data: { callId: string; endedBy: number; endedByName: string; duration: number }) => void;
 }
 
 interface UseChatSocketReturn {
   connected: boolean;
+  socket: Socket | null;
   joinThread: (threadId: string) => void;
   leaveThread: (threadId: string) => void;
   sendTyping: (threadId: string, isTyping: boolean) => void;
@@ -23,93 +38,160 @@ interface UseChatSocketReturn {
 
 export function useChatSocket(options: UseChatSocketOptions = {}): UseChatSocketReturn {
   const [connected, setConnected] = useState(false);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const socketRef = useRef<Socket | null>(null);
   const joinedThreadsRef = useRef<Set<string>>(new Set());
+  const connectionAttemptedRef = useRef(false);
 
   useEffect(() => {
+    // Prevent double connection attempts in development
+    if (connectionAttemptedRef.current) return;
+    connectionAttemptedRef.current = true;
+
     // Get API URL for Socket.IO - connect to /chat namespace
     const apiUrl = process.env.NEXT_PUBLIC_SOCKET_URL || 
                    process.env.NEXT_PUBLIC_API_URL || 
                    'https://bisman-erp-backend-production.up.railway.app';
     
-    // Get token from cookie or options
-    const token = options.token || document.cookie
-      .split('; ')
-      .find(row => row.startsWith('accessToken='))
-      ?.split('=')[1];
+    // Get token from multiple possible sources
+    const getCookie = (name: string) => {
+      if (typeof document === 'undefined') return undefined;
+      const value = document.cookie
+        .split('; ')
+        .find(row => row.startsWith(`${name}=`))
+        ?.split('=')[1];
+      return value;
+    };
+    
+    const getStorageToken = () => {
+      if (typeof window === 'undefined') return undefined;
+      return localStorage.getItem('accessToken') || 
+             localStorage.getItem('token') || 
+             localStorage.getItem('authToken') ||
+             sessionStorage.getItem('authToken');
+    };
+    
+    const token = options.token || 
+                  getCookie('accessToken') || 
+                  getCookie('token') || 
+                  getCookie('authToken') ||
+                  getStorageToken();
+
+    // Don't attempt connection if no token is available
+    if (!token) {
+      console.warn('[ChatSocket] No authentication token found in cookies or localStorage, skipping connection');
+      return;
+    }
+
+    console.log('[ChatSocket] Token found, connecting to:', `${apiUrl}/chat`);
 
     // Initialize Socket.IO client to /chat namespace
-    const socket = io(`${apiUrl}/chat`, {
+    const newSocket = io(`${apiUrl}/chat`, {
       withCredentials: true,
       transports: ['websocket', 'polling'],
       reconnection: true,
-      reconnectionAttempts: 10,
-      reconnectionDelay: 1000,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 2000,
+      timeout: 10000,
       auth: {
+        token
+      },
+      // Also send token in query for backends that expect it there
+      query: {
         token
       }
     });
 
-    socketRef.current = socket;
+    socketRef.current = newSocket;
+    setSocket(newSocket);
 
     // Connection event handlers
-    socket.on('connect', () => {
-      console.log('[ChatSocket] Connected:', socket.id);
+    newSocket.on('connect', () => {
+      console.log('[ChatSocket] ✅ Connected to /chat namespace:', newSocket.id);
+      console.log('[ChatSocket] Socket is now available for receiving calls');
       setConnected(true);
       
       // Rejoin previously joined threads
       joinedThreadsRef.current.forEach(threadId => {
-        socket.emit('chat:join', threadId);
+        newSocket.emit('chat:join', threadId);
       });
     });
 
-    socket.on('disconnect', (reason) => {
-      console.log('[ChatSocket] Disconnected:', reason);
+    newSocket.on('disconnect', (reason) => {
+      console.log('[ChatSocket] ❌ Disconnected:', reason);
       setConnected(false);
     });
 
-    socket.on('connect_error', (error) => {
-      console.error('[ChatSocket] Connection error:', error.message);
+    newSocket.on('connect_error', (error) => {
+      console.warn('[ChatSocket] Connection error:', error.message);
       setConnected(false);
+      // Don't spam reconnection attempts on auth errors
+      if (error.message.includes('Authentication') || error.message.includes('auth')) {
+        console.warn('[ChatSocket] Auth error - stopping reconnection attempts');
+        newSocket.disconnect();
+      }
     });
 
     // Chat event handlers
-    socket.on('chat:message:new', (data) => {
+    newSocket.on('chat:message:new', (data) => {
       console.log('[ChatSocket] New message:', data);
       options.onNewMessage?.(data);
     });
 
     // Also listen for the event from REST API
-    socket.on('chat:message', (data) => {
+    newSocket.on('chat:message', (data) => {
       console.log('[ChatSocket] Message from API:', data);
       options.onNewMessage?.(data);
     });
 
-    socket.on('chat:typing:update', (data) => {
+    newSocket.on('chat:typing:update', (data) => {
       console.log('[ChatSocket] Typing update:', data);
       options.onTyping?.(data);
     });
 
-    socket.on('chat:user:joined', (data) => {
+    newSocket.on('chat:user:joined', (data) => {
       console.log('[ChatSocket] User joined:', data);
       options.onUserJoined?.(data);
     });
 
-    socket.on('chat:user:left', (data) => {
+    newSocket.on('chat:user:left', (data) => {
       console.log('[ChatSocket] User left:', data);
       options.onUserLeft?.(data);
     });
 
-    socket.on('chat:presence:update', (data) => {
+    newSocket.on('chat:presence:update', (data) => {
       console.log('[ChatSocket] Presence update:', data);
       options.onPresenceUpdate?.(data);
+    });
+
+    // Call signaling events
+    newSocket.on('chat:call:incoming', (data) => {
+      console.log('[ChatSocket] Incoming call:', data);
+      options.onIncomingCall?.(data);
+    });
+
+    newSocket.on('chat:call:accepted', (data) => {
+      console.log('[ChatSocket] Call accepted:', data);
+      options.onCallAccepted?.(data);
+    });
+
+    newSocket.on('chat:call:rejected', (data) => {
+      console.log('[ChatSocket] Call rejected:', data);
+      options.onCallRejected?.(data);
+    });
+
+    newSocket.on('chat:call:ended', (data) => {
+      console.log('[ChatSocket] Call ended:', data);
+      options.onCallEnded?.(data);
     });
 
     // Cleanup on unmount
     return () => {
       console.log('[ChatSocket] Disconnecting...');
-      socket.disconnect();
+      newSocket.disconnect();
       socketRef.current = null;
+      setSocket(null);
+      connectionAttemptedRef.current = false;
     };
   }, [options.token]); // Only reconnect if token changes
 
@@ -129,6 +211,20 @@ export function useChatSocket(options: UseChatSocketOptions = {}): UseChatSocket
     socket.on('chat:message:new', handleNewMessage);
     socket.on('chat:message', handleNewMessage);
   }, [options.onNewMessage]);
+
+  // Update incoming call listener when callback changes
+  useEffect(() => {
+    const socket = socketRef.current;
+    if (!socket) return;
+
+    const handleIncomingCall = (data: any) => {
+      console.log('[ChatSocket] Incoming call (callback):', data);
+      options.onIncomingCall?.(data);
+    };
+
+    socket.off('chat:call:incoming');
+    socket.on('chat:call:incoming', handleIncomingCall);
+  }, [options.onIncomingCall]);
 
   // Join a thread room
   const joinThread = useCallback((threadId: string) => {
@@ -164,6 +260,7 @@ export function useChatSocket(options: UseChatSocketOptions = {}): UseChatSocket
 
   return {
     connected,
+    socket,
     joinThread,
     leaveThread,
     sendTyping,
