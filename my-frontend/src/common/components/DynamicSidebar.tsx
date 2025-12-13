@@ -749,18 +749,32 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
         </div>
       )}
 
-      {/* Footer Info - Compact (hide when collapsed) */}
+      {/* Footer Info - Professional System Status */}
       {!collapsed && (
-        <div className="mt-4 px-2 pt-3 border-t border-gray-200 dark:border-gray-800">
-          <div className="flex items-center space-x-1.5 text-[10px] text-gray-500 dark:text-gray-400">
-            <Circle className="w-1.5 h-1.5 text-green-500 dark:text-green-400 fill-current" />
-            <span>Systems operational</span>
+        <div className="mt-4 px-3 pt-3 border-t border-gray-200 dark:border-gray-800">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 text-xs text-gray-500 dark:text-gray-400">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+              <span>Systems operational</span>
+            </div>
           </div>
           {user && (
-            <div className="mt-1 text-[10px] text-gray-500 dark:text-gray-400 truncate">
-              <span className="font-medium text-gray-600 dark:text-gray-300">{user.roleName || user.role}</span>
+            <div className="mt-2 px-2 py-1.5 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+              <p className="text-[11px] text-gray-600 dark:text-gray-300 font-medium capitalize">
+                {(user.roleName || user.role || 'User').replace(/_/g, ' ').toLowerCase()}
+              </p>
             </div>
           )}
+        </div>
+      )}
+      
+      {/* Collapsed Mode: System Status Indicator */}
+      {collapsed && (
+        <div className="mt-4 flex justify-center">
+          <div 
+            className="w-2 h-2 rounded-full bg-green-500" 
+            title="Systems operational"
+          />
         </div>
       )}
     </div>

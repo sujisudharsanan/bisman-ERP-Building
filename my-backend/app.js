@@ -1652,9 +1652,9 @@ app.post('/api/logout', async (req, res) => {
     res.clearCookie('token', { path: '/', secure: isProduction, sameSite: sameSitePolicy, ...(cookieDomain ? { domain: cookieDomain } : {}) });
   } catch (e) {
     // best-effort fallback
-    try { res.clearCookie('access_token', { path: '/', sameSite: 'none' }); } catch (e) {}
-    try { res.clearCookie('refresh_token', { path: '/', sameSite: 'none' }); } catch (e) {}
-    try { res.clearCookie('token', { path: '/', sameSite: 'none' }); } catch (e) {}
+    try { res.clearCookie('access_token', { path: '/', sameSite: 'none' }); } catch (e) { /* ignored */ }
+    try { res.clearCookie('refresh_token', { path: '/', sameSite: 'none' }); } catch (e) { /* ignored */ }
+    try { res.clearCookie('token', { path: '/', sameSite: 'none' }); } catch (e) { /* ignored */ }
   }
 
   res.status(200).json({ message: 'Logout successful' })

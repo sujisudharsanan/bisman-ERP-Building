@@ -328,36 +328,76 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
 
   return (
     <div className="flex-1 flex flex-col bg-[#1e1e2e] overflow-hidden">
-      {/* Task Header */}
-      <div className="p-4 border-b border-gray-700/50 bg-[#252836]">
-        <div className="flex items-start justify-between gap-3">
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="px-2 py-0.5 text-[10px] font-mono bg-gray-800 text-gray-300 rounded">
-                TSK-{String(task.id).padStart(5, '0')}
-              </span>
-              <span className={`px-2 py-0.5 text-[10px] font-semibold rounded ${priorityStyle.bg} ${priorityStyle.text}`}>
-                {priority}
-              </span>
-              <span className={`px-2 py-0.5 text-[10px] font-semibold rounded ${statusStyle.bg} ${statusStyle.text}`}>
-                {task.status.replace(/_/g, ' ')}
-              </span>
-            </div>
-            <h2 className="text-white text-lg font-semibold truncate">{task.title}</h2>
+      {/* Context Header - Professional Design */}
+      <div className="px-4 py-3 border-b border-gray-700/50 bg-gradient-to-r from-[#252836] to-[#2a2d3e]">
+        {/* Top Row: Task ID, Priority, Status, Close */}
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            {/* Task ID - Bold Blue */}
+            <span className="text-sm font-bold text-blue-400 font-mono">
+              TSK-{String(task.id).padStart(5, '0')}
+            </span>
+            {/* Priority Pill */}
+            <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${priorityStyle.bg} ${priorityStyle.text} border ${priorityStyle.border}`}>
+              {priority}
+            </span>
+            {/* Status Pill */}
+            <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${statusStyle.bg} ${statusStyle.text}`}>
+              {task.status.replace(/_/g, ' ')}
+            </span>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1 hover:bg-gray-700/50 rounded transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-400" />
-          </button>
+          
+          {/* Action Buttons */}
+          <div className="flex items-center gap-1">
+            {!isCompleted && task.status !== 'CANCELLED' && (
+              <>
+                {isTaskCreator ? (
+                  <button
+                    onClick={() => setShowCancelDialog(true)}
+                    disabled={cancelling}
+                    className="px-3 py-1.5 text-xs font-medium bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition-colors flex items-center gap-1.5"
+                    title="Cancel Task"
+                  >
+                    <XCircle className="w-3.5 h-3.5" />
+                    Cancel
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleMarkComplete}
+                    disabled={completing}
+                    className="px-3 py-1.5 text-xs font-medium bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded-lg transition-colors flex items-center gap-1.5"
+                    title="Mark Complete"
+                  >
+                    {completing ? (
+                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                    ) : (
+                      <CheckCircle className="w-3.5 h-3.5" />
+                    )}
+                    Complete
+                  </button>
+                )}
+              </>
+            )}
+            <button
+              onClick={onClose}
+              className="p-1.5 hover:bg-gray-700/50 rounded-lg transition-colors"
+              title="Close"
+            >
+              <X className="w-4 h-4 text-gray-400" />
+            </button>
+          </div>
         </div>
-
-        {/* Quick Stats */}
-        <div className="flex items-center gap-4 mt-3 text-xs text-gray-400">
+        
+        {/* Title */}
+        <h2 className="text-white text-base font-semibold leading-snug mb-2">{task.title}</h2>
+        
+        {/* Meta Info Row */}
+        <div className="flex items-center gap-4 text-xs text-gray-400">
           {task.creator && (
-            <div className="flex items-center gap-1">
-              <User className="w-3 h-3" />
+            <div className="flex items-center gap-1.5">
+              <div className="w-5 h-5 rounded-full bg-gray-600 flex items-center justify-center text-[10px] text-white">
+                {task.creator.firstName?.[0] || task.creator.username?.[0] || 'U'}
+              </div>
               <span>
                 {task.creator.firstName && task.creator.lastName
                   ? `${task.creator.firstName} ${task.creator.lastName}`
@@ -367,14 +407,14 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
           )}
           {task.createdAt && (
             <div className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              <span>{formatDate(task.createdAt)}</span>
+              <Clock className="w-3.5 h-3.5" />
+              <span>{new Date(task.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
             </div>
           )}
           {task.dueDate && (
-            <div className="flex items-center gap-1">
-              <Calendar className="w-3 h-3" />
-              <span>Due: {formatDate(task.dueDate)}</span>
+            <div className={`flex items-center gap-1 ${new Date(task.dueDate) < new Date() ? 'text-red-400' : ''}`}>
+              <Calendar className="w-3.5 h-3.5" />
+              <span>Due {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
             </div>
           )}
         </div>
@@ -533,71 +573,54 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
         </div>
       </div>
 
-      {/* Chat Input Box */}
+      {/* Chat Input Box - Professional Design */}
       <div className="p-3 border-t border-gray-700/50 bg-[#252836]">
-        <div className="flex items-center gap-2 bg-[#1e1e2e] rounded-lg px-3 py-2">
-          <input
-            type="text"
-            value={newMessage}
-            onChange={(e) => setNewMessage(e.target.value)}
-            onKeyPress={(e) => {
-              if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                handleSendMessage();
-              }
-            }}
-            placeholder="Type a message..."
-            className="flex-1 bg-transparent text-white text-sm placeholder-gray-500 focus:outline-none"
-            disabled={sendingMessage}
-          />
+        <div className="flex items-end gap-2">
+          {/* Attachment Button */}
+          <button
+            className="p-2 hover:bg-gray-700/30 rounded-lg transition-colors text-gray-400 hover:text-gray-300"
+            title="Attach file"
+          >
+            <Paperclip className="w-4 h-4" />
+          </button>
+          
+          {/* Input Container */}
+          <div className="flex-1 flex items-end bg-[#1e1e2e] rounded-xl px-3 py-2 border border-gray-700/50 focus-within:border-blue-500/50 transition-colors">
+            <input
+              type="text"
+              value={newMessage}
+              onChange={(e) => setNewMessage(e.target.value)}
+              onKeyPress={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  handleSendMessage();
+                }
+              }}
+              placeholder="Type a message about this task..."
+              className="flex-1 bg-transparent text-white text-sm placeholder-gray-500 focus:outline-none"
+              disabled={sendingMessage}
+            />
+          </div>
+          
+          {/* Send Button */}
           <button
             onClick={handleSendMessage}
             disabled={!newMessage.trim() || sendingMessage}
-            className="p-1.5 hover:bg-gray-700/30 rounded transition-colors disabled:opacity-50"
+            className={`p-2.5 rounded-xl transition-all ${
+              newMessage.trim() && !sendingMessage
+                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20'
+                : 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
+            }`}
+            title="Send message"
           >
             {sendingMessage ? (
-              <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
+              <Loader2 className="w-4 h-4 animate-spin" />
             ) : (
-              <Send className="w-4 h-4 text-blue-400" />
+              <Send className="w-4 h-4" />
             )}
           </button>
         </div>
       </div>
-
-      {/* Action Footer - Shows different buttons based on user role */}
-      {!isCompleted && task.status !== 'CANCELLED' && (
-        <div className="p-4 border-t border-gray-700/50 bg-[#252836]">
-          {/* Creator sees Cancel button */}
-          {isTaskCreator ? (
-            <button
-              onClick={() => setShowCancelDialog(true)}
-              disabled={cancelling}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-red-600 hover:bg-red-500 disabled:bg-red-600/50 text-white font-medium rounded-lg transition-colors"
-            >
-              {cancelling ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <XCircle className="w-5 h-5" />
-              )}
-              Cancel Task
-            </button>
-          ) : (
-            /* Assignee/others see Mark as Complete button */
-            <button
-              onClick={handleMarkComplete}
-              disabled={completing}
-              className="w-full flex items-center justify-center gap-2 py-3 bg-green-600 hover:bg-green-500 disabled:bg-green-600/50 text-white font-medium rounded-lg transition-colors"
-            >
-              {completing ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <CheckCircle className="w-5 h-5" />
-              )}
-              Mark as Complete
-            </button>
-          )}
-        </div>
-      )}
 
       {/* Cancel Task Dialog - Requires note via Bey */}
       {showCancelDialog && (
