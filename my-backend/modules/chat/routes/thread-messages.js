@@ -62,20 +62,48 @@ router.get('/threads', async (req, res) => {
       orderBy: { updatedAt: 'desc' }
     });
 
-    // Format the response
-    const formattedThreads = threads.map(thread => ({
-      id: thread.id,
-      title: thread.title,
-      createdById: thread.createdById,
-      createdAt: thread.createdAt,
-      updatedAt: thread.updatedAt,
-      members: thread.members.map(m => ({
-        id: m.user.id,
-        username: m.user.username,
-        email: m.user.email,
-        profilePic: m.user.profile_pic_url
-      })),
-      lastMessage: thread.messages[0] || null
+    // Format the response with unread counts
+    const formattedThreads = await Promise.all(threads.map(async (thread) => {
+      // Count unread messages for this user in this thread
+      let unreadCount = 0;
+      try {
+        // Find the user's last sent message in this thread
+        const lastUserMessage = await prisma.message.findFirst({
+          where: {
+            threadId: thread.id,
+            senderId: userId
+          },
+          orderBy: { createdAt: 'desc' },
+          select: { createdAt: true }
+        });
+        
+        // Count messages from others after the user's last message
+        unreadCount = await prisma.message.count({
+          where: {
+            threadId: thread.id,
+            senderId: { not: userId },
+            createdAt: { gt: lastUserMessage?.createdAt || new Date(0) }
+          }
+        });
+      } catch (e) {
+        console.warn('[Threads] Failed to get unread count:', e.message);
+      }
+      
+      return {
+        id: thread.id,
+        title: thread.title,
+        createdById: thread.createdById,
+        createdAt: thread.createdAt,
+        updatedAt: thread.updatedAt,
+        members: thread.members.map(m => ({
+          id: m.user.id,
+          username: m.user.username,
+          email: m.user.email,
+          profilePic: m.user.profile_pic_url
+        })),
+        lastMessage: thread.messages[0] || null,
+        unreadCount
+      };
     }));
 
     res.json({
@@ -458,13 +486,61 @@ router.post('/threads/:threadId/messages', async (req, res) => {
     // Emit real-time event if socket.io is available
     const io = req.app.get('io');
     if (io) {
-      // Emit to the chat namespace's thread room
       const chatNamespace = io.of('/chat');
+      
+      // Emit to the thread room (for users who have joined the thread)
       chatNamespace.to(`thread:${threadId}`).emit('chat:message:new', {
         threadId,
         message
       });
       console.log(`[Socket] Emitting message to thread:${threadId}`);
+      
+      // ALSO emit to individual user rooms for ALL thread members
+      // This ensures users receive messages even if they haven't joined the thread room yet
+      try {
+        const threadMembers = await prisma.threadMember.findMany({
+          where: { threadId },
+          select: { userId: true }
+        });
+        
+        // Calculate unread counts for each member and emit with message
+        for (const member of threadMembers) {
+          // Don't emit to sender (they already have the message locally)
+          if (member.userId !== senderId) {
+            // Get unread count for this user in this thread
+            let unreadCount = 0;
+            try {
+              unreadCount = await prisma.message.count({
+                where: {
+                  threadId,
+                  senderId: { not: member.userId },
+                  createdAt: {
+                    gt: (await prisma.threadMember.findUnique({
+                      where: {
+                        threadId_userId: { threadId, userId: member.userId }
+                      },
+                      select: { lastReadAt: true }
+                    }))?.lastReadAt || new Date(0)
+                  }
+                }
+              });
+            } catch (countErr) {
+              console.warn(`[Socket] Could not calculate unread count for user ${member.userId}:`, countErr.message);
+            }
+            
+            const userRoom = `user:${String(member.userId)}`;
+            chatNamespace.to(userRoom).emit('chat:message:new', {
+              threadId,
+              message,
+              unreadCount // Include unread count in payload
+            });
+            console.log(`[Socket] Emitting message to user room: ${userRoom} (unread: ${unreadCount})`);
+          }
+        }
+      } catch (memberErr) {
+        console.error('[Socket] Error fetching thread members for broadcast:', memberErr);
+        // Continue - the thread room broadcast already happened
+      }
     }
 
     res.status(201).json(message);
@@ -685,7 +761,6 @@ router.post('/messages/read', async (req, res) => {
 router.get('/messages/search', async (req, res) => {
   try {
     const { q: query, threadId, limit, offset } = req.query;
-    const userId = req.user.id;
 
     if (!query || query.trim() === '') {
       return res.status(400).json({ 
@@ -710,6 +785,333 @@ router.get('/messages/search', async (req, res) => {
     res.status(500).json({ 
       error: 'Failed to search messages',
       message: error.message 
+    });
+  }
+});
+
+// ==================== DELTA SYNC ====================
+
+/**
+ * GET /api/chat/sync
+ * Delta sync - get all messages after a given message ID
+ * This is the key endpoint for efficient chat sync:
+ * - Frontend stores last_message_id locally
+ * - On app launch, asks "give me everything after this ID"
+ * - Server returns only new messages (fast and cheap)
+ * 
+ * Query params:
+ * - since_id: Get messages created after this message ID
+ * - since_time: Alternative - get messages after this timestamp (ISO string)
+ * - limit: Max messages to return (default 100, max 500)
+ */
+router.get('/sync', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { since_id, since_time, limit: limitParam } = req.query;
+    const limit = Math.min(parseInt(limitParam) || 100, 500);
+
+    // Get all threads the user is a member of
+    const userThreads = await prisma.thread.findMany({
+      where: {
+        OR: [
+          { createdById: userId },
+          { members: { some: { userId: userId } } }
+        ]
+      },
+      select: { id: true }
+    });
+
+    const threadIds = userThreads.map(t => t.id);
+
+    if (threadIds.length === 0) {
+      return res.json({
+        success: true,
+        data: {
+          messages: [],
+          threads: [],
+          syncedAt: new Date().toISOString(),
+          hasMore: false
+        }
+      });
+    }
+
+    // Build the where clause for messages
+    const messagesWhere = {
+      threadId: { in: threadIds },
+      isDeleted: false
+    };
+
+    // If since_id provided, get the timestamp of that message first
+    if (since_id) {
+      const sinceMessage = await prisma.threadMessage.findUnique({
+        where: { id: since_id },
+        select: { createdAt: true }
+      });
+      
+      if (sinceMessage) {
+        messagesWhere.createdAt = { gt: sinceMessage.createdAt };
+      }
+    } else if (since_time) {
+      // Use since_time if provided
+      const sinceDate = new Date(since_time);
+      if (!isNaN(sinceDate.getTime())) {
+        messagesWhere.createdAt = { gt: sinceDate };
+      }
+    }
+
+    // Fetch new messages
+    const newMessages = await prisma.threadMessage.findMany({
+      where: messagesWhere,
+      include: {
+        sender: {
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            profile_pic_url: true,
+            role: true
+          }
+        },
+        replyTo: {
+          select: {
+            id: true,
+            content: true,
+            sender: {
+              select: {
+                id: true,
+                username: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { createdAt: 'asc' },
+      take: limit + 1 // Fetch one extra to check if there's more
+    });
+
+    const hasMore = newMessages.length > limit;
+    const messages = hasMore ? newMessages.slice(0, limit) : newMessages;
+
+    // Get updated thread info for threads with new messages
+    const affectedThreadIds = [...new Set(messages.map(m => m.threadId))];
+    
+    const updatedThreads = await Promise.all(
+      affectedThreadIds.map(async (threadId) => {
+        const thread = await prisma.thread.findUnique({
+          where: { id: threadId },
+          include: {
+            members: {
+              include: {
+                user: {
+                  select: {
+                    id: true,
+                    username: true,
+                    email: true,
+                    profile_pic_url: true
+                  }
+                }
+              }
+            },
+            messages: {
+              take: 1,
+              orderBy: { createdAt: 'desc' },
+              select: {
+                id: true,
+                content: true,
+                createdAt: true,
+                senderId: true
+              }
+            }
+          }
+        });
+
+        if (!thread) return null;
+
+        // Calculate unread count for this user
+        let unreadCount = 0;
+        try {
+          const memberRecord = await prisma.threadMember.findUnique({
+            where: {
+              threadId_userId: { threadId, userId }
+            },
+            select: { lastReadAt: true }
+          });
+
+          unreadCount = await prisma.threadMessage.count({
+            where: {
+              threadId,
+              senderId: { not: userId },
+              isDeleted: false,
+              createdAt: { gt: memberRecord?.lastReadAt || new Date(0) }
+            }
+          });
+        } catch (e) {
+          console.warn('[Sync] Failed to get unread count:', e.message);
+        }
+
+        return {
+          id: thread.id,
+          title: thread.title,
+          createdById: thread.createdById,
+          createdAt: thread.createdAt,
+          updatedAt: thread.updatedAt,
+          members: thread.members.map(m => ({
+            id: m.user.id,
+            username: m.user.username,
+            email: m.user.email,
+            profilePic: m.user.profile_pic_url
+          })),
+          lastMessage: thread.messages[0] || null,
+          unreadCount
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      data: {
+        messages,
+        threads: updatedThreads.filter(Boolean),
+        syncedAt: new Date().toISOString(),
+        hasMore,
+        // Include the last message ID for next sync
+        lastMessageId: messages.length > 0 ? messages[messages.length - 1].id : since_id || null
+      }
+    });
+  } catch (error) {
+    console.error('[Sync] Error syncing messages:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to sync messages',
+      message: error.message
+    });
+  }
+});
+
+/**
+ * GET /api/chat/sync/initial
+ * Initial sync - get threads with their last N messages for first load
+ * Used when user has no local data (fresh install/cleared cache)
+ */
+router.get('/sync/initial', async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const messagesPerThread = Math.min(parseInt(req.query.messages_per_thread) || 20, 50);
+
+    // Get all threads for user with members
+    const threads = await prisma.thread.findMany({
+      where: {
+        OR: [
+          { createdById: userId },
+          { members: { some: { userId: userId } } }
+        ]
+      },
+      include: {
+        members: {
+          include: {
+            user: {
+              select: {
+                id: true,
+                username: true,
+                email: true,
+                profile_pic_url: true
+              }
+            }
+          }
+        }
+      },
+      orderBy: { updatedAt: 'desc' }
+    });
+
+    // For each thread, get recent messages and unread count
+    const threadsWithMessages = await Promise.all(
+      threads.map(async (thread) => {
+        const messages = await prisma.threadMessage.findMany({
+          where: {
+            threadId: thread.id,
+            isDeleted: false
+          },
+          include: {
+            sender: {
+              select: {
+                id: true,
+                username: true,
+                email: true,
+                profile_pic_url: true,
+                role: true
+              }
+            },
+            replyTo: {
+              select: {
+                id: true,
+                content: true,
+                sender: {
+                  select: {
+                    id: true,
+                    username: true
+                  }
+                }
+              }
+            }
+          },
+          orderBy: { createdAt: 'desc' },
+          take: messagesPerThread
+        });
+
+        // Calculate unread count
+        let unreadCount = 0;
+        try {
+          const memberRecord = await prisma.threadMember.findUnique({
+            where: {
+              threadId_userId: { threadId: thread.id, userId }
+            },
+            select: { lastReadAt: true }
+          });
+
+          unreadCount = await prisma.threadMessage.count({
+            where: {
+              threadId: thread.id,
+              senderId: { not: userId },
+              isDeleted: false,
+              createdAt: { gt: memberRecord?.lastReadAt || new Date(0) }
+            }
+          });
+        } catch (e) {
+          console.warn('[Sync] Failed to get unread count:', e.message);
+        }
+
+        return {
+          id: thread.id,
+          title: thread.title,
+          createdById: thread.createdById,
+          createdAt: thread.createdAt,
+          updatedAt: thread.updatedAt,
+          members: thread.members.map(m => ({
+            id: m.user.id,
+            username: m.user.username,
+            email: m.user.email,
+            profilePic: m.user.profile_pic_url
+          })),
+          lastMessage: messages[0] || null,
+          unreadCount,
+          messages: messages.reverse() // Return in chronological order
+        };
+      })
+    );
+
+    res.json({
+      success: true,
+      data: {
+        threads: threadsWithMessages,
+        syncedAt: new Date().toISOString()
+      }
+    });
+  } catch (error) {
+    console.error('[Sync] Error initial sync:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to perform initial sync',
+      message: error.message
     });
   }
 });

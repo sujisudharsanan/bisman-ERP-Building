@@ -25,7 +25,7 @@ const initializeChatSocket = (io) => {
       socket.userRole = decoded.role;
       socket.username = decoded.username || decoded.email;
       next();
-    } catch (error) {
+    } catch (_error) {
       next(new Error('Invalid token'));
     }
   });
@@ -37,6 +37,18 @@ const initializeChatSocket = (io) => {
     const userRoom = `user:${String(socket.userId)}`;
     socket.join(userRoom);
     console.log(`[Chat] User ${socket.username} joined personal room: ${userRoom}`);
+    
+    // Handle user online status
+    socket.on('user:online', () => {
+      console.log(`[Chat] User ${socket.username} is online`);
+      
+      // Broadcast online status to relevant users
+      socket.broadcast.emit('chat:presence:update', {
+        userId: socket.userId,
+        status: 'online',
+        lastSeen: new Date()
+      });
+    });
     
     // Join a thread
     socket.on('chat:join', (threadId) => {

@@ -1,11 +1,17 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import ConnectedCard from './ConnectedCard';
 import { dashboardConnections } from '@/config/dashboardConnections';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { useAuth } from '@/hooks/useAuth';
+import { 
+  ClipboardList, 
+  Clock, 
+  AlertTriangle, 
+  CheckCircle2 
+} from 'lucide-react';
 import { 
   Chart as ChartJS, 
   CategoryScale, 
@@ -22,9 +28,30 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend,
 type RightPanelProps = {
   mode?: 'sidebar' | 'inline' | 'dock';
   hideProfile?: boolean;
+  viewMode?: 'my-work' | 'my-requests' | 'all';
+  taskCounts?: {
+    ASSIGNED: number;
+    IN_PROGRESS: number;
+    NEED_ATTENTION: number;
+    DONE: number;
+  };
+  performanceMetrics?: {
+    onTimeRate: number;
+    responseTime: number;
+    completionRate: number;
+    qualityScore: number;
+  };
+  onMetricClick?: (column: string) => void;
 };
 
-const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar', hideProfile = false }) => {
+const RightPanel: React.FC<RightPanelProps> = ({ 
+  mode = 'sidebar', 
+  hideProfile = false,
+  viewMode = 'my-work',
+  taskCounts,
+  performanceMetrics,
+  onMetricClick
+}) => {
   const { user } = useAuth();
   const router = useRouter();
   
@@ -42,19 +69,37 @@ const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar', hideProfile =
   
   const profilePicUrl = getProfilePicUrl(user?.profile_pic_url);
   
-  const [chartColors, setChartColors] = useState<string[]>(['#3b82f6', '#a855f7', '#ec4899', '#f59e0b']);
-  const [completedTasksData, setCompletedTasksData] = useState(() => ({
-    labels: ['Author A', 'Author B', 'Author C', 'Author D'],
-    datasets: [
-      {
-        label: 'Completed Tasks',
-        data: [210, 110, 176, 145],
-        backgroundColor: chartColors,
-        borderRadius: 8,
-        borderSkipped: false,
-      },
-    ],
-  }));
+  // Performance metrics chart colors
+  const performanceColors = ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b']; // Green, Blue, Purple, Orange
+  
+  // Build performance chart data from props or use defaults
+  const performanceChartData = useMemo(() => {
+    const metrics = performanceMetrics || {
+      onTimeRate: 85,
+      responseTime: 75,
+      completionRate: 87,
+      qualityScore: 96
+    };
+    
+    return {
+      labels: ['On Time', 'Response', 'Complete', 'Quality'],
+      datasets: [
+        {
+          label: 'Performance %',
+          data: [
+            metrics.onTimeRate,
+            metrics.responseTime,
+            metrics.completionRate,
+            metrics.qualityScore
+          ],
+          backgroundColor: performanceColors,
+          borderRadius: 6,
+          borderSkipped: false,
+          maxBarThickness: 28,
+        },
+      ],
+    };
+  }, [performanceMetrics]);
 
   // Helper function to safely get CSS variables (client-side only)
   const getCSSVar = (varName: string, fallback: string) => {
@@ -65,33 +110,45 @@ const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar', hideProfile =
   const barOptions = React.useMemo(() => ({
     responsive: true,
     maintainAspectRatio: false,
+    indexAxis: 'y' as const, // Horizontal bars for better label visibility
     plugins: {
       legend: {
         display: false,
       },
       tooltip: {
-        backgroundColor: getCSSVar('--panel', '#1f2937'),
-        titleColor: getCSSVar('--text', '#fff'),
-        bodyColor: getCSSVar('--text', '#fff'),
-        borderColor: getCSSVar('--border', '#374151'),
+        backgroundColor: '#1f2937',
+        titleColor: '#fff',
+        bodyColor: '#fff',
+        borderColor: '#374151',
         borderWidth: 1,
+        callbacks: {
+          label: (context: any) => `${context.parsed.x}%`
+        }
       },
     },
     scales: {
       x: {
+        min: 0,
+        max: 100,
         grid: {
-          display: false,
+          color: 'rgba(156, 163, 175, 0.1)',
         },
         ticks: {
-          color: getCSSVar('--muted', '#9ca3af'),
+          color: '#9ca3af',
+          callback: function(value: string | number) {
+            return `${value}%`;
+          }
         },
       },
       y: {
         grid: {
-          color: getCSSVar('--border', '#374151'),
+          display: false,
         },
         ticks: {
-          color: getCSSVar('--muted', '#9ca3af'),
+          color: '#9ca3af',
+          font: {
+            size: 10
+          }
         },
       },
     },
@@ -101,7 +158,7 @@ const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar', hideProfile =
     datasets: [
       {
         data: [value, 100 - value],
-        backgroundColor: [color, '#374151'],
+        backgroundColor: [color, 'rgba(156, 163, 175, 0.2)'], // Use transparent gray for empty portion - works in both modes
         borderWidth: 0,
       },
     ],
@@ -110,7 +167,7 @@ const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar', hideProfile =
   const doughnutOptions = {
     responsive: true,
     maintainAspectRatio: true,
-    cutout: '70%',
+    cutout: '75%',
     plugins: {
       legend: {
         display: false,
@@ -121,12 +178,56 @@ const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar', hideProfile =
     },
   };
 
+  // Column-based efficiency metrics with matching Kanban colors
+  const columnColors = {
+    ASSIGNED: '#3b82f6',      // Blue
+    IN_PROGRESS: '#eab308',   // Yellow
+    NEED_ATTENTION: '#f59e0b', // Orange/Amber
+    DONE: '#22c55e',          // Green
+  };
+
+  // Calculate efficiency percentages based on task counts
+  const totalTasks = taskCounts 
+    ? taskCounts.ASSIGNED + taskCounts.IN_PROGRESS + taskCounts.NEED_ATTENTION + taskCounts.DONE
+    : 0;
+  
   const efficiencyData = [
-  { author: 'Author A', value: 75, color: chartColors[0] },
-  { author: 'Author B', value: 44, color: chartColors[1] },
-  { author: 'Author C', value: 68, color: chartColors[2] },
-  { author: 'Author D', value: 55, color: chartColors[3] },
+    { 
+      column: 'ASSIGNED', 
+      label: 'Assigned', 
+      value: taskCounts?.ASSIGNED || 0, 
+      percentage: totalTasks > 0 ? Math.round((taskCounts?.ASSIGNED || 0) / totalTasks * 100) : 0,
+      color: columnColors.ASSIGNED,
+      icon: <ClipboardList className="w-3 h-3" />
+    },
+    { 
+      column: 'IN_PROGRESS', 
+      label: 'In Progress', 
+      value: taskCounts?.IN_PROGRESS || 0, 
+      percentage: totalTasks > 0 ? Math.round((taskCounts?.IN_PROGRESS || 0) / totalTasks * 100) : 0,
+      color: columnColors.IN_PROGRESS,
+      icon: <Clock className="w-3 h-3" />
+    },
+    { 
+      column: 'NEED_ATTENTION', 
+      label: 'Attention', 
+      value: taskCounts?.NEED_ATTENTION || 0, 
+      percentage: totalTasks > 0 ? Math.round((taskCounts?.NEED_ATTENTION || 0) / totalTasks * 100) : 0,
+      color: columnColors.NEED_ATTENTION,
+      icon: <AlertTriangle className="w-3 h-3" />
+    },
+    { 
+      column: 'DONE', 
+      label: 'Done', 
+      value: taskCounts?.DONE || 0, 
+      percentage: totalTasks > 0 ? Math.round((taskCounts?.DONE || 0) / totalTasks * 100) : 0,
+      color: columnColors.DONE,
+      icon: <CheckCircle2 className="w-3 h-3" />
+    },
   ];
+
+  // Get efficiency title based on view mode
+  const efficiencyTitle = viewMode === 'my-work' ? 'Efficiency' : 'Respond Efficiency';
 
   const scheduleItems = [
     { time: '12:00 - 13:00', task: 'Incididunt ut labore et dolore', color: 'border-blue-500' },
@@ -205,39 +306,47 @@ const RightPanel: React.FC<RightPanelProps> = ({ mode = 'sidebar', hideProfile =
     </ConnectedCard>
   )}
 
-      {/* Completed Tasks Chart */}
+      {/* Performance Overview Chart */}
   <ConnectedCard type="completedTasks" className={`p-1 sm:p-1 ${cardGap} order-3 xl:col-span-1 xl:col-start-2`}>
-    <h2 className="font-bold text-theme mb-2 sm:mb-3 uppercase text-xs sm:text-sm tracking-wider">{dashboardConnections.completedTasks.description}</h2>
-  <div className="w-full h-20 sm:h-24 md:h-28 lg:h-32 bg-panel/40 rounded-xl p-2 sm:p-2 border border-theme">
-          <Bar data={completedTasksData} options={barOptions} />
+    <h2 className="font-semibold text-theme mb-1.5 sm:mb-2 uppercase text-[10px] sm:text-xs tracking-wide">Performance Overview</h2>
+  <div className="w-full h-24 sm:h-28 md:h-32 lg:h-36 bg-panel/40 rounded-xl p-2 sm:p-2 border border-theme">
+          <Bar data={performanceChartData} options={barOptions} />
         </div>
       </ConnectedCard>
 
       {/* Efficiency Section */}
   <ConnectedCard type="efficiency" className={`p-1 sm:p-1 ${cardGap} order-2 xl:col-span-1 xl:col-start-3`}>
-  <h2 className="font-bold text-theme mb-2 sm:mb-3 uppercase text-xs sm:text-sm tracking-wider">{dashboardConnections.efficiency.description}</h2>
-        <div className="grid grid-cols-4 gap-2 sm:gap-3">
+  <h2 className="font-semibold text-theme mb-1.5 sm:mb-2 uppercase text-[10px] sm:text-xs tracking-wide">{efficiencyTitle}</h2>
+        <div className="grid grid-cols-4 gap-0.5 sm:gap-1">
           {efficiencyData.map((item, index) => (
-            <div key={index} className="text-center">
-              <div className="relative w-8 h-8 sm:w-9 sm:h-9 md:w-10 md:h-10 mx-auto mb-1 sm:mb-2">
+            <div 
+              key={index} 
+              className="text-center cursor-pointer hover:opacity-80 transition-opacity"
+              onClick={() => onMetricClick?.(item.column)}
+              title={`Click to view ${item.label} tasks (${item.value} of ${totalTasks})`}
+            >
+              <div className="relative w-9 h-9 sm:w-10 sm:h-10 mx-auto mb-0.5">
                 <Doughnut 
-                  data={createDoughnutData(item.value, item.color)} 
+                  data={createDoughnutData(item.percentage, item.color)} 
                   options={doughnutOptions} 
                 />
-                <div className="absolute inset-0 flex items-center justify-center">
-                  <span className="text-white font-bold text-[10px] sm:text-xs">{item.value}</span>
+                {/* Center content: percentage only */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <span className="text-[9px] sm:text-[10px] font-bold leading-tight" style={{ color: item.color }}>
+                    {item.percentage}%
+                  </span>
                 </div>
               </div>
-              <p className="text-[10px] sm:text-xs text-muted truncate">{item.author}</p>
+              <p className="text-[8px] sm:text-[9px] text-muted truncate">{item.label}</p>
             </div>
           ))}
         </div>
       </ConnectedCard>
 
-      {/* Plan/Schedule Section (Daily Plan and Schedule) */}
-  <ConnectedCard type="plan" className={`w-full p-1 sm:p-1 order-4 min-h-[120px] ${isInline ? 'lg:col-span-2 xl:col-span-2 xl:col-start-2' : ''}` }>
-    <h2 className="font-bold text-theme mb-2 sm:mb-3 uppercase text-xs sm:text-sm tracking-wider">{dashboardConnections.plan.description}</h2>
-  <div className="space-y-2.5 max-h-40 md:max-h-44 overflow-y-auto">
+      {/* Plan/Schedule Section (Daily Plan and Schedule) - Add padding for FAB */}
+  <ConnectedCard type="plan" className={`w-full p-1 sm:p-1 order-4 min-h-[120px] pb-20 ${isInline ? 'lg:col-span-2 xl:col-span-2 xl:col-start-2' : ''}` }>
+    <h2 className="font-semibold text-theme mb-1.5 sm:mb-2 uppercase text-[10px] sm:text-xs tracking-wide">{dashboardConnections.plan.description}</h2>
+  <div className="space-y-2.5 max-h-40 md:max-h-44 overflow-y-auto pb-16">
           {scheduleItems.map((item, index) => (
             <div 
               key={index} 

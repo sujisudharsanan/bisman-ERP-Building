@@ -10,6 +10,7 @@
 const express = require('express');
 const router = express.Router();
 const { getUnifiedChat } = require('../../../services/ai/unifiedChatEngine');
+const { getBeyLLM } = require('../../../services/ai/beyLLMEngine');
 const { Pool } = require('pg');
 require('dotenv').config();
 
@@ -44,10 +45,11 @@ router.use(extractUser);
 /**
  * POST /api/unified-chat/message
  * Send a message to the chat
+ * Supports both basic NLP and LLM-powered responses with function calling
  */
 router.post('/message', async (req, res) => {
   try {
-    const { message, conversationId } = req.body;
+    const { message, conversationId, taskContext, chatHistory, userContext } = req.body;
     const userId = req.userId;
     
     if (!message || message.trim().length === 0) {
@@ -56,12 +58,53 @@ router.post('/message', async (req, res) => {
       });
     }
     
+    // Check if LLM should be used (when task context is provided or for complex queries)
+    const beyLLM = getBeyLLM();
+    const useLLM = beyLLM.isAvailable() && (taskContext || userContext);
+    
+    if (useLLM) {
+      // Use LLM-powered Bey with function calling
+      console.log('[UnifiedChat API] Using LLM engine with context injection');
+      
+      // Get user info for context
+      const fullUserContext = { ...userContext };
+      if (!fullUserContext.userName) {
+        try {
+          const userResult = await pool.query(
+            'SELECT username, first_name, last_name FROM users WHERE id = $1',
+            [userId]
+          );
+          if (userResult.rows[0]) {
+            const u = userResult.rows[0];
+            fullUserContext.userName = u.first_name ? `${u.first_name} ${u.last_name || ''}`.trim() : u.username;
+          }
+        } catch (e) {
+          console.warn('[UnifiedChat API] Could not fetch user info:', e.message);
+        }
+      }
+      
+      const result = await beyLLM.processMessage(userId, message, {
+        conversationId,
+        taskContext,
+        chatHistory: chatHistory || [],
+        userContext: fullUserContext
+      });
+      
+      return res.json({
+        success: true,
+        ...result,
+        engine: 'bey-llm'
+      });
+    }
+    
+    // Fall back to basic NLP chat engine
     const chat = getUnifiedChat();
     const result = await chat.processMessage(userId, message, conversationId);
     
     res.json({
       success: true,
-      ...result
+      ...result,
+      engine: 'unified-nlp'
     });
     
   } catch (error) {

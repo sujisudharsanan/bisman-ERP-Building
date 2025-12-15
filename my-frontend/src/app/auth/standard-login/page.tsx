@@ -110,7 +110,12 @@ export default function StandardLoginPage() {
         setSuccess('Login successful! Redirecting...');
 
         // Store user data in localStorage for compatibility
-        localStorage.setItem('token', data.token || 'cookie-based');
+        // Backend returns accessToken (not token), so use that
+        const authToken = data.accessToken || data.token;
+        localStorage.setItem('token', authToken || 'cookie-based');
+        if (authToken) {
+          localStorage.setItem('accessToken', authToken);  // Also store as accessToken for socket.io
+        }
         localStorage.setItem(
           'user',
           JSON.stringify({
@@ -248,7 +253,13 @@ export default function StandardLoginPage() {
         const data = await response.json();
         setSuccess(`Welcome ${user.name}! Redirecting to your dashboard...`);
 
-        localStorage.setItem('token', data.token || 'cookie-based');
+        // Store user data in localStorage for compatibility
+        // Backend returns accessToken (not token), so use that
+        const authToken = data.accessToken || data.token;
+        localStorage.setItem('token', authToken || 'cookie-based');
+        if (authToken) {
+          localStorage.setItem('accessToken', authToken);  // Also store as accessToken for socket.io
+        }
         localStorage.setItem(
           'user',
           JSON.stringify({

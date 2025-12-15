@@ -128,6 +128,14 @@ export function AuthProvider({ children }: AuthProviderProps) {
         const loginData = await response.json();
         console.log('🔐 [LOGIN] Response data:', loginData);
         
+        // Store access token in localStorage for Socket.IO (can't read HTTP-only cookies)
+        const accessToken = loginData.accessToken || loginData.token;
+        if (accessToken && accessToken !== 'cookie-based') {
+          localStorage.setItem('accessToken', accessToken);
+          localStorage.setItem('token', accessToken);
+          console.log('🔐 [LOGIN] Access token stored in localStorage for Socket.IO');
+        }
+        
         // Small delay to ensure cookies are set by the browser
         await new Promise(resolve => setTimeout(resolve, 100));
         

@@ -8,7 +8,7 @@ import { useChatSocket } from '../hooks/useChatSocket';
 interface Call {
   id: string;
   room: string;
-  status: 'ringing' | 'active' | 'ended';
+  status: 'connecting' | 'ringing' | 'active' | 'ended';
   startTime?: number;
   type: 'audio' | 'video';
 }
@@ -166,13 +166,11 @@ export default function JitsiCallControls({
       setIsExpanded(true);
       setIsMinimized(false);
       
-      // Play ringtone while connecting
-      playCallRingtone();
-      
+      // Start with "connecting" status
       setCall({ 
         id: roomName, 
         room: roomName, 
-        status: 'ringing',
+        status: 'connecting',
         type
       });
       
@@ -290,62 +288,54 @@ export default function JitsiCallControls({
         }
       });
 
+      // When WE join the conference - switch from "connecting" to "ringing"
       api.addEventListener('videoConferenceJoined', () => {
-        console.log('[Jitsi] Conference joined - call is now active');
-        stopCallRingtone(); // Stop ringtone when connected
-        setWasAnswered(true); // Mark call as answered
-        setCall(c => c ? { ...c, status: 'active', startTime: Date.now() } : null);
+        console.log('[Jitsi] Conference joined - now ringing, waiting for other participant');
+        // Play ringtone now that we're in the room waiting
+        playCallRingtone();
+        setCall(c => c ? { ...c, status: 'ringing' } : null);
         setJoining(false);
       });
 
-      // Also listen for participantJoined as backup
+      // When ANOTHER participant joins - call is answered, switch to "active"
       api.addEventListener('participantJoined', (participant: any) => {
-        console.log('[Jitsi] Participant joined:', participant);
+        console.log('[Jitsi] Participant joined - call answered:', participant);
         stopCallRingtone();
         setWasAnswered(true);
-        setCall(c => c ? { ...c, status: 'active', startTime: c.startTime || Date.now() } : null);
-        setJoining(false);
+        // Start timer only now when call is actually answered
+        setCall(c => c ? { ...c, status: 'active', startTime: Date.now() } : null);
       });
 
       // Listen for when local tracks are ready (means we're in the call)
       api.addEventListener('cameraError', () => {
         console.log('[Jitsi] Camera error - but still connected');
-        // Even with camera error, mark as connected
-        setCall(c => c && c.status === 'ringing' ? { ...c, status: 'active', startTime: Date.now() } : c);
+        // Even with camera error, we're still ringing (waiting for other person)
+        setCall(c => c && c.status === 'connecting' ? { ...c, status: 'ringing' } : c);
         setJoining(false);
-        stopCallRingtone();
       });
 
-      // Fallback: Mark as connected after iframe loads (5 seconds timeout)
+      // Fallback: Mark as ringing after iframe loads (5 seconds timeout)
       setTimeout(() => {
         setCall(c => {
-          if (c && c.status === 'ringing') {
-            console.log('[Jitsi] Fallback: marking call as active after timeout');
-            stopCallRingtone();
+          if (c && c.status === 'connecting') {
+            console.log('[Jitsi] Fallback: marking call as ringing after timeout');
+            playCallRingtone();
             setJoining(false);
-            return { ...c, status: 'active', startTime: Date.now() };
+            return { ...c, status: 'ringing' };
           }
           return c;
         });
       }, 5000);
 
-      // Track mute state changes
+      // Track mute state changes (these don't indicate call answered)
       api.addEventListener('audioMuteStatusChanged', (data: { muted: boolean }) => {
         console.log('[Jitsi] Audio mute changed:', data.muted);
         setIsMuted(data.muted);
-        // If we get mute events, we're definitely connected
-        setCall(c => c && c.status === 'ringing' ? { ...c, status: 'active', startTime: c.startTime || Date.now() } : c);
-        setJoining(false);
-        stopCallRingtone();
       });
 
       api.addEventListener('videoMuteStatusChanged', (data: { muted: boolean }) => {
         console.log('[Jitsi] Video mute changed:', data.muted);
         setIsVideoOff(data.muted);
-        // If we get mute events, we're definitely connected
-        setCall(c => c && c.status === 'ringing' ? { ...c, status: 'active', startTime: c.startTime || Date.now() } : c);
-        setJoining(false);
-        stopCallRingtone();
       });
 
       api.addEventListener('videoConferenceLeft', () => {
@@ -522,7 +512,7 @@ export default function JitsiCallControls({
             {/* Pulsing indicator */}
             <div className="relative">
               <div className={`w-3 h-3 rounded-full ${call.status === 'active' ? 'bg-green-500' : 'bg-blue-500'}`}></div>
-              <div className={`absolute inset-0 w-3 h-3 rounded-full ${call.status === 'active' ? 'bg-green-500' : 'bg-blue-500'} animate-ping opacity-50`}></div>
+              <div className={`absolute inset-0 w-3 h-3 rounded-full ${call.status === 'active' ? 'bg-green-500' : call.status === 'ringing' ? 'bg-yellow-500' : 'bg-blue-500'} animate-ping opacity-50`}></div>
             </div>
             
             {/* Call info */}
@@ -533,7 +523,11 @@ export default function JitsiCallControls({
                 <Phone className="w-4 h-4 text-green-400" />
               )}
               <span className="text-white text-sm font-medium">
-                {call.status === 'active' ? formatDuration(callDuration) : (joining ? 'Ringing...' : 'Connecting...')}
+                {call.status === 'active' 
+                  ? formatDuration(callDuration) 
+                  : call.status === 'ringing' 
+                    ? 'Ringing...' 
+                    : 'Connecting...'}
               </span>
             </div>
             
@@ -563,12 +557,12 @@ export default function JitsiCallControls({
               <div className="flex items-center gap-3">
                 {/* Call Type Icon */}
                 <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
-                  call.status === 'ringing' ? 'bg-blue-500/20' : 'bg-green-500/20'
+                  call.status === 'active' ? 'bg-green-500/20' : call.status === 'ringing' ? 'bg-yellow-500/20' : 'bg-blue-500/20'
                 }`}>
                   {call.type === 'video' ? (
-                    <Video className={`w-5 h-5 ${call.status === 'ringing' ? 'text-blue-400' : 'text-green-400'}`} />
+                    <Video className={`w-5 h-5 ${call.status === 'active' ? 'text-green-400' : call.status === 'ringing' ? 'text-yellow-400' : 'text-blue-400'}`} />
                   ) : (
-                    <Phone className={`w-5 h-5 ${call.status === 'ringing' ? 'text-blue-400' : 'text-green-400'}`} />
+                    <Phone className={`w-5 h-5 ${call.status === 'active' ? 'text-green-400' : call.status === 'ringing' ? 'text-yellow-400' : 'text-blue-400'}`} />
                   )}
                 </div>
                 
@@ -577,19 +571,15 @@ export default function JitsiCallControls({
                     {taskTitle || participantName || 'Call'}
                   </span>
                   <span className="text-xs flex items-center gap-1.5">
-                    {call.status !== 'active' ? (
+                    {call.status === 'connecting' ? (
                       <span className="text-blue-400 flex items-center gap-1">
-                        {joining ? (
-                          <>
-                            <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse inline-block"></span>
-                            Ringing...
-                          </>
-                        ) : (
-                          <>
-                            <Loader2 className="w-3 h-3 animate-spin" />
-                            Connecting...
-                          </>
-                        )}
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                        Connecting...
+                      </span>
+                    ) : call.status === 'ringing' ? (
+                      <span className="text-yellow-400 flex items-center gap-1">
+                        <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse inline-block"></span>
+                        Ringing...
                       </span>
                     ) : (
                       <span className="text-green-400 font-mono flex items-center gap-1">
@@ -663,13 +653,13 @@ export default function JitsiCallControls({
                 <div className="text-gray-500 text-sm">
                   {call.status === 'active' ? (
                     <span className="text-green-400 font-mono">{formatDuration(callDuration)}</span>
-                  ) : joining ? (
-                    <span className="flex items-center gap-1 text-blue-400">
-                      <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse inline-block"></span>
+                  ) : call.status === 'ringing' ? (
+                    <span className="flex items-center gap-1 text-yellow-400">
+                      <span className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse inline-block"></span>
                       Ringing...
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1">
+                    <span className="flex items-center gap-1 text-blue-400">
                       <Loader2 className="w-3 h-3 animate-spin" />
                       Connecting...
                     </span>

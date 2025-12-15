@@ -49,12 +49,29 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       if (parts.length === 2) return parts.pop()?.split(';').shift() || null;
       return null;
     };
+    
+    // Helper to validate token format (should be JWT with dots)
+    const isValidToken = (t: string | null): boolean => {
+      return !!t && t !== 'cookie-based' && t.includes('.');
+    };
+    
+    // Helper to get token from localStorage
+    const getStorageToken = (): string | null => {
+      if (typeof window === 'undefined') return null;
+      const tokens = [
+        localStorage.getItem('accessToken'),
+        localStorage.getItem('token'),
+        localStorage.getItem('authToken')
+      ];
+      return tokens.find(t => isValidToken(t)) || null;
+    };
 
-    // Try to get auth token from cookies (authToken, token, or access_token)
-    const token = getCookie('authToken') || getCookie('token') || getCookie('access_token');
+    // Try to get auth token from cookies first, then localStorage
+    const cookieToken = getCookie('authToken') || getCookie('token') || getCookie('access_token');
+    const token = isValidToken(cookieToken) ? cookieToken : getStorageToken();
     
     if (!token) {
-      console.warn('[Socket] No auth token found in cookies, connection will be skipped');
+      console.warn('[Socket] No auth token found in cookies or localStorage, connection will be skipped');
       console.log('[Socket] This is normal if you are not logged in yet');
       // Don't show available cookies for security reasons in production
       if (process.env.NODE_ENV === 'development') {

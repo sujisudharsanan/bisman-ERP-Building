@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import dynamic from 'next/dynamic';
 import FloatingWidget from './FloatingWidget';
+import { useChatContextOptional } from '../context/ChatContext';
 
 // Dynamically import ChatInterface (Mira with sidebar) to avoid SSR issues
 const CleanChatInterface = dynamic(() => import('./ChatInterface'), { ssr: false });
@@ -13,7 +14,25 @@ const CleanChatInterface = dynamic(() => import('./ChatInterface'), { ssr: false
 export default function ChatGuard() {
   const pathname = usePathname() || '/';
   const { isAuthenticated } = useAuth();
+  const chatContext = useChatContextOptional();
   const [isChatOpen, setIsChatOpen] = useState(false);
+  const [missedCallCount, setMissedCallCount] = useState(0);
+
+  // Get unread count from ChatContext (global state with persistence)
+  const unreadMessageCount = chatContext?.totalUnreadCount || 0;
+
+  // Listen for unread counts updates from ChatInterface (fallback for calls)
+  useEffect(() => {
+    const handleUnreadUpdate = (e: Event) => {
+      const detail = (e as CustomEvent).detail;
+      if (detail.callCount !== undefined) {
+        setMissedCallCount(detail.callCount);
+      }
+    };
+
+    window.addEventListener('chat:unreadUpdate', handleUnreadUpdate);
+    return () => window.removeEventListener('chat:unreadUpdate', handleUnreadUpdate);
+  }, []);
 
   // Listen for spark:createTask event from dashboard Create button
   useEffect(() => {
@@ -64,18 +83,30 @@ export default function ChatGuard() {
   if (!isAuthenticated) return null; // never show when not logged in
   if (isPublic) return null; // hide on public pages even if logged in
 
+  const totalUnread = unreadMessageCount + missedCallCount;
+
   return (
     <>
       {/* Floating Chat Button - Hidden when chat is open */}
       {!isChatOpen && (
-        <FloatingWidget
-          onOpen={() => setIsChatOpen(true)}
-          position="bottom-right"
-          primaryColor="#0A3A63"
-          accentColor="#FFC20A"
-          hasNotification={false}
-          size={72}
-        />
+        <div className="fixed bottom-4 right-4 z-[9999]">
+          <FloatingWidget
+            onOpen={() => setIsChatOpen(true)}
+            position="bottom-right"
+            primaryColor="#0A3A63"
+            accentColor="#FFC20A"
+            hasNotification={totalUnread > 0}
+            size={72}
+          />
+          {/* Unread count badge */}
+          {totalUnread > 0 && (
+            <div className="absolute -top-1 -right-1 min-w-[22px] h-[22px] px-1.5 bg-red-500 rounded-full flex items-center justify-center shadow-lg border-2 border-white pointer-events-none">
+              <span className="text-white text-xs font-bold">
+                {totalUnread > 99 ? '99+' : totalUnread}
+              </span>
+            </div>
+          )}
+        </div>
       )}
 
       {/* Spark Assistant Chat Interface */}

@@ -54,29 +54,25 @@ export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
           <DynamicSidebar collapsed={!isOpen} />
         </div>
 
-        {/* Toggle Button - At bottom of sidebar */}
+        {/* Toggle Button - At bottom of sidebar - Icon only for cleaner look */}
         <div className="flex-shrink-0 border-t border-gray-200 dark:border-gray-800 bg-white dark:bg-[#0f0f1a]">
           <button
             onClick={onToggle}
             className={`
               group w-full py-3 
               flex items-center justify-center
-              text-gray-500 dark:text-gray-400
-              hover:bg-gradient-to-r hover:from-gray-100 hover:to-transparent 
-              dark:hover:from-gray-800 dark:hover:to-transparent
-              hover:text-gray-700 dark:hover:text-gray-200
-              transition-all duration-300 ease-out
+              text-gray-400 dark:text-gray-500
+              hover:bg-gray-50 dark:hover:bg-gray-800/50
+              hover:text-gray-600 dark:hover:text-gray-300
+              transition-all duration-200 ease-out
             `}
             aria-label={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
             title={isOpen ? 'Collapse sidebar' : 'Expand sidebar'}
           >
             {isOpen ? (
-              <div className="flex items-center gap-2 group-hover:-translate-x-0.5 transition-transform duration-200">
-                <ChevronLeft className="w-4 h-4 group-hover:scale-110 transition-transform" />
-                <span className="text-xs font-medium">Collapse</span>
-              </div>
+              <ChevronLeft className="w-4 h-4 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-200" />
             ) : (
-              <ChevronRight className="w-5 h-5 group-hover:scale-125 group-hover:translate-x-0.5 transition-transform duration-200" />
+              <ChevronRight className="w-4 h-4 opacity-60 group-hover:opacity-100 group-hover:scale-110 transition-all duration-200" />
             )}
           </button>
         </div>

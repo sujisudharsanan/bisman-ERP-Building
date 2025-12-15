@@ -5,3 +5,6 @@
 
 export { useChat } from './useChat'
 export { useSocket } from './useSocket'
+export { useChatSocket } from './useChatSocket'
+export { useChatGlobalState } from './useChatGlobalState'
+export { useSoundNotification } from './useSoundNotification'

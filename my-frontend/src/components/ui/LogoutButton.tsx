@@ -104,7 +104,8 @@ export default function LogoutButton({
       case 'minimal':
         return 'text-gray-600 hover:text-gray-800 text-sm underline';
       case 'danger':
-        return 'bg-red-600 hover:bg-red-700 text-white px-3.5 py-1.5 rounded-md font-medium text-sm border border-red-500/40 shadow-sm';
+        // De-emphasized: subtle gray with red hover, not eye-catching red background
+        return 'bg-gray-700/60 hover:bg-red-600/80 text-gray-300 hover:text-white px-3 py-1.5 rounded-md font-medium text-xs border border-gray-600/40 hover:border-red-500/40 transition-all duration-200';
       default:
         return 'bg-gray-800 hover:bg-gray-900 text-white px-4 py-2 rounded-md font-medium text-sm';
     }

@@ -16,7 +16,12 @@ import {
   Plus,
   Link2,
   CheckSquare,
-  ExternalLink
+  ExternalLink,
+  Wand2,
+  ChevronLeft,
+  ChevronRight,
+  PanelLeftClose,
+  PanelLeft
 } from 'lucide-react';
 import dynamic from 'next/dynamic';
 import CallControls from './CallControls';
@@ -98,6 +103,12 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
   const [taskAttachments, setTaskAttachments] = useState<File[]>([]);
   const [isDragging, setIsDragging] = useState(false);
   const [showQuickActions, setShowQuickActions] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // Collapse contact list when task is selected
+  const [isFocusMode, setIsFocusMode] = useState(false); // Expand chat to 50% width
+  const [showAIQuickMenu, setShowAIQuickMenu] = useState(false); // AI Magic Wand quick actions
+  const [unreadCounts, setUnreadCounts] = useState<Map<string, number>>(new Map()); // Track unread counts per thread
+  const [userToThreadMap, setUserToThreadMap] = useState<Map<string, string>>(new Map()); // Map userId -> threadId for unread badge lookup
+  const [onlineUsers, setOnlineUsers] = useState<Set<string>>(new Set()); // Track actually online users
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -122,21 +133,48 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
   const { playMessageSound, playCallRingtone, stopCallRingtone, playCallEndSound } = useSoundNotification();
 
   // Handle incoming socket messages
-  const handleSocketMessage = useCallback((data: { threadId: string; message: any }) => {
+  const handleSocketMessage = useCallback((data: { threadId: string; message: any; unreadCount?: number }) => {
     console.log('[ChatInterface] Socket message received:', data);
     console.log('[ChatInterface] Current thread:', currentThreadId, 'Message thread:', data.threadId);
     
-    // Only add message if it's for the current thread and not from current user
+    if (!data.message) {
+      console.log('[ChatInterface] No message data');
+      return;
+    }
+    
+    const msg = data.message;
+    
+    // Skip if it's our own message (already added locally)
+    if (String(msg.senderId) === String(user?.id) || String(msg.sender?.id) === String(user?.id)) {
+      console.log('[ChatInterface] Skipping own message');
+      return;
+    }
+    
+    // Update unread count for this thread if provided
+    if (data.unreadCount !== undefined && data.threadId) {
+      setUnreadCounts(prev => {
+        const newCounts = new Map(prev);
+        newCounts.set(String(data.threadId), data.unreadCount!);
+        return newCounts;
+      });
+      console.log('[ChatInterface] Updated unread count for thread', data.threadId, ':', data.unreadCount);
+    }
+    
+    // ALWAYS show notification and play sound for incoming messages (regardless of current thread)
+    setNewMessageNotification({
+      username: msg.sender?.username || 'User',
+      message: msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : msg.content
+    });
+    
+    // Auto-hide notification after 3 seconds
+    setTimeout(() => setNewMessageNotification(null), 3000);
+    
+    // Play message notification sound
+    playMessageSound();
+    
+    // Only add message to visible list if it's for the current thread
     // Compare as strings to handle number/string mismatches
-    if (String(data.threadId) === String(currentThreadId) && data.message) {
-      const msg = data.message;
-      
-      // Skip if it's our own message (already added locally)
-      if (String(msg.senderId) === String(user?.id) || String(msg.sender?.id) === String(user?.id)) {
-        console.log('[ChatInterface] Skipping own message');
-        return;
-      }
-      
+    if (String(data.threadId) === String(currentThreadId)) {
       const newMsg: Message = {
         id: msg.id || `socket-${Date.now()}`,
         message: msg.content,
@@ -146,7 +184,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         isBot: false
       };
       
-      console.log('[ChatInterface] Adding new message:', newMsg);
+      console.log('[ChatInterface] Adding new message to current thread:', newMsg);
       
       setMessages(prev => {
         // Avoid duplicates
@@ -157,19 +195,14 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         return [...prev, newMsg];
       });
       
-      // Show notification for new message
-      setNewMessageNotification({
-        username: msg.sender?.username || 'User',
-        message: msg.content.length > 50 ? msg.content.substring(0, 50) + '...' : msg.content
+      // Clear unread count for current thread since we're viewing it
+      setUnreadCounts(prev => {
+        const newCounts = new Map(prev);
+        newCounts.delete(String(data.threadId));
+        return newCounts;
       });
-      
-      // Auto-hide notification after 3 seconds
-      setTimeout(() => setNewMessageNotification(null), 3000);
-      
-      // Play message notification sound
-      playMessageSound();
     } else {
-      console.log('[ChatInterface] Message not for current thread or no message data');
+      console.log('[ChatInterface] Message for different thread - notification shown but not added to current view');
     }
   }, [currentThreadId, user?.id, playMessageSound]);
 
@@ -201,12 +234,27 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
     console.log('[ChatInterface] Call rejected by:', data.rejectedByName);
   }, []);
 
+  // Handle presence updates (user online/offline)
+  const handlePresenceUpdate = useCallback((data: { userId: string; status: string; lastSeen: Date }) => {
+    console.log('[ChatInterface] Presence update:', data.userId, data.status);
+    setOnlineUsers(prev => {
+      const newSet = new Set(prev);
+      if (data.status === 'online') {
+        newSet.add(String(data.userId));
+      } else {
+        newSet.delete(String(data.userId));
+      }
+      return newSet;
+    });
+  }, []);
+
   // Chat Socket Hook for real-time messaging
   const { connected: socketConnected, socket: chatSocket, joinThread, leaveThread, sendTyping } = useChatSocket({
     onNewMessage: handleSocketMessage,
     onIncomingCall: handleIncomingCall,
     onCallAccepted: handleCallAccepted,
-    onCallRejected: handleCallRejected
+    onCallRejected: handleCallRejected,
+    onPresenceUpdate: handlePresenceUpdate
   });
 
   // Handle accepting incoming call
@@ -314,6 +362,21 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
     };
   }, [showEmojiPicker]);
 
+  // Persist unread counts to localStorage whenever they change
+  useEffect(() => {
+    if (unreadCounts.size > 0) {
+      const countsObj: Record<string, number> = {};
+      unreadCounts.forEach((count, threadId) => {
+        if (count > 0) {
+          countsObj[threadId] = count;
+        }
+      });
+      localStorage.setItem('chat_unread_counts', JSON.stringify(countsObj));
+    } else {
+      localStorage.removeItem('chat_unread_counts');
+    }
+  }, [unreadCounts]);
+
   // Load chat users - only those with existing conversations
   useEffect(() => {
     const loadUsers = async () => {
@@ -321,6 +384,9 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         // First, get all chat threads to know who has conversations
         const threadsRes = await fetch('/api/chat/threads', { credentials: 'include' });
         let threadUserIds: Set<string> = new Set();
+        const newUserToThreadMap = new Map<string, string>(); // userId -> threadId mapping
+        const newUnreadCounts = new Map<string, number>(); // threadId -> unreadCount
+        const userLastMessageTime = new Map<string, number>(); // userId -> timestamp for sorting
         
         if (threadsRes.ok) {
           const threadsData = await threadsRes.json();
@@ -331,10 +397,47 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
               thread.members.forEach((member: any) => {
                 if (String(member.id) !== String(user?.id)) {
                   threadUserIds.add(String(member.id));
+                  // Map this user to this thread
+                  newUserToThreadMap.set(String(member.id), String(thread.id));
+                  // Store last message time for sorting (use thread's updatedAt or lastMessage time)
+                  const lastMsgTime = thread.lastMessage?.createdAt 
+                    ? new Date(thread.lastMessage.createdAt).getTime()
+                    : thread.updatedAt 
+                      ? new Date(thread.updatedAt).getTime()
+                      : 0;
+                  userLastMessageTime.set(String(member.id), lastMsgTime);
+                }
+              });
+              // Store unread count from thread if available
+              if (thread.unreadCount !== undefined && thread.unreadCount > 0) {
+                newUnreadCounts.set(String(thread.id), thread.unreadCount);
+              }
+            }
+          });
+          
+          // Update mappings
+          setUserToThreadMap(newUserToThreadMap);
+          
+          // Load persisted unread counts from localStorage
+          try {
+            const savedCounts = localStorage.getItem('chat_unread_counts');
+            if (savedCounts) {
+              const parsed = JSON.parse(savedCounts);
+              Object.entries(parsed).forEach(([threadId, count]) => {
+                // Only use saved counts if backend doesn't have newer data
+                if (!newUnreadCounts.has(threadId) && typeof count === 'number' && count > 0) {
+                  newUnreadCounts.set(threadId, count);
                 }
               });
             }
-          });
+          } catch (e) {
+            console.warn('[Chat] Failed to load saved unread counts:', e);
+          }
+          
+          // Set unread counts (from backend + localStorage)
+          if (newUnreadCounts.size > 0) {
+            setUnreadCounts(newUnreadCounts);
+          }
         }
         
         // Get all users (empty query will return all active users now)
@@ -349,22 +452,33 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
               name: u.fullName || u.username || u.email?.split('@')[0] || '',
               email: u.email,
               avatar: u.profile_pic_url || u.profilePic,
-              isOnline: true,
+              isOnline: onlineUsers.has(String(u.id)), // Use actual online status, not hardcoded true
               role: u.role,
               roleName: u.roleName || u.role,
-              hasConversation: threadUserIds.has(String(u.id))
+              hasConversation: threadUserIds.has(String(u.id)),
+              lastMessageTime: userLastMessageTime.get(String(u.id)) || 0
             }))
             // Filter out Admin users only, show all other users
-            .filter((u: ChatUser & { hasConversation?: boolean }) => {
+            .filter((u: ChatUser & { hasConversation?: boolean; lastMessageTime?: number }) => {
               const roleName = (u.roleName || u.role || '').toLowerCase();
               const isAdmin = roleName === 'admin' || roleName === 'super_admin' || roleName === 'superadmin';
               // Show user if not admin (show all users, not just those with conversations)
               return !isAdmin;
             })
-            // Sort users with conversations first
-            .sort((a: ChatUser & { hasConversation?: boolean }, b: ChatUser & { hasConversation?: boolean }) => {
+            // Sort: users with conversations first, then by most recent message
+            .sort((a: ChatUser & { hasConversation?: boolean; lastMessageTime?: number }, b: ChatUser & { hasConversation?: boolean; lastMessageTime?: number }) => {
+              // First priority: users with conversations come first
               if (a.hasConversation && !b.hasConversation) return -1;
               if (!a.hasConversation && b.hasConversation) return 1;
+              
+              // Second priority: for users with conversations, sort by most recent message (descending)
+              if (a.hasConversation && b.hasConversation) {
+                const aTime = a.lastMessageTime || 0;
+                const bTime = b.lastMessageTime || 0;
+                if (bTime !== aTime) return bTime - aTime; // Most recent first
+              }
+              
+              // Third priority: alphabetical
               return (a.name || '').localeCompare(b.name || '');
             });
           setChatUsers(users);
@@ -387,7 +501,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       }
     };
     loadUsers();
-  }, [user]);
+  }, [user, onlineUsers]); // Also reload when online status changes
 
   // Listen for task open events from dashboard
   useEffect(() => {
@@ -414,6 +528,8 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         setActiveView('task');
         setSelectedTaskId(String(task.id));
         setSelectedUserId(null);
+        // Auto-collapse contact sidebar when task is opened for more space
+        setIsSidebarCollapsed(true);
         // If chat is minimized, expand it
         setIsFullscreen(true);
       }
@@ -1193,6 +1309,27 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
     }
 
     try {
+      // Build task context if we're viewing a task
+      const taskContextPayload = activeView === 'task' && selectedTaskId ? {
+        taskId: selectedTaskId,
+        title: tasks.find(t => t.id === selectedTaskId)?.title,
+        status: tasks.find(t => t.id === selectedTaskId)?.status,
+        priority: tasks.find(t => t.id === selectedTaskId)?.priority
+      } : null;
+      
+      // Build user context for Bey's "Eyes"
+      const userContextPayload = {
+        userName: (user as any)?.name || (user as any)?.fullName || (user as any)?.username || 'User',
+        userRole: (user as any)?.role || (user as any)?.roleName || 'user',
+        userEmail: (user as any)?.email
+      };
+      
+      // Build chat history for context (last 5 messages)
+      const recentHistory = messages.slice(-5).map(m => ({
+        role: m.isBot ? 'assistant' : 'user',
+        content: m.message
+      }));
+      
       const response = await fetch('/api/chat/message', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -1201,7 +1338,11 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           message: messageToSend,
           conversationId,
           userId: (user as any)?.id || 'guest',
-          userName: (user as any)?.name || (user as any)?.fullName || 'User',
+          // Context injection for Bey's "Eyes"
+          taskContext: taskContextPayload,
+          userContext: userContextPayload,
+          chatHistory: recentHistory,
+          // Legacy context field
           context: {
             role: (user as any)?.role || (user as any)?.roleName,
             email: (user as any)?.email
@@ -1363,8 +1504,12 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         </div>
       )}
       
-      {/* Left Sidebar - 28% - Reduced for more room */}
-      <div className="bg-[#2b2d42] dark:bg-[#2b2d42] border-r border-gray-700/50 flex flex-col flex-shrink-0 w-[28%] h-full">
+      {/* Left Sidebar - Collapsible via toggle button */}
+      <div className={`bg-[#2b2d42] dark:bg-[#2b2d42] border-r border-gray-700/50 flex flex-col flex-shrink-0 h-full transition-all duration-300 ${
+        isSidebarCollapsed 
+          ? 'w-0 overflow-hidden opacity-0' 
+          : 'w-[38%]'
+      }`}>
         {/* Sidebar Header with Integrated Search */}
         <div className={`p-3 border-b border-gray-700/50 ${!isFullscreen ? 'rounded-tl-lg' : ''}`}>
           <div className="flex items-center gap-2 mb-3">
@@ -1504,7 +1649,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                           ? chatUser.avatar.replace('/uploads/', '/api/secure-files/') 
                           : chatUser.avatar}
                         alt={chatUser.name}
-                        className="w-9 h-9 rounded-full object-cover border border-gray-600/50"
+                        className="w-7 h-7 rounded-full object-cover border border-gray-600/50"
                         onError={(e) => {
                           // Fallback to initials on image load error
                           (e.target as HTMLImageElement).style.display = 'none';
@@ -1512,12 +1657,12 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                         }}
                       />
                     ) : null}
-                    <div className={`w-9 h-9 rounded-full bg-gray-600 flex items-center justify-center text-white text-xs font-semibold border border-gray-500/30 ${chatUser.avatar ? 'hidden' : ''}`}>
+                    <div className={`w-7 h-7 rounded-full bg-gray-600 flex items-center justify-center text-white text-[10px] font-semibold border border-gray-500/30 ${chatUser.avatar ? 'hidden' : ''}`}>
                       {chatUser.name.split(' ').map(n => n[0]).slice(0, 2).join('').toUpperCase()}
                     </div>
                     {/* Online Status Indicator */}
                     {chatUser.isOnline && (
-                      <div className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 bg-green-500 rounded-full border-2 border-[#2b2d42]"></div>
+                      <div className="absolute -bottom-0.5 -right-0.5 w-2 h-2 bg-green-500 rounded-full border-2 border-[#2b2d42]"></div>
                     )}
                   </div>
                   {/* Name & Role with Professional Hierarchy */}
@@ -1527,6 +1672,18 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                       <p className="text-gray-500 text-[11px] truncate capitalize">{chatUser.roleName.replace(/_/g, ' ').toLowerCase()}</p>
                     )}
                   </div>
+                  {/* Unread Badge */}
+                  {(() => {
+                    const threadId = userToThreadMap.get(String(chatUser.id));
+                    const unreadCount = threadId ? unreadCounts.get(threadId) : 0;
+                    return unreadCount && unreadCount > 0 ? (
+                      <div className="flex-shrink-0 min-w-[20px] h-5 px-1.5 bg-blue-500 rounded-full flex items-center justify-center">
+                        <span className="text-white text-[10px] font-bold">
+                          {unreadCount > 99 ? '99+' : unreadCount}
+                        </span>
+                      </div>
+                    ) : null;
+                  })()}
                 </button>
               ))}
             </>
@@ -1707,14 +1864,36 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             )}
             {activeView === 'task' && selectedTaskId && (
               <>
+                {/* Sidebar Toggle Button */}
+                <button
+                  onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+                  className="p-2 hover:bg-gray-700/30 rounded-lg transition-colors mr-1"
+                  title={isSidebarCollapsed ? "Show contacts" : "Hide contacts"}
+                >
+                  {isSidebarCollapsed ? (
+                    <PanelLeft className="w-4 h-4 text-gray-400 hover:text-white" />
+                  ) : (
+                    <PanelLeftClose className="w-4 h-4 text-gray-400 hover:text-white" />
+                  )}
+                </button>
                 <div className="w-9 h-9 rounded-lg bg-purple-600/20 border border-purple-500/30 flex items-center justify-center">
                   <CheckSquare className="w-4 h-4 text-purple-400" />
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-white text-sm truncate">
-                      {tasks.find(t => t.id === selectedTaskId)?.title}
-                    </h3>
+                    {/* Task ID - More prominent */}
+                    <span className="text-purple-400 font-mono text-xs font-semibold">
+                      TSK-{String(selectedTaskId).padStart(5, '0')}
+                    </span>
+                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium uppercase ${
+                      tasks.find(t => t.id === selectedTaskId)?.status === 'DONE' 
+                        ? 'bg-green-500/20 text-green-400' 
+                        : tasks.find(t => t.id === selectedTaskId)?.status === 'IN_PROGRESS'
+                        ? 'bg-blue-500/20 text-blue-400'
+                        : 'bg-gray-600/50 text-gray-400'
+                    }`}>
+                      {tasks.find(t => t.id === selectedTaskId)?.status?.replace(/_/g, ' ')}
+                    </span>
                     <button
                       onClick={() => {
                         // Open task in full detail view
@@ -1726,18 +1905,10 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                       <ExternalLink className="w-3.5 h-3.5 text-gray-400 hover:text-white" />
                     </button>
                   </div>
-                  <div className="flex items-center gap-2 text-xs">
-                    <span className="text-gray-500">Chatting about:</span>
-                    <span className={`px-1.5 py-0.5 rounded text-[10px] font-medium ${
-                      tasks.find(t => t.id === selectedTaskId)?.status === 'DONE' 
-                        ? 'bg-green-500/20 text-green-400' 
-                        : tasks.find(t => t.id === selectedTaskId)?.status === 'IN_PROGRESS'
-                        ? 'bg-blue-500/20 text-blue-400'
-                        : 'bg-gray-600/50 text-gray-400'
-                    }`}>
-                      {tasks.find(t => t.id === selectedTaskId)?.status?.replace(/_/g, ' ')}
-                    </span>
-                  </div>
+                  {/* Task Title - Larger and bolder */}
+                  <h3 className="font-bold text-white text-sm truncate mt-0.5">
+                    {tasks.find(t => t.id === selectedTaskId)?.title}
+                  </h3>
                 </div>
               </>
             )}
@@ -1804,6 +1975,10 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             onClose={() => {
               setActiveView('bey');
               setSelectedTaskId(null);
+              // Restore contact sidebar when task is closed
+              setIsSidebarCollapsed(false);
+              // Dispatch event so main dashboard sidebar can restore if needed
+              window.dispatchEvent(new CustomEvent('closeTaskPanel'));
             }}
             onMarkComplete={(taskId) => {
               // Update task status in open tasks panel
@@ -2607,6 +2782,65 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                 >
                   <Smile className="w-4 h-4 text-gray-500 hover:text-gray-300" />
                 </button>
+
+                {/* AI Magic Wand - Quick Actions */}
+                <div className="relative">
+                  <button
+                    onClick={() => setShowAIQuickMenu(!showAIQuickMenu)}
+                    disabled={thinking}
+                    className={`p-1 hover:bg-purple-500/20 rounded-lg transition-colors disabled:opacity-50 flex-shrink-0 ${showAIQuickMenu ? 'bg-purple-500/20' : ''}`}
+                    title="AI Quick Actions (Magic Wand)"
+                  >
+                    <Wand2 className={`w-4 h-4 ${showAIQuickMenu ? 'text-purple-400' : 'text-gray-500 hover:text-purple-400'}`} />
+                  </button>
+                  
+                  {/* AI Quick Menu Popup */}
+                  {showAIQuickMenu && (
+                    <div className="absolute bottom-full right-0 mb-2 w-52 bg-[#2b2d42] border border-gray-700/50 rounded-xl shadow-xl z-50 overflow-hidden">
+                      <div className="p-2 border-b border-gray-700/30">
+                        <p className="text-xs text-gray-400 font-medium flex items-center gap-2">
+                          <Sparkles className="w-3 h-3 text-purple-400" />
+                          AI Quick Actions
+                        </p>
+                      </div>
+                      <div className="p-1">
+                        <button
+                          onClick={() => {
+                            setNewMessage('Draft a follow-up message for this task');
+                            setShowAIQuickMenu(false);
+                            textareaRef.current?.focus();
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-700/30 rounded-lg transition-colors flex items-center gap-2"
+                        >
+                          <Send className="w-3.5 h-3.5 text-blue-400" />
+                          Draft Follow-up
+                        </button>
+                        <button
+                          onClick={() => {
+                            setNewMessage('Summarize the status of this task');
+                            setShowAIQuickMenu(false);
+                            textareaRef.current?.focus();
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-700/30 rounded-lg transition-colors flex items-center gap-2"
+                        >
+                          <CheckSquare className="w-3.5 h-3.5 text-green-400" />
+                          Summarize Status
+                        </button>
+                        <button
+                          onClick={() => {
+                            setNewMessage('Send a gentle reminder about this pending task');
+                            setShowAIQuickMenu(false);
+                            textareaRef.current?.focus();
+                          }}
+                          className="w-full text-left px-3 py-2 text-sm text-gray-300 hover:bg-gray-700/30 rounded-lg transition-colors flex items-center gap-2"
+                        >
+                          <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+                          Send Reminder
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </div>
               
               {/* Send button - Clean paper plane style */}

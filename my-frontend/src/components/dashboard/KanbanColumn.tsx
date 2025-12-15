@@ -16,15 +16,15 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = 
   // Refined color semantics: Green for Done, Orange/Red for Need Attention
   // Using colors that work well in both light and dark modes
   const getColumnStyle = (title: string) => {
-    const styles: Record<string, { textColor: string; badgeBg: string; badgeText: string }> = {
-      'ASSIGNED': { textColor: 'text-blue-600 dark:text-blue-400', badgeBg: 'bg-blue-500', badgeText: 'text-white' },
-      'DRAFT': { textColor: 'text-gray-600 dark:text-gray-400', badgeBg: 'bg-gray-500', badgeText: 'text-white' },
-      'IN PROGRESS': { textColor: 'text-amber-600 dark:text-amber-400', badgeBg: 'bg-amber-500', badgeText: 'text-white' },
-      'EDITING': { textColor: 'text-orange-600 dark:text-orange-400', badgeBg: 'bg-orange-500', badgeText: 'text-white' },
-      'NEED ATTENTION': { textColor: 'text-red-600 dark:text-red-400', badgeBg: 'bg-red-500', badgeText: 'text-white' },
-      'DONE': { textColor: 'text-green-600 dark:text-green-400', badgeBg: 'bg-green-500', badgeText: 'text-white' },
+    const styles: Record<string, { textColor: string; badgeBg: string; badgeText: string; borderColor: string }> = {
+      'ASSIGNED': { textColor: 'text-blue-600 dark:text-blue-400', badgeBg: 'bg-blue-500', badgeText: 'text-white', borderColor: 'border-l-blue-500' },
+      'DRAFT': { textColor: 'text-gray-600 dark:text-gray-400', badgeBg: 'bg-gray-500', badgeText: 'text-white', borderColor: 'border-l-gray-500' },
+      'IN PROGRESS': { textColor: 'text-amber-600 dark:text-amber-400', badgeBg: 'bg-amber-500', badgeText: 'text-white', borderColor: 'border-l-amber-500' },
+      'EDITING': { textColor: 'text-orange-600 dark:text-orange-400', badgeBg: 'bg-orange-500', badgeText: 'text-white', borderColor: 'border-l-orange-500' },
+      'NEED ATTENTION': { textColor: 'text-red-600 dark:text-red-400', badgeBg: 'bg-red-500', badgeText: 'text-white', borderColor: 'border-l-red-500' },
+      'DONE': { textColor: 'text-green-600 dark:text-green-400', badgeBg: 'bg-green-500', badgeText: 'text-white', borderColor: 'border-l-green-500' },
     };
-    return styles[title] || { textColor: 'text-gray-600 dark:text-gray-400', badgeBg: 'bg-gray-500', badgeText: 'text-white' };
+    return styles[title] || { textColor: 'text-gray-600 dark:text-gray-400', badgeBg: 'bg-gray-500', badgeText: 'text-white', borderColor: 'border-l-gray-500' };
   };
 
   // Empty state content per column
@@ -39,8 +39,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = 
         message: 'No tasks in progress' 
       },
       'NEED ATTENTION': { 
-        icon: <CheckCircle className="w-8 h-8 text-green-500/30" />, 
-        message: 'All clear! No issues' 
+        icon: <AlertTriangle className="w-8 h-8 text-red-500/30" />, 
+        message: 'No tasks need attention' 
       },
       'DONE': { 
         icon: <CheckCircle className="w-8 h-8 text-green-500/30" />, 
@@ -101,6 +101,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = 
               comments={task.comments}
               attachments={task.attachments}
               color={task.color}
+              columnBorderColor={columnStyle.borderColor}
               onClick={() => onTaskClick?.(task)}
               taskData={task}
             />

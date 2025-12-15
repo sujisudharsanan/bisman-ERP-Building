@@ -1573,6 +1573,18 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 5,
   },
   {
+    id: 'dashboard',
+    name: 'Dashboard',
+    path: '/dashboard',
+    iconKey: "LayoutGrid",
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL', 'ADMIN', 'SUPER_ADMIN'],
+    status: 'active',
+    description: 'View your task dashboard with Kanban board',
+    order: 0, // Show at very top
+  },
+  {
     id: 'task-workbench',
     name: 'Task Workbench',
     path: '/dashboard/workbench',

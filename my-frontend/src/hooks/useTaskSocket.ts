@@ -67,12 +67,24 @@ export function useTaskSocket(options: UseTaskSocketOptions = {}) {
     // Only connect if authenticated and enabled
     if (!isAuthenticated || !user || !enabled) return;
 
+    // Helper to validate token format (should be JWT with dots)
+    const isValidToken = (t: string | null | undefined): boolean => {
+      return !!t && t !== 'cookie-based' && t.includes('.');
+    };
+
     // Get auth token from localStorage or cookies
-    const token = typeof window !== 'undefined' 
-      ? (localStorage.getItem('accessToken') || 
-         localStorage.getItem('token') ||
-         document.cookie.split(';').find(c => c.trim().startsWith('accessToken='))?.split('=')[1])
-      : null;
+    const getToken = (): string | null => {
+      if (typeof window === 'undefined') return null;
+      const tokens = [
+        localStorage.getItem('accessToken'),
+        localStorage.getItem('token'),
+        document.cookie.split(';').find(c => c.trim().startsWith('accessToken='))?.split('=')[1],
+        document.cookie.split(';').find(c => c.trim().startsWith('access_token='))?.split('=')[1]
+      ];
+      return tokens.find(t => isValidToken(t)) || null;
+    };
+    
+    const token = getToken();
 
     if (!token) {
       console.warn('[TaskSocket] No auth token found, skipping real-time connection');

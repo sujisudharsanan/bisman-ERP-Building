@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Sidebar from './Sidebar';
 import TopNavbar from './TopNavbar';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -12,8 +12,30 @@ interface DashboardLayoutProps {
 
 const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [taskPanelOpen, setTaskPanelOpen] = useState(false);
 
-  
+  // Listen for task panel open/close events to auto-collapse sidebar
+  useEffect(() => {
+    const handleTaskOpen = () => {
+      setTaskPanelOpen(true);
+      setSidebarOpen(false); // Auto-collapse sidebar when task opens
+    };
+    
+    const handleTaskClose = () => {
+      setTaskPanelOpen(false);
+      // Optionally restore sidebar - uncomment if desired
+      // setSidebarOpen(true);
+    };
+
+    // Listen for openTaskInChat event
+    window.addEventListener('openTaskInChat', handleTaskOpen);
+    window.addEventListener('closeTaskPanel', handleTaskClose);
+    
+    return () => {
+      window.removeEventListener('openTaskInChat', handleTaskOpen);
+      window.removeEventListener('closeTaskPanel', handleTaskClose);
+    };
+  }, []);
 
   useEffect(() => {
     console.log('🎨 DashboardLayout mounted for role:', role);

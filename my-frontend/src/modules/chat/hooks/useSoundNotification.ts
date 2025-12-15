@@ -18,13 +18,28 @@ export function useSoundNotification() {
   const audioContextRef = useRef<AudioContext | null>(null);
   const isPlayingRef = useRef(false);
   const callIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  const audioInitializedRef = useRef(false);
 
-  // Initialize AudioContext on first interaction
-  const getAudioContext = useCallback(() => {
-    if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+  // Initialize AudioContext lazily on first user interaction
+  const getAudioContext = useCallback((): AudioContext | null => {
+    // Only create AudioContext if we're in a browser and after user interaction
+    if (typeof window === 'undefined') return null;
+    
+    try {
+      if (!audioContextRef.current) {
+        const AudioContextClass = window.AudioContext || (window as any).webkitAudioContext;
+        if (!AudioContextClass) {
+          console.warn('[Sound] AudioContext not supported in this browser');
+          return null;
+        }
+        audioContextRef.current = new AudioContextClass();
+        audioInitializedRef.current = true;
+      }
+      return audioContextRef.current;
+    } catch (error) {
+      console.warn('[Sound] Failed to create AudioContext:', error);
+      return null;
     }
-    return audioContextRef.current;
   }, []);
 
   // Play a tone
@@ -32,9 +47,23 @@ export function useSoundNotification() {
     try {
       const audioContext = getAudioContext();
       
-      // Resume if suspended (required by browsers)
+      // Guard: Skip if AudioContext is not available
+      if (!audioContext) {
+        console.warn('[Sound] AudioContext not available, skipping tone');
+        return;
+      }
+      
+      // Guard: Check if destination is available
+      if (!audioContext.destination) {
+        console.warn('[Sound] AudioContext destination not ready, skipping tone');
+        return;
+      }
+
+      // Resume if suspended (required by browsers after autoplay policy)
       if (audioContext.state === 'suspended') {
-        audioContext.resume();
+        audioContext.resume().catch(() => {
+          console.warn('[Sound] Could not resume AudioContext');
+        });
       }
 
       const oscillator = audioContext.createOscillator();
@@ -147,8 +176,12 @@ export function useSoundNotification() {
   useEffect(() => {
     return () => {
       stopCallRingtone();
-      if (audioContextRef.current) {
-        audioContextRef.current.close();
+      if (audioContextRef.current && audioInitializedRef.current) {
+        try {
+          audioContextRef.current.close();
+        } catch (e) {
+          // Ignore close errors
+        }
       }
     };
   }, [stopCallRingtone]);

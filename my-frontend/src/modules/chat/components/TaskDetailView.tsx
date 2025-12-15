@@ -1,13 +1,15 @@
 'use client';
 
 import React, { useState, useEffect, useRef } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
+import { useAuth } from '@/contexts/AuthContext';
+import { taskKeys } from '@/hooks/useTasks';
 import { 
   X, 
   Download, 
   Eye, 
   CheckCircle, 
   Clock, 
-  User, 
   Calendar,
   AlertTriangle,
   Paperclip,
@@ -18,8 +20,11 @@ import {
   FileText,
   Image as ImageIcon,
   File,
-  Send,
-  XCircle
+  XCircle,
+  Play,
+  SendHorizontal,
+  ArrowUpCircle,
+  Send
 } from 'lucide-react';
 
 interface TaskAttachment {
@@ -86,13 +91,19 @@ const statusColors: Record<string, { bg: string; text: string }> = {
   OPEN: { bg: 'bg-blue-500/20', text: 'text-blue-400' },
   IN_PROGRESS: { bg: 'bg-yellow-500/20', text: 'text-yellow-400' },
   IN_REVIEW: { bg: 'bg-purple-500/20', text: 'text-purple-400' },
+  NEED_ATTENTION: { bg: 'bg-orange-500/20', text: 'text-orange-400' },
   BLOCKED: { bg: 'bg-red-500/20', text: 'text-red-400' },
   COMPLETED: { bg: 'bg-green-500/20', text: 'text-green-400' },
   DONE: { bg: 'bg-green-500/20', text: 'text-green-400' },
   CANCELLED: { bg: 'bg-red-500/20', text: 'text-red-400' },
 };
 
-export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCancel, currentUserId }: TaskDetailViewProps) {
+export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCancel, currentUserId: propUserId }: TaskDetailViewProps) {
+  // Get current user from auth context as fallback
+  const { user } = useAuth();
+  const queryClient = useQueryClient();
+  const currentUserId = propUserId ?? (user as any)?.id;
+  
   const [task, setTask] = useState<TaskDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -104,6 +115,10 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
   const [previewAttachment, setPreviewAttachment] = useState<TaskAttachment | null>(null);
   const [completing, setCompleting] = useState(false);
   const [cancelling, setCancelling] = useState(false);
+  const [startingWork, setStartingWork] = useState(false);
+  const [sendingForReview, setSendingForReview] = useState(false);
+  const [changingPriority, setChangingPriority] = useState(false);
+  const [showPriorityDropdown, setShowPriorityDropdown] = useState(false);
   const [showCancelDialog, setShowCancelDialog] = useState(false);
   const [cancelReason, setCancelReason] = useState('');
   const [newMessage, setNewMessage] = useState('');
@@ -167,7 +182,7 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
     
     try {
       setCompleting(true);
-      const response = await fetch(`/api/tasks/${taskId}/status`, {
+      const response = await fetch(`/api/v2/tasks/${taskId}/status`, {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -176,6 +191,9 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
 
       if (response.ok) {
         setTask(prev => prev ? { ...prev, status: 'COMPLETED' } : null);
+        // Invalidate kanban queries to refresh the board
+        queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
+        queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
         onMarkComplete?.(taskId);
       }
     } catch (err) {
@@ -203,7 +221,7 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
       });
       
       // Then update the status
-      const response = await fetch(`/api/tasks/${taskId}/status`, {
+      const response = await fetch(`/api/v2/tasks/${taskId}/status`, {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -212,6 +230,9 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
 
       if (response.ok) {
         setTask(prev => prev ? { ...prev, status: 'CANCELLED' } : null);
+        // Invalidate kanban queries to refresh the board
+        queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
+        queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
         onCancel?.(taskId, cancelReason);
         setShowCancelDialog(false);
         setCancelReason('');
@@ -220,6 +241,115 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
       console.error('Error cancelling task:', err);
     } finally {
       setCancelling(false);
+    }
+  };
+
+  // Start Work - Accept task and change status to IN_PROGRESS
+  const handleStartWork = async () => {
+    if (!task) return;
+    
+    try {
+      setStartingWork(true);
+      const response = await fetch(`/api/v2/tasks/${taskId}/status`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'IN_PROGRESS' }),
+      });
+
+      if (response.ok) {
+        setTask(prev => prev ? { ...prev, status: 'IN_PROGRESS' } : null);
+        // Post system message with user name and timestamp for visibility
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const userName = task.assignee?.firstName || task.assignee?.username || 'Assignee';
+        await fetch(`/api/tasks/${taskId}/messages`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            content: `🚀 ${userName} started work on this task at ${timeStr}`,
+            senderType: 'SYSTEM'
+          }),
+        });
+        // Invalidate kanban queries to refresh the board
+        queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
+        queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to start work:', response.status, errorData);
+      }
+    } catch (err) {
+      console.error('Error starting work:', err);
+    } finally {
+      setStartingWork(false);
+    }
+  };
+
+  // Send for Review - Change status to IN_REVIEW
+  const handleSendForReview = async () => {
+    if (!task) return;
+    
+    try {
+      setSendingForReview(true);
+      const response = await fetch(`/api/v2/tasks/${taskId}/status`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'IN_REVIEW' }),
+      });
+
+      if (response.ok) {
+        setTask(prev => prev ? { ...prev, status: 'IN_REVIEW' } : null);
+        // Post system message with user name and timestamp
+        const now = new Date();
+        const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
+        const userName = task.assignee?.firstName || task.assignee?.username || 'Assignee';
+        const creatorName = task.creator?.firstName || task.creator?.username || 'creator';
+        await fetch(`/api/tasks/${taskId}/messages`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            content: `📋 ${userName} sent this task for review to ${creatorName} at ${timeStr}`,
+            senderType: 'SYSTEM'
+          }),
+        });
+        // Invalidate kanban queries to refresh the board
+        queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
+        queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to send for review:', response.status, errorData);
+      }
+    } catch (err) {
+      console.error('Error sending for review:', err);
+    } finally {
+      setSendingForReview(false);
+    }
+  };
+
+  // Change priority
+  const handleChangePriority = async (newPriority: string) => {
+    if (!task) return;
+    
+    try {
+      setChangingPriority(true);
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ priority: newPriority }),
+      });
+
+      if (response.ok) {
+        setTask(prev => prev ? { ...prev, priority: newPriority } : null);
+        setShowPriorityDropdown(false);
+      }
+    } catch (err) {
+      console.error('Error changing priority:', err);
+    } finally {
+      setChangingPriority(false);
     }
   };
 
@@ -325,97 +455,228 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
   const priorityStyle = priorityColors[priority] || priorityColors.MEDIUM;
   const statusStyle = statusColors[task.status] || statusColors.DRAFT;
   const isCompleted = task.status === 'COMPLETED' || task.status === 'DONE';
+  const isOpen = task.status === 'OPEN' || task.status === 'ASSIGNED' || task.status === 'DRAFT';
+  const isInProgress = task.status === 'IN_PROGRESS';
+  const isInReview = task.status === 'IN_REVIEW';
+
+  // Calculate remaining time to due date
+  const getRemainingTime = () => {
+    if (!task.dueDate) return null;
+    const now = new Date();
+    const due = new Date(task.dueDate);
+    const diff = due.getTime() - now.getTime();
+    
+    if (diff < 0) return { text: 'Overdue', isOverdue: true };
+    
+    const hours = Math.floor(diff / (1000 * 60 * 60));
+    const days = Math.floor(hours / 24);
+    const remainingHours = hours % 24;
+    
+    if (days > 0) {
+      return { text: `${days}d ${remainingHours}h remaining`, isOverdue: false };
+    } else if (hours > 0) {
+      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+      return { text: `${hours}h ${mins}m remaining`, isOverdue: false };
+    } else {
+      const mins = Math.floor(diff / (1000 * 60));
+      return { text: `${mins}m remaining`, isOverdue: false };
+    }
+  };
+
+  const remainingTime = getRemainingTime();
+
+  // Helper to display name or "me"
+  const getDisplayName = (userId?: number, firstName?: string, lastName?: string, username?: string) => {
+    if (userId === currentUserId) return 'me';
+    if (firstName && lastName) return `${firstName} ${lastName}`;
+    return username || 'Unknown';
+  };
 
   return (
     <div className="flex-1 flex flex-col bg-[#1e1e2e] overflow-hidden">
       {/* Context Header - Professional Design */}
       <div className="px-4 py-3 border-b border-gray-700/50 bg-gradient-to-r from-[#252836] to-[#2a2d3e]">
-        {/* Top Row: Task ID, Priority, Status, Close */}
-        <div className="flex items-center justify-between mb-3">
+        {/* Top Row: Task ID, Status, Remaining Time, Close */}
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             {/* Task ID - Bold Blue */}
             <span className="text-sm font-bold text-blue-400 font-mono">
               TSK-{String(task.id).padStart(5, '0')}
             </span>
-            {/* Priority Pill */}
-            <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${priorityStyle.bg} ${priorityStyle.text} border ${priorityStyle.border}`}>
-              {priority}
-            </span>
-            {/* Status Pill */}
-            <span className={`px-2 py-0.5 text-[10px] font-semibold rounded-full ${statusStyle.bg} ${statusStyle.text}`}>
+            {/* Single Status Pill */}
+            <span className={`px-2.5 py-1 text-[11px] font-semibold rounded-full ${statusStyle.bg} ${statusStyle.text}`}>
               {task.status.replace(/_/g, ' ')}
             </span>
+            {/* Remaining Time Badge */}
+            {remainingTime && !isCompleted && task.status !== 'CANCELLED' && (
+              <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full flex items-center gap-1 ${
+                remainingTime.isOverdue 
+                  ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
+                  : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+              }`}>
+                <Clock className="w-3 h-3" />
+                {remainingTime.text}
+              </span>
+            )}
           </div>
           
-          {/* Action Buttons */}
-          <div className="flex items-center gap-1">
-            {!isCompleted && task.status !== 'CANCELLED' && (
-              <>
-                {isTaskCreator ? (
-                  <button
-                    onClick={() => setShowCancelDialog(true)}
-                    disabled={cancelling}
-                    className="px-3 py-1.5 text-xs font-medium bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition-colors flex items-center gap-1.5"
-                    title="Cancel Task"
-                  >
-                    <XCircle className="w-3.5 h-3.5" />
-                    Cancel
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleMarkComplete}
-                    disabled={completing}
-                    className="px-3 py-1.5 text-xs font-medium bg-green-600/20 hover:bg-green-600/30 text-green-400 rounded-lg transition-colors flex items-center gap-1.5"
-                    title="Mark Complete"
-                  >
-                    {completing ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <CheckCircle className="w-3.5 h-3.5" />
-                    )}
-                    Complete
-                  </button>
-                )}
-              </>
-            )}
-            <button
-              onClick={onClose}
-              className="p-1.5 hover:bg-gray-700/50 rounded-lg transition-colors"
-              title="Close"
-            >
-              <X className="w-4 h-4 text-gray-400" />
-            </button>
-          </div>
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            className="p-1.5 hover:bg-gray-700/50 rounded-lg transition-colors"
+            title="Close"
+          >
+            <X className="w-4 h-4 text-gray-400" />
+          </button>
         </div>
         
         {/* Title */}
         <h2 className="text-white text-base font-semibold leading-snug mb-2">{task.title}</h2>
         
-        {/* Meta Info Row */}
-        <div className="flex items-center gap-4 text-xs text-gray-400">
-          {task.creator && (
-            <div className="flex items-center gap-1.5">
-              <div className="w-5 h-5 rounded-full bg-gray-600 flex items-center justify-center text-[10px] text-white">
-                {task.creator.firstName?.[0] || task.creator.username?.[0] || 'U'}
-              </div>
-              <span>
-                {task.creator.firstName && task.creator.lastName
-                  ? `${task.creator.firstName} ${task.creator.lastName}`
-                  : task.creator.username}
+        {/* Date/Time Row - Prominent */}
+        <div className="flex items-center gap-4 text-xs mb-3">
+          {task.createdAt && (
+            <div className="flex items-center gap-1.5 text-gray-300">
+              <Clock className="w-3.5 h-3.5 text-blue-400" />
+              <span className="font-medium">
+                {new Date(task.createdAt).toLocaleDateString('en-US', { 
+                  month: 'short', 
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
               </span>
             </div>
           )}
-          {task.createdAt && (
-            <div className="flex items-center gap-1">
-              <Clock className="w-3.5 h-3.5" />
-              <span>{new Date(task.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+          {task.dueDate && (
+            <div className={`flex items-center gap-1.5 ${new Date(task.dueDate) < new Date() ? 'text-red-400' : 'text-orange-400'}`}>
+              <Calendar className="w-3.5 h-3.5" />
+              <span className="font-medium">
+                Due: {new Date(task.dueDate).toLocaleDateString('en-US', { 
+                  month: 'short', 
+                  day: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </span>
             </div>
           )}
-          {task.dueDate && (
-            <div className={`flex items-center gap-1 ${new Date(task.dueDate) < new Date() ? 'text-red-400' : ''}`}>
-              <Calendar className="w-3.5 h-3.5" />
-              <span>Due {new Date(task.dueDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })}</span>
+        </div>
+
+        {/* Creator/Assignee Row */}
+        <div className="flex items-center justify-between text-xs text-gray-400 mb-3">
+          <div className="flex items-center gap-4">
+            {task.creator && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-500">From:</span>
+                <span className="text-white font-medium">
+                  {getDisplayName(task.creator.id, task.creator.firstName, task.creator.lastName, task.creator.username)}
+                </span>
+              </div>
+            )}
+            {task.assignee && (
+              <div className="flex items-center gap-1.5">
+                <span className="text-gray-500">To:</span>
+                <span className="text-white font-medium">
+                  {getDisplayName(task.assignee.id, task.assignee.firstName, task.assignee.lastName, task.assignee.username)}
+                </span>
+              </div>
+            )}
+          </div>
+          
+          {/* Priority Dropdown - Only for task creator when not completed */}
+          {isTaskCreator && !isCompleted && task.status !== 'CANCELLED' && (
+            <div className="relative">
+              <button
+                onClick={() => setShowPriorityDropdown(!showPriorityDropdown)}
+                disabled={changingPriority}
+                className={`px-2 py-0.5 text-[10px] font-semibold rounded-full flex items-center gap-1 ${priorityStyle.bg} ${priorityStyle.text} border ${priorityStyle.border} hover:opacity-80 transition-opacity`}
+              >
+                {changingPriority ? <Loader2 className="w-3 h-3 animate-spin" /> : <ArrowUpCircle className="w-3 h-3" />}
+                {priority}
+                <ChevronDown className="w-3 h-3" />
+              </button>
+              {showPriorityDropdown && (
+                <div className="absolute right-0 top-full mt-1 bg-[#2a2d3e] border border-gray-700 rounded-lg shadow-lg z-10 min-w-[100px]">
+                  {['LOW', 'MEDIUM', 'HIGH', 'URGENT'].map((p) => (
+                    <button
+                      key={p}
+                      onClick={() => handleChangePriority(p)}
+                      className={`w-full px-3 py-1.5 text-left text-xs hover:bg-gray-700/50 first:rounded-t-lg last:rounded-b-lg ${
+                        p === priority ? 'text-blue-400 font-medium' : 'text-gray-300'
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+          )}
+        </div>
+
+        {/* Action Buttons Row */}
+        <div className="flex items-center gap-2">
+          {/* Start Work Button - For assignee when status is OPEN */}
+          {isTaskAssignee && isOpen && (
+            <button
+              onClick={handleStartWork}
+              disabled={startingWork}
+              className="flex-1 px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {startingWork ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Play className="w-4 h-4" />
+              )}
+              Start Work
+            </button>
+          )}
+
+          {/* Send for Review Button - For assignee when IN_PROGRESS */}
+          {isTaskAssignee && isInProgress && (
+            <button
+              onClick={handleSendForReview}
+              disabled={sendingForReview}
+              className="flex-1 px-4 py-2 text-sm font-medium bg-blue-600 hover:bg-blue-500 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {sendingForReview ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <SendHorizontal className="w-4 h-4" />
+              )}
+              Send for Review
+            </button>
+          )}
+
+          {/* Complete Button - For creator when IN_REVIEW */}
+          {isTaskCreator && isInReview && (
+            <button
+              onClick={handleMarkComplete}
+              disabled={completing}
+              className="flex-1 px-4 py-2 text-sm font-medium bg-green-600 hover:bg-green-500 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+            >
+              {completing ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <CheckCircle className="w-4 h-4" />
+              )}
+              Approve & Complete
+            </button>
+          )}
+
+          {/* Cancel Button - For creator when not completed */}
+          {isTaskCreator && !isCompleted && task.status !== 'CANCELLED' && (
+            <button
+              onClick={() => setShowCancelDialog(true)}
+              disabled={cancelling}
+              className="px-3 py-2 text-sm font-medium bg-red-600/20 hover:bg-red-600/30 text-red-400 rounded-lg transition-colors flex items-center gap-1.5"
+              title="Cancel Task"
+            >
+              <XCircle className="w-4 h-4" />
+              Cancel
+            </button>
           )}
         </div>
       </div>
@@ -440,24 +701,14 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
               {task.description ? (
                 <p className="text-gray-300 text-sm whitespace-pre-wrap">{task.description}</p>
               ) : (
-                <p className="text-gray-500 text-sm italic">No description provided</p>
-              )}
-              
-              {task.assignee && (
-                <div className="mt-3 pt-3 border-t border-gray-700/50">
-                  <p className="text-xs text-gray-400">Assigned to:</p>
-                  <p className="text-sm text-white mt-1">
-                    {task.assignee.firstName && task.assignee.lastName
-                      ? `${task.assignee.firstName} ${task.assignee.lastName}`
-                      : task.assignee.username}
-                  </p>
-                </div>
+                <p className="text-gray-500 text-sm italic">Start work to see the description and attachments</p>
               )}
             </div>
           )}
         </div>
 
-        {/* Attachments Section */}
+        {/* Attachments Section - Only show if there are attachments */}
+        {task.attachments && task.attachments.length > 0 && (
         <div className="bg-[#252836] rounded-lg overflow-hidden">
           <button
             onClick={() => toggleSection('attachments')}
@@ -466,7 +717,7 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
             <div className="flex items-center gap-2">
               <Paperclip className="w-4 h-4 text-gray-400" />
               <span className="text-white font-medium text-sm">
-                Attachments ({task.attachments?.length || 0})
+                Attachments ({task.attachments.length})
               </span>
             </div>
             {expandedSections.attachments ? (
@@ -477,7 +728,6 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
           </button>
           {expandedSections.attachments && (
             <div className="px-3 pb-3">
-              {task.attachments && task.attachments.length > 0 ? (
                 <div className="space-y-2">
                   {task.attachments.map((attachment) => (
                     <div
@@ -514,14 +764,12 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
                     </div>
                   ))}
                 </div>
-              ) : (
-                <p className="text-gray-500 text-sm italic">No attachments</p>
-              )}
             </div>
           )}
         </div>
+        )}
 
-        {/* Messages/Comments Section */}
+        {/* Activity/Messages Section - Unified Timeline */}
         <div className="bg-[#252836] rounded-lg overflow-hidden">
           <button
             onClick={() => toggleSection('messages')}
@@ -530,7 +778,7 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
             <div className="flex items-center gap-2">
               <MessageSquare className="w-4 h-4 text-gray-400" />
               <span className="text-white font-medium text-sm">
-                Messages ({task.messages?.length || 0})
+                Timeline ({task.messages?.length || 0})
               </span>
             </div>
             {expandedSections.messages ? (
@@ -543,29 +791,55 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
             <div className="px-3 pb-3 max-h-60 overflow-y-auto">
               {task.messages && task.messages.length > 0 ? (
                 <div className="space-y-3">
-                  {task.messages.map((message) => (
-                    <div key={message.id} className="flex gap-2">
-                      <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-[10px] text-white flex-shrink-0">
-                        {message.senderName?.charAt(0) || 'U'}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="text-xs font-medium text-white">
-                            {message.senderName || 'Unknown'}
-                          </span>
-                          {message.createdAt && (
-                            <span className="text-[10px] text-gray-500">
-                              {formatDate(message.createdAt)}
-                            </span>
-                          )}
+                  {task.messages.map((message) => {
+                    // Check if this is a system/activity message
+                    const isSystemMessage = message.senderType === 'SYSTEM' || 
+                      message.content?.startsWith('🚀') || 
+                      message.content?.startsWith('📋') ||
+                      message.content?.startsWith('✅') ||
+                      message.content?.startsWith('❌');
+                    
+                    if (isSystemMessage) {
+                      // Render as activity log entry
+                      return (
+                        <div key={message.id} className="flex items-center gap-2 py-1.5 px-2 bg-gray-700/20 rounded-lg border-l-2 border-blue-500/50">
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs text-gray-300">{message.content}</p>
+                            {message.createdAt && (
+                              <span className="text-[10px] text-gray-500">
+                                {formatDate(message.createdAt)}
+                              </span>
+                            )}
+                          </div>
                         </div>
-                        <p className="text-sm text-gray-300 mt-0.5">{message.content}</p>
+                      );
+                    }
+                    
+                    // Render as regular chat message
+                    return (
+                      <div key={message.id} className="flex gap-2">
+                        <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-[10px] text-white flex-shrink-0">
+                          {message.senderName?.charAt(0) || 'U'}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="text-xs font-medium text-white">
+                              {message.senderName || 'Unknown'}
+                            </span>
+                            {message.createdAt && (
+                              <span className="text-[10px] text-gray-500">
+                                {formatDate(message.createdAt)}
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-sm text-gray-300 mt-0.5">{message.content}</p>
+                        </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ) : (
-                <p className="text-gray-500 text-sm italic">No messages yet</p>
+                <p className="text-gray-500 text-sm italic">No activity yet</p>
               )}
               <div ref={messagesEndRef} />
             </div>

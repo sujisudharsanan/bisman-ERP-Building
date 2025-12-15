@@ -42,6 +42,30 @@ export function useChatSocket(options: UseChatSocketOptions = {}): UseChatSocket
   const socketRef = useRef<Socket | null>(null);
   const joinedThreadsRef = useRef<Set<string>>(new Set());
   const connectionAttemptedRef = useRef(false);
+  
+  // Use refs for callbacks to avoid re-registering listeners
+  const onNewMessageRef = useRef(options.onNewMessage);
+  const onTypingRef = useRef(options.onTyping);
+  const onUserJoinedRef = useRef(options.onUserJoined);
+  const onUserLeftRef = useRef(options.onUserLeft);
+  const onPresenceUpdateRef = useRef(options.onPresenceUpdate);
+  const onIncomingCallRef = useRef(options.onIncomingCall);
+  const onCallAcceptedRef = useRef(options.onCallAccepted);
+  const onCallRejectedRef = useRef(options.onCallRejected);
+  const onCallEndedRef = useRef(options.onCallEnded);
+  
+  // Keep refs updated with latest callbacks
+  useEffect(() => {
+    onNewMessageRef.current = options.onNewMessage;
+    onTypingRef.current = options.onTyping;
+    onUserJoinedRef.current = options.onUserJoined;
+    onUserLeftRef.current = options.onUserLeft;
+    onPresenceUpdateRef.current = options.onPresenceUpdate;
+    onIncomingCallRef.current = options.onIncomingCall;
+    onCallAcceptedRef.current = options.onCallAccepted;
+    onCallRejectedRef.current = options.onCallRejected;
+    onCallEndedRef.current = options.onCallEnded;
+  });
 
   useEffect(() => {
     // Prevent double connection attempts in development
@@ -63,22 +87,31 @@ export function useChatSocket(options: UseChatSocketOptions = {}): UseChatSocket
       return value;
     };
     
+    const isValidToken = (token: string | null | undefined): boolean => {
+      // Token must exist, not be 'cookie-based', and look like a JWT (has dots)
+      return !!token && token !== 'cookie-based' && token.includes('.');
+    };
+    
     const getStorageToken = () => {
       if (typeof window === 'undefined') return undefined;
-      return localStorage.getItem('accessToken') || 
-             localStorage.getItem('token') || 
-             localStorage.getItem('authToken') ||
-             sessionStorage.getItem('authToken');
+      const tokens = [
+        localStorage.getItem('accessToken'),
+        localStorage.getItem('token'),
+        localStorage.getItem('authToken'),
+        sessionStorage.getItem('authToken')
+      ];
+      return tokens.find(t => isValidToken(t)) || undefined;
     };
     
     const token = options.token || 
+                  getCookie('access_token') ||  // Backend uses underscore format
                   getCookie('accessToken') || 
                   getCookie('token') || 
                   getCookie('authToken') ||
                   getStorageToken();
 
     // Don't attempt connection if no token is available
-    if (!token) {
+    if (!token || !isValidToken(token)) {
       console.warn('[ChatSocket] No authentication token found in cookies or localStorage, skipping connection');
       return;
     }
@@ -111,9 +144,27 @@ export function useChatSocket(options: UseChatSocketOptions = {}): UseChatSocket
       console.log('[ChatSocket] Socket is now available for receiving calls');
       setConnected(true);
       
-      // Rejoin previously joined threads
+      // Emit user online status for presence tracking
+      newSocket.emit('user:online');
+      
+      // Rejoin previously joined threads on reconnect
       joinedThreadsRef.current.forEach(threadId => {
         newSocket.emit('chat:join', threadId);
+        console.log('[ChatSocket] Rejoined thread on connect:', threadId);
+      });
+    });
+
+    // Handle reconnection specifically
+    newSocket.on('reconnect', (attemptNumber) => {
+      console.log('[ChatSocket] 🔄 Reconnected after', attemptNumber, 'attempts');
+      
+      // Re-emit online status
+      newSocket.emit('user:online');
+      
+      // Rejoin all tracked threads
+      joinedThreadsRef.current.forEach(threadId => {
+        newSocket.emit('chat:join', threadId);
+        console.log('[ChatSocket] Rejoined thread on reconnect:', threadId);
       });
     });
 
@@ -132,57 +183,57 @@ export function useChatSocket(options: UseChatSocketOptions = {}): UseChatSocket
       }
     });
 
-    // Chat event handlers
+    // Chat event handlers - use refs to always get latest callbacks
     newSocket.on('chat:message:new', (data) => {
       console.log('[ChatSocket] New message:', data);
-      options.onNewMessage?.(data);
+      onNewMessageRef.current?.(data);
     });
 
     // Also listen for the event from REST API
     newSocket.on('chat:message', (data) => {
       console.log('[ChatSocket] Message from API:', data);
-      options.onNewMessage?.(data);
+      onNewMessageRef.current?.(data);
     });
 
     newSocket.on('chat:typing:update', (data) => {
       console.log('[ChatSocket] Typing update:', data);
-      options.onTyping?.(data);
+      onTypingRef.current?.(data);
     });
 
     newSocket.on('chat:user:joined', (data) => {
       console.log('[ChatSocket] User joined:', data);
-      options.onUserJoined?.(data);
+      onUserJoinedRef.current?.(data);
     });
 
     newSocket.on('chat:user:left', (data) => {
       console.log('[ChatSocket] User left:', data);
-      options.onUserLeft?.(data);
+      onUserLeftRef.current?.(data);
     });
 
     newSocket.on('chat:presence:update', (data) => {
       console.log('[ChatSocket] Presence update:', data);
-      options.onPresenceUpdate?.(data);
+      onPresenceUpdateRef.current?.(data);
     });
 
     // Call signaling events
     newSocket.on('chat:call:incoming', (data) => {
       console.log('[ChatSocket] Incoming call:', data);
-      options.onIncomingCall?.(data);
+      onIncomingCallRef.current?.(data);
     });
 
     newSocket.on('chat:call:accepted', (data) => {
       console.log('[ChatSocket] Call accepted:', data);
-      options.onCallAccepted?.(data);
+      onCallAcceptedRef.current?.(data);
     });
 
     newSocket.on('chat:call:rejected', (data) => {
       console.log('[ChatSocket] Call rejected:', data);
-      options.onCallRejected?.(data);
+      onCallRejectedRef.current?.(data);
     });
 
     newSocket.on('chat:call:ended', (data) => {
       console.log('[ChatSocket] Call ended:', data);
-      options.onCallEnded?.(data);
+      onCallEndedRef.current?.(data);
     });
 
     // Cleanup on unmount
@@ -194,37 +245,6 @@ export function useChatSocket(options: UseChatSocketOptions = {}): UseChatSocket
       connectionAttemptedRef.current = false;
     };
   }, [options.token]); // Only reconnect if token changes
-
-  // Update callbacks when they change
-  useEffect(() => {
-    const socket = socketRef.current;
-    if (!socket) return;
-
-    // Remove old listeners and add new ones
-    const handleNewMessage = (data: any) => {
-      console.log('[ChatSocket] New message (callback):', data);
-      options.onNewMessage?.(data);
-    };
-
-    socket.off('chat:message:new');
-    socket.off('chat:message');
-    socket.on('chat:message:new', handleNewMessage);
-    socket.on('chat:message', handleNewMessage);
-  }, [options.onNewMessage]);
-
-  // Update incoming call listener when callback changes
-  useEffect(() => {
-    const socket = socketRef.current;
-    if (!socket) return;
-
-    const handleIncomingCall = (data: any) => {
-      console.log('[ChatSocket] Incoming call (callback):', data);
-      options.onIncomingCall?.(data);
-    };
-
-    socket.off('chat:call:incoming');
-    socket.on('chat:call:incoming', handleIncomingCall);
-  }, [options.onIncomingCall]);
 
   // Join a thread room
   const joinThread = useCallback((threadId: string) => {

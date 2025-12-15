@@ -14,6 +14,7 @@ import HealthBoot from '@/components/dev/HealthBoot';
 import RenderLogger from '@/components/debug/RenderLogger';
 import { ToastProvider } from '@/components/ui/toast';
 import ChatGuard from '@/modules/chat/components/ChatGuard';
+import { ChatProvider } from '@/modules/chat/context/ChatContext';
 import GlobalErrorToast from '@/components/GlobalErrorToast';
 import AppShell from '@/components/layout/AppShell';
 import SplashWrapper from '@/components/SplashWrapper';
@@ -51,35 +52,37 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
         <ThemeProvider>
           <AuthProvider>
             <SocketProvider>
-              <ReportProvider>
-                <PermissionProvider>
-                  <ToastProvider>
-                    <RenderLogger />
-                    <SplashWrapper companyName="BISMAN ERP">
-                      <div className="min-h-screen pb-20 md:pb-0">
-                        <AppShell>{children}</AppShell>
-                        {appConfig.showConfigPanel && (
-                        <div className="fixed bottom-4 right-4 z-50 rounded-lg shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 text-xs max-w-xs space-y-1">
-                          <div className="font-semibold text-gray-700 dark:text-gray-200">Runtime Config</div>
-                          <div className="grid grid-cols-2 gap-x-2 gap-y-1">
-                            <span className="text-gray-500 dark:text-gray-400">API Base:</span>
-                            <span className="truncate" title={appConfig.apiBaseUrl}>{appConfig.apiBaseUrl}</span>
-                            <span className="text-gray-500 dark:text-gray-400">Strict CSP:</span>
-                            <span>{appConfig.strictCspEnabled ? 'on' : 'off'}</span>
-                            <span className="text-gray-500 dark:text-gray-400">Env:</span>
-                            <span>{appConfig.isProduction ? 'prod' : 'dev'}</span>
+              <ChatProvider>
+                <ReportProvider>
+                  <PermissionProvider>
+                    <ToastProvider>
+                      <RenderLogger />
+                      <SplashWrapper companyName="BISMAN ERP">
+                        <div className="min-h-screen pb-20 md:pb-0">
+                          <AppShell>{children}</AppShell>
+                          {appConfig.showConfigPanel && (
+                          <div className="fixed bottom-4 right-4 z-50 rounded-lg shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-4 text-xs max-w-xs space-y-1">
+                            <div className="font-semibold text-gray-700 dark:text-gray-200">Runtime Config</div>
+                            <div className="grid grid-cols-2 gap-x-2 gap-y-1">
+                              <span className="text-gray-500 dark:text-gray-400">API Base:</span>
+                              <span className="truncate" title={appConfig.apiBaseUrl}>{appConfig.apiBaseUrl}</span>
+                              <span className="text-gray-500 dark:text-gray-400">Strict CSP:</span>
+                              <span>{appConfig.strictCspEnabled ? 'on' : 'off'}</span>
+                              <span className="text-gray-500 dark:text-gray-400">Env:</span>
+                              <span>{appConfig.isProduction ? 'prod' : 'dev'}</span>
+                            </div>
                           </div>
+                        )}
                         </div>
-                      )}
-                      </div>
-                    </SplashWrapper>
-                    <GlobalRouteLoader />
-                    <GlobalErrorToast />
-                    <HealthBoot />
-                    <ChatGuard />
-                  </ToastProvider>
-                </PermissionProvider>
-              </ReportProvider>
+                      </SplashWrapper>
+                      <GlobalRouteLoader />
+                      <GlobalErrorToast />
+                      <HealthBoot />
+                      <ChatGuard />
+                    </ToastProvider>
+                  </PermissionProvider>
+                </ReportProvider>
+              </ChatProvider>
             </SocketProvider>
           </AuthProvider>
         </ThemeProvider>

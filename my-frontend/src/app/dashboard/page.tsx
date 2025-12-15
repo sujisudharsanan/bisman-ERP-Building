@@ -13,9 +13,9 @@
  * 4. Admin roles (ADMIN, SUPER_ADMIN, ENTERPRISE_ADMIN) redirect to their specialized dashboards
  */
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, Filter, X, User, Briefcase } from 'lucide-react';
+import { Search, Filter, X, User, Briefcase, ChevronDown } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import KanbanColumn from '@/components/dashboard/KanbanColumn';
 import RightPanel from '@/components/dashboard/RightPanel';
@@ -32,6 +32,14 @@ import {
   isEnterpriseAdminRole 
 } from '@/config/dashboardConfig';
 
+// Performance metrics type
+interface PerformanceMetrics {
+  onTimeRate: number;
+  responseTime: number;
+  completionRate: number;
+  qualityScore: number;
+}
+
 export default function UnifiedDashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
@@ -40,6 +48,12 @@ export default function UnifiedDashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<ViewMode>('my-work');
+  const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetrics>({
+    onTimeRate: 0,
+    responseTime: 0,
+    completionRate: 0,
+    qualityScore: 0
+  });
   
   // Get role-specific configuration
   const roleName = user?.roleName || user?.role || '';
@@ -47,6 +61,29 @@ export default function UnifiedDashboardPage() {
   
   // Fetch kanban data with viewMode support (maker-checker)
   const { data: kanbanData, isLoading: kanbanLoading, refetch: refetchKanban } = useKanbanTasks(viewMode);
+  
+  // Fetch performance metrics
+  useEffect(() => {
+    const fetchPerformanceMetrics = async () => {
+      try {
+        const response = await fetch('/api/tasks/performance-metrics', {
+          credentials: 'include'
+        });
+        if (response.ok) {
+          const result = await response.json();
+          if (result.success && result.data) {
+            setPerformanceMetrics(result.data);
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch performance metrics:', error);
+      }
+    };
+    
+    if (user?.id) {
+      fetchPerformanceMetrics();
+    }
+  }, [user?.id]);
   
   // Real-time socket updates
   useTaskSocket({
@@ -83,6 +120,19 @@ export default function UnifiedDashboardPage() {
       DONE: data.DONE || [],
     };
   }, [kanbanData]);
+
+  // Calculate task counts for efficiency metrics
+  const taskCounts = useMemo(() => ({
+    ASSIGNED: groupedTasks.ASSIGNED?.length || 0,
+    IN_PROGRESS: groupedTasks.IN_PROGRESS?.length || 0,
+    NEED_ATTENTION: groupedTasks.EDITING?.length || 0,
+    DONE: groupedTasks.DONE?.length || 0,
+  }), [groupedTasks]);
+
+  // Handle metric click - filter to show that column's tasks
+  const handleMetricClick = useCallback((column: string) => {
+    setStatusFilter(column);
+  }, []);
   
   // Use kanban loading state
   const dataLoading = kanbanLoading;
@@ -225,18 +275,18 @@ export default function UnifiedDashboardPage() {
               
               {/* Search Input */}
               <div className="relative flex-1 max-w-md">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 dark:text-gray-500" />
                 <input
                   type="text"
                   placeholder="Search tasks..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-10 pr-10 py-2 bg-panel/80 backdrop-blur-sm border border-theme rounded-lg text-sm text-gray-200 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full pl-10 pr-10 py-2 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg text-sm text-gray-900 dark:text-gray-200 placeholder-gray-400 dark:placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                 />
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-200"
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 dark:hover:text-gray-200"
                   >
                     <X className="w-4 h-4" />
                   </button>
@@ -245,19 +295,20 @@ export default function UnifiedDashboardPage() {
               
               {/* Status Filter Dropdown */}
               <div className="relative">
-                <div className="flex items-center gap-2">
-                  <Filter className="w-4 h-4 text-gray-400" />
+                <div className="flex items-center">
+                  <Filter className="w-4 h-4 text-gray-500 dark:text-gray-400 absolute left-3 pointer-events-none" />
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="bg-panel/80 backdrop-blur-sm border border-theme rounded-lg px-3 py-2 text-sm text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none pr-8 cursor-pointer"
+                    className="bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg pl-9 pr-10 py-2 text-sm text-gray-700 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent appearance-none cursor-pointer min-w-[130px]"
                   >
                     {statusOptions.map((option) => (
-                      <option key={option.value} value={option.value} className="bg-gray-800">
+                      <option key={option.value} value={option.value} className="bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-200">
                         {option.label}
                       </option>
                     ))}
                   </select>
+                  <ChevronDown className="w-4 h-4 text-gray-500 dark:text-gray-400 absolute right-3 pointer-events-none" />
                 </div>
               </div>
               
@@ -346,7 +397,14 @@ export default function UnifiedDashboardPage() {
                 {/* Right Panel - profile hidden since it's now in top bar */}
                 {config.showRightPanel && (
                   <div className="flex-none hidden lg:block h-full">
-                    <RightPanel mode="dock" hideProfile />
+                    <RightPanel 
+                      mode="dock" 
+                      hideProfile 
+                      viewMode={viewMode}
+                      taskCounts={taskCounts}
+                      performanceMetrics={performanceMetrics}
+                      onMetricClick={handleMetricClick}
+                    />
                   </div>
                 )}
               </div>
