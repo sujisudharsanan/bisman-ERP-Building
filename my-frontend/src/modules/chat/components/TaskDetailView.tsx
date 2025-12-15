@@ -24,8 +24,14 @@ import {
   Play,
   SendHorizontal,
   ArrowUpCircle,
-  Send
+  Send,
+  Trophy,
+  Timer,
+  Sparkles
 } from 'lucide-react';
+import { calculateTimeStatus, getTimeStatusStyles, type TimeStatus, formatDuration } from '@/lib/utils/timeTracking';
+import { IntelligentAssistantPanel } from '@/components/chat/IntelligentAssistantPanel';
+import { Bot } from 'lucide-react';
 
 interface TaskAttachment {
   id: number;
@@ -60,8 +66,11 @@ interface TaskDetail {
   status: string;
   priority?: string;
   dueDate?: string;
+  due_date?: string; // API may return snake_case
   createdAt?: string;
   updatedAt?: string;
+  completed_at?: string;
+  completedAt?: string;
   messageCount?: number;
   attachmentCount?: number;
   creator?: TaskCreator;
@@ -111,6 +120,7 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
     details: true,
     attachments: true,
     messages: true,
+    aiAssistant: false,
   });
   const [previewAttachment, setPreviewAttachment] = useState<TaskAttachment | null>(null);
   const [completing, setCompleting] = useState(false);
@@ -123,6 +133,7 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
   const [cancelReason, setCancelReason] = useState('');
   const [newMessage, setNewMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
+  const [timeStatusTick, setTimeStatusTick] = useState(0); // For triggering re-calculation
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -133,6 +144,31 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
     // Scroll to bottom when messages change
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [task?.messages]);
+
+  // Time tracking - update every minute
+  useEffect(() => {
+    const dueDate = task?.dueDate || task?.due_date;
+    const isCompleted = task?.status === 'COMPLETED' || task?.status === 'DONE';
+    
+    if (!dueDate || isCompleted) return;
+    
+    const interval = setInterval(() => {
+      setTimeStatusTick(t => t + 1);
+    }, 60000); // Update every minute
+
+    return () => clearInterval(interval);
+  }, [task?.dueDate, task?.due_date, task?.status]);
+
+  // Time status calculation - must be called before any early returns
+  const timeStatus = React.useMemo(() => {
+    if (!task) return null;
+    const dueDate = task.dueDate || task.due_date;
+    const completedAt = task.completedAt || task.completed_at;
+    return calculateTimeStatus(dueDate, completedAt, task.status);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [task?.dueDate, task?.due_date, task?.completedAt, task?.completed_at, task?.status, timeStatusTick]);
+
+  const timeStyles = getTimeStatusStyles(timeStatus);
 
   const fetchTaskDetails = async () => {
     try {
@@ -182,6 +218,7 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
     
     try {
       setCompleting(true);
+      console.log('[TaskDetailView] Approving & completing task:', taskId);
       const response = await fetch(`/api/v2/tasks/${taskId}/status`, {
         method: 'PATCH',
         credentials: 'include',
@@ -189,15 +226,22 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
         body: JSON.stringify({ status: 'COMPLETED' }),
       });
 
+      const data = await response.json().catch(() => ({}));
+      console.log('[TaskDetailView] Complete response:', response.status, data);
+
       if (response.ok) {
         setTask(prev => prev ? { ...prev, status: 'COMPLETED' } : null);
         // Invalidate kanban queries to refresh the board
         queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
         queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
         onMarkComplete?.(taskId);
+      } else {
+        console.error('[TaskDetailView] Failed to complete task:', data.error || data.message);
+        alert(data.error || data.message || 'Failed to complete task');
       }
     } catch (err) {
       console.error('Error completing task:', err);
+      alert('Error completing task. Please try again.');
     } finally {
       setCompleting(false);
     }
@@ -210,7 +254,7 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
       setCancelling(true);
       
       // First add the cancel message via Bey
-      const messageResponse = await fetch(`/api/tasks/${taskId}/messages`, {
+      const messageResponse = await fetch(`/api/v2/tasks/${taskId}/messages`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -263,7 +307,7 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
         const now = new Date();
         const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
         const userName = task.assignee?.firstName || task.assignee?.username || 'Assignee';
-        await fetch(`/api/tasks/${taskId}/messages`, {
+        await fetch(`/api/v2/tasks/${taskId}/messages`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -306,7 +350,7 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
         const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
         const userName = task.assignee?.firstName || task.assignee?.username || 'Assignee';
         const creatorName = task.creator?.firstName || task.creator?.username || 'creator';
-        await fetch(`/api/tasks/${taskId}/messages`, {
+        await fetch(`/api/v2/tasks/${taskId}/messages`, {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -353,12 +397,45 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
     }
   };
 
+  // Auto-capitalize: capitalize first letter of sentence (after . ! ? or at start)
+  const autoCapitalizeText = (text: string, prevText: string): string => {
+    if (!text) return text;
+    
+    // Only process if text was just typed (not deleted)
+    if (text.length <= prevText.length) return text;
+    
+    // Get the new character that was just typed
+    const newChar = text.slice(-1);
+    const beforeNewChar = text.slice(0, -1);
+    
+    // If the new char is a letter and it should be capitalized
+    if (/[a-z]/.test(newChar)) {
+      // Check if it's the first character or follows sentence-ending punctuation
+      const trimmedBefore = beforeNewChar.trimEnd();
+      const shouldCapitalize = 
+        trimmedBefore.length === 0 || // First character
+        /[.!?]\s*$/.test(trimmedBefore); // After sentence-ending punctuation
+      
+      if (shouldCapitalize) {
+        return beforeNewChar + newChar.toUpperCase();
+      }
+    }
+    
+    return text;
+  };
+
+  // Handle message input with auto-capitalize
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newText = autoCapitalizeText(e.target.value, newMessage);
+    setNewMessage(newText);
+  };
+
   const handleSendMessage = async () => {
     if (!task || !newMessage.trim()) return;
     
     try {
       setSendingMessage(true);
-      const response = await fetch(`/api/tasks/${taskId}/messages`, {
+      const response = await fetch(`/api/v2/tasks/${taskId}/messages`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -373,6 +450,9 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
           messages: [...(prev.messages || []), newMsg]
         } : null);
         setNewMessage('');
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to send message:', response.status, errorData);
       }
     } catch (err) {
       console.error('Error sending message:', err);
@@ -415,9 +495,11 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
     });
   };
 
-  // Check if current user is the task creator
-  const isTaskCreator = currentUserId && task?.creator?.id === currentUserId;
-  const isTaskAssignee = currentUserId && task?.assignee?.id === currentUserId;
+  // Check if current user is the task creator (handle both creator.id and creatorId, and type coercion)
+  const creatorId = task?.creator?.id ?? task?.creatorId;
+  const assigneeId = task?.assignee?.id ?? (task as any)?.assigneeId;
+  const isTaskCreator = currentUserId && creatorId && Number(creatorId) === Number(currentUserId);
+  const isTaskAssignee = currentUserId && assigneeId && Number(assigneeId) === Number(currentUserId);
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));
@@ -459,63 +541,111 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
   const isInProgress = task.status === 'IN_PROGRESS';
   const isInReview = task.status === 'IN_REVIEW';
 
-  // Calculate remaining time to due date
-  const getRemainingTime = () => {
-    if (!task.dueDate) return null;
-    const now = new Date();
-    const due = new Date(task.dueDate);
-    const diff = due.getTime() - now.getTime();
-    
-    if (diff < 0) return { text: 'Overdue', isOverdue: true };
-    
-    const hours = Math.floor(diff / (1000 * 60 * 60));
-    const days = Math.floor(hours / 24);
-    const remainingHours = hours % 24;
-    
-    if (days > 0) {
-      return { text: `${days}d ${remainingHours}h remaining`, isOverdue: false };
-    } else if (hours > 0) {
-      const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
-      return { text: `${hours}h ${mins}m remaining`, isOverdue: false };
-    } else {
-      const mins = Math.floor(diff / (1000 * 60));
-      return { text: `${mins}m remaining`, isOverdue: false };
-    }
-  };
-
-  const remainingTime = getRemainingTime();
+  // Time status derived values
+  const isOverdue = timeStatus?.isOverdue && !isCompleted;
+  const isCompletedEarly = timeStatus?.isCompletedEarly;
+  const isCompletedOnTime = timeStatus?.isCompletedOnTime;
 
   // Helper to display name or "me"
   const getDisplayName = (userId?: number, firstName?: string, lastName?: string, username?: string) => {
-    if (userId === currentUserId) return 'me';
+    if (userId && currentUserId && Number(userId) === Number(currentUserId)) return 'me';
     if (firstName && lastName) return `${firstName} ${lastName}`;
+    if (firstName) return firstName;
     return username || 'Unknown';
+  };
+
+  // Determine header background based on time status
+  const getHeaderBgClass = () => {
+    if (isOverdue) {
+      return 'bg-gradient-to-r from-red-900/40 to-red-800/30 border-b-red-500/50';
+    }
+    if (isCompletedEarly) {
+      return 'bg-gradient-to-r from-amber-900/30 to-amber-800/20 border-b-amber-500/50';
+    }
+    if (isCompletedOnTime) {
+      return 'bg-gradient-to-r from-green-900/30 to-green-800/20 border-b-green-500/50';
+    }
+    return 'bg-gradient-to-r from-[#252836] to-[#2a2d3e]';
   };
 
   return (
     <div className="flex-1 flex flex-col bg-[#1e1e2e] overflow-hidden">
+      {/* Overdue Alert Banner */}
+      {isOverdue && (
+        <div className="px-4 py-2 bg-red-500/20 border-b border-red-500/30 flex items-center gap-2">
+          <AlertTriangle className="w-4 h-4 text-red-400 animate-pulse" />
+          <span className="text-red-400 text-sm font-medium">
+            ⚠️ This task is overdue by {timeStatus?.displayText?.replace(' overdue', '')}
+          </span>
+        </div>
+      )}
+      
+      {/* Completed Early/On Time Banner */}
+      {isCompletedEarly && (
+        <div className="px-4 py-2 bg-amber-500/20 border-b border-amber-500/30 flex items-center gap-2">
+          <Trophy className="w-4 h-4 text-amber-400" />
+          <span className="text-amber-400 text-sm font-medium">
+            🏆 Great job! Completed {timeStatus?.displayText}
+          </span>
+        </div>
+      )}
+      {isCompletedOnTime && !isCompletedEarly && (
+        <div className="px-4 py-2 bg-green-500/20 border-b border-green-500/30 flex items-center gap-2">
+          <CheckCircle className="w-4 h-4 text-green-400" />
+          <span className="text-green-400 text-sm font-medium">
+            ✓ Completed on time
+          </span>
+        </div>
+      )}
+
       {/* Context Header - Professional Design */}
-      <div className="px-4 py-3 border-b border-gray-700/50 bg-gradient-to-r from-[#252836] to-[#2a2d3e]">
+      <div className={`px-4 py-3 border-b border-gray-700/50 ${getHeaderBgClass()}`}>
         {/* Top Row: Task ID, Status, Remaining Time, Close */}
         <div className="flex items-center justify-between mb-2">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {/* Task ID - Bold Blue */}
             <span className="text-sm font-bold text-blue-400 font-mono">
               TSK-{String(task.id).padStart(5, '0')}
             </span>
-            {/* Single Status Pill */}
-            <span className={`px-2.5 py-1 text-[11px] font-semibold rounded-full ${statusStyle.bg} ${statusStyle.text}`}>
-              {task.status.replace(/_/g, ' ')}
-            </span>
-            {/* Remaining Time Badge */}
-            {remainingTime && !isCompleted && task.status !== 'CANCELLED' && (
-              <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full flex items-center gap-1 ${
-                remainingTime.isOverdue 
-                  ? 'bg-red-500/20 text-red-400 border border-red-500/30' 
-                  : 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30'
+            
+            {/* Status Pill - Modified for completed tasks */}
+            {isCompletedEarly ? (
+              <span className="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-amber-500/20 text-amber-400 flex items-center gap-1">
+                <Trophy className="w-3 h-3" />
+                Done Early
+              </span>
+            ) : isCompletedOnTime ? (
+              <span className="px-2.5 py-1 text-[11px] font-semibold rounded-full bg-green-500/20 text-green-400 flex items-center gap-1">
+                <CheckCircle className="w-3 h-3" />
+                On Time
+              </span>
+            ) : (
+              <span className={`px-2.5 py-1 text-[11px] font-semibold rounded-full ${statusStyle.bg} ${statusStyle.text}`}>
+                {task.status.replace(/_/g, ' ')}
+              </span>
+            )}
+            
+            {/* Time Status Badge */}
+            {timeStatus && task.status !== 'CANCELLED' && (
+              <span className={`px-2 py-0.5 text-[10px] font-medium rounded-full flex items-center gap-1 ${timeStyles.badgeBgClass} ${timeStyles.badgeTextClass} border ${
+                isOverdue ? 'border-red-500/30' : isCompletedEarly ? 'border-amber-500/30' : isCompletedOnTime ? 'border-green-500/30' : 'border-blue-500/30'
               }`}>
-                <Clock className="w-3 h-3" />
-                {remainingTime.text}
+                {isOverdue ? (
+                  <>
+                    <AlertTriangle className="w-3 h-3 animate-pulse" />
+                    {timeStatus.displayText}
+                  </>
+                ) : isCompletedEarly || isCompletedOnTime ? (
+                  <>
+                    <Sparkles className="w-3 h-3" />
+                    {timeStatus.displayText}
+                  </>
+                ) : (
+                  <>
+                    <Timer className="w-3 h-3" />
+                    {timeStatus.displayText}
+                  </>
+                )}
               </span>
             )}
           </div>
@@ -549,11 +679,11 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
               </span>
             </div>
           )}
-          {task.dueDate && (
-            <div className={`flex items-center gap-1.5 ${new Date(task.dueDate) < new Date() ? 'text-red-400' : 'text-orange-400'}`}>
+          {(task.dueDate || task.due_date) && (
+            <div className={`flex items-center gap-1.5 ${isOverdue ? 'text-red-400' : 'text-orange-400'}`}>
               <Calendar className="w-3.5 h-3.5" />
               <span className="font-medium">
-                Due: {new Date(task.dueDate).toLocaleDateString('en-US', { 
+                Due: {new Date(task.dueDate || task.due_date || '').toLocaleDateString('en-US', { 
                   month: 'short', 
                   day: 'numeric',
                   hour: '2-digit',
@@ -683,7 +813,79 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
 
       {/* Scrollable Content */}
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {/* Description Section */}
+        {/* Time Limit Display - Always visible for tasks with due date */}
+        {(task.dueDate || task.due_date) && (
+          <div className={`rounded-lg p-4 ${
+            isOverdue 
+              ? 'bg-red-500/10 border border-red-500/30' 
+              : isCompletedEarly 
+                ? 'bg-amber-500/10 border border-amber-500/30'
+                : isCompletedOnTime 
+                  ? 'bg-green-500/10 border border-green-500/30'
+                  : 'bg-blue-500/10 border border-blue-500/30'
+          }`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className={`p-2 rounded-full ${
+                  isOverdue 
+                    ? 'bg-red-500/20' 
+                    : isCompletedEarly 
+                      ? 'bg-amber-500/20'
+                      : isCompletedOnTime 
+                        ? 'bg-green-500/20'
+                        : 'bg-blue-500/20'
+                }`}>
+                  {isOverdue ? (
+                    <AlertTriangle className="w-5 h-5 text-red-400 animate-pulse" />
+                  ) : isCompletedEarly ? (
+                    <Trophy className="w-5 h-5 text-amber-400" />
+                  ) : isCompletedOnTime ? (
+                    <CheckCircle className="w-5 h-5 text-green-400" />
+                  ) : (
+                    <Timer className="w-5 h-5 text-blue-400" />
+                  )}
+                </div>
+                <div>
+                  <p className={`text-xs font-medium ${
+                    isOverdue 
+                      ? 'text-red-400' 
+                      : isCompletedEarly 
+                        ? 'text-amber-400'
+                        : isCompletedOnTime 
+                          ? 'text-green-400'
+                          : 'text-blue-400'
+                  }`}>
+                    {isOverdue ? 'OVERDUE' : isCompletedEarly ? 'COMPLETED EARLY' : isCompletedOnTime ? 'COMPLETED ON TIME' : 'TIME REMAINING'}
+                  </p>
+                  <p className={`text-lg font-bold ${
+                    isOverdue 
+                      ? 'text-red-300' 
+                      : isCompletedEarly 
+                        ? 'text-amber-300'
+                        : isCompletedOnTime 
+                          ? 'text-green-300'
+                          : 'text-white'
+                  }`}>
+                    {timeStatus?.displayText || 'No time limit'}
+                  </p>
+                </div>
+              </div>
+              <div className="text-right">
+                <p className="text-xs text-gray-400">Due Date</p>
+                <p className={`text-sm font-medium ${isOverdue ? 'text-red-400' : 'text-gray-300'}`}>
+                  {new Date(task.dueDate || task.due_date || '').toLocaleDateString('en-US', { 
+                    month: 'short', 
+                    day: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Description Section - Only show content after task is accepted (IN_PROGRESS or beyond) */}
         <div className="bg-[#252836] rounded-lg overflow-hidden">
           <button
             onClick={() => toggleSection('details')}
@@ -698,17 +900,19 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
           </button>
           {expandedSections.details && (
             <div className="px-3 pb-3">
-              {task.description ? (
+              {isOpen ? (
+                <p className="text-gray-500 text-sm italic">Start work to see the description and attachments</p>
+              ) : task.description ? (
                 <p className="text-gray-300 text-sm whitespace-pre-wrap">{task.description}</p>
               ) : (
-                <p className="text-gray-500 text-sm italic">Start work to see the description and attachments</p>
+                <p className="text-gray-500 text-sm italic">No description provided</p>
               )}
             </div>
           )}
         </div>
 
-        {/* Attachments Section - Only show if there are attachments */}
-        {task.attachments && task.attachments.length > 0 && (
+        {/* Attachments Section - Only show after task is accepted (not OPEN/ASSIGNED/DRAFT) */}
+        {!isOpen && task.attachments && task.attachments.length > 0 && (
         <div className="bg-[#252836] rounded-lg overflow-hidden">
           <button
             onClick={() => toggleSection('attachments')}
@@ -845,56 +1049,96 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
             </div>
           )}
         </div>
-      </div>
 
-      {/* Chat Input Box - Professional Design */}
-      <div className="p-3 border-t border-gray-700/50 bg-[#252836]">
-        <div className="flex items-end gap-2">
-          {/* Attachment Button */}
+        {/* AI Assistant Section */}
+        <div className="bg-[#252836] rounded-lg overflow-hidden">
           <button
-            className="p-2 hover:bg-gray-700/30 rounded-lg transition-colors text-gray-400 hover:text-gray-300"
-            title="Attach file"
+            onClick={() => toggleSection('aiAssistant')}
+            className="w-full flex items-center justify-between p-3 hover:bg-gray-700/30 transition-colors"
           >
-            <Paperclip className="w-4 h-4" />
-          </button>
-          
-          {/* Input Container */}
-          <div className="flex-1 flex items-end bg-[#1e1e2e] rounded-xl px-3 py-2 border border-gray-700/50 focus-within:border-blue-500/50 transition-colors">
-            <input
-              type="text"
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyPress={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  handleSendMessage();
-                }
-              }}
-              placeholder="Type a message about this task..."
-              className="flex-1 bg-transparent text-white text-sm placeholder-gray-500 focus:outline-none"
-              disabled={sendingMessage}
-            />
-          </div>
-          
-          {/* Send Button */}
-          <button
-            onClick={handleSendMessage}
-            disabled={!newMessage.trim() || sendingMessage}
-            className={`p-2.5 rounded-xl transition-all ${
-              newMessage.trim() && !sendingMessage
-                ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20'
-                : 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
-            }`}
-            title="Send message"
-          >
-            {sendingMessage ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
+            <div className="flex items-center gap-2">
+              <Bot className="w-4 h-4 text-purple-400" />
+              <span className="text-white font-medium text-sm">
+                AI Assistant
+              </span>
+              <span className="px-1.5 py-0.5 text-[10px] font-medium bg-purple-500/20 text-purple-400 rounded">
+                BEIA
+              </span>
+            </div>
+            {expandedSections.aiAssistant ? (
+              <ChevronUp className="w-4 h-4 text-gray-400" />
             ) : (
-              <Send className="w-4 h-4" />
+              <ChevronDown className="w-4 h-4 text-gray-400" />
             )}
           </button>
+          {expandedSections.aiAssistant && (
+            <div className="h-80 border-t border-gray-700/50">
+              <IntelligentAssistantPanel 
+                className="h-full"
+                placeholder={`Ask about this task: "${task.title?.slice(0, 30)}..."`}
+                showWelcome={false}
+              />
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Chat Input Box - Professional Design (hidden for completed/cancelled tasks) */}
+      {task && !['DONE', 'COMPLETED', 'CANCELLED'].includes(task.status) && (
+        <div className="p-3 border-t border-gray-700/50 bg-[#252836]">
+          <div className="flex items-end gap-2">
+            {/* Attachment Button */}
+            <button
+              className="p-2 hover:bg-gray-700/30 rounded-lg transition-colors text-gray-400 hover:text-gray-300"
+              title="Attach file"
+            >
+              <Paperclip className="w-4 h-4" />
+            </button>
+            
+            {/* Input Container */}
+            <div className="flex-1 flex items-end bg-[#1e1e2e] rounded-xl px-3 py-2 border border-gray-700/50 focus-within:border-blue-500/50 transition-colors">
+              <input
+                type="text"
+                value={newMessage}
+                onChange={(e) => {
+                  const newText = autoCapitalizeText(e.target.value, newMessage);
+                  setNewMessage(newText);
+                }}
+                onKeyPress={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendMessage();
+                  }
+                }}
+                placeholder="Type a message about this task..."
+                autoCapitalize="sentences"
+                autoCorrect="on"
+                spellCheck={true}
+                className="flex-1 bg-transparent text-white text-sm placeholder-gray-500 focus:outline-none"
+                disabled={sendingMessage}
+              />
+            </div>
+            
+            {/* Send Button */}
+            <button
+              onClick={handleSendMessage}
+              disabled={!newMessage.trim() || sendingMessage}
+              className={`p-2.5 rounded-xl transition-all ${
+                newMessage.trim() && !sendingMessage
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-lg shadow-blue-500/20'
+                  : 'bg-gray-700/50 text-gray-500 cursor-not-allowed'
+              }`}
+              title="Send message"
+            >
+              {sendingMessage ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Send className="w-4 h-4" />
+              )}
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Cancel Task Dialog - Requires note via Bey */}
       {showCancelDialog && (

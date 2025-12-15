@@ -756,12 +756,21 @@ const updateTaskStatus = async (req, res) => {
     const isCreator = existingTask.creator_id === userId;
     const isAssignee = existingTask.assignee_id === userId;
     
-    // Only assignee can mark as complete, only creator can cancel
-    if (newStatus === 'COMPLETED' && !isAssignee) {
-      return res.status(403).json({
-        success: false,
-        error: 'Only the assignee can mark the task as completed'
-      });
+    // Permission rules for completing a task:
+    // - If task is IN_REVIEW: Only the CREATOR can approve and complete
+    // - If task is IN_PROGRESS: Only the ASSIGNEE can complete directly
+    if (newStatus === 'COMPLETED') {
+      if (oldStatus === 'IN_REVIEW' && !isCreator) {
+        return res.status(403).json({
+          success: false,
+          error: 'Only the task creator can approve and complete a task that is in review'
+        });
+      } else if (oldStatus === 'IN_PROGRESS' && !isAssignee) {
+        return res.status(403).json({
+          success: false,
+          error: 'Only the assignee can mark the task as completed directly'
+        });
+      }
     }
     
     if (newStatus === 'CANCELLED' && !isCreator) {
@@ -797,11 +806,30 @@ const updateTaskStatus = async (req, res) => {
     // Log to audit with tenant isolation
     await logAudit(userId, 'STATUS_CHANGE', 'workflow_tasks', id, { status: oldStatus }, { status: newStatus, reason }, tenantId);
     
-    // Emit Socket.IO event
+    // Emit Socket.IO events for real-time updates
+    // 1. Broadcast to tenant for general updates
     emitToTenant(tenantId, 'task:updated', { 
       task: updatedTask,
       change: { type: 'status', from: oldStatus, to: newStatus }
     });
+    
+    // 2. Emit status_changed event for specific handling
+    emitToTenant(tenantId, 'task:status_changed', { 
+      task: updatedTask,
+      previousStatus: oldStatus,
+      newStatus: newStatus,
+      updatedBy: userId
+    });
+    
+    // 3. Specifically notify the creator when task is sent for review
+    if (newStatus === 'IN_REVIEW' && io && updatedTask.creator_id) {
+      io.to(`user:${updatedTask.creator_id}`).emit('task:review_requested', {
+        task: updatedTask,
+        requestedBy: userId,
+        message: 'A task you created has been submitted for your review'
+      });
+      console.log(`[Socket] Notified creator ${updatedTask.creator_id} about review request for task ${id}`);
+    }
     
     res.json({
       success: true,

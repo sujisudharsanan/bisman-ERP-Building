@@ -109,7 +109,7 @@ export const TaskChatThread: React.FC<TaskChatThreadProps> = ({
     return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
   };
 
-  const canSendMessages = task.status !== 'COMPLETED' && task.status !== 'CANCELLED';
+  const canSendMessages = !['DONE', 'COMPLETED', 'CANCELLED'].includes(task.status);
 
   return (
     <div className="h-full flex flex-col bg-white dark:bg-gray-800">
@@ -245,31 +245,33 @@ export const TaskChatThread: React.FC<TaskChatThreadProps> = ({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Message Input */}
-      <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
-        <form onSubmit={handleSendMessage} className="flex gap-3">
-          <input
-            type="text"
-            value={messageInput}
-            onChange={(e) => setMessageInput(e.target.value)}
-            disabled={!canSendMessages || loading}
-            placeholder={canSendMessages ? 'Type a message...' : 'Task is closed'}
-            className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
-                     bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
-                     focus:ring-2 focus:ring-blue-500 focus:border-transparent
-                     disabled:opacity-50 disabled:cursor-not-allowed"
-          />
-          
-          <button
-            type="submit"
-            disabled={!messageInput.trim() || !canSendMessages || loading}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg
-                     font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            Send
-          </button>
-        </form>
-      </div>
+      {/* Message Input (hidden for completed/cancelled tasks) */}
+      {canSendMessages && (
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900">
+          <form onSubmit={handleSendMessage} className="flex gap-3">
+            <input
+              type="text"
+              value={messageInput}
+              onChange={(e) => setMessageInput(e.target.value)}
+              disabled={loading}
+              placeholder="Type a message..."
+              className="flex-1 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg
+                       bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100
+                       focus:ring-2 focus:ring-blue-500 focus:border-transparent
+                       disabled:opacity-50 disabled:cursor-not-allowed"
+            />
+            
+            <button
+              type="submit"
+              disabled={!messageInput.trim() || loading}
+              className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg
+                       font-medium transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              Send
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 };

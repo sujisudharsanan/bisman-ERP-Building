@@ -623,8 +623,8 @@ export function TaskDetailViewV2({ taskId, isOpen, onClose, onTaskUpdated }: Tas
                 )}
               </div>
 
-              {/* Message Input */}
-              {activeTab === 'comments' && (
+              {/* Message Input (hidden for completed/cancelled tasks) */}
+              {activeTab === 'comments' && task && !['DONE', 'COMPLETED', 'CANCELLED'].includes(task.status) && (
                 <div className="flex-shrink-0 p-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
                   <div className="flex gap-3">
                     <input

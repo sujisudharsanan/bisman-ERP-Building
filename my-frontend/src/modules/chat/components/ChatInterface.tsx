@@ -337,6 +337,39 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
     }
   }, [newMessage]);
 
+  // Auto-capitalize: capitalize first letter of sentence (after . ! ? or at start)
+  const autoCapitalizeText = (text: string, prevText: string): string => {
+    if (!text) return text;
+    
+    // Only process if text was just typed (not deleted)
+    if (text.length <= prevText.length) return text;
+    
+    // Get the new character that was just typed
+    const newChar = text.slice(-1);
+    const beforeNewChar = text.slice(0, -1);
+    
+    // If the new char is a letter and it should be capitalized
+    if (/[a-z]/.test(newChar)) {
+      // Check if it's the first character or follows sentence-ending punctuation
+      const trimmedBefore = beforeNewChar.trimEnd();
+      const shouldCapitalize = 
+        trimmedBefore.length === 0 || // First character
+        /[.!?]\s*$/.test(trimmedBefore); // After sentence-ending punctuation
+      
+      if (shouldCapitalize) {
+        return beforeNewChar + newChar.toUpperCase();
+      }
+    }
+    
+    return text;
+  };
+
+  // Handle message input with auto-capitalize
+  const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newText = autoCapitalizeText(e.target.value, newMessage);
+    setNewMessage(newText);
+  };
+
   // Auto-scroll to bottom when new messages arrive or task form opens
   useEffect(() => {
     // Small delay to ensure DOM has updated
@@ -2759,7 +2792,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                 <textarea
                   ref={textareaRef}
                   value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
+                  onChange={handleMessageChange}
                   onKeyPress={(e) => {
                     if (e.key === 'Enter' && !e.shiftKey) {
                       e.preventDefault();
@@ -2769,6 +2802,9 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                   placeholder={activeView === 'task' ? 'Type a message about this task...' : 'Type a message...'}
                   rows={1}
                   disabled={thinking}
+                  autoCapitalize="sentences"
+                  autoCorrect="on"
+                  spellCheck={true}
                   className="flex-1 bg-transparent resize-none focus:outline-none text-gray-200 placeholder-gray-500 text-sm max-h-[200px] overflow-y-auto disabled:opacity-50 leading-relaxed py-0.5"
                   style={{ minHeight: '24px' }}
                 />

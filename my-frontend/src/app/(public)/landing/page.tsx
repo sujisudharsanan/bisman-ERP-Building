@@ -130,13 +130,13 @@ export default function LandingPage() {
       
       <div className={`landing-page index-page ${scrolled ? 'scrolled' : ''} ${mobileNavActive ? 'mobile-nav-active' : ''}`} style={{ visibility: mounted ? 'visible' : 'hidden' }}>
         {/* Header */}
-        <header id="header" className="header d-flex align-items-center">
-          <div className="container-fluid d-flex align-items-center justify-content-between" style={{ maxWidth: 1320 }}>
-            <Link href="/" className="logo d-flex align-items-center" style={{ textDecoration: 'none', gap: 10 }}>
-              <img src="/brand/bisman-logo.svg" alt="BISMAN" style={{ height: 40, filter: 'brightness(0) saturate(100%) invert(76%) sepia(67%) saturate(600%) hue-rotate(2deg) brightness(103%) contrast(104%)' }} />
+        <header id="header" className="header d-flex align-items-center" style={{ padding: '10px 0' }}>
+          <div className="container-fluid d-flex align-items-center justify-content-between" style={{ maxWidth: 1200 }}>
+            <Link href="/" className="logo d-flex align-items-center" style={{ textDecoration: 'none', gap: 8 }}>
+              <img src="/brand/bisman-logo.svg" alt="BISMAN" style={{ height: 32 }} />
               <div style={{ display: 'flex', flexDirection: 'column', lineHeight: 1.1 }}>
-                <span style={{ color: '#ffffff', fontSize: 22, fontWeight: 700, fontFamily: 'var(--nav-font)', letterSpacing: '2px' }}>BISMAN</span>
-                <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: 10, fontWeight: 400, fontFamily: 'var(--nav-font)', letterSpacing: '2.5px', textTransform: 'uppercase' }}>ERP Solution</span>
+                <span style={{ color: '#ffffff', fontSize: 18, fontWeight: 700, letterSpacing: 0.5 }}>BISMAN</span>
+                <span style={{ color: 'rgba(255,255,255,0.7)', fontSize: 8, letterSpacing: 1, textTransform: 'uppercase' }}>ERP Solution</span>
               </div>
             </Link>
             
@@ -179,14 +179,30 @@ export default function LandingPage() {
             </div>
           </section>
           
-          {/* Clients Section */}
+          {/* Modules Showcase Section */}
           <section id="clients" className="clients section light-background">
             <div className="container" data-aos="zoom-in">
-              <div className="row" style={{ justifyContent: 'center', gap: 30, flexWrap: 'wrap' }}>
-                {[1, 2, 3, 4, 5, 6, 7, 8].map(i => (
-                  <div key={i} style={{ flex: '0 0 auto' }}>
-                    <img src={`/arsha/img/clients/clients-${i}.webp`} className="img-fluid" alt="" />
-                  </div>
+              <p style={{ textAlign: 'center', fontSize: 12, textTransform: 'uppercase', letterSpacing: 3, color: '#64748b', marginBottom: 24 }}>8 Powerful Modules • One Platform</p>
+              <div className="row" style={{ justifyContent: 'center', gap: 32, flexWrap: 'wrap', alignItems: 'center' }}>
+                {[
+                  'Task Management',
+                  'Team Collaboration',
+                  'Analytics & Reports',
+                  'HR Management',
+                  'Inventory Control',
+                  'Finance & Billing',
+                  'Calendar & Scheduling',
+                  'Access & Security',
+                ].map((name, i) => (
+                  <span key={i} style={{ 
+                    fontSize: 14, 
+                    fontWeight: 500, 
+                    color: '#334155',
+                    padding: '8px 0',
+                    cursor: 'default',
+                  }}>
+                    {name}
+                  </span>
                 ))}
               </div>
             </div>

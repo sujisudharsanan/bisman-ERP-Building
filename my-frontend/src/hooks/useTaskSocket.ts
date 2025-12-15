@@ -212,6 +212,16 @@ export function useTaskSocket(options: UseTaskSocketOptions = {}) {
       }
     });
 
+    // Task sent for review - specifically for creators to see tasks needing their review
+    socket.on('task:review_requested', ({ task, requestedBy, message }) => {
+      console.log('[TaskSocket] Review requested for task:', task?.id, 'by:', requestedBy);
+      if (task) {
+        updateTaskInCache(task);
+        invalidateKanban();
+        onTaskUpdated?.(task);
+      }
+    });
+
     // Task reassigned
     socket.on('task:reassigned', ({ task }) => {
       console.log('[TaskSocket] Task reassigned:', task?.id);

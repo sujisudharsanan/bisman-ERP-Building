@@ -6,7 +6,7 @@
 
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   X, 
   MessageSquare, 
@@ -35,9 +35,13 @@ import {
   SendHorizonal,
   RotateCcw,
   ThumbsUp,
-  ThumbsDown
+  ThumbsDown,
+  Timer,
+  Trophy,
+  Lock
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { calculateTimeStatus, formatDuration, getTimeStatusStyles } from '@/lib/utils/timeTracking';
 import { 
   useTask, 
   useTaskMessages, 
@@ -124,6 +128,29 @@ export function TaskDetailDrawer({ taskId, isOpen, onClose, onTaskDeleted }: Tas
   // State for rejection comment
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [rejectComment, setRejectComment] = useState('');
+  
+  // Time tracking state for live updates
+  const [timeStatusTick, setTimeStatusTick] = useState(0);
+  
+  // Calculate time status for task
+  const timeStatus = useMemo(() => {
+    if (!task?.due_date) return null;
+    // timeStatusTick is used to trigger recalculation
+    void timeStatusTick;
+    return calculateTimeStatus(task.due_date, task.completed_at, task.status);
+  }, [task?.due_date, task?.completed_at, task?.status, timeStatusTick]);
+  
+  // Update timer every minute
+  useEffect(() => {
+    if (!task?.due_date) return;
+    const interval = setInterval(() => {
+      setTimeStatusTick(prev => prev + 1);
+    }, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, [task?.due_date]);
+  
+  // Check if task is in OPEN state (not yet accepted/started)
+  const isTaskOpen = ['OPEN', 'ASSIGNED', 'DRAFT'].includes(task?.status || '');
 
   // Socket for real-time updates
   const { connected, typingUsers, sendTyping } = useTaskSocket({
@@ -461,54 +488,109 @@ export function TaskDetailDrawer({ taskId, isOpen, onClose, onTaskDeleted }: Tas
                 </div>
               </div>
 
-              {/* Editable Description */}
-              {isEditingDescription ? (
-                <div className="mb-3">
-                  <textarea
-                    value={editDescription}
-                    onChange={(e) => setEditDescription(e.target.value)}
-                    className="w-full text-sm text-gray-600 border border-blue-400 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px]"
-                    autoFocus
-                    placeholder="Add a description..."
-                  />
-                  <div className="flex gap-2 mt-1">
-                    <button
-                      onClick={handleSaveDescription}
-                      disabled={updateTask.isPending}
-                      className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
-                    >
-                      Save
-                    </button>
-                    <button
-                      onClick={() => setIsEditingDescription(false)}
-                      className="px-3 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
-                    >
-                      Cancel
-                    </button>
+              {/* Timer Display - Shows time remaining or overdue */}
+              {task.due_date && timeStatus && (
+                <div className={cn(
+                  "mb-4 p-3 rounded-lg border",
+                  timeStatus.isOverdue 
+                    ? "bg-red-50 border-red-200 dark:bg-red-900/20 dark:border-red-800"
+                    : timeStatus.isCompletedEarly
+                      ? "bg-amber-50 border-amber-200 dark:bg-amber-900/20 dark:border-amber-800"
+                      : timeStatus.isCompletedOnTime
+                        ? "bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800"
+                        : "bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800"
+                )}>
+                  <div className="flex items-center gap-2">
+                    {timeStatus.isCompletedEarly ? (
+                      <Trophy className="w-5 h-5 text-amber-600 dark:text-amber-400" />
+                    ) : timeStatus.isCompletedOnTime ? (
+                      <CheckCircle2 className="w-5 h-5 text-green-600 dark:text-green-400" />
+                    ) : timeStatus.isOverdue ? (
+                      <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                    ) : (
+                      <Timer className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    )}
+                    <div className="flex-1">
+                      <div className={cn(
+                        "font-semibold text-sm",
+                        timeStatus.isOverdue 
+                          ? "text-red-700 dark:text-red-300"
+                          : timeStatus.isCompletedEarly
+                            ? "text-amber-700 dark:text-amber-300"
+                            : timeStatus.isCompletedOnTime
+                              ? "text-green-700 dark:text-green-300"
+                              : "text-blue-700 dark:text-blue-300"
+                      )}>
+                        {timeStatus.displayText}
+                      </div>
+                      <div className="text-xs text-gray-500 dark:text-gray-400 mt-0.5">
+                        Due: {new Date(task.due_date).toLocaleDateString()} {new Date(task.due_date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Description & Attachments - Hidden until task is accepted */}
+              {isTaskOpen ? (
+                <div className="mb-4 p-4 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center gap-2 text-gray-500 dark:text-gray-400">
+                    <Lock className="w-4 h-4" />
+                    <span className="text-sm font-medium">Start work to see the description and attachments</span>
                   </div>
                 </div>
               ) : (
-                <div 
-                  className={cn(
-                    "group mb-3",
-                    canEdit && "cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5 -mx-1"
-                  )}
-                  onClick={handleStartEditDescription}
-                >
-                  {task.description ? (
-                    <p className="text-sm text-gray-600 flex items-start gap-2">
-                      {task.description}
-                      {canEdit && (
-                        <Pencil className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
+                <>
+                  {/* Editable Description */}
+                  {isEditingDescription ? (
+                    <div className="mb-3">
+                      <textarea
+                        value={editDescription}
+                        onChange={(e) => setEditDescription(e.target.value)}
+                        className="w-full text-sm text-gray-600 border border-blue-400 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[80px]"
+                        autoFocus
+                        placeholder="Add a description..."
+                      />
+                      <div className="flex gap-2 mt-1">
+                        <button
+                          onClick={handleSaveDescription}
+                          disabled={updateTask.isPending}
+                          className="px-3 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700"
+                        >
+                          Save
+                        </button>
+                        <button
+                          onClick={() => setIsEditingDescription(false)}
+                          className="px-3 py-1 text-xs bg-gray-100 text-gray-600 rounded hover:bg-gray-200"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div 
+                      className={cn(
+                        "group mb-3",
+                        canEdit && "cursor-pointer hover:bg-gray-50 rounded px-1 py-0.5 -mx-1"
                       )}
-                    </p>
-                  ) : canEdit ? (
-                    <p className="text-sm text-gray-400 italic flex items-center gap-2">
-                      Click to add description
-                      <Pencil className="w-3 h-3" />
-                    </p>
-                  ) : null}
-                </div>
+                      onClick={handleStartEditDescription}
+                    >
+                      {task.description ? (
+                        <p className="text-sm text-gray-600 flex items-start gap-2">
+                          {task.description}
+                          {canEdit && (
+                            <Pencil className="w-3 h-3 text-gray-400 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0 mt-0.5" />
+                          )}
+                        </p>
+                      ) : canEdit ? (
+                        <p className="text-sm text-gray-400 italic flex items-center gap-2">
+                          Click to add description
+                          <Pencil className="w-3 h-3" />
+                        </p>
+                      ) : null}
+                    </div>
+                  )}
+                </>
               )}
 
               {/* Meta info */}
@@ -742,7 +824,13 @@ export function TaskDetailDrawer({ taskId, isOpen, onClose, onTaskDeleted }: Tas
               {/* Attachments Tab */}
               {activeTab === 'attachments' && (
                 <div className="p-4 space-y-3">
-                  {attachmentsLoading ? (
+                  {isTaskOpen ? (
+                    <div className="text-center py-8">
+                      <Lock className="w-12 h-12 text-gray-300 mx-auto mb-2" />
+                      <p className="text-gray-500 font-medium">Attachments Locked</p>
+                      <p className="text-gray-400 text-sm mt-1">Start work on this task to view and upload attachments</p>
+                    </div>
+                  ) : attachmentsLoading ? (
                     <div className="flex justify-center py-4">
                       <Loader2 className="w-6 h-6 animate-spin text-gray-400" />
                     </div>
@@ -757,26 +845,30 @@ export function TaskDetailDrawer({ taskId, isOpen, onClose, onTaskDeleted }: Tas
                     ))
                   )}
                   
-                  {/* Upload button */}
-                  <button
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={uploadAttachment.isPending}
-                    className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors text-gray-500 hover:text-blue-500"
-                  >
-                    {uploadAttachment.isPending ? (
-                      <Loader2 className="w-5 h-5 animate-spin" />
-                    ) : (
-                      <Upload className="w-5 h-5" />
-                    )}
-                    <span>Upload File</span>
-                  </button>
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    className="hidden"
-                    onChange={handleFileUpload}
-                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
-                  />
+                  {/* Upload button - only show when task is accepted */}
+                  {!isTaskOpen && (
+                    <>
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadAttachment.isPending}
+                        className="w-full flex items-center justify-center gap-2 p-3 border-2 border-dashed border-gray-300 rounded-lg hover:border-blue-400 hover:bg-blue-50 transition-colors text-gray-500 hover:text-blue-500"
+                      >
+                        {uploadAttachment.isPending ? (
+                          <Loader2 className="w-5 h-5 animate-spin" />
+                        ) : (
+                          <Upload className="w-5 h-5" />
+                        )}
+                        <span>Upload File</span>
+                      </button>
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        className="hidden"
+                        onChange={handleFileUpload}
+                        accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+                      />
+                    </>
+                  )}
                 </div>
               )}
 
@@ -798,8 +890,8 @@ export function TaskDetailDrawer({ taskId, isOpen, onClose, onTaskDeleted }: Tas
         ) : null}
       </div>
 
-      {/* Message Input (only for comments tab) */}
-      {activeTab === 'comments' && task && (
+      {/* Message Input (only for comments tab and non-completed tasks) */}
+      {activeTab === 'comments' && task && !['DONE', 'COMPLETED', 'CANCELLED'].includes(task.status) && (
         <div className="p-4 border-t border-gray-200 bg-white">
           <div className="flex gap-2">
             <textarea

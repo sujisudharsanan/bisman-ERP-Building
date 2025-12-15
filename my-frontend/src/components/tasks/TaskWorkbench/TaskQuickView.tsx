@@ -369,34 +369,36 @@ export function TaskQuickView({
         <div ref={messagesEndRef} />
       </div>
 
-      {/* Message Input */}
-      <div className="flex-shrink-0 border-t border-gray-200 dark:border-slate-700 p-3">
-        <div className="flex items-end gap-2">
-          <div className="flex-1 relative">
-            <textarea
-              ref={inputRef}
-              value={newMessage}
-              onChange={(e) => setNewMessage(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Type a message..."
-              rows={1}
-              className="w-full px-3 py-2 pr-10 text-sm bg-gray-100 dark:bg-slate-700 border-0 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
-              style={{ maxHeight: '120px', minHeight: '40px' }}
-            />
+      {/* Message Input (hidden for completed/cancelled tasks) */}
+      {task && !['DONE', 'COMPLETED', 'CANCELLED'].includes(task.status) && (
+        <div className="flex-shrink-0 border-t border-gray-200 dark:border-slate-700 p-3">
+          <div className="flex items-end gap-2">
+            <div className="flex-1 relative">
+              <textarea
+                ref={inputRef}
+                value={newMessage}
+                onChange={(e) => setNewMessage(e.target.value)}
+                onKeyDown={handleKeyDown}
+                placeholder="Type a message..."
+                rows={1}
+                className="w-full px-3 py-2 pr-10 text-sm bg-gray-100 dark:bg-slate-700 border-0 rounded-lg resize-none focus:ring-2 focus:ring-blue-500 dark:focus:ring-blue-400 text-gray-900 dark:text-white placeholder-gray-500 dark:placeholder-gray-400"
+                style={{ maxHeight: '120px', minHeight: '40px' }}
+              />
+            </div>
+            <button
+              onClick={handleSendMessage}
+              disabled={!newMessage.trim() || sending}
+              className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {sending ? (
+                <Loader2 className="w-5 h-5 animate-spin" />
+              ) : (
+                <Send className="w-5 h-5" />
+              )}
+            </button>
           </div>
-          <button
-            onClick={handleSendMessage}
-            disabled={!newMessage.trim() || sending}
-            className="p-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {sending ? (
-              <Loader2 className="w-5 h-5 animate-spin" />
-            ) : (
-              <Send className="w-5 h-5" />
-            )}
-          </button>
         </div>
-      </div>
+      )}
     </div>
   );
 }

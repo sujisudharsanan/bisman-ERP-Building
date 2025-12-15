@@ -67,6 +67,10 @@ export default function JitsiCallControls({
   const [showInviteToast, setShowInviteToast] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<NodeJS.Timeout | null>(null);
+  
+  // Refs for managing call join timing
+  const joinCallRef = useRef<((roomName?: string, callType?: 'audio' | 'video') => Promise<void>) | null>(null);
+  const pendingJoinRef = useRef<{ roomName: string; callType: 'audio' | 'video' } | null>(null);
 
   // Sound notifications
   const { playCallRingtone, stopCallRingtone, playCallEndSound } = useSoundNotification();
@@ -125,16 +129,24 @@ export default function JitsiCallControls({
       
       setJoining(true);
       
-      // Join the call after a brief delay
+      // Set pending join - the useEffect will trigger when container is ready
+      pendingJoinRef.current = { roomName: joinRoomName, callType: joinCallType };
+      
+      // Notify parent that we're joining
       setTimeout(() => {
-        joinCallRef.current?.(joinRoomName, joinCallType);
         onCallJoined?.();
-      }, 300);
+      }, 100);
     }
   }, [joinRoomName, joinCallType, call, joining, onCallJoined]);
 
-  // Keep a ref to joinCall for use in useEffect
-  const joinCallRef = useRef<((roomName?: string, callType?: 'audio' | 'video') => Promise<void>) | null>(null);
+  // Effect to join call when container becomes available
+  useEffect(() => {
+    if (pendingJoinRef.current && containerRef.current && !jitsiApi) {
+      const { roomName, callType } = pendingJoinRef.current;
+      pendingJoinRef.current = null;
+      joinCallRef.current?.(roomName, callType);
+    }
+  });
 
   const JITSI_DOMAIN = 'meet.jit.si'; // Using public Jitsi instance
 
@@ -195,8 +207,17 @@ export default function JitsiCallControls({
       // Notify parent about call start (for sending message in chat)
       onCallStart?.(type, roomName);
       
-      // Auto-join after a brief delay to allow container to expand
-      setTimeout(() => joinCall(roomName, type), 300);
+      // Set pending join - the useEffect will trigger joinCall when container is ready
+      pendingJoinRef.current = { roomName, callType: type };
+      
+      // Also try with setTimeout as a fallback
+      setTimeout(() => {
+        if (pendingJoinRef.current && containerRef.current) {
+          const pending = pendingJoinRef.current;
+          pendingJoinRef.current = null;
+          joinCall(pending.roomName, pending.callType);
+        }
+      }, 500);
     } catch (e) { 
       stopCallRingtone();
       setJoining(false);

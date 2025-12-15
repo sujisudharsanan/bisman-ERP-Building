@@ -9,6 +9,21 @@ interface SplashScreenProps {
   clientName?: string;
 }
 
+// Get user's first name from localStorage
+function getUserFirstName(): string {
+  if (typeof window === 'undefined') return 'You';
+  try {
+    const firstName = localStorage.getItem('first_name');
+    if (firstName && firstName.trim()) {
+      // Capitalize first letter
+      return firstName.trim().charAt(0).toUpperCase() + firstName.trim().slice(1);
+    }
+  } catch {
+    // Ignore localStorage errors
+  }
+  return 'You';
+}
+
 export default function SplashScreen({
   onComplete,
   duration = 3500,
@@ -21,16 +36,23 @@ export default function SplashScreen({
   const [phase, setPhase] = useState<'typing1' | 'pause' | 'deleting' | 'typing2' | 'done'>('typing1');
   const hasRun = useRef(false);
   const onCompleteRef = useRef(onComplete);
+  const [userName, setUserName] = useState('You');
   
   // Keep ref updated
   useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
+
+  // Get user name on client side
+  useEffect(() => {
+    setUserName(getUserFirstName());
+  }, []);
   
   const prefix = 'Designed ';
-  const typePart1 = 'for genius';
-  const deleteWord = 'genius';
-  const typePart2 = 'you';
+  const typePart1 = 'for Genius';
+  const deleteWord = 'Genius';
+  // Keep "You" in the animation, user name will be shown at bottom
+  const typePart2 = 'You';
 
   useEffect(() => {
     // Prevent re-running if already executed
@@ -135,34 +157,16 @@ export default function SplashScreen({
           left: 0;
           width: 100%;
           height: 100%;
-          background: #ffffff;
+          background: #0f172a;
           overflow: hidden;
         }
         
         .splash-hero-bg::before {
-          content: '';
-          position: absolute;
-          top: -50%;
-          left: -50%;
-          width: 200%;
-          height: 200%;
-          background: 
-            radial-gradient(circle at 20% 80%, rgba(102, 126, 234, 0.08) 0%, transparent 50%),
-            radial-gradient(circle at 80% 20%, rgba(118, 75, 162, 0.06) 0%, transparent 40%),
-            radial-gradient(circle at 40% 40%, rgba(240, 147, 251, 0.05) 0%, transparent 30%);
-          animation: splashFloat 20s ease-in-out infinite;
+          display: none;
         }
         
         .splash-hero-bg::after {
-          content: '';
-          position: absolute;
-          top: 0;
-          left: 0;
-          width: 100%;
-          height: 100%;
-          background: 
-            radial-gradient(ellipse at 10% 90%, rgba(102, 126, 234, 0.1) 0%, transparent 50%),
-            radial-gradient(ellipse at 90% 10%, rgba(240, 147, 251, 0.08) 0%, transparent 50%);
+          display: none;
         }
         
         @keyframes splashFloat {
@@ -175,7 +179,7 @@ export default function SplashScreen({
           position: relative;
           z-index: 10;
           text-align: center;
-          color: #333;
+          color: #ffffff;
           padding: 0 20px;
           max-width: 800px;
         }
@@ -195,6 +199,7 @@ export default function SplashScreen({
         .splash-bisman-logo {
           width: 280px;
           height: auto;
+          filter: brightness(0) invert(1);
         }
         
         @media (min-width: 768px) {
@@ -264,7 +269,7 @@ export default function SplashScreen({
           display: inline-block;
           width: 3px;
           height: 1em;
-          background-color: #093562;
+          background-color: #fbbf24;
           margin-left: 2px;
           animation: splashBlink 0.7s infinite;
           vertical-align: text-bottom;
@@ -276,11 +281,11 @@ export default function SplashScreen({
         }
         
         .splash-designed-text {
-          color: #093562;
+          color: #94a3b8;
         }
         
         .splash-for-you-text {
-          color: #eab308;
+          color: #fbbf24;
         }
         
         .splash-client-branding {
@@ -301,9 +306,9 @@ export default function SplashScreen({
           height: 80px;
           object-fit: contain;
           border-radius: 12px;
-          background: white;
+          background: rgba(255, 255, 255, 0.1);
           padding: 8px;
-          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
         }
         
         @media (min-width: 768px) {
@@ -316,14 +321,34 @@ export default function SplashScreen({
         .splash-client-name {
           font-size: 1rem;
           font-weight: 500;
-          color: #666;
+          color: #94a3b8;
           margin-top: 0.25rem;
         }
         
         .splash-powered-by {
           font-size: 0.75rem;
-          color: #999;
+          color: #64748b;
           margin-top: 0.5rem;
+        }
+        
+        .splash-powered-section {
+          margin-top: 2rem;
+          font-size: 1rem;
+          animation: splashFadeIn 2s ease-out 1s both;
+        }
+        
+        .splash-powered-section.fade-out {
+          animation: splashFadeOut 1.5s ease-in-out forwards;
+        }
+        
+        .splash-powered-text {
+          color: #94a3b8;
+          font-weight: 400;
+        }
+        
+        .splash-user-name {
+          color: #fbbf24;
+          font-weight: 600;
         }
       `}</style>
 
@@ -344,7 +369,6 @@ export default function SplashScreen({
               {clientName && (
                 <span className="splash-client-name">{clientName}</span>
               )}
-              <span className="splash-powered-by">Powered by BISMAN ERP</span>
             </div>
           )}
           
@@ -361,6 +385,12 @@ export default function SplashScreen({
             </span>
             {phase !== 'done' && <span className="splash-typing-cursor"></span>}
           </h2>
+          
+          {/* Powered by BISMAN for User Name */}
+          <div className={`splash-powered-section ${!showContent ? 'fade-out' : ''}`}>
+            <span className="splash-powered-text">Powered by BISMAN for </span>
+            <span className="splash-user-name">{userName}</span>
+          </div>
         </div>
       </section>
     </div>
