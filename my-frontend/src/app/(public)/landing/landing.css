@@ -121,7 +121,7 @@
 }
 
 .landing-page .navmenu a {
-  color: var(--nav-color);
+  color: rgba(255,255,255,0.7);
   padding: 18px 15px;
   font-size: 15px;
   font-family: var(--nav-font);
@@ -134,9 +134,13 @@
   text-decoration: none;
 }
 
+.landing-page .navmenu a.no-hover:hover {
+  color: rgba(255,255,255,0.7) !important;
+}
+
 .landing-page .navmenu li:hover > a,
 .landing-page .navmenu .active {
-  color: var(--nav-hover-color);
+  color: rgba(255,255,255,0.85);
 }
 
 .landing-page .navmenu .dropdown ul {
@@ -172,6 +176,13 @@
   color: var(--nav-color);
   font-size: 28px;
   cursor: pointer;
+}
+
+/* Hide hamburger menu on desktop - only show on mobile */
+@media (min-width: 1200px) {
+  .landing-page .mobile-nav-toggle {
+    display: none !important;
+  }
 }
 
 @media (max-width: 1199px) {

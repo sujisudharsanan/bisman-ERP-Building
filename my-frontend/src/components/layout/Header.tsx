@@ -90,10 +90,10 @@ export default function Header({ onMenuToggle }: HeaderProps) {
       role="banner"
       aria-label="Main header"
     >
-      <div className="px-3 sm:px-4 lg:px-6">
-        <div className="flex justify-between items-center h-11">
+      <div className="px-2 sm:px-3 lg:px-4">
+        <div className="flex justify-between items-center h-8">
           {/* Left side - User info and Menu toggle */}
-          <div className="flex items-center space-x-3">
+          <div className="flex items-center space-x-2">
             {loading ? (
               <span 
                 className="text-xs text-gray-500"
@@ -105,12 +105,12 @@ export default function Header({ onMenuToggle }: HeaderProps) {
             ) : user ? (
               <Link 
                 href="/profile"
-                className="flex items-center space-x-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg p-1.5 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="flex items-center space-x-1.5 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-md p-1 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label={t('header.go_to_profile')}
               >
                 {/* User Avatar - Circular, clickable */}
                 <Avatar 
-                  className="w-7 h-7 ring-2 ring-blue-500/20"
+                  className="w-5 h-5 ring-1 ring-blue-500/20"
                   aria-hidden="true"
                 >
                   {(() => {
@@ -123,19 +123,19 @@ export default function Header({ onMenuToggle }: HeaderProps) {
                     />
                   ) : (
                       <AvatarFallback className="bg-blue-600 text-white">
-                      <UserIcon className="w-3.5 h-3.5" aria-hidden="true" />
+                      <UserIcon className="w-3 h-3" aria-hidden="true" />
                     </AvatarFallback>
                   );
                   })()}
                 </Avatar>
 
                 {/* User Name and Role */}
-                <div className="flex flex-col items-start">
-                  <span className="text-xs font-semibold text-gray-900 dark:text-white">
+                <div className="flex flex-col items-start leading-none">
+                  <span className="text-[11px] font-semibold text-gray-900 dark:text-white">
                     {user.name}
                   </span>
                   <span 
-                    className="text-[10px] text-gray-500 dark:text-gray-400"
+                    className="text-[9px] text-gray-500 dark:text-gray-400"
                     aria-label={`Role: ${getRoleDisplayName(user.role || 'USER')}`}
                   >
                     {getRoleDisplayName(user.role || 'USER')}
@@ -146,27 +146,27 @@ export default function Header({ onMenuToggle }: HeaderProps) {
           </div>
 
           {/* Right side - Calendar icon and menu toggle */}
-          <div className="flex items-center space-x-1.5">
+          <div className="flex items-center space-x-1">
             {/* Calendar Icon */}
               <Link
               href="/calendar"
-              className="p-1.5 rounded-lg text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
+              className="p-1 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
               aria-label="Go to calendar"
               title="Calendar"
             >
-              <CalendarIcon className="w-4 h-4" />
+              <CalendarIcon className="w-3.5 h-3.5" />
             </Link>
 
             {onMenuToggle && (
               <button 
                 onClick={onMenuToggle}
-                className="p-1.5 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className="p-1 rounded-md text-gray-400 hover:text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-blue-500"
                 aria-label="Open main menu"
                 aria-expanded="false"
               >
                 <span className="sr-only">Open main menu</span>
                 <svg 
-                  className="h-5 w-5" 
+                  className="h-4 w-4" 
                   fill="none" 
                   viewBox="0 0 24 24" 
                   stroke="currentColor"

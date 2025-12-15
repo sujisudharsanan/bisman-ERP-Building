@@ -142,13 +142,13 @@ export default function LandingPage() {
             
             <nav id="navmenu" className="navmenu" style={{ display: 'flex', alignItems: 'center' }}>
               <ul>
-                <li><a href="#services">Features</a></li>
-                <li><a href="#portfolio">Modules</a></li>
-                <li><a href="#pricing">Pricing</a></li>
+                <li><a href="#services" style={{ color: 'rgba(255,255,255,0.7)' }}>Features</a></li>
+                <li><a href="#portfolio" style={{ color: 'rgba(255,255,255,0.7)', pointerEvents: 'auto' }} className="no-hover">Modules</a></li>
+                <li><a href="#pricing" style={{ color: 'rgba(255,255,255,0.7)' }}>Pricing</a></li>
               </ul>
             </nav>
             
-            <div style={{ display: 'flex', alignItems: 'center', gap: 15 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 15, marginLeft: 'auto' }}>
               <Link href="/login" className="btn-getstarted" style={{ background: '#fff', color: '#093562', fontWeight: 600 }}>Go to Application</Link>
               <i className="mobile-nav-toggle bi bi-list" onClick={toggleMobileNav}></i>
             </div>
