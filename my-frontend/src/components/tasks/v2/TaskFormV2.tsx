@@ -1,6 +1,7 @@
 /**
  * TaskFormV2 - Modern Task Creation/Edit Form
  * Clean, professional design with validation
+ * Includes custom fields and recurring task options
  */
 
 'use client';
@@ -19,9 +20,13 @@ import {
   CheckCircle,
   Plus,
   Tag,
+  Repeat,
+  DollarSign,
+  Trash2,
+  GripVertical,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Task, TaskPriority, TaskStatus, CreateTaskInput } from '@/types/task';
+import { Task, TaskPriority, TaskStatus, CreateTaskInput, CustomField, RecurringFrequency, RecurringConfig } from '@/types/task';
 
 // ============================================
 // TYPES
@@ -56,6 +61,24 @@ const priorityOptions: { value: TaskPriority; label: string; color: string; bgCo
   { value: TaskPriority.CRITICAL, label: 'Critical', color: 'text-purple-600', bgColor: 'bg-purple-100 hover:bg-purple-200' },
 ];
 
+const recurringOptions: { value: RecurringFrequency; label: string }[] = [
+  { value: RecurringFrequency.NONE, label: 'No Repeat' },
+  { value: RecurringFrequency.DAILY, label: 'Daily' },
+  { value: RecurringFrequency.WEEKLY, label: 'Weekly' },
+  { value: RecurringFrequency.BIWEEKLY, label: 'Every 2 Weeks' },
+  { value: RecurringFrequency.MONTHLY, label: 'Monthly' },
+  { value: RecurringFrequency.QUARTERLY, label: 'Quarterly' },
+  { value: RecurringFrequency.YEARLY, label: 'Yearly' },
+];
+
+const customFieldTypes = [
+  { value: 'text', label: 'Text' },
+  { value: 'number', label: 'Number' },
+  { value: 'currency', label: 'Currency (₹)' },
+  { value: 'date', label: 'Date' },
+  { value: 'textarea', label: 'Long Text' },
+];
+
 // ============================================
 // MAIN COMPONENT
 // ============================================
@@ -69,6 +92,26 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
   const [estimatedHours, setEstimatedHours] = useState(task?.estimatedHours?.toString() || '');
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
+
+  // Custom fields state
+  const [customFields, setCustomFields] = useState<CustomField[]>([]);
+  const [showAddField, setShowAddField] = useState(false);
+  const [newFieldLabel, setNewFieldLabel] = useState('');
+  const [newFieldType, setNewFieldType] = useState<CustomField['type']>('text');
+  const [showAdvanced, setShowAdvanced] = useState(true);
+  const advancedRef = useRef<HTMLDivElement | null>(null);
+
+  // Recurring task state
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringFrequency, setRecurringFrequency] = useState<RecurringFrequency>(RecurringFrequency.NONE);
+  const [recurringStartDate, setRecurringStartDate] = useState(new Date().toISOString().split('T')[0]);
+  const [recurringEndDate, setRecurringEndDate] = useState('');
+  const [recurringTime, setRecurringTime] = useState('09:00');
+  const [dayOfWeek, setDayOfWeek] = useState(1); // Monday
+  const [dayOfMonth, setDayOfMonth] = useState(1);
+  const [isExpense, setIsExpense] = useState(false);
+  const [expenseAmount, setExpenseAmount] = useState('');
+  const [expenseCategory, setExpenseCategory] = useState('');
 
   // Assignee state
   const [assignee, setAssignee] = useState<UserOption | null>(null);
@@ -181,6 +224,23 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
 
     if (!validate()) return;
 
+    // Build recurring config if enabled
+    let recurring: RecurringConfig | undefined;
+    if (isRecurring && recurringFrequency !== RecurringFrequency.NONE) {
+      recurring = {
+        frequency: recurringFrequency,
+        startDate: recurringStartDate,
+        endDate: recurringEndDate || undefined,
+        time: recurringTime,
+        dayOfWeek: recurringFrequency === RecurringFrequency.WEEKLY ? dayOfWeek : undefined,
+        dayOfMonth: recurringFrequency === RecurringFrequency.MONTHLY ? dayOfMonth : undefined,
+        autoAssign: true,
+        isExpense: isExpense,
+        expenseAmount: isExpense && expenseAmount ? Number(expenseAmount) : undefined,
+        expenseCategory: isExpense ? expenseCategory : undefined,
+      };
+    }
+
     const data: CreateTaskInput = {
       title: title.trim(),
       description: description.trim() || undefined,
@@ -189,6 +249,8 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
       dueDate: dueDate || undefined,
       estimatedHours: estimatedHours ? Number(estimatedHours) : undefined,
       tags: tags.length > 0 ? tags : undefined,
+      customFields: customFields.length > 0 ? customFields : undefined,
+      recurring,
     };
 
     await onSubmit(data);
@@ -206,6 +268,44 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
   // Remove tag
   const removeTag = (tagToRemove: string) => {
     setTags(tags.filter((t) => t !== tagToRemove));
+  };
+
+  // Add custom field
+  const addCustomField = () => {
+    if (!newFieldLabel.trim()) return;
+    const newField: CustomField = {
+      id: `field_${Date.now()}`,
+      label: newFieldLabel.trim(),
+      type: newFieldType,
+      value: '',
+      required: false,
+    };
+    setCustomFields([...customFields, newField]);
+    setNewFieldLabel('');
+    setNewFieldType('text');
+    setShowAddField(false);
+  };
+
+  // Update custom field value
+  const updateCustomFieldValue = (fieldId: string, value: string) => {
+    setCustomFields(customFields.map(f => 
+      f.id === fieldId ? { ...f, value } : f
+    ));
+  };
+
+  // Remove custom field
+  const removeCustomField = (fieldId: string) => {
+    setCustomFields(customFields.filter(f => f.id !== fieldId));
+  };
+
+  // Toggle recurring task
+  const handleRecurringToggle = (enabled: boolean) => {
+    setIsRecurring(enabled);
+    if (!enabled) {
+      setRecurringFrequency(RecurringFrequency.NONE);
+    } else {
+      setRecurringFrequency(RecurringFrequency.WEEKLY);
+    }
   };
 
   return (
@@ -464,6 +564,20 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
                     'border-gray-200 dark:border-gray-700'
                   )}
                 />
+                {/* Quick link to advanced options to help users find custom fields / recurring settings */}
+                <div className="mt-3">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAdvanced(true);
+                      setTimeout(() => advancedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+                    }}
+                    className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-2"
+                  >
+                    <GripVertical className="w-4 h-4" />
+                    More options
+                  </button>
+                </div>
               </div>
 
               {/* Tags */}
@@ -513,6 +627,307 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
                     ))}
                   </div>
                 )}
+              </div>
+            </div>
+
+            {/* Custom Fields Section */}
+            <div ref={advancedRef} id="advanced-options" className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <GripVertical className="w-4 h-4 inline mr-1" />
+                  Custom Input Fields
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setShowAddField(true)}
+                  className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
+                >
+                  <Plus className="w-4 h-4" />
+                  Add Field
+                </button>
+              </div>
+
+              {/* Add New Field Form */}
+              {showAddField && (
+                <div className="mb-4 p-4 rounded-xl border border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20">
+                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-3">Add New Input Field</p>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <input
+                      type="text"
+                      value={newFieldLabel}
+                      onChange={(e) => setNewFieldLabel(e.target.value)}
+                      placeholder="Field label (e.g., Invoice Number)"
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+                    />
+                    <select
+                      value={newFieldType}
+                      onChange={(e) => setNewFieldType(e.target.value as CustomField['type'])}
+                      className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+                    >
+                      {customFieldTypes.map(ft => (
+                        <option key={ft.value} value={ft.value}>{ft.label}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex gap-2 mt-3">
+                    <button
+                      type="button"
+                      onClick={addCustomField}
+                      className="px-3 py-1.5 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700"
+                    >
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setShowAddField(false)}
+                      className="px-3 py-1.5 text-gray-600 dark:text-gray-400 text-sm hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Custom Fields List */}
+              {customFields.length > 0 && (
+                <div className="space-y-3">
+                  {customFields.map((field) => (
+                    <div key={field.id} className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                      <div className="flex-1">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
+                          {field.label}
+                          <span className="ml-2 text-xs text-gray-400">({field.type})</span>
+                        </label>
+                        {field.type === 'textarea' ? (
+                          <textarea
+                            value={field.value}
+                            onChange={(e) => updateCustomFieldValue(field.id, e.target.value)}
+                            placeholder={`Enter ${field.label.toLowerCase()}...`}
+                            rows={2}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm resize-none"
+                          />
+                        ) : field.type === 'currency' ? (
+                          <div className="relative">
+                            <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-500">₹</span>
+                            <input
+                              type="number"
+                              value={field.value}
+                              onChange={(e) => updateCustomFieldValue(field.id, e.target.value)}
+                              placeholder="0.00"
+                              className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+                            />
+                          </div>
+                        ) : (
+                          <input
+                            type={field.type === 'number' ? 'number' : field.type === 'date' ? 'date' : 'text'}
+                            value={field.value}
+                            onChange={(e) => updateCustomFieldValue(field.id, e.target.value)}
+                            placeholder={`Enter ${field.label.toLowerCase()}...`}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+                          />
+                        )}
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeCustomField(field.id)}
+                        className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg mt-6"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Recurring Task Section */}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <div className="flex items-center justify-between mb-4">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                  <Repeat className="w-4 h-4 inline mr-1" />
+                  Recurring Task / Expense
+                </label>
+                <label className="relative inline-flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={isRecurring}
+                    onChange={(e) => handleRecurringToggle(e.target.checked)}
+                    className="sr-only peer"
+                  />
+                  <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-blue-300 dark:peer-focus:ring-blue-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-blue-600"></div>
+                </label>
+              </div>
+
+              {isRecurring && (
+                <div className="space-y-4 p-4 rounded-xl border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
+                  {/* Frequency */}
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Frequency
+                    </label>
+                    <div className="flex flex-wrap gap-2">
+                      {recurringOptions.filter(o => o.value !== RecurringFrequency.NONE).map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => setRecurringFrequency(opt.value)}
+                          className={cn(
+                            'px-3 py-1.5 rounded-lg text-sm font-medium transition-all',
+                            recurringFrequency === opt.value
+                              ? 'bg-green-600 text-white'
+                              : 'bg-white dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-100'
+                          )}
+                        >
+                          {opt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Date/Time Settings */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Start Date</label>
+                      <input
+                        type="date"
+                        value={recurringStartDate}
+                        onChange={(e) => setRecurringStartDate(e.target.value)}
+                        min={new Date().toISOString().split('T')[0]}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">End Date (Optional)</label>
+                      <input
+                        type="date"
+                        value={recurringEndDate}
+                        onChange={(e) => setRecurringEndDate(e.target.value)}
+                        min={recurringStartDate}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Time</label>
+                      <input
+                        type="time"
+                        value={recurringTime}
+                        onChange={(e) => setRecurringTime(e.target.value)}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  {/* Weekly Day Selector */}
+                  {recurringFrequency === RecurringFrequency.WEEKLY && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Day of Week</label>
+                      <div className="flex gap-1">
+                        {['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map((day, idx) => (
+                          <button
+                            key={day}
+                            type="button"
+                            onClick={() => setDayOfWeek(idx)}
+                            className={cn(
+                              'px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all',
+                              dayOfWeek === idx
+                                ? 'bg-green-600 text-white'
+                                : 'bg-white dark:bg-gray-800 text-gray-600 hover:bg-gray-100'
+                            )}
+                          >
+                            {day}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Monthly Day Selector */}
+                  {recurringFrequency === RecurringFrequency.MONTHLY && (
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Day of Month</label>
+                      <select
+                        value={dayOfMonth}
+                        onChange={(e) => setDayOfMonth(Number(e.target.value))}
+                        className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+                      >
+                        {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                          <option key={d} value={d}>{d}</option>
+                        ))}
+                      </select>
+                    </div>
+                  )}
+
+                  {/* Expense Toggle */}
+                  <div className="border-t border-green-200 dark:border-green-700 pt-4">
+                    <div className="flex items-center gap-3 mb-3">
+                      <input
+                        type="checkbox"
+                        id="isExpense"
+                        checked={isExpense}
+                        onChange={(e) => setIsExpense(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300 text-green-600 focus:ring-green-500"
+                      />
+                      <label htmlFor="isExpense" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                        <DollarSign className="w-4 h-4 inline mr-1" />
+                        This is a recurring expense
+                      </label>
+                    </div>
+
+                    {isExpense && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Amount (₹)</label>
+                          <input
+                            type="number"
+                            value={expenseAmount}
+                            onChange={(e) => setExpenseAmount(e.target.value)}
+                            placeholder="0.00"
+                            min="0"
+                            step="0.01"
+                            className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Category</label>
+                          <select
+                            value={expenseCategory}
+                            onChange={(e) => setExpenseCategory(e.target.value)}
+                            className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+                          >
+                            <option value="">Select category...</option>
+                            <option value="rent">Rent</option>
+                            <option value="salary">Salary</option>
+                            <option value="utilities">Utilities</option>
+                            <option value="subscription">Subscription</option>
+                            <option value="maintenance">Maintenance</option>
+                            <option value="insurance">Insurance</option>
+                            <option value="taxes">Taxes</option>
+                            <option value="marketing">Marketing</option>
+                            <option value="supplies">Supplies</option>
+                            <option value="other">Other</option>
+                          </select>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Attachments Section */}
+            <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <Paperclip className="w-4 h-4 inline mr-1" />
+                Attachments
+              </label>
+              <div className="flex items-center justify-center w-full">
+                <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700">
+                  <div className="flex flex-col items-center justify-center pt-5 pb-6">
+                    <Paperclip className="w-6 h-6 text-gray-400 mb-1" />
+                    <p className="text-xs text-gray-500">Click to upload or drag and drop</p>
+                  </div>
+                  <input type="file" className="hidden" multiple />
+                </label>
               </div>
             </div>
           </div>

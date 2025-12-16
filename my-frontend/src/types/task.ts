@@ -270,6 +270,44 @@ export interface TaskTemplate {
 }
 
 // ============================================
+// CUSTOM FIELD & RECURRING TYPES
+// ============================================
+
+export interface CustomField {
+  id: string;           // Unique identifier for the field
+  label: string;        // Field heading/label
+  type: 'text' | 'number' | 'date' | 'select' | 'textarea' | 'currency';
+  value: string;        // Field value
+  required?: boolean;   // Is field required
+  options?: string[];   // Options for select type
+  placeholder?: string; // Placeholder text
+}
+
+export enum RecurringFrequency {
+  NONE = 'NONE',
+  DAILY = 'DAILY',
+  WEEKLY = 'WEEKLY',
+  BIWEEKLY = 'BIWEEKLY',
+  MONTHLY = 'MONTHLY',
+  QUARTERLY = 'QUARTERLY',
+  YEARLY = 'YEARLY',
+}
+
+export interface RecurringConfig {
+  frequency: RecurringFrequency;
+  startDate: string;               // When to start recurring
+  endDate?: string;                // Optional end date
+  dayOfWeek?: number;              // 0-6 for weekly (Sunday = 0)
+  dayOfMonth?: number;             // 1-31 for monthly
+  time?: string;                   // HH:MM format for task creation time
+  maxOccurrences?: number;         // Maximum number of occurrences
+  autoAssign?: boolean;            // Auto-assign to same assignee
+  isExpense?: boolean;             // Mark as expense task
+  expenseAmount?: number;          // Amount if it's an expense
+  expenseCategory?: string;        // Category of expense
+}
+
+// ============================================
 // FORM & INPUT TYPES
 // ============================================
 
@@ -286,6 +324,8 @@ export interface CreateTaskInput {
   organizationId?: number;
   departmentId?: number;
   tags?: string[];
+  customFields?: CustomField[];
+  recurring?: RecurringConfig;
 }
 
 export interface UpdateTaskInput {
