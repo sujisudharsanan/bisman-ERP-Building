@@ -390,11 +390,15 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
     // Sort by explicit order then name
     pages.sort((a, b) => (a.order ?? 0) - (b.order ?? 0) || a.name.localeCompare(b.name));
     
-    // Deduplicate pages by id (prevent duplicate entries in sidebar)
+    // Deduplicate pages by id AND by name (prevent duplicate entries in sidebar)
     const seenIds = new Set<string>();
+    const seenNames = new Set<string>();
     const uniquePages = pages.filter(p => {
       if (seenIds.has(p.id)) return false;
+      // Also deduplicate by name - if same name appears twice, keep only the first
+      if (seenNames.has(p.name)) return false;
       seenIds.add(p.id);
+      seenNames.add(p.name);
       return true;
     });
     

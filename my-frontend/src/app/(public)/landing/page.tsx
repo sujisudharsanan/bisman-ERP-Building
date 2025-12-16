@@ -18,7 +18,7 @@ export default function LandingPage() {
   const [scrolled, setScrolled] = useState(false);
   const [mobileNavActive, setMobileNavActive] = useState(false);
   const [activeFilter, setActiveFilter] = useState('All');
-  const [activeFaq, setActiveFaq] = useState<number | null>(0);
+  const [activeFaq, setActiveFaq] = useState<number | null>(10);
 
   // Preload critical fonts immediately
   useEffect(() => {
@@ -104,7 +104,8 @@ export default function LandingPage() {
   };
   
   const toggleFaq = (index: number) => {
-    setActiveFaq(activeFaq === index ? null : index);
+    // Keep the clicked FAQ open, only close when clicking a different one
+    setActiveFaq(index);
   };
   
   // Portfolio items with categories - using available images (1, 3, 4, 7, 8, 9)
@@ -183,7 +184,8 @@ export default function LandingPage() {
           <section id="clients" className="clients section light-background">
             <div className="container" data-aos="zoom-in">
               <p style={{ textAlign: 'center', fontSize: 12, textTransform: 'uppercase', letterSpacing: 3, color: '#64748b', marginBottom: 24 }}>8 Powerful Modules • One Platform</p>
-              <div className="row" style={{ justifyContent: 'center', gap: 32, flexWrap: 'wrap', alignItems: 'center' }}>
+              {/* Top row - 6 modules */}
+              <div className="row" style={{ justifyContent: 'center', gap: 32, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
                 {[
                   'Task Management',
                   'Team Collaboration',
@@ -191,16 +193,61 @@ export default function LandingPage() {
                   'HR Management',
                   'Inventory Control',
                   'Finance & Billing',
+                ].map((name, i) => (
+                  <span 
+                    key={i} 
+                    className="module-item"
+                    data-aos="fade-up"
+                    data-aos-delay={i * 100}
+                    style={{ 
+                      fontSize: 14, 
+                      fontWeight: 500, 
+                      color: '#334155',
+                      padding: '8px 0',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = '#0d6efd';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = '#334155';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
+                    {name}
+                  </span>
+                ))}
+              </div>
+              {/* Bottom row - 2 modules */}
+              <div className="row" style={{ justifyContent: 'center', gap: 32, flexWrap: 'wrap', alignItems: 'center' }}>
+                {[
                   'Calendar & Scheduling',
                   'Access & Security',
                 ].map((name, i) => (
-                  <span key={i} style={{ 
-                    fontSize: 14, 
-                    fontWeight: 500, 
-                    color: '#334155',
-                    padding: '8px 0',
-                    cursor: 'default',
-                  }}>
+                  <span 
+                    key={i} 
+                    className="module-item"
+                    data-aos="fade-up"
+                    data-aos-delay={(i + 6) * 100}
+                    style={{ 
+                      fontSize: 14, 
+                      fontWeight: 500, 
+                      color: '#334155',
+                      padding: '8px 0',
+                      cursor: 'pointer',
+                      transition: 'all 0.3s ease',
+                    }}
+                    onMouseEnter={(e) => {
+                      e.currentTarget.style.color = '#0d6efd';
+                      e.currentTarget.style.transform = 'translateY(-2px)';
+                    }}
+                    onMouseLeave={(e) => {
+                      e.currentTarget.style.color = '#334155';
+                      e.currentTarget.style.transform = 'translateY(0)';
+                    }}
+                  >
                     {name}
                   </span>
                 ))}
