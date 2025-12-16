@@ -89,6 +89,7 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
   const [description, setDescription] = useState(task?.description || '');
   const [priority, setPriority] = useState<TaskPriority>(task?.priority || TaskPriority.MEDIUM);
   const [dueDate, setDueDate] = useState(task?.dueDate?.split('T')[0] || '');
+  const [dueTime, setDueTime] = useState(task?.dueDate ? task.dueDate.split('T')[1]?.slice(0, 5) || '18:00' : '18:00');
   const [estimatedHours, setEstimatedHours] = useState(task?.estimatedHours?.toString() || '');
   const [tags, setTags] = useState<string[]>([]);
   const [newTag, setNewTag] = useState('');
@@ -113,8 +114,8 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseCategory, setExpenseCategory] = useState('');
 
-  // Assignee state
-  const [assignee, setAssignee] = useState<UserOption | null>(null);
+  // Assignees state (multiple)
+  const [assignees, setAssignees] = useState<UserOption[]>([]);
   const [userQuery, setUserQuery] = useState('');
   const [userResults, setUserResults] = useState<UserOption[]>([]);
   const [showUserDropdown, setShowUserDropdown] = useState(false);
@@ -137,17 +138,60 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // Load existing assignee
+  // Auto-set due date and time based on priority
+  useEffect(() => {
+    if (mode === 'edit') return; // Don't auto-change for edit mode
+    
+    const today = new Date();
+    const formatDate = (d: Date) => d.toISOString().split('T')[0];
+    
+    switch (priority) {
+      case TaskPriority.CRITICAL:
+        // Critical: Due in 2 hours or end of today
+        setDueDate(formatDate(today));
+        const criticalHour = Math.min(today.getHours() + 2, 23);
+        setDueTime(`${criticalHour.toString().padStart(2, '0')}:00`);
+        break;
+      case TaskPriority.URGENT:
+        // Urgent: Due end of today
+        setDueDate(formatDate(today));
+        setDueTime('18:00');
+        break;
+      case TaskPriority.HIGH:
+        // High: Due tomorrow end of day
+        const tomorrow = new Date(today);
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        setDueDate(formatDate(tomorrow));
+        setDueTime('18:00');
+        break;
+      case TaskPriority.MEDIUM:
+        // Medium: Due in 3 days
+        const threeDays = new Date(today);
+        threeDays.setDate(threeDays.getDate() + 3);
+        setDueDate(formatDate(threeDays));
+        setDueTime('18:00');
+        break;
+      case TaskPriority.LOW:
+        // Low: Due in 7 days
+        const sevenDays = new Date(today);
+        sevenDays.setDate(sevenDays.getDate() + 7);
+        setDueDate(formatDate(sevenDays));
+        setDueTime('18:00');
+        break;
+    }
+  }, [priority, mode]);
+
+  // Load existing assignees
   useEffect(() => {
     if (task?.assignee) {
-      setAssignee({
+      setAssignees([{
         id: task.assigneeId,
         username: task.assignee.username,
         email: task.assignee.email,
         fullName: `${task.assignee.firstName || ''} ${task.assignee.lastName || ''}`.trim(),
         role: task.assignee.roleName || '',
         avatar: task.assignee.avatar,
-      });
+      }]);
     }
   }, [task]);
 
@@ -182,13 +226,20 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
     searchTimeout.current = setTimeout(() => searchUsers(value), 250);
   };
 
-  // Select user
+  // Select user (add to assignees list)
   const selectUser = (user: UserOption) => {
-    setAssignee(user);
+    // Don't add if already in list
+    if (assignees.some(a => a.id === user.id)) return;
+    setAssignees([...assignees, user]);
     setUserQuery('');
     setShowUserDropdown(false);
     setUserResults([]);
     setErrors({ ...errors, assignee: '' });
+  };
+
+  // Remove user from assignees
+  const removeAssignee = (userId: number) => {
+    setAssignees(assignees.filter(a => a.id !== userId));
   };
 
   // Validation
@@ -201,8 +252,8 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
       newErrors.title = 'Title must be at least 3 characters';
     }
 
-    if (!assignee) {
-      newErrors.assignee = 'Please assign this task to someone';
+    if (assignees.length === 0) {
+      newErrors.assignee = 'Please assign this task to at least one person';
     }
 
     if (dueDate && new Date(dueDate) < new Date(new Date().toDateString())) {
@@ -245,8 +296,9 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
       title: title.trim(),
       description: description.trim() || undefined,
       priority,
-      assigneeId: assignee!.id,
-      dueDate: dueDate || undefined,
+      assigneeId: assignees[0]?.id, // Primary assignee (first in list)
+      assigneeIds: assignees.map(a => a.id), // All assignees
+      dueDate: dueDate ? `${dueDate}T${dueTime || '18:00'}:00` : undefined,
       estimatedHours: estimatedHours ? Number(estimatedHours) : undefined,
       tags: tags.length > 0 ? tags : undefined,
       customFields: customFields.length > 0 ? customFields : undefined,
@@ -381,258 +433,9 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
               />
             </div>
 
-            {/* Priority & Due Date Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Priority */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  <Flag className="w-4 h-4 inline mr-1" />
-                  Priority
-                </label>
-                <div className="flex flex-wrap gap-2">
-                  {priorityOptions.map((opt) => (
-                    <button
-                      key={opt.value}
-                      type="button"
-                      onClick={() => setPriority(opt.value)}
-                      className={cn(
-                        'px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200',
-                        priority === opt.value
-                          ? `${opt.bgColor} ${opt.color} ring-2 ring-offset-1 ring-current`
-                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
-                      )}
-                    >
-                      {opt.label}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-              {/* Due Date */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  <Calendar className="w-4 h-4 inline mr-1" />
-                  Due Date
-                </label>
-                <input
-                  type="date"
-                  value={dueDate}
-                  onChange={(e) => setDueDate(e.target.value)}
-                  onBlur={() => setTouched({ ...touched, dueDate: true })}
-                  min={new Date().toISOString().split('T')[0]}
-                  className={cn(
-                    'w-full px-4 py-2.5 rounded-xl border bg-gray-50 dark:bg-gray-800',
-                    'text-gray-900 dark:text-white',
-                    'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                    touched.dueDate && errors.dueDate
-                      ? 'border-red-300'
-                      : 'border-gray-200 dark:border-gray-700'
-                  )}
-                />
-                {touched.dueDate && errors.dueDate && (
-                  <p className="mt-1 text-sm text-red-500">{errors.dueDate}</p>
-                )}
-              </div>
-            </div>
-
-            {/* Assignee */}
-            <div ref={userSearchRef}>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                <User className="w-4 h-4 inline mr-1" />
-                Assign To <span className="text-red-500">*</span>
-              </label>
-
-              {assignee ? (
-                <div className="flex items-center justify-between p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-                  <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white font-medium">
-                      {assignee.fullName?.charAt(0) || assignee.username?.charAt(0) || 'U'}
-                    </div>
-                    <div>
-                      <p className="font-medium text-gray-900 dark:text-white">
-                        {assignee.fullName || assignee.username}
-                      </p>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        {assignee.role} • {assignee.email}
-                      </p>
-                    </div>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setAssignee(null)}
-                    className="p-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <X className="w-4 h-4 text-gray-500" />
-                  </button>
-                </div>
-              ) : (
-                <div className="relative">
-                  <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
-                    {searchingUsers ? (
-                      <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
-                    ) : (
-                      <Search className="w-4 h-4 text-gray-400" />
-                    )}
-                  </div>
-                  <input
-                    type="text"
-                    value={userQuery}
-                    onChange={(e) => handleUserSearch(e.target.value)}
-                    onFocus={() => setShowUserDropdown(true)}
-                    placeholder="Search by name or email..."
-                    className={cn(
-                      'w-full pl-10 pr-4 py-3 rounded-xl border bg-gray-50 dark:bg-gray-800',
-                      'text-gray-900 dark:text-white placeholder:text-gray-400',
-                      'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                      touched.assignee && errors.assignee
-                        ? 'border-red-300 bg-red-50 dark:bg-red-900/20'
-                        : 'border-gray-200 dark:border-gray-700'
-                    )}
-                  />
-
-                  {/* Dropdown */}
-                  {showUserDropdown && (
-                    <div className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-64 overflow-y-auto">
-                      {searchingUsers ? (
-                        <div className="p-4 text-center text-gray-500">
-                          <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
-                          <span className="text-sm">Searching...</span>
-                        </div>
-                      ) : userResults.length > 0 ? (
-                        <div className="py-2">
-                          {userResults.map((user) => (
-                            <button
-                              key={user.id}
-                              type="button"
-                              onClick={() => selectUser(user)}
-                              className="w-full flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors text-left"
-                            >
-                              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
-                                {user.fullName?.charAt(0) || 'U'}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <p className="font-medium text-gray-900 dark:text-white truncate">
-                                  {user.fullName}
-                                </p>
-                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                                  {user.role} • {user.email}
-                                </p>
-                              </div>
-                            </button>
-                          ))}
-                        </div>
-                      ) : userQuery ? (
-                        <div className="p-4 text-center text-gray-500 text-sm">
-                          No users found for "{userQuery}"
-                        </div>
-                      ) : (
-                        <div className="p-4 text-center text-gray-500 text-sm">
-                          Start typing to search users...
-                        </div>
-                      )}
-                    </div>
-                  )}
-                </div>
-              )}
-              {touched.assignee && errors.assignee && (
-                <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
-                  <AlertCircle className="w-4 h-4" />
-                  {errors.assignee}
-                </p>
-              )}
-            </div>
-
-            {/* Estimated Hours & Tags Row */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Estimated Hours */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  <Clock className="w-4 h-4 inline mr-1" />
-                  Estimated Hours
-                </label>
-                <input
-                  type="number"
-                  value={estimatedHours}
-                  onChange={(e) => setEstimatedHours(e.target.value)}
-                  placeholder="e.g., 4"
-                  min="0"
-                  step="0.5"
-                  className={cn(
-                    'w-full px-4 py-2.5 rounded-xl border bg-gray-50 dark:bg-gray-800',
-                    'text-gray-900 dark:text-white placeholder:text-gray-400',
-                    'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                    'border-gray-200 dark:border-gray-700'
-                  )}
-                />
-                {/* Quick link to advanced options to help users find custom fields / recurring settings */}
-                <div className="mt-3">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setShowAdvanced(true);
-                      setTimeout(() => advancedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
-                    }}
-                    className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-2"
-                  >
-                    <GripVertical className="w-4 h-4" />
-                    More options
-                  </button>
-                </div>
-              </div>
-
-              {/* Tags */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                  <Tag className="w-4 h-4 inline mr-1" />
-                  Tags
-                </label>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newTag}
-                    onChange={(e) => setNewTag(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
-                    placeholder="Add tag..."
-                    className={cn(
-                      'flex-1 px-4 py-2.5 rounded-xl border bg-gray-50 dark:bg-gray-800',
-                      'text-gray-900 dark:text-white placeholder:text-gray-400',
-                      'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                      'border-gray-200 dark:border-gray-700'
-                    )}
-                  />
-                  <button
-                    type="button"
-                    onClick={addTag}
-                    className="px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
-                  >
-                    <Plus className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-                  </button>
-                </div>
-                {tags.length > 0 && (
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {tags.map((tag) => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm"
-                      >
-                        #{tag}
-                        <button
-                          type="button"
-                          onClick={() => removeTag(tag)}
-                          className="hover:text-blue-900 dark:hover:text-blue-100"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </div>
-            </div>
-
             {/* Custom Fields Section */}
-            <div ref={advancedRef} id="advanced-options" className="border-t border-gray-200 dark:border-gray-700 pt-6">
-              <div className="flex items-center justify-between mb-4">
+            <div ref={advancedRef} id="advanced-options" className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-gray-50/50 dark:bg-gray-800/30">
+              <div className="flex items-center justify-between mb-3">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
                   <GripVertical className="w-4 h-4 inline mr-1" />
                   Custom Input Fields
@@ -692,7 +495,7 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
               {customFields.length > 0 && (
                 <div className="space-y-3">
                   {customFields.map((field) => (
-                    <div key={field.id} className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                    <div key={field.id} className="flex items-start gap-3 p-3 rounded-xl border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800">
                       <div className="flex-1">
                         <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1.5">
                           {field.label}
@@ -704,7 +507,7 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
                             onChange={(e) => updateCustomFieldValue(field.id, e.target.value)}
                             placeholder={`Enter ${field.label.toLowerCase()}...`}
                             rows={2}
-                            className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm resize-none"
+                            className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm resize-none"
                           />
                         ) : field.type === 'currency' ? (
                           <div className="relative">
@@ -714,7 +517,7 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
                               value={field.value}
                               onChange={(e) => updateCustomFieldValue(field.id, e.target.value)}
                               placeholder="0.00"
-                              className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+                              className="w-full pl-8 pr-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm"
                             />
                           </div>
                         ) : (
@@ -723,7 +526,7 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
                             value={field.value}
                             onChange={(e) => updateCustomFieldValue(field.id, e.target.value)}
                             placeholder={`Enter ${field.label.toLowerCase()}...`}
-                            className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-sm"
+                            className="w-full px-3 py-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 text-sm"
                           />
                         )}
                       </div>
@@ -738,6 +541,278 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
                   ))}
                 </div>
               )}
+
+              {customFields.length === 0 && !showAddField && (
+                <p className="text-sm text-gray-400 dark:text-gray-500 text-center py-2">
+                  No custom fields added. Click "Add Field" to create one.
+                </p>
+              )}
+            </div>
+
+            {/* Priority & Due Date Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Priority */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <Flag className="w-4 h-4 inline mr-1" />
+                  Priority
+                </label>
+                <div className="flex flex-wrap gap-2">
+                  {priorityOptions.map((opt) => (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setPriority(opt.value)}
+                      className={cn(
+                        'px-3 py-1.5 rounded-lg text-sm font-medium transition-all duration-200',
+                        priority === opt.value
+                          ? `${opt.bgColor} ${opt.color} ring-2 ring-offset-1 ring-current`
+                          : 'bg-gray-100 dark:bg-gray-800 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-700'
+                      )}
+                    >
+                      {opt.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Due Date & Time */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <Calendar className="w-4 h-4 inline mr-1" />
+                  Due Date & Time
+                  <span className="ml-2 text-xs text-gray-400">(auto-set by priority)</span>
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={dueDate}
+                    onChange={(e) => setDueDate(e.target.value)}
+                    onBlur={() => setTouched({ ...touched, dueDate: true })}
+                    min={new Date().toISOString().split('T')[0]}
+                    className={cn(
+                      'flex-1 px-4 py-2.5 rounded-xl border bg-gray-50 dark:bg-gray-800',
+                      'text-gray-900 dark:text-white',
+                      'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                      touched.dueDate && errors.dueDate
+                        ? 'border-red-300'
+                        : 'border-gray-200 dark:border-gray-700'
+                    )}
+                  />
+                  <div className="relative">
+                    <Clock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400 pointer-events-none" />
+                    <input
+                      type="time"
+                      value={dueTime}
+                      onChange={(e) => setDueTime(e.target.value)}
+                      className={cn(
+                        'w-28 pl-9 pr-3 py-2.5 rounded-xl border bg-gray-50 dark:bg-gray-800',
+                        'text-gray-900 dark:text-white',
+                        'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                        'border-gray-200 dark:border-gray-700'
+                      )}
+                    />
+                  </div>
+                </div>
+                {touched.dueDate && errors.dueDate && (
+                  <p className="mt-1 text-sm text-red-500">{errors.dueDate}</p>
+                )}
+              </div>
+            </div>
+
+            {/* Assignees (Multiple) */}
+            <div ref={userSearchRef}>
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                <User className="w-4 h-4 inline mr-1" />
+                Assign To <span className="text-red-500">*</span>
+                <span className="ml-2 text-xs text-gray-400 font-normal">(Add multiple people)</span>
+              </label>
+
+              {/* Selected Assignees Chips */}
+              {assignees.length > 0 && (
+                <div className="flex flex-wrap gap-2 mb-3">
+                  {assignees.map((user) => (
+                    <div
+                      key={user.id}
+                      className="inline-flex items-center gap-2 pl-1 pr-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-800"
+                    >
+                      <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-xs font-medium">
+                        {user.fullName?.charAt(0) || user.username?.charAt(0) || 'U'}
+                      </div>
+                      <span className="text-sm font-medium text-blue-800 dark:text-blue-200">
+                        {user.fullName || user.username}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeAssignee(user.id)}
+                        className="p-0.5 rounded-full hover:bg-blue-200 dark:hover:bg-blue-800 transition-colors"
+                      >
+                        <X className="w-3.5 h-3.5 text-blue-600 dark:text-blue-300" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              {/* Search Input */}
+              <div className="relative">
+                <div className="absolute inset-y-0 left-3 flex items-center pointer-events-none">
+                  {searchingUsers ? (
+                    <Loader2 className="w-4 h-4 text-gray-400 animate-spin" />
+                  ) : (
+                    <Search className="w-4 h-4 text-gray-400" />
+                  )}
+                </div>
+                <input
+                  type="text"
+                  value={userQuery}
+                  onChange={(e) => handleUserSearch(e.target.value)}
+                  onFocus={() => setShowUserDropdown(true)}
+                  placeholder={assignees.length > 0 ? "Add another person..." : "Search by name or email..."}
+                  className={cn(
+                    'w-full pl-10 pr-4 py-3 rounded-xl border bg-gray-50 dark:bg-gray-800',
+                    'text-gray-900 dark:text-white placeholder:text-gray-400',
+                    'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                    touched.assignee && errors.assignee
+                      ? 'border-red-300 bg-red-50 dark:bg-red-900/20'
+                      : 'border-gray-200 dark:border-gray-700'
+                  )}
+                />
+
+                {/* Dropdown */}
+                {showUserDropdown && (
+                  <div className="absolute z-50 w-full mt-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow-lg max-h-64 overflow-y-auto">
+                    {searchingUsers ? (
+                      <div className="p-4 text-center text-gray-500">
+                        <Loader2 className="w-5 h-5 animate-spin mx-auto mb-2" />
+                        <span className="text-sm">Searching...</span>
+                      </div>
+                    ) : userResults.length > 0 ? (
+                      <div className="py-2">
+                        {userResults.map((user) => {
+                          const alreadyAdded = assignees.some(a => a.id === user.id);
+                          return (
+                            <button
+                              key={user.id}
+                              type="button"
+                              onClick={() => selectUser(user)}
+                              disabled={alreadyAdded}
+                              className={cn(
+                                "w-full flex items-center gap-3 px-4 py-2.5 transition-colors text-left",
+                                alreadyAdded 
+                                  ? "opacity-50 cursor-not-allowed bg-gray-50 dark:bg-gray-700/50"
+                                  : "hover:bg-gray-50 dark:hover:bg-gray-700"
+                              )}
+                            >
+                              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white text-sm font-medium flex-shrink-0">
+                                {user.fullName?.charAt(0) || 'U'}
+                              </div>
+                              <div className="flex-1 min-w-0">
+                                <p className="font-medium text-gray-900 dark:text-white truncate">
+                                  {user.fullName}
+                                  {alreadyAdded && <span className="ml-2 text-xs text-green-600">(Added)</span>}
+                                </p>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
+                                  {user.role} • {user.email}
+                                </p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    ) : userQuery ? (
+                      <div className="p-4 text-center text-gray-500 text-sm">
+                        No users found for "{userQuery}"
+                      </div>
+                    ) : (
+                      <div className="p-4 text-center text-gray-500 text-sm">
+                        Start typing to search users...
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+
+              {touched.assignee && errors.assignee && (
+                <p className="mt-1.5 text-sm text-red-500 flex items-center gap-1">
+                  <AlertCircle className="w-4 h-4" />
+                  {errors.assignee}
+                </p>
+              )}
+            </div>
+
+            {/* Estimated Hours & Tags Row */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Estimated Hours */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <Clock className="w-4 h-4 inline mr-1" />
+                  Estimated Hours
+                </label>
+                <input
+                  type="number"
+                  value={estimatedHours}
+                  onChange={(e) => setEstimatedHours(e.target.value)}
+                  placeholder="e.g., 4"
+                  min="0"
+                  step="0.5"
+                  className={cn(
+                    'w-full px-4 py-2.5 rounded-xl border bg-gray-50 dark:bg-gray-800',
+                    'text-gray-900 dark:text-white placeholder:text-gray-400',
+                    'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                    'border-gray-200 dark:border-gray-700'
+                  )}
+                />
+              </div>
+
+              {/* Tags */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  <Tag className="w-4 h-4 inline mr-1" />
+                  Tags
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newTag}
+                    onChange={(e) => setNewTag(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                    placeholder="Add tag..."
+                    className={cn(
+                      'flex-1 px-4 py-2.5 rounded-xl border bg-gray-50 dark:bg-gray-800',
+                      'text-gray-900 dark:text-white placeholder:text-gray-400',
+                      'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                      'border-gray-200 dark:border-gray-700'
+                    )}
+                  />
+                  <button
+                    type="button"
+                    onClick={addTag}
+                    className="px-3 py-2 rounded-xl bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 transition-colors"
+                  >
+                    <Plus className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+                  </button>
+                </div>
+                {tags.length > 0 && (
+                  <div className="flex flex-wrap gap-2 mt-2">
+                    {tags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300 text-sm"
+                      >
+                        #{tag}
+                        <button
+                          type="button"
+                          onClick={() => removeTag(tag)}
+                          className="hover:text-blue-900 dark:hover:text-blue-100"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Recurring Task Section */}

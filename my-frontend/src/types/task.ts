@@ -315,6 +315,7 @@ export interface CreateTaskInput {
   title: string;
   description?: string;
   assigneeId: number;
+  assigneeIds?: number[];  // Multiple assignees for collaborative tasks
   approverId?: number;
   priority?: TaskPriority;
   dueDate?: string;
