@@ -25,6 +25,14 @@ import {
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend, ArcElement);
 
+type TaskDeadline = {
+  id: string;
+  title: string;
+  dueDate: string;
+  status: string;
+  priority?: string;
+};
+
 type RightPanelProps = {
   mode?: 'sidebar' | 'inline' | 'dock';
   hideProfile?: boolean;
@@ -42,6 +50,7 @@ type RightPanelProps = {
     qualityScore: number;
   };
   onMetricClick?: (column: string) => void;
+  upcomingDeadlines?: TaskDeadline[];
 };
 
 const RightPanel: React.FC<RightPanelProps> = ({ 
@@ -50,7 +59,8 @@ const RightPanel: React.FC<RightPanelProps> = ({
   viewMode = 'my-work',
   taskCounts,
   performanceMetrics,
-  onMetricClick
+  onMetricClick,
+  upcomingDeadlines = []
 }) => {
   const { user } = useAuth();
   const router = useRouter();
@@ -72,14 +82,30 @@ const RightPanel: React.FC<RightPanelProps> = ({
   // Performance metrics chart colors
   const performanceColors = ['#22c55e', '#3b82f6', '#a855f7', '#f59e0b']; // Green, Blue, Purple, Orange
   
+  // Debug: Log performance metrics when they change
+  React.useEffect(() => {
+    console.log('[RightPanel] performanceMetrics prop:', performanceMetrics);
+  }, [performanceMetrics]);
+  
+  // Check if we have any performance data
+  const hasPerformanceData = useMemo(() => {
+    const metrics = performanceMetrics;
+    if (!metrics) return false;
+    return metrics.onTimeRate > 0 || metrics.responseTime > 0 || 
+           metrics.completionRate > 0 || metrics.qualityScore > 0;
+  }, [performanceMetrics]);
+  
   // Build performance chart data from props or use defaults
   const performanceChartData = useMemo(() => {
+    // Use passed metrics, but ensure we have visible data if all zeros
     const metrics = performanceMetrics || {
-      onTimeRate: 85,
-      responseTime: 75,
-      completionRate: 87,
-      qualityScore: 96
+      onTimeRate: 0,
+      responseTime: 0,
+      completionRate: 0,
+      qualityScore: 0
     };
+    
+    console.log('[RightPanel] Chart metrics:', metrics, 'hasData:', hasPerformanceData);
     
     return {
       labels: ['On Time', 'Response', 'Complete', 'Quality'],
@@ -99,7 +125,7 @@ const RightPanel: React.FC<RightPanelProps> = ({
         },
       ],
     };
-  }, [performanceMetrics]);
+  }, [performanceMetrics, hasPerformanceData]);
 
   // Helper function to safely get CSS variables (client-side only)
   const getCSSVar = (varName: string, fallback: string) => {
@@ -229,12 +255,46 @@ const RightPanel: React.FC<RightPanelProps> = ({
   // Get efficiency title based on view mode
   const efficiencyTitle = viewMode === 'my-work' ? 'Efficiency' : 'Respond Efficiency';
 
-  const scheduleItems = [
-    { time: '12:00 - 13:00', task: 'Incididunt ut labore et dolore', color: 'border-blue-500' },
-    { time: '13:00 - 14:00', task: 'Et do enim veliam quis ex ea', color: 'border-cyan-500' },
-    { time: '14:00 - 15:00', task: 'Aliquip qui facilisis adipiscin', color: 'border-purple-500' },
-    { time: '15:00 - 16:00', task: 'Excepteur sint occaecat cupidatat', color: 'border-yellow-500' },
-  ];
+  // Priority colors for schedule items
+  const priorityColors: Record<string, string> = {
+    HIGH: 'border-red-500',
+    MEDIUM: 'border-yellow-500',
+    LOW: 'border-green-500',
+    URGENT: 'border-purple-500',
+  };
+
+  // Format deadline items from upcomingDeadlines prop
+  const scheduleItems = useMemo(() => {
+    if (!upcomingDeadlines || upcomingDeadlines.length === 0) {
+      return [];
+    }
+    
+    return upcomingDeadlines.map((task) => {
+      const dueDate = new Date(task.dueDate);
+      const today = new Date();
+      const isToday = dueDate.toDateString() === today.toDateString();
+      const isTomorrow = dueDate.toDateString() === new Date(today.getTime() + 86400000).toDateString();
+      
+      let timeLabel: string;
+      if (isToday) {
+        timeLabel = `Today ${dueDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+      } else if (isTomorrow) {
+        timeLabel = `Tomorrow ${dueDate.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}`;
+      } else {
+        timeLabel = dueDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+      }
+      
+      const color = priorityColors[task.priority?.toUpperCase() || ''] || 'border-blue-500';
+      
+      return {
+        id: task.id,
+        time: timeLabel,
+        task: task.title,
+        color,
+        dueDate: task.dueDate,
+      };
+    });
+  }, [upcomingDeadlines]);
 
   const isInline = mode === 'inline';
   const isDock = mode === 'dock';
@@ -309,8 +369,18 @@ const RightPanel: React.FC<RightPanelProps> = ({
       {/* Performance Overview Chart */}
   <ConnectedCard type="completedTasks" className={`p-1 sm:p-1 ${cardGap} order-3 xl:col-span-1 xl:col-start-2`}>
     <h2 className="font-semibold text-theme mb-1.5 sm:mb-2 uppercase text-[10px] sm:text-xs tracking-wide">Performance Overview</h2>
-  <div className="w-full h-24 sm:h-28 md:h-32 lg:h-36 bg-panel/40 rounded-xl p-2 sm:p-2 border border-theme">
-          <Bar data={performanceChartData} options={barOptions} />
+  <div className="w-full h-24 sm:h-28 md:h-32 lg:h-36 bg-panel/40 rounded-xl p-2 sm:p-2 border border-theme relative">
+          {hasPerformanceData ? (
+            <Bar data={performanceChartData} options={barOptions} />
+          ) : (
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-muted text-xs">
+              <svg className="w-6 h-6 mb-1 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />
+              </svg>
+              <span>No completed tasks yet</span>
+              <span className="text-[10px] opacity-70">Complete tasks to see metrics</span>
+            </div>
+          )}
         </div>
       </ConnectedCard>
 
@@ -345,21 +415,41 @@ const RightPanel: React.FC<RightPanelProps> = ({
 
       {/* Plan/Schedule Section (Daily Plan and Schedule) - Add padding for FAB */}
   <ConnectedCard type="plan" className={`w-full p-1 sm:p-1 order-4 min-h-[120px] pb-20 ${isInline ? 'lg:col-span-2 xl:col-span-2 xl:col-start-2' : ''}` }>
-    <h2 className="font-semibold text-theme mb-1.5 sm:mb-2 uppercase text-[10px] sm:text-xs tracking-wide">{dashboardConnections.plan.description}</h2>
+    <h2 
+      className="font-semibold text-theme mb-1.5 sm:mb-2 uppercase text-[10px] sm:text-xs tracking-wide cursor-pointer hover:text-blue-500 transition-colors"
+      onClick={() => router.push('/common/calendar')}
+      title="View Calendar"
+    >
+      {dashboardConnections.plan.description}
+    </h2>
   <div className="space-y-2.5 max-h-40 md:max-h-44 overflow-y-auto pb-16">
-          {scheduleItems.map((item, index) => (
-            <div 
-              key={index} 
-              className={`w-full p-1 sm:p-1 bg-panel/60 rounded-lg border-l-2 sm:border-l-3 ${item.color} hover:bg-panel/80 transition-colors`}
-            >
-              <div className="flex justify-between items-start">
-                <div className="flex-1 min-w-0">
-                  <p className="text-theme font-medium text-[10px] sm:text-xs truncate">{item.time}</p>
-                  <p className="text-muted text-[9px] sm:text-[10px] mt-0.5 sm:mt-1 line-clamp-2">{item.task}</p>
+          {scheduleItems.length > 0 ? (
+            scheduleItems.map((item, index) => (
+              <div 
+                key={item.id || index} 
+                className={`w-full p-1 sm:p-1 bg-panel/60 rounded-lg border-l-2 sm:border-l-3 ${item.color} hover:bg-panel/80 transition-colors cursor-pointer`}
+                onClick={() => router.push('/common/calendar')}
+                title="View in Calendar"
+              >
+                <div className="flex justify-between items-start">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-theme font-medium text-[10px] sm:text-xs truncate">{item.time}</p>
+                    <p className="text-muted text-[9px] sm:text-[10px] mt-0.5 sm:mt-1 line-clamp-2">{item.task}</p>
+                  </div>
                 </div>
               </div>
+            ))
+          ) : (
+            <div className="text-center py-4">
+              <p className="text-muted text-[10px] sm:text-xs">No upcoming deadlines</p>
+              <button 
+                onClick={() => router.push('/common/calendar')}
+                className="text-blue-500 hover:text-blue-600 text-[10px] sm:text-xs mt-1 underline"
+              >
+                View Calendar
+              </button>
             </div>
-          ))}
+          )}
         </div>
   </ConnectedCard>
   </div>

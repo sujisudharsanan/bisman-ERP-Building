@@ -23,6 +23,10 @@ import {
   Repeat,
   DollarSign,
   Trash2,
+  Building2,
+  CreditCard,
+  Receipt,
+  FileText,
   GripVertical,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -113,6 +117,19 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
   const [isExpense, setIsExpense] = useState(false);
   const [expenseAmount, setExpenseAmount] = useState('');
   const [expenseCategory, setExpenseCategory] = useState('');
+
+  // Tab state: 'task' or 'payment'
+  const [activeTab, setActiveTab] = useState<'task' | 'payment'>('task');
+
+  // Payment Request specific state
+  const [paymentAmount, setPaymentAmount] = useState('');
+  const [paymentCurrency, setPaymentCurrency] = useState('INR');
+  const [paymentCategory, setPaymentCategory] = useState('');
+  const [beneficiaryName, setBeneficiaryName] = useState('');
+  const [accountNumber, setAccountNumber] = useState('');
+  const [bankName, setBankName] = useState('');
+  const [invoiceNumber, setInvoiceNumber] = useState('');
+  const [paymentNotes, setPaymentNotes] = useState('');
 
   // Assignees state (multiple)
   const [assignees, setAssignees] = useState<UserOption[]>([]);
@@ -247,13 +264,20 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
     const newErrors: Record<string, string> = {};
 
     if (!title.trim()) {
-      newErrors.title = 'Title is required';
+      newErrors.title = activeTab === 'payment' ? 'Request title is required' : 'Title is required';
     } else if (title.length < 3) {
       newErrors.title = 'Title must be at least 3 characters';
     }
 
     if (assignees.length === 0) {
-      newErrors.assignee = 'Please assign this task to at least one person';
+      newErrors.assignee = activeTab === 'payment' ? 'Please assign an approver' : 'Please assign this task to at least one person';
+    }
+
+    // Payment-specific validation
+    if (activeTab === 'payment') {
+      if (!paymentAmount || isNaN(Number(paymentAmount)) || Number(paymentAmount) <= 0) {
+        newErrors.paymentAmount = 'Please enter a valid amount';
+      }
     }
 
     if (dueDate && new Date(dueDate) < new Date(new Date().toDateString())) {
@@ -271,7 +295,7 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
   // Handle submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setTouched({ title: true, assignee: true, dueDate: true });
+    setTouched({ title: true, assignee: true, dueDate: true, paymentAmount: true });
 
     if (!validate()) return;
 
@@ -292,6 +316,18 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
       };
     }
 
+    // Build payment request data if payment tab is active
+    const paymentRequest = activeTab === 'payment' ? {
+      amount: Number(paymentAmount),
+      currency: paymentCurrency,
+      category: paymentCategory || undefined,
+      invoiceNumber: invoiceNumber || undefined,
+      beneficiaryName: beneficiaryName || undefined,
+      accountNumber: accountNumber || undefined,
+      bankName: bankName || undefined,
+      notes: paymentNotes || undefined,
+    } : undefined;
+
     const data: CreateTaskInput = {
       title: title.trim(),
       description: description.trim() || undefined,
@@ -303,6 +339,9 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
       tags: tags.length > 0 ? tags : undefined,
       customFields: customFields.length > 0 ? customFields : undefined,
       recurring,
+      // Payment request specific fields
+      taskType: activeTab === 'payment' ? 'PAYMENT_REQUEST' : 'TASK',
+      paymentRequest,
     };
 
     await onSubmit(data);
@@ -364,21 +403,55 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
       <div className="relative w-full max-w-2xl max-h-[90vh] overflow-hidden bg-white dark:bg-gray-900 rounded-2xl shadow-2xl">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-          <div>
-            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
-              {mode === 'create' ? 'Create New Task' : 'Edit Task'}
-            </h2>
-            <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
-              {mode === 'create' ? 'Fill in the details below' : `Editing: ${task?.unique_id || ''}`}
-            </p>
+        <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+          <div className="flex items-center justify-between mb-3">
+            <div>
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+                {mode === 'create' ? (activeTab === 'payment' ? 'Create Payment Request' : 'Create New Task') : 'Edit Task'}
+              </h2>
+              <p className="text-sm text-gray-500 dark:text-gray-400 mt-0.5">
+                {mode === 'create' ? 'Fill in the details below' : `Editing: ${task?.unique_id || ''}`}
+              </p>
+            </div>
+            <button
+              onClick={onCancel}
+              className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+            >
+              <X className="w-5 h-5 text-gray-500" />
+            </button>
           </div>
-          <button
-            onClick={onCancel}
-            className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
-          >
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
+          
+          {/* Tabs - Only show in create mode */}
+          {mode === 'create' && (
+            <div className="flex gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+              <button
+                type="button"
+                onClick={() => setActiveTab('task')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all',
+                  activeTab === 'task'
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                )}
+              >
+                <FileText className="w-4 h-4" />
+                Task
+              </button>
+              <button
+                type="button"
+                onClick={() => setActiveTab('payment')}
+                className={cn(
+                  'flex-1 flex items-center justify-center gap-2 px-4 py-2 rounded-md text-sm font-medium transition-all',
+                  activeTab === 'payment'
+                    ? 'bg-white dark:bg-gray-700 text-gray-900 dark:text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white'
+                )}
+              >
+                <CreditCard className="w-4 h-4" />
+                Payment Request
+              </button>
+            </div>
+          )}
         </div>
 
         {/* Form */}
@@ -387,7 +460,7 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
             {/* Title */}
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-                Task Title <span className="text-red-500">*</span>
+                {activeTab === 'payment' ? 'Request Title' : 'Task Title'} <span className="text-red-500">*</span>
               </label>
               <input
                 type="text"
@@ -433,7 +506,194 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
               />
             </div>
 
-            {/* Custom Fields Section */}
+            {/* Payment Request Specific Fields */}
+            {activeTab === 'payment' && (
+              <>
+                {/* Amount and Currency */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      <DollarSign className="w-4 h-4 inline mr-1" />
+                      Amount <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="number"
+                      value={paymentAmount}
+                      onChange={(e) => setPaymentAmount(e.target.value)}
+                      onBlur={() => setTouched({ ...touched, paymentAmount: true })}
+                      placeholder="0.00"
+                      step="0.01"
+                      min="0"
+                      className={cn(
+                        'w-full px-4 py-3 rounded-xl border bg-gray-50 dark:bg-gray-800',
+                        'text-gray-900 dark:text-white placeholder:text-gray-400',
+                        'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                        'border-gray-200 dark:border-gray-700',
+                        'transition-all duration-200'
+                      )}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      Currency
+                    </label>
+                    <select
+                      value={paymentCurrency}
+                      onChange={(e) => setPaymentCurrency(e.target.value)}
+                      className={cn(
+                        'w-full px-4 py-3 rounded-xl border bg-gray-50 dark:bg-gray-800',
+                        'text-gray-900 dark:text-white',
+                        'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                        'border-gray-200 dark:border-gray-700',
+                        'transition-all duration-200'
+                      )}
+                    >
+                      <option value="INR">₹ INR</option>
+                      <option value="USD">$ USD</option>
+                      <option value="EUR">€ EUR</option>
+                      <option value="GBP">£ GBP</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Category and Invoice */}
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      <Tag className="w-4 h-4 inline mr-1" />
+                      Category
+                    </label>
+                    <select
+                      value={paymentCategory}
+                      onChange={(e) => setPaymentCategory(e.target.value)}
+                      className={cn(
+                        'w-full px-4 py-3 rounded-xl border bg-gray-50 dark:bg-gray-800',
+                        'text-gray-900 dark:text-white',
+                        'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                        'border-gray-200 dark:border-gray-700',
+                        'transition-all duration-200'
+                      )}
+                    >
+                      <option value="">Select category...</option>
+                      <option value="vendor">Vendor Payment</option>
+                      <option value="salary">Salary</option>
+                      <option value="utilities">Utilities</option>
+                      <option value="rent">Rent</option>
+                      <option value="supplies">Office Supplies</option>
+                      <option value="travel">Travel & Expenses</option>
+                      <option value="maintenance">Maintenance</option>
+                      <option value="other">Other</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                      <Receipt className="w-4 h-4 inline mr-1" />
+                      Invoice Number
+                    </label>
+                    <input
+                      type="text"
+                      value={invoiceNumber}
+                      onChange={(e) => setInvoiceNumber(e.target.value)}
+                      placeholder="INV-001"
+                      className={cn(
+                        'w-full px-4 py-3 rounded-xl border bg-gray-50 dark:bg-gray-800',
+                        'text-gray-900 dark:text-white placeholder:text-gray-400',
+                        'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                        'border-gray-200 dark:border-gray-700',
+                        'transition-all duration-200'
+                      )}
+                    />
+                  </div>
+                </div>
+
+                {/* Beneficiary Details */}
+                <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-gray-50/50 dark:bg-gray-800/30">
+                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
+                    <Building2 className="w-4 h-4" />
+                    Beneficiary Details
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                        Beneficiary Name
+                      </label>
+                      <input
+                        type="text"
+                        value={beneficiaryName}
+                        onChange={(e) => setBeneficiaryName(e.target.value)}
+                        placeholder="Enter beneficiary name"
+                        className={cn(
+                          'w-full px-4 py-2.5 rounded-lg border bg-white dark:bg-gray-800',
+                          'text-gray-900 dark:text-white placeholder:text-gray-400',
+                          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                          'border-gray-200 dark:border-gray-600',
+                          'transition-all duration-200'
+                        )}
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                          Account Number
+                        </label>
+                        <input
+                          type="text"
+                          value={accountNumber}
+                          onChange={(e) => setAccountNumber(e.target.value)}
+                          placeholder="Enter account number"
+                          className={cn(
+                            'w-full px-4 py-2.5 rounded-lg border bg-white dark:bg-gray-800',
+                            'text-gray-900 dark:text-white placeholder:text-gray-400',
+                            'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                            'border-gray-200 dark:border-gray-600',
+                            'transition-all duration-200'
+                          )}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                          Bank Name
+                        </label>
+                        <input
+                          type="text"
+                          value={bankName}
+                          onChange={(e) => setBankName(e.target.value)}
+                          placeholder="Enter bank name"
+                          className={cn(
+                            'w-full px-4 py-2.5 rounded-lg border bg-white dark:bg-gray-800',
+                            'text-gray-900 dark:text-white placeholder:text-gray-400',
+                            'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                            'border-gray-200 dark:border-gray-600',
+                            'transition-all duration-200'
+                          )}
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                        Additional Notes
+                      </label>
+                      <textarea
+                        value={paymentNotes}
+                        onChange={(e) => setPaymentNotes(e.target.value)}
+                        placeholder="Any additional payment instructions..."
+                        rows={2}
+                        className={cn(
+                          'w-full px-4 py-2.5 rounded-lg border bg-white dark:bg-gray-800',
+                          'text-gray-900 dark:text-white placeholder:text-gray-400',
+                          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                          'border-gray-200 dark:border-gray-600 resize-none',
+                          'transition-all duration-200'
+                        )}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Custom Fields Section - Only for Task tab */}
+            {activeTab === 'task' && (
             <div ref={advancedRef} id="advanced-options" className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-gray-50/50 dark:bg-gray-800/30">
               <div className="flex items-center justify-between mb-3">
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
@@ -548,6 +808,7 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
                 </p>
               )}
             </div>
+            )}
 
             {/* Priority & Due Date Row */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -1030,12 +1291,12 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin" />
-                  {mode === 'create' ? 'Creating...' : 'Saving...'}
+                  {mode === 'create' ? (activeTab === 'payment' ? 'Submitting...' : 'Creating...') : 'Saving...'}
                 </>
               ) : (
                 <>
-                  <CheckCircle className="w-4 h-4" />
-                  {mode === 'create' ? 'Create Task' : 'Save Changes'}
+                  {activeTab === 'payment' ? <CreditCard className="w-4 h-4" /> : <CheckCircle className="w-4 h-4" />}
+                  {mode === 'create' ? (activeTab === 'payment' ? 'Submit Payment Request' : 'Create Task') : 'Save Changes'}
                 </>
               )}
             </button>

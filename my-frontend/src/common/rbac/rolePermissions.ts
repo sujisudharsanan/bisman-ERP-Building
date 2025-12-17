@@ -1,12 +1,20 @@
 /**
- * Role-Based Access Control (RBAC) Configuration
- * Defines permissions and page access for each role
+ * Module-Centric Role-Based Access Control (RBAC) Configuration
+ * 
+ * Hierarchy:
+ * - ENTERPRISE_ADMIN: Highest authority, global access (1 per enterprise)
+ * - SUPER_ADMIN: Module-level admin, creates clients (1+ per module)
+ * - ADMIN: Client-level admin (1+ per client)
+ * - Other roles: Client-scoped operational roles
+ * 
+ * There is NO system admin, NO IT admin, NO platform admin.
  */
 
+export type RoleLevel = 'ENTERPRISE' | 'MODULE' | 'CLIENT';
+
 export type RoleType =
+  | 'ENTERPRISE_ADMIN'
   | 'SUPER_ADMIN'
-  | 'SYSTEM_ADMINISTRATOR'
-  | 'IT_ADMIN'
   | 'ADMIN'
   | 'CFO'
   | 'FINANCE_CONTROLLER'
@@ -34,6 +42,7 @@ export interface Permission {
 export interface RolePermissions {
   role: RoleType;
   label: string;
+  level: RoleLevel;
   permissions: string[];
   defaultRoute: string;
 }
@@ -100,43 +109,29 @@ export const PERMISSIONS: Record<string, Permission> = {
 
 // Define role-based permissions
 export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
+  // Enterprise-level: Global authority
+  ENTERPRISE_ADMIN: {
+    role: 'ENTERPRISE_ADMIN',
+    label: 'Enterprise Administrator',
+    level: 'ENTERPRISE',
+    permissions: Object.keys(PERMISSIONS), // Full access to everything
+    defaultRoute: '/enterprise-admin',
+  },
+  
+  // Module-level: Manages clients within their module
   SUPER_ADMIN: {
     role: 'SUPER_ADMIN',
     label: 'Super Administrator',
-    permissions: Object.keys(PERMISSIONS), // Full access
+    level: 'MODULE',
+    permissions: Object.keys(PERMISSIONS), // Full access within module
     defaultRoute: '/super-admin',
   },
-  SYSTEM_ADMINISTRATOR: {
-    role: 'SYSTEM_ADMINISTRATOR',
-    label: 'System Administrator',
-    permissions: [
-      'system-settings',
-      'user-management',
-      'permission-manager',
-      'audit-logs',
-      'backup-restore',
-      'scheduler',
-      'system-health',
-      'integration-settings',
-      'error-logs',
-    ],
-    defaultRoute: '/system/system-settings',
-  },
-  IT_ADMIN: {
-    role: 'IT_ADMIN',
-    label: 'IT Administrator',
-    permissions: [
-      'system-health',
-      'integration-settings',
-      'error-logs',
-      'audit-logs',
-      'backup-restore',
-    ],
-    defaultRoute: '/system/system-health',
-  },
+  
+  // Client-level: Manages users within their client
   ADMIN: {
     role: 'ADMIN',
     label: 'Administrator',
+    level: 'CLIENT',
     permissions: [
       'user-management',
       'audit-logs',
@@ -147,6 +142,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
   CFO: {
     role: 'CFO',
     label: 'Chief Financial Officer',
+    level: 'CLIENT',
     permissions: [
       'financial-statements',
       'budgeting',
@@ -161,6 +157,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
   FINANCE_CONTROLLER: {
     role: 'FINANCE_CONTROLLER',
     label: 'Finance Controller',
+    level: 'CLIENT',
     permissions: [
       'general-ledger',
       'trial-balance',
@@ -174,6 +171,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
   TREASURY: {
     role: 'TREASURY',
     label: 'Treasury Officer',
+    level: 'CLIENT',
     permissions: [
       'treasury-management',
       'cash-management',
@@ -186,6 +184,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
   ACCOUNTS: {
     role: 'ACCOUNTS',
     label: 'Accounts Officer',
+    level: 'CLIENT',
     permissions: [
       'journal-entries',
       'reconciliation',
@@ -198,6 +197,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
   ACCOUNTS_PAYABLE: {
     role: 'ACCOUNTS_PAYABLE',
     label: 'Accounts Payable Officer',
+    level: 'CLIENT',
     permissions: [
       'accounts-payable',
       'vendor-payments',
@@ -208,6 +208,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
   BANKER: {
     role: 'BANKER',
     label: 'Banking Officer',
+    level: 'CLIENT',
     permissions: [
       'banking-operations',
       'bank-reconciliation',
@@ -218,6 +219,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
   PROCUREMENT_OFFICER: {
     role: 'PROCUREMENT_OFFICER',
     label: 'Procurement Officer',
+    level: 'CLIENT',
     permissions: [
       'purchase-request',
       'purchase-order',
@@ -230,6 +232,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
   STORE_INCHARGE: {
     role: 'STORE_INCHARGE',
     label: 'Store Incharge',
+    level: 'CLIENT',
     permissions: [
       'stock-entry',
       'stock-ledger',
@@ -242,6 +245,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
   OPERATIONS_MANAGER: {
     role: 'OPERATIONS_MANAGER',
     label: 'Operations Manager',
+    level: 'CLIENT',
     permissions: [
       'sales-order',
       'work-order',
@@ -255,6 +259,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
   HUB_INCHARGE: {
     role: 'HUB_INCHARGE',
     label: 'Hub Incharge',
+    level: 'CLIENT',
     permissions: [
       'stock-transfer',
       'delivery-note',
@@ -266,6 +271,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
   COMPLIANCE: {
     role: 'COMPLIANCE',
     label: 'Compliance Officer',
+    level: 'CLIENT',
     permissions: [
       'audit-trail',
       'policy-management',
@@ -277,6 +283,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
   LEGAL: {
     role: 'LEGAL',
     label: 'Legal Officer',
+    level: 'CLIENT',
     permissions: [
       'contract-management',
       'litigation-tracker',
@@ -290,6 +297,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
   MANAGER: {
     role: 'MANAGER',
     label: 'Manager (Operations)',
+    level: 'CLIENT',
     permissions: [
       'kpi-dashboard',
       'sales-order',
@@ -301,6 +309,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
   STAFF: {
     role: 'STAFF',
     label: 'Staff',
+    level: 'CLIENT',
     permissions: [
       'stock-ledger',
       'delivery-note',
@@ -311,6 +320,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
   USER: {
     role: 'USER',
     label: 'User',
+    level: 'CLIENT',
     permissions: [],
     defaultRoute: '/dashboard',
   },

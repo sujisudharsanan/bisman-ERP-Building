@@ -123,17 +123,9 @@ export default function TaskDetailPage({ params }: any) {
     setError(null);
 
     try {
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
       // Get current user info
-      const userResponse = await fetch('http://localhost:8000/api/auth/me', {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const userResponse = await fetch('/api/auth/me', {
+        credentials: 'include',
       });
 
       if (userResponse.ok) {
@@ -142,10 +134,8 @@ export default function TaskDetailPage({ params }: any) {
       }
 
       // Get task details
-      const response = await fetch(`http://localhost:8000/api/common/tasks/${id}`, {
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+      const response = await fetch(`/api/common/tasks/${id}`, {
+        credentials: 'include',
       });
 
       if (!response.ok) {
@@ -174,18 +164,12 @@ export default function TaskDetailPage({ params }: any) {
     setError(null);
 
     try {
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const endpoint = `http://localhost:8000/api/common/tasks/${id}/${actionType}`;
+      const endpoint = `/api/common/tasks/${id}/${actionType}`;
       const response = await fetch(endpoint, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ comment }),
       });
@@ -215,17 +199,11 @@ export default function TaskDetailPage({ params }: any) {
     setIsSendingMessage(true);
 
     try {
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(`http://localhost:8000/api/common/tasks/${id}/messages`, {
+      const response = await fetch(`/api/common/tasks/${id}/messages`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ body: newMessage }),
       });
@@ -250,17 +228,11 @@ export default function TaskDetailPage({ params }: any) {
     setError(null);
 
     try {
-      const token = localStorage.getItem('authToken') || sessionStorage.getItem('authToken');
-
-      if (!token) {
-        throw new Error('Not authenticated');
-      }
-
-      const response = await fetch(`http://localhost:8000/api/common/tasks/${id}/payment`, {
+      const response = await fetch(`/api/common/tasks/${id}/payment`, {
         method: 'POST',
+        credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({
           paymentMode: paymentData.paymentMode,

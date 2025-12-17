@@ -9,12 +9,12 @@
 
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import SuperAdminLayout from '@/common/layouts/superadmin-layout';
+import SuperAdminLayout from '@/components/layouts/SuperAdminLayout';
 import PaymentRequestForm from '@/components/payment-approval/PaymentRequestForm';
-import { safeFetch } from '@/lib/safeFetch';
-import { DollarSign, Calendar, User, Building2, FileText, CheckCircle, AlertCircle, Clock, Send } from '@/lib/ssr-safe-icons';
+import { DollarSign, Calendar, User, Building2, FileText, CheckCircle, AlertCircle, Clock, Send } from 'lucide-react';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:8000';
+// Use relative URLs to go through Next.js API proxy (which handles auth cookies)
+const API_BASE = '';
 
 type HistoryItem = {
 	id: string;
@@ -134,13 +134,13 @@ export default function UnifiedPaymentRequestPage() {
 				},
 			};
 
-			const createRes = await safeFetch(`${BACKEND_URL}/api/common/payment-requests`, {
+			const createRes = await safeFetch(`${API_BASE}/api/common/payment-requests`, {
+			const createRes = await fetch(`${API_BASE}/api/common/payment-requests`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
 				body: JSON.stringify(payload),
 			});
-			if (!createRes.ok) {
 				const err = await createRes.json().catch(() => ({}));
 				throw new Error(err.error || 'Failed to create payment request');
 			}
@@ -148,15 +148,15 @@ export default function UnifiedPaymentRequestPage() {
 			const paymentRequestId = created?.data?.id;
 
 			if (!isDraft && paymentRequestId) {
-				const submitRes = await safeFetch(
-					`${BACKEND_URL}/api/common/payment-requests/${paymentRequestId}/submit`,
+			if (!isDraft && paymentRequestId) {
+				const submitRes = await fetch(
+					`${API_BASE}/api/common/payment-requests/${paymentRequestId}/submit`,
 					{
 						method: 'POST',
 						headers: { 'Content-Type': 'application/json' },
 						credentials: 'include',
 					}
 				);
-				if (!submitRes.ok) {
 					const err = await submitRes.json().catch(() => ({}));
 					throw new Error(err.error || 'Failed to submit for approval');
 				}

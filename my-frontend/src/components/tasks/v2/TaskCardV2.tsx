@@ -5,7 +5,7 @@
 
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Calendar,
   MessageSquare,
@@ -14,9 +14,11 @@ import {
   CheckCircle2,
   AlertCircle,
   User,
+  AlertTriangle,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Task, TaskStatus, TaskPriority } from '@/types/task';
+import { calculateTimeStatus } from '@/lib/utils/timeTracking';
 
 // ============================================
 // TYPES
@@ -89,10 +91,29 @@ export function TaskCardV2({
 }: TaskCardV2Props) {
   const priority = priorityConfig[task.priority] || priorityConfig[TaskPriority.MEDIUM];
   const status = statusConfig[task.status] || statusConfig.OPEN;
-  const overdue = isOverdue(task.dueDate, task.status);
   const displayId = task.unique_id || task.serialNumber || `TSK-${String(task.id).padStart(5, '0')}`;
 
   const StatusIcon = status.icon;
+  
+  // State for live time updates
+  const [, setTick] = useState(0);
+  
+  // Calculate time status for this task
+  const timeStatus = useMemo(() => {
+    if (!task.dueDate) return null;
+    return calculateTimeStatus(task.dueDate, task.completedAt, task.status);
+  }, [task.dueDate, task.completedAt, task.status]);
+  
+  // Update timer every minute for live countdown
+  useEffect(() => {
+    if (!task.dueDate) return;
+    const interval = setInterval(() => {
+      setTick(prev => prev + 1);
+    }, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, [task.dueDate]);
+  
+  const overdue = timeStatus?.isOverdue || false;
 
   // Compact variant (for lists)
   if (variant === 'compact') {
@@ -145,7 +166,9 @@ export function TaskCardV2({
           'cursor-pointer transition-all duration-200',
           selected && 'ring-2 ring-blue-500 border-blue-500',
           dragging && 'shadow-xl rotate-2 scale-105',
-          overdue && 'border-l-4 border-l-red-500'
+          overdue && 'border-l-4 border-l-red-500',
+          // Add border highlight for urgent tasks (less than 4 hours left)
+          timeStatus && !timeStatus.isOverdue && timeStatus.urgencyLevel === 'warning' && 'border-l-4 border-l-amber-500'
         )}
       >
         {/* Header */}
@@ -163,13 +186,50 @@ export function TaskCardV2({
 
         {/* Description preview */}
         {task.description && (
-          <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-3">
+          <p className="text-xs text-gray-500 dark:text-gray-400 line-clamp-2 mb-2">
             {task.description}
           </p>
         )}
 
+        {/* Time Status Badge - Shows remaining time or delayed time */}
+        {timeStatus && task.status !== TaskStatus.COMPLETED && task.status !== TaskStatus.CANCELLED && (
+          <div className={cn(
+            'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium mb-2',
+            timeStatus.isOverdue 
+              ? 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400' 
+              : timeStatus.urgencyLevel === 'warning'
+                ? 'bg-amber-100 dark:bg-amber-500/20 text-amber-700 dark:text-amber-400'
+                : 'bg-blue-50 dark:bg-blue-500/20 text-blue-700 dark:text-blue-400'
+          )}>
+            {timeStatus.isOverdue ? (
+              <>
+                <AlertTriangle className="w-3 h-3" />
+                <span>{timeStatus.displayText}</span>
+              </>
+            ) : (
+              <>
+                <Clock className="w-3 h-3" />
+                <span>{timeStatus.displayText}</span>
+              </>
+            )}
+          </div>
+        )}
+        
+        {/* Completed on time badge */}
+        {timeStatus && task.status === TaskStatus.COMPLETED && (
+          <div className={cn(
+            'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium mb-2',
+            timeStatus.isCompletedOnTime 
+              ? 'bg-green-100 dark:bg-green-500/20 text-green-700 dark:text-green-400' 
+              : 'bg-red-100 dark:bg-red-500/20 text-red-700 dark:text-red-400'
+          )}>
+            <Clock className="w-3 h-3" />
+            <span>{timeStatus.displayText}</span>
+          </div>
+        )}
+
         {/* Footer */}
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between mt-2">
           {/* Assignee */}
           {task.assignee ? (
             <div className="flex items-center gap-2">

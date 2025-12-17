@@ -1,8 +1,9 @@
 'use client';
 
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Task, ViewMode } from '@/lib/api/taskApi';
-import { CalendarIcon, MessageSquareIcon, PaperclipIcon, UserIcon } from 'lucide-react';
+import { CalendarIcon, MessageSquareIcon, PaperclipIcon, UserIcon, Clock, AlertTriangle } from 'lucide-react';
+import { calculateTimeStatus } from '@/lib/utils/timeTracking';
 
 interface TaskCardProps {
   task: Task;
@@ -31,7 +32,25 @@ export function TaskCard({ task, viewMode, onClick }: TaskCardProps) {
   const priorityColor = PRIORITY_COLORS[task.priority] || 'border-l-gray-400';
   const statusBadge = STATUS_BADGES[task.status] || { label: task.status, className: 'bg-gray-100 text-gray-700' };
   
-  const isOverdue = task.due_date && new Date(task.due_date) < new Date();
+  // State for live time updates
+  const [, setTick] = useState(0);
+  
+  // Calculate time status for this task
+  const timeStatus = useMemo(() => {
+    if (!task.due_date) return null;
+    return calculateTimeStatus(task.due_date, task.completed_at, task.status);
+  }, [task.due_date, task.completed_at, task.status]);
+  
+  // Update timer every minute for live countdown
+  useEffect(() => {
+    if (!task.due_date) return;
+    const interval = setInterval(() => {
+      setTick(prev => prev + 1);
+    }, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, [task.due_date]);
+  
+  const isOverdue = timeStatus?.isOverdue || false;
   const isWaitingApproval = task.status === 'IN_REVIEW';
   const hasRejection = task.rejection_count && task.rejection_count > 0;
 
@@ -78,9 +97,37 @@ export function TaskCard({ task, viewMode, onClick }: TaskCardProps) {
             🔄 Revision #{task.rejection_count}
           </span>
         )}
-        {isOverdue && (
-          <span className="text-xs px-2 py-0.5 rounded-full bg-red-100 text-red-700">
-            ⚠️ Overdue
+        {/* Time Status Badge - Shows remaining time or delayed time */}
+        {timeStatus && !['DONE', 'COMPLETED', 'CANCELLED'].includes(task.status) && (
+          <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
+            timeStatus.isOverdue 
+              ? 'bg-red-100 text-red-700' 
+              : timeStatus.urgencyLevel === 'warning'
+                ? 'bg-amber-100 text-amber-700'
+                : 'bg-blue-50 text-blue-700'
+          }`}>
+            {timeStatus.isOverdue ? (
+              <>
+                <AlertTriangle className="w-3 h-3" />
+                {timeStatus.displayText}
+              </>
+            ) : (
+              <>
+                <Clock className="w-3 h-3" />
+                {timeStatus.displayText}
+              </>
+            )}
+          </span>
+        )}
+        {/* Completed on time badge */}
+        {timeStatus && ['DONE', 'COMPLETED'].includes(task.status) && (
+          <span className={`flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${
+            timeStatus.isCompletedOnTime 
+              ? 'bg-green-100 text-green-700' 
+              : 'bg-red-100 text-red-700'
+          }`}>
+            <Clock className="w-3 h-3" />
+            {timeStatus.displayText}
           </span>
         )}
       </div>

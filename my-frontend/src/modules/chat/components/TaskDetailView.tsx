@@ -27,10 +27,13 @@ import {
   Send,
   Trophy,
   Timer,
-  Sparkles
+  Sparkles,
+  Pencil
 } from 'lucide-react';
 import { calculateTimeStatus, getTimeStatusStyles, type TimeStatus, formatDuration } from '@/lib/utils/timeTracking';
 import { IntelligentAssistantPanel } from '@/components/chat/IntelligentAssistantPanel';
+import { TaskFormV2 } from '@/components/tasks/v2/TaskFormV2';
+import { CreateTaskInput, TaskPriority } from '@/types/task';
 import { Bot } from 'lucide-react';
 
 interface TaskAttachment {
@@ -134,6 +137,8 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
   const [newMessage, setNewMessage] = useState('');
   const [sendingMessage, setSendingMessage] = useState(false);
   const [timeStatusTick, setTimeStatusTick] = useState(0); // For triggering re-calculation
+  const [showEditForm, setShowEditForm] = useState(false);
+  const [updatingTask, setUpdatingTask] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -394,6 +399,66 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
       console.error('Error changing priority:', err);
     } finally {
       setChangingPriority(false);
+    }
+  };
+
+  // Handle task edit submission
+  const handleEditTask = async (data: CreateTaskInput) => {
+    if (!task) return;
+    
+    try {
+      setUpdatingTask(true);
+      const response = await fetch(`/api/tasks/${taskId}`, {
+        method: 'PUT',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: data.title,
+          description: data.description,
+          priority: data.priority,
+          assigneeId: data.assigneeId,
+          assigneeIds: data.assigneeIds,
+          dueDate: data.dueDate,
+          estimatedHours: data.estimatedHours,
+          tags: data.tags,
+          customFields: data.customFields,
+        }),
+      });
+
+      if (response.ok) {
+        const updatedTask = await response.json();
+        // Update local state with new data
+        setTask(prev => prev ? { 
+          ...prev, 
+          title: data.title,
+          description: data.description,
+          priority: data.priority,
+          dueDate: data.dueDate,
+        } : null);
+        // Invalidate queries to refresh data
+        queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
+        queryClient.invalidateQueries({ queryKey: taskKeys.detail(taskId) });
+        // Post system message
+        await fetch(`/api/v2/tasks/${taskId}/messages`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            content: `📝 Task was edited by ${task.creator?.firstName || task.creator?.username || 'creator'}`,
+            senderType: 'SYSTEM'
+          }),
+        });
+        // Refresh task details
+        fetchTaskDetails();
+        setShowEditForm(false);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('Failed to update task:', response.status, errorData);
+      }
+    } catch (err) {
+      console.error('Error updating task:', err);
+    } finally {
+      setUpdatingTask(false);
     }
   };
 
@@ -806,6 +871,18 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
             >
               <XCircle className="w-4 h-4" />
               Cancel
+            </button>
+          )}
+
+          {/* Edit Button - For creator when task is OPEN (before work starts) */}
+          {isTaskCreator && isOpen && (
+            <button
+              onClick={() => setShowEditForm(true)}
+              className="px-3 py-2 text-sm font-medium bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition-colors flex items-center gap-1.5"
+              title="Edit Task"
+            >
+              <Pencil className="w-4 h-4" />
+              Edit
             </button>
           )}
         </div>
@@ -1247,6 +1324,46 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
             </div>
           </div>
         </div>
+      )}
+
+      {/* Edit Task Modal - Shows when task is OPEN and creator clicks Edit */}
+      {showEditForm && task && (
+        <TaskFormV2
+          mode="edit"
+          task={{
+            id: typeof task.id === 'string' ? parseInt(task.id) : task.id,
+            unique_id: taskId,
+            title: task.title,
+            description: task.description || '',
+            status: task.status as any,
+            priority: (task.priority || 'MEDIUM') as TaskPriority,
+            dueDate: task.dueDate || task.due_date,
+            assigneeId: task.assignee?.id || 0,
+            assignee: task.assignee ? {
+              id: task.assignee.id,
+              username: task.assignee.username,
+              email: '',
+              firstName: task.assignee.firstName,
+              lastName: task.assignee.lastName,
+            } : undefined,
+            creatorId: task.creatorId || task.creator?.id || 0,
+            creator: task.creator ? {
+              id: task.creator.id,
+              username: task.creator.username,
+              email: '',
+              firstName: task.creator.firstName,
+              lastName: task.creator.lastName,
+            } : undefined,
+            requiresApproval: false,
+            approvalStatus: 'NOT_REQUIRED' as any,
+            progress: 0,
+            createdAt: task.createdAt || '',
+            updatedAt: task.updatedAt || '',
+          } as any}
+          onSubmit={handleEditTask}
+          onCancel={() => setShowEditForm(false)}
+          isLoading={updatingTask}
+        />
       )}
     </div>
   );

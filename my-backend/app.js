@@ -820,6 +820,28 @@ try {
   }
 }
 
+// Audit Integrity routes (Governance Dashboard)
+try {
+  const auditIntegrityRoutes = require('./routes/audit-integrity')
+  app.use('/api/audit-integrity', auditIntegrityRoutes)
+  console.log('✅ Audit Integrity routes loaded at /api/audit-integrity')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Audit Integrity routes not loaded:', e && e.message)
+  }
+}
+
+// Security Governance routes (Security & RBAC Dashboard for Enterprise/Super Admins)
+try {
+  const securityGovernanceRoutes = require('./routes/security-governance')
+  app.use('/api/security-governance', securityGovernanceRoutes)
+  console.log('✅ Security Governance routes loaded at /api/security-governance')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Security Governance routes not loaded:', e && e.message)
+  }
+}
+
 // Fallback Logs routes (for Super Admin monitoring)
 try {
   const fallbackLogsRoutes = require('./routes/fallbackLogsRoutes')

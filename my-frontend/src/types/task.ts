@@ -311,6 +311,18 @@ export interface RecurringConfig {
 // FORM & INPUT TYPES
 // ============================================
 
+// Payment Request data for task creation
+export interface PaymentRequestData {
+  amount: number;
+  currency: string;
+  category?: string;
+  invoiceNumber?: string;
+  beneficiaryName?: string;
+  accountNumber?: string;
+  bankName?: string;
+  notes?: string;
+}
+
 export interface CreateTaskInput {
   title: string;
   description?: string;
@@ -327,6 +339,9 @@ export interface CreateTaskInput {
   tags?: string[];
   customFields?: CustomField[];
   recurring?: RecurringConfig;
+  // Payment request specific
+  taskType?: 'TASK' | 'PAYMENT_REQUEST';
+  paymentRequest?: PaymentRequestData;
 }
 
 export interface UpdateTaskInput {

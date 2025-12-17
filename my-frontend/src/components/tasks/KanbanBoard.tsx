@@ -5,7 +5,7 @@
 
 'use client';
 
-import React, { useState, useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import {
   DndContext,
   DragOverlay,
@@ -36,8 +36,11 @@ import {
   Calendar,
   User,
   Loader2,
-  AlertCircle
+  AlertCircle,
+  Clock,
+  AlertTriangle
 } from 'lucide-react';
+import { calculateTimeStatus, getTimeStatusStyles } from '@/lib/utils/timeTracking';
 import { cn } from '@/lib/utils';
 import { useKanbanTasks, useUpdateTaskPosition, useUpdateTaskStatus } from '@/hooks/useTasks';
 import { Task, KanbanData } from '@/lib/api/taskApi';
@@ -399,13 +402,38 @@ interface TaskCardProps {
 }
 
 function TaskCard({ task, isDragging, onClick }: TaskCardProps) {
+  // State for live time updates
+  const [, setTick] = useState(0);
+  
+  // Calculate time status for this task
+  const timeStatus = useMemo(() => {
+    if (!task.due_date) return null;
+    return calculateTimeStatus(task.due_date, task.completed_at, task.status);
+  }, [task.due_date, task.completed_at, task.status]);
+  
+  // Update timer every minute for live countdown
+  useEffect(() => {
+    if (!task.due_date) return;
+    const interval = setInterval(() => {
+      setTick(prev => prev + 1);
+    }, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, [task.due_date]);
+  
+  // Get styling based on time status
+  const timeStyles = getTimeStatusStyles(timeStatus);
+  
   return (
     <div
       onClick={onClick}
       className={cn(
         'bg-white rounded-lg p-3 shadow-sm border border-gray-200 cursor-pointer',
         'hover:shadow-md hover:border-gray-300 transition-all',
-        isDragging && 'shadow-lg ring-2 ring-blue-400 opacity-90'
+        isDragging && 'shadow-lg ring-2 ring-blue-400 opacity-90',
+        // Add border highlight for overdue tasks
+        timeStatus?.isOverdue && 'border-l-4 border-l-red-500',
+        // Add border highlight for urgent tasks (less than 4 hours left)
+        timeStatus && !timeStatus.isOverdue && timeStatus.urgencyLevel === 'warning' && 'border-l-4 border-l-amber-500'
       )}
     >
       {/* Priority Badge */}
@@ -430,6 +458,43 @@ function TaskCard({ task, isDragging, onClick }: TaskCardProps) {
         </p>
       )}
 
+      {/* Time Status Badge - Shows remaining time or delayed time */}
+      {timeStatus && !['DONE', 'COMPLETED', 'CANCELLED'].includes(task.status) && (
+        <div className={cn(
+          'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium mb-2',
+          timeStatus.isOverdue 
+            ? 'bg-red-100 text-red-700' 
+            : timeStatus.urgencyLevel === 'warning'
+              ? 'bg-amber-100 text-amber-700'
+              : 'bg-blue-50 text-blue-700'
+        )}>
+          {timeStatus.isOverdue ? (
+            <>
+              <AlertTriangle className="w-3 h-3" />
+              <span>{timeStatus.displayText}</span>
+            </>
+          ) : (
+            <>
+              <Clock className="w-3 h-3" />
+              <span>{timeStatus.displayText}</span>
+            </>
+          )}
+        </div>
+      )}
+      
+      {/* Completed on time badge */}
+      {timeStatus && ['DONE', 'COMPLETED'].includes(task.status) && (
+        <div className={cn(
+          'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium mb-2',
+          timeStatus.isCompletedOnTime 
+            ? 'bg-green-100 text-green-700' 
+            : 'bg-red-100 text-red-700'
+        )}>
+          <Clock className="w-3 h-3" />
+          <span>{timeStatus.displayText}</span>
+        </div>
+      )}
+
       {/* Meta Row */}
       <div className="flex items-center justify-between text-xs text-gray-400 mt-2 pt-2 border-t border-gray-100">
         <div className="flex items-center gap-3">
@@ -452,7 +517,10 @@ function TaskCard({ task, isDragging, onClick }: TaskCardProps) {
         <div className="flex items-center gap-2">
           {/* Due Date */}
           {task.due_date && (
-            <span className="flex items-center gap-1">
+            <span className={cn(
+              'flex items-center gap-1',
+              timeStatus?.isOverdue && 'text-red-500'
+            )}>
               <Calendar className="w-3 h-3" />
               {new Date(task.due_date).toLocaleDateString('en-US', { 
                 month: 'short', 

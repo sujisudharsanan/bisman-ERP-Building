@@ -146,19 +146,19 @@ export const COMMON_PAGES: CommonPageMetadata[] = [
     autoRegister: true,
   },
   
-  // Financial Pages
-  {
-    id: 'common-payment-request',
-    name: 'Payment Request',
-    path: '/common/payment-request',
-    icon: DollarSign,
-    description: 'Submit and track payment requests',
-    category: 'financial',
-    order: 9,
-    isActive: true,
-    requiresAuth: true,
-    autoRegister: true,
-  },
+  // Financial Pages - Hidden from sidebar (now integrated into Task form)
+  // {
+  //   id: 'common-payment-request',
+  //   name: 'Payment Request',
+  //   path: '/common/payment-request',
+  //   icon: DollarSign,
+  //   description: 'Submit and track payment requests',
+  //   category: 'financial',
+  //   order: 9,
+  //   isActive: true,
+  //   requiresAuth: true,
+  //   autoRegister: true,
+  // },
   // Calendar Page - Removed per request
   // {
   //   id: 'common-calendar',

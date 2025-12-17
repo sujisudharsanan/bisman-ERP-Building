@@ -19,8 +19,9 @@ import { Search, Filter, X, User, Briefcase, ChevronDown } from 'lucide-react';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import KanbanColumn from '@/components/dashboard/KanbanColumn';
 import RightPanel from '@/components/dashboard/RightPanel';
-import { TaskCreationForm } from '@/components/tasks/TaskCreationForm';
+import { TaskFormV2 } from '@/components/tasks/v2/TaskFormV2';
 import { useAuth } from '@/hooks/useAuth';
+import { useTaskAPI } from '@/hooks/useTaskAPI';
 import { useKanbanTasks, taskKeys } from '@/hooks/useTasks';
 import { useTaskSocket } from '@/hooks/useTaskSocket';
 import { useQueryClient } from '@tanstack/react-query';
@@ -44,6 +45,7 @@ export default function UnifiedDashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
+  const { createTask, loading: taskCreating } = useTaskAPI();
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -66,14 +68,27 @@ export default function UnifiedDashboardPage() {
   useEffect(() => {
     const fetchPerformanceMetrics = async () => {
       try {
+        console.log('[Dashboard] Fetching performance metrics...');
+        // Use relative URL - the proxy rewrite will forward to backend
+        // Cookies are sent with credentials: 'include'
         const response = await fetch('/api/tasks/performance-metrics', {
-          credentials: 'include'
+          credentials: 'include',
+          headers: {
+            'Content-Type': 'application/json',
+          }
         });
+        console.log('[Dashboard] Performance metrics response status:', response.status);
         if (response.ok) {
           const result = await response.json();
+          console.log('[Dashboard] Performance metrics result:', result);
           if (result.success && result.data) {
             setPerformanceMetrics(result.data);
+          } else if (result.data) {
+            // Backend might return data without success wrapper
+            setPerformanceMetrics(result.data);
           }
+        } else {
+          console.error('[Dashboard] Performance metrics fetch failed:', response.status, response.statusText);
         }
       } catch (error) {
         console.error('Failed to fetch performance metrics:', error);
@@ -128,6 +143,30 @@ export default function UnifiedDashboardPage() {
     NEED_ATTENTION: groupedTasks.EDITING?.length || 0,
     DONE: groupedTasks.DONE?.length || 0,
   }), [groupedTasks]);
+
+  // Extract upcoming task deadlines for the schedule panel
+  const upcomingDeadlines = useMemo(() => {
+    const allTasks = [
+      ...groupedTasks.ASSIGNED,
+      ...groupedTasks.IN_PROGRESS,
+      ...groupedTasks.EDITING,
+    ];
+    
+    // Filter tasks with due dates and sort by due date
+    const tasksWithDueDate = allTasks
+      .filter((task: any) => task.dueDate || task.due_date)
+      .map((task: any) => ({
+        id: task.id,
+        title: task.title,
+        dueDate: task.dueDate || task.due_date,
+        status: task.status,
+        priority: task.priority,
+      }))
+      .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+      .slice(0, 6); // Show top 6 upcoming deadlines
+    
+    return tasksWithDueDate;
+  }, [groupedTasks]);
 
   // Handle metric click - filter to show that column's tasks
   const handleMetricClick = useCallback((column: string) => {
@@ -404,6 +443,7 @@ export default function UnifiedDashboardPage() {
                       taskCounts={taskCounts}
                       performanceMetrics={performanceMetrics}
                       onMetricClick={handleMetricClick}
+                      upcomingDeadlines={upcomingDeadlines}
                     />
                   </div>
                 )}
@@ -415,21 +455,20 @@ export default function UnifiedDashboardPage() {
       
       {/* Task Creation Modal */}
       {showTaskForm && config.allowTaskCreation && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
-            <TaskCreationForm 
-              onCancel={() => setShowTaskForm(false)} 
-              onTaskCreated={() => {
-                setShowTaskForm(false);
-                // Invalidate all kanban queries (both view modes) and refetch current view
-                queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
-                refetchKanban();
-                // Switch to "My Requests" to show the newly created task
-                setViewMode('my-requests');
-              }}
-            />
-          </div>
-        </div>
+        <TaskFormV2
+          mode="create"
+          onCancel={() => setShowTaskForm(false)}
+          onSubmit={async (data) => {
+            await createTask(data);
+            setShowTaskForm(false);
+            // Invalidate all kanban queries (both view modes) and refetch current view
+            queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
+            refetchKanban();
+            // Switch to "My Requests" to show the newly created task
+            setViewMode('my-requests');
+          }}
+          isLoading={taskCreating}
+        />
       )}
     </DashboardLayout>
   );

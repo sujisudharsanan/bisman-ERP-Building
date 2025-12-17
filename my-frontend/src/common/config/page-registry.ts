@@ -271,7 +271,7 @@ export interface PageMetadata {
   // iconKey is a lucide-react component name string (e.g. "Settings", "Users")
   // resolved client-side; avoids importing lucide components during SSR.
   iconKey?: string;
-  module: 'system' | 'finance' | 'procurement' | 'operations' | 'compliance' | 'common' | 'pump-management' | 'hr' | 'super-admin' | 'enterprise-admin' | 'admin' | 'billing' | 'qa';
+  module: 'system' | 'finance' | 'procurement' | 'operations' | 'compliance' | 'common' | 'pump-management' | 'hr' | 'super-admin' | 'enterprise-admin' | 'admin' | 'billing' | 'qa' | 'governance';
   permissions: string[]; // Required permissions (OR logic)
   roles: string[]; // Recommended roles
   status: PageStatus;
@@ -376,6 +376,14 @@ export const MODULES: Record<string, ModuleMetadata> = {
     color: 'cyan',
     order: 10,
     hidden: true, // Hidden from all users - internal testing module only
+  },
+  governance: {
+    id: 'governance',
+    name: 'Governance',
+    icon: Shield,
+    description: 'Security monitoring, RBAC structure, and audit integrity',
+    color: 'purple',
+    order: 0, // Show at top for Enterprise/Super Admins
   },
   common: {
     id: 'common',
@@ -628,6 +636,69 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'View system activity and audit trails',
     order: 5,
   },
+  {
+    id: 'audit-integrity',
+    name: 'Audit Integrity',
+    path: '/system/audit-integrity-dashboard',
+    iconKey: "ShieldCheck",
+    module: 'system',
+    permissions: ['governance-access'],
+    roles: ['ENTERPRISE_ADMIN', 'SUPER_ADMIN'],
+    status: 'active',
+    description: 'Validate audit log integrity for compliance',
+    order: 5.5,
+  },
+
+  // ==================== GOVERNANCE PAGES (Enterprise Admin & Super Admin) ====================
+  {
+    id: 'governance-security-overview',
+    name: 'Security Overview',
+    path: '/governance/security-overview',
+    iconKey: "Shield",
+    module: 'governance',
+    permissions: ['governance-access'],
+    roles: ['ENTERPRISE_ADMIN', 'SUPER_ADMIN'],
+    status: 'active',
+    description: 'Monitor system security health at a glance',
+    order: 1,
+  },
+  {
+    id: 'governance-audit-integrity',
+    name: 'Audit Integrity',
+    path: '/governance/audit-integrity',
+    iconKey: "FileCheck",
+    module: 'governance',
+    permissions: ['governance-access'],
+    roles: ['ENTERPRISE_ADMIN', 'SUPER_ADMIN'],
+    status: 'active',
+    description: 'Verify audit log completeness for compliance',
+    order: 2,
+  },
+  {
+    id: 'governance-security-violations',
+    name: 'Security Violations',
+    path: '/governance/security-violations',
+    iconKey: "ShieldX",
+    module: 'governance',
+    permissions: ['governance-access'],
+    roles: ['ENTERPRISE_ADMIN', 'SUPER_ADMIN'],
+    status: 'active',
+    description: 'Review access denials and security events',
+    order: 3,
+  },
+  {
+    id: 'governance-rbac-structure',
+    name: 'RBAC Structure',
+    path: '/governance/rbac-structure',
+    iconKey: "Lock",
+    module: 'governance',
+    permissions: ['governance-access'],
+    roles: ['ENTERPRISE_ADMIN', 'SUPER_ADMIN'],
+    status: 'active',
+    description: 'Understand role hierarchy and access control',
+    order: 4,
+  },
+
   {
     id: 'backup-restore',
     name: 'Backup & Restore',
@@ -1571,6 +1642,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     description: 'Submit and track payment requests',
     order: 5,
+    showInSidebar: false, // Hidden - payment requests are now created via Task form
   },
   {
     id: 'dashboard',
@@ -1595,6 +1667,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     description: 'Manage your tasks with draft, in-progress, needs attention, and done views',
     order: 1, // Show at top of common pages
+    showInSidebar: false, // Hidden - functionality now integrated into main Dashboard
   },
 
   // ==================== BILLING PAGES ====================
