@@ -9,160 +9,40 @@ datasource db {
   shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
 }
 
-model Role {
-  id          Int               @id @default(autoincrement())
-  name        String?           @unique
-  level       RoleLevel         @default(CLIENT)
-  moduleId    Int?              @map("module_id")
-  clientId    String?           @map("client_id") @db.Uuid
-  description String?
-  isSystem    Boolean           @default(false) @map("is_system")
-  createdAt   DateTime?         @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt   DateTime?         @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  
-  // Relations
-  module              Module?              @relation(fields: [moduleId], references: [id], onDelete: SetNull)
-  client              Client?              @relation("ClientRoles", fields: [clientId], references: [id], onDelete: Cascade)
-  rolePermissions     RolePermission[]
-  userRoleAssignments UserRoleAssignment[]
-
-  @@index([level], map: "idx_roles_level")
-  @@index([moduleId], map: "idx_roles_module_id")
-  @@index([clientId], map: "idx_roles_client_id")
-  @@map("roles")
-}
-
-// RoleLevel enum - strict three-tier hierarchy
-enum RoleLevel {
-  ENTERPRISE // ENTERPRISE_ADMIN only - moduleId=null, clientId=null
-  MODULE     // SUPER_ADMIN - moduleId=required, clientId=null
-  CLIENT     // ADMIN and below - moduleId+clientId required
-}
-
-// Explicit permission assignments for roles (NO INHERITANCE)
-model RolePermission {
-  id            Int      @id @default(autoincrement())
-  roleId        Int      @map("role_id")
-  permissionKey String   @map("permission_key") @db.VarChar(255)
-  granted       Boolean  @default(true)
-  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-
-  role Role @relation(fields: [roleId], references: [id], onDelete: Cascade)
-
-  @@unique([roleId, permissionKey])
-  @@index([roleId], map: "idx_role_permissions_role_id")
-  @@index([permissionKey], map: "idx_role_permissions_permission_key")
-  @@map("role_permissions")
-}
-
-// User role assignments with module/client context
-model UserRoleAssignment {
-  id         Int       @id @default(autoincrement())
-  userId     Int       @map("user_id")
-  roleId     Int       @map("role_id")
-  moduleId   Int?      @map("module_id")
-  clientId   String?   @map("client_id") @db.Uuid
-  assignedBy Int?      @map("assigned_by")
-  isActive   Boolean   @default(true) @map("is_active")
-  assignedAt DateTime  @default(now()) @map("assigned_at") @db.Timestamp(6)
-  expiresAt  DateTime? @map("expires_at") @db.Timestamp(6)
-
-  role   Role    @relation(fields: [roleId], references: [id], onDelete: Cascade)
-  module Module? @relation(fields: [moduleId], references: [id], onDelete: Cascade)
-  client Client? @relation("ClientUserRoleAssignments", fields: [clientId], references: [id], onDelete: Cascade)
-
-  @@unique([userId, roleId, moduleId, clientId])
-  @@index([userId], map: "idx_user_role_assignments_user_id")
-  @@index([roleId], map: "idx_user_role_assignments_role_id")
-  @@index([moduleId], map: "idx_user_role_assignments_module_id")
-  @@index([clientId], map: "idx_user_role_assignments_client_id")
-  @@index([isActive], map: "idx_user_role_assignments_active")
-  @@map("user_role_assignments")
-}
-
-model User {
-  id                     Int                     @id @default(autoincrement())
-  username               String                  @map("username") @db.VarChar(100)
-  email                  String                  @unique @db.VarChar(150)
-  password_hash          String                  @map("password_hash") @db.VarChar(255)
-  role                   String?                 @db.VarChar(50)
-  is_active              Boolean                 @default(true)
-  productType            String?                 @default("BUSINESS_ERP") @db.VarChar(50)
-  tenant_id              String?                 @db.Uuid
-  module_id              Int?                    @map("module_id")
-  super_admin_id         Int?
-  createdAt              DateTime?               @default(now()) @map("created_at") @db.Timestamp(6)
-  profile_pic_url        String?                 @map("profile_pic_url")
-  updatedAt              DateTime?               @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  assignedModules        Json?
-  pagePermissions        Json?
-  theme_preference       String?                 @default("bisman-default") @db.VarChar(50)
-  approvals              Approval[]              @relation("TaskApprovals")
-  approverConfigurations ApproverConfiguration[] @relation("ApproverConfigurations")
-  approverSelectionLogs  ApproverSelectionLog[]  @relation("ApproverSelectionLogs")
-  assistantMemory        AssistantMemory?        @relation("AssistantMemoryUser")
-  auditLogs              AuditLog[]
-  billsUploaded          Bill[]                  @relation("BillUploader")
-  initiatedCallLogs      CallLog[]               @relation("CallLogInitiator")
-  usageEvents            ClientUsageEvent[]
-  expensesCreated        Expense[]               @relation("ExpenseCreator")
-  messages               Message[]               @relation("TaskMessages")
-  paymentActivityLogs    PaymentActivityLog[]    @relation("PaymentActivityLogs")
-  paymentRecords         PaymentRecord[]         @relation("PaymentRecords")
-  paymentRequestsCreated PaymentRequest[]        @relation("PaymentRequestCreator")
-  tasksAssigned          Task[]                  @relation("TaskAssignee")
-  tasksCreated           Task[]                  @relation("TaskCreator")
-  threadMembers          ThreadMember[]          @relation("ThreadMemberUser")
-  threadMessagesSent     ThreadMessage[]         @relation("ThreadMessageSender")
-  threadsCreated         Thread[]                @relation("ThreadCreatedBy")
-  achievements           UserAchievement[]
-  addresses              UserAddress[]
-  bankAccounts           UserBankAccount[]
-  branches               UserBranch[]
-  education              UserEducation[]
-  emergencyContacts      UserEmergencyContact[]
-  kyc                    UserKYC?
-  profile                UserProfile?
-  user_sessions          user_sessions[]
-  skills                 UserSkill[]
-  superAdmin             SuperAdmin?             @relation("SuperAdminUsers", fields: [super_admin_id], references: [id])
-  client                 Client?                 @relation("ClientUsers", fields: [tenant_id], references: [id], onDelete: Cascade)
-  module                 Module?                 @relation("ModuleUsers", fields: [module_id], references: [id], onDelete: SetNull)
-
-  @@index([tenant_id], map: "idx_users_tenant")
-  @@index([productType], map: "idx_users_product_type")
-  @@index([super_admin_id], map: "idx_users_super_admin")
-  @@index([is_active], map: "idx_users_active")
-  @@index([module_id], map: "idx_users_module_id")
-  @@map("users")
-}
-
 model AuditLog {
-  id            Int            @id @default(autoincrement())
-  user_id       Int?
-  action        String         @db.VarChar(50)
-  table_name    String?        @db.VarChar(100)
-  record_id     Int?
-  old_values    Json?
-  new_values    Json?
-  ip_address    String?        @db.Inet
-  user_agent    String?
-  session_id    Int?
-  created_at    DateTime?      @default(now()) @db.Timestamp(6)
-  user_sessions user_sessions? @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  user          User?          @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  id                Int            @id @default(autoincrement())
+  user_id           Int?
+  action            String         @db.VarChar(50)
+  table_name        String?        @db.VarChar(100)
+  record_id         Int?
+  old_values        Json?
+  new_values        Json?
+  ip_address        String?        @db.Inet
+  user_agent        String?
+  session_id        Int?
+  created_at        DateTime?      @default(now()) @db.Timestamp(6)
+  service_name      String?        @db.VarChar(100)
+  service_user      String?        @db.VarChar(100)
+  query_text        String?
+  execution_time_ms Int?
+  rows_affected     Int?
+  request_id        String?        @db.Uuid
+  tenant_id         String?        @db.Uuid
+  super_admin_id    Int?
+  changed_fields    String[]
+  operation_context Json?
+  user_sessions     user_sessions? @relation(fields: [session_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([action], map: "idx_audit_logs_action")
   @@index([user_id], map: "idx_audit_logs_user")
+  @@index([table_name, action, created_at(sort: Desc)], map: "idx_audit_logs_composite")
+  @@index([created_at(sort: Desc)], map: "idx_audit_logs_created_at")
+  @@index([request_id], map: "idx_audit_logs_request")
+  @@index([service_name], map: "idx_audit_logs_service")
+  @@index([session_id], map: "idx_audit_logs_session_id")
+  @@index([table_name], map: "idx_audit_logs_table")
+  @@index([tenant_id], map: "idx_audit_logs_tenant")
   @@map("audit_logs")
-}
-
-model actions {
-  id          Int       @id @default(autoincrement())
-  name        String    @unique @db.VarChar(100)
-  description String?
-  created_at  DateTime? @default(now()) @db.Timestamp(6)
 }
 
 model migration_history {
@@ -185,20 +65,19 @@ model rbac_actions {
 }
 
 model rbac_permissions {
-  id             Int           @id @default(autoincrement())
-  role_id        Int?
-  action_id      Int?
-  route_id       Int?
-  granted        Boolean?      @default(false)
-  created_at     DateTime?     @default(now()) @db.Timestamp(6)
-  updated_at     DateTime?     @default(now()) @db.Timestamp(6)
-  name           String?       @db.VarChar(200)
-  display_name   String?       @db.VarChar(250)
-  is_active      Boolean?      @default(true)
-  min_role_level Int?          @default(0)
-  rbac_actions   rbac_actions? @relation(fields: [action_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  rbac_roles     rbac_roles?   @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
-  rbac_routes    rbac_routes?  @relation(fields: [route_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  id           Int           @id @default(autoincrement())
+  role_id      Int?
+  action_id    Int?
+  route_id     Int?
+  granted      Boolean?      @default(false)
+  created_at   DateTime?     @default(now()) @db.Timestamp(6)
+  updated_at   DateTime?     @default(now()) @db.Timestamp(6)
+  name         String?       @db.VarChar(200)
+  display_name String?       @db.VarChar(250)
+  is_active    Boolean?      @default(true)
+  rbac_actions rbac_actions? @relation(fields: [action_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  rbac_roles   rbac_roles?   @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  rbac_routes  rbac_routes?  @relation(fields: [route_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([role_id, action_id, route_id])
   @@index([action_id], map: "idx_rbac_permissions_action_id")
@@ -206,20 +85,20 @@ model rbac_permissions {
   @@index([name], map: "idx_rbac_permissions_name")
   @@index([role_id], map: "idx_rbac_permissions_role_id")
   @@index([route_id], map: "idx_rbac_permissions_route_id")
-  @@index([min_role_level], map: "idx_rbac_permissions_min_role_level")
 }
 
 model rbac_roles {
-  id               Int                @id @default(autoincrement())
-  name             String             @unique @db.VarChar(50)
-  description      String?
-  level            Int?               @default(1)
-  created_at       DateTime?          @default(now()) @db.Timestamp(6)
-  updated_at       DateTime?          @default(now()) @db.Timestamp(6)
-  display_name     String?            @db.VarChar(150)
-  status           String?            @default("active") @db.VarChar(20)
-  rbac_permissions rbac_permissions[]
-  rbac_user_roles  rbac_user_roles[]
+  id                     Int                   @id @default(autoincrement())
+  name                   String                @unique @db.VarChar(50)
+  description            String?
+  level                  Int?                  @default(1)
+  created_at             DateTime?             @default(now()) @db.Timestamp(6)
+  updated_at             DateTime?             @default(now()) @db.Timestamp(6)
+  display_name           String?               @db.VarChar(150)
+  status                 String?               @default("active") @db.VarChar(20)
+  admin_role_assignments AdminRoleAssignment[]
+  rbac_permissions       rbac_permissions[]
+  rbac_user_roles        rbac_user_roles[]
 }
 
 model rbac_routes {
@@ -285,37 +164,20 @@ model recent_activity {
   @@index([user_id], map: "idx_recent_activity_user_id")
 }
 
-model routes {
-  id           Int       @id @default(autoincrement())
-  path         String    @db.VarChar(255)
-  name         String    @db.VarChar(100)
-  description  String?
-  method       String?   @default("GET") @db.VarChar(10)
-  module       String?   @db.VarChar(50)
-  is_protected Boolean?  @default(true)
-  created_at   DateTime? @default(now()) @db.Timestamp(6)
-
-  @@unique([path, method])
-}
-
 model user_sessions {
   id               Int        @id @default(autoincrement())
   user_id          Int
-  // DEPRECATED: Use token_hash for lookups
   session_token    String     @unique @db.VarChar(255)
-  // Hashed token fields (SHA-256)
-  token_hash       String?    @db.VarChar(64)
-  token_prefix     String?    @db.VarChar(8)
   ip_address       String?    @db.Inet
   user_agent       String?
   created_at       DateTime?  @default(now()) @db.Timestamp(6)
   expires_at       DateTime   @db.Timestamp(6)
   last_activity_at DateTime?  @default(now()) @db.Timestamp(6)
   is_active        Boolean?   @default(true)
+  token_hash       String?    @db.VarChar(64)
+  token_prefix     String?    @db.VarChar(8)
   audit_logs       AuditLog[]
-  users            User       @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
-  @@index([session_token], map: "idx_user_sessions_token")
   @@index([token_hash], map: "idx_user_sessions_token_hash")
   @@index([user_id], map: "idx_user_sessions_user")
 }
@@ -348,7 +210,6 @@ model SuperAdmin {
   clients           Client[]           @relation("SuperAdminClients")
   moduleAssignments ModuleAssignment[]
   enterpriseAdmin   EnterpriseAdmin    @relation("CreatedSuperAdmins", fields: [created_by], references: [id], onDelete: Cascade)
-  users             User[]             @relation("SuperAdminUsers")
 
   @@index([productType], map: "idx_super_admins_product_type")
   @@index([created_by], map: "idx_super_admins_created_by")
@@ -403,6 +264,17 @@ model Client {
   logo                    String?
   created_at              DateTime                   @default(now()) @db.Timestamp(6)
   updated_at              DateTime                   @default(now()) @updatedAt @db.Timestamp(6)
+  created_by              Int?
+  stripe_customer_id      String?                    @db.VarChar(100)
+  stripe_subscription_id  String?                    @db.VarChar(100)
+  subscription_status     String?                    @db.VarChar(50)
+  current_period_end      DateTime?                  @db.Timestamptz(6)
+  cancel_at_period_end    Boolean?                   @default(false)
+  trial_expired           Boolean?                   @default(false)
+  payment_failed          Boolean?                   @default(false)
+  payment_failed_at       DateTime?                  @db.Timestamptz(6)
+  last_payment_at         DateTime?                  @db.Timestamptz(6)
+  unique_id               String?                    @db.VarChar(50)
   ClientToClientSequence  ClientToClientSequence[]
   branches                Branch[]
   dailyUsage              ClientDailyUsage[]
@@ -410,19 +282,18 @@ model Client {
   onboardingActivities    ClientOnboardingActivity[]
   usageEvents             ClientUsageEvent[]
   superAdmin              SuperAdmin                 @relation("SuperAdminClients", fields: [super_admin_id], references: [id], onDelete: Cascade)
+  events                  Event[]                    @relation("ClientEvents")
   onboardingMagicLinks    OnboardingMagicLink[]
   paymentRequests         PaymentRequest[]           @relation("ClientPaymentRequests")
-  users                   User[]                     @relation("ClientUsers")
-  events                  Event[]                    @relation("ClientEvents")
-  customers               Customer[]                 @relation("ClientCustomers")
-  vendors                 Vendor[]                   @relation("ClientVendors")
-  items                   Item[]                     @relation("ClientItems")
-  roles                   Role[]                     @relation("ClientRoles")
-  userRoleAssignments     UserRoleAssignment[]       @relation("ClientUserRoleAssignments")
+  support_sessions        support_sessions[]
 
   @@index([super_admin_id], map: "idx_clients_super_admin")
   @@index([productType], map: "idx_clients_product_type")
   @@index([client_code], map: "idx_clients_code")
+  @@index([created_by], map: "idx_clients_created_by")
+  @@index([stripe_customer_id], map: "idx_clients_stripe_customer")
+  @@index([stripe_subscription_id], map: "idx_clients_stripe_subscription")
+  @@index([unique_id], map: "idx_clients_unique_id")
   @@map("clients")
 }
 
@@ -479,40 +350,18 @@ model Module {
   icon                    String?                  @db.VarChar(100)
   productType             String                   @db.VarChar(50)
   is_active               Boolean                  @default(true)
-  is_always_accessible    Boolean                  @default(false) // Common & Chat modules are always accessible
   sort_order              Int?                     @default(0)
   created_at              DateTime                 @default(now()) @db.Timestamp(6)
   updated_at              DateTime                 @default(now()) @updatedAt @db.Timestamp(6)
+  is_always_accessible    Boolean                  @default(false)
   dailyUsage              ClientDailyUsage[]
   clientModulePermissions ClientModulePermission[]
   usageEvents             ClientUsageEvent[]
   moduleAssignments       ModuleAssignment[]
-  permissions             Permission[]
-  roles                   Role[]
-  users                   User[]                   @relation("ModuleUsers")
-  userRoleAssignments     UserRoleAssignment[]
 
   @@index([productType], map: "idx_modules_product_type")
   @@index([is_active], map: "idx_modules_active")
   @@map("modules")
-}
-
-model Permission {
-  id         Int      @id @default(autoincrement())
-  role       String   @db.VarChar(50)
-  module_id  Int
-  can_view   Boolean  @default(false)
-  can_create Boolean  @default(false)
-  can_edit   Boolean  @default(false)
-  can_delete Boolean  @default(false)
-  created_at DateTime @default(now()) @db.Timestamp(6)
-  updated_at DateTime @default(now()) @updatedAt @db.Timestamp(6)
-  module     Module   @relation(fields: [module_id], references: [id], onDelete: Cascade)
-
-  @@unique([role, module_id])
-  @@index([role], map: "idx_permissions_role")
-  @@index([module_id], map: "idx_permissions_module")
-  @@map("permissions")
 }
 
 model ModuleAssignment {
@@ -521,29 +370,28 @@ model ModuleAssignment {
   module_id        Int
   assigned_at      DateTime   @default(now()) @db.Timestamp(6)
   page_permissions Json?
-  module           Module     @relation(fields: [module_id], references: [id], onDelete: Cascade)
-  superAdmin       SuperAdmin @relation(fields: [super_admin_id], references: [id], onDelete: Cascade)
+  module           Module     @relation(fields: [module_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_module_assignments_module")
+  superAdmin       SuperAdmin @relation(fields: [super_admin_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_module_assignments_super_admin")
 
   @@unique([super_admin_id, module_id])
+  @@unique([super_admin_id, module_id], map: "uq_module_assignments_super_admin_module")
   @@index([super_admin_id], map: "idx_module_assignments_super_admin")
   @@index([module_id], map: "idx_module_assignments_module")
   @@map("module_assignments")
 }
 
-// Unified Admin Role Assignment - For Enterprise Admin, Super Admin, and Admin role allocations
-// This table stores which roles are assigned/allocated by each admin level
 model AdminRoleAssignment {
-  id            Int      @id @default(autoincrement())
-  assigner_type String   @db.VarChar(50) // 'ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN'
-  assigner_id   Int // ID of the admin who assigned
-  role_id       Int // ID of the role being assigned (references rbac_roles)
-  assignee_type String?  @db.VarChar(50) // 'SUPER_ADMIN', 'ADMIN', 'USER' (who receives the role)
-  assignee_id   Int? // Optional: specific user receiving the role
-  is_active     Boolean  @default(true)
-  assigned_at   DateTime @default(now()) @db.Timestamp(6)
-  updated_at    DateTime @default(now()) @updatedAt @db.Timestamp(6)
+  id            Int        @id @default(autoincrement())
+  assigner_type String     @db.VarChar(50)
+  assigner_id   Int
+  role_id       Int
+  assignee_type String?    @db.VarChar(50)
+  assignee_id   Int?
+  is_active     Boolean    @default(true)
+  assigned_at   DateTime   @default(now()) @db.Timestamp(6)
+  updated_at    DateTime   @default(now()) @updatedAt @db.Timestamp(6)
+  rbac_roles    rbac_roles @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_admin_role_assignments_role")
 
-  @@unique([assigner_type, assigner_id, role_id, assignee_type, assignee_id])
   @@index([assigner_type, assigner_id], map: "idx_admin_role_assign_assigner")
   @@index([role_id], map: "idx_admin_role_assign_role")
   @@index([assignee_id], map: "idx_admin_role_assign_assignee")
@@ -580,11 +428,13 @@ model ClientUsageEvent {
   occurred_at DateTime @default(now()) @db.Timestamp(6)
   client      Client   @relation(fields: [client_id], references: [id], onDelete: Cascade)
   module      Module?  @relation(fields: [module_id], references: [id])
-  user        User?    @relation(fields: [user_id], references: [id])
 
   @@index([client_id], map: "idx_client_usage_events_client")
   @@index([module_id], map: "idx_client_usage_events_module")
   @@index([occurred_at], map: "idx_client_usage_events_time")
+  @@index([client_id, occurred_at(sort: Desc)], map: "idx_client_usage_events_client_date")
+  @@index([client_id, module_id, occurred_at(sort: Desc)], map: "idx_client_usage_events_composite")
+  @@index([event_type, occurred_at(sort: Desc)], map: "idx_client_usage_events_type_date")
   @@map("client_usage_events")
 }
 
@@ -682,12 +532,11 @@ model PaymentRequest {
   createdById       Int
   createdAt         DateTime                 @default(now()) @db.Timestamp(6)
   updatedAt         DateTime                 @default(now()) @updatedAt @db.Timestamp(6)
+  updated_by        Int?
   expense           Expense?
   activityLogs      PaymentActivityLog[]
   lineItems         PaymentRequestLineItem[]
   client            Client?                  @relation("ClientPaymentRequests", fields: [clientId], references: [id])
-  createdBy         User                     @relation("PaymentRequestCreator", fields: [createdById], references: [id])
-  task              Task?
 
   @@index([requestId], map: "idx_payment_requests_request_id")
   @@index([clientId], map: "idx_payment_requests_client")
@@ -728,46 +577,14 @@ model Expense {
   attachments      Json?
   createdAt        DateTime       @default(now()) @db.Timestamp(6)
   updatedAt        DateTime       @default(now()) @updatedAt @db.Timestamp(6)
-  createdBy        User           @relation("ExpenseCreator", fields: [createdById], references: [id])
   paymentRequest   PaymentRequest @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
-  task             Task?
 
   @@index([requestId], map: "idx_expenses_request_id")
   @@index([paymentRequestId], map: "idx_expenses_payment_request")
   @@index([createdById], map: "idx_expenses_creator")
   @@index([status], map: "idx_expenses_status")
+  @@index([clientId], map: "idx_expenses_client")
   @@map("expenses")
-}
-
-model Task {
-  id                    String                 @id @default(cuid())
-  expenseId             String                 @unique
-  paymentRequestId      String                 @unique
-  title                 String                 @db.VarChar(300)
-  description           String?
-  currentLevel          Int                    @default(0)
-  status                String                 @default("PENDING") @db.VarChar(50)
-  createdById           Int
-  assigneeId            Int?
-  billId                String?
-  createdAt             DateTime               @default(now()) @db.Timestamp(6)
-  updatedAt             DateTime               @default(now()) @updatedAt @db.Timestamp(6)
-  approvals             Approval[]
-  approverSelectionLogs ApproverSelectionLog[] @relation("ApproverSelectionLogs")
-  bill                  Bill?                  @relation("BillTask")
-  messages              Message[]
-  paymentRecords        PaymentRecord[]
-  assignee              User?                  @relation("TaskAssignee", fields: [assigneeId], references: [id])
-  createdBy             User                   @relation("TaskCreator", fields: [createdById], references: [id])
-  expense               Expense                @relation(fields: [expenseId], references: [id], onDelete: Cascade)
-  paymentRequest        PaymentRequest         @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
-
-  @@index([expenseId], map: "idx_tasks_expense")
-  @@index([paymentRequestId], map: "idx_tasks_payment_request")
-  @@index([assigneeId], map: "idx_tasks_assignee")
-  @@index([status], map: "idx_tasks_status")
-  @@index([currentLevel], map: "idx_tasks_level")
-  @@map("tasks")
 }
 
 model Approval {
@@ -780,31 +597,11 @@ model Approval {
   comment     String?
   attachments Json?
   createdAt   DateTime @default(now()) @db.Timestamp(6)
-  approver    User     @relation("TaskApprovals", fields: [approverId], references: [id])
-  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@index([taskId], map: "idx_approvals_task")
   @@index([approverId], map: "idx_approvals_approver")
   @@index([level], map: "idx_approvals_level")
   @@map("approvals")
-}
-
-model Message {
-  id          String   @id @default(cuid())
-  taskId      String
-  senderId    Int
-  body        String?
-  attachments Json?
-  type        String   @default("TEXT") @db.VarChar(50)
-  meta        Json?
-  createdAt   DateTime @default(now()) @db.Timestamp(6)
-  sender      User     @relation("TaskMessages", fields: [senderId], references: [id])
-  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
-
-  @@index([taskId], map: "idx_messages_task")
-  @@index([senderId], map: "idx_messages_sender")
-  @@index([type], map: "idx_messages_type")
-  @@map("messages")
 }
 
 model PaymentRecord {
@@ -822,8 +619,6 @@ model PaymentRecord {
   receiptUrl       String?
   notes            String?
   createdAt        DateTime  @default(now()) @db.Timestamp(6)
-  paidBy           User?     @relation("PaymentRecords", fields: [paidById], references: [id])
-  task             Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
 
   @@index([taskId], map: "idx_payment_records_task")
   @@index([paymentRequestId], map: "idx_payment_records_payment_request")
@@ -859,7 +654,6 @@ model ApproverConfiguration {
   maxConcurrentTasks Int?     @default(10)
   createdAt          DateTime @default(now()) @db.Timestamp(6)
   updatedAt          DateTime @default(now()) @updatedAt @db.Timestamp(6)
-  user               User     @relation("ApproverConfigurations", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, level])
   @@index([userId], map: "idx_approver_config_user")
@@ -881,8 +675,6 @@ model ApproverSelectionLog {
   approverWorkload   Int?
   metadata           Json?
   createdAt          DateTime @default(now()) @db.Timestamp(6)
-  selectedApprover   User     @relation("ApproverSelectionLogs", fields: [selectedApproverId], references: [id], onDelete: Cascade)
-  task               Task?    @relation("ApproverSelectionLogs", fields: [taskId], references: [id])
 
   @@index([taskId], map: "idx_selection_log_task")
   @@index([selectedApproverId], map: "idx_selection_log_approver")
@@ -900,8 +692,7 @@ model PaymentActivityLog {
   comment          String?
   metadata         Json?
   createdAt        DateTime       @default(now()) @db.Timestamp(6)
-  paymentRequest   PaymentRequest @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade)
-  user             User?          @relation("PaymentActivityLogs", fields: [userId], references: [id])
+  paymentRequest   PaymentRequest @relation(fields: [paymentRequestId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_payment_activity_logs_request")
 
   @@index([paymentRequestId], map: "idx_activity_logs_payment_request")
   @@index([userId], map: "idx_activity_logs_user")
@@ -939,7 +730,6 @@ model Thread {
   callLogs    CallLog[]
   members     ThreadMember[]
   messages    ThreadMessage[]
-  createdBy   User            @relation("ThreadCreatedBy", fields: [createdById], references: [id], onDelete: Cascade)
 
   @@index([createdById], map: "idx_threads_creator")
   @@map("threads")
@@ -954,7 +744,6 @@ model ThreadMember {
   leftAt   DateTime?
   isActive Boolean   @default(true)
   thread   Thread    @relation(fields: [threadId], references: [id], onDelete: Cascade)
-  user     User      @relation("ThreadMemberUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([threadId, userId])
   @@index([userId], map: "idx_thread_members_user")
@@ -980,7 +769,6 @@ model CallLog {
   consent_recorded Boolean   @default(false)
   created_at       DateTime  @default(now()) @db.Timestamp(6)
   updated_at       DateTime  @default(now()) @updatedAt @db.Timestamp(6)
-  initiator        User      @relation("CallLogInitiator", fields: [initiator_id], references: [id], onDelete: SetNull)
   thread           Thread    @relation(fields: [thread_id], references: [id], onDelete: Cascade)
 
   @@index([thread_id], map: "idx_call_logs_thread")
@@ -992,31 +780,37 @@ model CallLog {
 }
 
 model ThreadMessage {
-  id          String          @id @default(cuid())
-  threadId    String
-  senderId    Int
-  content     String
-  type        String          @default("text") @db.VarChar(50)
-  attachments Json?
-  replyToId   String?
-  reactions   Json?
-  isEdited    Boolean         @default(false)
-  editedAt    DateTime?       @db.Timestamp(6)
-  isDeleted   Boolean         @default(false)
-  deletedAt   DateTime?       @db.Timestamp(6)
-  readBy      Json?
-  createdAt   DateTime        @default(now()) @db.Timestamp(6)
-  updatedAt   DateTime        @default(now()) @updatedAt @db.Timestamp(6)
-  replyTo     ThreadMessage?  @relation("MessageReplies", fields: [replyToId], references: [id])
-  replies     ThreadMessage[] @relation("MessageReplies")
-  sender      User            @relation("ThreadMessageSender", fields: [senderId], references: [id], onDelete: Cascade)
-  thread      Thread          @relation(fields: [threadId], references: [id], onDelete: Cascade)
+  id                String              @id @default(cuid())
+  threadId          String
+  senderId          Int
+  content           String
+  type              String              @default("text") @db.VarChar(50)
+  attachments       Json?
+  replyToId         String?
+  reactions         Json?
+  isEdited          Boolean             @default(false)
+  editedAt          DateTime?           @db.Timestamp(6)
+  isDeleted         Boolean             @default(false)
+  deletedAt         DateTime?           @db.Timestamp(6)
+  readBy            Json?
+  createdAt         DateTime            @default(now()) @db.Timestamp(6)
+  updatedAt         DateTime            @default(now()) @updatedAt @db.Timestamp(6)
+  message_reactions message_reactions[]
+  message_reads     message_reads[]
+  replyTo           ThreadMessage?      @relation("MessageReplies", fields: [replyToId], references: [id])
+  replies           ThreadMessage[]     @relation("MessageReplies")
+  thread            Thread              @relation(fields: [threadId], references: [id], onDelete: Cascade)
 
   @@index([threadId], map: "idx_thread_messages_thread")
   @@index([senderId], map: "idx_thread_messages_sender")
   @@index([createdAt], map: "idx_thread_messages_created")
   @@index([type], map: "idx_thread_messages_type")
   @@index([isDeleted], map: "idx_thread_messages_deleted")
+  @@index([reactions], map: "idx_thread_messages_reactions_gin", type: Gin)
+  @@index([readBy], map: "idx_thread_messages_readby_gin", type: Gin)
+  @@index([replyToId], map: "idx_thread_messages_reply_to_id")
+  @@index([senderId, createdAt(sort: Desc)], map: "idx_thread_messages_sender_created")
+  @@index([threadId, createdAt(sort: Desc)], map: "idx_thread_messages_thread_created")
   @@map("thread_messages")
 }
 
@@ -1030,7 +824,6 @@ model AssistantMemory {
   conversationCount Int      @default(0)
   createdAt         DateTime @default(now()) @db.Timestamp(6)
   updatedAt         DateTime @default(now()) @updatedAt @db.Timestamp(6)
-  user              User     @relation("AssistantMemoryUser", fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId], map: "idx_assistant_memory_user")
   @@index([lastModule], map: "idx_assistant_memory_module")
@@ -1054,8 +847,6 @@ model Bill {
   confidence      Float?
   createdAt       DateTime  @default(now()) @db.Timestamp(6)
   updatedAt       DateTime  @default(now()) @updatedAt @db.Timestamp(6)
-  task            Task?     @relation("BillTask", fields: [taskId], references: [id])
-  uploadedBy      User      @relation("BillUploader", fields: [uploadedById], references: [id], onDelete: Cascade)
 
   @@index([uploadedById], map: "idx_bills_uploader")
   @@index([ocrStatus], map: "idx_bills_ocr_status")
@@ -1099,7 +890,6 @@ model UserProfile {
   maritalStatus  MaritalStatus? @map("marital_status")
   createdAt      DateTime       @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt      DateTime       @updatedAt @map("updated_at") @db.Timestamp(6)
-  user           User           @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([employeeCode])
@@ -1119,7 +909,6 @@ model UserAddress {
   isDefault  Boolean     @default(false) @map("is_default")
   createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt  DateTime    @updatedAt @map("updated_at") @db.Timestamp(6)
-  user       User        @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@index([type])
@@ -1129,23 +918,20 @@ model UserAddress {
 model UserKYC {
   id                 Int       @id @default(autoincrement())
   userId             Int       @unique @map("user_id")
-  // DEPRECATED: Use encrypted fields below
   panNumber          String?   @map("pan_number") @db.VarChar(20)
   aadhaarNumber      String?   @map("aadhaar_number") @db.VarChar(20)
-  // Encrypted PII fields (AES-256-GCM)
+  kycStatus          KYCStatus @default(PENDING) @map("kyc_status")
+  panDocumentUrl     String?   @map("pan_document_url")
+  aadhaarDocumentUrl String?   @map("aadhaar_document_url")
+  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
+  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
   panEncrypted       Bytes?    @map("pan_encrypted")
   panIv              Bytes?    @map("pan_iv")
   panLast4           String?   @map("pan_last4") @db.VarChar(4)
   aadhaarEncrypted   Bytes?    @map("aadhaar_encrypted")
   aadhaarIv          Bytes?    @map("aadhaar_iv")
   aadhaarLast4       String?   @map("aadhaar_last4") @db.VarChar(4)
-  encryptionVersion  Int       @default(1) @map("encryption_version")
-  kycStatus          KYCStatus @default(PENDING) @map("kyc_status")
-  panDocumentUrl     String?   @map("pan_document_url")
-  aadhaarDocumentUrl String?   @map("aadhaar_document_url")
-  createdAt          DateTime  @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt          DateTime  @updatedAt @map("updated_at") @db.Timestamp(6)
-  user               User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  encryptionVersion  Int?      @default(1) @map("encryption_version")
 
   @@index([userId])
   @@index([kycStatus])
@@ -1158,19 +944,16 @@ model UserBankAccount {
   accountHolderName          String   @map("account_holder_name") @db.VarChar(255)
   bankName                   String   @map("bank_name") @db.VarChar(255)
   branchName                 String   @map("branch_name") @db.VarChar(255)
-  // DEPRECATED: Use encrypted field below
   accountNumber              String   @map("account_number") @db.VarChar(50)
-  // Encrypted account number (AES-256-GCM)
-  accountNumberEncrypted     Bytes?   @map("account_number_encrypted")
-  accountNumberIv            Bytes?   @map("account_number_iv")
-  accountNumberLast4         String?  @map("account_number_last4") @db.VarChar(4)
-  encryptionVersion          Int      @default(1) @map("encryption_version")
   ifscCode                   String   @map("ifsc_code") @db.VarChar(20)
   isPrimary                  Boolean  @default(false) @map("is_primary")
   cancelledChequeDocumentUrl String?  @map("cancelled_cheque_document_url")
   createdAt                  DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt                  DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
-  user                       User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  accountNumberEncrypted     Bytes?   @map("account_number_encrypted")
+  accountNumberIv            Bytes?   @map("account_number_iv")
+  accountNumberLast4         String?  @map("account_number_last4") @db.VarChar(4)
+  encryptionVersion          Int?     @default(1) @map("encryption_version")
 
   @@index([userId])
   @@index([isPrimary])
@@ -1186,7 +969,6 @@ model UserEducation {
   gradeOrPercentage String   @map("grade_or_percentage") @db.VarChar(50)
   createdAt         DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt         DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
-  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("user_education")
@@ -1199,7 +981,6 @@ model UserSkill {
   proficiencyLevel ProficiencyLevel @map("proficiency_level")
   createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamp(6)
-  user             User             @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("user_skills")
@@ -1213,7 +994,6 @@ model UserAchievement {
   achievementDate DateTime @map("achievement_date") @db.Date
   createdAt       DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt       DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("user_achievements")
@@ -1228,7 +1008,6 @@ model UserEmergencyContact {
   alternatePhone String?  @map("alternate_phone") @db.VarChar(20)
   createdAt      DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt      DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
-  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
   @@map("user_emergency_contacts")
@@ -1251,6 +1030,7 @@ model Branch {
   client       Client?      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   userBranches UserBranch[]
 
+  @@unique([tenantId, branchCode], map: "uq_branches_tenant_code")
   @@index([tenantId])
   @@index([branchCode])
   @@map("branches")
@@ -1264,7 +1044,6 @@ model UserBranch {
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamp(6)
   branch    Branch   @relation(fields: [branchId], references: [id], onDelete: Cascade)
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@unique([userId, branchId])
   @@index([userId])
@@ -1281,6 +1060,1197 @@ model ClientToClientSequence {
   @@id([A, B], map: "_ClientToClientSequence_AB_pkey")
   @@index([B], map: "_ClientToClientSequence_B_index")
   @@map("_ClientToClientSequence")
+}
+
+/// Daily usage metrics per tenant for billing and analytics
+model TenantUsage {
+  id           Int       @id @default(autoincrement())
+  tenantId     String    @map("tenant_id") @db.VarChar(50)
+  date         DateTime  @default(dbgenerated("CURRENT_DATE")) @db.Date
+  apiCalls     Int       @default(0) @map("api_calls")
+  storageBytes BigInt    @default(0) @map("storage_bytes")
+  activeUsers  Int       @default(0) @map("active_users")
+  /// JSONB for tracking feature-specific usage
+  featureUsage Json?     @default("{}") @map("feature_usage")
+  createdAt    DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime? @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([tenantId, date], name: "tenant_usage_tenant_date_unique", map: "tenant_usage_tenant_date_unique")
+  @@index([date], map: "idx_tenant_usage_date")
+  @@index([tenantId, date], map: "idx_tenant_usage_tenant_date")
+  @@index([tenantId], map: "idx_tenant_usage_tenant_id")
+  @@map("tenant_usage")
+}
+
+/// Events table for analytics telemetry
+model Event {
+  id        Int       @id @default(autoincrement())
+  clientId  String?   @map("client_id") @db.Uuid
+  userId    Int?      @map("user_id")
+  eventType String    @map("event_type") @db.VarChar(100)
+  payload   Json?     @default("{}")
+  createdAt DateTime? @default(now()) @map("created_at") @db.Timestamptz(6)
+  client    Client?   @relation("ClientEvents", fields: [clientId], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_events_client")
+
+  @@index([clientId, createdAt], map: "idx_events_client_created")
+  @@index([eventType], map: "idx_events_type")
+  @@index([createdAt], map: "idx_events_created")
+  @@index([clientId, eventType], map: "idx_events_client_type")
+  @@map("events")
+}
+
+model schema_info {
+  id         Int       @id @default(dbgenerated("nextval('_schema_info_id_seq'::regclass)"))
+  key        String    @unique(map: "_schema_info_key_unique") @db.VarChar(100)
+  value      String?
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@map("_schema_info")
+}
+
+model api_keys {
+  id           Int       @id @default(autoincrement())
+  name         String    @db.VarChar(100)
+  key_hash     String    @unique @db.VarChar(64)
+  key_prefix   String    @db.VarChar(8)
+  client_id    Int?
+  scopes       String[]  @default([])
+  rate_limit   Int?      @default(1000)
+  expires_at   DateTime? @db.Timestamptz(6)
+  last_used_at DateTime? @db.Timestamptz(6)
+  is_active    Boolean?  @default(true)
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  created_by   Int?
+
+  @@index([client_id], map: "idx_api_keys_client_id")
+  @@index([key_hash], map: "idx_api_keys_key_hash")
+}
+
+model audit_logs_dml {
+  id             BigInt    @id @default(autoincrement())
+  table_name     String    @db.VarChar(100)
+  operation      String    @db.VarChar(10)
+  old_data       Json?
+  new_data       Json?
+  changed_by     Int?
+  changed_at     DateTime? @default(now()) @db.Timestamptz(6)
+  client_id      Int?
+  business_id    Int?
+  transaction_id String?   @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  @@index([changed_at], map: "idx_audit_logs_dml_changed_at")
+  @@index([changed_by], map: "idx_audit_logs_dml_changed_by")
+  @@index([table_name], map: "idx_audit_logs_dml_table")
+}
+
+/// This table is a partition table and requires additional setup for migrations. Visit https://pris.ly/d/partition-tables for more info.
+model audit_logs_partitioned {
+  id                Int      @default(autoincrement())
+  user_id           Int?
+  action            String   @db.VarChar(50)
+  table_name        String?  @db.VarChar(100)
+  record_id         Int?
+  old_values        Json?
+  new_values        Json?
+  changed_fields    String[]
+  ip_address        String?  @db.Inet
+  user_agent        String?
+  session_id        Int?
+  service_name      String?  @db.VarChar(100)
+  service_user      String?  @db.VarChar(100)
+  query_text        String?
+  execution_time_ms Int?
+  rows_affected     Int?
+  request_id        String?  @db.Uuid
+  tenant_id         String?  @db.Uuid
+  super_admin_id    Int?
+  operation_context Json?
+  created_at        DateTime @default(now()) @db.Timestamp(6)
+
+  @@id([id, created_at])
+  @@index([created_at(sort: Desc)], map: "idx_audit_logs_part_created")
+  @@index([table_name, action], map: "idx_audit_logs_part_table_action")
+}
+
+model chat_analytics {
+  id               Int       @id @default(autoincrement())
+  user_id          Int?
+  role_id          Int?
+  conversation_id  Int?
+  event_type       String?   @db.VarChar(50)
+  intent           String?   @db.VarChar(100)
+  success          Boolean?  @default(true)
+  response_time_ms Int?
+  metadata         Json?     @default("{}")
+  created_at       DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([intent], map: "idx_chat_analytics_intent")
+  @@index([user_id], map: "idx_chat_analytics_user")
+}
+
+model chat_common_mistakes {
+  id             Int       @id @default(autoincrement())
+  incorrect_word String    @db.VarChar(255)
+  correct_word   String    @db.VarChar(255)
+  frequency      Int?      @default(1)
+  context        String?   @db.VarChar(100)
+  is_active      Boolean?  @default(true)
+  created_at     DateTime? @default(now()) @db.Timestamp(6)
+  updated_at     DateTime? @default(now()) @db.Timestamp(6)
+
+  @@unique([incorrect_word, correct_word], map: "idx_chat_mistakes_unique")
+  @@index([frequency(sort: Desc)], map: "idx_chat_mistakes_freq")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model chat_context_slots {
+  id               Int       @id @default(autoincrement())
+  intent           String    @db.VarChar(100)
+  slot_name        String    @db.VarChar(50)
+  slot_type        String    @db.VarChar(30)
+  entity_type      String?   @db.VarChar(50)
+  is_required      Boolean?  @default(false)
+  prompt_message   String?
+  validation_regex String?
+  default_value    String?
+  order_priority   Int?      @default(0)
+  is_active        Boolean?  @default(true)
+  created_at       DateTime? @default(now()) @db.Timestamp(6)
+
+  @@unique([intent, slot_name], map: "idx_context_slots_unique")
+}
+
+model chat_conversation_context {
+  id              Int       @id @default(autoincrement())
+  conversation_id String    @db.Uuid
+  user_id         Int?
+  turn_number     Int       @default(1)
+  user_message    String
+  bot_response    String?
+  intent          String?   @db.VarChar(100)
+  confidence      Decimal?  @db.Decimal(5, 4)
+  entities        Json?     @default("{}")
+  context_state   Json?     @default("{}")
+  parent_turn_id  Int?
+  created_at      DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([conversation_id], map: "idx_chat_context_conv")
+  @@index([user_id], map: "idx_chat_context_user")
+}
+
+model chat_conversations {
+  id              Int             @id @default(autoincrement())
+  user_id         Int
+  title           String?         @db.VarChar(255)
+  context_type    String?         @default("general") @db.VarChar(50)
+  is_active       Boolean?        @default(true)
+  metadata        Json?           @default("{}")
+  created_at      DateTime?       @default(now()) @db.Timestamp(6)
+  updated_at      DateTime?       @default(now()) @db.Timestamp(6)
+  last_message_at DateTime?       @default(now()) @db.Timestamp(6)
+  chat_messages   chat_messages[]
+
+  @@index([is_active], map: "idx_chat_conv_active")
+  @@index([context_type], map: "idx_chat_conv_context")
+  @@index([last_message_at(sort: Desc)], map: "idx_chat_conv_updated")
+  @@index([user_id], map: "idx_chat_conv_user")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model chat_entity_types {
+  id          Int       @id @default(autoincrement())
+  entity_name String    @unique @db.VarChar(50)
+  entity_type String    @db.VarChar(30)
+  patterns    String[]
+  values      Json?
+  synonyms    Json?     @default("{}")
+  description String?
+  examples    String[]
+  is_active   Boolean?  @default(true)
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  updated_at  DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model chat_feedback {
+  id                   Int                 @id @default(autoincrement())
+  conversation_id      String?             @db.Uuid
+  message_id           Int?
+  user_id              Int?
+  training_data_id     Int?
+  feedback_type        String              @db.VarChar(20)
+  feedback_value       Int?
+  user_correction      String?
+  user_expected_intent String?             @db.VarChar(100)
+  original_response    String?
+  correct_response     String?
+  metadata             Json?               @default("{}")
+  processed            Boolean?            @default(false)
+  processed_at         DateTime?           @db.Timestamp(6)
+  created_at           DateTime?           @default(now()) @db.Timestamp(6)
+  chat_training_data   chat_training_data? @relation(fields: [training_data_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([processed], map: "idx_chat_feedback_processed")
+  @@index([training_data_id], map: "idx_chat_feedback_training")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model chat_intent_flows {
+  id                Int       @id @default(autoincrement())
+  from_intent       String    @db.VarChar(100)
+  to_intent         String    @db.VarChar(100)
+  trigger_condition Json?
+  probability       Decimal?  @default(0.5) @db.Decimal(5, 4)
+  context_update    Json?
+  is_active         Boolean?  @default(true)
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+
+  @@unique([from_intent, to_intent], map: "idx_intent_flow_unique")
+}
+
+model chat_interactions {
+  id                Int       @id @default(autoincrement())
+  user_id           Int?
+  session_id        String?   @db.VarChar(100)
+  user_message      String?
+  bot_response      String?
+  intent            String?   @db.VarChar(100)
+  confidence        Decimal?  @db.Decimal(5, 4)
+  metadata          Json?     @default("{}")
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+  sanitized_message String?
+  response_time_ms  Int?
+
+  @@index([user_id], map: "idx_chat_interactions_user")
+}
+
+model chat_learning_queue {
+  id                 Int       @id @default(autoincrement())
+  source             String    @db.VarChar(30)
+  user_message       String
+  detected_intent    String?   @db.VarChar(100)
+  confidence         Decimal?  @db.Decimal(5, 4)
+  suggested_intent   String?   @db.VarChar(100)
+  suggested_response String?
+  user_feedback      String?
+  frequency          Int?      @default(1)
+  similar_messages   Json?     @default("[]")
+  status             String?   @default("pending") @db.VarChar(20)
+  reviewed_by        Int?
+  reviewed_at        DateTime? @db.Timestamp(6)
+  created_at         DateTime? @default(now()) @db.Timestamp(6)
+  updated_at         DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([source], map: "idx_learning_queue_source")
+  @@index([status], map: "idx_learning_queue_status")
+  @@index([user_message(ops: raw("gin_trgm_ops"))], map: "idx_learning_queue_trgm", type: Gin)
+}
+
+model chat_messages {
+  id                 Int                @id @default(autoincrement())
+  conversation_id    Int
+  user_id            Int
+  role               String             @db.VarChar(20)
+  content            String
+  intent             String?            @db.VarChar(100)
+  entities           Json?              @default("{}")
+  response_metadata  Json?              @default("{}")
+  feedback           String?            @db.VarChar(20)
+  is_correction      Boolean?           @default(false)
+  corrected_from     String?
+  created_at         DateTime?          @default(now()) @db.Timestamp(6)
+  chat_conversations chat_conversations @relation(fields: [conversation_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([conversation_id], map: "idx_chat_msg_conv")
+  @@index([created_at(sort: Desc)], map: "idx_chat_msg_created")
+  @@index([intent], map: "idx_chat_msg_intent")
+  @@index([user_id], map: "idx_chat_msg_user")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model chat_response_variants {
+  id                 Int                 @id @default(autoincrement())
+  training_data_id   Int?
+  variant_name       String?             @db.VarChar(50)
+  response_template  String
+  weight             Decimal?            @default(0.5) @db.Decimal(5, 4)
+  impressions        Int?                @default(0)
+  positive_reactions Int?                @default(0)
+  negative_reactions Int?                @default(0)
+  conversion_rate    Decimal?            @default(0.0) @db.Decimal(5, 4)
+  is_active          Boolean?            @default(true)
+  created_at         DateTime?           @default(now()) @db.Timestamp(6)
+  chat_training_data chat_training_data? @relation(fields: [training_data_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([training_data_id], map: "idx_response_variants_training")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model chat_semantic_cache {
+  id                  Int                 @id @default(autoincrement())
+  query_hash          String              @unique(map: "idx_semantic_cache_hash") @db.VarChar(64)
+  query_text          String
+  matched_intent      String?             @db.VarChar(100)
+  matched_training_id Int?
+  similarity_score    Decimal?            @db.Decimal(5, 4)
+  hit_count           Int?                @default(1)
+  last_hit_at         DateTime?           @default(now()) @db.Timestamp(6)
+  created_at          DateTime?           @default(now()) @db.Timestamp(6)
+  chat_training_data  chat_training_data? @relation(fields: [matched_training_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([matched_training_id], map: "idx_chat_semantic_cache_matched_training_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model chat_training_analytics {
+  id                    Int       @id @default(autoincrement())
+  date                  DateTime  @unique(map: "idx_analytics_date") @default(dbgenerated("CURRENT_DATE")) @db.Date
+  total_messages        Int?      @default(0)
+  matched_intents       Int?      @default(0)
+  unmatched_intents     Int?      @default(0)
+  avg_confidence        Decimal?  @db.Decimal(5, 4)
+  top_intents           Json?     @default("[]")
+  top_unmatched_queries Json?     @default("[]")
+  feedback_positive     Int?      @default(0)
+  feedback_negative     Int?      @default(0)
+  new_training_added    Int?      @default(0)
+  model_accuracy        Decimal?  @db.Decimal(5, 4)
+  created_at            DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model chat_training_data {
+  id                     Int                      @id @default(autoincrement())
+  pattern                String
+  intent                 String                   @db.VarChar(100)
+  response_template      String
+  category               String?                  @default("general") @db.VarChar(50)
+  priority               Int?                     @default(50)
+  examples               Json?                    @default("[]")
+  metadata               Json?                    @default("{}")
+  is_active              Boolean?                 @default(true)
+  created_at             DateTime?                @default(now()) @db.Timestamp(6)
+  updated_at             DateTime?                @default(now()) @db.Timestamp(6)
+  keywords               String[]                 @default([])
+  synonyms               Json?                    @default("{}")
+  entity_patterns        Json?                    @default("{}")
+  follow_up_intents      String[]                 @default([])
+  context_required       Json?                    @default("{}")
+  response_variants      Json?                    @default("[]")
+  success_rate           Decimal?                 @default(0.0) @db.Decimal(5, 4)
+  total_matches          Int?                     @default(0)
+  positive_feedback      Int?                     @default(0)
+  negative_feedback      Int?                     @default(0)
+  last_matched_at        DateTime?                @db.Timestamp(6)
+  difficulty_level       String?                  @default("medium") @db.VarChar(20)
+  language               String?                  @default("en") @db.VarChar(10)
+  tags                   String[]                 @default([])
+  requires_permission    String?                  @db.VarChar(100)
+  chat_feedback          chat_feedback[]
+  chat_response_variants chat_response_variants[]
+  chat_semantic_cache    chat_semantic_cache[]
+
+  @@index([is_active], map: "idx_chat_training_active")
+  @@index([category], map: "idx_chat_training_category")
+  @@index([intent], map: "idx_chat_training_intent")
+  @@index([pattern(ops: raw("gin_trgm_ops"))], map: "idx_training_pattern_trgm", type: Gin)
+}
+
+model chat_user_preferences {
+  id                   Int       @id @default(autoincrement())
+  user_id              Int       @unique
+  first_name           String?   @db.VarChar(100)
+  last_visit           DateTime? @default(now()) @db.Timestamp(6)
+  visit_count          Int?      @default(0)
+  preferred_language   String?   @default("en") @db.VarChar(10)
+  notification_enabled Boolean?  @default(true)
+  theme                String?   @default("light") @db.VarChar(20)
+  settings             Json?     @default("{}")
+  created_at           DateTime? @default(now()) @db.Timestamp(6)
+  updated_at           DateTime? @default(now()) @db.Timestamp(6)
+  ignore_spellcheck    String[]  @default([])
+
+  @@index([user_id], map: "idx_chat_pref_user")
+}
+
+/// This table is a partition table and requires additional setup for migrations. Visit https://pris.ly/d/partition-tables for more info.
+model client_usage_events_partitioned {
+  id          Int      @default(autoincrement())
+  client_id   String   @db.Uuid
+  module_id   Int?
+  user_id     Int?
+  event_type  String   @db.VarChar(100)
+  meta        Json?
+  occurred_at DateTime @default(now()) @db.Timestamp(6)
+
+  @@id([id, occurred_at])
+  @@index([client_id, occurred_at(sort: Desc)], map: "idx_client_usage_part_client_date")
+  @@index([event_type], map: "idx_client_usage_part_type")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model entity_id_registry {
+  id           Int       @id @default(autoincrement())
+  unique_id    String    @unique(map: "uq_entity_registry_unique_id") @db.VarChar(50)
+  entity_type  String    @db.VarChar(50)
+  entity_db_id Int
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+  created_by   Int?
+  metadata     Json?     @default("{}")
+
+  @@index([created_at(sort: Desc)], map: "idx_entity_registry_created_at")
+  @@index([entity_db_id], map: "idx_entity_registry_db_id")
+  @@index([entity_type], map: "idx_entity_registry_type")
+  @@index([entity_type, entity_db_id], map: "idx_entity_registry_type_db_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model entity_id_sequences {
+  id          Int       @id @default(autoincrement())
+  entity_type String    @db.VarChar(50)
+  date_prefix String    @db.VarChar(8)
+  last_number BigInt    @default(0)
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+  updated_at  DateTime? @default(now()) @db.Timestamp(6)
+
+  @@unique([entity_type, date_prefix], map: "uq_entity_sequences_type_date")
+  @@index([date_prefix], map: "idx_entity_sequences_date")
+  @@index([entity_type], map: "idx_entity_sequences_type")
+}
+
+model error_logs {
+  id          Int       @id @default(autoincrement())
+  timestamp   DateTime  @default(now()) @db.Timestamp(6)
+  error_code  String    @db.VarChar(100)
+  message     String
+  http_status Int?
+  module      String?   @db.VarChar(100)
+  method      String?   @db.VarChar(10)
+  path        String?
+  ip_address  String?   @db.VarChar(100)
+  user_id     Int?
+  user_email  String?   @db.VarChar(255)
+  user_role   String?   @db.VarChar(100)
+  user_type   String?   @db.VarChar(100)
+  user_agent  String?
+  stack       String?
+  created_at  DateTime? @default(now()) @db.Timestamp(6)
+
+  @@index([error_code], map: "idx_error_logs_error_code")
+  @@index([timestamp(sort: Desc)], map: "idx_error_logs_timestamp")
+}
+
+model failed_login_attempts {
+  id           Int       @id @default(autoincrement())
+  user_id      Int?
+  ip_address   String?   @db.Inet
+  user_agent   String?
+  reason       String?   @db.VarChar(100)
+  attempted_at DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([attempted_at], map: "idx_failed_login_attempted_at")
+  @@index([ip_address], map: "idx_failed_login_ip")
+  @@index([user_id], map: "idx_failed_login_user_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model fallback_logs {
+  id                    Int       @id @default(autoincrement())
+  module_name           String    @db.VarChar(100)
+  operation_name        String    @db.VarChar(100)
+  error_message         String
+  error_code            String?   @db.VarChar(50)
+  user_id               String?   @db.VarChar(50)
+  request_payload       String?
+  response_type         String?   @default("safe_default") @db.VarChar(50)
+  severity              String?   @default("warning") @db.VarChar(20)
+  fallback_triggered_at DateTime  @default(now()) @db.Timestamptz(6)
+  created_at            DateTime? @default(now()) @db.Timestamptz(6)
+  resolved              Boolean?  @default(false)
+  resolved_at           DateTime? @db.Timestamptz(6)
+  resolved_by           String?   @db.VarChar(50)
+  resolution_notes      String?
+
+  @@index([module_name], map: "idx_fallback_logs_module")
+  @@index([module_name, operation_name], map: "idx_fallback_logs_module_operation")
+  @@index([operation_name], map: "idx_fallback_logs_operation")
+  @@index([resolved], map: "idx_fallback_logs_resolved")
+  @@index([severity], map: "idx_fallback_logs_severity")
+  @@index([severity, fallback_triggered_at(sort: Desc)], map: "idx_fallback_logs_severity_time")
+  @@index([fallback_triggered_at(sort: Desc)], map: "idx_fallback_logs_triggered_at")
+  @@index([user_id], map: "idx_fallback_logs_user")
+}
+
+model knex_migrations {
+  id             Int       @id @default(autoincrement())
+  name           String?   @db.VarChar(255)
+  batch          Int?
+  migration_time DateTime? @db.Timestamptz(6)
+}
+
+model knex_migrations_lock {
+  index     Int  @id @default(autoincrement())
+  is_locked Int?
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model message_reactions {
+  id              BigInt        @id @default(autoincrement())
+  message_id      String
+  user_id         Int
+  emoji           String        @db.VarChar(20)
+  created_at      DateTime      @default(now()) @db.Timestamp(6)
+  thread_messages ThreadMessage @relation(fields: [message_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([message_id, user_id, emoji])
+  @@index([emoji], map: "idx_message_reactions_emoji")
+  @@index([message_id], map: "idx_message_reactions_message")
+  @@index([user_id], map: "idx_message_reactions_user")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model message_reads {
+  id              BigInt        @id @default(autoincrement())
+  message_id      String
+  user_id         Int
+  read_at         DateTime      @default(now()) @db.Timestamp(6)
+  thread_messages ThreadMessage @relation(fields: [message_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([message_id, user_id])
+  @@index([message_id], map: "idx_message_reads_message")
+  @@index([user_id], map: "idx_message_reads_user")
+  @@index([user_id, read_at(sort: Desc)], map: "idx_message_reads_user_date")
+}
+
+model password_history {
+  id            Int       @id @default(autoincrement())
+  user_id       Int
+  password_hash String    @db.VarChar(255)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([user_id], map: "idx_password_history_user_id")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model permission_cache {
+  id          Int      @id @default(autoincrement())
+  cache_key   String   @unique @db.VarChar(255)
+  cache_value Json
+  user_id     Int?
+  tenant_id   String?  @db.Uuid
+  expires_at  DateTime @db.Timestamp(6)
+  created_at  DateTime @default(now()) @db.Timestamp(6)
+  updated_at  DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([expires_at], map: "idx_permission_cache_expires")
+  @@index([cache_key], map: "idx_permission_cache_key")
+  @@index([user_id], map: "idx_permission_cache_user")
+}
+
+model permission_keys {
+  permission_key          String                    @id
+  module                  String?
+  description             String?
+  created_at              DateTime?                 @default(now()) @db.Timestamptz(6)
+  workflow_permission_map workflow_permission_map[]
+}
+
+model personal_user_dictionary {
+  id                Int       @id @default(autoincrement())
+  user_id           Int
+  term              String    @db.VarChar(100)
+  meaning           String?   @db.VarChar(500)
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+  replacement       String?   @db.VarChar(100)
+  owner_type        String?   @default("user") @db.VarChar(20)
+  owner_id          Int?
+  ignore_spellcheck Boolean?  @default(false)
+
+  @@unique([user_id, term])
+}
+
+model preprocessing_settings {
+  id            Int       @id @default(autoincrement())
+  setting_key   String    @unique @db.VarChar(100)
+  setting_value Json
+  description   String?   @db.VarChar(500)
+  updated_at    DateTime? @default(now()) @db.Timestamp(6)
+}
+
+model preprocessor_audit {
+  id                   Int       @id @default(autoincrement())
+  user_id              Int?
+  original_text        String
+  normalized_text      String?
+  corrected_text       String?
+  corrections          Json?     @default("[]")
+  protected_spans      Json?     @default("[]")
+  processing_time_ms   Int?
+  accepted_corrections Json?     @default("[]")
+  created_at           DateTime? @default(now()) @db.Timestamp(6)
+  rephrased_text       String?
+  was_autocorrected    Boolean?  @default(false)
+  role                 String?   @db.VarChar(50)
+  language_detected    String?   @default("en") @db.VarChar(10)
+  rephrase_options     Json?
+}
+
+model protected_spans {
+  id           Int       @id @default(autoincrement())
+  pattern      String    @db.VarChar(500)
+  pattern_type String    @db.VarChar(50)
+  description  String?   @db.VarChar(200)
+  priority     Int?      @default(100)
+  is_active    Boolean?  @default(true)
+  created_at   DateTime? @default(now()) @db.Timestamp(6)
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model qa_issue_comments {
+  id         BigInt    @id @default(autoincrement())
+  issue_id   BigInt
+  author_id  BigInt?
+  content    String
+  created_at DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at DateTime? @default(now()) @db.Timestamptz(6)
+  is_deleted Boolean?  @default(false)
+  qa_issues  qa_issues @relation(fields: [issue_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([issue_id], map: "idx_qa_issue_comments_issue")
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model qa_issue_history {
+  id         BigInt    @id @default(autoincrement())
+  issue_id   BigInt
+  changed_by BigInt?
+  changed_at DateTime? @default(now()) @db.Timestamptz(6)
+  field_name String    @db.VarChar(50)
+  old_value  String?
+  new_value  String?
+  comment    String?
+  qa_issues  qa_issues @relation(fields: [issue_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([changed_at(sort: Desc)], map: "idx_qa_issue_history_changed_at")
+  @@index([issue_id], map: "idx_qa_issue_history_issue")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model qa_issues {
+  id                 BigInt              @id @default(autoincrement())
+  tenant_id          String              @db.Uuid
+  issue_code         String              @db.VarChar(20)
+  title              String              @db.VarChar(255)
+  description        String?
+  steps_to_reproduce String?
+  expected_behavior  String?
+  actual_behavior    String?
+  module             String?             @db.VarChar(100)
+  severity           String?             @default("medium") @db.VarChar(20)
+  priority           String?             @default("medium") @db.VarChar(20)
+  issue_type         String?             @default("bug") @db.VarChar(30)
+  status             String?             @default("open") @db.VarChar(30)
+  related_task_id    BigInt?
+  opened_by          BigInt?
+  assigned_to        BigInt?
+  environment        String?
+  browser            String?             @db.VarChar(100)
+  os                 String?             @db.VarChar(100)
+  attachments        Json?               @default("[]")
+  created_at         DateTime?           @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime?           @default(now()) @db.Timestamptz(6)
+  resolved_at        DateTime?           @db.Timestamptz(6)
+  closed_at          DateTime?           @db.Timestamptz(6)
+  qa_issue_comments  qa_issue_comments[]
+  qa_issue_history   qa_issue_history[]
+  qa_test_tasks      qa_test_tasks?      @relation(fields: [related_task_id], references: [id], onUpdate: NoAction)
+
+  @@unique([tenant_id, issue_code], map: "unique_issue_code")
+  @@index([assigned_to], map: "idx_qa_issues_assigned")
+  @@index([issue_code], map: "idx_qa_issues_code")
+  @@index([created_at(sort: Desc)], map: "idx_qa_issues_created")
+  @@index([module], map: "idx_qa_issues_module")
+  @@index([related_task_id], map: "idx_qa_issues_related_task_id")
+  @@index([severity], map: "idx_qa_issues_severity")
+  @@index([status], map: "idx_qa_issues_status")
+  @@index([tenant_id], map: "idx_qa_issues_tenant")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model qa_test_tasks {
+  id              BigInt      @id @default(autoincrement())
+  tenant_id       String      @db.Uuid
+  title           String      @db.VarChar(255)
+  description     String?
+  module          String?     @db.VarChar(100)
+  test_type       String?     @default("manual") @db.VarChar(50)
+  priority        String?     @default("medium") @db.VarChar(20)
+  status          String?     @default("pending") @db.VarChar(30)
+  assigned_to     BigInt?
+  due_date        DateTime?   @db.Date
+  test_steps      String?
+  expected_result String?
+  actual_result   String?
+  created_by      BigInt?
+  created_at      DateTime?   @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime?   @default(now()) @db.Timestamptz(6)
+  completed_at    DateTime?   @db.Timestamptz(6)
+  qa_issues       qa_issues[]
+
+  @@index([assigned_to], map: "idx_qa_test_tasks_assigned")
+  @@index([due_date], map: "idx_qa_test_tasks_due_date")
+  @@index([module], map: "idx_qa_test_tasks_module")
+  @@index([status], map: "idx_qa_test_tasks_status")
+  @@index([tenant_id], map: "idx_qa_test_tasks_tenant")
+}
+
+model schema_migrations {
+  version    String    @id @db.VarChar(50)
+  name       String?   @db.VarChar(255)
+  applied_at DateTime? @default(now()) @db.Timestamptz(6)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model security_events {
+  id             BigInt   @id @default(autoincrement())
+  event_type     String   @db.VarChar(50)
+  severity       String   @default("INFO") @db.VarChar(20)
+  service_name   String?  @db.VarChar(100)
+  user_id        Int?
+  user_email     String?  @db.VarChar(255)
+  user_type      String?  @db.VarChar(50)
+  tenant_id      String?  @db.Uuid
+  ip_address     String?  @db.Inet
+  user_agent     String?
+  request_path   String?
+  request_method String?  @db.VarChar(10)
+  request_id     String?  @db.Uuid
+  event_details  Json?
+  created_at     DateTime @default(now()) @db.Timestamp(6)
+
+  @@index([created_at(sort: Desc)], map: "idx_security_events_created")
+  @@index([ip_address], map: "idx_security_events_ip")
+  @@index([severity, created_at(sort: Desc)], map: "idx_security_events_severity")
+  @@index([event_type, created_at(sort: Desc)], map: "idx_security_events_type")
+  @@index([user_id, created_at(sort: Desc)], map: "idx_security_events_user")
+}
+
+model spelling_dictionary {
+  id                Int       @id @default(autoincrement())
+  term              String    @unique @db.VarChar(100)
+  aliases           String[]  @default([])
+  category          String?   @db.VarChar(50)
+  preferred_display String?   @db.VarChar(100)
+  is_protected      Boolean?  @default(false)
+  case_sensitive    Boolean?  @default(false)
+  created_at        DateTime? @default(now()) @db.Timestamp(6)
+  updated_at        DateTime? @default(now()) @db.Timestamp(6)
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model support_sessions {
+  id                Int            @id @default(autoincrement())
+  support_user_id   String         @db.Uuid
+  target_client_id  String         @db.Uuid
+  reason            String
+  session_token     String         @unique @db.VarChar(255)
+  created_at        DateTime       @default(now()) @db.Timestamptz(6)
+  expires_at        DateTime       @db.Timestamptz(6)
+  ended_at          DateTime?      @db.Timestamptz(6)
+  is_active         Boolean        @default(true)
+  ip_address        String?        @db.Inet
+  user_agent        String?
+  actions_performed Int?           @default(0)
+  users_enhanced    users_enhanced @relation(fields: [support_user_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_support_user")
+  clients           Client         @relation(fields: [target_client_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_target_client")
+
+  @@index([is_active, expires_at], map: "idx_support_sessions_active")
+  @@index([target_client_id], map: "idx_support_sessions_client")
+  @@index([created_at(sort: Desc)], map: "idx_support_sessions_created")
+  @@index([support_user_id], map: "idx_support_sessions_user")
+}
+
+model task_attachments {
+  id             Int            @id @default(autoincrement())
+  task_id        Int
+  file_name      String         @db.VarChar(500)
+  file_url       String
+  file_type      String?        @db.VarChar(100)
+  file_size      BigInt?
+  uploaded_by    Int
+  uploaded_at    DateTime?      @default(now()) @db.Timestamp(6)
+  tenant_id      String?        @db.Uuid
+  workflow_tasks workflow_tasks @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_task_attachments_task")
+
+  @@index([task_id], map: "idx_task_attachments_task")
+  @@index([task_id], map: "idx_task_attachments_task_id")
+  @@index([tenant_id], map: "idx_task_attachments_tenant")
+  @@index([tenant_id], map: "idx_task_attachments_tenant_id")
+}
+
+model task_audit {
+  id             Int            @id @default(autoincrement())
+  task_id        Int
+  actor_id       Int
+  actor_name     String?        @db.VarChar(255)
+  actor_role     String?        @db.VarChar(100)
+  action         String         @db.VarChar(50)
+  from_status    String?        @db.VarChar(50)
+  to_status      String?        @db.VarChar(50)
+  reason         String?
+  metadata       Json?
+  created_at     DateTime       @default(now()) @db.Timestamp(6)
+  tenant_id      String?        @db.Uuid
+  workflow_tasks workflow_tasks @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([action], map: "idx_task_audit_action")
+  @@index([actor_id], map: "idx_task_audit_actor_id")
+  @@index([task_id], map: "idx_task_audit_task_id")
+}
+
+model task_audit_logs {
+  id          Int       @id @default(autoincrement())
+  tenant_id   String    @db.Uuid
+  user_id     Int?
+  action      String    @db.VarChar(100)
+  resource    String    @db.VarChar(100)
+  resource_id String    @db.VarChar(100)
+  metadata    Json?
+  created_at  DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([created_at], map: "idx_task_audit_created_at")
+  @@index([resource, resource_id], map: "idx_task_audit_resource_id")
+  @@index([tenant_id], map: "idx_task_audit_tenant")
+}
+
+model task_label_assignments {
+  task_id        Int
+  label_id       Int
+  assigned_at    DateTime?      @default(now()) @db.Timestamptz(6)
+  task_labels    task_labels    @relation(fields: [label_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_label_label")
+  workflow_tasks workflow_tasks @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_label_task")
+
+  @@id([task_id, label_id])
+}
+
+model task_labels {
+  id                     Int                      @id @default(autoincrement())
+  tenant_id              String?                  @db.Uuid
+  name                   String                   @db.VarChar(50)
+  color                  String?                  @default("#3B82F6") @db.VarChar(7)
+  description            String?
+  created_at             DateTime?                @default(now()) @db.Timestamptz(6)
+  task_label_assignments task_label_assignments[]
+
+  @@unique([tenant_id, name], map: "uk_task_labels_name")
+  @@index([tenant_id], map: "idx_task_labels_tenant")
+}
+
+model task_messages {
+  id                Int            @id @default(autoincrement())
+  task_id           Int
+  sender_id         Int
+  content           String
+  message_type      String?        @default("TEXT") @db.VarChar(50)
+  is_system_message Boolean?       @default(false)
+  created_at        DateTime?      @default(now()) @db.Timestamp(6)
+  tenant_id         String?        @db.Uuid
+  reply_to_id       Int?
+  is_edited         Boolean?       @default(false)
+  edited_at         DateTime?      @db.Timestamptz(6)
+  read_by           Int[]          @default([])
+  workflow_tasks    workflow_tasks @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_task_messages_task")
+
+  @@index([created_at(sort: Desc)], map: "idx_task_messages_created")
+  @@index([sender_id], map: "idx_task_messages_sender")
+  @@index([task_id], map: "idx_task_messages_task")
+  @@index([task_id], map: "idx_task_messages_task_id")
+  @@index([tenant_id], map: "idx_task_messages_tenant")
+  @@index([tenant_id], map: "idx_task_messages_tenant_id")
+}
+
+model task_participants {
+  id          Int       @id @default(autoincrement())
+  task_id     Int
+  user_id     Int
+  can_edit    Boolean?  @default(false)
+  can_comment Boolean?  @default(true)
+  added_at    DateTime? @default(now()) @db.Timestamp(6)
+  can_approve Boolean?  @default(false)
+
+  @@unique([task_id, user_id])
+  @@index([task_id], map: "idx_task_participants_task")
+  @@index([user_id], map: "idx_task_participants_user")
+}
+
+model task_time_entries {
+  id             Int            @id @default(autoincrement())
+  task_id        Int
+  user_id        Int
+  hours          Decimal        @db.Decimal(10, 2)
+  description    String?
+  entry_date     DateTime?      @default(dbgenerated("CURRENT_DATE")) @db.Date
+  created_at     DateTime?      @default(now()) @db.Timestamptz(6)
+  workflow_tasks workflow_tasks @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_time_entry_task")
+
+  @@index([task_id], map: "idx_task_time_entries_task")
+  @@index([user_id], map: "idx_task_time_entries_user")
+}
+
+model task_watchers {
+  task_id        Int
+  user_id        Int
+  created_at     DateTime?      @default(now()) @db.Timestamptz(6)
+  workflow_tasks workflow_tasks @relation(fields: [task_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_watcher_task")
+
+  @@id([task_id, user_id])
+  @@index([user_id], map: "idx_task_watchers_user")
+}
+
+model tenant_quota_overrides {
+  id                   Int       @id @default(autoincrement())
+  tenant_id            String    @unique @db.VarChar(50)
+  api_calls_per_minute Int?
+  api_calls_per_day    Int?
+  storage_limit_bytes  BigInt?
+  reason               String?
+  approved_by          String?   @db.VarChar(100)
+  created_at           DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([tenant_id], map: "idx_tenant_quota_overrides_tenant_id")
+}
+
+/// This table is a partition table and requires additional setup for migrations. Visit https://pris.ly/d/partition-tables for more info.
+model thread_messages_partitioned {
+  id          String
+  threadId    String
+  senderId    Int
+  content     String
+  type        String    @default("text") @db.VarChar(50)
+  attachments Json?
+  replyToId   String?
+  reactions   Json?
+  isEdited    Boolean   @default(false)
+  editedAt    DateTime? @db.Timestamp(6)
+  isDeleted   Boolean   @default(false)
+  deletedAt   DateTime? @db.Timestamp(6)
+  readBy      Json?
+  createdAt   DateTime  @default(now()) @db.Timestamp(6)
+  updatedAt   DateTime  @default(now()) @db.Timestamp(6)
+
+  @@id([id, createdAt])
+  @@index([senderId], map: "idx_thread_messages_part_sender")
+  @@index([threadId, createdAt(sort: Desc)], map: "idx_thread_messages_part_thread_created")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model users_enhanced {
+  id                  String             @id @db.Uuid
+  legacy_id           Int?               @unique(map: "users_enhanced_legacy_id_unique")
+  username            String             @unique(map: "erp_users_username_unique") @db.VarChar(50)
+  email               String             @unique(map: "erp_users_email_unique") @db.VarChar(255)
+  password_hash       String             @db.VarChar(255)
+  salt                String?            @db.VarChar(255)
+  first_name          String?            @db.VarChar(100)
+  last_name           String?            @db.VarChar(100)
+  phone               String?            @db.VarChar(20)
+  role_id             String?            @db.Uuid
+  legacy_role         String?            @db.VarChar(50)
+  is_active           Boolean?           @default(true)
+  email_verified      Boolean?           @default(false)
+  phone_verified      Boolean?           @default(false)
+  last_login          DateTime?          @db.Timestamptz(6)
+  login_attempts      Int?               @default(0)
+  locked_until        DateTime?          @db.Timestamptz(6)
+  password_changed_at DateTime?          @default(now()) @db.Timestamptz(6)
+  profile_data        Json?              @default("{}")
+  preferences         Json?              @default("{}")
+  created_at          DateTime?          @default(now()) @db.Timestamptz(6)
+  updated_at          DateTime?          @default(now()) @db.Timestamptz(6)
+  created_by          String?            @db.Uuid
+  updated_by          String?            @db.Uuid
+  tenant_id           String?            @db.Uuid
+  super_admin_id      Int?
+  role                String?            @db.VarChar(100)
+  product_type        String?            @default("BUSINESS_ERP") @db.VarChar(50)
+  assigned_modules    Json?              @default("[]")
+  page_permissions    Json?              @default("{}")
+  profile_pic_url     String?
+  theme_preference    String?            @default("bisman-default") @db.VarChar(50)
+  unique_id           String?            @db.VarChar(50)
+  support_sessions    support_sessions[]
+
+  @@index([is_active], map: "idx_erp_users_is_active")
+  @@index([legacy_id], map: "idx_erp_users_legacy_id")
+  @@index([role], map: "idx_erp_users_role")
+  @@index([tenant_id], map: "idx_erp_users_tenant_id")
+  @@index([username], map: "idx_erp_users_username")
+  @@index([unique_id], map: "idx_users_enhanced_unique_id")
+}
+
+model workflow_audit {
+  id          Int        @id @default(autoincrement())
+  user_id     Int?
+  workflow_id Int?
+  user_role   String?
+  query       String?
+  resolved    Boolean?   @default(true)
+  response    String?
+  details     Json?      @default("{}")
+  created_at  DateTime?  @default(now()) @db.Timestamptz(6)
+  workflows   workflows? @relation(fields: [workflow_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_workflow_audit_user")
+  @@index([workflow_id], map: "idx_workflow_audit_workflow")
+}
+
+model workflow_feedback {
+  id          Int        @id @default(autoincrement())
+  workflow_id Int?
+  user_id     Int?
+  helpful     Boolean?
+  comment     String?
+  created_at  DateTime?  @default(now()) @db.Timestamptz(6)
+  workflows   workflows? @relation(fields: [workflow_id], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@index([workflow_id], map: "idx_workflow_feedback_workflow_id")
+}
+
+model workflow_permission_map {
+  id              Int              @id @default(autoincrement())
+  workflow_id     Int?
+  permission_key  String?
+  created_at      DateTime?        @default(now()) @db.Timestamptz(6)
+  permission_keys permission_keys? @relation(fields: [permission_key], references: [permission_key], onDelete: Cascade, onUpdate: NoAction)
+  workflows       workflows?       @relation(fields: [workflow_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([workflow_id, permission_key])
+}
+
+model workflow_role_map {
+  id          Int        @id @default(autoincrement())
+  workflow_id Int?
+  role_id     String
+  created_at  DateTime?  @default(now()) @db.Timestamptz(6)
+  workflows   workflows? @relation(fields: [workflow_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([workflow_id, role_id])
+  @@index([role_id], map: "idx_workflow_role_map_role")
+}
+
+model workflow_task_history {
+  id            Int       @id @default(autoincrement())
+  task_id       Int
+  field_name    String    @db.VarChar(100)
+  old_value     String?
+  new_value     String?
+  changed_by    Int?
+  changed_at    DateTime? @default(now()) @db.Timestamptz(6)
+  change_reason String?
+
+  @@index([task_id], map: "idx_workflow_task_history_task_id")
+}
+
+/// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
+model workflow_tasks {
+  id                      Int                      @id @default(autoincrement())
+  title                   String                   @db.VarChar(500)
+  description             String?
+  status                  String                   @default("OPEN") @db.VarChar(50)
+  priority                String?                  @default("MEDIUM") @db.VarChar(20)
+  creator_id              Int
+  assignee_id             Int?
+  due_date                DateTime?                @db.Timestamp(6)
+  created_at              DateTime?                @default(now()) @db.Timestamp(6)
+  updated_at              DateTime?                @default(now()) @db.Timestamp(6)
+  serial_number           String?                  @db.VarChar(50)
+  approver_id             Int?
+  requires_approval       Boolean?                 @default(false)
+  approval_status         String?                  @default("NOT_REQUIRED") @db.VarChar(50)
+  estimated_hours         Decimal?                 @db.Decimal(10, 2)
+  organization_id         Int?
+  department_id           Int?
+  approved_at             DateTime?                @db.Timestamp(6)
+  approved_by             Int?
+  progress                Int?                     @default(0)
+  completed_at            DateTime?                @db.Timestamp(6)
+  tenant_id               String?                  @db.Uuid
+  position                Int?                     @default(0)
+  is_archived             Boolean?                 @default(false)
+  archived_at             DateTime?                @db.Timestamptz(6)
+  actual_hours            Decimal?                 @db.Decimal(10, 2)
+  tags                    String[]                 @default([])
+  parent_task_id          String?                  @db.Uuid
+  rejection_reason        String?
+  task_type               String?                  @default("TASK") @db.VarChar(64)
+  version                 BigInt                   @default(1)
+  last_status_change_at   DateTime?                @db.Timestamp(6)
+  previous_status         String?                  @db.VarChar(50)
+  rejection_count         Int?                     @default(0)
+  submitted_for_review_at DateTime?                @db.Timestamp(6)
+  review_completed_at     DateTime?                @db.Timestamp(6)
+  updated_by              Int?
+  task_attachments        task_attachments[]
+  task_audit              task_audit[]
+  task_label_assignments  task_label_assignments[]
+  task_messages           task_messages[]
+  task_time_entries       task_time_entries[]
+  task_watchers           task_watchers[]
+
+  @@index([assignee_id], map: "idx_workflow_tasks_assigned_to")
+  @@index([assignee_id], map: "idx_workflow_tasks_assignee")
+  @@index([assignee_id], map: "idx_workflow_tasks_assignee_id")
+  @@index([assignee_id, status], map: "idx_workflow_tasks_assignee_status")
+  @@index([creator_id], map: "idx_workflow_tasks_creator_id")
+  @@index([creator_id, status], map: "idx_workflow_tasks_creator_status")
+  @@index([due_date], map: "idx_workflow_tasks_due_date")
+  @@index([parent_task_id], map: "idx_workflow_tasks_parent")
+  @@index([position], map: "idx_workflow_tasks_position")
+  @@index([priority], map: "idx_workflow_tasks_priority")
+  @@index([status], map: "idx_workflow_tasks_status")
+  @@index([tenant_id], map: "idx_workflow_tasks_tenant")
+  @@index([tenant_id], map: "idx_workflow_tasks_tenant_id")
+  @@index([tenant_id, status], map: "idx_workflow_tasks_tenant_status")
+  @@index([task_type], map: "idx_workflow_tasks_type")
+}
+
+model workflows {
+  id                      Int                       @id @default(autoincrement())
+  slug                    String                    @unique
+  module                  String
+  title                   String
+  description             String?
+  ui_path                 String?
+  ui_path_mobile          String?
+  ui_steps                Json?                     @default("[]")
+  required_roles          Json?                     @default("[]")
+  required_permissions    Json?                     @default("[]")
+  frontend_route          String?
+  can_view_expr           String?
+  examples                Json?                     @default("[]")
+  tags                    String[]                  @default([])
+  keywords                String[]                  @default([])
+  priority                Int?                      @default(50)
+  is_active               Boolean?                  @default(true)
+  version                 Int?                      @default(1)
+  screenshot_url          String?
+  video_url               String?
+  created_by              Int?
+  updated_by              Int?
+  created_at              DateTime?                 @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime?                 @default(now()) @db.Timestamptz(6)
+  workflow_audit          workflow_audit[]
+  workflow_feedback       workflow_feedback[]
+  workflow_permission_map workflow_permission_map[]
+  workflow_role_map       workflow_role_map[]
+
+  @@index([is_active], map: "idx_workflows_active")
+  @@index([keywords], map: "idx_workflows_keywords", type: Gin)
+  @@index([module], map: "idx_workflows_module")
+  @@index([slug], map: "idx_workflows_slug")
+  @@index([tags], map: "idx_workflows_tags", type: Gin)
 }
 
 enum OcrStatus {
@@ -1324,551 +2294,97 @@ enum ProficiencyLevel {
   EXPERT
 }
 
-// ============================================================================
-// TENANT USAGE & QUOTAS
-// ============================================================================
-
-/// Daily usage metrics per tenant for billing and analytics
-model TenantUsage {
-  id           Int      @id @default(autoincrement())
-  tenantId     String   @map("tenant_id") @db.Uuid
-  date         DateTime @db.Date
-  apiCalls     Int      @default(0) @map("api_calls")
-  storageBytes BigInt   @default(0) @map("storage_bytes")
-  activeUsers  Int      @default(0) @map("active_users")
-
-  /// JSONB for tracking feature-specific usage
-  featureUsage Json? @default("{}") @map("feature_usage")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@unique([tenantId, date], name: "tenant_usage_tenant_date_unique")
-  @@index([tenantId])
-  @@index([date])
-  @@index([tenantId, date])
-  @@map("tenant_usage")
+enum approval_action {
+  APPROVED
+  REJECTED
+  RETURNED
+  ESCALATED
+  PENDING
 }
 
-/// Per-tenant quota configuration and limits
-model TenantQuota {
-  id       Int    @id @default(autoincrement())
-  tenantId String @unique @map("tenant_id") @db.Uuid
-  plan     String @default("free") @db.VarChar(50)
-
-  /// Rate limits
-  apiCallsPerMinute Int @default(60) @map("api_calls_per_minute")
-  apiCallsPerDay    Int @default(5000) @map("api_calls_per_day")
-
-  /// Resource limits
-  storageBytesLimit BigInt @default(1073741824) @map("storage_bytes_limit") // 1GB
-  activeUsersLimit  Int    @default(5) @map("active_users_limit")
-
-  /// Feature flags
-  features Json? @default("{}")
-
-  /// Override settings
-  isUnlimited  Boolean @default(false) @map("is_unlimited")
-  customLimits Json?   @map("custom_limits")
-
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  @@index([plan])
-  @@map("tenant_quotas")
+enum call_status {
+  ringing
+  ongoing
+  ended
+  missed
+  declined
+  failed
 }
 
-/// Plan definitions with default quota values
-model QuotaPlan {
-  plan              String   @id @db.VarChar(50)
-  displayName       String   @map("display_name") @db.VarChar(100)
-  apiCallsPerMinute Int      @map("api_calls_per_minute")
-  apiCallsPerDay    Int      @map("api_calls_per_day")
-  storageBytesLimit BigInt   @map("storage_bytes_limit")
-  activeUsersLimit  Int      @map("active_users_limit")
-  features          Json?    @default("{}")
-  createdAt         DateTime @default(now()) @map("created_at")
-
-  @@map("quota_plans")
+enum client_status {
+  Active
+  Inactive
+  Suspended
+  Pending
+  Archived
 }
 
-/// Events table for analytics telemetry
-model Event {
-  id        Int      @id @default(autoincrement())
-  clientId  String?  @map("client_id") @db.Uuid
-  userId    Int?     @map("user_id")
-  eventType String   @map("event_type") @db.VarChar(100)
-  payload   Json     @default("{}")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  // Relations
-  client Client? @relation("ClientEvents", fields: [clientId], references: [id], onDelete: Cascade)
-
-  @@index([clientId, createdAt], map: "idx_events_client_created")
-  @@index([eventType], map: "idx_events_type")
-  @@index([createdAt], map: "idx_events_created")
-  @@index([clientId, eventType], map: "idx_events_client_type")
-  @@map("events")
+enum message_type {
+  text
+  image
+  file
+  audio
+  video
+  system
+  call
 }
 
-/// Billing profile for each tenant/client
-model BillingProfile {
-  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  clientId            String   @unique @map("client_id") @db.Uuid
-  
-  /// Stripe integration
-  stripeCustomerId    String?  @unique @map("stripe_customer_id") @db.VarChar(255)
-  stripeSubscriptionId String? @map("stripe_subscription_id") @db.VarChar(255)
-  stripePriceId       String?  @map("stripe_price_id") @db.VarChar(255)
-  
-  /// Plan details
-  plan                String   @default("free") @db.VarChar(50)
-  billingCycle        String   @default("monthly") @map("billing_cycle") @db.VarChar(20)
-  status              String   @default("active") @db.VarChar(30)
-  
-  /// Trial management
-  trialStartDate      DateTime? @map("trial_start_date") @db.Timestamp(6)
-  trialEndDate        DateTime? @map("trial_end_date") @db.Timestamp(6)
-  trialExtended       Boolean  @default(false) @map("trial_extended")
-  trialExtensionDays  Int      @default(0) @map("trial_extension_days")
-  
-  /// Payment method (stored in Stripe, reference only)
-  paymentMethodId     String?  @map("payment_method_id") @db.VarChar(255)
-  cardLast4           String?  @map("card_last_4") @db.VarChar(4)
-  cardBrand           String?  @map("card_brand") @db.VarChar(50)
-  cardExpMonth        Int?     @map("card_exp_month")
-  cardExpYear         Int?     @map("card_exp_year")
-  
-  /// Billing address
-  billingName         String?  @map("billing_name") @db.VarChar(200)
-  billingEmail        String?  @map("billing_email") @db.VarChar(255)
-  billingAddress      Json?    @map("billing_address")
-  
-  /// Tax information
-  taxId               String?  @map("tax_id") @db.VarChar(100)
-  taxIdType           String?  @map("tax_id_type") @db.VarChar(50)
-  taxExempt           Boolean  @default(false) @map("tax_exempt")
-  
-  /// Balance and credits
-  balance             Decimal  @default(0) @db.Decimal(12, 2)
-  creditBalance       Decimal  @default(0) @map("credit_balance") @db.Decimal(12, 2)
-  
-  /// Billing dates
-  currentPeriodStart  DateTime? @map("current_period_start") @db.Timestamp(6)
-  currentPeriodEnd    DateTime? @map("current_period_end") @db.Timestamp(6)
-  nextBillingDate     DateTime? @map("next_billing_date") @db.Timestamp(6)
-  cancelAtPeriodEnd   Boolean  @default(false) @map("cancel_at_period_end")
-  canceledAt          DateTime? @map("canceled_at") @db.Timestamp(6)
-  
-  /// Audit
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  
-  /// Relations
-  invoices            Invoice[]
-  usageRecords        UsageRecord[]
-  webhookEvents       BillingWebhookEvent[]
-  
-  @@index([stripeCustomerId], map: "idx_billing_profiles_stripe_customer")
-  @@index([stripeSubscriptionId], map: "idx_billing_profiles_stripe_subscription")
-  @@index([status], map: "idx_billing_profiles_status")
-  @@index([plan], map: "idx_billing_profiles_plan")
-  @@map("billing_profiles")
+enum onboarding_status {
+  pending
+  in_progress
+  completed
+  failed
+  cancelled
 }
 
-/// Invoices for billing
-model Invoice {
-  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  billingProfileId    String   @map("billing_profile_id") @db.Uuid
-  
-  /// Stripe reference
-  stripeInvoiceId     String?  @unique @map("stripe_invoice_id") @db.VarChar(255)
-  stripeInvoiceUrl    String?  @map("stripe_invoice_url")
-  stripePdfUrl        String?  @map("stripe_pdf_url")
-  stripeHostedUrl     String?  @map("stripe_hosted_url")
-  
-  /// Invoice details
-  invoiceNumber       String   @unique @map("invoice_number") @db.VarChar(50)
-  status              String   @default("draft") @db.VarChar(30)
-  currency            String   @default("USD") @db.VarChar(3)
-  
-  /// Amounts
-  subtotal            Decimal  @db.Decimal(12, 2)
-  tax                 Decimal  @default(0) @db.Decimal(12, 2)
-  discount            Decimal  @default(0) @db.Decimal(12, 2)
-  total               Decimal  @db.Decimal(12, 2)
-  amountPaid          Decimal  @default(0) @map("amount_paid") @db.Decimal(12, 2)
-  amountDue           Decimal  @map("amount_due") @db.Decimal(12, 2)
-  
-  /// Line items (JSON array of items)
-  lineItems           Json     @default("[]") @map("line_items")
-  
-  /// Dates
-  invoiceDate         DateTime @map("invoice_date") @db.Timestamp(6)
-  dueDate             DateTime? @map("due_date") @db.Timestamp(6)
-  paidAt              DateTime? @map("paid_at") @db.Timestamp(6)
-  voidedAt            DateTime? @map("voided_at") @db.Timestamp(6)
-  
-  /// Period
-  periodStart         DateTime? @map("period_start") @db.Timestamp(6)
-  periodEnd           DateTime? @map("period_end") @db.Timestamp(6)
-  
-  /// Metadata
-  description         String?
-  notes               String?
-  metadata            Json?    @default("{}")
-  
-  /// Audit
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  
-  /// Relations
-  billingProfile      BillingProfile @relation(fields: [billingProfileId], references: [id], onDelete: Cascade)
-  payments            Payment[]
-  
-  @@index([billingProfileId], map: "idx_invoices_billing_profile")
-  @@index([status], map: "idx_invoices_status")
-  @@index([invoiceDate], map: "idx_invoices_date")
-  @@index([stripeInvoiceId], map: "idx_invoices_stripe")
-  @@map("invoices")
+enum payment_request_status {
+  DRAFT
+  PENDING
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  PAID
+  CANCELLED
+  EXPIRED
 }
 
-/// Payment records for invoices
-model Payment {
-  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  invoiceId           String   @map("invoice_id") @db.Uuid
-  
-  /// Stripe reference
-  stripePaymentIntentId String? @unique @map("stripe_payment_intent_id") @db.VarChar(255)
-  stripeChargeId      String?  @map("stripe_charge_id") @db.VarChar(255)
-  
-  /// Payment details
-  amount              Decimal  @db.Decimal(12, 2)
-  currency            String   @default("USD") @db.VarChar(3)
-  status              String   @default("pending") @db.VarChar(30)
-  paymentMethod       String?  @map("payment_method") @db.VarChar(50)
-  
-  /// Card info (if applicable)
-  cardLast4           String?  @map("card_last_4") @db.VarChar(4)
-  cardBrand           String?  @map("card_brand") @db.VarChar(50)
-  
-  /// Failure info
-  failureCode         String?  @map("failure_code") @db.VarChar(100)
-  failureMessage      String?  @map("failure_message")
-  
-  /// Dates
-  paidAt              DateTime? @map("paid_at") @db.Timestamp(6)
-  refundedAt          DateTime? @map("refunded_at") @db.Timestamp(6)
-  
-  /// Audit
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  
-  /// Relations
-  invoice             Invoice  @relation(fields: [invoiceId], references: [id], onDelete: Cascade)
-  
-  @@index([invoiceId], map: "idx_payments_invoice")
-  @@index([status], map: "idx_payments_status")
-  @@index([stripePaymentIntentId], map: "idx_payments_stripe")
-  @@map("payments")
+enum subscription_plan {
+  free
+  starter
+  professional
+  enterprise
+  custom
 }
 
-/// Usage records for billing (aggregated from ClientUsageEvent)
-model UsageRecord {
-  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  billingProfileId    String   @map("billing_profile_id") @db.Uuid
-  
-  /// Usage type
-  usageType           String   @map("usage_type") @db.VarChar(50)
-  
-  /// Period
-  periodStart         DateTime @map("period_start") @db.Timestamp(6)
-  periodEnd           DateTime @map("period_end") @db.Timestamp(6)
-  
-  /// Quantities
-  quantity            BigInt   @default(0)
-  includedQuantity    BigInt   @default(0) @map("included_quantity")
-  overageQuantity     BigInt   @default(0) @map("overage_quantity")
-  
-  /// Pricing
-  unitPrice           Decimal  @default(0) @map("unit_price") @db.Decimal(10, 6)
-  overagePrice        Decimal  @default(0) @map("overage_price") @db.Decimal(10, 6)
-  totalAmount         Decimal  @default(0) @map("total_amount") @db.Decimal(12, 2)
-  
-  /// Metadata
-  metadata            Json?    @default("{}")
-  
-  /// Audit
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  updatedAt           DateTime @default(now()) @updatedAt @map("updated_at") @db.Timestamp(6)
-  
-  /// Relations
-  billingProfile      BillingProfile @relation(fields: [billingProfileId], references: [id], onDelete: Cascade)
-  
-  @@unique([billingProfileId, usageType, periodStart, periodEnd], map: "uniq_usage_record_period")
-  @@index([billingProfileId], map: "idx_usage_records_billing_profile")
-  @@index([usageType], map: "idx_usage_records_type")
-  @@index([periodStart, periodEnd], map: "idx_usage_records_period")
-  @@map("usage_records")
+enum subscription_status {
+  active
+  suspended
+  cancelled
+  expired
+  trial
 }
 
-/// Webhook events from Stripe for audit trail
-model BillingWebhookEvent {
-  id                  String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  billingProfileId    String?  @map("billing_profile_id") @db.Uuid
-  
-  /// Stripe event details
-  stripeEventId       String   @unique @map("stripe_event_id") @db.VarChar(255)
-  eventType           String   @map("event_type") @db.VarChar(100)
-  
-  /// Event data
-  payload             Json     @default("{}")
-  
-  /// Processing status
-  status              String   @default("received") @db.VarChar(30)
-  processedAt         DateTime? @map("processed_at") @db.Timestamp(6)
-  error               String?
-  retryCount          Int      @default(0) @map("retry_count")
-  
-  /// Audit
-  createdAt           DateTime @default(now()) @map("created_at") @db.Timestamp(6)
-  
-  /// Relations
-  billingProfile      BillingProfile? @relation(fields: [billingProfileId], references: [id], onDelete: SetNull)
-  
-  @@index([stripeEventId], map: "idx_billing_webhook_stripe_event")
-  @@index([eventType], map: "idx_billing_webhook_type")
-  @@index([status], map: "idx_billing_webhook_status")
-  @@index([createdAt], map: "idx_billing_webhook_created")
-  @@map("billing_webhook_events")
+enum task_status {
+  PENDING
+  IN_PROGRESS
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  COMPLETED
+  CANCELLED
 }
 
-// =============================================================================
-// MASTER DATA - CUSTOMERS, VENDORS, ITEMS
-// =============================================================================
-
-/// Customer master data with Indian compliance (GSTIN, PAN, credit terms)
-model Customer {
-  id              Int       @id @default(autoincrement())
-  tenantId        String    @map("tenant_id") @db.Uuid
-  
-  /// Basic Information
-  code            String?   @db.VarChar(50)
-  name            String    @db.VarChar(200)
-  customerType    String    @default("business") @map("customer_type") @db.VarChar(20)
-  
-  /// Contact Information
-  email           String?   @db.VarChar(255)
-  phone           String?   @db.VarChar(20)
-  alternatePhone  String?   @map("alternate_phone") @db.VarChar(20)
-  website         String?   @db.VarChar(255)
-  contactPerson   String?   @map("contact_person") @db.VarChar(100)
-  
-  /// Tax Information (Indian Compliance)
-  gstin           String?   @db.VarChar(15)
-  pan             String?   @db.VarChar(10)
-  
-  /// Credit Terms
-  creditLimit     Decimal   @default(0) @map("credit_limit") @db.Decimal(15, 2)
-  creditDays      Int       @default(0) @map("credit_days")
-  creditUtilized  Decimal   @default(0) @map("credit_utilized") @db.Decimal(15, 2)
-  
-  /// Addresses (JSON for flexibility)
-  billingAddress  Json      @default("{}") @map("billing_address")
-  shippingAddress Json      @default("{}") @map("shipping_address")
-  sameAsShipping  Boolean   @default(true) @map("same_as_shipping")
-  
-  /// Additional
-  notes           String?   @db.Text
-  tags            String[]  @default([])
-  
-  /// Status
-  status          String    @default("active") @db.VarChar(20)
-  isActive        Boolean   @default(true) @map("is_active")
-  
-  /// Audit
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  createdBy       Int?      @map("created_by")
-  updatedBy       Int?      @map("updated_by")
-  
-  /// Relations
-  client          Client    @relation("ClientCustomers", fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  @@unique([tenantId, code], map: "uk_customers_tenant_code")
-  @@unique([tenantId, gstin], map: "uk_customers_tenant_gstin")
-  @@index([tenantId], map: "idx_customers_tenant")
-  @@index([tenantId, name], map: "idx_customers_name")
-  @@index([gstin], map: "idx_customers_gstin")
-  @@index([phone], map: "idx_customers_phone")
-  @@index([email], map: "idx_customers_email")
-  @@index([tenantId, customerType], map: "idx_customers_type")
-  @@index([tenantId, status], map: "idx_customers_status")
-  @@index([tenantId, isActive], map: "idx_customers_active")
-  @@index([tenantId, createdAt(sort: Desc)], map: "idx_customers_created")
-  @@map("customers")
-}
-
-/// Vendor/Supplier master data with Indian compliance (GSTIN, PAN, TAN, MSME, TDS)
-model Vendor {
-  id              Int       @id @default(autoincrement())
-  tenantId        String    @map("tenant_id") @db.Uuid
-  
-  /// Basic Information
-  code            String?   @db.VarChar(50)
-  name            String    @db.VarChar(200)
-  vendorType      String    @default("distributor") @map("vendor_type") @db.VarChar(30)
-  
-  /// Contact Information
-  email           String?   @db.VarChar(255)
-  phone           String?   @db.VarChar(20)
-  alternatePhone  String?   @map("alternate_phone") @db.VarChar(20)
-  website         String?   @db.VarChar(255)
-  contactPerson   String?   @map("contact_person") @db.VarChar(100)
-  
-  /// Tax Information (Indian Compliance)
-  gstin           String?   @db.VarChar(15)
-  pan             String?   @db.VarChar(10)
-  tan             String?   @db.VarChar(10)
-  
-  /// MSME
-  isMsme          Boolean   @default(false) @map("is_msme")
-  msmeNumber      String?   @map("msme_number") @db.VarChar(30)
-  
-  /// Payment Terms
-  paymentTerms    String    @default("net_30") @map("payment_terms") @db.VarChar(20)
-  creditDays      Int       @default(30) @map("credit_days")
-  
-  /// Bank Details (JSON)
-  bankDetails     Json      @default("{}") @map("bank_details")
-  
-  /// Addresses (JSON)
-  billingAddress  Json      @default("{}") @map("billing_address")
-  shippingAddress Json      @default("{}") @map("shipping_address")
-  
-  /// TDS
-  tdsApplicable   Boolean   @default(false) @map("tds_applicable")
-  tdsSection      String?   @map("tds_section") @db.VarChar(20)
-  tdsRate         Decimal   @default(0) @map("tds_rate") @db.Decimal(5, 2)
-  
-  /// Additional
-  notes           String?   @db.Text
-  tags            String[]  @default([])
-  
-  /// Status
-  status          String    @default("active") @db.VarChar(20)
-  isActive        Boolean   @default(true) @map("is_active")
-  
-  /// Audit
-  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt       DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  createdBy       Int?      @map("created_by")
-  updatedBy       Int?      @map("updated_by")
-  
-  /// Relations
-  client          Client    @relation("ClientVendors", fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  @@unique([tenantId, code], map: "uk_vendors_tenant_code")
-  @@unique([tenantId, gstin], map: "uk_vendors_tenant_gstin")
-  @@index([tenantId], map: "idx_vendors_tenant")
-  @@index([tenantId, name], map: "idx_vendors_name")
-  @@index([gstin], map: "idx_vendors_gstin")
-  @@index([phone], map: "idx_vendors_phone")
-  @@index([email], map: "idx_vendors_email")
-  @@index([tenantId, vendorType], map: "idx_vendors_type")
-  @@index([tenantId, status], map: "idx_vendors_status")
-  @@index([tenantId, isActive], map: "idx_vendors_active")
-  @@index([tenantId, isMsme], map: "idx_vendors_msme")
-  @@index([tenantId, createdAt(sort: Desc)], map: "idx_vendors_created")
-  @@map("vendors")
-}
-
-/// Item/Product master data with Indian tax codes (HSN/SAC) and inventory tracking
-model Item {
-  id                Int       @id @default(autoincrement())
-  tenantId          String    @map("tenant_id") @db.Uuid
-  
-  /// Basic Information
-  sku               String    @db.VarChar(50)
-  name              String    @db.VarChar(200)
-  barcode           String?   @db.VarChar(50)
-  itemType          String    @default("goods") @map("item_type") @db.VarChar(20)
-  
-  /// Category
-  categoryId        Int?      @map("category_id")
-  subcategoryId     Int?      @map("subcategory_id")
-  brandId           Int?      @map("brand_id")
-  
-  /// Tax Classification (Indian)
-  hsnCode           String?   @map("hsn_code") @db.VarChar(8)
-  sacCode           String?   @map("sac_code") @db.VarChar(6)
-  gstRate           Decimal   @default(18) @map("gst_rate") @db.Decimal(5, 2)
-  isTaxExempt       Boolean   @default(false) @map("is_tax_exempt")
-  
-  /// Pricing
-  purchasePrice     Decimal   @default(0) @map("purchase_price") @db.Decimal(15, 2)
-  sellingPrice      Decimal   @default(0) @map("selling_price") @db.Decimal(15, 2)
-  mrp               Decimal?  @db.Decimal(15, 2)
-  minSellingPrice   Decimal?  @map("min_selling_price") @db.Decimal(15, 2)
-  pricingTiers      Json      @default("[]") @map("pricing_tiers")
-  
-  /// Inventory
-  uom               String    @default("NOS") @db.VarChar(10)
-  trackInventory    Boolean   @default(true) @map("track_inventory")
-  inventoryMethod   String    @default("fifo") @map("inventory_method") @db.VarChar(20)
-  reorderLevel      Decimal   @default(0) @map("reorder_level") @db.Decimal(15, 3)
-  reorderQty        Decimal   @default(0) @map("reorder_qty") @db.Decimal(15, 3)
-  minStockLevel     Decimal   @default(0) @map("min_stock_level") @db.Decimal(15, 3)
-  maxStockLevel     Decimal?  @map("max_stock_level") @db.Decimal(15, 3)
-  openingStock      Decimal   @default(0) @map("opening_stock") @db.Decimal(15, 3)
-  currentStock      Decimal   @default(0) @map("current_stock") @db.Decimal(15, 3)
-  
-  /// Dimensions
-  weight            Decimal?  @db.Decimal(10, 3)
-  weightUnit        String    @default("kg") @map("weight_unit") @db.VarChar(5)
-  length            Decimal?  @db.Decimal(10, 2)
-  width             Decimal?  @db.Decimal(10, 2)
-  height            Decimal?  @db.Decimal(10, 2)
-  dimensionUnit     String    @default("cm") @map("dimension_unit") @db.VarChar(5)
-  
-  /// Description
-  shortDescription  String?   @map("short_description") @db.VarChar(255)
-  longDescription   String?   @map("long_description") @db.Text
-  
-  /// Media
-  imageUrl          String?   @map("image_url") @db.VarChar(500)
-  images            String[]  @default([])
-  
-  /// Additional
-  notes             String?   @db.Text
-  tags              String[]  @default([])
-  
-  /// Status
-  status            String    @default("active") @db.VarChar(20)
-  isActive          Boolean   @default(true) @map("is_active")
-  isSellable        Boolean   @default(true) @map("is_sellable")
-  isPurchasable     Boolean   @default(true) @map("is_purchasable")
-  
-  /// Audit
-  createdAt         DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt         DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
-  createdBy         Int?      @map("created_by")
-  updatedBy         Int?      @map("updated_by")
-  
-  /// Relations
-  client            Client    @relation("ClientItems", fields: [tenantId], references: [id], onDelete: Cascade)
-  
-  @@unique([tenantId, sku], map: "uk_items_tenant_sku")
-  @@unique([tenantId, barcode], map: "uk_items_tenant_barcode")
-  @@index([tenantId], map: "idx_items_tenant")
-  @@index([tenantId, sku], map: "idx_items_sku")
-  @@index([barcode], map: "idx_items_barcode")
-  @@index([tenantId, name], map: "idx_items_name")
-  @@index([tenantId, itemType], map: "idx_items_type")
-  @@index([tenantId, categoryId], map: "idx_items_category")
-  @@index([hsnCode], map: "idx_items_hsn")
-  @@index([tenantId, status], map: "idx_items_status")
-  @@index([tenantId, isActive], map: "idx_items_active")
-  @@index([tenantId, createdAt(sort: Desc)], map: "idx_items_created")
-  @@map("items")
+enum user_role_type {
+  SYSTEM_ADMIN
+  ENTERPRISE_ADMIN
+  SUPER_ADMIN
+  ADMIN
+  MANAGER
+  FINANCE_CONTROLLER
+  HR_MANAGER
+  OPERATIONS_MANAGER
+  STAFF
+  VIEWER
+  USER
 }

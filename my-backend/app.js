@@ -842,6 +842,17 @@ try {
   }
 }
 
+// Internal Operations routes (BISMAN Internal Staff Only - Finance, Billing, Support, Engineering)
+try {
+  const internalOperationsRoutes = require('./routes/internal-operations')
+  app.use('/api/internal', internalOperationsRoutes)
+  console.log('✅ Internal Operations routes loaded at /api/internal')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Internal Operations routes not loaded:', e && e.message)
+  }
+}
+
 // Fallback Logs routes (for Super Admin monitoring)
 try {
   const fallbackLogsRoutes = require('./routes/fallbackLogsRoutes')

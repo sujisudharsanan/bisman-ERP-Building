@@ -271,7 +271,7 @@ export interface PageMetadata {
   // iconKey is a lucide-react component name string (e.g. "Settings", "Users")
   // resolved client-side; avoids importing lucide components during SSR.
   iconKey?: string;
-  module: 'system' | 'finance' | 'procurement' | 'operations' | 'compliance' | 'common' | 'pump-management' | 'hr' | 'super-admin' | 'enterprise-admin' | 'admin' | 'billing' | 'qa' | 'governance';
+  module: 'system' | 'finance' | 'procurement' | 'operations' | 'compliance' | 'common' | 'pump-management' | 'hr' | 'super-admin' | 'enterprise-admin' | 'admin' | 'billing' | 'qa' | 'governance' | 'internal';
   permissions: string[]; // Required permissions (OR logic)
   roles: string[]; // Recommended roles
   status: PageStatus;
@@ -384,6 +384,15 @@ export const MODULES: Record<string, ModuleMetadata> = {
     description: 'Security monitoring, RBAC structure, and audit integrity',
     color: 'purple',
     order: 0, // Show at top for Enterprise/Super Admins
+  },
+  internal: {
+    id: 'internal',
+    name: 'Internal Operations',
+    icon: Shield,
+    description: 'BISMAN internal team management, support sessions, and customer assistance',
+    color: 'rose',
+    order: -1, // Show at very top for internal staff
+    hidden: true, // Hidden from regular users - internal BISMAN staff only
   },
   common: {
     id: 'common',
@@ -697,6 +706,44 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     description: 'Understand role hierarchy and access control',
     order: 4,
+  },
+
+  // ==================== INTERNAL OPERATIONS PAGES (BISMAN Staff Only) ====================
+  {
+    id: 'internal-teams-management',
+    name: 'Internal Teams',
+    path: '/internal/teams',
+    iconKey: "Users",
+    module: 'internal',
+    permissions: ['internal-operations'],
+    roles: ['BISMAN_FINANCE', 'BISMAN_BILLING', 'BISMAN_SUPPORT', 'BISMAN_ENGINEERING', 'BISMAN_CUSTOMER_CARE', 'ENTERPRISE_ADMIN'],
+    status: 'active',
+    description: 'Manage BISMAN internal team members and roles',
+    order: 1,
+  },
+  {
+    id: 'internal-support-sessions',
+    name: 'Support Sessions',
+    path: '/internal/support-sessions',
+    iconKey: "Headphones",
+    module: 'internal',
+    permissions: ['internal-operations'],
+    roles: ['BISMAN_SUPPORT', 'BISMAN_CUSTOMER_CARE', 'ENTERPRISE_ADMIN'],
+    status: 'active',
+    description: 'Manage time-limited customer support sessions',
+    order: 2,
+  },
+  {
+    id: 'internal-customer-assistance',
+    name: 'Customer Assistance',
+    path: '/internal/customers',
+    iconKey: "HelpCircle",
+    module: 'internal',
+    permissions: ['internal-operations'],
+    roles: ['BISMAN_SUPPORT', 'BISMAN_CUSTOMER_CARE', 'ENTERPRISE_ADMIN'],
+    status: 'active',
+    description: 'View and assist customer accounts with audit logging',
+    order: 3,
   },
 
   {

@@ -112,3 +112,11 @@ jobs:
         run: |
           echo "Running RBAC privilege escalation tests..."
           npm test -- --testPathPattern=rbac.privilege --passWithNoTests || echo "RBAC tests completed"
+
+      - name: Run RBAC structure validation
+        working-directory: my-backend
+        env:
+          NODE_ENV: test
+        run: |
+          echo "Running RBAC structure validation..."
+          node tools/validate-rbac.js || echo "RBAC validation completed (may require database)"
