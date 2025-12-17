@@ -75,6 +75,7 @@ const { authenticate, requireRole } = require('./middleware/auth') // ✅ Authen
 const { setTenantContext } = require('./middleware/tenantContext') // ✅ RLS tenant context
 const { adminIpAllowlist } = require('./middleware/adminIpAllowlist') // ✅ IP allowlist for admin consoles
 const { loginBruteForceProtection, signupBruteForceProtection, verifyCaptcha } = require('./middleware/bruteForceProtection') // ✅ Brute force protection
+const { rbacEnforcer } = require('./middleware/rbac.enforcer') // ✅ SECURITY: Global RBAC enforcement
 
 const app = express()
 
@@ -488,6 +489,65 @@ app.use((req, res, next) => {
   next()
 })
 
+// ============================================================================
+// 🔥 GLOBAL RBAC ENFORCEMENT - SECURITY CRITICAL
+// ============================================================================
+// RBAC Enforcer is globally applied to all API requests. Do not bypass.
+// 
+// This middleware:
+//   1. Allows public routes (login, register, health, etc.) to pass through
+//   2. Requires authentication for all other routes
+//   3. Enforces module and client boundary isolation
+//   4. Logs all access denials to audit_logs table
+//
+// Hierarchy enforced:
+//   ENTERPRISE_ADMIN → SUPER_ADMIN (module scoped) → ADMIN (client scoped)
+//
+// ⚠️ DO NOT remove or conditionally bypass this middleware.
+// ============================================================================
+// Step 1: Try to authenticate the user (populates req.user if valid token)
+// This runs on ALL requests but doesn't fail - just sets req.user if authenticated
+app.use('/api', async (req, res, next) => {
+  // Skip authentication for public routes (handled by rbacEnforcer's PUBLIC_ROUTES)
+  const publicPaths = ['/api/auth/login', '/api/auth/register', '/api/auth/forgot-password', 
+                       '/api/auth/reset-password', '/api/auth/refresh', '/api/health', '/api/public'];
+  const isPublic = publicPaths.some(p => req.path.toLowerCase().startsWith(p.replace('/api', '')));
+  if (isPublic) return next();
+  
+  // Try to authenticate - if it fails, let rbacEnforcer handle the 401
+  try {
+    const auth = req.headers.authorization || '';
+    const parts = auth.split(' ');
+    const token = parts.length === 2 && parts[0] === 'Bearer' ? parts[1] : 
+                (req.cookies?.access_token || req.cookies?.token);
+    
+    if (token && token !== 'null' && token !== 'undefined') {
+      const jwt = require('jsonwebtoken');
+      const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret', {
+        algorithms: ['HS512', 'HS256']
+      });
+      
+      // Minimal user object for RBAC context resolution
+      const subjectId = payload.sub || payload.id || payload.userId || payload.uid;
+      req.user = { 
+        id: subjectId, 
+        userType: payload.userType,
+        role: payload.role || payload.userType,
+        moduleId: payload.moduleId,
+        clientId: payload.clientId
+      };
+    }
+  } catch (err) {
+    // Token invalid/expired - req.user stays undefined, rbacEnforcer will return 401
+    console.log('[RBAC Pre-Auth] Token verification failed:', err.message);
+  }
+  next();
+});
+
+// Step 2: Apply RBAC enforcement to all API routes
+app.use('/api', rbacEnforcer);
+console.log('[app.js] ✅ 🔒 RBAC Enforcer globally applied to all /api/* routes');
+
 // Upload routes
 const uploadRoutes = require('./routes/upload')
 app.use('/api/upload', uploadRoutes)
@@ -850,6 +910,17 @@ try {
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Internal Operations routes not loaded:', e && e.message)
+  }
+}
+
+// Support Playbooks routes (BISMAN Internal Staff - Read, ENTERPRISE_ADMIN - Manage)
+try {
+  const supportPlaybooksRoutes = require('./routes/support-playbooks')
+  app.use('/api/playbooks', supportPlaybooksRoutes)
+  console.log('✅ Support Playbooks routes loaded at /api/playbooks')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Support Playbooks routes not loaded:', e && e.message)
   }
 }
 

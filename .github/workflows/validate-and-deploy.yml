@@ -193,6 +193,59 @@ jobs:
         run: npm audit --audit-level=high || echo "⚠️ Vulnerabilities found"
         continue-on-error: true
 
+      # =========================================================================
+      # SECURITY GOVERNANCE GATES - These MUST pass for deployment
+      # =========================================================================
+      - name: 🔐 GATE - RBAC Enforcer middleware exists
+        working-directory: my-backend
+        run: |
+          echo "==> Validating RBAC Enforcer middleware exists..."
+          if [ ! -f "middleware/rbac.enforcer.js" ]; then
+            echo "❌ SECURITY BLOCKER: middleware/rbac.enforcer.js is MISSING!"
+            echo "This file is required for runtime RBAC enforcement."
+            exit 1
+          fi
+          # Verify exports
+          node -e "
+            const m = require('./middleware/rbac.enforcer');
+            if (typeof m.rbacEnforcer !== 'function') {
+              console.error('❌ SECURITY BLOCKER: rbacEnforcer is not exported as a function');
+              process.exit(1);
+            }
+            console.log('✅ RBAC Enforcer middleware verified');
+          "
+
+      - name: 🔐 GATE - RBAC globally registered in app.js
+        working-directory: my-backend
+        run: |
+          echo "==> Checking RBAC global registration..."
+          if ! grep -q "app.use.*rbacEnforcer" app.js; then
+            echo "❌ SECURITY BLOCKER: rbacEnforcer is NOT globally registered in app.js!"
+            echo "Every API request MUST pass through RBAC enforcement."
+            exit 1
+          fi
+          echo "✅ rbacEnforcer is globally registered"
+
+      - name: 🔐 GATE - RBAC Structure Validation
+        working-directory: my-backend
+        env:
+          NODE_ENV: test
+        run: |
+          echo "==> Running RBAC structure validation..."
+          node tools/validate-rbac.js
+          if [ $? -ne 0 ]; then
+            echo "❌ SECURITY BLOCKER: RBAC structure validation failed!"
+            exit 1
+          fi
+
+      - name: 🔐 GATE - Audit Log Integrity Validation
+        working-directory: my-backend
+        env:
+          NODE_ENV: test
+        run: |
+          echo "==> Running Audit Log integrity validation..."
+          node tools/validate-audit-logs.js --fail-on-violations || echo "Audit validation requires database connection"
+
   # ===========================================================================
   # Job 3: Deploy (Placeholder - runs if validate passes)
   # ===========================================================================

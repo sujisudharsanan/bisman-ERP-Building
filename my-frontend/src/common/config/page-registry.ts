@@ -745,6 +745,18 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'View and assist customer accounts with audit logging',
     order: 3,
   },
+  {
+    id: 'internal-support-playbooks',
+    name: 'Support Playbooks',
+    path: '/internal/playbooks',
+    iconKey: "BookOpen",
+    module: 'internal',
+    permissions: ['internal-operations'],
+    roles: ['BISMAN_FINANCE', 'BISMAN_BILLING', 'BISMAN_SUPPORT', 'BISMAN_ENGINEERING', 'BISMAN_CUSTOMER_CARE', 'ENTERPRISE_ADMIN'],
+    status: 'active',
+    description: 'Step-by-step guides for handling common support scenarios',
+    order: 4,
+  },
 
   {
     id: 'backup-restore',
@@ -800,6 +812,18 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     description: 'View and manage system error logs',
     order: 10,
+  },
+  {
+    id: 'trust-security',
+    name: 'Trust & Security',
+    path: '/trust-security',
+    iconKey: "Shield",
+    module: 'system',
+    permissions: [], // Public informational page for all authenticated users
+    roles: ['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF', 'OPERATOR', 'VIEWER', 'AUDITOR', 'HUB_INCHARGE', 'STORE_INCHARGE', 'FINANCE_CONTROLLER', 'CFO', 'CEO'],
+    status: 'active',
+    description: 'Learn how BISMAN ERP keeps your data safe and private',
+    order: 10.5,
   },
   {
     id: 'fallback-recovery',

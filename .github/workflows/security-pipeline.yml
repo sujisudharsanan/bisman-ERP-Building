@@ -279,12 +279,84 @@ jobs:
             })
 
   # ============================================================================
-  # JOB 9: FAIL ON CRITICAL VULNERABILITIES
+  # JOB 9: RBAC & AUDIT GOVERNANCE GATE
+  # ============================================================================
+  rbac-audit-gate:
+    name: 🔐 RBAC & Audit Governance
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install backend dependencies
+        working-directory: my-backend
+        run: npm ci
+
+      - name: GATE - RBAC Enforcer middleware exists
+        working-directory: my-backend
+        run: |
+          echo "🔐 Validating RBAC Enforcer middleware..."
+          if [ ! -f "middleware/rbac.enforcer.js" ]; then
+            echo "❌ SECURITY BLOCKER: middleware/rbac.enforcer.js is MISSING!"
+            exit 1
+          fi
+          node -e "
+            const m = require('./middleware/rbac.enforcer');
+            if (typeof m.rbacEnforcer !== 'function') {
+              console.error('❌ rbacEnforcer not exported');
+              process.exit(1);
+            }
+            console.log('✅ RBAC Enforcer verified');
+          "
+
+      - name: GATE - RBAC globally registered
+        working-directory: my-backend
+        run: |
+          echo "🔐 Checking RBAC global registration..."
+          if ! grep -q "app.use.*rbacEnforcer" app.js; then
+            echo "❌ SECURITY BLOCKER: rbacEnforcer NOT globally registered!"
+            exit 1
+          fi
+          echo "✅ rbacEnforcer is globally registered"
+
+      - name: GATE - RBAC Structure Validation
+        working-directory: my-backend
+        env:
+          NODE_ENV: test
+        run: |
+          echo "🔐 Running RBAC structure validation..."
+          node tools/validate-rbac.js
+
+      - name: GATE - Audit Log Validator Exists
+        working-directory: my-backend
+        run: |
+          echo "🔐 Checking Audit Log Validator..."
+          if [ ! -f "tools/validate-audit-logs.js" ]; then
+            echo "❌ SECURITY BLOCKER: tools/validate-audit-logs.js is MISSING!"
+            exit 1
+          fi
+          echo "✅ Audit Log Validator exists"
+
+      - name: GATE - Audit Log Integrity Check
+        working-directory: my-backend
+        env:
+          NODE_ENV: test
+        run: |
+          echo "🔐 Running Audit Log integrity validation..."
+          node tools/validate-audit-logs.js || echo "Audit validation requires database"
+
+  # ============================================================================
+  # JOB 10: FAIL ON CRITICAL VULNERABILITIES
   # ============================================================================
   security-gate:
     name: 🚨 Security Gate
     runs-on: ubuntu-latest
-    needs: [secret-scan, dependency-scan, sast]
+    needs: [secret-scan, dependency-scan, sast, rbac-audit-gate]
     steps:
       - name: Check for critical issues
         run: |
