@@ -20,9 +20,12 @@ async function checkEnterpriseAdmin() {
       console.log('   Password Hash:', admin.password.substring(0, 20) + '...');
       
       // Test password
-      const testPassword = 'Enterprise@123';
+      const testPassword = process.env.ENTERPRISE_PASSWORD || 'Enterprise@123';
+      if (!process.env.ENTERPRISE_PASSWORD) {
+        console.warn('⚠️  Warning: ENTERPRISE_PASSWORD env var not set, using fallback');
+      }
       const isValid = bcrypt.compareSync(testPassword, admin.password);
-      console.log(`\n🔐 Password "${testPassword}":`, isValid ? '✅ VALID' : '❌ INVALID');
+      console.log(`\n🔐 Password check:`, isValid ? '✅ VALID' : '❌ INVALID');
       
       if (!isValid) {
         console.log('\n💡 Creating/updating with correct password...');
@@ -39,7 +42,11 @@ async function checkEnterpriseAdmin() {
       console.log('❌ Enterprise Admin NOT found');
       console.log('\n💡 Creating enterprise admin...');
       
-      const hashedPassword = bcrypt.hashSync('Enterprise@123', 10);
+      const enterprisePassword = process.env.ENTERPRISE_PASSWORD || 'Enterprise@123';
+      if (!process.env.ENTERPRISE_PASSWORD) {
+        console.warn('⚠️  Warning: ENTERPRISE_PASSWORD env var not set, using fallback');
+      }
+      const hashedPassword = bcrypt.hashSync(enterprisePassword, 10);
       
       const newAdmin = await prisma.enterpriseAdmin.create({
         data: {
@@ -54,7 +61,7 @@ async function checkEnterpriseAdmin() {
       console.log('✅ Enterprise Admin created:');
       console.log('   ID:', newAdmin.id);
       console.log('   Email:', newAdmin.email);
-      console.log('   Password: Enterprise@123');
+      console.log('   Password: [ENTERPRISE_PASSWORD env var]');
     }
     
   } catch (error) {

@@ -16,7 +16,7 @@ const fsPages = [
   '/common/security-settings','/common/task-approvals','/common/user-creation','/common/user-settings',
   '/compliance-officer','/compliance/agreements','/compliance/compliance-dashboard',
   '/compliance/legal-case-management','/dashboard','/enterprise-admin/activity-logs',
-  '/enterprise-admin/ai-handling','/enterprise-admin/audit','/enterprise-admin/billing',
+  '/enterprise-admin/audit','/enterprise-admin/billing',
   '/enterprise-admin/dashboard','/enterprise-admin/integrations','/enterprise-admin/logs',
   '/enterprise-admin/modules','/enterprise-admin/monitoring','/enterprise-admin/monitoring/database',
   '/enterprise-admin/monitoring/performance','/enterprise-admin/monitoring/system-health',

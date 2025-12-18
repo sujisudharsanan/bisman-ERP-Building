@@ -3,8 +3,22 @@ const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcrypt');
 const prisma = new PrismaClient();
 
+// Get passwords from environment variables
+const ENTERPRISE_PASSWORD = process.env.ENTERPRISE_ADMIN_PASSWORD;
+const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD;
+
 async function simpleSetup() {
-  console.log('\n🚀 SIMPLE SETUP - Creating Demo Users\n');
+  // Validate required environment variables
+  if (!ENTERPRISE_PASSWORD || !SUPER_ADMIN_PASSWORD) {
+    console.error('❌ Missing required environment variables:');
+    console.error('   ENTERPRISE_ADMIN_PASSWORD - Password for enterprise admin');
+    console.error('   SUPER_ADMIN_PASSWORD - Password for super admins');
+    console.error('\nExample:');
+    console.error('   ENTERPRISE_ADMIN_PASSWORD=xxx SUPER_ADMIN_PASSWORD=xxx node simple-setup.js');
+    process.exit(1);
+  }
+
+  console.log('\n🚀 SIMPLE SETUP - Creating Admin Users\n');
   console.log('='.repeat(80) + '\n');
   
   try {
@@ -21,7 +35,7 @@ async function simpleSetup() {
           data: {
             name: 'Enterprise Admin',
             email: 'admin@bisman.erp',
-            password: await bcrypt.hash('admin123', 10),
+            password: await bcrypt.hash(ENTERPRISE_PASSWORD, 10),
             is_active: true,
           }
         });
@@ -33,7 +47,7 @@ async function simpleSetup() {
         data: {
           name: 'Super Admin',
           email: 'superadmin@bisman.demo',
-          password: await bcrypt.hash('Super@123', 10),
+          password: await bcrypt.hash(SUPER_ADMIN_PASSWORD, 10),
           productType: 'BUSINESS_ERP',
           is_active: true,
           created_by: enterpriseAdmin.id,
@@ -87,7 +101,7 @@ async function simpleSetup() {
       create: {
         username: 'enterprise_admin',
         email: 'enterprise@bisman.erp',
-        password: await bcrypt.hash('enterprise123', 10),
+        password: await bcrypt.hash(ENTERPRISE_PASSWORD, 10),
         role: 'ENTERPRISE_ADMIN',
         is_active: true,
         productType: 'BUSINESS_ERP',
@@ -102,7 +116,7 @@ async function simpleSetup() {
       create: {
         username: 'business_superadmin',
         email: 'business_superadmin@bisman.demo',
-        password: await bcrypt.hash('Super@123', 10),
+        password: await bcrypt.hash(SUPER_ADMIN_PASSWORD, 10),
         role: 'SUPER_ADMIN',
         is_active: true,
         productType: 'BUSINESS_ERP',
@@ -111,97 +125,18 @@ async function simpleSetup() {
     });
     console.log(`  ✅ ${superAdminUser.email}\n`);
     
-    // Create 10 Demo Users
-    console.log('Creating 10 Demo Users...\n');
-    
-    const demoUsers = [
-      { username: 'rajesh_verma', email: 'rajesh.verma@bisman.demo', role: 'CFO',
-        profile: { fullName: 'Rajesh Verma', employeeCode: 'BIS-CFO-001', phone: '+91-9876540001' } },
-      { username: 'meera_singh', email: 'meera.singh@bisman.demo', role: 'FINANCE_CONTROLLER',
-        profile: { fullName: 'Meera Singh', employeeCode: 'BIS-FC-001', phone: '+91-9876541001' } },
-      { username: 'vikram_reddy', email: 'vikram.reddy@bisman.demo', role: 'OPERATIONS_MANAGER',
-        profile: { fullName: 'Vikram Reddy', employeeCode: 'BIS-OPS-001', phone: '+91-9876542001' } },
-      { username: 'arun_kumar', email: 'arun.kumar@bisman.demo', role: 'HUB_INCHARGE',
-        profile: { fullName: 'Arun Kumar', employeeCode: 'BIS-HUB-001', phone: '+91-9876543210' } },
-      { username: 'priya_sharma', email: 'priya.sharma@bisman.demo', role: 'HR_MANAGER',
-        profile: { fullName: 'Priya Sharma', employeeCode: 'BIS-HR-001', phone: '+91-9876543001' } },
-      { username: 'amit_patel', email: 'amit.patel@bisman.demo', role: 'PROCUREMENT_OFFICER',
-        profile: { fullName: 'Amit Patel', employeeCode: 'BIS-PRO-001', phone: '+91-9876544001' } },
-      { username: 'suresh_yadav', email: 'suresh.yadav@bisman.demo', role: 'STORE_INCHARGE',
-        profile: { fullName: 'Suresh Yadav', employeeCode: 'BIS-ST-001', phone: '+91-9876545001' } },
-      { username: 'kavita_iyer', email: 'kavita.iyer@bisman.demo', role: 'COMPLIANCE_OFFICER',
-        profile: { fullName: 'Kavita Iyer', employeeCode: 'BIS-CO-001', phone: '+91-9876546001' } },
-      { username: 'deepak_mishra', email: 'deepak.mishra@bisman.demo', role: 'LEGAL_HEAD',
-        profile: { fullName: 'Deepak Mishra', employeeCode: 'BIS-LEG-001', phone: '+91-9876547001' } },
-      { username: 'rohit_desai', email: 'rohit.desai@bisman.demo', role: 'ACCOUNTS_PAYABLE',
-        profile: { fullName: 'Rohit Desai', employeeCode: 'BIS-AP-001', phone: '+91-9876548001' } }
-    ];
-    
-    const password = await bcrypt.hash('Demo@123', 10);
-    
-    for (const userData of demoUsers) {
-      const user = await prisma.user.upsert({
-        where: { email: userData.email },
-        update: {},
-        create: {
-          username: userData.username,
-          email: userData.email,
-          password: password,
-          role: userData.role,
-          is_active: true,
-          productType: 'BUSINESS_ERP',
-          tenant_id: client.id,
-        }
-      });
-      
-      // Create profile
-      await prisma.userProfile.upsert({
-        where: { userId: user.id },
-        update: {},
-        create: {
-          userId: user.id,
-          fullName: userData.profile.fullName,
-          employeeCode: userData.profile.employeeCode,
-          phone: userData.profile.phone,
-          gender: 'MALE',
-          bloodGroup: 'O+',
-          maritalStatus: 'SINGLE',
-        }
-      });
-      
-      // Assign to branch
-      await prisma.userBranch.upsert({
-        where: {
-          userId_branchId: {
-            userId: user.id,
-            branchId: branch.id,
-          }
-        },
-        update: {},
-        create: {
-          userId: user.id,
-          branchId: branch.id,
-          isPrimary: true,
-        }
-      });
-      
-      console.log(`  ✅ ${userData.profile.fullName} (${userData.email})`);
-    }
-    
     console.log('\n' + '='.repeat(80));
     console.log('\n🎉 SETUP COMPLETE!\n');
     console.log('📊 Created:');
     console.log(`  - Client: ${client.name}`);
     console.log(`  - Branch: ${branch.branchName}`);
-    console.log(`  - 2 Base admin users`);
-    console.log(`  - 10 Demo users with profiles`);
+    console.log(`  - 2 Admin users`);
     console.log(`\n🔐 Login Credentials:`);
-    console.log(`  Enterprise Admin: enterprise@bisman.erp / enterprise123`);
-    console.log(`  Super Admin: business_superadmin@bisman.demo / Super@123`);
-    console.log(`  Demo Users: [any email above] / Demo@123\n`);
+    console.log(`  Enterprise Admin: enterprise@bisman.erp / [ENTERPRISE_ADMIN_PASSWORD env var]`);
+    console.log(`  Super Admin: business_superadmin@bisman.demo / [SUPER_ADMIN_PASSWORD env var]\n`);
     console.log(`\n🧪 Test Now:`);
     console.log(`  1. Go to http://localhost:3000/auth/login`);
-    console.log(`  2. Try logging in with any demo user!\n`);
+    console.log(`  2. Login with admin credentials!\n`);
     
   } catch (error) {
     console.error('\n❌ Error:', error.message);

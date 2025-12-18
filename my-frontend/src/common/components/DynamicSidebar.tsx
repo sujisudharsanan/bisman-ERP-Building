@@ -593,7 +593,7 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
 
     // Expanded mode - full link with enhanced hover effects
     const linkClasses = `
-      group flex items-center space-x-2.5 px-3 py-2 rounded-xl text-[13px] 
+      group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs 
       transition-all duration-200 ease-out
       ${isActive
         ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium shadow-md shadow-blue-500/20'
@@ -608,7 +608,7 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
         {/* Render icon safely; fallback to Circle if missing or invalid */}
         {(() => {
           // @ts-ignore guarded icon is always renderable
-          return <Icon className={`w-4 h-4 flex-shrink-0 transition-transform duration-200 ${!isActive && !isDisabled ? 'group-hover:scale-110 group-hover:rotate-6' : ''}`} />;
+          return <Icon className={`w-3.5 h-3.5 flex-shrink-0 transition-transform duration-200 ${!isActive && !isDisabled ? 'group-hover:scale-110 group-hover:rotate-6' : ''}`} />;
         })()}
         <span className="flex-1 truncate">{page.name}</span>
         {renderStatusBadge(page)}

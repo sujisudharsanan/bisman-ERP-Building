@@ -1486,6 +1486,7 @@ export default function Page() {
               return rolesToShow.map((role) => {
                 const isSelected = selectedRoleId === role.id;
                 const userCount = role.userCount || role.users?.length || 0;
+                const hasUsers = userCount > 0;
                 
                 return (
                   <button
@@ -1494,16 +1495,20 @@ export default function Page() {
                     className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition ${
                       isSelected
                         ? "border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300 shadow-sm"
-                        : "border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30"
+                        : hasUsers
+                        ? "border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30"
+                        : "border-amber-400 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/30"
                     }`}
-                    title={role.description || role.name}
+                    title={`${role.description || role.name} (Level ${role.level || 0})`}
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         {isSelected ? (
                           <span className="text-purple-600 dark:text-purple-400 font-bold text-sm">●</span>
-                        ) : (
+                        ) : hasUsers ? (
                           <span className="text-green-600 dark:text-green-400 font-bold text-sm">✓</span>
+                        ) : (
+                          <span className="text-amber-500 dark:text-amber-400 font-bold text-sm">○</span>
                         )}
                         <span className={`truncate font-medium ${isSelected ? 'text-purple-700 dark:text-purple-300' : ''}`}>
                           {role.display_name || role.name}
@@ -1514,13 +1519,17 @@ export default function Page() {
                           <FiUsers className="w-3 h-3" />
                           {userCount}
                         </span>
-                        {role.level && (
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                            role.level <= 2 
-                              ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                              : role.level <= 4
+                        {role.level !== undefined && (
+                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                            role.level >= 9 
+                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                              : role.level >= 7
+                              ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                              : role.level >= 5
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                              : role.level >= 3
                               ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-                              : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                              : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
                           }`}>
                             L{role.level}
                           </span>
@@ -1725,7 +1734,7 @@ export default function Page() {
                           ? "border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 hover:ring-green-300"
                           : "border-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 hover:ring-red-300"
                       }`}
-                      title={role.description || role.name}
+                      title={`${role.description || role.name} (Level ${role.level || 0})`}
                     >
                       <div className="flex items-center gap-1.5">
                         {isAssigned ? (
@@ -1740,13 +1749,17 @@ export default function Page() {
                               <FiUsers className="w-3 h-3" />
                               {userCount} users
                             </span>
-                            {role.level && (
-                              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                                role.level <= 2 
-                                  ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                                  : role.level <= 4
+                            {role.level !== undefined && (
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                                role.level >= 9 
+                                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
+                                  : role.level >= 7
+                                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                  : role.level >= 5
+                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                  : role.level >= 3
                                   ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-                                  : 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
+                                  : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
                               }`}>
                                 L{role.level}
                               </span>

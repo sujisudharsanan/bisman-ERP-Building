@@ -49,12 +49,7 @@ FROM users
 ORDER BY category, email;
 
 \echo ''
-\echo '🔑 LOGIN CREDENTIALS:'
-\echo ''
-\echo 'Enterprise Admin: enterprise@bisman.erp / enterprise123'
-\echo 'Business Super Admin: business_superadmin@bisman.demo / Super@123'
-\echo 'Pump Super Admin: pump_superadmin@bisman.demo / Super@123'
-\echo 'Hub Incharge: demo_hub_incharge@bisman.demo / demo123'
+\echo '🔑 Login with configured credentials from your secure storage'
 \echo ''
 
 SQL

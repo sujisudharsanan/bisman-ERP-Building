@@ -50,7 +50,7 @@ async function verify() {
 
       console.log('\n🔑 LOGIN CREDENTIALS:');
       console.log('   📧 Email: admin@eazymiles.com');
-      console.log('   🔐 Password: Eazy@123');
+      console.log('   🔐 Password: [DEFAULT_DEMO_PASSWORD env var]');
       console.log('   🌐 URL: http://localhost:3000/auth/login');
 
       console.log('\n📋 AVAILABLE ROLES (10):');

@@ -1,3 +1,13 @@
+/* eslint-env es2020 */
+/* eslint-disable import/no-unresolved */
+/* eslint-disable no-undef */
+/* eslint-disable no-unused-vars */
+// @ts-nocheck
+/**
+ * @file K6 Load Testing Script
+ * Note: This file uses ES modules syntax which is native to K6.
+ * ESLint may show false positives - run with: k6 run scripts/k6-login-test.js
+ */
 /**
  * K6 Load Testing Script - Login API
  * 
@@ -88,12 +98,15 @@ const BASE_URL = __ENV.BASE_URL || 'http://localhost:5000';
 const LOGIN_ENDPOINT = `${BASE_URL}/api/auth/login`;
 
 // Test users (create these in your database)
+// Passwords should be set via environment variables when running k6
+// Example: k6 run -e TEST_PASSWORD=YourPassword scripts/k6-login-test.js
+const TEST_PASSWORD = __ENV.TEST_PASSWORD || 'Demo@123';
 const TEST_USERS = [
-  { email: 'demo@bisman.com', password: 'Demo@123' },
-  { email: 'admin@bisman.com', password: 'Admin@123' },
-  { email: 'user1@bisman.com', password: 'User@123' },
-  { email: 'user2@bisman.com', password: 'User@123' },
-  { email: 'user3@bisman.com', password: 'User@123' },
+  { email: 'demo@bisman.com', password: TEST_PASSWORD },
+  { email: 'admin@bisman.com', password: TEST_PASSWORD },
+  { email: 'user1@bisman.com', password: TEST_PASSWORD },
+  { email: 'user2@bisman.com', password: TEST_PASSWORD },
+  { email: 'user3@bisman.com', password: TEST_PASSWORD },
 ];
 
 // ============================================================================

@@ -76,9 +76,9 @@ async function main() {
   } else {
     console.log('✅ All demo credentials are present in the database!');
     console.log('\nYou can now login at /auth/login with:');
-    console.log('  - enterprise@bisman.erp / enterprise123');
-    console.log('  - rajesh@petrolpump.com / petrol123');
-    console.log('  - amit@abclogistics.com / logistics123');
+    console.log('  - enterprise@bisman.erp / [ENTERPRISE_PASSWORD env var]');
+    console.log('  - rajesh@petrolpump.com / [DEFAULT_DEMO_PASSWORD env var]');
+    console.log('  - amit@abclogistics.com / [DEFAULT_DEMO_PASSWORD env var]');
     process.exit(0);
   }
 }

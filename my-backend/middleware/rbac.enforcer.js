@@ -18,15 +18,16 @@ const ROLE_LEVELS = {
 };
 
 // Routes that bypass RBAC (public routes)
+// Note: Paths here should NOT include /api prefix since middleware is mounted at /api
 const PUBLIC_ROUTES = [
-  '/api/auth/login',
-  '/api/auth/register',
-  '/api/auth/forgot-password',
-  '/api/auth/reset-password',
-  '/api/auth/refresh',
-  '/api/health',
+  '/auth/login',
+  '/auth/register',
+  '/auth/forgot-password',
+  '/auth/reset-password',
+  '/auth/refresh',
   '/health',
-  '/api/public',
+  '/public',
+  '/approval-flows/levels',
 ];
 
 /**

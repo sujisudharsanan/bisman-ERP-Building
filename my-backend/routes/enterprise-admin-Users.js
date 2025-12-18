@@ -3,6 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
+const { protectBusinessLevel, logBusinessLevelChange, getBusinessLevelInfo } = require('../middleware/businessLevelProtection');
 
 const requireEnterpriseAdmin = (req, res, next) => {
   const userRole = (req.user?.role || '').toUpperCase();
@@ -23,7 +24,8 @@ router.get('/', requireEnterpriseAdmin, async (req, res) => {
     const orgId = req.query.orgId || '';
     const role = req.query.role || '';
     const status = req.query.status || ''; // active, disabled
-    const accountType = req.query.accountType || ''; // local, sso
+    // accountType filter reserved for future use (local, sso)
+    // const accountType = req.query.accountType || '';
 
     // Build where clause
     const where = {};
@@ -65,6 +67,7 @@ router.get('/', requireEnterpriseAdmin, async (req, res) => {
           updated_at: true,
           last_login: true,
           client_id: true,
+          business_level: true,
           client: {
             select: {
               id: true,
@@ -89,7 +92,9 @@ router.get('/', requireEnterpriseAdmin, async (req, res) => {
       status: user.is_active ? 'active' : 'disabled',
       accountType: user.email?.includes('@sso.') ? 'sso' : 'local',
       lastLogin: user.last_login?.toISOString() || null,
-      createdAt: user.created_at?.toISOString() || new Date().toISOString()
+      createdAt: user.created_at?.toISOString() || new Date().toISOString(),
+      business_level: user.business_level || 1,
+      business_level_label: `L${user.business_level || 1}`
     }));
 
     res.json({
@@ -198,21 +203,48 @@ router.get('/:userId', requireEnterpriseAdmin, async (req, res) => {
 });
 
 // Update user
-router.put('/:userId', requireEnterpriseAdmin, async (req, res) => {
+// ✅ SECURITY: protectBusinessLevel ensures only authorized admins can change business_level
+router.put('/:userId', requireEnterpriseAdmin, protectBusinessLevel({ enforceHierarchy: false }), async (req, res) => {
   try {
     const userId = parseInt(req.params.userId);
-    const { name, email, role, status } = req.body;
+    const { name, email, role, status, business_level } = req.body;
+
+    // Get current user for audit logging
+    const currentUser = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { business_level: true }
+    });
+    const oldBusinessLevel = currentUser?.business_level || 1;
 
     const updateData = {};
     if (name) updateData.username = name;
     if (email) updateData.email = email;
     if (role) updateData.role = role;
     if (status) updateData.is_active = status === 'active';
+    if (business_level !== undefined) {
+      // Validate business level (1-10)
+      const level = parseInt(business_level);
+      if (level >= 1 && level <= 10) {
+        updateData.business_level = level;
+      }
+    }
 
     const updatedUser = await prisma.user.update({
       where: { id: userId },
       data: updateData
     });
+
+    // Log business level change if it was modified
+    if (updateData.business_level !== undefined && updateData.business_level !== oldBusinessLevel) {
+      await logBusinessLevelChange(
+        userId,
+        oldBusinessLevel,
+        updateData.business_level,
+        req.user?.id,
+        req.user?.userType || req.user?.user_type || 'ENTERPRISE_ADMIN',
+        req.ip
+      );
+    }
 
     // Log activity
     await prisma.recent_activity.create({
@@ -225,6 +257,7 @@ router.put('/:userId', requireEnterpriseAdmin, async (req, res) => {
       }
     });
 
+    const levelInfo = getBusinessLevelInfo(updatedUser.business_level || 1);
     res.json({
       ok: true,
       message: 'User updated successfully',
@@ -233,7 +266,10 @@ router.put('/:userId', requireEnterpriseAdmin, async (req, res) => {
         name: updatedUser.username,
         email: updatedUser.email,
         role: updatedUser.role,
-        status: updatedUser.is_active ? 'active' : 'disabled'
+        status: updatedUser.is_active ? 'active' : 'disabled',
+        business_level: updatedUser.business_level || 1,
+        business_level_label: levelInfo.key,
+        business_level_name: levelInfo.name
       }
     });
   } catch (error) {
@@ -282,7 +318,7 @@ router.put('/bulk/update', requireEnterpriseAdmin, async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Invalid user IDs' });
     }
 
-    let updateData = {};
+    const updateData = {};
     
     switch (action) {
       case 'enable':

@@ -218,7 +218,6 @@ const MASTER_MODULES = [
       { id: 'audit', name: 'Audit', path: '/enterprise-admin/audit' },
       { id: 'logs', name: 'Logs', path: '/enterprise-admin/logs' },
       { id: 'activity-logs', name: 'Activity Logs', path: '/enterprise-admin/activity-logs' },
-      { id: 'ai-handling', name: 'AI Handling', path: '/enterprise-admin/ai-handling' },
       { id: 'monitoring', name: 'Monitoring', path: '/enterprise-admin/monitoring' },
       { id: 'monitoring-database', name: 'Database Monitoring', path: '/enterprise-admin/monitoring/database' },
       { id: 'monitoring-performance', name: 'Performance Monitoring', path: '/enterprise-admin/monitoring/performance' },

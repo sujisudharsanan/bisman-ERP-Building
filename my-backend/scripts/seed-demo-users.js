@@ -3,15 +3,27 @@ const bcrypt = require('bcryptjs')
 
 const prisma = new PrismaClient()
 
+// Get passwords from environment variables
+const DEFAULT_PASSWORD = process.env.DEFAULT_USER_PASSWORD
+const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || process.env.DEFAULT_USER_PASSWORD
+const SUPER_ADMIN_PASSWORD = process.env.SUPER_ADMIN_PASSWORD || process.env.DEFAULT_USER_PASSWORD
+
 async function seedDemoUsers() {
+  // Validate required environment variables
+  if (!DEFAULT_PASSWORD) {
+    console.error('❌ Missing required environment variable: DEFAULT_USER_PASSWORD')
+    console.error('\nExample:')
+    console.error('   DEFAULT_USER_PASSWORD=xxx node seed-demo-users.js')
+    process.exit(1)
+  }
+
   console.log('🌱 Seeding demo users...')
   
   try {
-    // Hash passwords
-    const demoPassword = await bcrypt.hash('Demo@123', 10)
-    const adminPassword = await bcrypt.hash('changeme', 10)
-    const managerPassword = await bcrypt.hash('manager123', 10)
-    const staffPassword = await bcrypt.hash('staff123', 10)
+    // Hash passwords from environment variables
+    const demoPassword = await bcrypt.hash(DEFAULT_PASSWORD, 10)
+    const adminPassword = await bcrypt.hash(ADMIN_PASSWORD, 10)
+    const superAdminPassword = await bcrypt.hash(SUPER_ADMIN_PASSWORD, 10)
     
     // Demo users to create
     const demoUsers = [
@@ -30,19 +42,19 @@ async function seedDemoUsers() {
       {
         username: 'manager_user',
         email: 'manager@business.com', 
-        password: managerPassword,
+        password: demoPassword,
         role: 'MANAGER'
       },
       {
         username: 'staff_user',
         email: 'staff@business.com',
-        password: staffPassword, 
+        password: demoPassword, 
         role: 'STAFF'
       },
       {
         username: 'super_admin',
         email: 'super@bisman.local',
-        password: adminPassword,
+        password: superAdminPassword,
         role: 'SUPER_ADMIN'
       }
     ]
@@ -65,28 +77,8 @@ async function seedDemoUsers() {
       }
     }
     
-    console.log('\n📋 Demo Credentials Available:')
+    console.log('\n📋 Demo users created - passwords provided via environment variables')
     console.log('===============================')
-    console.log('🔑 Demo User:')
-    console.log('   Email: demo@bisman.local')
-    console.log('   Password: Demo@123')
-    console.log('')
-    console.log('🔑 Admin User:')
-    console.log('   Email: admin@bisman.local')
-    console.log('   Password: changeme')
-    console.log('')
-    console.log('🔑 Manager User:')
-    console.log('   Email: manager@business.com')
-    console.log('   Password: manager123')
-    console.log('')
-    console.log('🔑 Staff User:')
-    console.log('   Email: staff@business.com')
-    console.log('   Password: staff123')
-    console.log('')
-    console.log('🔑 Super Admin:')
-    console.log('   Email: super@bisman.local')
-    console.log('   Password: changeme')
-    console.log('')
     
   } catch (error) {
     console.error('❌ Error seeding demo users:', error)

@@ -23,7 +23,11 @@ async function main() {
   const systemAdminEmail = 'platform@bisman.system';
   const existingSystemAdmin = await prisma.user.findUnique({ where: { email: systemAdminEmail } });
   if (!existingSystemAdmin) {
-    const passwordHash = await bcrypt.hash('ChangeMe123!@', 10);
+    const systemAdminPassword = process.env.SYSTEM_ADMIN_PASSWORD || 'ChangeMe123!@';
+    if (!process.env.SYSTEM_ADMIN_PASSWORD) {
+      console.warn('⚠️  Warning: SYSTEM_ADMIN_PASSWORD env var not set, using fallback');
+    }
+    const passwordHash = await bcrypt.hash(systemAdminPassword, 10);
     const created = await prisma.user.create({
       data: {
         username: 'platform_root',

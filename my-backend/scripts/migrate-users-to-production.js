@@ -13,7 +13,10 @@ const bcrypt = require('bcryptjs');
 const { PrismaClient } = require('@prisma/client');
 
 // Default password for migrated users (they should change it)
-const DEFAULT_PASSWORD = 'Demo@123';
+const DEFAULT_PASSWORD = process.env.DEFAULT_DEMO_PASSWORD || 'Demo@123';
+if (!process.env.DEFAULT_DEMO_PASSWORD) {
+  console.warn('⚠️  Warning: DEFAULT_DEMO_PASSWORD env var not set, using fallback');
+}
 
 // Users to migrate (from local database)
 const usersToMigrate = [
@@ -39,7 +42,7 @@ const usersToMigrate = [
 const enterpriseAdmin = {
   email: 'enterprise@bisman.erp',
   name: 'Enterprise Admin',
-  password: 'enterprise123', // Keep original password
+  password: process.env.ENTERPRISE_PASSWORD || 'enterprise123', // Use env var
 };
 
 async function migrateUsers() {
@@ -120,8 +123,8 @@ async function migrateUsers() {
     console.log(`   Users Skipped: ${usersSkipped}`);
     console.log(`   Enterprise Admins: 1`);
     console.log('='.repeat(50));
-    console.log('\n🔑 Default password for all users: Demo@123');
-    console.log('🔑 Enterprise Admin password: enterprise123');
+    console.log('\n🔑 Default password for all users: [DEFAULT_DEMO_PASSWORD env var]');
+    console.log('🔑 Enterprise Admin password: [ENTERPRISE_PASSWORD env var]');
     console.log('\n✨ Migration complete!');
 
   } catch (error) {

@@ -4,6 +4,10 @@ const bcrypt = require('bcryptjs')
 
 const prisma = getPrisma()
 
+// ✅ SECURITY: List of protected fields that require special authorization
+// eslint-disable-next-line no-unused-vars
+const PROTECTED_FIELDS = ['business_level', 'user_type', 'is_active'];
+
 class SuperAdminService {
   // =============== ACTIVITY LOGGING ===============
   async logActivity(userId, username, action, entityType, entityId, details) {
@@ -17,7 +21,7 @@ class SuperAdminService {
   }
 
   // Get recent activity
-  async getRecentActivity(limit = 20) {
+  async getRecentActivity(_limit = 20) {
     try {
       return [
         {
@@ -38,7 +42,7 @@ class SuperAdminService {
   }
 
   // =============== USER MANAGEMENT ===============
-  async getAllUsers(search = '', limit = 50, offset = 0) {
+  async getAllUsers(_search = '', limit = 50, offset = 0) {
     try {
   const users = await prisma.user.findMany({
         take: limit,
@@ -63,7 +67,7 @@ class SuperAdminService {
     }
   }
 
-  async createUser(userData, adminUserId, adminUsername) {
+  async createUser(userData, _adminUserId, _adminUsername) {
     try {
       const hashedPassword = await bcrypt.hash(userData.password, 10)
       
@@ -90,17 +94,24 @@ class SuperAdminService {
     }
   }
 
-  async updateUser(userId, userData, adminUserId, adminUsername) {
+  async updateUser(userId, userData, _adminUserId, _adminUsername) {
     try {
+      // ✅ SECURITY: Explicitly filter out business_level - must be changed via Enterprise Admin routes
+      // This prevents accidental or malicious business_level changes via Super Admin API
+      const { business_level: _bl, ...safeUserData } = userData;
+      if (_bl !== undefined) {
+        console.warn(`[SuperAdminService] business_level change blocked for user ${userId} - use Enterprise Admin route`);
+      }
+      
       const updateData = {
-        username: userData.username,
-        email: userData.email,
-        role: userData.role,
+        username: safeUserData.username,
+        email: safeUserData.email,
+        role: safeUserData.role,
         updatedAt: new Date(),
       }
 
-      if (userData.password) {
-        updateData.password_hash = await bcrypt.hash(userData.password, 10)
+      if (safeUserData.password) {
+        updateData.password_hash = await bcrypt.hash(safeUserData.password, 10)
       }
 
       const updatedUser = await prisma.user.update({
@@ -122,7 +133,7 @@ class SuperAdminService {
     }
   }
 
-  async deleteUser(userId, adminUserId, adminUsername) {
+  async deleteUser(userId, _adminUserId, _adminUsername) {
     try {
       const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -203,7 +214,7 @@ class SuperAdminService {
     }
   }
 
-  async getTableData(tableName, search = '', limit = 50, offset = 0) {
+  async getTableData(tableName, _search = '', limit = 50, offset = 0) {
     try {
       // Prevent SQL injection: allow alphanumeric and underscores only
       if (!/^[a-zA-Z0-9_]+$/.test(tableName)) {
@@ -235,31 +246,31 @@ class SuperAdminService {
   }
 
   // Placeholder methods for other operations
-  async createRole(roleData, adminUserId, adminUsername) {
+  async createRole(roleData, _adminUserId, _adminUsername) {
     return { id: Date.now(), ...roleData, created_at: new Date().toISOString() }
   }
 
-  async updateRole(roleId, roleData, adminUserId, adminUsername) {
+  async updateRole(roleId, roleData, _adminUserId, _adminUsername) {
     return { id: roleId, ...roleData, updated_at: new Date().toISOString() }
   }
 
-  async deleteRole(roleId, adminUserId, adminUsername) {
+  async deleteRole(_roleId, _adminUserId, _adminUsername) {
     return { success: true, message: 'Role deleted successfully' }
   }
 
-  async createRoute(routeData, adminUserId, adminUsername) {
+  async createRoute(routeData, _adminUserId, _adminUsername) {
     return { id: Date.now(), ...routeData, created_at: new Date().toISOString() }
   }
 
-  async updateRoute(routeId, routeData, adminUserId, adminUsername) {
+  async updateRoute(routeId, routeData, _adminUserId, _adminUsername) {
     return { id: routeId, ...routeData, updated_at: new Date().toISOString() }
   }
 
-  async deleteRoute(routeId, adminUserId, adminUsername) {
+  async deleteRoute(_routeId, _adminUserId, _adminUsername) {
     return { success: true, message: 'Route deleted successfully' }
   }
 
-  async updatePermissionBatch(updates, adminUserId, adminUsername) {
+  async updatePermissionBatch(updates, _adminUserId, _adminUsername) {
     return { success: true, message: `Updated ${updates.length} permissions`, processed: updates.length }
   }
 }

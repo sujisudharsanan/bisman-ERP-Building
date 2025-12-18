@@ -1,12 +1,13 @@
 // Legacy rateLimit kept for fallback; advanced middleware provides Redis + adaptive logic
+// eslint-disable-next-line no-unused-vars
 const rateLimit = require('express-rate-limit')
 const {
   strictLoginLimiter,
-  moderateAuthLimiter,
   standardApiLimiter,
-  publicLimiter,
-  expensiveOperationLimiter,
-  createAdaptiveRateLimiter,
+  // moderateAuthLimiter, // Uncomment when rate limiting is enabled
+  // publicLimiter, // Uncomment when rate limiting is enabled
+  // expensiveOperationLimiter, // Uncomment when rate limiting is enabled
+  // createAdaptiveRateLimiter, // Uncomment when rate limiting is enabled
 } = require('./middleware/advancedRateLimiter');
 const { 
   errorHandler, 
@@ -15,18 +16,17 @@ const {
 const { 
   initializeErrorLogsTable 
 } = require('./utils/errorLogger');
-const enforce = require('express-sslify')
 const helmet = require('helmet')
 const express = require('express')
 const cors = require('cors')
 const compression = require('compression') // ✅ Response compression
 const path = require('path')
+// eslint-disable-next-line no-unused-vars
 const { createProxyMiddleware } = require('http-proxy-middleware')
 const fs = require('fs')
-const { Pool } = require('pg')
 const { getPrisma } = require('./lib/prisma')   // ✅ shared singleton
 // Load .env early for local/dev
-try { require('dotenv').config() } catch (e) {}
+try { require('dotenv').config() } catch { /* dotenv not available, ignore */ }
 // Optional auto-bootstrap for missing chat/calls tables (dev/staging convenience)
 if (process.env.AUTO_BOOTSTRAP_CHAT_CALLS === '1') {
   try {
@@ -69,11 +69,13 @@ const bcrypt = require('bcryptjs')
 const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
 const { logSanitizer } = require('./middleware/logSanitizer')
+// eslint-disable-next-line no-unused-vars
 const privilegeService = require('./services/privilegeService')
 const TenantGuard = require('./middleware/tenantGuard') // ✅ SECURITY: Multi-tenant isolation
 const { authenticate, requireRole } = require('./middleware/auth') // ✅ Authentication middleware
 const { setTenantContext } = require('./middleware/tenantContext') // ✅ RLS tenant context
 const { adminIpAllowlist } = require('./middleware/adminIpAllowlist') // ✅ IP allowlist for admin consoles
+// eslint-disable-next-line no-unused-vars
 const { loginBruteForceProtection, signupBruteForceProtection, verifyCaptcha } = require('./middleware/bruteForceProtection') // ✅ Brute force protection
 const { rbacEnforcer } = require('./middleware/rbac.enforcer') // ✅ SECURITY: Global RBAC enforcement
 
@@ -91,6 +93,7 @@ function generateAccessToken(payload) {
   return jwt.sign(payload, ACCESS_TOKEN_SECRET, { expiresIn: '1h' })
 }
 
+// eslint-disable-next-line no-unused-vars
 function generateRefreshToken(payload) {
   return jwt.sign(payload, REFRESH_TOKEN_SECRET, { expiresIn: '7d' })
 }
@@ -199,6 +202,7 @@ console.log('[app.js] 🚀 Optimized for AI chat responses - expect 80-90% size 
 // --- Prometheus Metrics Integration (monitoring) ---
 try {
   const { createPrometheusMiddleware, metricsHandler } = require('./middleware/prometheus');
+  // eslint-disable-next-line no-unused-vars
   const { metricsMiddleware, connectionTracker, detailedMetrics, register } = createPrometheusMiddleware();
   
   // Apply connection tracking
@@ -219,6 +223,7 @@ try {
 
 // --- Redis Cache Integration (health & metrics) ---
 try {
+  // eslint-disable-next-line no-unused-vars
   const { isEnabled, ping, redis } = require('./cache/redisClient');
   const { snapshot, reset } = require('./cache/metrics/redisMetrics');
   app.get('/internal/cache-health', async (req, res) => {
@@ -374,7 +379,7 @@ if (process.env.DEBUG_CORS === '1') {
 if (process.env.DEBUG_CORS === '1') {
   try {
     console.log('[CORS] Allowlist:', allowedOrigins)
-  } catch (_) {}
+  } catch { /* ignore logging errors */ }
   // Log every request's origin and method for troubleshooting
   app.use((req, _res, next) => {
     try {
@@ -382,7 +387,7 @@ if (process.env.DEBUG_CORS === '1') {
       const m = req.method
       const u = req.originalUrl || req.url
       console.log(`[CORS DEBUG] ${m} ${u} origin=${o}`)
-    } catch (_) {}
+    } catch { /* intentionally ignored */ }
     next()
   })
 }
@@ -485,7 +490,7 @@ app.use((req, res, next) => {
     if (req.url && req.url.includes('hub_incharge')) {
       req.url = req.url.replace(/hub_incharge/g, 'hub-incharge')
     }
-  } catch (e) { /* noop */ }
+  } catch { /* noop */ }
   next()
 })
 
@@ -746,7 +751,7 @@ try {
   try {
     const { redis: redisClient } = require('./cache/redisClient');
     app.locals.redisClient = redisClient;
-  } catch (redisErr) {
+  } catch {
     app.locals.redisClient = null; // Redis not available
   }
   app.use('/api/system-health', systemHealthRouter);
@@ -774,7 +779,9 @@ app.use('/api/permissions', permissionCheckRoutes)
 // Role-based route protection middleware
 const { 
   requireEnterpriseAdmin, 
+  // eslint-disable-next-line no-unused-vars
   requireBusinessLevel,
+  // eslint-disable-next-line no-unused-vars
   smartRouteProtection 
 } = require('./middleware/roleProtection')
 
@@ -1193,6 +1200,15 @@ try {
   console.warn('Task Workflow System routes not loaded:', e && e.message);
 }
 
+// Module Approval Flow routes (Super Admin configurable approval hierarchy)
+try {
+  const approvalFlowRoutes = require('./routes/approvalFlowRoutes');
+  app.use('/api/approval-flows', authenticate, setTenantContext, approvalFlowRoutes);
+  console.log('✅ Module Approval Flow routes loaded (Super Admin configurable)');
+} catch (e) {
+  console.warn('Approval Flow routes not loaded:', e && e.message);
+}
+
 // Task V2 API routes (NEW - Enhanced with TanStack Query support)
 try {
   const tasksV2Routes = require('./routes/tasksV2');
@@ -1319,6 +1335,25 @@ try {
   // Route optional in some builds; log once in dev
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Super Admin routes not loaded:', e && e.message)
+  }
+}
+
+// Subscription Management routes
+try {
+  const subscriptionRoutes = require('./routes/subscriptionRoutes')
+  const superAdminSubscriptionRoutes = require('./routes/superAdminSubscription')
+  
+  // Public subscription endpoints (pricing, plans) - no auth required for GET
+  // Tenant subscription management - requires authentication
+  app.use('/api/subscriptions', subscriptionRoutes)
+  
+  // SuperAdmin subscription management console - requires SUPER_ADMIN role
+  app.use('/api/super-admin/subscriptions', authenticate, adminIpAllowlist, superAdminSubscriptionRoutes)
+  
+  console.log('✅ Subscription Management routes loaded')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Subscription routes not loaded:', e && e.message)
   }
 }
 
@@ -1665,7 +1700,7 @@ app.post('/api/token/refresh', async (req, res) => {
           expires_at: { gt: new Date() },
         },
       });
-    } catch (e) {
+    } catch {
       console.warn('user_sessions.findFirst failed (likely missing table). Falling back to token-only validation.');
     }
 
@@ -1674,11 +1709,10 @@ app.post('/api/token/refresh', async (req, res) => {
       return res.status(401).json({ message: 'Invalid refresh token' });
     }
         console.log('Refresh token validated against database.');
-        // Validate token signature and get user id from token
-        let decoded;
+        // Validate token signature (we use existingSession.user_id instead of decoded payload)
         try {
-          decoded = jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
-        } catch (e) {
+          jwt.verify(refreshToken, process.env.REFRESH_TOKEN_SECRET);
+        } catch {
           return res.status(401).json({ message: 'Invalid refresh token' });
         }
 
@@ -1713,7 +1747,7 @@ app.post('/api/token/refresh', async (req, res) => {
 // All clients should use the standard /api/token/refresh endpoint
 
 // This should be at the end of all other middleware and routes
-app.use((err, req, res, next) => {
+app.use((err, req, res, _next) => {
   console.error('Global error handler:', err)
   res.status(500).json({ error: 'Internal server error' })
 })
@@ -1727,10 +1761,12 @@ app.post('/api/logout', async (req, res) => {
       const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex')
       try {
         await prisma.user_sessions.deleteMany({ where: { session_token: hashedToken } });
-      } catch (e) {
+      } catch {
         console.warn('user_sessions.deleteMany failed (likely missing table). Continuing logout.');
       }
-    } catch {}
+    } catch {
+      // Intentionally ignored - logout should proceed even if token cleanup fails
+    }
   }
 
   // Clear cookies on the client side
@@ -1754,11 +1790,11 @@ app.post('/api/logout', async (req, res) => {
     res.clearCookie('access_token', { path: '/', secure: isProduction, sameSite: sameSitePolicy, ...(cookieDomain ? { domain: cookieDomain } : {}) });
     res.clearCookie('refresh_token', { path: '/', secure: isProduction, sameSite: sameSitePolicy, ...(cookieDomain ? { domain: cookieDomain } : {}) });
     res.clearCookie('token', { path: '/', secure: isProduction, sameSite: sameSitePolicy, ...(cookieDomain ? { domain: cookieDomain } : {}) });
-  } catch (e) {
+  } catch {
     // best-effort fallback
-    try { res.clearCookie('access_token', { path: '/', sameSite: 'none' }); } catch (e) { /* ignored */ }
-    try { res.clearCookie('refresh_token', { path: '/', sameSite: 'none' }); } catch (e) { /* ignored */ }
-    try { res.clearCookie('token', { path: '/', sameSite: 'none' }); } catch (e) { /* ignored */ }
+    try { res.clearCookie('access_token', { path: '/', sameSite: 'none' }); } catch { /* ignored */ }
+    try { res.clearCookie('refresh_token', { path: '/', sameSite: 'none' }); } catch { /* ignored */ }
+    try { res.clearCookie('token', { path: '/', sameSite: 'none' }); } catch { /* ignored */ }
   }
 
   res.status(200).json({ message: 'Logout successful' })
@@ -1771,7 +1807,7 @@ if (process.env.NODE_ENV !== 'production') {
       // Use imported limiters if available
       if (strictLoginLimiter?.resetKey) strictLoginLimiter.resetKey(req.ip);
       res.json({ ok: true, message: 'Rate limiter reset for development' })
-    } catch (_err) {
+    } catch {
       res.json({ ok: true, message: 'Rate limiter reset attempted' })
     }
   })
@@ -2378,7 +2414,8 @@ app.post('/api/enterprise-admin/super-admins', authenticate, requireRole('ENTERP
     });
 
     // Remove password from response
-    const { password: _, ...superAdminData } = newSuperAdmin;
+    // eslint-disable-next-line no-unused-vars
+    const { password: _pwd, ...superAdminData } = newSuperAdmin;
 
     console.log('Super Admin created:', superAdminData);
 
@@ -3379,7 +3416,7 @@ app.get('/api/hub-incharge/profile', authenticate, requireRole(['STAFF', 'ADMIN'
           where: { id: req.user.id },
           select: { username: true, email: true, role: true }
         })
-      } catch (e) {
+      } catch {
         // DB not available – fall back to mock
         user = null
       }
@@ -3614,7 +3651,7 @@ app.get('/api/auth/permissions', authenticate, async (req, res) => {
     let tablesExist = true;
     try {
       await prisma.$queryRaw`SELECT 1 FROM rbac_user_roles LIMIT 1`;
-    } catch (e) {
+    } catch {
       tablesExist = false;
     }
 
@@ -3778,7 +3815,7 @@ app.get('/api/users', authenticate, requireRole(['ADMIN', 'SUPER_ADMIN']), async
         createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
         lastLogin: null // TODO: Add last login tracking
       }))
-    } catch (dbError) {
+    } catch {
       console.log('Database not available, using mock data')
       // Fallback to mock data
       users = [
@@ -3887,7 +3924,7 @@ app.use(express.static(path.join(__dirname, '../my-frontend/build')))
 
 // 404 Handler - Only catch /api/* routes to allow Next.js to handle frontend routes
 // This prevents the backend from intercepting frontend pages (/, /admin, etc.)
-app.use('/api/*', (req, res, next) => {
+app.use('/api/*', (req, res, _next) => {
   console.warn(`[404] API route not found: ${req.method} ${req.originalUrl}`);
   res.status(404).json({
     success: false,

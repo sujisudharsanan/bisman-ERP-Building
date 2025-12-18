@@ -31,7 +31,7 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
     
     // ✅ SECURITY FIX: Get assigned role IDs/names for SUPER_ADMIN
     let assignedRoleIds = null; // null means no filter (show all)
-    let assignedRoleNames = []; // Store role names for matching when IDs don't work
+    const assignedRoleNames = []; // Store role names for matching when IDs don't work
     if (req.user?.userType === 'SUPER_ADMIN' || (req.user?.role || '').toUpperCase() === 'SUPER_ADMIN') {
       console.log('[RolesUsersReport] SUPER_ADMIN access - checking role assignments');
       console.log('[RolesUsersReport] Super Admin user.id:', req.user.id, 'email:', req.user.email);
@@ -68,7 +68,7 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
     try {
       roles = await prisma.rbac_roles.findMany();
       console.log(`[RolesUsersReport] Found ${roles.length} roles in rbac_roles table`);
-    } catch (err) {
+    } catch {
       console.log('[RolesUsersReport] rbac_roles table not available or empty, falling back to roles table');
     }
     
@@ -87,7 +87,7 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
           status: 'active',
           is_active: true
         }));
-      } catch (err) {
+      } catch {
         console.log('[RolesUsersReport] roles table not available');
       }
     }
@@ -96,13 +96,13 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
     if (roles.length === 0) {
       console.log('[RolesUsersReport] No roles tables available, extracting unique roles from users');
       // ✅ SECURITY FIX: Add tenant filter
-      const users = await prisma.User.findMany({
+      const users = await prisma.users_enhanced.findMany({
         where: tenantFilter, // ✅ SECURITY: Filter by tenant_id
         select: { role: true },
         distinct: ['role']
       });
       
-      const uniqueRoles = users.map((u, index) => u.role).filter(r => r);
+      const uniqueRoles = users.map((u) => u.role).filter(r => r);
       roles = uniqueRoles.map((roleName, index) => ({
         id: index + 1,
         name: roleName,
@@ -149,14 +149,14 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
     console.log(`[RolesUsersReport] Found ${roles.length} roles (excluding SUPER_ADMIN and ENTERPRISE_ADMIN)`);
     
     // Fetch all users with their role information
-    const users = await prisma.User.findMany({
+    const users = await prisma.users_enhanced.findMany({
       where: tenantFilter, // ✅ SECURITY: Filter by tenant_id
       select: {
         id: true,
         username: true,
         email: true,
         role: true,
-        createdAt: true
+        created_at: true
       },
       orderBy: { role: 'asc' }
     });
@@ -240,7 +240,7 @@ router.get('/roles-users-report', authenticate, requireRole(['ENTERPRISE_ADMIN',
       } else { throw err; }
     }
     // Distinct roles from users
-    const distinctRoles = await prisma.User.findMany({
+    const distinctRoles = await prisma.users_enhanced.findMany({
       where: tenantFilter,
       select: { role: true },
       distinct: ['role']
@@ -251,7 +251,7 @@ router.get('/roles-users-report', authenticate, requireRole(['ENTERPRISE_ADMIN',
 
     const report = [];
     for (const role of roles) {
-      const userCount = await prisma.User.count({ where: { ...tenantFilter, role } });
+      const userCount = await prisma.users_enhanced.count({ where: { ...tenantFilter, role } });
       // Permissions coverage (module-level)
       let permRows = [];
       try {
@@ -259,7 +259,7 @@ router.get('/roles-users-report', authenticate, requireRole(['ENTERPRISE_ADMIN',
           where: { role },
           select: { module_id: true, can_view: true, can_create: true, can_edit: true, can_delete: true }
         });
-      } catch (_) { /* permissions table may differ */ }
+      } catch { /* permissions table may differ */ }
       const modules = new Set(permRows.map(p => p.module_id));
       const crudAggregate = permRows.reduce((acc, p) => {
         acc.view += p.can_view ? 1 : 0;
@@ -302,7 +302,7 @@ router.get('/roles-users/csv', authenticate, requireRole(['ENTERPRISE_ADMIN', 'S
     let roles = [];
     try {
       roles = await prisma.rbac_roles.findMany({ orderBy: { name: 'asc' } });
-    } catch (err) {
+    } catch {
       console.log('[RolesUsersReport CSV] rbac_roles table not available, trying roles table');
     }
     
@@ -318,7 +318,7 @@ router.get('/roles-users/csv', authenticate, requireRole(['ENTERPRISE_ADMIN', 'S
           description: null,
           status: 'active'
         }));
-      } catch (err) {
+      } catch {
         console.log('[RolesUsersReport CSV] roles table not available');
       }
     }
@@ -326,13 +326,13 @@ router.get('/roles-users/csv', authenticate, requireRole(['ENTERPRISE_ADMIN', 'S
     // If still no roles, extract unique roles from users table
     if (roles.length === 0) {
       // ✅ SECURITY FIX: Add tenant filter
-      const allUsers = await prisma.User.findMany({
+      const allUsers = await prisma.users_enhanced.findMany({
         where: tenantFilter, // ✅ SECURITY: Filter by tenant_id
         select: { role: true },
         distinct: ['role']
       });
       
-      const uniqueRoles = allUsers.map((u, index) => u.role).filter(r => r);
+      const uniqueRoles = allUsers.map((u) => u.role).filter(r => r);
       roles = uniqueRoles.map((roleName, index) => ({
         id: index + 1,
         name: roleName,
@@ -352,14 +352,14 @@ router.get('/roles-users/csv', authenticate, requireRole(['ENTERPRISE_ADMIN', 'S
     
     // ✅ SECURITY FIX: Add tenant filter
     // Fetch all users
-    const users = await prisma.User.findMany({
+    const users = await prisma.users_enhanced.findMany({
       where: tenantFilter, // ✅ SECURITY: Filter by tenant_id
       select: {
         id: true,
         username: true,
         email: true,
         role: true,
-        createdAt: true
+        created_at: true
       },
       orderBy: { role: 'asc' }
     });
@@ -504,7 +504,7 @@ router.get('/pages-roles', async (req, res) => {
         pages = pages.filter(p => approvedIds.has(p.id) || approvedPaths.has(p.path));
         const afterCount = pages.length;
         console.log(`[PagesRolesReport] EA filter applied: ${beforeCount} -> ${afterCount} pages`);
-      } catch (e) {
+      } catch {
         console.warn('[PagesRolesReport] MASTER_MODULES not available, skipping EA approval filter');
       }
     } else {
@@ -648,8 +648,6 @@ router.get('/pages-roles', async (req, res) => {
  * Export pages-roles report as CSV
  */
 router.get('/pages-roles/csv', async (req, res) => {
-  const prisma = getPrisma();
-  
   try {
     console.log('[PagesRolesReport] Generating CSV export...');
     
@@ -703,7 +701,7 @@ router.get('/pages-roles/csv', async (req, res) => {
       const before = pages.length;
       pages = pages.filter(p => approvedIds.has(p.id) || approvedPaths.has(p.path));
       console.log(`[PagesRolesReport CSV] EA filter applied: ${before} -> ${pages.length}`);
-    } catch (e) {
+    } catch {
       console.warn('[PagesRolesReport CSV] MASTER_MODULES not available, skipping EA approval filter');
     }
 

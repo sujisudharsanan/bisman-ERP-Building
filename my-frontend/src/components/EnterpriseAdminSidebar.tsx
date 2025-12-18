@@ -8,7 +8,6 @@ import {
   FiPackage,
   FiSettings,
   FiLogOut,
-  FiCpu,
   FiFileText,
   FiActivity,
   FiUsers,
@@ -58,12 +57,6 @@ export default function EnterpriseAdminSidebar({ className = '' }: EnterpriseAdm
       label: 'Module Management',
       icon: FiPackage,
       href: '/enterprise-admin/modules',
-    },
-    {
-      id: 'ai-handling',
-      label: 'AI Handling',
-      icon: FiCpu,
-      href: '/enterprise-admin/ai-handling',
     },
     {
       id: 'activity-logs',

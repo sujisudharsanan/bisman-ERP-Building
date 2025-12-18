@@ -60,7 +60,7 @@ async function verify() {
     }
     
     console.log('\n' + '='.repeat(80));
-    console.log('\n🔐 All demo users password: Demo@123\n');
+    console.log('\n🔐 All demo users password: [DEFAULT_DEMO_PASSWORD env var]\n');
     
   } catch (error) {
     console.error('\n❌ Error:', error.message);
