@@ -2470,7 +2470,7 @@ model SubscriptionPlan {
 /// Client subscription state and billing
 model ClientSubscription {
   id                   Int                @id @default(autoincrement())
-  client_id            Int                @unique
+  client_id            String             @unique @db.Uuid
   plan_id              Int
   
   // State Machine
@@ -2555,7 +2555,7 @@ model FeatureFlagDefinition {
 /// Client-specific feature overrides (SuperAdmin controlled)
 model ClientFeatureOverride {
   id               Int                @id @default(autoincrement())
-  client_id        Int
+  client_id        String             @db.Uuid
   flag_code        String             @db.VarChar(100)
   override_value   feature_flag_value
   numeric_override Int?
@@ -2576,7 +2576,7 @@ model ClientFeatureOverride {
 /// Billing overrides for special cases
 model BillingOverride {
   id                   Int       @id @default(autoincrement())
-  client_id            Int
+  client_id            String    @db.Uuid
   override_type        String    @db.VarChar(50)
   
   discount_percent     Decimal?  @db.Decimal(5, 2)
@@ -2608,7 +2608,7 @@ model BillingOverride {
 /// Subscription audit log for complete audit trail
 model SubscriptionAuditLog {
   id              Int       @id @default(autoincrement())
-  client_id       Int?
+  client_id       String?   @db.Uuid
   subscription_id Int?
   
   action          String    @db.VarChar(100)
@@ -2639,7 +2639,7 @@ model SubscriptionAuditLog {
 /// Subscription invoices for billing history
 model SubscriptionInvoice {
   id               Int       @id @default(autoincrement())
-  client_id        Int
+  client_id        String    @db.Uuid
   subscription_id  Int?
   
   invoice_number   String    @unique @db.VarChar(50)

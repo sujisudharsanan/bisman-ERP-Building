@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS subscription_plans (
 
 CREATE TABLE IF NOT EXISTS client_subscriptions (
   id                    SERIAL PRIMARY KEY,
-  client_id             INT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  client_id             UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
   plan_id               INT NOT NULL REFERENCES subscription_plans(id),
   
   -- State Machine
@@ -194,7 +194,7 @@ CREATE TABLE IF NOT EXISTS feature_flag_definitions (
 
 CREATE TABLE IF NOT EXISTS client_feature_overrides (
   id                    SERIAL PRIMARY KEY,
-  client_id             INT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  client_id             UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
   flag_code             VARCHAR(100) NOT NULL,
   override_value        feature_flag_value NOT NULL,
   numeric_override      INT,           -- For numeric limits
@@ -216,7 +216,7 @@ CREATE TABLE IF NOT EXISTS client_feature_overrides (
 
 CREATE TABLE IF NOT EXISTS billing_overrides (
   id                    SERIAL PRIMARY KEY,
-  client_id             INT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  client_id             UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
   override_type         VARCHAR(50) NOT NULL,  -- pause, discount, custom_price, extend_trial
   
   -- Override details
@@ -252,7 +252,7 @@ CREATE TABLE IF NOT EXISTS billing_overrides (
 
 CREATE TABLE IF NOT EXISTS subscription_audit_log (
   id                    SERIAL PRIMARY KEY,
-  client_id             INT REFERENCES clients(id) ON DELETE SET NULL,
+  client_id             UUID REFERENCES clients(id) ON DELETE SET NULL,
   subscription_id       INT REFERENCES client_subscriptions(id) ON DELETE SET NULL,
   
   -- Action
@@ -283,7 +283,7 @@ CREATE TABLE IF NOT EXISTS subscription_audit_log (
 
 CREATE TABLE IF NOT EXISTS subscription_invoices (
   id                    SERIAL PRIMARY KEY,
-  client_id             INT NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
+  client_id             UUID NOT NULL REFERENCES clients(id) ON DELETE CASCADE,
   subscription_id       INT REFERENCES client_subscriptions(id) ON DELETE SET NULL,
   
   -- Invoice details
