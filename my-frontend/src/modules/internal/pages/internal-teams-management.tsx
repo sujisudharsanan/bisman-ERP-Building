@@ -64,12 +64,12 @@ export default function InternalTeamsManagement() {
     }
   };
 
-  const teamByRole = data?.team?.reduce((acc, member) => {
+  const teamByRole: Record<string, InternalTeamMember[]> = data?.team?.reduce((acc, member) => {
     const role = member.role;
     if (!acc[role]) acc[role] = [];
     acc[role].push(member);
     return acc;
-  }, {} as Record<InternalRole, InternalTeamMember[]>) || {};
+  }, {} as Record<string, InternalTeamMember[]>) || {};
 
   if (error) {
     return (
@@ -120,7 +120,7 @@ export default function InternalTeamsManagement() {
               <div>
                 <p className="text-sm text-gray-600">{config.label}</p>
                 <p className="text-xl font-bold text-gray-900">
-                  {teamByRole[role as InternalRole]?.length || 0}
+                  {teamByRole[role]?.length || 0}
                 </p>
               </div>
             </div>
