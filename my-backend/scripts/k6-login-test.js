@@ -1,7 +1,4 @@
-/* eslint-env es2020 */
-/* eslint-disable import/no-unresolved */
-/* eslint-disable no-undef */
-/* eslint-disable no-unused-vars */
+/* eslint-disable */
 // @ts-nocheck
 /**
  * @file K6 Load Testing Script

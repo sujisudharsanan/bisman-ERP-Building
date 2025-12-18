@@ -1,0 +1,2 @@
+# k6 load testing scripts use ES modules natively
+scripts/k6-*.js
