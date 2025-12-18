@@ -9,9 +9,10 @@
 
 import React, { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import SuperAdminLayout from '@/components/layouts/SuperAdminLayout';
+import SuperAdminLayout from '@/common/layouts/superadmin-layout';
 import PaymentRequestForm from '@/components/payment-approval/PaymentRequestForm';
 import { DollarSign, Calendar, User, Building2, FileText, CheckCircle, AlertCircle, Clock, Send } from 'lucide-react';
+import { safeFetch } from '@/lib/safeFetch';
 
 // Use relative URLs to go through Next.js API proxy (which handles auth cookies)
 const API_BASE = '';
@@ -135,19 +136,18 @@ export default function UnifiedPaymentRequestPage() {
 			};
 
 			const createRes = await safeFetch(`${API_BASE}/api/common/payment-requests`, {
-			const createRes = await fetch(`${API_BASE}/api/common/payment-requests`, {
 				method: 'POST',
 				headers: { 'Content-Type': 'application/json' },
 				credentials: 'include',
 				body: JSON.stringify(payload),
 			});
+			if (!createRes.ok) {
 				const err = await createRes.json().catch(() => ({}));
 				throw new Error(err.error || 'Failed to create payment request');
 			}
 			const created = await createRes.json();
 			const paymentRequestId = created?.data?.id;
 
-			if (!isDraft && paymentRequestId) {
 			if (!isDraft && paymentRequestId) {
 				const submitRes = await fetch(
 					`${API_BASE}/api/common/payment-requests/${paymentRequestId}/submit`,
@@ -157,6 +157,7 @@ export default function UnifiedPaymentRequestPage() {
 						credentials: 'include',
 					}
 				);
+				if (!submitRes.ok) {
 					const err = await submitRes.json().catch(() => ({}));
 					throw new Error(err.error || 'Failed to submit for approval');
 				}
