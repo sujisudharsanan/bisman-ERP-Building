@@ -3,18 +3,23 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import {
   FiUsers,
-  FiEdit,
-  FiTrash2,
   FiSearch,
   FiShield,
   FiPackage,
   FiCheckCircle,
   FiXCircle,
-  FiPlus,
   FiX,
   FiSave,
   FiChevronDown,
   FiChevronRight,
+  FiKey,
+  FiMail,
+  FiCalendar,
+  FiUser,
+  FiPlus,
+  FiLock,
+  FiBriefcase,
+  FiLoader,
 } from 'react-icons/fi';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
@@ -34,17 +39,27 @@ interface Page {
   path: string;
 }
 
+interface AssignedModule {
+  module_id: string;
+  module_name: string;
+  assigned_pages: string[];
+}
+
 interface SuperAdmin {
   id: number;
   username: string;
+  name?: string;
   email: string;
   businessName?: string;
   businessType?: string;
+  productType?: string;
   vertical?: string;
   role: string;
   createdAt: string;
+  status?: string;
   isActive: boolean;
   assignedModules: string[];
+  assignedModulesData?: AssignedModule[];
   totalClients?: number;
   pagePermissions?: { [moduleId: string]: string[] };
 }
@@ -59,9 +74,45 @@ export default function SuperAdminManagementPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [isDataRefreshing, setIsDataRefreshing] = useState(false);
 
-  // Module assignment modal
-  const [showModuleModal, setShowModuleModal] = useState(false);
+  // Profile view modal
+  const [showProfileModal, setShowProfileModal] = useState(false);
   const [selectedAdmin, setSelectedAdmin] = useState<SuperAdmin | null>(null);
+  const [adminClients, setAdminClients] = useState<{
+    id: string;
+    name: string;
+    clientCode: string | null;
+    email: string | null;
+    phone: string | null;
+    clientType: string | null;
+    industry: string | null;
+    status: string | null;
+    isActive: boolean;
+    subscriptionPlan: string;
+    subscriptionStatus: string;
+    onboardingStatus: string | null;
+    createdAt: string | null;
+  }[]>([]);
+  const [isLoadingClients, setIsLoadingClients] = useState(false);
+
+  // Password reset modal
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [isResettingPassword, setIsResettingPassword] = useState(false);
+
+  // Create super admin modal
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [isCreating, setIsCreating] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    name: '',
+    email: '',
+    password: '',
+    confirmPassword: '',
+    productType: 'BUSINESS_ERP',
+  });
+
+  // Module assignment modal (keeping for backward compatibility)
+  const [showModuleModal, setShowModuleModal] = useState(false);
   const [tempAssignedModules, setTempAssignedModules] = useState<string[]>([]);
   const [tempPagePermissions, setTempPagePermissions] = useState<{ [moduleId: string]: string[] }>({});
   const [expandedModules, setExpandedModules] = useState<string[]>([]);
@@ -130,8 +181,40 @@ export default function SuperAdminManagementPage() {
 
       const data = await response.json();
       if (data.ok && data.superAdmins) {
-        setSuperAdmins(data.superAdmins);
-        setFilteredAdmins(data.superAdmins);
+        // Transform API response to match frontend interface
+        const transformedAdmins: SuperAdmin[] = data.superAdmins.map((admin: {
+          id: number;
+          name?: string;
+          username?: string;
+          email: string;
+          productType?: string;
+          businessName?: string;
+          status?: string;
+          is_active?: boolean;
+          assignedModules?: Array<{ module_id: string; module_name: string; assigned_pages: string[] }> | string[];
+          created_at?: string;
+          createdAt?: string;
+        }) => ({
+          ...admin,
+          // Map 'name' to 'username' if username is not provided
+          username: admin.username || admin.name || admin.email?.split('@')[0] || 'Unknown',
+          // Map 'status' to 'isActive' boolean
+          isActive: admin.status === 'active' || admin.is_active === true,
+          // Extract module IDs if assignedModules contains objects
+          assignedModules: Array.isArray(admin.assignedModules)
+            ? admin.assignedModules.map((m: string | { module_id: string }) =>
+                typeof m === 'string' ? m : m.module_id
+              )
+            : [],
+          // Store the full module data for display
+          assignedModulesData: Array.isArray(admin.assignedModules)
+            ? admin.assignedModules.filter((m): m is { module_id: string; module_name: string; assigned_pages: string[] } => typeof m !== 'string')
+            : [],
+          createdAt: admin.createdAt || admin.created_at || new Date().toISOString(),
+          businessName: admin.businessName || admin.productType || 'N/A',
+        }));
+        setSuperAdmins(transformedAdmins);
+        setFilteredAdmins(transformedAdmins);
       }
     } catch (error) {
       console.error('Error loading super admins:', error);
@@ -145,9 +228,9 @@ export default function SuperAdminManagementPage() {
     if (searchQuery) {
       filtered = filtered.filter(
         (admin) =>
-          admin.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          admin.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          admin.businessName?.toLowerCase().includes(searchQuery.toLowerCase())
+          (admin.username || admin.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (admin.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (admin.businessName || '').toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -247,23 +330,136 @@ export default function SuperAdminManagementPage() {
     }
   };
 
-  const handleDeleteAdmin = async (admin: SuperAdmin) => {
-    if (!confirm(`Are you sure you want to delete ${admin.username}?`)) return;
-
+  // View profile handler
+  const handleViewProfile = async (admin: SuperAdmin) => {
+    setSelectedAdmin(admin);
+    setAdminClients([]);
+    setShowProfileModal(true);
+    
+    // Fetch clients for this super admin
+    setIsLoadingClients(true);
     try {
       const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
-      const response = await fetch(`${baseURL}/api/enterprise-admin/super-admins/${admin.id}`, {
-        method: 'DELETE',
+      const response = await fetch(`${baseURL}/api/enterprise-admin/super-admins/${admin.id}/clients`, {
+        method: 'GET',
         credentials: 'include',
       });
 
-      if (!response.ok) throw new Error('Failed to delete super admin');
+      if (response.ok) {
+        const data = await response.json();
+        if (data.ok && data.clients) {
+          setAdminClients(data.clients);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching clients:', error);
+    } finally {
+      setIsLoadingClients(false);
+    }
+  };
 
-      alert('Super Admin deleted successfully!');
+  // Password reset handlers
+  const handleOpenPasswordReset = (admin: SuperAdmin) => {
+    setSelectedAdmin(admin);
+    setNewPassword('');
+    setConfirmPassword('');
+    setShowPasswordModal(true);
+  };
+
+  const handleResetPassword = async () => {
+    if (!selectedAdmin) return;
+    
+    if (newPassword.length < 8) {
+      alert('Password must be at least 8 characters long');
+      return;
+    }
+    
+    if (newPassword !== confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+
+    setIsResettingPassword(true);
+    try {
+      const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${baseURL}/api/enterprise-admin/super-admins/${selectedAdmin.id}/reset-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ newPassword }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to reset password');
+      }
+
+      alert('Password reset successfully!');
+      setShowPasswordModal(false);
+      setNewPassword('');
+      setConfirmPassword('');
+    } catch (error) {
+      console.error('Error resetting password:', error);
+      alert(error instanceof Error ? error.message : 'Failed to reset password');
+    } finally {
+      setIsResettingPassword(false);
+    }
+  };
+
+  // Create super admin handler
+  const handleCreateSuperAdmin = async () => {
+    if (!createForm.name.trim()) {
+      alert('Name is required');
+      return;
+    }
+    if (!createForm.email.trim() || !createForm.email.includes('@')) {
+      alert('Valid email is required');
+      return;
+    }
+    if (createForm.password.length < 8) {
+      alert('Password must be at least 8 characters long');
+      return;
+    }
+    if (createForm.password !== createForm.confirmPassword) {
+      alert('Passwords do not match');
+      return;
+    }
+
+    setIsCreating(true);
+    try {
+      const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+      const response = await fetch(`${baseURL}/api/enterprise-admin/super-admins`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          name: createForm.name,
+          email: createForm.email,
+          password: createForm.password,
+          productType: createForm.productType,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to create super admin');
+      }
+
+      alert('Super Admin created successfully!');
+      setShowCreateModal(false);
+      setCreateForm({
+        name: '',
+        email: '',
+        password: '',
+        confirmPassword: '',
+        productType: 'BUSINESS_ERP',
+      });
       loadSuperAdmins();
     } catch (error) {
-      console.error('Error deleting super admin:', error);
-      alert('Failed to delete Super Admin');
+      console.error('Error creating super admin:', error);
+      alert(error instanceof Error ? error.message : 'Failed to create super admin');
+    } finally {
+      setIsCreating(false);
     }
   };
 
@@ -289,7 +485,13 @@ export default function SuperAdminManagementPage() {
               Manage Super Admins and assign modules
             </p>
           </div>
-          {/* Create Super Admin button removed as per requirement */}
+          <button
+            onClick={() => setShowCreateModal(true)}
+            className="inline-flex items-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium shadow-md transition-colors"
+          >
+            <FiPlus size={18} />
+            Create Super Admin
+          </button>
         </div>
 
         {/* Stats Cards */}
@@ -357,10 +559,10 @@ export default function SuperAdminManagementPage() {
                   Super Admin
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 dark:text-white uppercase">
-                  Business
+                  Email
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 dark:text-white uppercase">
-                  Assigned Modules
+                  Business
                 </th>
                 <th className="px-6 py-4 text-left text-sm font-bold text-gray-900 dark:text-white uppercase">
                   Status
@@ -375,69 +577,53 @@ export default function SuperAdminManagementPage() {
                 <tr key={admin.id} className="hover:bg-gray-50 dark:hover:bg-gray-750">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">
-                        {admin.username.substring(0, 2).toUpperCase()}
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-white flex items-center justify-center font-bold text-lg shadow-md">
+                        {(admin.username || admin.name || 'NA').substring(0, 2).toUpperCase()}
                       </div>
                       <div>
-                        <div className="font-medium text-gray-900 dark:text-white">{admin.username}</div>
-                        <div className="text-sm text-gray-500 dark:text-gray-400">{admin.email}</div>
+                        <div className="font-semibold text-gray-900 dark:text-white">{admin.username || admin.name || 'Unknown'}</div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">ID: {admin.id}</div>
                       </div>
                     </div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="text-sm text-gray-900 dark:text-white">{admin.businessName || 'N/A'}</div>
+                    <div className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-300">
+                      <FiMail className="text-gray-400" size={14} />
+                      {admin.email}
+                    </div>
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="text-sm text-gray-900 dark:text-white">{admin.businessName || admin.productType || 'N/A'}</div>
                     <div className="text-xs text-gray-500 dark:text-gray-400">{admin.vertical || 'General'}</div>
                   </td>
                   <td className="px-6 py-4">
-                    <div className="flex flex-wrap gap-1">
-                      {admin.assignedModules && admin.assignedModules.length > 0 ? (
-                        admin.assignedModules.slice(0, 3).map((moduleId) => {
-                          const module = availableModules.find((m) => m.id === moduleId);
-                          return (
-                            <span
-                              key={moduleId}
-                              className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 text-xs rounded"
-                            >
-                              {module?.name || moduleId}
-                            </span>
-                          );
-                        })
-                      ) : (
-                        <span className="text-sm text-gray-500 dark:text-gray-400">No modules assigned</span>
-                      )}
-                      {admin.assignedModules && admin.assignedModules.length > 3 && (
-                        <span className="px-2 py-1 bg-gray-200 dark:bg-gray-700 text-gray-700 dark:text-gray-300 text-xs rounded">
-                          +{admin.assignedModules.length - 3} more
-                        </span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
                     {admin.isActive ? (
-                      <span className="flex items-center gap-1 text-green-600 text-sm">
-                        <FiCheckCircle /> Active
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 text-sm rounded-full">
+                        <FiCheckCircle size={14} /> Active
                       </span>
                     ) : (
-                      <span className="flex items-center gap-1 text-red-600 text-sm">
-                        <FiXCircle /> Inactive
+                      <span className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400 text-sm rounded-full">
+                        <FiXCircle size={14} /> Inactive
                       </span>
                     )}
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-2">
                       <button
-                        onClick={() => handleEditModules(admin)}
-                        className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded"
-                        title="Edit Modules"
+                        onClick={() => handleViewProfile(admin)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg text-sm font-medium transition-colors"
+                        title="View Profile"
                       >
-                        <FiEdit size={18} />
+                        <FiUser size={14} />
+                        Profile
                       </button>
                       <button
-                        onClick={() => handleDeleteAdmin(admin)}
-                        className="p-2 text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
-                        title="Delete"
+                        onClick={() => handleOpenPasswordReset(admin)}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-amber-50 dark:bg-amber-900/20 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-lg text-sm font-medium transition-colors"
+                        title="Reset Password"
                       >
-                        <FiTrash2 size={18} />
+                        <FiKey size={14} />
+                        Reset Password
                       </button>
                     </div>
                   </td>
@@ -447,18 +633,375 @@ export default function SuperAdminManagementPage() {
           </table>
         </div>
 
+        {/* Profile View Modal */}
+        {showProfileModal && selectedAdmin && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+              {/* Modal Header */}
+              <div className="bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">
+                <div className="flex justify-between items-start">
+                  <div className="flex items-center gap-4">
+                    <div className="w-16 h-16 rounded-full bg-white/20 backdrop-blur flex items-center justify-center font-bold text-2xl">
+                      {(selectedAdmin.username || selectedAdmin.name || 'NA').substring(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold">{selectedAdmin.username || selectedAdmin.name || 'Unknown'}</h2>
+                      <p className="text-blue-100 text-sm">Super Admin</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowProfileModal(false)}
+                    className="p-1 hover:bg-white/20 rounded-full transition-colors"
+                  >
+                    <FiX size={20} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-4 max-h-[60vh] overflow-y-auto">
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <FiMail className="text-gray-400" size={18} />
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Email</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">{selectedAdmin.email}</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <FiShield className="text-gray-400" size={18} />
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Business / Product Type</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">{selectedAdmin.businessName || selectedAdmin.productType || 'N/A'}</div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  <FiCalendar className="text-gray-400" size={18} />
+                  <div>
+                    <div className="text-xs text-gray-500 dark:text-gray-400">Created At</div>
+                    <div className="text-sm font-medium text-gray-900 dark:text-white">
+                      {selectedAdmin.createdAt ? new Date(selectedAdmin.createdAt).toLocaleDateString() : 'N/A'}
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+                  {selectedAdmin.isActive ? (
+                    <>
+                      <FiCheckCircle className="text-green-500" size={18} />
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Status</div>
+                        <div className="text-sm font-medium text-green-600">Active</div>
+                      </div>
+                    </>
+                  ) : (
+                    <>
+                      <FiXCircle className="text-red-500" size={18} />
+                      <div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">Status</div>
+                        <div className="text-sm font-medium text-red-600">Inactive</div>
+                      </div>
+                    </>
+                  )}
+                </div>
+
+                {/* Clients Section */}
+                <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="text-sm font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                      <FiBriefcase size={16} />
+                      Clients ({adminClients.length})
+                    </h3>
+                  </div>
+                  
+                  {isLoadingClients ? (
+                    <div className="flex items-center justify-center py-8">
+                      <FiLoader className="animate-spin text-blue-500" size={24} />
+                      <span className="ml-2 text-gray-500">Loading clients...</span>
+                    </div>
+                  ) : adminClients.length === 0 ? (
+                    <div className="text-center py-6 bg-gray-50 dark:bg-gray-700/30 rounded-lg">
+                      <FiUsers className="mx-auto text-gray-400" size={32} />
+                      <p className="mt-2 text-sm text-gray-500 dark:text-gray-400">No clients assigned yet</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2 max-h-[200px] overflow-y-auto">
+                      {adminClients.map((client) => (
+                        <div
+                          key={client.id}
+                          className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors"
+                        >
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-full bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-medium text-sm">
+                              {(client.name || 'C').substring(0, 2).toUpperCase()}
+                            </div>
+                            <div>
+                              <div className="text-sm font-medium text-gray-900 dark:text-white">{client.name}</div>
+                              <div className="text-xs text-gray-500 dark:text-gray-400">
+                                {client.clientCode || client.email || 'No code'}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <span className={`text-xs px-2 py-0.5 rounded-full ${
+                              client.isActive 
+                                ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400' 
+                                : 'bg-red-100 dark:bg-red-900/30 text-red-700 dark:text-red-400'
+                            }`}>
+                              {client.isActive ? 'Active' : 'Inactive'}
+                            </span>
+                            <span className="text-xs px-2 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400">
+                              {client.subscriptionPlan || 'Free'}
+                            </span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => {
+                    setShowProfileModal(false);
+                    handleOpenPasswordReset(selectedAdmin);
+                  }}
+                  className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white rounded-lg font-medium transition-colors"
+                >
+                  <FiKey size={16} />
+                  Reset Password
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Password Reset Modal */}
+        {showPasswordModal && selectedAdmin && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md overflow-hidden">
+              {/* Modal Header */}
+              <div className="p-6 border-b border-gray-200 dark:border-gray-700">
+                <div className="flex justify-between items-center">
+                  <div>
+                    <h2 className="text-xl font-bold text-gray-900 dark:text-white">Reset Password</h2>
+                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                      {selectedAdmin.username || selectedAdmin.name} ({selectedAdmin.email})
+                    </p>
+                  </div>
+                  <button
+                    onClick={() => setShowPasswordModal(false)}
+                    className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-full transition-colors"
+                  >
+                    <FiX size={20} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Enter new password"
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    Confirm Password
+                  </label>
+                  <input
+                    type="password"
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    placeholder="Confirm new password"
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  Password must be at least 8 characters long.
+                </p>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700 flex gap-3">
+                <button
+                  onClick={() => setShowPasswordModal(false)}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleResetPassword}
+                  disabled={isResettingPassword || !newPassword || !confirmPassword}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-amber-500 hover:bg-amber-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                >
+                  {isResettingPassword ? (
+                    <>Resetting...</>
+                  ) : (
+                    <>
+                      <FiKey size={16} />
+                      Reset Password
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Create Super Admin Modal */}
+        {showCreateModal && (
+          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
+            <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-lg overflow-hidden">
+              {/* Modal Header */}
+              <div className="bg-gradient-to-r from-blue-600 to-indigo-600 p-6 text-white">
+                <div className="flex justify-between items-center">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur flex items-center justify-center">
+                      <FiPlus size={24} />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold">Create Super Admin</h2>
+                      <p className="text-blue-100 text-sm">Add a new super admin to the system</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => setShowCreateModal(false)}
+                    className="p-1 hover:bg-white/20 rounded-full transition-colors"
+                  >
+                    <FiX size={20} />
+                  </button>
+                </div>
+              </div>
+
+              {/* Modal Body */}
+              <div className="p-6 space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <FiUser className="inline mr-2" size={14} />
+                    Full Name *
+                  </label>
+                  <input
+                    type="text"
+                    value={createForm.name}
+                    onChange={(e) => setCreateForm({ ...createForm, name: e.target.value })}
+                    placeholder="Enter full name"
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <FiMail className="inline mr-2" size={14} />
+                    Email Address *
+                  </label>
+                  <input
+                    type="email"
+                    value={createForm.email}
+                    onChange={(e) => setCreateForm({ ...createForm, email: e.target.value })}
+                    placeholder="Enter email address"
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <FiPackage className="inline mr-2" size={14} />
+                    Product Type *
+                  </label>
+                  <select
+                    value={createForm.productType}
+                    onChange={(e) => setCreateForm({ ...createForm, productType: e.target.value })}
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="BUSINESS_ERP">Business ERP</option>
+                    <option value="PUMP_MANAGEMENT">Pump Management</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <FiLock className="inline mr-2" size={14} />
+                    Password *
+                  </label>
+                  <input
+                    type="password"
+                    value={createForm.password}
+                    onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                    placeholder="Enter password (min 8 characters)"
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <FiLock className="inline mr-2" size={14} />
+                    Confirm Password *
+                  </label>
+                  <input
+                    type="password"
+                    value={createForm.confirmPassword}
+                    onChange={(e) => setCreateForm({ ...createForm, confirmPassword: e.target.value })}
+                    placeholder="Confirm password"
+                    className="w-full px-4 py-2.5 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
+                </div>
+
+                <p className="text-xs text-gray-500 dark:text-gray-400">
+                  * All fields are required. Password must be at least 8 characters.
+                </p>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="px-6 py-4 bg-gray-50 dark:bg-gray-700/50 border-t border-gray-200 dark:border-gray-700 flex gap-3">
+                <button
+                  onClick={() => setShowCreateModal(false)}
+                  className="flex-1 px-4 py-2.5 border border-gray-300 dark:border-gray-600 text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateSuperAdmin}
+                  disabled={isCreating || !createForm.name || !createForm.email || !createForm.password}
+                  className="flex-1 inline-flex items-center justify-center gap-2 px-4 py-2.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+                >
+                  {isCreating ? (
+                    <>Creating...</>
+                  ) : (
+                    <>
+                      <FiPlus size={16} />
+                      Create Super Admin
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Module Assignment Modal */}
         {showModuleModal && selectedAdmin && (
           <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
-              {/* Modal Header */}
               <div className="p-6 border-b border-gray-200 dark:border-gray-700 flex justify-between items-center">
                 <div>
                   <h2 className="text-2xl font-bold text-gray-900 dark:text-white">
                     Assign Modules & Pages
                   </h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {selectedAdmin.username} - {selectedAdmin.email}
+                    {selectedAdmin.username || selectedAdmin.name || 'Admin'} - {selectedAdmin.email}
                   </p>
                 </div>
                 <button

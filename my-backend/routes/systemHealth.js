@@ -279,7 +279,7 @@ function getSystemMetrics() {
   let totalTick = 0;
 
   cpus.forEach(cpu => {
-    for (let type in cpu.times) {
+    for (const type in cpu.times) {
       totalTick += cpu.times[type];
     }
     totalIdle += cpu.times.idle;
@@ -578,21 +578,69 @@ function getMetricStatus(value, threshold, inverted = false) {
 }
 
 /**
- * Generate time series data (mock for now - replace with actual historical data)
+ * Generate time series data from actual database metrics or in-memory buffer
  */
-function generateTimeSeries(currentValue, hours = 24) {
+async function generateTimeSeries(prisma, metricName, currentValue, hours = 24) {
   const series = [];
   const now = Date.now();
   
-  for (let i = hours - 1; i >= 0; i--) {
-    const timestamp = new Date(now - i * 3600000).toISOString();
-    const variation = (Math.random() - 0.5) * 0.3; // ±15% variation
-    const value = currentValue * (1 + variation);
-    
+  try {
+    // Try to get historical data from system_health_metrics table
+    const startTime = new Date(now - hours * 3600000);
+    const metrics = await prisma.systemHealthMetric.findMany({
+      where: {
+        metric_name: metricName,
+        recorded_at: { gte: startTime }
+      },
+      orderBy: { recorded_at: 'asc' },
+      take: hours
+    });
+
+    if (metrics.length > 0) {
+      // Use actual historical data
+      metrics.forEach(m => {
+        const hoursAgo = Math.round((now - m.recorded_at.getTime()) / 3600000);
+        series.push({
+          timestamp: m.recorded_at.toISOString(),
+          value: parseFloat(m.metric_value),
+          label: hoursAgo === 0 ? 'now' : `${hoursAgo}h ago`
+        });
+      });
+      
+      // Add current value if not recent enough
+      if (series.length === 0 || (now - new Date(series[series.length - 1].timestamp).getTime()) > 3600000) {
+        series.push({
+          timestamp: new Date().toISOString(),
+          value: currentValue,
+          label: 'now'
+        });
+      }
+      
+      return series;
+    }
+  } catch (e) {
+    // Table might not exist yet, fall through to in-memory fallback
+  }
+
+  // Fallback: Use in-memory buffer or generate from current value
+  const buffer = metricName.includes('latency') ? latencyHistory : 
+                 metricName.includes('error') ? errorRateHistory : [];
+  
+  if (buffer.length > 0) {
+    buffer.forEach((item, idx) => {
+      const hoursAgo = buffer.length - idx - 1;
+      series.push({
+        timestamp: item.timestamp,
+        value: item.value,
+        label: hoursAgo === 0 ? 'now' : `${hoursAgo}h ago`
+      });
+    });
+  } else {
+    // Generate minimal series from current value only (no fake historical data)
     series.push({
-      timestamp,
-      value: Math.max(0, value),
-      label: `${i}h ago`,
+      timestamp: new Date().toISOString(),
+      value: currentValue,
+      label: 'now'
     });
   }
   

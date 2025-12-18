@@ -11,6 +11,54 @@ const requireEnterpriseAdmin = (req, res, next) => {
   next();
 };
 
+// Get filter options (modules, users, clients, super admins)
+router.get('/filter-options', requireEnterpriseAdmin, async (req, res) => {
+  try {
+    // Get unique modules from activity logs
+    const moduleGroups = await prisma.recent_activity.groupBy({
+      by: ['entity'],
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } }
+    });
+
+    // Get unique users from activity logs
+    const userGroups = await prisma.recent_activity.groupBy({
+      by: ['username'],
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: 100
+    });
+
+    // Get all clients for filter
+    const clients = await prisma.client.findMany({
+      select: { id: true, business_name: true },
+      orderBy: { business_name: 'asc' },
+      take: 100
+    });
+
+    // Get all super admins for filter
+    const superAdmins = await prisma.superAdmin.findMany({
+      select: { id: true, name: true, email: true },
+      orderBy: { name: 'asc' }
+    });
+
+    res.json({
+      ok: true,
+      modules: moduleGroups
+        .filter(m => m.entity)
+        .map(m => ({ name: m.entity, count: m._count.id })),
+      users: userGroups
+        .filter(u => u.username)
+        .map(u => ({ name: u.username, count: u._count.id })),
+      clients: clients.map(c => ({ id: c.id, name: c.business_name })),
+      superAdmins: superAdmins.map(sa => ({ id: sa.id, name: sa.name, email: sa.email }))
+    });
+  } catch (error) {
+    console.error('[Filter Options Error]:', error);
+    res.status(500).json({ ok: false, error: 'Failed to fetch filter options' });
+  }
+});
+
 // Get Activity Logs with Filters
 router.get('/', requireEnterpriseAdmin, async (req, res) => {
   try {
@@ -18,6 +66,9 @@ router.get('/', requireEnterpriseAdmin, async (req, res) => {
     const limit = parseInt(req.query.limit) || 500;
     const level = req.query.level || '';
     const module = req.query.module || '';
+    const user = req.query.user || '';
+    const clientId = req.query.clientId || '';
+    const superAdminId = req.query.superAdminId || '';
 
     // Calculate date range
     let dateFilter = {};
@@ -45,8 +96,34 @@ router.get('/', requireEnterpriseAdmin, async (req, res) => {
     }
 
     const where = {
-      ...(Object.keys(dateFilter).length > 0 && { created_at: dateFilter })
+      ...(Object.keys(dateFilter).length > 0 && { created_at: dateFilter }),
+      ...(module && module !== 'all' && { entity: module }),
+      ...(user && user !== 'all' && { username: user })
     };
+
+    // If filtering by client or super admin, we need to get associated usernames
+    if (clientId && clientId !== 'all') {
+      // Get users associated with this client
+      const clientUsers = await prisma.user.findMany({
+        where: { client_id: clientId },
+        select: { username: true }
+      });
+      const usernames = clientUsers.map(u => u.username).filter(Boolean);
+      if (usernames.length > 0) {
+        where.username = { in: usernames };
+      }
+    }
+
+    if (superAdminId && superAdminId !== 'all') {
+      // Get super admin details
+      const superAdmin = await prisma.superAdmin.findUnique({
+        where: { id: superAdminId },
+        select: { email: true, name: true }
+      });
+      if (superAdmin) {
+        where.username = superAdmin.name || superAdmin.email;
+      }
+    }
 
     const [logs, stats] = await Promise.all([
       prisma.recent_activity.findMany({

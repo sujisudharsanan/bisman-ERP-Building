@@ -35,7 +35,8 @@ interface Page {
 
 interface SuperAdmin {
   id: number;
-  username: string;
+  username?: string;
+  name?: string;
   email: string;
   businessName?: string;
   businessType?: string;
@@ -134,9 +135,9 @@ export default function SuperAdminManagementPage() {
     if (searchQuery) {
       filtered = filtered.filter(
         (admin) =>
-          admin.username.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          admin.email.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          admin.businessName?.toLowerCase().includes(searchQuery.toLowerCase())
+          (admin.username || admin.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (admin.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (admin.businessName || '').toLowerCase().includes(searchQuery.toLowerCase())
       );
     }
 
@@ -237,7 +238,7 @@ export default function SuperAdminManagementPage() {
   };
 
   const handleDeleteAdmin = async (admin: SuperAdmin) => {
-    if (!confirm(`Are you sure you want to delete ${admin.username}?`)) return;
+    if (!confirm(`Are you sure you want to delete ${admin.username || admin.name || 'this admin'}?`)) return;
 
     try {
       const baseURL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
@@ -370,10 +371,10 @@ export default function SuperAdminManagementPage() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">
-                        {admin.username.substring(0, 2).toUpperCase()}
+                        {(admin.username || admin.name || 'NA').substring(0, 2).toUpperCase()}
                       </div>
                       <div>
-                        <div className="font-medium text-gray-900 dark:text-white">{admin.username}</div>
+                        <div className="font-medium text-gray-900 dark:text-white">{admin.username || admin.name || 'Unknown'}</div>
                         <div className="text-sm text-gray-500 dark:text-gray-400">{admin.email}</div>
                       </div>
                     </div>
@@ -452,7 +453,7 @@ export default function SuperAdminManagementPage() {
                     Assign Modules & Pages
                   </h2>
                   <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                    {selectedAdmin.username} - {selectedAdmin.email}
+                    {selectedAdmin.username || selectedAdmin.name || 'Admin'} - {selectedAdmin.email}
                   </p>
                 </div>
                 <button

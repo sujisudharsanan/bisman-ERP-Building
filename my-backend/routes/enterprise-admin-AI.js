@@ -14,43 +14,64 @@ const requireEnterpriseAdmin = (req, res, next) => {
 // Get AI Metrics
 router.get('/metrics', requireEnterpriseAdmin, async (req, res) => {
   try {
-    // Query AI analytics data from your ai_analytics or ai_logs table
-    // Adjust based on your actual schema
-    const totalRequests = await prisma.$queryRaw`
-      SELECT COUNT(*) as count
-      FROM recent_activity
-      WHERE action LIKE '%AI%' OR entity LIKE '%ai%'
-    `;
+    // Try to get metrics from AI usage log table
+    let totalRequests = 0;
+    let successfulRequests = 0;
+    let avgResponseTime = 0;
+    let costThisMonth = 0;
 
-    const successfulRequests = await prisma.$queryRaw`
-      SELECT COUNT(*) as count
-      FROM recent_activity
-      WHERE (action LIKE '%AI%' OR entity LIKE '%ai%')
-      AND action NOT LIKE '%ERROR%'
-      AND action NOT LIKE '%FAIL%'
-    `;
+    try {
+      // Get from AI usage logs if table exists
+      const metrics = await prisma.aIUsageLog.aggregate({
+        _count: { id: true },
+        _avg: { response_time_ms: true },
+        _sum: { cost_usd: true, total_tokens: true }
+      });
+      
+      totalRequests = metrics._count?.id || 0;
+      avgResponseTime = Math.round(metrics._avg?.response_time_ms || 0);
+      costThisMonth = parseFloat(metrics._sum?.cost_usd || 0);
+      
+      // Get success count
+      const successCount = await prisma.aIUsageLog.count({
+        where: { success: true }
+      });
+      successfulRequests = successCount;
+    } catch (e) {
+      // Fallback to recent_activity if AI table doesn't exist
+      const aiActivityRaw = await prisma.$queryRaw`
+        SELECT COUNT(*) as count
+        FROM recent_activity
+        WHERE action ILIKE '%AI%' OR entity ILIKE '%ai%' OR action ILIKE '%chat%'
+      `;
+      totalRequests = parseInt(aiActivityRaw[0]?.count || 0);
+      successfulRequests = totalRequests; // Assume all successful if from activity log
+      avgResponseTime = 0;
+      costThisMonth = 0;
+    }
 
-    const total = parseInt(totalRequests[0]?.count || 0);
-    const successful = parseInt(successfulRequests[0]?.count || 0);
-    const successRate = total > 0 ? (successful / total) * 100 : 0;
+    const successRate = totalRequests > 0 ? (successfulRequests / totalRequests) * 100 : 100;
 
-    // Mock response times - implement real tracking if needed
-    const avgResponseTime = 245;
-
-    // Count active models (you may have an ai_models table)
-    const activeModels = 4; // GPT-4, Claude 3, Gemini Pro, and one more
-
-    // Calculate cost (mock - implement real cost tracking)
-    const costThisMonth = 1250.75;
+    // Count unique AI models used
+    let activeModels = 0;
+    try {
+      const models = await prisma.aIUsageLog.groupBy({
+        by: ['model'],
+        _count: { id: true }
+      });
+      activeModels = models.length;
+    } catch (e) {
+      activeModels = 0;
+    }
 
     res.json({
       ok: true,
       metrics: {
-        totalRequests: total || 15420, // Fallback to reasonable demo value
-        successRate: successRate || 98.5,
+        totalRequests,
+        successRate: Math.round(successRate * 10) / 10,
         avgResponseTime,
         activeModels,
-        costThisMonth
+        costThisMonth: Math.round(costThisMonth * 100) / 100
       }
     });
   } catch (error) {
@@ -62,46 +83,49 @@ router.get('/metrics', requireEnterpriseAdmin, async (req, res) => {
 // Get AI Models
 router.get('/models', requireEnterpriseAdmin, async (req, res) => {
   try {
-    // In production, query from ai_models table
-    // For now, return configured models
-    const models = [
-      {
-        id: 'gpt4-turbo',
-        name: 'GPT-4 Turbo',
-        provider: 'OpenAI',
-        status: 'active',
-        usage: 8500,
-        avgResponseTime: 180,
-        lastUsed: new Date(Date.now() - 5 * 60 * 1000).toISOString() // 5 min ago
-      },
-      {
-        id: 'claude-3-opus',
-        name: 'Claude 3 Opus',
-        provider: 'Anthropic',
-        status: 'active',
-        usage: 4200,
-        avgResponseTime: 220,
-        lastUsed: new Date(Date.now() - 8 * 60 * 1000).toISOString() // 8 min ago
-      },
-      {
-        id: 'gemini-pro',
-        name: 'Gemini Pro',
-        provider: 'Google',
-        status: 'active',
-        usage: 2100,
-        avgResponseTime: 310,
-        lastUsed: new Date(Date.now() - 3 * 60 * 60 * 1000).toISOString() // 3 hours ago
-      },
-      {
-        id: 'gpt-3.5-turbo',
-        name: 'GPT-3.5 Turbo',
-        provider: 'OpenAI',
-        status: 'active',
-        usage: 700,
-        avgResponseTime: 150,
-        lastUsed: new Date(Date.now() - 1 * 60 * 60 * 1000).toISOString() // 1 hour ago
+    // Query from AI usage logs to get actual models being used
+    let models = [];
+    
+    try {
+      const modelStats = await prisma.aIUsageLog.groupBy({
+        by: ['model'],
+        _count: { id: true },
+        _avg: { response_time_ms: true },
+        _sum: { total_tokens: true, cost_usd: true }
+      });
+
+      // Get last used time for each model
+      for (const stat of modelStats) {
+        const lastUsage = await prisma.aIUsageLog.findFirst({
+          where: { model: stat.model },
+          orderBy: { created_at: 'desc' },
+          select: { created_at: true }
+        });
+
+        // Determine provider from model name
+        let provider = 'Unknown';
+        const modelLower = (stat.model || '').toLowerCase();
+        if (modelLower.includes('gpt')) provider = 'OpenAI';
+        else if (modelLower.includes('claude')) provider = 'Anthropic';
+        else if (modelLower.includes('gemini')) provider = 'Google';
+        else if (modelLower.includes('llama')) provider = 'Meta';
+
+        models.push({
+          id: stat.model,
+          name: stat.model,
+          provider,
+          status: 'active',
+          usage: stat._count.id,
+          avgResponseTime: Math.round(stat._avg?.response_time_ms || 0),
+          totalTokens: stat._sum?.total_tokens || 0,
+          totalCost: parseFloat(stat._sum?.cost_usd || 0),
+          lastUsed: lastUsage?.created_at?.toISOString() || null
+        });
       }
-    ];
+    } catch (e) {
+      // If AI table doesn't exist, return empty array
+      models = [];
+    }
 
     res.json({
       ok: true,

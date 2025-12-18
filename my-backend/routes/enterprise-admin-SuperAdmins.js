@@ -156,6 +156,69 @@ router.get('/:adminId', requireEnterpriseAdmin, async (req, res) => {
   }
 });
 
+// Get clients for a super admin
+router.get('/:adminId/clients', requireEnterpriseAdmin, async (req, res) => {
+  try {
+    const adminId = parseInt(req.params.adminId);
+
+    // Verify super admin exists
+    const superAdmin = await prisma.superAdmin.findUnique({
+      where: { id: adminId },
+      select: { id: true, name: true }
+    });
+
+    if (!superAdmin) {
+      return res.status(404).json({ ok: false, error: 'Super Admin not found' });
+    }
+
+    // Get all clients for this super admin
+    const clients = await prisma.client.findMany({
+      where: { super_admin_id: adminId },
+      select: {
+        id: true,
+        name: true,
+        client_code: true,
+        email: true,
+        phone: true,
+        client_type: true,
+        industry: true,
+        status: true,
+        is_active: true,
+        subscriptionPlan: true,
+        subscriptionStatus: true,
+        created_at: true,
+        onboarding_status: true,
+      },
+      orderBy: { created_at: 'desc' }
+    });
+
+    res.json({
+      ok: true,
+      superAdminId: adminId,
+      superAdminName: superAdmin.name,
+      totalClients: clients.length,
+      clients: clients.map(client => ({
+        id: client.id,
+        name: client.name,
+        clientCode: client.client_code,
+        email: client.email,
+        phone: client.phone,
+        clientType: client.client_type,
+        industry: client.industry,
+        status: client.status,
+        isActive: client.is_active,
+        subscriptionPlan: client.subscriptionPlan,
+        subscriptionStatus: client.subscriptionStatus,
+        onboardingStatus: client.onboarding_status,
+        createdAt: client.created_at?.toISOString()
+      }))
+    });
+  } catch (error) {
+    console.error('[Super Admin Clients Error]:', error);
+    res.status(500).json({ ok: false, error: 'Failed to fetch clients' });
+  }
+});
+
 // Create new super admin
 router.post('/', requireEnterpriseAdmin, async (req, res) => {
   try {
@@ -163,9 +226,6 @@ router.post('/', requireEnterpriseAdmin, async (req, res) => {
       name, 
       email, 
       password, 
-      role, 
-      mfaRequired, 
-      enterpriseAdminId,
       productType 
     } = req.body;
 
@@ -174,6 +234,22 @@ router.post('/', requireEnterpriseAdmin, async (req, res) => {
       return res.status(400).json({ 
         ok: false, 
         error: 'Name, email, and password are required' 
+      });
+    }
+
+    if (password.length < 8) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'Password must be at least 8 characters long' 
+      });
+    }
+
+    // Get enterprise admin ID from the authenticated user
+    const enterpriseAdminId = req.user?.id;
+    if (!enterpriseAdminId) {
+      return res.status(401).json({ 
+        ok: false, 
+        error: 'Enterprise Admin ID not found' 
       });
     }
 
@@ -192,50 +268,34 @@ router.post('/', requireEnterpriseAdmin, async (req, res) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Create super admin
+    // Create super admin with correct schema fields
     const newAdmin = await prisma.superAdmin.create({
       data: {
-        username: name,
+        name,
         email,
-        password: hashedPassword,
-        role: role || 'SUPER_ADMIN',
+        password_hash: hashedPassword,
+        productType: productType || 'BUSINESS_ERP',
         is_active: true,
-        mfa_enabled: mfaRequired || false,
-        enterprise_admin_id: parseInt(enterpriseAdminId) || null,
-        productType: productType || 'PUMP_ERP'
+        created_by: parseInt(enterpriseAdminId)
       }
     });
 
-    // Log activity
-    await prisma.recent_activity.create({
-      data: {
-        action: 'Super Admin Created',
-        entity: 'SuperAdmin',
-        entity_id: newAdmin.id.toString(),
-        username: req.user?.username || 'Enterprise Admin',
-        details: { 
-          name,
-          email,
-          role: role || 'SUPER_ADMIN',
-          mfaRequired: mfaRequired || false
-        }
-      }
-    });
+    console.log(`🔵 Super Admin created: ${newAdmin.email} by Enterprise Admin ID: ${enterpriseAdminId}`);
 
     res.status(201).json({
       ok: true,
       message: 'Super Admin created successfully',
       superAdmin: {
         id: newAdmin.id,
-        name: newAdmin.username,
+        name: newAdmin.name,
         email: newAdmin.email,
-        role: newAdmin.role,
-        mfaStatus: newAdmin.mfa_enabled ? 'enabled' : 'disabled'
+        productType: newAdmin.productType,
+        isActive: newAdmin.is_active
       }
     });
   } catch (error) {
     console.error('[Create Super Admin Error]:', error);
-    res.status(500).json({ ok: false, error: 'Failed to create super admin' });
+    res.status(500).json({ ok: false, error: 'Failed to create super admin', message: error.message });
   }
 });
 
@@ -466,6 +526,53 @@ router.get('/stats/overview', requireEnterpriseAdmin, async (req, res) => {
   } catch (error) {
     console.error('[Super Admin Stats Error]:', error);
     res.status(500).json({ ok: false, error: 'Failed to fetch statistics' });
+  }
+});
+
+// Reset super admin password
+router.post('/:id/reset-password', requireEnterpriseAdmin, async (req, res) => {
+  try {
+    const adminId = parseInt(req.params.id);
+    const { newPassword } = req.body;
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'Password must be at least 8 characters long' 
+      });
+    }
+
+    // Check if super admin exists
+    const superAdmin = await prisma.superAdmin.findUnique({
+      where: { id: adminId }
+    });
+
+    if (!superAdmin) {
+      return res.status(404).json({ ok: false, error: 'Super Admin not found' });
+    }
+
+    // Hash the new password
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update the password
+    await prisma.superAdmin.update({
+      where: { id: adminId },
+      data: { 
+        password_hash: hashedPassword,
+        updated_at: new Date()
+      }
+    });
+
+    console.log(`🔵 Password reset for Super Admin ID: ${adminId} by Enterprise Admin: ${req.user?.email}`);
+
+    res.json({ 
+      ok: true, 
+      message: 'Password reset successfully' 
+    });
+  } catch (error) {
+    console.error('[Super Admin Password Reset Error]:', error);
+    res.status(500).json({ ok: false, error: 'Failed to reset password' });
   }
 });
 

@@ -144,18 +144,52 @@ router.get('/insights', requireEnterpriseAdmin, async (req, res) => {
       }
     });
 
-    // Get last backup time (mock for now - implement based on your backup strategy)
-    const lastBackup = new Date(Date.now() - 2 * 60 * 60 * 1000).toISOString();
+    // Get last backup from system health metrics or recent activity
+    let lastBackup = null;
+    try {
+      const backupLog = await prisma.recent_activity.findFirst({
+        where: { 
+          OR: [
+            { action: { contains: 'backup', mode: 'insensitive' } },
+            { entity: 'backup' }
+          ]
+        },
+        orderBy: { created_at: 'desc' }
+      });
+      lastBackup = backupLog?.created_at?.toISOString() || null;
+    } catch (e) {
+      // If no backup logged, check system health metrics
+      try {
+        const backupMetric = await prisma.systemHealthMetric.findFirst({
+          where: { metric_name: 'last_backup' },
+          orderBy: { recorded_at: 'desc' }
+        });
+        lastBackup = backupMetric?.recorded_at?.toISOString() || null;
+      } catch (e2) {
+        lastBackup = null;
+      }
+    }
 
-    // Calculate uptime (in production, use proper monitoring)
-    const apiUptime = 99.9;
+    // Calculate uptime from system health metrics or default
+    let apiUptime = 99.9;
+    try {
+      const uptimeMetric = await prisma.systemHealthMetric.findFirst({
+        where: { metric_name: 'api_uptime' },
+        orderBy: { recorded_at: 'desc' }
+      });
+      if (uptimeMetric) {
+        apiUptime = parseFloat(uptimeMetric.metric_value);
+      }
+    } catch (e) {
+      // Use default uptime
+    }
 
     res.json({
       ok: true,
       insights: {
         apiUptime,
         dbConnections: activeConnections,
-        lastBackup
+        lastBackup: lastBackup || 'No backup recorded'
       }
     });
   } catch (error) {

@@ -56,7 +56,7 @@ const getPageName = (pathname: string): string => {
     'notifications': 'Notifications',
     'integrations': 'Integrations',
     'ai': 'AI Assistant',
-    'logs': 'System Logs',
+    'activity-logs': 'Activity Logs',
   };
   
   return pageNames[lastSegment] || lastSegment.charAt(0).toUpperCase() + lastSegment.slice(1);
