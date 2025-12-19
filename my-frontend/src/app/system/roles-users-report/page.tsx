@@ -730,106 +730,46 @@ export default function RolesUsersReportPage() {
             <div className="space-y-1 max-h-[520px] overflow-y-auto">
               {isSuperAdmin ? (
                 <>
-                  {/* Show header */}
-                  <div className="text-xs font-semibold text-gray-700 dark:text-gray-300 mb-2 pb-2 border-b border-gray-200 dark:border-gray-700">
-                    {selectedRoleId ? `Users in ${selectedRole?.roleDisplayName || 'Role'}` : 'Clients'}
-                  </div>
-                  
-                  {/* If a role is selected, show users of that role */}
-                  {selectedRoleId && usersForSelectedRole.length > 0 ? (
-                    <>
+                  {/* Always show Clients - selection stays static when clicking role/module */}
+                  {clients.length === 0 && <div className="text-xs text-gray-500">No clients found</div>}
+                  {clients.map((client, idx) => {
+                    const isSelected = selectedClientId === client.id;
+                    return (
                       <button
                         type="button"
                         onClick={() => {
-                          setSelectedUserId(null);
-                          // Keep the role selected
+                          setSelectedClientId(client.id);
                         }}
-                        className="w-full text-left text-[10px] text-blue-600 dark:text-blue-400 hover:underline mb-2"
+                        key={client.id}
+                        className={`text-left w-full relative pl-2 rounded-md border p-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all ${isSelected ? 'border-green-500 bg-green-50 dark:bg-green-900/30 ring-2 ring-green-400 dark:ring-green-600' : 'border-gray-200 dark:border-gray-700'}`}
                       >
-                        ← Back to clients
-                      </button>
-                      {usersForSelectedRole.map((user, idx) => (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedUserId(user.userId);
-                          }}
-                          key={user.userId}
-                          className={`text-left w-full relative pl-2 rounded-md border p-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all ${selectedUserId === user.userId ? 'border-green-500 bg-green-50 dark:bg-green-900/30 ring-2 ring-green-400 dark:ring-green-600' : 'border-gray-200 dark:border-gray-700'}`}
-                        >
-                          <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${selectedUserId === user.userId ? 'bg-green-500' : colorForIndex(idx)}`} />
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="flex items-center gap-1.5">
-                                <span className={`text-xs font-medium truncate ${selectedUserId === user.userId ? 'text-green-700 dark:text-green-300' : 'text-gray-900 dark:text-gray-100'}`}>{user.username}</span>
-                                {selectedUserId === user.userId && (
-                                  <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-500 text-white flex-shrink-0">
-                                    <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                    </svg>
-                                  </span>
-                                )}
-                              </div>
-                              <div className="text-[10px] text-blue-600 dark:text-blue-400 truncate mt-0.5">{user.email}</div>
-                              {selectedUserId === user.userId && (
-                                <div className="text-[10px] text-green-600 dark:text-green-400 mt-1 font-medium">✓ Selected - Toggle pages on the right</div>
+                        <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${isSelected ? 'bg-green-500' : colorForIndex(idx)}`} />
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-1.5">
+                              <span className={`text-xs font-medium truncate ${isSelected ? 'text-green-700 dark:text-green-300' : 'text-gray-900 dark:text-gray-100'}`}>{client.name}</span>
+                              {isSelected && (
+                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-500 text-white flex-shrink-0">
+                                  <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                                  </svg>
+                                </span>
                               )}
                             </div>
-                          </div>
-                        </button>
-                      ))}
-                    </>
-                  ) : selectedRoleId && usersForSelectedRole.length === 0 ? (
-                    <>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setSelectedRoleId(null);
-                          setSelectedUserId(null);
-                        }}
-                        className="w-full text-left text-[10px] text-blue-600 dark:text-blue-400 hover:underline mb-2"
-                      >
-                        ← Back to clients
-                      </button>
-                      <div className="text-xs text-gray-500 dark:text-gray-400 p-3 bg-yellow-50 dark:bg-yellow-900/20 rounded border border-yellow-200 dark:border-yellow-800">
-                        No users found in this role. Assign users to this role first.
-                      </div>
-                    </>
-                  ) : (
-                    <>
-                      {/* Show clients when no role is selected */}
-                      {clients.length === 0 && <div className="text-xs text-gray-500">No clients found</div>}
-                      {clients.map((client, idx) => (
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setSelectedClientId(client.id);
-                          }}
-                          key={client.id}
-                          className={`text-left w-full relative pl-2 rounded-md border p-3 hover:bg-gray-50 dark:hover:bg-gray-800 ${selectedClientId === client.id ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700'}`}
-                        >
-                          <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${colorForIndex(idx)}`} />
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex-1 min-w-0">
-                              <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{client.name}</div>
-                              <div className="text-[10px] text-blue-600 dark:text-blue-400 truncate mt-0.5">{client.email}</div>
-                              <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-                                <span className={`inline-flex items-center px-1.5 py-0.5 rounded mr-1 ${client.status === 'ACTIVE' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300'}`}>
-                                  {client.status}
-                                </span>
-                              </div>
+                            <div className="text-[10px] text-blue-600 dark:text-blue-400 truncate mt-0.5">{client.email}</div>
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
+                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded mr-1 ${client.status === 'ACTIVE' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300'}`}>
+                                {client.status}
+                              </span>
                             </div>
+                            {isSelected && (
+                              <div className="text-[10px] text-green-600 dark:text-green-400 mt-1 font-medium">✓ Selected - Toggle pages on the right</div>
+                            )}
                           </div>
-                        </button>
-                      ))}
-                      {/* Hint to select a role */}
-                      {clients.length > 0 && !selectedRoleId && (
-                        <div className="text-[10px] text-blue-600 dark:text-blue-400 mt-3 p-2 bg-blue-50 dark:bg-blue-900/20 rounded border border-blue-200 dark:border-blue-800">
-                          💡 Select a role to see users for permission management
                         </div>
-                      )}
-                    </>
-                  )}
+                      </button>
+                    );
+                  })}
                 </>
               ) : (
                 <>
