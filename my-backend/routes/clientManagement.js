@@ -145,11 +145,22 @@ router.post('/clients', authMiddleware, async (req, res) => {
     let adminCreated = null;
     let tempPassword;
     if (adminUser && adminUser.email) {
+      // Validate required fields for admin user
+      if (!adminUser.email || typeof adminUser.email !== 'string' || !adminUser.email.includes('@')) {
+        return res.status(400).json({ error: 'Valid admin email is required', client: created });
+      }
       try {
         const exists = await prisma.user.findUnique({ where: { email: adminUser.email } });
-        if (exists) return res.status(409).json({ error: 'Admin email already exists', client: created });
-      } catch {}
+        if (exists) {
+          // Rollback: delete the created client since admin creation will fail
+          await prisma.client.delete({ where: { id: created.id } }).catch(() => {});
+          return res.status(409).json({ error: 'Admin email already exists' });
+        }
+      } catch (lookupErr) {
+        console.warn('[clientManagement] Email lookup failed:', lookupErr?.message);
+      }
       const bcrypt = require('bcryptjs');
+      const crypto = require('crypto');
       const gen = (len = 12) => {
         const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789@$!%*#?&';
         let out = '';
@@ -160,19 +171,28 @@ router.post('/clients', authMiddleware, async (req, res) => {
       tempPassword = adminUser.password ? undefined : password;
       const hashed = await bcrypt.hash(password, 10);
       const username = adminUser.username || (adminUser.email?.split?.('@')?.[0] || `admin_${created.client_code || 'client'}`);
-      adminCreated = await prisma.user.create({
-        data: {
-          username,
-          email: adminUser.email,
-          password_hash: hashed,
-          role: 'ADMIN',
-          is_active: true,
-          productType,
-          tenant_id: created.id,
-          super_admin_id: sid,
-          profile_pic_url: adminUser.profile_pic_url || null,
-        },
-      });
+      
+      try {
+        adminCreated = await prisma.user.create({
+          data: {
+            id: crypto.randomUUID(), // Generate UUID for user ID
+            username,
+            email: adminUser.email,
+            password_hash: hashed,
+            role: 'ADMIN',
+            is_active: true,
+            product_type: productType, // Fixed: use correct column name
+            tenant_id: created.id,
+            super_admin_id: sid,
+            profile_pic_url: adminUser.profile_pic_url || null,
+          },
+        });
+      } catch (userErr) {
+        console.error('[clientManagement] Failed to create admin user:', userErr.message);
+        // Rollback: delete the created client since admin creation failed
+        await prisma.client.delete({ where: { id: created.id } }).catch(() => {});
+        return res.status(500).json({ error: 'Failed to create admin user', details: userErr.message });
+      }
     }
     res.status(201).json({ success: true, data: created, admin: adminCreated ? { id: adminCreated.id, email: adminCreated.email, username: adminCreated.username } : null, tempPassword });
   } catch (e) { res.status(500).json({ error: 'Failed to create client', details: e.message }); }
@@ -185,7 +205,11 @@ router.get('/clients/:id', authMiddleware, async (req, res) => {
     const clientId = String(req.params.id);
     const client = await prisma.client.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
-    if (!isPlatformAdmin(user?.role) && user?.super_admin_id !== client.super_admin_id) return res.status(403).json({ error: 'Forbidden' });
+    const role = user?.role;
+    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
+    const isSuperAdminRole = role === 'SUPER_ADMIN';
+    const ownsClient = user?.super_admin_id === client.super_admin_id || user?.id === client.super_admin_id;
+    if (!allowed || (!isPlatformAdmin(role) && !isSuperAdminRole && !ownsClient)) return res.status(403).json({ error: 'Forbidden' });
     res.json({ success: true, data: client });
   } catch (e) { res.status(500).json({ error: 'Failed to fetch client', details: e.message }); }
 });
@@ -195,9 +219,16 @@ router.patch('/clients/:id', authMiddleware, async (req, res) => {
   try {
     const user = req.user;
     const clientId = String(req.params.id);
+    console.log('[PATCH client] clientId:', clientId, 'user:', { id: user?.id, role: user?.role, super_admin_id: user?.super_admin_id });
     const existing = await prisma.client.findUnique({ where: { id: clientId } });
     if (!existing) return res.status(404).json({ error: 'Client not found' });
-    if (!isTenantAdmin(user?.role) || (!isPlatformAdmin(user?.role) && user?.super_admin_id !== existing.super_admin_id)) return res.status(403).json({ error: 'Forbidden' });
+    console.log('[PATCH client] existing.super_admin_id:', existing.super_admin_id);
+    const role = user?.role;
+    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
+    const isSuperAdminRole = role === 'SUPER_ADMIN';
+    const ownsClient = user?.super_admin_id === existing.super_admin_id || user?.id === existing.super_admin_id;
+    console.log('[PATCH client] allowed:', allowed, 'isSuperAdminRole:', isSuperAdminRole, 'ownsClient:', ownsClient);
+    if (!allowed || (!isPlatformAdmin(role) && !isSuperAdminRole && !ownsClient)) return res.status(403).json({ error: 'Forbidden' });
     const b = req.body || {};
     const e0 = (existing.settings && existing.settings.enterprise) ? existing.settings.enterprise : {};
     const enterprise = {
@@ -252,7 +283,10 @@ router.get('/clients/:id/permissions', authMiddleware, async (req, res) => {
     const ensure = String(req.query.ensure || '').toLowerCase() === 'true';
     const client = await prisma.client.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
-    if (!isPlatformAdmin(user?.role) && user?.super_admin_id !== client.super_admin_id) return res.status(403).json({ error: 'Forbidden' });
+    const role = user?.role;
+    const isSuperAdminRole = role === 'SUPER_ADMIN';
+    const ownsClient = user?.super_admin_id === client.super_admin_id || user?.id === client.super_admin_id;
+    if (!isPlatformAdmin(role) && !isSuperAdminRole && !ownsClient) return res.status(403).json({ error: 'Forbidden' });
     // Optionally ensure permission row exists for every active module
     if (ensure) {
       const modules = await prisma.module.findMany({ where: { is_active: true } });
@@ -276,7 +310,11 @@ router.put('/clients/:id/permissions/:moduleId', authMiddleware, async (req, res
     const clientId = String(id);
     const client = await prisma.client.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
-    if (!isTenantAdmin(user?.role) || (!isPlatformAdmin(user?.role) && user?.super_admin_id !== client.super_admin_id)) return res.status(403).json({ error: 'Forbidden' });
+    const role = user?.role;
+    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
+    const isSuperAdminRole = role === 'SUPER_ADMIN';
+    const ownsClient = user?.super_admin_id === client.super_admin_id || user?.id === client.super_admin_id;
+    if (!allowed || (!isPlatformAdmin(role) && !isSuperAdminRole && !ownsClient)) return res.status(403).json({ error: 'Forbidden' });
     const { can_view, can_create, can_edit, can_delete } = req.body;
     const updated = await prisma.clientModulePermission.upsert({ where: { client_id_module_id: { client_id: clientId, module_id: Number(moduleId) } }, update: { can_view, can_create, can_edit, can_delete }, create: { client_id: clientId, module_id: Number(moduleId), can_view: !!can_view, can_create: !!can_create, can_edit: !!can_edit, can_delete: !!can_delete } });
     res.json({ success: true, data: updated });
@@ -292,7 +330,11 @@ router.post('/clients/:id/permissions/bulk', authMiddleware, async (req, res) =>
     const clientId = String(id);
     const client = await prisma.client.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
-    if (!isTenantAdmin(user?.role) || (!isPlatformAdmin(user?.role) && user?.super_admin_id !== client.super_admin_id)) return res.status(403).json({ error: 'Forbidden' });
+    const role = user?.role;
+    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
+    const isSuperAdminRole = role === 'SUPER_ADMIN';
+    const ownsClient = user?.super_admin_id === client.super_admin_id || user?.id === client.super_admin_id;
+    if (!allowed || (!isPlatformAdmin(role) && !isSuperAdminRole && !ownsClient)) return res.status(403).json({ error: 'Forbidden' });
     const items = Array.isArray(req.body?.items) ? req.body.items : [];
     if (items.length === 0) return res.status(400).json({ error: 'items array required' });
     const ops = items
@@ -333,7 +375,11 @@ router.patch('/clients/:id/active', authMiddleware, async (req, res) => {
     }
     const client = await prisma.client.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
-    if (!(user?.role === 'ADMIN' || user?.role === 'SYSTEM_ADMIN' || user?.role === 'SUPER_ADMIN') || (user?.role !== 'SYSTEM_ADMIN' && user?.super_admin_id !== client.super_admin_id)) {
+    const role = user?.role;
+    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
+    const isSuperAdminRole = role === 'SUPER_ADMIN';
+    const ownsClient = user?.super_admin_id === client.super_admin_id || user?.id === client.super_admin_id;
+    if (!allowed || (!isPlatformAdmin(role) && !isSuperAdminRole && !ownsClient)) {
       return res.status(403).json({ error: 'Forbidden' });
     }
     const updated = await prisma.client.update({ where: { id: clientId }, data: { is_active } });
@@ -350,7 +396,10 @@ router.get('/clients/:id/usage/daily', authMiddleware, async (req, res) => {
   const clientId = String(id);
   const client = await prisma.client.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
-    if (!isPlatformAdmin(user?.role) && user?.super_admin_id !== client.super_admin_id) return res.status(403).json({ error: 'Forbidden' });
+    const role = user?.role;
+    const isSuperAdminRole = role === 'SUPER_ADMIN';
+    const ownsClient = user?.super_admin_id === client.super_admin_id || user?.id === client.super_admin_id;
+    if (!isPlatformAdmin(role) && !isSuperAdminRole && !ownsClient) return res.status(403).json({ error: 'Forbidden' });
   const usage = await prisma.clientDailyUsage.findMany({ where: { client_id: clientId }, orderBy: { date: 'desc' }, take: 30 });
     res.json({ success: true, data: usage });
   } catch (e) { res.status(500).json({ error: 'Failed to fetch usage', details: e.message }); }

@@ -1,3 +1,5 @@
+/* eslint-env node */
+/* global process */
 /** @type {import('next').NextConfig} */
 
 // Determine API base for proxy rewrites.
@@ -13,14 +15,14 @@ const API_URL =
 // For local development, default to localhost:5000 if no API_URL is set
 const BACKEND_URL = API_URL || (process.env.NODE_ENV === 'development' ? 'http://localhost:5000' : null);
 
-const isCI = process.env.CI === 'true' || process.env.VERCEL === '1' || process.env.RAILWAY === '1';
-
 let nextConfig = {
   reactStrictMode: true, // re-enable to catch lifecycle issues early
   // swcMinify was removed in Next 13+; removing to avoid warnings
   images: { domains: [], unoptimized: true },
   // Use Node server output; disable static export due to dynamic routes
   output: 'standalone',
+  // Disable source maps in production to avoid 404s for .map files
+  productionBrowserSourceMaps: false,
   // Temporarily ignore ESLint during builds to allow deployment (errors will be fixed post-deployment)
   eslint: { ignoreDuringBuilds: true },
   typescript: { ignoreBuildErrors: false },

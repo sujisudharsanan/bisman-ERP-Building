@@ -28,6 +28,153 @@ const superAdminOnly = [
 ];
 
 // ============================================================================
+// METRICS & OVERVIEW
+// ============================================================================
+
+/**
+ * GET /api/super-admin/subscriptions/metrics
+ * Get subscription metrics for dashboard
+ */
+router.get('/metrics', ...superAdminOnly, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const now = new Date();
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+
+    // Get total tenants (active subscriptions)
+    const totalTenants = await prisma.clientSubscription.count({
+      where: { state: { in: ['ACTIVE', 'TRIAL'] } },
+    });
+
+    // Get active subscriptions (non-trial)
+    const activeSubscriptions = await prisma.clientSubscription.count({
+      where: { state: 'ACTIVE' },
+    });
+
+    // Get tenants by plan
+    const tenantsByPlan = await prisma.clientSubscription.groupBy({
+      by: ['plan_id'],
+      where: { state: { in: ['ACTIVE', 'TRIAL'] } },
+      _count: { id: true },
+    });
+
+    // Map plan IDs to plan codes
+    const plans = await prisma.subscriptionPlan.findMany({
+      select: { id: true, plan_code: true, name: true },
+    });
+    const planMap = new Map(plans.map(p => [p.id, p]));
+
+    const tenantDistribution = tenantsByPlan.map(group => ({
+      plan_id: group.plan_id,
+      plan_code: planMap.get(group.plan_id)?.plan_code || 'unknown',
+      plan_name: planMap.get(group.plan_id)?.name || 'Unknown',
+      count: group._count.id,
+    }));
+
+    // Get monthly recurring revenue (sum of all active monthly subscriptions)
+    const activeWithPricing = await prisma.clientSubscription.findMany({
+      where: { state: 'ACTIVE' },
+      include: { plan: { select: { price_monthly: true } } },
+    });
+    const mrr = activeWithPricing.reduce((sum, sub) => 
+      sum + parseFloat(sub.plan?.price_monthly || 0), 0);
+
+    // Get trial conversions (last 30 days)
+    const recentConversions = await prisma.clientSubscription.count({
+      where: {
+        state: 'ACTIVE',
+        trial_converted: true,
+        updated_at: { gte: thirtyDaysAgo },
+      },
+    });
+
+    // Get expiring trials (next 7 days)
+    const expiringTrials = await prisma.clientSubscription.findMany({
+      where: {
+        state: 'TRIAL',
+        trial_end_date: {
+          gte: now,
+          lte: sevenDaysFromNow,
+        },
+      },
+      include: {
+        client: { select: { id: true, name: true } },
+        plan: { select: { plan_code: true, name: true } },
+      },
+    });
+
+    // Get recent activities from audit logs
+    const recentActivities = await prisma.subscriptionAuditLog.findMany({
+      where: { created_at: { gte: thirtyDaysAgo } },
+      orderBy: { created_at: 'desc' },
+      take: 20,
+      include: {
+        subscription: {
+          include: {
+            client: { select: { name: true } },
+          },
+        },
+      },
+    });
+
+    // Get churn rate (cancellations in last 30 days)
+    const cancellations = await prisma.clientSubscription.count({
+      where: {
+        state: 'CANCELLED',
+        updated_at: { gte: thirtyDaysAgo },
+      },
+    });
+    const churnRate = totalTenants > 0 ? (cancellations / totalTenants * 100).toFixed(2) : 0;
+
+    // Get pending renewals
+    const pendingRenewals = await prisma.clientSubscription.count({
+      where: {
+        state: 'ACTIVE',
+        current_period_end: {
+          gte: now,
+          lte: sevenDaysFromNow,
+        },
+      },
+    });
+
+    res.json({
+      ok: true,
+      metrics: {
+        totalTenants,
+        activeSubscriptions,
+        mrr: Math.round(mrr * 100) / 100,
+        currency: 'INR',
+        trialConversions: recentConversions,
+        churnRate: parseFloat(churnRate),
+        pendingRenewals,
+        tenantDistribution,
+        expiringTrials: expiringTrials.map(t => ({
+          clientId: t.client_id,
+          clientName: t.client?.name || 'Unknown',
+          planCode: t.plan?.plan_code,
+          planName: t.plan?.name,
+          trialEndDate: t.trial_end_date,
+          daysRemaining: Math.ceil((new Date(t.trial_end_date) - now) / (1000 * 60 * 60 * 24)),
+        })),
+        recentActivities: recentActivities.map(a => ({
+          id: a.id,
+          clientName: a.subscription?.client?.name || 'Unknown',
+          action: a.action,
+          oldValues: a.old_values,
+          newValues: a.new_values,
+          changedAt: a.created_at,
+          reason: a.reason,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error('[SuperAdmin Subscriptions] Metrics error:', error);
+    res.status(500).json({ ok: false, error: 'Failed to fetch subscription metrics' });
+  }
+});
+
+// ============================================================================
 // PLAN MANAGEMENT
 // ============================================================================
 

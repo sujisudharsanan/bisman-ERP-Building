@@ -209,11 +209,29 @@
       ]
     },
     {
+      "id": "admin-contracts",
+      "name": "Contracts & Agreements",
+      "path": "/admin/contracts",
+      "module": "admin",
+      "status": "active",
+      "description": "Manage agreements, renewals, documents, and contract lifecycle",
+      "order": 30,
+      "permissions": [
+        "contracts-management"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN",
+        "ADMIN"
+      ]
+    },
+    {
       "id": "user-creation",
       "name": "Create New User",
       "path": "/hr/user-creation",
       "module": "hr",
       "status": "active",
+      "showInSidebar": false,
       "description": "Two-stage user creation with KYC workflow - HR creates request and sends KYC link or creates user immediately",
       "order": 2,
       "permissions": [
@@ -1466,78 +1484,6 @@
       ]
     },
     {
-      "id": "billing-payment-method",
-      "name": "Payment Method",
-      "path": "/billing/payment-method",
-      "module": "billing",
-      "status": "active",
-      "description": "Manage payment methods and billing address",
-      "order": 3,
-      "permissions": [
-        "billing-manage",
-        "authenticated"
-      ],
-      "roles": [
-        "SUPER_ADMIN",
-        "ADMIN",
-        "OWNER"
-      ]
-    },
-    {
-      "id": "billing-trial",
-      "name": "Trial Management",
-      "path": "/billing/trial",
-      "module": "billing",
-      "status": "active",
-      "description": "View trial status and manage trial period",
-      "order": 4,
-      "permissions": [
-        "billing-view",
-        "authenticated"
-      ],
-      "roles": [
-        "SUPER_ADMIN",
-        "ADMIN",
-        "OWNER"
-      ]
-    },
-    {
-      "id": "billing-usage",
-      "name": "Usage & Overages",
-      "path": "/billing/usage",
-      "module": "billing",
-      "status": "active",
-      "description": "View usage metrics and overage charges",
-      "order": 5,
-      "permissions": [
-        "billing-view",
-        "authenticated"
-      ],
-      "roles": [
-        "SUPER_ADMIN",
-        "ADMIN",
-        "OWNER"
-      ]
-    },
-    {
-      "id": "settings-billing",
-      "name": "Billing Settings",
-      "path": "/settings/billing",
-      "module": "billing",
-      "status": "active",
-      "description": "Manage subscription and billing preferences",
-      "order": 6,
-      "permissions": [
-        "billing-manage",
-        "authenticated"
-      ],
-      "roles": [
-        "SUPER_ADMIN",
-        "ADMIN",
-        "OWNER"
-      ]
-    },
-    {
       "id": "admin-sla-dashboard",
       "name": "SLA Dashboard",
       "path": "/admin/sla",
@@ -1611,24 +1557,6 @@
       "status": "active",
       "description": "Platform analytics and insights",
       "order": 14,
-      "permissions": [
-        "admin-analytics",
-        "authenticated"
-      ],
-      "roles": [
-        "SUPER_ADMIN",
-        "ENTERPRISE_ADMIN",
-        "ADMIN"
-      ]
-    },
-    {
-      "id": "dashboard-analytics",
-      "name": "Dashboard Analytics",
-      "path": "/dashboard/analytics",
-      "module": "admin",
-      "status": "active",
-      "description": "Dashboard level analytics view",
-      "order": 15,
       "permissions": [
         "admin-analytics",
         "authenticated"

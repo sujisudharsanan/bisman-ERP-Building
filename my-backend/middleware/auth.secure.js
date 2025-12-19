@@ -229,8 +229,10 @@ async function authenticate(req, res, next) {
     }
 
     // Attach user to request for downstream middleware
+    // Include legacy_id for chat/thread routes that use Int user IDs
     req.user = {
       id: user.id,
+      legacy_id: user.legacy_id || null,
       email: user.email || payload.email,
       role: user.role || payload.role,
       userType: payload.userType,

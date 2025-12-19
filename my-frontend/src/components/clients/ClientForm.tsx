@@ -1,5 +1,5 @@
 "use client";
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import API_BASE from '@/config/api';
 import { RefreshCw, Upload, X, FileText, Building2, Globe, CreditCard, Users, Shield, Calendar, Eye, EyeOff, Wand2 } from 'lucide-react';
@@ -24,12 +24,34 @@ const TIMEZONES = [
   'America/Toronto', 'Europe/Berlin', 'Asia/Hong_Kong'
 ];
 
-const SUBSCRIPTION_PLANS = [
-  { id: 'starter', name: 'Starter', price: 999, currency: 'INR', users: 5, modules: 3, storage: '5GB', support: 'Email' },
-  { id: 'professional', name: 'Professional', price: 2999, currency: 'INR', users: 25, modules: 10, storage: '50GB', support: '24/7 Chat' },
-  { id: 'enterprise', name: 'Enterprise', price: 9999, currency: 'INR', users: 'Unlimited', modules: 'All', storage: '500GB', support: 'Dedicated Manager' },
-  { id: 'custom', name: 'Custom', price: 0, currency: 'INR', users: 'Custom', modules: 'Custom', storage: 'Custom', support: 'Custom' },
+// Fallback static plans (used if API fails)
+const DEFAULT_SUBSCRIPTION_PLANS = [
+  { id: 'starter', code: 'STARTER', name: 'Starter', price: 999, priceMonthly: 999, currency: 'INR', users: 5, maxUsers: 5, modules: 3, storage: '5GB', maxStorageGb: 5, support: 'Email' },
+  { id: 'professional', code: 'PROFESSIONAL', name: 'Professional', price: 2999, priceMonthly: 2999, currency: 'INR', users: 25, maxUsers: 25, modules: 10, storage: '50GB', maxStorageGb: 50, support: '24/7 Chat' },
+  { id: 'enterprise', code: 'ENTERPRISE', name: 'Enterprise', price: 9999, priceMonthly: 9999, currency: 'INR', users: 'Unlimited', maxUsers: -1, modules: 'All', storage: '500GB', maxStorageGb: 500, support: 'Dedicated Manager' },
+  { id: 'custom', code: 'CUSTOM', name: 'Custom', price: 0, priceMonthly: 0, currency: 'INR', users: 'Custom', maxUsers: -1, modules: 'Custom', storage: 'Custom', maxStorageGb: -1, support: 'Custom' },
 ];
+
+// Dynamic plan type
+interface DynamicPlan {
+  id: string;
+  code: string;
+  name: string;
+  price: number;
+  priceMonthly: number;
+  priceYearly?: number;
+  currency: string;
+  users: number | string;
+  maxUsers: number;
+  maxBranches?: number;
+  modules: number | string;
+  storage: string;
+  maxStorageGb: number;
+  support: string;
+  description?: string;
+  trialDays?: number;
+  isActive?: boolean;
+}
 
 const BILLING_CYCLES = ['Monthly', 'Quarterly', 'Semi-Annual', 'Annual'];
 
@@ -68,11 +90,35 @@ export interface ClientFormValues {
   primary_contact: { name: string; role: string; phone: string; phone_code: string; email: string };
   secondary_contact: { name: string; role: string; phone: string; phone_code: string; email: string };
   kyc_documents?: any[];
-  // International fields
+  // Settings (stored in backend settings JSON)
   country_code: string;
   timezone: string;
   locale: string;
   date_format: string;
+  // Branding & Theme
+  logo_url?: string;
+  logo_file?: File;
+  display_name?: string;
+  theme_primary_color?: string;
+  theme_secondary_color?: string;
+  // Registrations tracking
+  registrations: {
+    gstin?: string;
+    pan?: string;
+    tan?: string;
+    cin?: string;
+    llpin?: string;
+    udyam?: string;
+    iec?: string;
+    fssai?: string;
+    drug_license?: string;
+    shop_license?: string;
+    trade_license?: string;
+    professional_tax?: string;
+    pf_number?: string;
+    esi_number?: string;
+    other_registrations?: Array<{ name: string; number: string; expiry?: string }>;
+  };
   // Subscription fields
   subscription_plan: string;
   subscription_start?: string;
@@ -127,11 +173,34 @@ const defaultValues: ClientFormValues = {
   primary_contact: { name: '', role: '', phone: '', phone_code: '+91', email: '' },
   secondary_contact: { name: '', role: '', phone: '', phone_code: '+91', email: '' },
   kyc_documents: [],
-  // International
+  // Settings (defaults)
   country_code: 'IN',
   timezone: 'Asia/Kolkata',
   locale: 'en-IN',
   date_format: 'DD/MM/YYYY',
+  // Branding
+  logo_url: '',
+  display_name: '',
+  theme_primary_color: '#6366f1',
+  theme_secondary_color: '#8b5cf6',
+  // Registrations
+  registrations: {
+    gstin: '',
+    pan: '',
+    tan: '',
+    cin: '',
+    llpin: '',
+    udyam: '',
+    iec: '',
+    fssai: '',
+    drug_license: '',
+    shop_license: '',
+    trade_license: '',
+    professional_tax: '',
+    pf_number: '',
+    esi_number: '',
+    other_registrations: [],
+  },
   // Subscription
   subscription_plan: 'starter',
   subscription_start: new Date().toISOString().split('T')[0],
@@ -150,10 +219,103 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
   const [adminUser, setAdminUser] = useState<{ email: string; username?: string; password?: string }>({ email: '' });
   const [loading, setLoading] = useState(false);
   const [registrationMode, setRegistrationMode] = useState<'quick' | 'permanent'>(mode === 'create' ? 'quick' : 'permanent');
-  const [activeTab, setActiveTab] = useState<'basic' | 'international' | 'subscription' | 'documents' | 'users'>('basic');
+  const [activeTab, setActiveTab] = useState<'basic' | 'subscription' | 'uploads' | 'users'>('basic');
   const [dragActive, setDragActive] = useState(false);
   const [uploadedDocs, setUploadedDocs] = useState<Array<{ name: string; type: string; size: number; category: string; file?: File }>>([]);
   const [showPasswords, setShowPasswords] = useState<Record<number, boolean>>({});
+  const [logoPreview, setLogoPreview] = useState<string | null>(null);
+  const [logoFile, setLogoFile] = useState<File | null>(null);
+  
+  // Dynamic subscription plans state - start with empty, not defaults
+  const [subscriptionPlans, setSubscriptionPlans] = useState<DynamicPlan[]>([]);
+  const [plansLoading, setPlansLoading] = useState(true);
+  const [plansError, setPlansError] = useState<string | null>(null);
+
+  // Fetch subscription plans from API
+  useEffect(() => {
+    const fetchPlans = async () => {
+      try {
+        setPlansLoading(true);
+        setPlansError(null);
+        // Try the super-admin API first, then fallback to public API
+        const response = await fetch(`${API_BASE}/api/super-admin/subscriptions/plans`, {
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.ok && data.plans) {
+            if (data.plans.length === 0) {
+              // No plans configured in database
+              setSubscriptionPlans([]);
+              setPlansError('No subscription plans configured. Please create plans in Subscriptions settings first.');
+            } else {
+              // Map API plans (snake_case) to component format (camelCase)
+              const mappedPlans: DynamicPlan[] = data.plans
+                .filter((plan: any) => plan.is_active !== false)
+                .map((plan: any) => ({
+                  id: (plan.plan_code || plan.code || plan.id)?.toString().toLowerCase(),
+                  code: plan.plan_code || plan.code || '',
+                  name: plan.name || '',
+                  price: parseFloat(plan.price_monthly) || 0,
+                  priceMonthly: parseFloat(plan.price_monthly) || 0,
+                  priceYearly: parseFloat(plan.price_yearly) || 0,
+                  currency: plan.currency || 'INR',
+                  users: plan.max_users === -1 ? 'Unlimited' : (plan.max_users || 5),
+                  maxUsers: plan.max_users || 5,
+                  maxBranches: plan.max_branches || 1,
+                  modules: plan.max_users === -1 ? 'All' : Math.min((plan.max_branches || 1) * 3, 20),
+                  storage: plan.max_storage_gb === -1 ? 'Unlimited' : `${plan.max_storage_gb || 5}GB`,
+                  maxStorageGb: plan.max_storage_gb || 5,
+                  support: getSupporType(plan.max_users),
+                  description: plan.description || plan.short_description || '',
+                  trialDays: plan.trial_days || 14,
+                  isActive: plan.is_active !== false,
+                }));
+              
+              // Add custom plan option
+              mappedPlans.push({
+                id: 'custom',
+                code: 'CUSTOM',
+                name: 'Custom',
+                price: 0,
+                priceMonthly: 0,
+                currency: 'INR',
+                users: 'Custom',
+                maxUsers: -1,
+                modules: 'Custom',
+                storage: 'Custom',
+                maxStorageGb: -1,
+                support: 'Custom',
+              });
+              
+              setSubscriptionPlans(mappedPlans);
+            }
+          } else {
+            setPlansError('Failed to load subscription plans');
+            setSubscriptionPlans([]);
+          }
+        } else {
+          setPlansError('Unable to fetch subscription plans');
+          setSubscriptionPlans([]);
+        }
+      } catch (error) {
+        console.error('Error fetching subscription plans:', error);
+        // Keep using default plans on error
+      } finally {
+        setPlansLoading(false);
+      }
+    };
+    
+    // Helper function to determine support type
+    const getSupporType = (maxUsers: number | undefined): string => {
+      if (!maxUsers || maxUsers === -1 || maxUsers >= 100) return 'Dedicated Manager';
+      if (maxUsers >= 25) return '24/7 Chat';
+      return 'Email';
+    };
+
+    fetchPlans();
+  }, []);
 
   // Generate a secure random password
   const generatePassword = () => {
@@ -192,7 +354,7 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
 
   // Get country info
   const selectedCountry = COUNTRIES.find(c => c.code === form.country_code) || COUNTRIES[0];
-  const selectedPlan = SUBSCRIPTION_PLANS.find(p => p.id === form.subscription_plan) || SUBSCRIPTION_PLANS[0];
+  const selectedPlan = subscriptionPlans.find(p => p.id === form.subscription_plan) || subscriptionPlans[0];
 
   // Handle country change - auto-update currency, phone code, tax label
   const handleCountryChange = (countryCode: string) => {
@@ -211,7 +373,7 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
 
   // Handle plan change - auto-update limits
   const handlePlanChange = (planId: string) => {
-    const plan = SUBSCRIPTION_PLANS.find(p => p.id === planId);
+    const plan = subscriptionPlans.find(p => p.id === planId);
     if (plan) {
       setForm({
         ...form,
@@ -282,7 +444,16 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
     setForm({ ...form, admin_users: updated });
   };
 
+  // Add a ref to track if submission is in progress (prevents double-clicks)
+  const isSubmittingRef = React.useRef(false);
+
   async function submit() {
+    // Prevent duplicate submissions
+    if (isSubmittingRef.current || loading) {
+      console.log('[ClientForm] Submission already in progress, ignoring');
+      return;
+    }
+    
     if (!form.legal_name && !form.trade_name) {
       alert('Legal or Trade Name required');
       return;
@@ -318,9 +489,19 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
       }
     }
     
+    // Set submission guard
+    isSubmittingRef.current = true;
     setLoading(true);
     try {
       const body: any = { ...form, name: form.legal_name || form.trade_name };
+      
+      // Generate unique client code if not provided (timestamp + random)
+      if (!body.client_code) {
+        const timestamp = Date.now().toString(36).toUpperCase();
+        const random = Math.random().toString(36).substring(2, 6).toUpperCase();
+        body.client_code = `CLI-${timestamp}-${random}`;
+      }
+      
       // Include international settings
       body.settings = {
         country_code: form.country_code,
@@ -414,6 +595,7 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
       alert(e.message || 'Failed');
     } finally {
       setLoading(false);
+      isSubmittingRef.current = false;
     }
   }
 
@@ -422,9 +604,8 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
     <div className="flex border-b mb-6 overflow-x-auto">
       {[
         { id: 'basic', label: 'Basic Info', icon: Building2 },
-        { id: 'international', label: 'International', icon: Globe },
         { id: 'subscription', label: 'Subscription', icon: CreditCard },
-        { id: 'documents', label: 'Documents', icon: FileText },
+        { id: 'uploads', label: 'Uploads', icon: FileText },
         { id: 'users', label: 'Users', icon: Users },
       ].map(tab => (
         <button
@@ -565,81 +746,6 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
         </div>
       )}
 
-      {/* TAB: International Settings */}
-      {registrationMode === 'permanent' && activeTab === 'international' && (
-        <div className="space-y-6">
-          <div className="border rounded-lg p-4 space-y-4">
-            <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-              <Globe className="w-4 h-4" /> Regional Settings
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Country</label>
-                <select value={form.country_code} onChange={(e) => handleCountryChange(e.target.value)} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800">
-                  {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.name}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Currency</label>
-                <input value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timezone</label>
-                <select value={form.timezone} onChange={(e) => setForm({ ...form, timezone: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800">
-                  {TIMEZONES.map(tz => <option key={tz} value={tz}>{tz}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date Format</label>
-                <select value={form.date_format} onChange={(e) => setForm({ ...form, date_format: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800">
-                  <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                  <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                  <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                </select>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Locale</label>
-                <select value={form.locale} onChange={(e) => setForm({ ...form, locale: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800">
-                  <option value="en-IN">English (India)</option>
-                  <option value="en-US">English (US)</option>
-                  <option value="en-GB">English (UK)</option>
-                  <option value="de-DE">German</option>
-                  <option value="fr-FR">French</option>
-                  <option value="ja-JP">Japanese</option>
-                  <option value="ar-AE">Arabic (UAE)</option>
-                </select>
-              </div>
-            </div>
-          </div>
-          
-          {/* Tax & Compliance Info */}
-          <div className="border rounded-lg p-4 space-y-4">
-            <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-              <Shield className="w-4 h-4" /> Tax & Compliance
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">{selectedCountry.taxLabel}</label>
-                <input value={form.tax_id} onChange={(e) => setForm({ ...form, tax_id: e.target.value })} placeholder={selectedCountry.taxFormat} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Registration Number</label>
-                <input value={form.registration_number} onChange={(e) => setForm({ ...form, registration_number: e.target.value })} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">KYC Status</label>
-                <select value={form.compliance.kyc_status} onChange={(e) => setForm({ ...form, compliance: { ...form.compliance, kyc_status: e.target.value } })} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800">
-                  <option>UNVERIFIED</option>
-                  <option>PENDING</option>
-                  <option>VERIFIED</option>
-                  <option>REJECTED</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
       {/* TAB: Subscription */}
       {registrationMode === 'permanent' && activeTab === 'subscription' && (
         <div className="space-y-6">
@@ -647,33 +753,59 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
           <div className="border rounded-lg p-4">
             <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2 mb-4">
               <CreditCard className="w-4 h-4" /> Select Subscription Plan
+              {plansLoading && <RefreshCw className="w-4 h-4 animate-spin text-blue-500" />}
             </h3>
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              {SUBSCRIPTION_PLANS.map(plan => (
-                <div 
-                  key={plan.id}
-                  onClick={() => handlePlanChange(plan.id)}
-                  className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                    form.subscription_plan === plan.id 
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-                      : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                  }`}
+            
+            {/* Error or Empty State */}
+            {plansError && (
+              <div className="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg p-4 mb-4">
+                <p className="text-amber-800 dark:text-amber-200 font-medium">⚠️ {plansError}</p>
+                <a 
+                  href="/super-admin/subscriptions" 
+                  className="text-blue-600 hover:underline text-sm mt-2 inline-block"
                 >
-                  <h4 className="font-semibold text-lg">{plan.name}</h4>
-                  {plan.price > 0 ? (
-                    <p className="text-2xl font-bold text-blue-600">₹{plan.price}<span className="text-sm font-normal text-gray-500">/mo</span></p>
-                  ) : (
-                    <p className="text-2xl font-bold text-blue-600">Contact Us</p>
-                  )}
-                  <ul className="mt-3 space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                    <li>👥 {plan.users} users</li>
-                    <li>📦 {plan.modules} modules</li>
-                    <li>💾 {plan.storage} storage</li>
-                    <li>🎧 {plan.support}</li>
-                  </ul>
-                </div>
-              ))}
-            </div>
+                  → Go to Subscriptions to create plans
+                </a>
+              </div>
+            )}
+            
+            {/* Plans Grid */}
+            {subscriptionPlans.length > 0 ? (
+              <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                {subscriptionPlans.map(plan => (
+                  <div 
+                    key={plan.id}
+                    onClick={() => handlePlanChange(plan.id)}
+                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
+                      form.subscription_plan === plan.id 
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    <h4 className="font-semibold text-lg">{plan.name}</h4>
+                    {plan.price > 0 ? (
+                      <p className="text-2xl font-bold text-blue-600">₹{plan.price.toLocaleString()}<span className="text-sm font-normal text-gray-500">/mo</span></p>
+                    ) : (
+                      <p className="text-2xl font-bold text-blue-600">Contact Us</p>
+                    )}
+                    <ul className="mt-3 space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                      <li>👥 {plan.users} users</li>
+                      <li>📦 {plan.modules} modules</li>
+                      <li>💾 {plan.storage} storage</li>
+                      <li>🎧 {plan.support}</li>
+                    </ul>
+                    {plan.description && (
+                      <p className="mt-2 text-xs text-gray-500">{plan.description}</p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ) : !plansLoading && !plansError ? (
+              <div className="text-center py-8 text-gray-500">
+                <CreditCard className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                <p>No subscription plans available</p>
+              </div>
+            ) : null}
           </div>
 
           {/* Billing Details */}
@@ -719,9 +851,299 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
         </div>
       )}
 
-      {/* TAB: Documents */}
-      {registrationMode === 'permanent' && activeTab === 'documents' && (
+      {/* TAB: Uploads - Logo, Branding, Registrations, Documents */}
+      {registrationMode === 'permanent' && activeTab === 'uploads' && (
         <div className="space-y-6">
+          
+          {/* Logo & Branding Section */}
+          <div className="border rounded-lg p-4">
+            <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2 mb-4">
+              🎨 Logo & Branding
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">
+              Upload company logo (SVG only) for splash screen. If not uploaded, Display Name or default BISMAN logo will be used.
+            </p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Logo Upload */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Company Logo (.SVG only)</label>
+                <div className="flex items-start gap-4">
+                  {/* Logo Preview */}
+                  <div className="w-24 h-24 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center overflow-hidden bg-gray-50 dark:bg-gray-800">
+                    {logoPreview ? (
+                      <img src={logoPreview} alt="Logo preview" className="max-w-full max-h-full object-contain" />
+                    ) : form.display_name ? (
+                      <span className="text-2xl font-bold text-gray-400">{form.display_name.substring(0, 2).toUpperCase()}</span>
+                    ) : (
+                      <span className="text-xs text-gray-400 text-center px-2">BISMAN Logo</span>
+                    )}
+                  </div>
+                  <div className="flex-1">
+                    <input 
+                      type="file" 
+                      accept=".svg,image/svg+xml" 
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          if (!file.name.endsWith('.svg')) {
+                            alert('Please upload only SVG files');
+                            return;
+                          }
+                          setLogoFile(file);
+                          const reader = new FileReader();
+                          reader.onload = (ev) => setLogoPreview(ev.target?.result as string);
+                          reader.readAsDataURL(file);
+                        }
+                      }} 
+                      className="hidden" 
+                      id="logo-upload" 
+                    />
+                    <label htmlFor="logo-upload" className="inline-flex items-center px-3 py-2 bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 rounded-lg cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600 text-sm">
+                      <Upload className="w-4 h-4 mr-2" /> Upload SVG Logo
+                    </label>
+                    {logoPreview && (
+                      <button 
+                        onClick={() => { setLogoPreview(null); setLogoFile(null); }} 
+                        className="ml-2 text-sm text-red-500 hover:underline"
+                      >
+                        Remove
+                      </button>
+                    )}
+                    <p className="text-xs text-gray-500 mt-2">Recommended: 200x200px transparent SVG</p>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Display Name & Theme Colors */}
+              <div className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Display Name (for Splash Screen)</label>
+                  <input 
+                    type="text" 
+                    value={form.display_name || ''} 
+                    onChange={(e) => setForm({ ...form, display_name: e.target.value })} 
+                    placeholder="e.g., ABC Corp" 
+                    className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" 
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Primary Theme Color</label>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="color" 
+                        value={form.theme_primary_color || '#6366f1'} 
+                        onChange={(e) => setForm({ ...form, theme_primary_color: e.target.value })} 
+                        className="w-10 h-10 rounded cursor-pointer border-0" 
+                      />
+                      <input 
+                        type="text" 
+                        value={form.theme_primary_color || '#6366f1'} 
+                        onChange={(e) => setForm({ ...form, theme_primary_color: e.target.value })} 
+                        className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg p-2 bg-white dark:bg-gray-800 text-sm font-mono" 
+                        placeholder="#6366f1" 
+                      />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Secondary Theme Color</label>
+                    <div className="flex items-center gap-2">
+                      <input 
+                        type="color" 
+                        value={form.theme_secondary_color || '#8b5cf6'} 
+                        onChange={(e) => setForm({ ...form, theme_secondary_color: e.target.value })} 
+                        className="w-10 h-10 rounded cursor-pointer border-0" 
+                      />
+                      <input 
+                        type="text" 
+                        value={form.theme_secondary_color || '#8b5cf6'} 
+                        onChange={(e) => setForm({ ...form, theme_secondary_color: e.target.value })} 
+                        className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg p-2 bg-white dark:bg-gray-800 text-sm font-mono" 
+                        placeholder="#8b5cf6" 
+                      />
+                    </div>
+                  </div>
+                </div>
+                {/* Theme Preview */}
+                <div className="p-3 rounded-lg" style={{ background: `linear-gradient(135deg, ${form.theme_primary_color || '#6366f1'}, ${form.theme_secondary_color || '#8b5cf6'})` }}>
+                  <p className="text-white text-sm font-medium text-center">Theme Preview</p>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Registrations Section */}
+          <div className="border rounded-lg p-4">
+            <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2 mb-4">
+              📋 Business Registrations
+            </h3>
+            <p className="text-sm text-gray-500 mb-4">Track all business registration numbers for compliance and documentation.</p>
+            
+            {/* Primary Registrations */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">GSTIN</label>
+                <input 
+                  type="text" 
+                  value={form.registrations?.gstin || ''} 
+                  onChange={(e) => setForm({ ...form, registrations: { ...form.registrations, gstin: e.target.value.toUpperCase() } })} 
+                  placeholder="22AAAAA0000A1Z5" 
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 font-mono text-sm" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PAN</label>
+                <input 
+                  type="text" 
+                  value={form.registrations?.pan || ''} 
+                  onChange={(e) => setForm({ ...form, registrations: { ...form.registrations, pan: e.target.value.toUpperCase() } })} 
+                  placeholder="AAAAA0000A" 
+                  maxLength={10}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 font-mono text-sm" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">TAN</label>
+                <input 
+                  type="text" 
+                  value={form.registrations?.tan || ''} 
+                  onChange={(e) => setForm({ ...form, registrations: { ...form.registrations, tan: e.target.value.toUpperCase() } })} 
+                  placeholder="AAAA00000A" 
+                  maxLength={10}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 font-mono text-sm" 
+                />
+              </div>
+            </div>
+
+            {/* Company Registrations */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">CIN (Company)</label>
+                <input 
+                  type="text" 
+                  value={form.registrations?.cin || ''} 
+                  onChange={(e) => setForm({ ...form, registrations: { ...form.registrations, cin: e.target.value.toUpperCase() } })} 
+                  placeholder="U00000XX0000XXX000000" 
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 font-mono text-sm" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">LLPIN (LLP)</label>
+                <input 
+                  type="text" 
+                  value={form.registrations?.llpin || ''} 
+                  onChange={(e) => setForm({ ...form, registrations: { ...form.registrations, llpin: e.target.value.toUpperCase() } })} 
+                  placeholder="AAA-0000" 
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 font-mono text-sm" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Udyam (MSME)</label>
+                <input 
+                  type="text" 
+                  value={form.registrations?.udyam || ''} 
+                  onChange={(e) => setForm({ ...form, registrations: { ...form.registrations, udyam: e.target.value.toUpperCase() } })} 
+                  placeholder="UDYAM-XX-00-0000000" 
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 font-mono text-sm" 
+                />
+              </div>
+            </div>
+
+            {/* License Registrations */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">IEC (Import/Export)</label>
+                <input 
+                  type="text" 
+                  value={form.registrations?.iec || ''} 
+                  onChange={(e) => setForm({ ...form, registrations: { ...form.registrations, iec: e.target.value.toUpperCase() } })} 
+                  placeholder="AAAAAAA000" 
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 font-mono text-sm" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">FSSAI License</label>
+                <input 
+                  type="text" 
+                  value={form.registrations?.fssai || ''} 
+                  onChange={(e) => setForm({ ...form, registrations: { ...form.registrations, fssai: e.target.value } })} 
+                  placeholder="00000000000000" 
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 font-mono text-sm" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Drug License</label>
+                <input 
+                  type="text" 
+                  value={form.registrations?.drug_license || ''} 
+                  onChange={(e) => setForm({ ...form, registrations: { ...form.registrations, drug_license: e.target.value } })} 
+                  placeholder="License Number" 
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 font-mono text-sm" 
+                />
+              </div>
+            </div>
+
+            {/* Local Licenses */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Shop & Establishment</label>
+                <input 
+                  type="text" 
+                  value={form.registrations?.shop_license || ''} 
+                  onChange={(e) => setForm({ ...form, registrations: { ...form.registrations, shop_license: e.target.value } })} 
+                  placeholder="License Number" 
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 font-mono text-sm" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Trade License</label>
+                <input 
+                  type="text" 
+                  value={form.registrations?.trade_license || ''} 
+                  onChange={(e) => setForm({ ...form, registrations: { ...form.registrations, trade_license: e.target.value } })} 
+                  placeholder="License Number" 
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 font-mono text-sm" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Professional Tax</label>
+                <input 
+                  type="text" 
+                  value={form.registrations?.professional_tax || ''} 
+                  onChange={(e) => setForm({ ...form, registrations: { ...form.registrations, professional_tax: e.target.value } })} 
+                  placeholder="PT Number" 
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 font-mono text-sm" 
+                />
+              </div>
+            </div>
+
+            {/* Employee Registrations */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">PF Number (EPFO)</label>
+                <input 
+                  type="text" 
+                  value={form.registrations?.pf_number || ''} 
+                  onChange={(e) => setForm({ ...form, registrations: { ...form.registrations, pf_number: e.target.value.toUpperCase() } })} 
+                  placeholder="AAAA/AAA/0000000/000/0000000" 
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 font-mono text-sm" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">ESI Number</label>
+                <input 
+                  type="text" 
+                  value={form.registrations?.esi_number || ''} 
+                  onChange={(e) => setForm({ ...form, registrations: { ...form.registrations, esi_number: e.target.value } })} 
+                  placeholder="00-00-000000-000-0000" 
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 font-mono text-sm" 
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Document Upload Section */}
           <div className="border rounded-lg p-4">
             <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2 mb-4">
               <FileText className="w-4 h-4" /> Upload Documents
@@ -750,7 +1172,7 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
             <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
               <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Document Categories:</p>
               <div className="flex flex-wrap gap-2">
-                {['Registration Certificate', 'Tax Document', 'ID Proof', 'Address Proof', 'Bank Details', 'Contract', 'License', 'Other'].map(cat => (
+                {['GST Certificate', 'PAN Card', 'Incorporation Cert', 'Bank Statement', 'Address Proof', 'Contract', 'License', 'Other'].map(cat => (
                   <span key={cat} className="px-2 py-1 bg-white dark:bg-gray-700 border rounded text-xs">{cat}</span>
                 ))}
               </div>
@@ -772,11 +1194,12 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
                     <div className="flex items-center gap-2">
                       <select value={doc.category} onChange={(e) => updateDocCategory(idx, e.target.value)} className="text-sm border rounded p-1">
                         <option value="GENERAL">General</option>
-                        <option value="REGISTRATION">Registration</option>
+                        <option value="GST_CERT">GST Certificate</option>
+                        <option value="PAN_CARD">PAN Card</option>
+                        <option value="INCORPORATION">Incorporation Cert</option>
                         <option value="TAX">Tax Document</option>
-                        <option value="ID_PROOF">ID Proof</option>
-                        <option value="ADDRESS_PROOF">Address Proof</option>
                         <option value="BANK">Bank Details</option>
+                        <option value="ADDRESS_PROOF">Address Proof</option>
                         <option value="CONTRACT">Contract</option>
                         <option value="LICENSE">License</option>
                       </select>

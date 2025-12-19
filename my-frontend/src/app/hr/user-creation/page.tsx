@@ -1,12 +1,14 @@
 /**
  * User Creation Page - App Router
  * Two-stage user creation: HR creates request → sends KYC link OR creates immediately
+ * Office Locations: Fetched from RENT type contracts (rental premises)
+ * Roles: Fetched from database with permission filtering
  */
 'use client';
 
 import React, { useState, useEffect } from 'react';
 import SuperAdminLayout from '@/common/layouts/superadmin-layout';
-import { UserPlus, Mail, Phone, MapPin, Briefcase, AlertCircle } from 'lucide-react';
+import { UserPlus, Mail, Phone, MapPin, Briefcase, AlertCircle, Building2, Info } from 'lucide-react';
 
 // Types
 type SimpleUser = {
@@ -22,20 +24,16 @@ type OfficeLocation = {
   id: string;
   name: string;
   code: string;
+  address?: string;
+  contractId?: string;
 };
 
-// Mock data (replace with real API calls later)
-const MOCK_USERS: SimpleUser[] = [
-  { id: '1', firstName: 'John', lastName: 'Doe', employeeId: 'EMP-001', role: 'MANAGER', active: true },
-  { id: '2', firstName: 'Jane', lastName: 'Smith', employeeId: 'EMP-002', role: 'HUB_INCHARGE', active: true },
-  { id: '3', firstName: 'Mike', lastName: 'Johnson', employeeId: 'EMP-003', role: 'MANAGER_LEVEL', active: true },
-];
-
-const MOCK_LOCATIONS: OfficeLocation[] = [
-  { id: '1', name: 'Head Office', code: 'HO' },
-  { id: '2', name: 'Branch Office - Mumbai', code: 'BR-MUM' },
-  { id: '3', name: 'Branch Office - Delhi', code: 'BR-DEL' },
-];
+type RoleOption = {
+  id: string;
+  name: string;
+  displayName: string;
+  description?: string;
+};
 
 export default function UserCreationPage() {
   const [firstName, setFirstName] = useState('');
@@ -49,6 +47,7 @@ export default function UserCreationPage() {
 
   const [users, setUsers] = useState<SimpleUser[]>([]);
   const [locations, setLocations] = useState<OfficeLocation[]>([]);
+  const [roles, setRoles] = useState<RoleOption[]>([]);
   const [loading, setLoading] = useState(false);
   const [loadingData, setLoadingData] = useState(true);
   const [showOverrideModal, setShowOverrideModal] = useState(false);
@@ -56,14 +55,94 @@ export default function UserCreationPage() {
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
-  // Load mock data on mount
+  // Fetch data from APIs on mount
   useEffect(() => {
-    setTimeout(() => {
-      setUsers(MOCK_USERS);
-      setLocations(MOCK_LOCATIONS);
-      setLoadingData(false);
-    }, 500);
+    async function loadData() {
+      setLoadingData(true);
+      try {
+        // Fetch reporting authorities (users who can be managers) using search endpoint
+        const usersRes = await fetch('/api/users/search?q=&limit=100', {
+          credentials: 'include'
+        });
+        if (usersRes.ok) {
+          const usersData = await usersRes.json();
+          const allUsers = usersData.data?.users || usersData.users || usersData || [];
+          // Filter to only show users who can be reporting authorities (managers, admins, etc.)
+          const managerRoles = ['MANAGER', 'HUB_INCHARGE', 'ADMIN', 'MANAGER_LEVEL', 'STORE_INCHARGE', 'SYSTEM_ADMIN', 'SUPER_ADMIN'];
+          const usersList = allUsers
+            .filter((u: any) => {
+              const role = (u.role || u.roleName || '').toUpperCase();
+              return managerRoles.some(mr => role.includes(mr));
+            })
+            .map((u: any) => ({
+              id: u.id || u.user_id,
+              firstName: u.first_name || u.firstName || u.name?.split(' ')[0] || u.username || '',
+              lastName: u.last_name || u.lastName || u.name?.split(' ').slice(1).join(' ') || '',
+              employeeId: u.employee_id || u.employeeId,
+              role: u.role || u.roleName,
+              active: u.active !== false && u.isActive !== false
+            }));
+          setUsers(usersList);
+        }
+
+        // Fetch office locations from RENT contracts (rental premises)
+        const locationsRes = await fetch('/api/admin/contracts?contract_type=RENT&status=ACTIVE', {
+          credentials: 'include'
+        });
+        if (locationsRes.ok) {
+          const locData = await locationsRes.json();
+          const contracts = locData.data?.contracts || locData.contracts || [];
+          const locationsList: OfficeLocation[] = contracts.map((c: any) => ({
+            id: c.id,
+            name: c.party_name || c.title || 'Unnamed Location',
+            code: c.contract_number || `LOC-${c.id}`,
+            address: c.rent_detail?.property_address || c.description || '',
+            contractId: c.id
+          }));
+          setLocations(locationsList);
+        } else {
+          // If no contracts API, show empty state
+          setLocations([]);
+        }
+
+        // Fetch assignable roles based on current user's permissions
+        // This endpoint returns only roles the current user is allowed to assign
+        const rolesRes = await fetch('/api/privileges/assignable-roles', {
+          credentials: 'include'
+        });
+        if (rolesRes.ok) {
+          const rolesData = await rolesRes.json();
+          const rolesList = (rolesData.data || rolesData.roles || []).map((r: any) => ({
+            id: r.id || r.role_id || r.name,
+            name: r.name || r.role_name,
+            displayName: r.display_name || r.displayName || formatRoleName(r.name || r.role_name),
+            description: r.description
+          }));
+          setRoles(rolesList);
+        } else {
+          // Fallback: show message that roles couldn't be loaded
+          console.warn('Could not fetch assignable roles');
+          setRoles([]);
+        }
+      } catch (error) {
+        console.error('Failed to load form data:', error);
+        // Set empty - user needs proper API access
+        setRoles([]);
+      } finally {
+        setLoadingData(false);
+      }
+    }
+    loadData();
   }, []);
+
+  // Helper to format role names
+  function formatRoleName(name: string): string {
+    if (!name) return '';
+    return name
+      .split('_')
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .join(' ');
+  }
 
   const selectedAuthority = users.find(u => u.id === reportingAuthorityId);
   const approverId = reportingAuthorityId || null;
@@ -297,6 +376,26 @@ export default function UserCreationPage() {
                 </label>
                 {loadingData ? (
                   <div className="w-full h-10 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-md"></div>
+                ) : locations.length === 0 ? (
+                  <div className="space-y-2">
+                    <select
+                      id="officeLocation"
+                      disabled
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                    >
+                      <option value="">No locations available</option>
+                    </select>
+                    <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                      <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                      <div className="text-xs text-amber-700 dark:text-amber-300">
+                        <strong>No rental premises found.</strong> Office locations are created from RENT type contracts in the{' '}
+                        <a href="/admin/contracts" className="underline hover:text-amber-900 dark:hover:text-amber-100">
+                          Agreements & Contracts
+                        </a>{' '}
+                        page. Create a rental premises contract first to add office locations.
+                      </div>
+                    </div>
+                  </div>
                 ) : (
                   <select
                     id="officeLocation"
@@ -306,8 +405,8 @@ export default function UserCreationPage() {
                   >
                     <option value="">Select Office Location</option>
                     {locations.map((loc) => (
-                      <option key={loc.id} value={loc.code}>
-                        {loc.name} ({loc.code})
+                      <option key={loc.id} value={loc.id}>
+                        {loc.name} {loc.address ? `• ${loc.address}` : ''} ({loc.code})
                       </option>
                     ))}
                   </select>
@@ -320,20 +419,39 @@ export default function UserCreationPage() {
                   <Briefcase className="w-4 h-4 inline mr-1" />
                   Role <span className="text-red-500">*</span>
                 </label>
-                <select
-                  id="role"
-                  value={role}
-                  onChange={(e) => setRole(e.target.value)}
-                  disabled={loadingData}
-                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-                >
-                  <option value="">Select Role</option>
-                  <option value="EMPLOYEE">Employee</option>
-                  <option value="MANAGER">Manager</option>
-                  <option value="HUB_INCHARGE">Hub Incharge</option>
-                  <option value="MANAGER_LEVEL">Manager Level</option>
-                  <option value="ADMIN">Admin</option>
-                </select>
+                {loadingData ? (
+                  <div className="w-full h-10 bg-gray-200 dark:bg-gray-700 animate-pulse rounded-md"></div>
+                ) : roles.length === 0 ? (
+                  <div className="space-y-2">
+                    <select
+                      id="role"
+                      disabled
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md bg-gray-100 dark:bg-gray-600 text-gray-500 dark:text-gray-400 cursor-not-allowed"
+                    >
+                      <option value="">No roles available</option>
+                    </select>
+                    <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md">
+                      <Info className="w-4 h-4 text-amber-600 dark:text-amber-400 mt-0.5 flex-shrink-0" />
+                      <div className="text-xs text-amber-700 dark:text-amber-300">
+                        <strong>No roles have been assigned to you.</strong> Your Super Admin has not granted you permission to assign any roles. Please contact your Super Admin to request role assignment permissions.
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <select
+                    id="role"
+                    value={role}
+                    onChange={(e) => setRole(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring-2 focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
+                  >
+                    <option value="">Select Role</option>
+                    {roles.map((r) => (
+                      <option key={r.id} value={r.name}>
+                        {r.displayName}
+                      </option>
+                    ))}
+                  </select>
+                )}
                 {errors.role && <p className="mt-1 text-sm text-red-600">{errors.role}</p>}
               </div>
             </div>

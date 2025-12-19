@@ -568,8 +568,8 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     permissions: ['user-management', 'hr-management'],
   roles: ['SYSTEM_ADMIN', 'ADMIN', 'HR', 'HR_MANAGER'],
     status: 'active',
+    showInSidebar: false, // Integrated into User Settings page
     description: 'Two-stage user creation with KYC workflow - HR creates request and sends KYC link or creates user immediately',
-    badge: 'New',
     order: 2.5,
   },
   {
@@ -822,6 +822,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     permissions: [], // Public informational page for all authenticated users
     roles: ['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN', 'MANAGER', 'STAFF', 'OPERATOR', 'VIEWER', 'AUDITOR', 'HUB_INCHARGE', 'STORE_INCHARGE', 'FINANCE_CONTROLLER', 'CFO', 'CEO'],
     status: 'active',
+    showInSidebar: false, // Integrated into User Settings page
     description: 'Learn how BISMAN ERP keeps your data safe and private',
     order: 10.5,
   },
@@ -913,18 +914,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'View subscription audit logs',
     order: 3,
     showInSidebar: false, // Sub-page of subscriptions
-  },
-  {
-    id: 'ai-handling',
-    name: 'AI Handling',
-    path: '/super-admin/ai-handling',
-    iconKey: "Bot",
-    module: 'super-admin',
-    permissions: ['system-settings'],
-    roles: ['SUPER_ADMIN'],
-    status: 'active',
-    description: 'AI configuration and management',
-    order: 5,
   },
   {
     id: 'server-logs',
@@ -1743,18 +1732,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 1,
   },
   {
-    id: 'common-help-center',
-    name: 'Help Center',
-    path: '/common/help-center',
-    iconKey: "HelpCircle",
-    module: 'common',
-    permissions: ['authenticated'],
-    roles: ['ALL'],
-    status: 'active',
-    description: 'Get help and support resources',
-    order: 3,
-  },
-  {
     id: 'common-user-settings',
     name: 'User Settings',
     path: '/common/user-settings',
@@ -1831,42 +1808,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 2,
   },
   {
-    id: 'billing-payment-method',
-    name: 'Payment Method',
-    path: '/billing/payment-method',
-    iconKey: "Wallet",
-    module: 'billing',
-    permissions: ['billing-manage', 'authenticated'],
-    roles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'],
-    status: 'active',
-    description: 'Manage payment methods and billing address',
-    order: 3,
-  },
-  {
-    id: 'billing-trial',
-    name: 'Trial Management',
-    path: '/billing/trial',
-    iconKey: "Clock",
-    module: 'billing',
-    permissions: ['billing-view', 'authenticated'],
-    roles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'],
-    status: 'active',
-    description: 'View trial status and manage trial period',
-    order: 4,
-  },
-  {
-    id: 'billing-usage',
-    name: 'Usage & Overages',
-    path: '/billing/usage',
-    iconKey: "BarChart3",
-    module: 'billing',
-    permissions: ['billing-view', 'authenticated'],
-    roles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'],
-    status: 'active',
-    description: 'View usage metrics and overage charges',
-    order: 5,
-  },
-  {
     id: 'pricing',
     name: 'Pricing',
     path: '/pricing',
@@ -1878,18 +1819,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'View subscription plans and pricing',
     order: 0,
     showInSidebar: false, // Public page, accessible via direct link
-  },
-  {
-    id: 'settings-billing',
-    name: 'Billing Settings',
-    path: '/settings/billing',
-    iconKey: "Settings",
-    module: 'billing',
-    permissions: ['billing-manage', 'authenticated'],
-    roles: ['SUPER_ADMIN', 'ADMIN', 'OWNER'],
-    status: 'active',
-    description: 'Manage subscription and billing preferences',
-    order: 6,
   },
 
   // ==================== ADMIN BILLING CONSOLE ====================
@@ -1982,18 +1911,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'Platform analytics and insights',
     order: 14,
   },
-  {
-    id: 'dashboard-analytics',
-    name: 'Dashboard Analytics',
-    path: '/dashboard/analytics',
-    iconKey: "PieChart",
-    module: 'admin',
-    permissions: ['admin-analytics', 'authenticated'],
-    roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN'],
-    status: 'active',
-    description: 'Dashboard level analytics view',
-    order: 15,
-  },
   // ==================== QA & TESTING MODULE (HIDDEN - Internal Testing Only) ====================
   {
     id: 'qa-dashboard',
@@ -2085,6 +2002,23 @@ export function getPagesByModule(moduleId: string): PageMetadata[] {
     .filter(page => page.module === moduleId)
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 }
+
+// Add Contracts page to registry (Admin module)
+export const CONTRACTS_PAGE = {
+  id: 'contracts',
+  name: 'Contracts & Agreements',
+  path: '/admin/contracts',
+  iconKey: 'FileSignature',
+  module: 'admin',
+  permissions: ['contracts-management'],
+  roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN'],
+  status: 'active' as PageStatus,
+  showInSidebar: true,
+  description: 'Manage agreements, renewals, documents, and contract lifecycle',
+  order: 30,
+}
+
+// Note: Append this to PAGE_REGISTRY in the appropriate place using check-modules-consistency if needed.
 
 /**
  * Get pages accessible by a user's permissions

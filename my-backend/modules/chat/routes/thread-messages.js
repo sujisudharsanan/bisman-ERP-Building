@@ -18,6 +18,26 @@ const prisma = getPrisma();
 // Apply authentication to all routes
 router.use(authenticate);
 
+/**
+ * Get the integer user ID for chat/thread operations.
+ * Thread/ThreadMember tables use Int for createdById/userId,
+ * but User.id is now UUID. Use legacy_id if available.
+ */
+function getChatUserId(req) {
+  // Prefer legacy_id (Int) if available
+  if (req.user.legacy_id) {
+    return req.user.legacy_id;
+  }
+  // Try parsing UUID as int (will fail for real UUIDs, returns NaN)
+  const parsed = parseInt(req.user.id);
+  if (!isNaN(parsed)) {
+    return parsed;
+  }
+  // Fallback - should not reach here in production
+  console.warn('[getChatUserId] No valid integer ID found for user:', req.user.email);
+  return 0;
+}
+
 // ==================== THREADS ====================
 
 /**
@@ -26,7 +46,7 @@ router.use(authenticate);
  */
 router.get('/threads', async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = getChatUserId(req);
 
     // Get threads where user is a member or creator
     const threads = await prisma.thread.findMany({
@@ -38,15 +58,11 @@ router.get('/threads', async (req, res) => {
       },
       include: {
         members: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                email: true,
-                profile_pic_url: true
-              }
-            }
+          select: {
+            id: true,
+            userId: true,
+            role: true,
+            isActive: true
           }
         },
         messages: {
@@ -68,7 +84,7 @@ router.get('/threads', async (req, res) => {
       let unreadCount = 0;
       try {
         // Find the user's last sent message in this thread
-        const lastUserMessage = await prisma.message.findFirst({
+        const lastUserMessage = await prisma.threadMessage.findFirst({
           where: {
             threadId: thread.id,
             senderId: userId
@@ -78,7 +94,7 @@ router.get('/threads', async (req, res) => {
         });
         
         // Count messages from others after the user's last message
-        unreadCount = await prisma.message.count({
+        unreadCount = await prisma.threadMessage.count({
           where: {
             threadId: thread.id,
             senderId: { not: userId },
@@ -96,10 +112,10 @@ router.get('/threads', async (req, res) => {
         createdAt: thread.createdAt,
         updatedAt: thread.updatedAt,
         members: thread.members.map(m => ({
-          id: m.user.id,
-          username: m.user.username,
-          email: m.user.email,
-          profilePic: m.user.profile_pic_url
+          id: m.id,
+          odUserId: m.userId,
+          role: m.role,
+          isActive: m.isActive
         })),
         lastMessage: thread.messages[0] || null,
         unreadCount
@@ -127,7 +143,7 @@ router.get('/threads', async (req, res) => {
 router.get('/threads/:threadId', async (req, res) => {
   try {
     const { threadId } = req.params;
-    const userId = req.user.id;
+    const userId = getChatUserId(req);
 
     const thread = await prisma.thread.findFirst({
       where: {
@@ -139,15 +155,11 @@ router.get('/threads/:threadId', async (req, res) => {
       },
       include: {
         members: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                email: true,
-                profile_pic_url: true
-              }
-            }
+          select: {
+            id: true,
+            userId: true,
+            role: true,
+            isActive: true
           }
         }
       }
@@ -169,10 +181,10 @@ router.get('/threads/:threadId', async (req, res) => {
         createdAt: thread.createdAt,
         updatedAt: thread.updatedAt,
         members: thread.members.map(m => ({
-          id: m.user.id,
-          username: m.user.username,
-          email: m.user.email,
-          profilePic: m.user.profile_pic_url
+          id: m.id,
+          odUserId: m.userId,
+          role: m.role,
+          isActive: m.isActive
         }))
       }
     });
@@ -192,7 +204,7 @@ router.get('/threads/:threadId', async (req, res) => {
 router.post('/threads', async (req, res) => {
   try {
     const { title, memberIds = [] } = req.body;
-    const userId = req.user.id;
+    const userId = getChatUserId(req);
 
     // Create thread with creator as member
     const thread = await prisma.thread.create({
@@ -209,15 +221,11 @@ router.post('/threads', async (req, res) => {
       },
       include: {
         members: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                email: true,
-                profile_pic_url: true
-              }
-            }
+          select: {
+            id: true,
+            userId: true,
+            role: true,
+            isActive: true
           }
         }
       }
@@ -232,10 +240,10 @@ router.post('/threads', async (req, res) => {
         createdAt: thread.createdAt,
         updatedAt: thread.updatedAt,
         members: thread.members.map(m => ({
-          id: m.user.id,
-          username: m.user.username,
-          email: m.user.email,
-          profilePic: m.user.profile_pic_url
+          id: m.id,
+          odUserId: m.userId,
+          role: m.role,
+          isActive: m.isActive
         }))
       }
     });
@@ -256,7 +264,7 @@ router.put('/threads/:threadId', async (req, res) => {
   try {
     const { threadId } = req.params;
     const { title } = req.body;
-    const userId = req.user.id;
+    const userId = getChatUserId(req);
 
     // Check ownership
     const existing = await prisma.thread.findFirst({
@@ -295,7 +303,7 @@ router.put('/threads/:threadId', async (req, res) => {
 router.delete('/threads/:threadId', async (req, res) => {
   try {
     const { threadId } = req.params;
-    const userId = req.user.id;
+    const userId = getChatUserId(req);
 
     // Check ownership
     const existing = await prisma.thread.findFirst({
@@ -334,7 +342,7 @@ router.post('/threads/:threadId/members', async (req, res) => {
   try {
     const { threadId } = req.params;
     const { memberIds } = req.body;
-    const userId = req.user.id;
+    const userId = getChatUserId(req);
 
     // Check ownership or membership
     const existing = await prisma.thread.findFirst({
@@ -364,15 +372,11 @@ router.post('/threads/:threadId/members', async (req, res) => {
       where: { id: threadId },
       include: {
         members: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                email: true,
-                profile_pic_url: true
-              }
-            }
+          select: {
+            id: true,
+            userId: true,
+            role: true,
+            isActive: true
           }
         }
       }
@@ -398,7 +402,7 @@ router.post('/threads/:threadId/members', async (req, res) => {
 router.delete('/threads/:threadId/members/:memberId', async (req, res) => {
   try {
     const { threadId, memberId } = req.params;
-    const userId = req.user.id;
+    const userId = getChatUserId(req);
 
     // Check ownership
     const existing = await prisma.thread.findFirst({
@@ -561,7 +565,7 @@ router.put('/messages/:messageId', async (req, res) => {
   try {
     const { messageId } = req.params;
     const { content } = req.body;
-    const userId = req.user.id;
+    const userId = getChatUserId(req);
 
     if (!content || content.trim() === '') {
       return res.status(400).json({ 
@@ -603,7 +607,7 @@ router.put('/messages/:messageId', async (req, res) => {
 router.delete('/messages/:messageId', async (req, res) => {
   try {
     const { messageId } = req.params;
-    const userId = req.user.id;
+    const userId = getChatUserId(req);
 
     await messageService.deleteMessage(messageId, userId);
 
@@ -639,7 +643,7 @@ router.post('/messages/:messageId/reactions', async (req, res) => {
   try {
     const { messageId } = req.params;
     const { emoji } = req.body;
-    const userId = req.user.id;
+    const userId = getChatUserId(req);
 
     if (!emoji) {
       return res.status(400).json({ 
@@ -681,7 +685,7 @@ router.delete('/messages/:messageId/reactions', async (req, res) => {
   try {
     const { messageId } = req.params;
     const { emoji } = req.body;
-    const userId = req.user.id;
+    const userId = getChatUserId(req);
 
     if (!emoji) {
       return res.status(400).json({ 
@@ -722,7 +726,7 @@ router.delete('/messages/:messageId/reactions', async (req, res) => {
 router.post('/messages/read', async (req, res) => {
   try {
     const { messageIds } = req.body;
-    const userId = req.user.id;
+    const userId = getChatUserId(req);
 
     if (!Array.isArray(messageIds) || messageIds.length === 0) {
       return res.status(400).json({ 
@@ -806,7 +810,7 @@ router.get('/messages/search', async (req, res) => {
  */
 router.get('/sync', async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = getChatUserId(req);
     const { since_id, since_time, limit: limitParam } = req.query;
     const limit = Math.min(parseInt(limitParam) || 100, 500);
 
@@ -860,28 +864,16 @@ router.get('/sync', async (req, res) => {
     }
 
     // Fetch new messages
+    // Note: ThreadMessage.senderId is Int, no direct relation to User (UUID id)
+    // Sender info must be fetched separately or cached
     const newMessages = await prisma.threadMessage.findMany({
       where: messagesWhere,
       include: {
-        sender: {
-          select: {
-            id: true,
-            username: true,
-            email: true,
-            profile_pic_url: true,
-            role: true
-          }
-        },
         replyTo: {
           select: {
             id: true,
             content: true,
-            sender: {
-              select: {
-                id: true,
-                username: true
-              }
-            }
+            senderId: true
           }
         }
       },
@@ -901,15 +893,11 @@ router.get('/sync', async (req, res) => {
           where: { id: threadId },
           include: {
             members: {
-              include: {
-                user: {
-                  select: {
-                    id: true,
-                    username: true,
-                    email: true,
-                    profile_pic_url: true
-                  }
-                }
+              select: {
+                id: true,
+                userId: true,
+                role: true,
+                isActive: true
               }
             },
             messages: {
@@ -932,7 +920,7 @@ router.get('/sync', async (req, res) => {
         try {
           const memberRecord = await prisma.threadMember.findUnique({
             where: {
-              threadId_userId: { threadId, userId }
+              threadId_userId: { threadId, userId: userId }
             },
             select: { lastReadAt: true }
           });
@@ -955,11 +943,12 @@ router.get('/sync', async (req, res) => {
           createdById: thread.createdById,
           createdAt: thread.createdAt,
           updatedAt: thread.updatedAt,
+          // Member IDs only - client should cache user info separately
           members: thread.members.map(m => ({
-            id: m.user.id,
-            username: m.user.username,
-            email: m.user.email,
-            profilePic: m.user.profile_pic_url
+            id: m.id,
+            odUserId: m.userId,
+            role: m.role,
+            isActive: m.isActive
           })),
           lastMessage: thread.messages[0] || null,
           unreadCount
@@ -995,7 +984,7 @@ router.get('/sync', async (req, res) => {
  */
 router.get('/sync/initial', async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = getChatUserId(req);
     const messagesPerThread = Math.min(parseInt(req.query.messages_per_thread) || 20, 50);
 
     // Get all threads for user with members
@@ -1008,15 +997,11 @@ router.get('/sync/initial', async (req, res) => {
       },
       include: {
         members: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-                email: true,
-                profile_pic_url: true
-              }
-            }
+          select: {
+            id: true,
+            userId: true,
+            role: true,
+            isActive: true
           }
         }
       },
@@ -1032,25 +1017,11 @@ router.get('/sync/initial', async (req, res) => {
             isDeleted: false
           },
           include: {
-            sender: {
-              select: {
-                id: true,
-                username: true,
-                email: true,
-                profile_pic_url: true,
-                role: true
-              }
-            },
             replyTo: {
               select: {
                 id: true,
                 content: true,
-                sender: {
-                  select: {
-                    id: true,
-                    username: true
-                  }
-                }
+                senderId: true
               }
             }
           },
@@ -1087,10 +1058,10 @@ router.get('/sync/initial', async (req, res) => {
           createdAt: thread.createdAt,
           updatedAt: thread.updatedAt,
           members: thread.members.map(m => ({
-            id: m.user.id,
-            username: m.user.username,
-            email: m.user.email,
-            profilePic: m.user.profile_pic_url
+            id: m.id,
+            odUserId: m.userId,
+            role: m.role,
+            isActive: m.isActive
           })),
           lastMessage: messages[0] || null,
           unreadCount,

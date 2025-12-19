@@ -71,7 +71,6 @@ const SYSTEM_PAGES = [
 
   // ==================== ANALYTICS PAGES ====================
   { key: 'analytics-dashboard', name: 'Analytics Dashboard', module: 'analytics' },
-  { key: 'dashboard-analytics', name: 'Dashboard Analytics', module: 'analytics' },
 
   // ==================== AI PAGES ====================
   { key: 'ai-handling', name: 'AI Handling', module: 'ai' },

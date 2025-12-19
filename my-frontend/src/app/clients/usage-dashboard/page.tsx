@@ -176,7 +176,7 @@ function QuotaAlertBanner({ usage }: { usage: UsageData }) {
                 {criticalItems.join(', ')} usage is above 95%.
               </p>
               <a
-                href="/settings/billing"
+                href="/billing"
                 className="inline-flex items-center gap-1 text-sm font-medium text-red-700 dark:text-red-400 hover:underline mt-2"
               >
                 Upgrade your plan <ExternalLink className="w-3 h-3" />
@@ -382,7 +382,7 @@ function PlanOverviewCard({ billing, isLoading }: { billing: BillingInfo; isLoad
         </>
       )}
       <a
-        href="/settings/billing"
+        href="/billing"
         className="mt-4 inline-flex items-center gap-2 text-sm font-medium hover:underline"
       >
         Manage subscription <ExternalLink className="w-3 h-3" />

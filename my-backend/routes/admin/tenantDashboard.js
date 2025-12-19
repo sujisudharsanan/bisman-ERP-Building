@@ -581,8 +581,8 @@ router.post('/:id/upgrade', authenticateToken, requireAdminAccess, async (req, r
       const session = await stripeService.createCheckoutSession({
         tenantId,
         plan,
-        successUrl: `${process.env.FRONTEND_URL}/settings/billing?success=true`,
-        cancelUrl: `${process.env.FRONTEND_URL}/settings/billing?canceled=true`
+        successUrl: `${process.env.FRONTEND_URL}/billing?success=true`,
+        cancelUrl: `${process.env.FRONTEND_URL}/billing?canceled=true`
       });
 
       res.json({

@@ -383,12 +383,6 @@ function PaymentMethodCard({ paymentMethod }: { paymentMethod: BillingSummary['p
     >
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Payment Method</h2>
-        <Link
-          href="/billing/payment-method"
-          className="text-sm text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1"
-        >
-          Manage <ChevronRight className="w-4 h-4" />
-        </Link>
       </div>
 
       {paymentMethod ? (
@@ -411,12 +405,11 @@ function PaymentMethodCard({ paymentMethod }: { paymentMethod: BillingSummary['p
             <AlertTriangle className="w-5 h-5" />
             <span>No payment method on file</span>
           </div>
-          <Link
-            href="/billing/payment-method"
-            className="mt-2 inline-block text-sm text-yellow-700 dark:text-yellow-400 hover:underline"
+          <span
+            className="mt-2 inline-block text-sm text-yellow-700 dark:text-yellow-400"
           >
-            Add payment method →
-          </Link>
+            Please contact support to add a payment method
+          </span>
         </div>
       )}
     </motion.div>
@@ -447,12 +440,6 @@ function UsageSummaryCard({ usage }: { usage: BillingSummary['usage'] }) {
     >
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Usage This Period</h2>
-        <Link
-          href="/billing/usage"
-          className="text-sm text-violet-600 dark:text-violet-400 hover:underline flex items-center gap-1"
-        >
-          Details <ChevronRight className="w-4 h-4" />
-        </Link>
       </div>
 
       <div className="space-y-4">
@@ -540,27 +527,11 @@ function QuickActionsCard({
         )}
 
         <Link
-          href="/billing/payment-method"
-          className="flex items-center justify-center gap-2 p-3 rounded-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 font-medium transition-colors"
-        >
-          <CreditCard className="w-4 h-4" />
-          Update Card
-        </Link>
-
-        <Link
           href="/billing/invoices"
           className="flex items-center justify-center gap-2 p-3 rounded-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 font-medium transition-colors"
         >
           <FileText className="w-4 h-4" />
           View Invoices
-        </Link>
-
-        <Link
-          href="/settings/billing"
-          className="flex items-center justify-center gap-2 p-3 rounded-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 font-medium transition-colors"
-        >
-          <Settings className="w-4 h-4" />
-          Billing Settings
         </Link>
 
         {currentTier !== 'free' && (
@@ -914,7 +885,7 @@ export default function BillingOverviewPage() {
 
         {/* Payment Failed Banner */}
         {billingSummary.status === 'past_due' && (
-          <PaymentFailedBanner onUpdatePayment={() => window.location.href = '/billing/payment-method'} />
+          <PaymentFailedBanner onUpdatePayment={() => alert('Please contact support to update your payment method')} />
         )}
 
         {/* Main Grid */}

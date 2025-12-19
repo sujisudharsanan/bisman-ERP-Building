@@ -1019,6 +1019,17 @@ try {
   }
 }
 
+// Subscription Plans routes (Super Admin - CRUD for subscription plans)
+try {
+  const subscriptionPlansRoutes = require('./routes/subscriptionPlans')
+  app.use('/api/subscription-plans', subscriptionPlansRoutes)
+  console.log('✅ Subscription Plans routes loaded at /api/subscription-plans')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Subscription Plans routes not loaded:', e && e.message)
+  }
+}
+
 // Stripe webhook (raw body required)
 try {
   const stripeWebhook = require('./routes/webhooks/stripeWebhook')
@@ -1165,6 +1176,9 @@ try {
   const enterpriseAdminNotifications = require('./routes/enterprise-admin-Notifications')
   const enterpriseAdminSupport = require('./routes/enterprise-admin-Support')
   
+  // Admin Creation with Subscription Assignment routes
+  const adminWithSubscription = require('./routes/adminWithSubscription')
+  
   app.use('/api/enterprise-admin/dashboard', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminDashboard)
   app.use('/api/enterprise-admin/organizations', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminOrganizations)
   app.use('/api/enterprise-admin/modules', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminModules)
@@ -1180,7 +1194,10 @@ try {
   app.use('/api/enterprise-admin/notifications', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminNotifications)
   app.use('/api/enterprise-admin/support', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminSupport)
   
-  console.log('✅ Enterprise Admin Management routes loaded (14 modules)')
+  // Admin Creation with Subscription - accessible for creating new organizations with subscriptions
+  app.use('/api/admin-creation', adminWithSubscription)
+  
+  console.log('✅ Enterprise Admin Management routes loaded (14 modules + Admin Creation)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Enterprise Admin Management routes not loaded:', e && e.message)
@@ -1294,6 +1311,15 @@ try {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Client Management routes not loaded:', e && e.message)
   }
+}
+
+// Contract Management routes (Admin Panel)
+try {
+  const contractRoutes = require('./routes/admin/contracts')
+  app.use('/api/admin/contracts', contractRoutes)
+  console.log('✅ Contract Management routes loaded at /api/admin/contracts')
+} catch (e) {
+  console.warn('Contract Management routes not loaded:', e && e.message)
 }
 
 // Public Trial Onboarding routes

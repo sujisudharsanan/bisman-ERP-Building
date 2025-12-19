@@ -30,6 +30,118 @@ const handleValidationErrors = (req, res, next) => {
   next();
 };
 
+// GET /api/privileges/assignable-roles - Fetch roles the current user can assign
+// Returns only roles that the user's Super Admin has explicitly granted
+router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) => {
+  try {
+    const userId = req.user?.id || req.user?.userId;
+    const userRole = req.user?.role || req.user?.roleName || '';
+    const superAdminId = req.user?.super_admin_id;
+    
+    console.log('[assignable-roles] User:', { userId, userRole, superAdminId });
+    
+    // For SUPER_ADMIN or ENTERPRISE_ADMIN - return all roles at lower level
+    const isSuperAdmin = userRole.toUpperCase() === 'SUPER_ADMIN';
+    const isEnterpriseAdmin = userRole.toUpperCase() === 'ENTERPRISE_ADMIN';
+    
+    if (isSuperAdmin || isEnterpriseAdmin) {
+      // Super Admin can assign all roles below their level
+      let allRoles = [];
+      try {
+        allRoles = await rbacService.getAllRoles();
+      } catch (_err) {
+        allRoles = await privilegeService.getAllRoles();
+      }
+      
+      // Filter out super admin and enterprise admin roles
+      const assignableRoles = allRoles.filter(role => {
+        const roleName = (role.name || '').toLowerCase();
+        return !roleName.includes('super') && !roleName.includes('enterprise');
+      });
+      
+      return res.json({
+        success: true,
+        data: assignableRoles,
+        source: 'super_admin_access',
+        total: assignableRoles.length,
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    // For other admins - check what roles their Super Admin has granted them
+    // Query the admin_role_assignments table
+    const PrismaClient = require('@prisma/client').PrismaClient;
+    const prismaInstance = new PrismaClient();
+    
+    try {
+      // Get roles assigned to this user (as assignee)
+      const assignedRoles = await prismaInstance.adminRoleAssignment.findMany({
+        where: {
+          assignee_id: userId,
+          is_active: true
+        },
+        include: {
+          rbac_roles: true
+        }
+      });
+      
+      console.log('[assignable-roles] Assigned roles for user:', assignedRoles.length);
+      
+      // If the user has explicitly assigned roles, return those
+      if (assignedRoles.length > 0) {
+        const roles = assignedRoles
+          .filter(ar => ar.rbac_roles)
+          .map(ar => ({
+            id: ar.rbac_roles.id,
+            name: ar.rbac_roles.name,
+            description: ar.rbac_roles.description,
+            level: ar.rbac_roles.level || ar.rbac_roles.role_level || 0,
+            is_active: ar.rbac_roles.is_active
+          }))
+          .filter(role => {
+            const roleName = (role.name || '').toLowerCase();
+            return !roleName.includes('super') && !roleName.includes('enterprise');
+          });
+        
+        return res.json({
+          success: true,
+          data: roles,
+          source: 'admin_role_assignments',
+          total: roles.length,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
+      // If no explicit role assignments, check if user's Super Admin has any module assignments
+      // that would imply certain roles (fallback to empty for now - strict permission model)
+      console.log('[assignable-roles] No explicit role assignments found for user:', userId);
+      
+      return res.json({
+        success: true,
+        data: [],
+        source: 'no_assignments',
+        message: 'No roles have been assigned to you. Please contact your Super Admin.',
+        total: 0,
+        timestamp: new Date().toISOString()
+      });
+      
+    } finally {
+      await prismaInstance.$disconnect();
+    }
+    
+  } catch (error) {
+    console.error('Error fetching assignable roles:', error);
+    res.status(500).json({
+      success: false,
+      error: {
+        message: 'Failed to fetch assignable roles',
+        code: 'DATABASE_ERROR'
+      },
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // GET /api/roles - Fetch all roles with user counts
 router.get('/roles', authMiddleware.authenticate, rbacMiddleware.requireRole(['Super Admin', 'Admin']), async (req, res) => {
   try {

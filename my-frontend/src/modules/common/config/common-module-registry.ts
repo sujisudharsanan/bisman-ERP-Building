@@ -107,19 +107,6 @@ export const COMMON_PAGES: CommonPageMetadata[] = [
   // Support Pages
   {
   // Removed per request
-  id: 'common-help-center',
-  name: 'Help Center',
-  path: '/common/help-center',
-  icon: HelpCircle,
-  description: 'Get help and support resources',
-  category: 'support',
-  order: 6,
-  isActive: false,
-  requiresAuth: true,
-  autoRegister: false,
-  },
-  {
-  // Removed per request
   id: 'common-documentation',
   name: 'Documentation',
   path: '/common/documentation',

@@ -4,6 +4,11 @@
  * API-level enforcement of subscription features and limits.
  * This middleware MUST be used in conjunction with frontend checks.
  * 
+ * Implements the three-layer enforcement:
+ * 1. checkRolePermissions(user) - RBAC validation
+ * 2. checkSubscriptionFeatures(tenant) - Feature flag validation
+ * 3. checkPlanLimits(tenant) - Quota and limit validation
+ * 
  * @module middleware/subscriptionEnforcer
  */
 
@@ -14,6 +19,15 @@ const {
   checkLimit,
 } = require('../lib/featureFlags');
 const { STATE_PROPERTIES } = require('../lib/subscriptionStateMachine');
+const {
+  checkRolePermissions,
+  checkSubscriptionFeatures,
+  checkSubscriptionState,
+  checkPlanLimits,
+  checkAllPlanLimits,
+  enforceSubscription,
+  createEnforcementMiddleware,
+} = require('../services/subscription/subscriptionEnforcementService');
 
 // ============================================================================
 // SUBSCRIPTION STATE ENFORCEMENT
@@ -413,4 +427,13 @@ module.exports = {
   
   // Helpers
   formatBytes,
+  
+  // Re-export from enforcement service for convenience
+  checkRolePermissions,
+  checkSubscriptionFeatures,
+  checkSubscriptionState,
+  checkPlanLimits,
+  checkAllPlanLimits,
+  enforceSubscription,
+  createEnforcementMiddleware,
 };

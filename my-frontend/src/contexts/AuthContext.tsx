@@ -15,11 +15,10 @@ import React, {
 import { API_BASE } from '@/config/api';
 
 // Common module pages that are always accessible without assignment
-// Removed per request: security-settings, notifications, messages, documentation
+// Removed per request: security-settings, notifications, messages, documentation, help-center
 const COMMON_MODULE_PATHS = [
   '/common/about-me',
   '/common/change-password',
-  '/common/help-center',
   '/common/user-settings',
   '/common/payment-request',
   '/chat', // Chat is accessible to all

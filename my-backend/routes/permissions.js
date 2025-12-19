@@ -195,17 +195,13 @@ router.get('/', authenticate, async (req, res) => {
       });
     }
 
-    // Regular users - Query rbac_user_permissions table (raw SQL)
-    const result = await prisma.$queryRaw`
-      SELECT allowed_pages 
-      FROM rbac_user_permissions 
-      WHERE user_id = ${userId}
-    `;
+    // Regular users - Query rbac_user_permissions table
+    const permissions = await prisma.rbac_user_permissions.findMany({
+      where: { user_id: userId },
+      select: { page_key: true }
+    });
 
-    let allowedPages = [];
-    if (result && result.length > 0 && result[0].allowed_pages) {
-      allowedPages = result[0].allowed_pages;
-    }
+    const allowedPages = permissions.map(p => p.page_key);
 
     // Add common pages
     if (!allowedPages.includes('about-me')) allowedPages.push('about-me');
@@ -238,7 +234,6 @@ router.get('/', authenticate, async (req, res) => {
 router.post('/', authenticate, async (req, res) => {
   try {
     const { userId, roleId, roleName, moduleName, allowedPages } = req.body;
-    const userRole = (req.user.role || '').toUpperCase();
 
     console.log(`💾 [SAVE PERMISSIONS] Request:`, { userId, roleId, roleName, moduleName, allowedPages: allowedPages?.length });
 
@@ -276,22 +271,21 @@ router.post('/', authenticate, async (req, res) => {
       }
     }
 
-    // Save to rbac_user_permissions table
-    await prisma.$executeRaw`
-      INSERT INTO rbac_user_permissions (user_id, role_name, allowed_pages, created_at, updated_at)
-      VALUES (
-        ${targetUserId},
-        ${roleName || 'CUSTOM'},
-        ${allowedPages}::text[],
-        NOW(),
-        NOW()
-      )
-      ON CONFLICT (user_id)
-      DO UPDATE SET
-        allowed_pages = EXCLUDED.allowed_pages,
-        role_name = EXCLUDED.role_name,
-        updated_at = NOW()
-    `;
+    // Delete existing permissions for this user
+    await prisma.rbac_user_permissions.deleteMany({
+      where: { user_id: targetUserId }
+    });
+
+    // Insert new permissions (one row per page_key)
+    if (allowedPages.length > 0) {
+      await prisma.rbac_user_permissions.createMany({
+        data: allowedPages.map(pageKey => ({
+          user_id: targetUserId,
+          page_key: pageKey
+        })),
+        skipDuplicates: true
+      });
+    }
 
     console.log(`✅ [PERMISSIONS SAVED] User ${targetUserId}: ${allowedPages.length} pages`);
 

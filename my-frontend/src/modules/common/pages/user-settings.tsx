@@ -16,6 +16,12 @@ import {
   Trash2,
   Key,
   HelpCircle,
+  Shield,
+  UserPlus,
+  Users,
+  Lock,
+  Smartphone,
+  Eye,
 } from "lucide-react";
 import { uploadFiles } from "@/lib/attachments";
 import ThemeSelector from "@/components/ThemeSelector";
@@ -27,9 +33,15 @@ export default function UserSettingsPage() {
   const router = useRouter();
 
   // Left-nav tabs
-  const [activeTab, setActiveTab] = useState<"profile" | "preferences" | "help">(
+  const [activeTab, setActiveTab] = useState<"profile" | "preferences" | "security" | "users" | "help">(
     "profile"
   );
+
+  // Check if user has admin permissions
+  const isAdmin = useMemo(() => {
+    const role = (user as any)?.role || (user as any)?.roleName || '';
+    return ['SUPER_ADMIN', 'ADMIN', 'ENTERPRISE_ADMIN', 'HR', 'HR_MANAGER', 'SYSTEM_ADMIN'].includes(role);
+  }, [user]);
 
   // Profile state
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
@@ -236,6 +248,30 @@ export default function UserSettingsPage() {
               <Settings className="w-4 h-4" />
               <span>Additional Settings</span>
             </button>
+            <button
+              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors border-b-2 ${
+                activeTab === "security"
+                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                  : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600"
+              }`}
+              onClick={() => setActiveTab("security")}
+            >
+              <Shield className="w-4 h-4" />
+              <span>Trust & Security</span>
+            </button>
+            {isAdmin && (
+              <button
+                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors border-b-2 ${
+                  activeTab === "users"
+                    ? "border-blue-600 text-blue-600 dark:text-blue-400"
+                    : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600"
+                }`}
+                onClick={() => setActiveTab("users")}
+              >
+                <UserPlus className="w-4 h-4" />
+                <span>User Management</span>
+              </button>
+            )}
             <button
               className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors border-b-2 ${
                 activeTab === "help"
@@ -542,6 +578,189 @@ export default function UserSettingsPage() {
                     <Settings className="w-4 h-4" />
                     <span>{saving ? "Saving..." : "Save Preferences"}</span>
                   </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "security" && (
+              <div className="space-y-6">
+                {/* Security Overview */}
+                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 border border-blue-100 dark:border-blue-800">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
+                      <Shield className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        Trust & Security
+                      </h2>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Manage your account security, privacy settings, and trusted devices
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Password & Authentication */}
+                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                    <Lock className="w-5 h-5 text-blue-600" />
+                    Password & Authentication
+                  </h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
+                      <div>
+                        <div className="font-medium text-gray-900 dark:text-gray-100">Change Password</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Update your account password</div>
+                      </div>
+                      <button
+                        onClick={() => router.push('/settings/security')}
+                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg text-sm font-medium transition-colors"
+                      >
+                        Update
+                      </button>
+                    </div>
+                    <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
+                      <div>
+                        <div className="font-medium text-gray-900 dark:text-gray-100">Two-Factor Authentication</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Add an extra layer of security</div>
+                      </div>
+                      <span className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 text-xs font-medium rounded-full">
+                        Coming Soon
+                      </span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Active Sessions */}
+                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                    <Smartphone className="w-5 h-5 text-green-600" />
+                    Active Sessions & Devices
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    View and manage your logged-in devices and sessions.
+                  </p>
+                  <button
+                    onClick={() => router.push('/settings/sessions')}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <Smartphone className="w-4 h-4" />
+                    Manage Sessions
+                  </button>
+                </div>
+
+                {/* Privacy Settings */}
+                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+                    <Eye className="w-5 h-5 text-purple-600" />
+                    Privacy Settings
+                  </h3>
+                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
+                    Control your data visibility and privacy preferences.
+                  </p>
+                  <button
+                    onClick={() => router.push('/settings/privacy')}
+                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg text-sm font-medium transition-colors"
+                  >
+                    <Eye className="w-4 h-4" />
+                    Privacy Settings
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {activeTab === "users" && isAdmin && (
+              <div className="space-y-6">
+                {/* User Management Overview */}
+                <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-100 dark:border-green-800">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
+                      <Users className="w-6 h-6 text-white" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                        User Management
+                      </h2>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        Create and manage user accounts for your organization
+                      </p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Quick Actions */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  {/* Create New User */}
+                  <button
+                    onClick={() => router.push('/hr/user-creation')}
+                    className="flex items-start gap-4 p-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors text-left"
+                  >
+                    <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <UserPlus className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg mb-1">Create New User</h3>
+                      <p className="text-sm text-blue-100">
+                        Register a new user with complete profile and access settings
+                      </p>
+                    </div>
+                  </button>
+
+                  {/* Manage All Users */}
+                  <button
+                    onClick={() => router.push('/super-admin/system/user-management')}
+                    className="flex items-start gap-4 p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-colors text-left"
+                  >
+                    <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <Users className="w-6 h-6 text-gray-700 dark:text-gray-300" />
+                    </div>
+                    <div>
+                      <h3 className="font-semibold text-lg mb-1 text-gray-900 dark:text-gray-100">Manage All Users</h3>
+                      <p className="text-sm text-gray-600 dark:text-gray-400">
+                        View, edit, and manage all user accounts
+                      </p>
+                    </div>
+                  </button>
+                </div>
+
+                {/* Additional User Management Links */}
+                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                    More Options
+                  </h3>
+                  <div className="space-y-3">
+                    <a
+                      href="/system/permission-manager"
+                      className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 -mx-2 px-2 rounded transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Key className="w-5 h-5 text-orange-600" />
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-gray-100">Permission Manager</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">Manage user permissions and access</div>
+                        </div>
+                      </div>
+                      <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </a>
+                    <a
+                      href="/system/roles-users-report"
+                      className="flex items-center justify-between py-3 hover:bg-gray-50 dark:hover:bg-gray-800 -mx-2 px-2 rounded transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        <Users className="w-5 h-5 text-blue-600" />
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-gray-100">Roles & Users Report</div>
+                          <div className="text-sm text-gray-600 dark:text-gray-400">View all roles and assigned users</div>
+                        </div>
+                      </div>
+                      <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    </a>
+                  </div>
                 </div>
               </div>
             )}

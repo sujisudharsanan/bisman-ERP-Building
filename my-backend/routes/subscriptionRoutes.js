@@ -13,7 +13,7 @@ const { getPrisma } = require('../lib/prisma');
 const { authenticate } = require('../middleware/auth');
 const { attachSubscriptionInfo } = require('../middleware/subscriptionEnforcer');
 const { PLAN_LIMITS, PLAN_FEATURE_DEFAULTS } = require('../lib/featureFlags');
-const { subscriptionService, SUBSCRIPTION_STATES } = require('../lib/subscriptionStateMachine');
+const { subscriptionService } = require('../lib/subscriptionStateMachine');
 
 // ============================================================================
 // PUBLIC ROUTES (No Auth Required)
@@ -122,7 +122,6 @@ router.get('/pricing-page', async (req, res) => {
       
       plans.forEach(plan => {
         const flags = plan.feature_flags || {};
-        const limits = PLAN_LIMITS[plan.plan_code] || {};
         
         if (feature.type === 'limit') {
           const value = plan[feature.key];
@@ -347,6 +346,7 @@ router.post('/upgrade', authenticate, async (req, res) => {
         actorType: 'user',
         actorId: userId,
         reason: `User upgraded to ${plan_code}`,
+        billing_cycle,
       }
     );
 
