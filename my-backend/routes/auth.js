@@ -55,8 +55,8 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
 
   console.log(`🔐 Login attempt for: ${email}`);
 
-    let user = null;
-    let userType = null;
+    const user = null;
+    const userType = null;
     let authData = null;
 
     // Helper to run queries with timeout
@@ -457,6 +457,197 @@ router.post('/logout', async (req, res) => {
   } catch (error) {
     console.error('Logout error:', error);
     res.status(500).json({ message: 'Error during logout' });
+  }
+});
+
+/**
+ * Get current user's permissions (for sidebar)
+ * Returns assigned modules and page permissions
+ */
+router.get('/me/permissions', async (req, res) => {
+  try {
+    const token = req.cookies?.access_token || req.headers.authorization?.split(' ')[1];
+
+    if (!token) {
+      return res.status(401).json({ message: 'Not authenticated' });
+    }
+
+    const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET);
+    
+    // Handle SUPER_ADMIN
+    if (decoded.userType === 'SUPER_ADMIN') {
+      const superAdmin = await prisma.superAdmin.findUnique({
+        where: { id: decoded.id },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+          productType: true,
+        }
+      });
+
+      if (!superAdmin) {
+        return res.status(401).json({ message: 'User not found' });
+      }
+
+      // Fetch module assignments with pages
+      const moduleAssignments = await prisma.moduleAssignment.findMany({
+        where: { super_admin_id: superAdmin.id },
+        include: { module: true }
+      });
+
+      const assignedModules = moduleAssignments.map(ma => ma.module?.module_name).filter(Boolean);
+      
+      // Build page permissions from assigned modules
+      // For Super Admin, we grant all pages within assigned modules
+      const pagePermissions = {};
+      const allPages = [];
+      
+      for (const ma of moduleAssignments) {
+        const moduleName = ma.module?.module_name;
+        if (!moduleName) continue;
+        
+        // Get all pages for this module from master_module_pages
+        try {
+          const modulePages = await prisma.master_module_pages.findMany({
+            where: { 
+              module_name: moduleName,
+              is_active: true
+            },
+            select: { page_key: true, path: true }
+          });
+          
+          const pageKeys = modulePages.map(p => p.page_key || p.path).filter(Boolean);
+          pagePermissions[moduleName] = pageKeys;
+          allPages.push(...pageKeys);
+        } catch (e) {
+          // If master_module_pages doesn't exist, use module's pages array
+          console.warn(`[me/permissions] Could not fetch pages for module ${moduleName}:`, e.message);
+        }
+      }
+
+      // If no specific pages found, grant access to common Super Admin pages
+      if (allPages.length === 0) {
+        const superAdminPages = [
+          '/dashboard',
+          '/system/roles-users-report',
+          '/admin/contracts',
+          '/admin/contracts/create',
+          '/compliance/agreements',
+          '/settings',
+          '/settings/profile',
+          '/settings/security',
+          '/system/user-management',
+          '/admin/user-management',
+          '/client-management'
+        ];
+        pagePermissions['default'] = superAdminPages;
+        allPages.push(...superAdminPages);
+      }
+
+      return res.json({
+        success: true,
+        user: {
+          id: superAdmin.id,
+          email: superAdmin.email,
+          name: superAdmin.name,
+          role: 'SUPER_ADMIN',
+          userType: 'SUPER_ADMIN',
+          permissions: {
+            assignedModules,
+            pagePermissions,
+            allPages: [...new Set(allPages)] // Dedupe
+          }
+        }
+      });
+    }
+    
+    // Handle ENTERPRISE_ADMIN
+    if (decoded.userType === 'ENTERPRISE_ADMIN') {
+      const enterpriseAdmin = await prisma.enterpriseAdmin.findUnique({
+        where: { id: decoded.id },
+        select: {
+          id: true,
+          email: true,
+          name: true,
+        }
+      });
+
+      if (!enterpriseAdmin) {
+        return res.status(401).json({ message: 'User not found' });
+      }
+
+      // Enterprise Admin has access to enterprise management module
+      return res.json({
+        success: true,
+        user: {
+          id: enterpriseAdmin.id,
+          email: enterpriseAdmin.email,
+          name: enterpriseAdmin.name,
+          role: 'ENTERPRISE_ADMIN',
+          userType: 'ENTERPRISE_ADMIN',
+          permissions: {
+            assignedModules: ['enterprise-management'],
+            pagePermissions: {},
+            allPages: []
+          }
+        }
+      });
+    }
+    
+    // Handle regular users
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        role: true,
+        assignedModules: true,
+        pagePermissions: true
+      }
+    });
+
+    if (!user) {
+      return res.status(401).json({ message: 'User not found' });
+    }
+
+    // Also fetch from rbac_user_permissions if available
+    let rbacPages = [];
+    try {
+      const rbacPerms = await prisma.rbac_user_permissions.findMany({
+        where: { user_id: user.id },
+        select: { page_key: true }
+      });
+      rbacPages = rbacPerms.map(p => p.page_key);
+    } catch (e) {
+      // Table might not exist
+    }
+
+    const allPages = [
+      ...(user.pagePermissions || []),
+      ...rbacPages
+    ];
+
+    return res.json({
+      success: true,
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.username,
+        role: user.role,
+        userType: 'USER',
+        permissions: {
+          assignedModules: user.assignedModules || [],
+          pagePermissions: user.pagePermissions || {},
+          allPages: [...new Set(allPages)]
+        }
+      }
+    });
+
+  } catch (error) {
+    console.error('Error fetching user permissions:', error);
+    res.status(500).json({ message: 'Failed to fetch permissions', error: error.message });
   }
 });
 

@@ -11,6 +11,18 @@ const TenantGuard = require('../middleware/tenantGuard'); // ✅ SECURITY: Multi
 router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN']), async (req, res) => {
   const prisma = getPrisma();
   
+  // ✅ Check if Prisma is available
+  if (!prisma) {
+    console.error('[RolesUsersReport] Prisma client not available');
+    return res.status(500).json({
+      success: false,
+      error: 'Database not available',
+      message: 'Prisma client not initialized',
+      data: [],
+      summary: { totalRoles: 0, totalUsers: 0, rolesWithUsers: 0, rolesWithoutUsers: 0, generatedAt: new Date().toISOString() }
+    });
+  }
+  
   try {
     console.log('[RolesUsersReport] Generating roles and users report...');
     console.log('[RolesUsersReport] User type:', req.user?.userType, 'Role:', req.user?.role);
@@ -34,13 +46,14 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
     const assignedRoleNames = []; // Store role names for matching when IDs don't work
     if (req.user?.userType === 'SUPER_ADMIN' || (req.user?.role || '').toUpperCase() === 'SUPER_ADMIN') {
       console.log('[RolesUsersReport] SUPER_ADMIN access - checking role assignments');
-      console.log('[RolesUsersReport] Super Admin user.id:', req.user.id, 'email:', req.user.email);
+      const superAdminId = parseInt(String(req.user.id), 10);
+      console.log('[RolesUsersReport] Super Admin user.id:', req.user.id, '(parsed:', superAdminId, ') email:', req.user.email);
       try {
         // Get role assignments made by ENTERPRISE_ADMIN for this SUPER_ADMIN
         const roleAssignments = await prisma.adminRoleAssignment.findMany({
           where: {
             assignee_type: 'SUPER_ADMIN',
-            assignee_id: req.user.id,
+            assignee_id: superAdminId, // ✅ FIX: Ensure integer type
             is_active: true
           },
           select: { role_id: true }
@@ -96,7 +109,8 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
     if (roles.length === 0) {
       console.log('[RolesUsersReport] No roles tables available, extracting unique roles from users');
       // ✅ SECURITY FIX: Add tenant filter
-      const users = await prisma.users_enhanced.findMany({
+      const userModel = prisma.users_enhanced || prisma.user;
+      const users = await userModel.findMany({
         where: tenantFilter, // ✅ SECURITY: Filter by tenant_id
         select: { role: true },
         distinct: ['role']
@@ -149,17 +163,38 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
     console.log(`[RolesUsersReport] Found ${roles.length} roles (excluding SUPER_ADMIN and ENTERPRISE_ADMIN)`);
     
     // Fetch all users with their role information
-    const users = await prisma.users_enhanced.findMany({
-      where: tenantFilter, // ✅ SECURITY: Filter by tenant_id
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        role: true,
-        created_at: true
-      },
-      orderBy: { role: 'asc' }
-    });
+    // Try users_enhanced first, fall back to user model
+    let users = [];
+    try {
+      if (prisma.users_enhanced) {
+        users = await prisma.users_enhanced.findMany({
+          where: tenantFilter,
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            role: true,
+            created_at: true
+          },
+          orderBy: { role: 'asc' }
+        });
+      } else {
+        users = await prisma.user.findMany({
+          where: tenantFilter,
+          select: {
+            id: true,
+            username: true,
+            email: true,
+            role: true,
+            created_at: true
+          },
+          orderBy: { role: 'asc' }
+        });
+      }
+    } catch (userErr) {
+      console.warn('[RolesUsersReport] Error fetching users:', userErr.message);
+      users = [];
+    }
     
     console.log(`[RolesUsersReport] Found ${users.length} users`);
     
@@ -240,7 +275,8 @@ router.get('/roles-users-report', authenticate, requireRole(['ENTERPRISE_ADMIN',
       } else { throw err; }
     }
     // Distinct roles from users
-    const distinctRoles = await prisma.users_enhanced.findMany({
+    const userModel = prisma.users_enhanced || prisma.user;
+    const distinctRoles = await userModel.findMany({
       where: tenantFilter,
       select: { role: true },
       distinct: ['role']
@@ -251,7 +287,7 @@ router.get('/roles-users-report', authenticate, requireRole(['ENTERPRISE_ADMIN',
 
     const report = [];
     for (const role of roles) {
-      const userCount = await prisma.users_enhanced.count({ where: { ...tenantFilter, role } });
+      const userCount = await userModel.count({ where: { ...tenantFilter, role } });
       // Permissions coverage (module-level)
       let permRows = [];
       try {
@@ -326,7 +362,8 @@ router.get('/roles-users/csv', authenticate, requireRole(['ENTERPRISE_ADMIN', 'S
     // If still no roles, extract unique roles from users table
     if (roles.length === 0) {
       // ✅ SECURITY FIX: Add tenant filter
-      const allUsers = await prisma.users_enhanced.findMany({
+      const userModel = prisma.users_enhanced || prisma.user;
+      const allUsers = await userModel.findMany({
         where: tenantFilter, // ✅ SECURITY: Filter by tenant_id
         select: { role: true },
         distinct: ['role']
@@ -352,7 +389,8 @@ router.get('/roles-users/csv', authenticate, requireRole(['ENTERPRISE_ADMIN', 'S
     
     // ✅ SECURITY FIX: Add tenant filter
     // Fetch all users
-    const users = await prisma.users_enhanced.findMany({
+    const userModel2 = prisma.users_enhanced || prisma.user;
+    const users = await userModel2.findMany({
       where: tenantFilter, // ✅ SECURITY: Filter by tenant_id
       select: {
         id: true,

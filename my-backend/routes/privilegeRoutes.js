@@ -49,7 +49,7 @@ router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) =>
       let allRoles = [];
       try {
         allRoles = await rbacService.getAllRoles();
-      } catch (_err) {
+      } catch {
         allRoles = await privilegeService.getAllRoles();
       }
       
@@ -205,7 +205,7 @@ router.patch('/roles/:roleId/status', authMiddleware.authenticate, rbacMiddlewar
     } catch (e) {
       used = 'privilege';
       // Fallback to privilegeService in-memory override or roles table if available
-      try { await privilegeService.setRoleStatus(roleId, is_active); } catch {}
+      try { await privilegeService.setRoleStatus(roleId, is_active); } catch { /* ignored */ }
     }
 
     // Optionally log audit trail

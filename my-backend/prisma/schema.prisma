@@ -3081,3 +3081,163 @@ model ContractReminder {
   @@map("contract_reminders")
 }
 
+// ==================== CONTRACT ACCOUNTING MODULE ====================
+
+/// Ledger accounts for double-entry bookkeeping
+model Ledger {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id             String?  @db.Uuid
+  
+  code                  String   @db.VarChar(20)
+  name                  String   @db.VarChar(255)
+  ledger_type           String   @db.VarChar(50) // ASSET, LIABILITY, EXPENSE, INCOME, EQUITY
+  parent_id             String?  @db.Uuid
+  
+  is_system             Boolean  @default(false) // System-created, cannot delete
+  is_active             Boolean  @default(true)
+  
+  description           String?  @db.Text
+  opening_balance       Decimal  @default(0) @db.Decimal(18, 2)
+  current_balance       Decimal  @default(0) @db.Decimal(18, 2)
+  
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  
+  parent                Ledger?  @relation("LedgerHierarchy", fields: [parent_id], references: [id])
+  children              Ledger[] @relation("LedgerHierarchy")
+  journal_lines         JournalLine[]
+  expense_mappings      ContractAccountingMap[] @relation("ExpenseLedgerMapping")
+  advance_mappings      ContractAccountingMap[] @relation("AdvanceLedgerMapping")
+
+  @@unique([tenant_id, code])
+  @@index([tenant_id])
+  @@index([ledger_type])
+  @@index([is_active])
+  @@map("ledgers")
+}
+
+/// Maps contracts to their accounting ledgers
+model ContractAccountingMap {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  contract_id           String   @unique @db.Uuid
+  
+  expense_ledger_id     String   @db.Uuid
+  advance_ledger_id     String?  @db.Uuid
+  payable_ledger_id     String?  @db.Uuid
+  
+  is_activated          Boolean  @default(false)
+  activated_at          DateTime? @db.Timestamptz(6)
+  activated_by          Int?
+  
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  
+  expense_ledger        Ledger   @relation("ExpenseLedgerMapping", fields: [expense_ledger_id], references: [id])
+  advance_ledger        Ledger?  @relation("AdvanceLedgerMapping", fields: [advance_ledger_id], references: [id])
+
+  @@index([contract_id])
+  @@index([expense_ledger_id])
+  @@map("contract_accounting_maps")
+}
+
+/// Scheduled payables generated from contracts
+model ScheduledPayable {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id             String?  @db.Uuid
+  contract_id           String   @db.Uuid
+  
+  due_date              DateTime @db.Date
+  amount                Decimal  @db.Decimal(15, 2)
+  tax_amount            Decimal  @default(0) @db.Decimal(15, 2)
+  total_amount          Decimal  @db.Decimal(15, 2)
+  
+  description           String?  @db.VarChar(500)
+  period_start          DateTime? @db.Date
+  period_end            DateTime? @db.Date
+  
+  status                String   @default("PENDING") @db.VarChar(30) // PENDING, POSTED, PAID, CANCELLED
+  
+  posted_at             DateTime? @db.Timestamptz(6)
+  posted_by             Int?
+  journal_entry_id      String?  @db.Uuid
+  
+  paid_at               DateTime? @db.Timestamptz(6)
+  paid_by               Int?
+  payment_reference     String?  @db.VarChar(100)
+  payment_journal_id    String?  @db.Uuid
+  
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  
+  journal_entry         JournalEntry? @relation("AccrualJournal", fields: [journal_entry_id], references: [id])
+  payment_journal       JournalEntry? @relation("PaymentJournal", fields: [payment_journal_id], references: [id])
+
+  @@index([tenant_id])
+  @@index([contract_id])
+  @@index([due_date])
+  @@index([status])
+  @@map("scheduled_payables")
+}
+
+/// Journal entries for double-entry accounting
+model JournalEntry {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id             String?  @db.Uuid
+  
+  entry_number          String   @db.VarChar(50) // JE-YYYYMM-XXXX
+  entry_date            DateTime @db.Date
+  
+  reference_type        String   @db.VarChar(50) // CONTRACT_ACCRUAL, CONTRACT_PAYMENT, CONTRACT_ADVANCE, MANUAL
+  reference_id          String?  @db.Uuid
+  
+  description           String   @db.VarChar(500)
+  
+  total_debit           Decimal  @db.Decimal(18, 2)
+  total_credit          Decimal  @db.Decimal(18, 2)
+  
+  status                String   @default("DRAFT") @db.VarChar(30) // DRAFT, POSTED, REVERSED
+  
+  posted_at             DateTime? @db.Timestamptz(6)
+  posted_by             Int?
+  
+  reversed_at           DateTime? @db.Timestamptz(6)
+  reversed_by           Int?
+  reversal_entry_id     String?  @db.Uuid
+  
+  created_by            Int
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  updated_at            DateTime @default(now()) @updatedAt @db.Timestamptz(6)
+  
+  lines                 JournalLine[]
+  accrual_payables      ScheduledPayable[] @relation("AccrualJournal")
+  payment_payables      ScheduledPayable[] @relation("PaymentJournal")
+
+  @@unique([tenant_id, entry_number])
+  @@index([tenant_id])
+  @@index([entry_date])
+  @@index([reference_type, reference_id])
+  @@index([status])
+  @@map("journal_entries")
+}
+
+/// Individual lines in a journal entry
+model JournalLine {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  journal_id            String   @db.Uuid
+  
+  ledger_id             String   @db.Uuid
+  
+  debit                 Decimal  @default(0) @db.Decimal(18, 2)
+  credit                Decimal  @default(0) @db.Decimal(18, 2)
+  
+  description           String?  @db.VarChar(255)
+  
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  
+  journal               JournalEntry @relation(fields: [journal_id], references: [id], onDelete: Cascade)
+  ledger                Ledger       @relation(fields: [ledger_id], references: [id])
+
+  @@index([journal_id])
+  @@index([ledger_id])
+  @@map("journal_lines")
+}

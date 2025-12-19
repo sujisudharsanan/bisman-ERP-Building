@@ -54,6 +54,34 @@ type RoleReport = {
   users: UserDetail[];
 };
 
+// Client module permission detail
+type ClientModulePermission = {
+  id: number;
+  module_id: number;
+  can_view: boolean;
+  can_create: boolean;
+  can_edit: boolean;
+  can_delete: boolean;
+  module?: {
+    id: number;
+    module_name: string;
+    display_name?: string;
+    is_active?: boolean;
+  };
+};
+
+// Client details with modules and users
+type ClientDetails = {
+  modules: ClientModulePermission[];
+  users: Array<{
+    id: string;
+    username: string;
+    email: string;
+    role?: string;
+    is_active: boolean;
+  }>;
+};
+
 export default function RolesUsersReportPage() {
   const { toast } = useToast();
   const { user } = useAuth();
@@ -73,6 +101,11 @@ export default function RolesUsersReportPage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
+  
+  // Client details state for bottom section
+  const [clientDetails, setClientDetails] = useState<ClientDetails | null>(null);
+  const [loadingClientDetails, setLoadingClientDetails] = useState(false);
+  const [isModuleAssignMode, setIsModuleAssignMode] = useState(false); // Toggle for add/remove modules
 
   // Total unique users across all roles (used for per-module user count display)
   const totalUniqueUsers = useMemo(() => {
@@ -134,13 +167,18 @@ export default function RolesUsersReportPage() {
   ] as const;
   const colorForIndex = (idx: number) => ROW_COLORS[idx % ROW_COLORS.length];
 
-  const loadReport = async () => {
+  const loadReport = async (forceRefresh = false) => {
     setLoading(true);
     setError(null);
 
     try {
-      // Fetch roles report
-      const rolesRes = await fetch('/api/reports/roles-users', { credentials: 'include' });
+      // Fetch roles report with cache-busting when forced
+      const cacheBuster = forceRefresh ? `?t=${Date.now()}` : '';
+      const rolesRes = await fetch(`/api/reports/roles-users${cacheBuster}`, { 
+        credentials: 'include',
+        cache: forceRefresh ? 'no-store' : 'default',
+        headers: forceRefresh ? { 'Cache-Control': 'no-cache' } : {}
+      });
       
       if (!rolesRes.ok) {
         // Check if it's an auth issue
@@ -231,6 +269,47 @@ export default function RolesUsersReportPage() {
     loadReport();
   }, [isSuperAdmin]);
 
+  // Fetch client details when a client is selected
+  useEffect(() => {
+    if (!selectedClientId || !isSuperAdmin) {
+      setClientDetails(null);
+      return;
+    }
+
+    const fetchClientDetails = async () => {
+      setLoadingClientDetails(true);
+      try {
+        // Fetch client module permissions
+        const permRes = await fetch(`/api/system/clients/${selectedClientId}/permissions?ensure=true`, { credentials: 'include' });
+        let clientModules: ClientModulePermission[] = [];
+        if (permRes.ok) {
+          const permData = await permRes.json();
+          clientModules = permData.data || [];
+        }
+
+        // Fetch users for this client (by tenant_id)
+        // Note: We use the clients data to get the client UUID for user filtering
+        const selectedClient = clients.find(c => c.id === selectedClientId);
+        let clientUsers: ClientDetails['users'] = [];
+        
+        // For now, we'll show assigned modules - users will be shown from reportData if available
+        // Users are associated with clients via tenant_id which is the client's UUID
+        
+        setClientDetails({
+          modules: clientModules,
+          users: clientUsers,
+        });
+      } catch (err) {
+        console.error('[RolesUsersReport] Error fetching client details:', err);
+        setClientDetails(null);
+      } finally {
+        setLoadingClientDetails(false);
+      }
+    };
+
+    fetchClientDetails();
+  }, [selectedClientId, isSuperAdmin, clients]);
+
   // Get current user's role for module filtering
   const currentUserRoleForModules = useMemo(() => {
     const role = user?.role || user?.roleName || '';
@@ -289,10 +368,14 @@ export default function RolesUsersReportPage() {
   }, [user]);
 
   const filteredRoles = useMemo(() => {
+    // Only show roles that have users assigned (allowed roles)
     // Users cannot assign their own EXACT role to others
-    // e.g., Super Admin can't assign Super Admin, Admin can't assign Admin
-    // But Super Admin CAN assign Admin (they are different roles)
     return reportData.filter(r => {
+      // Only show roles that have at least one user
+      if (r.userCount === 0) {
+        return false;
+      }
+      
       const roleName = (r.roleName || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
       const roleDisplayName = (r.roleDisplayName || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
       
@@ -559,42 +642,54 @@ export default function RolesUsersReportPage() {
         
         <div className="space-y-3">
         {/* Statistics Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-3">
-          <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-2 border-l-4 border-l-green-400">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs text-green-600 dark:text-green-400">{isSuperAdmin ? 'Total Clients' : 'Total Admins'}</div>
-                <div className="text-lg font-bold text-green-900 dark:text-green-100">{isSuperAdmin ? clients.length : allUsers.length}</div>
-              </div>
-              <FiUsers className="w-4 h-4 text-green-500" />
-            </div>
-          </div>
-          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-2 border-l-4 border-l-blue-400">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs text-blue-600 dark:text-blue-400">Total Roles</div>
-                <div className="text-lg font-bold text-blue-900 dark:text-blue-100">{summary?.totalRoles || 0}</div>
-              </div>
-              <FiFile className="w-4 h-4 text-blue-500" />
-            </div>
-          </div>
-          <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md p-2 border-l-4 border-l-purple-400">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs text-purple-600 dark:text-purple-400">Total Modules</div>
-                <div className="text-lg font-bold text-purple-900 dark:text-purple-100">{filteredModules.length}</div>
-              </div>
-              <FiGrid className="w-4 h-4 text-purple-500" />
-            </div>
-          </div>
-          <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-md p-2 border-l-4 border-l-orange-400">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-xs text-orange-600 dark:text-orange-400">Active Category</div>
-                <div className="text-sm font-bold text-orange-900 dark:text-orange-100">Business ERP</div>
+        <div className="flex items-center justify-between gap-3">
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 flex-1">
+            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-2 border-l-4 border-l-green-400">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-green-600 dark:text-green-400">{isSuperAdmin ? 'Total Clients' : 'Total Admins'}</div>
+                  <div className="text-lg font-bold text-green-900 dark:text-green-100">{isSuperAdmin ? clients.length : allUsers.length}</div>
+                </div>
+                <FiUsers className="w-4 h-4 text-green-500" />
               </div>
             </div>
+            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-2 border-l-4 border-l-blue-400">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-blue-600 dark:text-blue-400">Total Roles</div>
+                  <div className="text-lg font-bold text-blue-900 dark:text-blue-100">{summary?.totalRoles || 0}</div>
+                </div>
+                <FiFile className="w-4 h-4 text-blue-500" />
+              </div>
+            </div>
+            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md p-2 border-l-4 border-l-purple-400">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-purple-600 dark:text-purple-400">Total Modules</div>
+                  <div className="text-lg font-bold text-purple-900 dark:text-purple-100">{filteredModules.length}</div>
+                </div>
+                <FiGrid className="w-4 h-4 text-purple-500" />
+              </div>
+            </div>
+            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-md p-2 border-l-4 border-l-orange-400">
+              <div className="flex items-center justify-between">
+                <div>
+                  <div className="text-xs text-orange-600 dark:text-orange-400">Active Category</div>
+                  <div className="text-sm font-bold text-orange-900 dark:text-orange-100">Business ERP</div>
+                </div>
+              </div>
+            </div>
           </div>
+          <button
+            onClick={() => loadReport(true)}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 rounded-md transition-colors"
+            title="Refresh all data"
+          >
+            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
+            </svg>
+            Refresh
+          </button>
         </div>
 
         {/* Error Display */}
@@ -960,6 +1055,174 @@ export default function RolesUsersReportPage() {
             )}
           </div>
         </div>
+
+        {/* Client Details Bottom Section - Grid Style like Enterprise Admin */}
+        {isSuperAdmin && selectedClientId && (
+          <div className="mt-4 rounded-lg border bg-white/40 dark:bg-gray-900/30 p-4">
+            <div className="flex items-center justify-between mb-4">
+              <div className="flex items-center gap-4">
+                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                  <FiGrid className="w-4 h-4 text-emerald-600" />
+                  Client Modules Overview
+                  <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
+                    — {clients.find(c => c.id === selectedClientId)?.name || 'Selected Client'}
+                  </span>
+                </h3>
+                {/* Add/Remove Button */}
+                <button
+                  onClick={() => setIsModuleAssignMode(!isModuleAssignMode)}
+                  className={`text-sm font-semibold px-4 py-1.5 rounded-lg transition flex items-center gap-2 shadow-sm ${
+                    isModuleAssignMode
+                      ? "bg-green-600 text-white hover:bg-green-700"
+                      : "bg-emerald-600 text-white hover:bg-emerald-700"
+                  }`}
+                >
+                  {isModuleAssignMode ? "✓ Done" : "Add/Remove Modules"}
+                </button>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 text-xs">
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded bg-green-500"></span>
+                    Allowed ({clientDetails?.modules.filter(m => m.can_view || m.can_create || m.can_edit || m.can_delete).length || 0})
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-3 h-3 rounded bg-red-500"></span>
+                    No Access ({clientDetails?.modules.filter(m => !m.can_view && !m.can_create && !m.can_edit && !m.can_delete).length || 0})
+                  </span>
+                </div>
+                <button
+                  onClick={() => {
+                    setClientDetails(null);
+                    setLoadingClientDetails(true);
+                    fetch(`/api/system/clients/${selectedClientId}/permissions?ensure=true`, { credentials: 'include' })
+                      .then(res => res.json())
+                      .then(data => {
+                        setClientDetails({
+                          modules: data.data || [],
+                          users: [],
+                        });
+                      })
+                      .catch(console.error)
+                      .finally(() => setLoadingClientDetails(false));
+                  }}
+                  className="px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors border border-blue-200 dark:border-blue-800"
+                >
+                  ↻ Refresh
+                </button>
+              </div>
+            </div>
+
+            {loadingClientDetails ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
+                <span className="ml-2 text-xs text-gray-500">Loading client modules...</span>
+              </div>
+            ) : clientDetails && clientDetails.modules.length > 0 ? (
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+                {clientDetails.modules.map((mp) => {
+                  const hasAnyPermission = mp.can_view || mp.can_create || mp.can_edit || mp.can_delete;
+                  const moduleName = mp.module?.display_name || mp.module?.module_name || `Module ${mp.module_id}`;
+                  const permCount = [mp.can_view, mp.can_create, mp.can_edit, mp.can_delete].filter(Boolean).length;
+                  
+                  return (
+                    <div
+                      key={mp.id}
+                      className={`relative rounded-md border px-3 py-2 text-xs transition ${
+                        hasAnyPermission
+                          ? "border-green-500 bg-green-50 dark:bg-green-900/20"
+                          : "border-red-400 bg-red-50 dark:bg-red-900/20"
+                      } ${isModuleAssignMode ? 'cursor-pointer hover:ring-2' : 'cursor-default'}`}
+                      title={`View: ${mp.can_view ? '✓' : '✗'} | Create: ${mp.can_create ? '✓' : '✗'} | Edit: ${mp.can_edit ? '✓' : '✗'} | Delete: ${mp.can_delete ? '✓' : '✗'}`}
+                    >
+                      {/* Add/Remove overlay button when in assign mode */}
+                      {isModuleAssignMode && (
+                        <button
+                          onClick={async (e) => {
+                            e.stopPropagation();
+                            // Toggle permission - if has permission, remove all. If no permission, add all.
+                            const newPermissions = {
+                              can_view: !hasAnyPermission,
+                              can_create: !hasAnyPermission,
+                              can_edit: !hasAnyPermission,
+                              can_delete: !hasAnyPermission
+                            };
+                            try {
+                              const res = await fetch(`/api/system/clients/${selectedClientId}/permissions/${mp.module_id}`, {
+                                method: 'PUT',
+                                headers: { 'Content-Type': 'application/json' },
+                                credentials: 'include',
+                                body: JSON.stringify(newPermissions)
+                              });
+                              if (res.ok) {
+                                // Refresh client details
+                                const refreshRes = await fetch(`/api/system/clients/${selectedClientId}/permissions?ensure=true`, { credentials: 'include' });
+                                if (refreshRes.ok) {
+                                  const data = await refreshRes.json();
+                                  setClientDetails({ modules: data.data || [], users: [] });
+                                }
+                                toast({ title: hasAnyPermission ? 'Removed' : 'Added', description: `${moduleName} ${hasAnyPermission ? 'removed from' : 'added to'} client` });
+                              }
+                            } catch (err) {
+                              console.error('Error updating permission:', err);
+                            }
+                          }}
+                          className={`absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full flex items-center justify-center text-lg font-bold shadow-lg transition-transform hover:scale-110 ${
+                            hasAnyPermission 
+                              ? "bg-red-500 hover:bg-red-600 text-white"
+                              : "bg-green-500 hover:bg-green-600 text-white"
+                          }`}
+                          title={hasAnyPermission ? `Remove ${moduleName}` : `Add ${moduleName}`}
+                        >
+                          {hasAnyPermission ? '−' : '+'}
+                        </button>
+                      )}
+                      <div className="flex items-center gap-1.5">
+                        {hasAnyPermission ? (
+                          <span className="text-green-600 dark:text-green-400 font-bold text-sm">✓</span>
+                        ) : (
+                          <span className="text-red-600 dark:text-red-400 font-bold text-sm">✗</span>
+                        )}
+                        <div className="min-w-0 flex-1">
+                          <div className="truncate font-medium text-gray-800 dark:text-gray-200">{moduleName}</div>
+                          <div className="flex items-center justify-between gap-1 mt-0.5">
+                            <span className="text-[10px] text-gray-500 dark:text-gray-400">
+                              {mp.module?.module_name || ''}
+                            </span>
+                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
+                              permCount === 4
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
+                                : permCount >= 2
+                                ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
+                                : permCount === 1
+                                ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
+                                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
+                            }`}>
+                              {permCount}/4
+                            </span>
+                          </div>
+                          {/* Permission icons row */}
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className={`text-[9px] px-1 py-0.5 rounded ${mp.can_view ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800'}`} title="View">V</span>
+                            <span className={`text-[9px] px-1 py-0.5 rounded ${mp.can_create ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800'}`} title="Create">C</span>
+                            <span className={`text-[9px] px-1 py-0.5 rounded ${mp.can_edit ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800'}`} title="Edit">E</span>
+                            <span className={`text-[9px] px-1 py-0.5 rounded ${mp.can_delete ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800'}`} title="Delete">D</span>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
+                <FiGrid className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
+                <p>No module permissions assigned to this client yet.</p>
+                <p className="text-xs mt-1">Click "Add/Remove Modules" to assign modules to this client.</p>
+              </div>
+            )}
+          </div>
+        )}
         </div>
       </div>
     </SuperAdminShell>

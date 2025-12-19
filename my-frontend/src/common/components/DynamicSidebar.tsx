@@ -358,15 +358,20 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
       );
       console.log('[Sidebar] Super Admin allowed pages:', userAllowedPages);
     } else {
-      // Regular users: explicitly allowed pages from DB OR common pages with roles: ['ALL']
+      // Regular users: STRICT permission model
+      // Only show pages that are:
+      // 1. Explicitly allowed in DB (userAllowedPages from rbac_user_permissions)
+      // 2. OR common pages with roles: ['ALL'] that everyone can see
+      // 
+      // IMPORTANT: Role-based access is NOT sufficient alone - 
+      // Super Admin must explicitly grant page permissions via the Permission Manager
       pages = pages.filter(p => {
         // Always include pages with roles: ['ALL'] (common pages for all authenticated users)
+        // These are non-privileged pages like help center, profile, etc.
         if (p.roles.includes('ALL')) return true;
         
-        // Include pages that match the user's role
-        if (p.roles.includes(userRole)) return true;
-        
-        // Check flexible matching for DB allowed pages
+        // Check if page is explicitly allowed in DB
+        // This is the primary access control - Super Admin grants specific pages
         return isPageAllowed(p, userAllowedPages);
       });
       

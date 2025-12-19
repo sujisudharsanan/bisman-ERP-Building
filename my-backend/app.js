@@ -1322,6 +1322,15 @@ try {
   console.warn('Contract Management routes not loaded:', e && e.message)
 }
 
+// Contract Finance routes (Accounting & Payables)
+try {
+  const contractFinanceRoutes = require('./routes/finance/contractFinance')
+  app.use('/api/finance', contractFinanceRoutes)
+  console.log('✅ Contract Finance routes loaded at /api/finance')
+} catch (e) {
+  console.warn('Contract Finance routes not loaded:', e && e.message)
+}
+
 // Public Trial Onboarding routes
 try {
   const trialOnboardingRoutes = require('./routes/trialOnboarding') || (require('./dist/routes/trialOnboarding').default) || (require('./src/routes/trialOnboarding').default)

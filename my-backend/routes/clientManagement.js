@@ -36,14 +36,21 @@ router.get('/clients', authMiddleware, async (req, res) => {
     if (!isPlatformAdmin(user?.role)) {
       if (user?.userType === 'SUPER_ADMIN' || user?.role === 'SUPER_ADMIN') {
         // SUPER_ADMIN - filter by their own id
-        where.super_admin_id = user.id;
+        // Ensure the id is an integer (SuperAdmin.id is Int, Client.super_admin_id is Int)
+        const superAdminId = typeof user.id === 'string' ? parseInt(user.id, 10) : user.id;
+        if (!isNaN(superAdminId)) {
+          where.super_admin_id = superAdminId;
+        }
       } else if (user?.super_admin_id) {
         // Regular user - filter by their assigned super_admin_id
-        where.super_admin_id = user.super_admin_id;
+        const saId = typeof user.super_admin_id === 'string' ? parseInt(user.super_admin_id, 10) : user.super_admin_id;
+        if (!isNaN(saId)) {
+          where.super_admin_id = saId;
+        }
       }
     }
     
-    console.log('[clients] User:', user?.id, 'Role:', user?.role, 'Filter:', where);
+    console.log('[clients] User:', user?.id, 'Role:', user?.role, 'UserType:', user?.userType, 'Filter:', where);
 
     if (!prisma) {
       // Database not available (dev mode fallback) — return empty list instead of 500
