@@ -84,25 +84,13 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
           username: true,
           email: true,
           role: true,
-          productType: true,
+          product_type: true,
           tenant_id: true,
           super_admin_id: true,
-          createdAt: true,
-          updatedAt: true,
+          created_at: true,
+          updated_at: true,
           profile_pic_url: true,
           // Don't include password
-          client: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          superAdmin: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
         },
       }),
       prisma.user.count({ where }),
@@ -135,41 +123,26 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const user = await prisma.user.findUnique({
-      where: { id: Number(id) },
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: id },
+          { legacy_id: !isNaN(Number(id)) ? Number(id) : undefined },
+        ].filter(Boolean)
+      },
       select: {
         id: true,
         username: true,
         email: true,
         role: true,
-        productType: true,
+        product_type: true,
         tenant_id: true,
         super_admin_id: true,
-        createdAt: true,
-        updatedAt: true,
+        created_at: true,
+        updated_at: true,
         profile_pic_url: true,
-        assignedModules: true,
-        pagePermissions: true,
-        client: {
-          select: {
-            id: true,
-            name: true,
-          },
-        },
-        superAdmin: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          },
-        },
-        _count: {
-          select: {
-            paymentRequestsCreated: true,
-            tasksAssigned: true,
-            approvals: true,
-          },
-        },
+        assigned_modules: true,
+        page_permissions: true,
       },
     });
 
@@ -181,11 +154,12 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
       success: true,
       data: user,
     });
-  } catch (error: any) {
-    console.error('Get user error:', error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('Get user error:', err);
     res.status(500).json({
       error: 'Failed to fetch user',
-      details: error.message,
+      details: err.message,
     });
   }
 });
@@ -394,7 +368,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
       const emailExists = await prisma.user.findFirst({
         where: {
           email,
-          id: { not: Number(id) },
+          id: { not: existingUser.id },
         },
       });
 
@@ -483,12 +457,11 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
     }
 
     // Create audit log
+    // Create audit log (non-blocking)
     prisma.auditLog.create({
       data: {
-        user_id: currentUserId,
         action: 'UPDATE_USER',
-        table_name: 'users',
-        record_id: String(updatedUser.id),
+        table_name: 'users_enhanced',
         old_values: {
           username: existingUser.username,
           email: existingUser.email,
@@ -507,11 +480,12 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
       data: updatedUser,
       message: 'User updated successfully',
     });
-  } catch (error: any) {
-    console.error('Update user error:', error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('Update user error:', err);
     res.status(500).json({
       error: 'Failed to update user',
-      details: error.message,
+      details: err.message,
     });
   }
 });
@@ -532,13 +506,18 @@ router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
     }
 
     // Can't delete yourself
-    if (currentUserId === Number(id)) {
+    if (currentUserId === id) {
       return res.status(400).json({ error: 'Cannot delete your own account' });
     }
 
     // Check if user exists
-    const existingUser = await prisma.user.findUnique({
-      where: { id: Number(id) },
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: id },
+          { legacy_id: !isNaN(Number(id)) ? Number(id) : undefined },
+        ].filter(Boolean)
+      },
     });
 
     if (!existingUser) {
@@ -547,23 +526,21 @@ router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
 
     // Delete user (this will cascade delete related records based on schema)
     await prisma.user.delete({
-      where: { id: Number(id) },
+      where: { id: existingUser.id },
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
+    // Create audit log (non-blocking)
+    prisma.auditLog.create({
       data: {
-        user_id: currentUserId,
         action: 'DELETE_USER',
-        table_name: 'users',
-        record_id: Number(id),
+        table_name: 'users_enhanced',
         old_values: {
           username: existingUser.username,
           email: existingUser.email,
           role: existingUser.role,
         },
       },
-    });
+    }).catch(() => {});
 
     res.json({
       success: true,
@@ -584,7 +561,7 @@ router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
  */
 router.get('/export/csv', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const currentUserRole = (req as any).user?.role;
+    const currentUserRole = (req as Request & { user?: { role: string } }).user?.role || '';
 
     // Only admins can export
   if (!CORE_ROLES.includes(currentUserRole)) {
@@ -593,7 +570,7 @@ router.get('/export/csv', authMiddleware, async (req: Request, res: Response) =>
 
     const { role, productType, search } = req.query;
 
-    const where: any = {};
+    const where: Record<string, unknown> = {};
 
     if (search) {
       where.OR = [
@@ -607,7 +584,7 @@ router.get('/export/csv', authMiddleware, async (req: Request, res: Response) =>
     }
 
     if (productType && productType !== 'all') {
-      where.productType = productType;
+      where.product_type = productType;
     }
 
     const users = await prisma.user.findMany({
@@ -617,12 +594,12 @@ router.get('/export/csv', authMiddleware, async (req: Request, res: Response) =>
         username: true,
         email: true,
         role: true,
-        productType: true,
-        createdAt: true,
-        updatedAt: true,
+        product_type: true,
+        created_at: true,
+        updated_at: true,
       },
       orderBy: {
-        createdAt: 'desc',
+        created_at: 'desc',
       },
     });
 
@@ -636,9 +613,9 @@ router.get('/export/csv', authMiddleware, async (req: Request, res: Response) =>
         `"${user.username}"`,
         `"${user.email}"`,
         `"${user.role || ''}"`,
-        `"${user.productType || ''}"`,
-        user.createdAt ? new Date(user.createdAt).toISOString() : '',
-        user.updatedAt ? new Date(user.updatedAt).toISOString() : '',
+        `"${user.product_type || ''}"`,
+        user.created_at ? new Date(user.created_at).toISOString() : '',
+        user.updated_at ? new Date(user.updated_at).toISOString() : '',
       ];
       csvRows.push(row.join(','));
     }
@@ -648,11 +625,12 @@ router.get('/export/csv', authMiddleware, async (req: Request, res: Response) =>
     res.setHeader('Content-Type', 'text/csv');
     res.setHeader('Content-Disposition', `attachment; filename="users_${Date.now()}.csv"`);
     res.send(csvContent);
-  } catch (error: any) {
-    console.error('Export users error:', error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('Export users error:', err);
     res.status(500).json({
       error: 'Failed to export users',
-      details: error.message,
+      details: err.message,
     });
   }
 });
@@ -667,8 +645,8 @@ router.get('/export/csv', authMiddleware, async (req: Request, res: Response) =>
  */
 router.put('/:id/status', authMiddleware, checkUserActivationLimit(), async (req: Request, res: Response) => {
   try {
-    const currentUserId = (req as any).user?.id;
-    const currentUserRole = (req as any).user?.role;
+    const currentUserId = (req as Request & { user?: { id: string; role: string } }).user?.id;
+    const currentUserRole = (req as Request & { user?: { id: string; role: string } }).user?.role || '';
     const { id } = req.params;
     const { status } = req.body; // 'active' or 'inactive'
 
@@ -678,56 +656,63 @@ router.put('/:id/status', authMiddleware, checkUserActivationLimit(), async (req
     }
 
     // Can't deactivate yourself
-    if (currentUserId === Number(id) && status === 'inactive') {
+    if (currentUserId === id && status === 'inactive') {
       return res.status(400).json({ error: 'Cannot deactivate your own account' });
     }
 
-    const user = await prisma.user.findUnique({
-      where: { id: Number(id) },
+    const user = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: id },
+          { legacy_id: !isNaN(Number(id)) ? Number(id) : undefined },
+        ].filter(Boolean)
+      },
     });
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Note: Add a status field to schema if needed, for now just updating updatedAt
+    // Update is_active field
     const updatedUser = await prisma.user.update({
-      where: { id: Number(id) },
+      where: { id: user.id },
       data: {
-        updatedAt: new Date(),
+        is_active: status === 'active',
+        updated_at: new Date(),
       },
       select: {
         id: true,
         username: true,
         email: true,
         role: true,
-        updatedAt: true,
+        is_active: true,
+        updated_at: true,
       },
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
+    // Create audit log (non-blocking)
+    prisma.auditLog.create({
       data: {
-        user_id: currentUserId,
         action: status === 'active' ? 'ACTIVATE_USER' : 'DEACTIVATE_USER',
-        table_name: 'users',
-        record_id: Number(id),
+        table_name: 'users_enhanced',
         new_values: {
           status,
+          is_active: status === 'active',
         },
       },
-    });
+    }).catch(() => {});
 
     res.json({
       success: true,
       data: updatedUser,
       message: `User ${status === 'active' ? 'activated' : 'deactivated'} successfully`,
     });
-  } catch (error: any) {
-    console.error('Update user status error:', error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('Update user status error:', err);
     res.status(500).json({
       error: 'Failed to update user status',
-      details: error.message,
+      details: err.message,
     });
   }
 });
@@ -741,7 +726,7 @@ router.put('/:id/status', authMiddleware, checkUserActivationLimit(), async (req
  */
 router.get('/subscription-info', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const currentUser = (req as any).user;
+    const currentUser = (req as Request & { user?: { tenant_id: string } }).user;
     const tenantId = currentUser?.tenant_id;
 
     if (!tenantId) {
@@ -763,11 +748,12 @@ router.get('/subscription-info', authMiddleware, async (req: Request, res: Respo
       success: true,
       data: subscriptionInfo
     });
-  } catch (error: any) {
-    console.error('Get subscription info error:', error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('Get subscription info error:', err);
     res.status(500).json({
       error: 'Failed to get subscription info',
-      details: error.message,
+      details: err.message,
     });
   }
 });
