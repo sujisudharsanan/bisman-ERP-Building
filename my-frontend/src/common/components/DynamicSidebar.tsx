@@ -358,20 +358,23 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
       );
       console.log('[Sidebar] Super Admin allowed pages:', userAllowedPages);
     } else {
-      // Regular users: STRICT permission model
-      // Only show pages that are:
+      // Regular users: Permission model
+      // Show pages that are:
       // 1. Explicitly allowed in DB (userAllowedPages from rbac_user_permissions)
       // 2. OR common pages with roles: ['ALL'] that everyone can see
-      // 
-      // IMPORTANT: Role-based access is NOT sufficient alone - 
-      // Super Admin must explicitly grant page permissions via the Permission Manager
+      // 3. OR pages that match the user's role (e.g., ADMIN can see pages with roles: ['ADMIN'])
       pages = pages.filter(p => {
         // Always include pages with roles: ['ALL'] (common pages for all authenticated users)
         // These are non-privileged pages like help center, profile, etc.
         if (p.roles.includes('ALL')) return true;
         
+        // Check if page's roles include the user's role
+        // This allows Admin users to see pages with roles: ['ADMIN']
+        const normalizedUserRole = userRole.toUpperCase().replace(/\s+/g, '_');
+        if (p.roles.some(role => role.toUpperCase().replace(/\s+/g, '_') === normalizedUserRole)) return true;
+        
         // Check if page is explicitly allowed in DB
-        // This is the primary access control - Super Admin grants specific pages
+        // This is the secondary access control - Super Admin grants specific pages
         return isPageAllowed(p, userAllowedPages);
       });
       
@@ -386,10 +389,23 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
       pages = pages.filter(p => !p.path.startsWith('/enterprise'));
     }
 
-    // Non-super-admin users should not see /system/* or /super-admin/* pages
-    // These are protected routes that only SUPER_ADMIN and ENTERPRISE_ADMIN can access
+    // Non-super-admin users should not see /super-admin/* pages
+    // But /system/* pages can be accessed by users whose role is in the page's roles list
     if (!isSuperAdmin && !isEnterprise) {
-      pages = pages.filter(p => !p.path.startsWith('/system') && !p.path.startsWith('/super-admin'));
+      pages = pages.filter(p => {
+        // Always block /super-admin/* pages for non-super-admin users
+        if (p.path.startsWith('/super-admin')) return false;
+        
+        // For /system/* pages, allow if user's role is in the page's roles
+        if (p.path.startsWith('/system')) {
+          const normalizedUserRole = userRole.toUpperCase().replace(/\s+/g, '_');
+          return p.roles.some(role => role.toUpperCase().replace(/\s+/g, '_') === normalizedUserRole) ||
+                 p.roles.includes('ALL') ||
+                 isPageAllowed(p, userAllowedPages);
+        }
+        
+        return true;
+      });
     }
 
     // Sort by explicit order then name

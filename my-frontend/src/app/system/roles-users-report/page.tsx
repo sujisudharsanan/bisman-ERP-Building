@@ -1,1168 +1,888 @@
-'use client';
+"use client";
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState, useRef } from "react";
+import { FiUsers, FiPackage, FiGrid, FiShield, FiRefreshCw } from "react-icons/fi";
+import { useAuth } from "@/contexts/AuthContext";
 import SuperAdminShell from '@/components/layouts/SuperAdminShell';
-import ClientManagementTabs from '@/components/common/ClientManagementTabs';
-import { FiGrid, FiUsers, FiFile, FiUserPlus } from 'react-icons/fi';
-import { useToast } from '@/components/ui/toast';
-import { useAuth } from '@/contexts/AuthContext';
 
-export const dynamic = 'force-dynamic';
-
-// Client type for SUPER_ADMIN view
-type Client = {
-  id: number;
-  name: string;
-  email: string;
-  status: string;
-  createdAt: string;
-};
-
+// Types
 type Module = {
   id: number | string;
-  module_name: string;
-  display_name?: string;
+  moduleKey: string;
   name: string;
+  module_name?: string;
+  display_name?: string;
   productType?: string;
   businessCategory?: string;
-  enabled?: boolean;
-  pages?: Array<string | { id?: string; name?: string; path?: string; title?: string }>;
+  pages?: Array<{ id: string; name?: string; path: string }>;
 };
 
-type ReportSummary = {
-  totalRoles: number;
-  totalUsers: number;
-  rolesWithUsers: number;
-  rolesWithoutUsers: number;
-  generatedAt: string;
+type Client = {
+  id: string | number;  // Can be UUID string or integer
+  name: string;
+  email?: string;
+  client_code?: string;
+  productType?: string;
+  status?: string;
+  is_active?: boolean;
 };
 
-type UserDetail = {
-  userId: number;
-  username: string;
-  email: string;
-  createdAt: string;
-};
-
-type RoleReport = {
-  roleId: number;
-  roleName: string;
-  roleDisplayName: string;
-  roleDescription: string | null;
-  roleStatus: string;
-  userCount: number;
-  users: UserDetail[];
-};
-
-// Client module permission detail
-type ClientModulePermission = {
+type Role = {
   id: number;
-  module_id: number;
-  can_view: boolean;
-  can_create: boolean;
-  can_edit: boolean;
-  can_delete: boolean;
-  module?: {
-    id: number;
-    module_name: string;
-    display_name?: string;
-    is_active?: boolean;
-  };
+  name: string;
+  display_name?: string;
+  description?: string;
+  level?: number;
+  is_active?: boolean;
+  users?: Array<{ id: number; username: string; email: string }>;
+  userCount?: number;
 };
 
-// Client details with modules and users
-type ClientDetails = {
-  modules: ClientModulePermission[];
-  users: Array<{
-    id: string;
-    username: string;
-    email: string;
-    role?: string;
-    is_active: boolean;
-  }>;
+type RolePage = {
+  id: string;
+  routeId?: number;
+  path: string;
+  name: string;
+  module?: string;
+  granted?: boolean;
 };
 
 export default function RolesUsersReportPage() {
-  const { toast } = useToast();
   const { user } = useAuth();
-  const isSuperAdmin = user?.userType === 'SUPER_ADMIN';
-  
+  const isSuperAdmin = user?.role?.toUpperCase() === 'SUPER_ADMIN' || user?.userType === 'SUPER_ADMIN';
+
+  // Loading states
   const [loading, setLoading] = useState(true);
-  const [reportData, setReportData] = useState<RoleReport[]>([]);
+  const [isDataRefreshing, setIsDataRefreshing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Data states
   const [modules, setModules] = useState<Module[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
-  const [selectedClientId, setSelectedClientId] = useState<number | null>(null);
-  const [summary, setSummary] = useState<ReportSummary | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedModuleName, setSelectedModuleName] = useState<string | null>(null);
+  const [allRoles, setAllRoles] = useState<Role[]>([]);
+
+  // Selection states
+  const [selectedClientId, setSelectedClientId] = useState<string | number | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
-  const [selectedUserId, setSelectedUserId] = useState<number | null>(null);
-  const [pagePermissions, setPagePermissions] = useState<Record<string, boolean>>({});
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState<string | null>(null);
-  const [saveSuccess, setSaveSuccess] = useState<string | null>(null);
-  
-  // Client details state for bottom section
-  const [clientDetails, setClientDetails] = useState<ClientDetails | null>(null);
-  const [loadingClientDetails, setLoadingClientDetails] = useState(false);
-  const [isModuleAssignMode, setIsModuleAssignMode] = useState(false); // Toggle for add/remove modules
+  // Track assigned roles PER CLIENT using a Map
+  const [clientRolesMap, setClientRolesMap] = useState<Record<string, number[]>>({});
+  const [isRoleAssignMode, setIsRoleAssignMode] = useState(false);
 
-  // Total unique users across all roles (used for per-module user count display)
-  const totalUniqueUsers = useMemo(() => {
-    const ids = new Set<number>();
-    for (const r of reportData) {
-      for (const u of r.users) ids.add(u.userId);
+  // Get assigned roles for current client
+  const assignedRoleIds = useMemo(() => {
+    if (!selectedClientId) return [];
+    return clientRolesMap[String(selectedClientId)] || [];
+  }, [selectedClientId, clientRolesMap]);
+
+  // Set assigned roles for current client
+  const setAssignedRoleIds = (roleIds: number[] | ((prev: number[]) => number[])) => {
+    if (!selectedClientId) return;
+    setClientRolesMap(prev => {
+      const newRoleIds = typeof roleIds === 'function' 
+        ? roleIds(prev[String(selectedClientId)] || [])
+        : roleIds;
+      return {
+        ...prev,
+        [String(selectedClientId)]: newRoleIds
+      };
+    });
+  };
+
+  // Pages for selected role
+  const [rolePagesLoading, setRolePagesLoading] = useState(false);
+  const [rolePages, setRolePages] = useState<RolePage[]>([]);
+  const [rolePagesSaving, setRolePagesSaving] = useState(false);
+  const [rolePagesSelectedIds, setRolePagesSelectedIds] = useState<Set<string>>(new Set());
+  const [rolePagesInitialIds, setRolePagesInitialIds] = useState<Set<string>>(new Set());
+  const [rolePagesHasChanges, setRolePagesHasChanges] = useState(false);
+
+  // Ref to track if roles were loaded (to prevent overwrite on load)
+  const isRolesInitializedRef = useRef<boolean>(false);
+
+  // Get selected client
+  const selectedClient = useMemo(() => {
+    if (!selectedClientId) return null;
+    return clients.find(c => c.id === selectedClientId) || null;
+  }, [clients, selectedClientId]);
+
+  // Get selected role
+  const selectedRole = useMemo(() => {
+    if (!selectedRoleId) return null;
+    return allRoles.find(r => r.id === selectedRoleId) || null;
+  }, [allRoles, selectedRoleId]);
+
+  // Load initial data
+  const loadData = async (forceRefresh = false) => {
+    if (forceRefresh) {
+      setIsDataRefreshing(true);
+    } else {
+      setLoading(true);
     }
-    return ids.size;
-  }, [reportData]);
-
-  // All users list - show all users from all roles (not just ADMIN)
-  const allUsers = useMemo(() => {
-    const usersMap = new Map<number, UserDetail & { roleName: string; roleDisplayName: string; roleId: number }>();
-    for (const r of reportData) {
-      // Include users from all roles, not just ADMIN
-      for (const u of r.users) {
-        if (!usersMap.has(u.userId)) {
-          usersMap.set(u.userId, {
-            ...u,
-            roleName: r.roleName,
-            roleDisplayName: r.roleDisplayName,
-            roleId: r.roleId,
-          });
-        }
-      }
-    }
-    return Array.from(usersMap.values()).sort((a, b) => a.username.localeCompare(b.username));
-  }, [reportData]);
-  
-  // Users for selected role (for Super Admin view)
-  const usersForSelectedRole = useMemo(() => {
-    if (!selectedRoleId) return [];
-    const role = reportData.find(r => r.roleId === selectedRoleId);
-    if (!role) return [];
-    return role.users.map(u => ({
-      ...u,
-      roleName: role.roleName,
-      roleDisplayName: role.roleDisplayName,
-      roleId: role.roleId,
-    }));
-  }, [reportData, selectedRoleId]);
-
-  // Selected user with role info
-  const selectedUserWithRole = useMemo(() => {
-    if (!selectedUserId) return null;
-    return allUsers.find(u => u.userId === selectedUserId) || null;
-  }, [allUsers, selectedUserId]);
-
-  // Row color identification palette (stable, cyclical)
-  const ROW_COLORS = [
-    'bg-indigo-500',
-    'bg-blue-500',
-    'bg-emerald-500',
-    'bg-amber-500',
-    'bg-rose-500',
-    'bg-violet-500',
-    'bg-cyan-500',
-    'bg-fuchsia-500',
-  ] as const;
-  const colorForIndex = (idx: number) => ROW_COLORS[idx % ROW_COLORS.length];
-
-  const loadReport = async (forceRefresh = false) => {
-    setLoading(true);
     setError(null);
 
     try {
-      // Fetch roles report with cache-busting when forced
       const cacheBuster = forceRefresh ? `?t=${Date.now()}` : '';
-      const rolesRes = await fetch(`/api/reports/roles-users${cacheBuster}`, { 
-        credentials: 'include',
-        cache: forceRefresh ? 'no-store' : 'default',
-        headers: forceRefresh ? { 'Cache-Control': 'no-cache' } : {}
-      });
-      
-      if (!rolesRes.ok) {
-        // Check if it's an auth issue
-        if (rolesRes.status === 401) {
-          throw new Error('Session expired. Please refresh the page and log in again.');
-        }
-        throw new Error(`Failed to load report: ${rolesRes.statusText}`);
-      }
 
-      const rolesData = await rolesRes.json();
-
-      if (rolesData.success) {
-        setReportData(rolesData.data || []);
-        setSummary(rolesData.summary);
-      } else {
-        throw new Error(rolesData.error || 'Failed to load report');
-      }
-
-      // Try to fetch modules - use fallback endpoints
+      // Fetch modules
       let modsList: Module[] = [];
       try {
-        // Try enterprise-admin endpoint first
-        const modulesRes = await fetch('/api/enterprise-admin/master-modules', { credentials: 'include' });
+        const modulesRes = await fetch(`/api/enterprise-admin/master-modules${cacheBuster}`, { 
+          credentials: 'include',
+          cache: forceRefresh ? 'no-store' : 'default'
+        });
         if (modulesRes.ok) {
           const modulesData = await modulesRes.json();
           modsList = modulesData.ok && Array.isArray(modulesData.modules)
             ? modulesData.modules
             : Array.isArray(modulesData.data)
               ? modulesData.data
-              : Array.isArray(modulesData)
-                ? modulesData
-                : [];
+              : [];
         }
       } catch (modErr) {
-        console.warn('[RolesUsersReport] Could not load modules from enterprise-admin endpoint:', modErr);
+        console.warn('[RolesUsersReport] Could not load modules:', modErr);
       }
-      
-      // If no modules found, try alternative endpoint
-      if (modsList.length === 0) {
-        try {
-          const altModulesRes = await fetch('/api/enterprise/modules', { credentials: 'include' });
-          if (altModulesRes.ok) {
-            const altModulesData = await altModulesRes.json();
-            modsList = Array.isArray(altModulesData.modules)
-              ? altModulesData.modules
-              : Array.isArray(altModulesData.data)
-                ? altModulesData.data
-                : Array.isArray(altModulesData)
-                  ? altModulesData
-                  : [];
-          }
-        } catch (altErr) {
-          console.warn('[RolesUsersReport] Could not load modules from /api/enterprise/modules:', altErr);
-        }
-      }
-      
       setModules(modsList);
-      
-      // Load clients for SUPER_ADMIN
-      if (isSuperAdmin) {
-        try {
-          const clientsRes = await fetch('/api/system/clients', { credentials: 'include' });
-          if (clientsRes.ok) {
-            const clientsData = await clientsRes.json();
-            const clientsList: Client[] = Array.isArray(clientsData.data)
-              ? clientsData.data
-              : Array.isArray(clientsData.clients)
-                ? clientsData.clients
-                : Array.isArray(clientsData)
-                  ? clientsData
-                  : [];
-            setClients(clientsList);
-          }
-        } catch (clientErr) {
-          console.warn('[RolesUsersReport] Could not load clients:', clientErr);
+
+      // Fetch clients
+      try {
+        const clientsRes = await fetch(`/api/system/clients${cacheBuster}`, { 
+          credentials: 'include',
+          cache: forceRefresh ? 'no-store' : 'default'
+        });
+        if (clientsRes.ok) {
+          const clientsData = await clientsRes.json();
+          const clientsList: Client[] = Array.isArray(clientsData.data)
+            ? clientsData.data
+            : Array.isArray(clientsData.clients)
+              ? clientsData.clients
+              : Array.isArray(clientsData)
+                ? clientsData
+                : [];
+          setClients(clientsList);
         }
+      } catch (clientErr) {
+        console.warn('[RolesUsersReport] Could not load clients:', clientErr);
       }
+
+      // Fetch all roles from reports endpoint
+      try {
+        const rolesRes = await fetch(`/api/reports/roles-users${cacheBuster}`, { 
+          credentials: 'include',
+          cache: forceRefresh ? 'no-store' : 'default'
+        });
+        if (rolesRes.ok) {
+          const rolesData = await rolesRes.json();
+          // The reports endpoint returns { success, summary, data: [...] }
+          // where data contains roleId, roleName, roleDisplayName, roleLevel, userCount, users
+          const rolesList = Array.isArray(rolesData.data)
+            ? rolesData.data
+            : [];
+          console.log('[RolesUsersReport] Loaded', rolesList.length, 'roles from reports API');
+          setAllRoles(rolesList.map((r: any) => ({
+            id: r.roleId || r.id,
+            name: r.roleName || r.name,
+            display_name: r.roleDisplayName || r.display_name || r.roleName || r.name,
+            description: r.roleDescription || r.description,
+            level: r.roleLevel || r.level || 0,
+            is_active: r.roleStatus === 'active' || r.is_active !== false,
+            userCount: r.userCount || r.users?.length || 0,
+            users: r.users || []
+          })));
+        } else {
+          console.warn('[RolesUsersReport] Roles API returned:', rolesRes.status);
+        }
+      } catch (rolesErr) {
+        console.warn('[RolesUsersReport] Could not load roles:', rolesErr);
+      }
+
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
       console.error('[RolesUsersReport] Error:', err);
     } finally {
       setLoading(false);
+      setIsDataRefreshing(false);
     }
   };
 
   useEffect(() => {
-    loadReport();
-  }, [isSuperAdmin]);
+    loadData();
+  }, []);
 
-  // Fetch client details when a client is selected
+  // Load assigned roles when client is selected
   useEffect(() => {
-    if (!selectedClientId || !isSuperAdmin) {
-      setClientDetails(null);
+    if (!selectedClientId) {
+      setSelectedRoleId(null);
+      isRolesInitializedRef.current = false;
       return;
     }
 
-    const fetchClientDetails = async () => {
-      setLoadingClientDetails(true);
+    // Check if we already have roles for this client in the map
+    const existingRoles = clientRolesMap[String(selectedClientId)];
+    if (existingRoles !== undefined) {
+      // Already loaded, don't overwrite
+      isRolesInitializedRef.current = true;
+      return;
+    }
+
+    // Load saved roles for client (if any) from backend
+    const loadClientRoles = async () => {
       try {
-        // Fetch client module permissions
-        const permRes = await fetch(`/api/system/clients/${selectedClientId}/permissions?ensure=true`, { credentials: 'include' });
-        let clientModules: ClientModulePermission[] = [];
-        if (permRes.ok) {
-          const permData = await permRes.json();
-          clientModules = permData.data || [];
-        }
-
-        // Fetch users for this client (by tenant_id)
-        // Note: We use the clients data to get the client UUID for user filtering
-        const selectedClient = clients.find(c => c.id === selectedClientId);
-        let clientUsers: ClientDetails['users'] = [];
-        
-        // For now, we'll show assigned modules - users will be shown from reportData if available
-        // Users are associated with clients via tenant_id which is the client's UUID
-        
-        setClientDetails({
-          modules: clientModules,
-          users: clientUsers,
+        console.log('🔄 Loading roles for client:', selectedClientId);
+        const response = await fetch(`/api/system/clients/${selectedClientId}/roles`, {
+          credentials: 'include'
         });
-      } catch (err) {
-        console.error('[RolesUsersReport] Error fetching client details:', err);
-        setClientDetails(null);
-      } finally {
-        setLoadingClientDetails(false);
+        
+        if (response.ok) {
+          const data = await response.json();
+          const roleIds = Array.isArray(data.roles)
+            ? data.roles.map((r: any) => typeof r === 'number' ? r : r.id)
+            : Array.isArray(data.roleIds)
+              ? data.roleIds
+              : [];
+          // Store in the map for this client
+          setClientRolesMap(prev => ({
+            ...prev,
+            [String(selectedClientId)]: roleIds
+          }));
+          console.log('✅ Loaded', roleIds.length, 'roles for client');
+        } else {
+          // Initialize with empty array if backend fails
+          setClientRolesMap(prev => ({
+            ...prev,
+            [String(selectedClientId)]: []
+          }));
+        }
+        // Don't clear on failure - let user assign manually
+      } catch (error) {
+        console.warn('⚠️ Could not load client roles (will start with none):', error);
+        // Initialize with empty array on error so user can assign
+        setClientRolesMap(prev => ({
+          ...prev,
+          [String(selectedClientId)]: []
+        }));
       }
+      isRolesInitializedRef.current = true;
     };
 
-    fetchClientDetails();
-  }, [selectedClientId, isSuperAdmin, clients]);
+    loadClientRoles();
+  }, [selectedClientId, clientRolesMap]);
 
-  // Get current user's role for module filtering
-  const currentUserRoleForModules = useMemo(() => {
-    const role = user?.role || user?.roleName || '';
-    return role.toLowerCase().replace(/[_-]+/g, ' ').trim();
-  }, [user]);
+  // State for role saving
+  const [rolesSaving, setRolesSaving] = useState(false);
+  const [rolesSaveStatus, setRolesSaveStatus] = useState<'idle' | 'success' | 'error'>('idle');
 
-  const filteredModules = useMemo(() => {
-    const isPump = (m: Module) =>
-      (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP';
+  // Save roles when user clicks save
+  const handleSaveClientRoles = async () => {
+    if (!selectedClientId) return;
     
-    // Also exclude modules that match the current user's role
-    // e.g., Super Admin can't assign "Super Admin Module" to others
-    const isOwnRoleModule = (m: Module) => {
-      if (!currentUserRoleForModules) return false;
-      const moduleName = (m.display_name || m.name || m.module_name || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
-      // Check if module name contains the user's role (e.g., "super admin module" contains "super admin")
-      return moduleName.includes(currentUserRoleForModules);
-    };
+    setRolesSaving(true);
+    setRolesSaveStatus('idle');
     
-    return modules.filter(m => !isPump(m) && !isOwnRoleModule(m));
-  }, [modules, currentUserRoleForModules]);
-
-  // Helpers to map roles to modules heuristically (until backend provides explicit mapping)
-  const normalize = (s: string) => s.replace(/[_-]+/g, ' ').toLowerCase();
-  const getModuleKeywords = (m?: Module | null): string[] => {
-    if (!m) return [];
-    const base = normalize(String(m.display_name || m.name || m.module_name || ''));
-    const words = base.split(/\s+/).filter(Boolean);
-    const slug = (m.module_name || '').toLowerCase();
-    const extras: Record<string, string[]> = {
-      finance: ['finance', 'account', 'accounts', 'ledger', 'payable', 'receivable', 'bank', 'banker', 'cfo', 'controller', 'general ledger'],
-      administration: ['admin', 'administrator', 'compliance'],
-      inventory: ['inventory', 'stock', 'warehouse'],
-      legal: ['legal', 'law'],
-      common: ['common', 'shared', 'general'],
-      'system administration': ['system', 'sysadmin', 'super admin', 'settings'],
-      'super admin': ['super admin', 'superadmin'],
-      'human resources': ['hr', 'human resources', 'recruit', 'payroll', 'attendance'],
-    };
-    const add = extras[base] || extras[slug] || [];
-    return Array.from(new Set([...words, ...add]));
-  };
-  const roleMatchesModule = (r: RoleReport, m?: Module | null) => {
-    if (!m) return true;
-    const keys = getModuleKeywords(m);
-    if (keys.length === 0) return true;
-    const a = normalize(r.roleName);
-    const b = normalize(r.roleDisplayName);
-    return keys.some(k => a.includes(k) || b.includes(k));
-  };
-
-  // Get current user's role name for filtering (normalized for comparison)
-  const currentUserRole = useMemo(() => {
-    const role = user?.role || user?.roleName || '';
-    return role.toLowerCase().replace(/[_-]+/g, ' ').trim();
-  }, [user]);
-
-  const filteredRoles = useMemo(() => {
-    // Only show roles that have users assigned (allowed roles)
-    // Users cannot assign their own EXACT role to others
-    return reportData.filter(r => {
-      // Only show roles that have at least one user
-      if (r.userCount === 0) {
-        return false;
-      }
-      
-      const roleName = (r.roleName || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
-      const roleDisplayName = (r.roleDisplayName || '').toLowerCase().replace(/[_-]+/g, ' ').trim();
-      
-      // Exclude only if EXACT match with current user's role
-      if (currentUserRole && (
-        roleName === currentUserRole || 
-        roleDisplayName === currentUserRole
-      )) {
-        return false;
-      }
-      return true;
-    });
-  }, [reportData, currentUserRole]);
-
-  const selectedRole = useMemo(() => {
-    if (!selectedRoleId) return null;
-    return reportData.find(r => r.roleId === selectedRoleId) || null;
-  }, [reportData, selectedRoleId]);
-
-  const selectedModule = useMemo(() => {
-    if (!selectedModuleName) return null;
-    const found = filteredModules.find(m => m.module_name === selectedModuleName) || null;
-    return found;
-  }, [filteredModules, selectedModuleName]);
-
-  // Helper: count pages for any module (normalizes strings/objects)
-  const getModulePageCount = (m: Module): number => {
-    const raw = Array.isArray(m.pages) ? m.pages : [];
-    const normalized = raw.map((p, idx) => {
-      if (typeof p === 'string') return { key: p };
-      const key = (p?.id || p?.path || p?.name || p?.title || `page_${idx}`).toString();
-      return { key };
-    });
-    const uniq = new Set<string>();
-    normalized.forEach(p => uniq.add(p.key));
-    return uniq.size;
-  };
-
-  // Compute unique users in a module by aggregating users of roles that match that module
-  const getModuleUsersCount = (m: Module): number => {
-    const relevantRoles = reportData.filter(r => roleMatchesModule(r, m));
-    const ids = new Set<number>();
-    relevantRoles.forEach(r => r.users.forEach(u => ids.add(u.userId)));
-    return ids.size;
-  };
-
-  // Normalize module pages into { key, label } to handle strings or objects from API
-  const modulePages = useMemo(() => {
-    if (!selectedModule || !Array.isArray(selectedModule.pages)) return [] as { key: string; label: string }[];
-    const normalized = (selectedModule.pages as Array<string | { id?: string; name?: string; path?: string; title?: string }>)
-      .map((p, idx) => {
-        if (typeof p === 'string') return { key: p, label: p };
-        const key = (p?.id || p?.path || p?.name || p?.title || `page_${idx}`).toString();
-        const label = (p?.title || p?.name || p?.path || p?.id || `Page ${idx + 1}`).toString();
-        return { key, label };
-      });
-    const uniq = new Map<string, { key: string; label: string }>();
-    normalized.forEach(item => { if (!uniq.has(item.key)) uniq.set(item.key, item); });
-    return Array.from(uniq.values());
-  }, [selectedModule]);
-
-  useEffect(() => {
-    if (selectedModuleName) {
-      // Debugging info intentionally omitted in production.
-    }
-  }, [selectedModuleName, modulePages]);
-
-  const togglePagePermission = (pageName: string) => {
-    setPagePermissions(prev => ({
-      ...prev,
-      [pageName]: !prev[pageName],
-    }));
-  };
-
-  // Assign selected role to selected module by granting all pages (quick setup)
-  const handleAssignRoleToModule = async () => {
-    if (!selectedModuleName) {
-      toast({ variant: 'destructive', title: 'Select a module', description: 'Choose a module to assign the role to.' });
-      return;
-    }
-    if (!selectedRoleId) {
-      toast({ variant: 'destructive', title: 'Select a role', description: 'Choose a role to assign to this module.' });
-      return;
-    }
     try {
-      setSaving(true);
-      // allow all pages in the current module by default
-      const allowedPages = (modulePages || []).map(p => p.key);
-      const res = await fetch('/api/permissions', {
+      console.log('💾 Saving roles for client:', selectedClientId, 'roles:', assignedRoleIds);
+      const response = await fetch(`/api/system/clients/${selectedClientId}/roles`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ roleId: selectedRoleId, moduleName: selectedModuleName, allowedPages }),
+        body: JSON.stringify({ roleIds: assignedRoleIds })
       });
-      const data = await res.json().catch(() => ({}));
-      if (!res.ok || data?.success === false) {
-        throw new Error(data?.error || 'Failed to assign role');
+
+      if (response.ok) {
+        console.log('✅ Roles saved successfully');
+        setRolesSaveStatus('success');
+        // Clear success after 2 seconds
+        setTimeout(() => setRolesSaveStatus('idle'), 2000);
+      } else {
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Save failed:', response.status, errorData);
+        setRolesSaveStatus('error');
+        alert(`Failed to save roles: ${errorData.error || response.status}`);
       }
-      // reflect in UI
-      const state: Record<string, boolean> = {};
-      (modulePages || []).forEach(p => { state[p.key] = true; });
-      setPagePermissions(state);
-      toast({ variant: 'success', title: 'Role assigned', description: 'All pages enabled for this role in the module.' });
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      toast({ variant: 'destructive', title: 'Assignment failed', description: msg });
+    } catch (error) {
+      console.error('❌ Error saving roles:', error);
+      setRolesSaveStatus('error');
+      alert('Error saving roles. Check console for details.');
     } finally {
-      setSaving(false);
+      setRolesSaving(false);
     }
   };
 
-  // Load existing permissions for selected role/user + module and prefill toggles
+  // Load pages for selected role
   useEffect(() => {
-    const loadRolePerms = async () => {
-      if (!selectedModuleName) return;
-      if (!selectedRoleId && !selectedUserId) return;
-      
-      // Clear permissions while loading
-      setPagePermissions({});
-      
+    if (!selectedRoleId) {
+      setRolePages([]);
+      setRolePagesSelectedIds(new Set());
+      setRolePagesInitialIds(new Set());
+      setRolePagesHasChanges(false);
+      return;
+    }
+
+    const loadRolePages = async () => {
+      setRolePagesLoading(true);
       try {
-        const query = selectedUserId
-          ? `/api/permissions?userId=${selectedUserId}`
-          : `/api/permissions?roleId=${selectedRoleId}`;
-        const res = await fetch(query, { credentials: 'include' });
-        const data = await res.json().catch(() => ({}));
-        const allowed: string[] = data?.data?.allowedPages || data?.allowedPages || [];
-        
-        console.log('[RolesUsersReport] Loaded permissions:', { userId: selectedUserId, roleId: selectedRoleId, allowed });
-        
-        // Set permissions based on what's in database
-        const state: Record<string, boolean> = {};
-        (modulePages || []).forEach(p => { 
-          // Only mark as allowed if it's in the database
-          state[p.key] = allowed.includes(p.key) || allowed.includes(p.label);
+        console.log('📄 Loading pages for role:', selectedRoleId);
+        const response = await fetch(`/api/rbac/roles/${selectedRoleId}/pages`, {
+          credentials: 'include'
         });
-        setPagePermissions(state);
-        
-        if (allowed.length > 0) {
-          toast({ title: 'Permissions loaded', description: `Loaded ${allowed.length} permissions from database.` });
+
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && Array.isArray(data.pages)) {
+            setRolePages(data.pages);
+            const grantedIds = new Set<string>(
+              data.pages.filter((p: RolePage) => p.granted).map((p: RolePage) => p.id)
+            );
+            setRolePagesSelectedIds(grantedIds);
+            setRolePagesInitialIds(new Set(grantedIds));
+            setRolePagesHasChanges(false);
+            console.log('✅ Loaded', data.pages.length, 'pages,', grantedIds.size, 'granted');
+          } else {
+            setRolePages([]);
+            setRolePagesSelectedIds(new Set());
+            setRolePagesInitialIds(new Set());
+          }
         } else {
-          toast({ title: 'No permissions', description: 'User has no permissions yet. Toggle pages to grant access.' });
+          console.error('⚠️ API failed:', response.status);
+          setRolePages([]);
+          setRolePagesSelectedIds(new Set());
+          setRolePagesInitialIds(new Set());
         }
       } catch (error) {
-        console.error('[RolesUsersReport] Error loading permissions:', error);
-        // On error, set all to false (no permissions)
-        const state: Record<string, boolean> = {};
-        (modulePages || []).forEach(p => { state[p.key] = false; });
-        setPagePermissions(state);
-        toast({ variant: 'destructive', title: 'Load failed', description: 'Failed to load permissions from database.' });
+        console.error('❌ Error loading role pages:', error);
+        setRolePages([]);
+        setRolePagesSelectedIds(new Set());
+        setRolePagesInitialIds(new Set());
+      } finally {
+        setRolePagesLoading(false);
       }
     };
-    loadRolePerms();
-  }, [selectedRoleId, selectedUserId, selectedModuleName, modulePages]);
 
-  const reloadFromServer = async () => {
-    if (!selectedModuleName) return;
-    if (!selectedRoleId && !selectedUserId) return;
-    try {
-      const query = selectedUserId
-        ? `/api/permissions?userId=${selectedUserId}`
-        : `/api/permissions?roleId=${selectedRoleId}`;
-      const res = await fetch(query, { credentials: 'include' });
-      const data = await res.json().catch(() => ({}));
-      const allowed: string[] = data?.data?.allowedPages || data?.allowedPages || [];
-      
-      const state: Record<string, boolean> = {};
-      (modulePages || []).forEach(p => { 
-        // Only mark as allowed if it's in the database
-        state[p.key] = allowed.includes(p.key) || allowed.includes(p.label);
-      });
-      setPagePermissions(state);
-      toast({ title: 'Reloaded', description: `Refreshed ${allowed.length} permissions from server.` });
-    } catch {
-      toast({ variant: 'destructive', title: 'Reload failed', description: 'Could not fetch from server.' });
-    }
-  };
+    loadRolePages();
+  }, [selectedRoleId]);
 
-  const handleSave = async () => {
-    if (!selectedModuleName) {
-      setSaveError('Select a module before saving');
-      return;
-    }
-    if (!selectedRoleId && !selectedUserId) {
-      setSaveError('Select a role and user before saving');
-      return;
-    }
-    setSaving(true);
-    setSaveError(null);
-    setSaveSuccess(null);
+  // Track changes for role pages
+  useEffect(() => {
+    const currentIds = [...rolePagesSelectedIds].sort().join(',');
+    const initialIds = [...rolePagesInitialIds].sort().join(',');
+    setRolePagesHasChanges(currentIds !== initialIds);
+  }, [rolePagesSelectedIds, rolePagesInitialIds]);
+
+  // Save role pages
+  const handleSaveRolePages = async () => {
+    if (!selectedRoleId) return;
+
+    setRolePagesSaving(true);
     try {
-      // Get current allowed pages from this module
-      const currentModulePages = (modulePages || [])
-        .filter(p => pagePermissions[p.key] !== false)
-        .map(p => p.key);
-      
-      // Load existing permissions from database to merge
-      const query = selectedUserId
-        ? `/api/permissions?userId=${selectedUserId}`
-        : `/api/permissions?roleId=${selectedRoleId}`;
-      const res = await fetch(query, { credentials: 'include' });
-      const data = await res.json().catch(() => ({}));
-      const existingAllowed: string[] = data?.data?.allowedPages || data?.allowedPages || [];
-      
-      // Remove this module's pages from existing, then add current selections
-      const otherModulesPages = existingAllowed.filter(page => {
-        // Keep pages that aren't in current module
-        return !modulePages.some(mp => mp.key === page || mp.label === page);
-      });
-      
-      const finalAllowedPages = [...new Set([...otherModulesPages, ...currentModulePages])];
-      
-      console.log('[RolesUsersReport] Saving:', {
-        currentModulePages,
-        existingAllowed,
-        otherModulesPages,
-        finalAllowedPages
-      });
-      
-      const saveRes = await fetch('/api/permissions/update', {
+      const pageIds = Array.from(rolePagesSelectedIds);
+      console.log('💾 Saving', pageIds.length, 'pages for role:', selectedRoleId);
+
+      const response = await fetch(`/api/rbac/roles/${selectedRoleId}/pages`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify(
-          selectedUserId
-            ? { userId: selectedUserId, allowedPages: finalAllowedPages }
-            : { roleId: selectedRoleId, allowedPages: finalAllowedPages }
-        ),
+        body: JSON.stringify({ pageIds })
       });
-      const saveData = await saveRes.json().catch(() => ({}));
-      if (!saveRes.ok || saveData?.success === false) {
-        throw new Error(saveData?.error || 'Failed to save');
+
+      if (response.ok) {
+        console.log('✅ Saved role pages');
+        setRolePagesInitialIds(new Set(rolePagesSelectedIds));
+        setRolePagesHasChanges(false);
+      } else {
+        console.error('❌ Save failed:', response.status);
+        alert('Failed to save role pages');
       }
-      setSaveSuccess('Permissions saved');
-      toast({ variant: 'success', title: 'Saved', description: `Updated ${finalAllowedPages.length} total permissions.` });
-    } catch (e: unknown) {
-      const msg = e instanceof Error ? e.message : String(e);
-      setSaveError(msg);
-      toast({ variant: 'destructive', title: 'Save failed', description: String(msg) });
+    } catch (error) {
+      console.error('❌ Save error:', error);
+      alert('Error saving role pages');
     } finally {
-      setSaving(false);
-      setTimeout(() => { setSaveSuccess(null); setSaveError(null); }, 2500);
+      setRolePagesSaving(false);
     }
   };
 
-  // expandedRoles and expand/collapse helpers removed (unused in UI)
+  // Toggle page selection
+  const toggleRolePageSelection = (pageId: string) => {
+    setRolePagesSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(pageId)) {
+        newSet.delete(pageId);
+      } else {
+        newSet.add(pageId);
+      }
+      return newSet;
+    });
+  };
 
+  // Select/Deselect all
+  const handleSelectAllRolePages = () => {
+    setRolePagesSelectedIds(new Set(rolePages.map(p => p.id)));
+  };
+
+  const handleDeselectAllRolePages = () => {
+    setRolePagesSelectedIds(new Set());
+  };
+
+  // Render
   if (loading) {
     return (
-      <SuperAdminShell title="Modules & Roles">
-        <div className="p-3 md:p-4">
-          <ClientManagementTabs hideHeader />
-          <div className="p-4">Loading...</div>
+      <SuperAdminShell>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="flex flex-col items-center gap-4">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+            <p className="text-gray-500">Loading module management...</p>
+          </div>
+        </div>
+      </SuperAdminShell>
+    );
+  }
+
+  if (error) {
+    return (
+      <SuperAdminShell>
+        <div className="flex items-center justify-center min-h-[60vh]">
+          <div className="text-center">
+            <p className="text-red-500 mb-4">{error}</p>
+            <button
+              onClick={() => loadData(true)}
+              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Retry
+            </button>
+          </div>
         </div>
       </SuperAdminShell>
     );
   }
 
   return (
-    <SuperAdminShell title="Modules & Roles">
-      <div className="p-3 md:p-4">
-        {/* Shared Tabs Navigation */}
-        <ClientManagementTabs hideHeader />
-        
-        <div className="space-y-3">
-        {/* Statistics Cards */}
-        <div className="flex items-center justify-between gap-3">
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-3 flex-1">
-            <div className="bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-md p-2 border-l-4 border-l-green-400">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-green-600 dark:text-green-400">{isSuperAdmin ? 'Total Clients' : 'Total Admins'}</div>
-                  <div className="text-lg font-bold text-green-900 dark:text-green-100">{isSuperAdmin ? clients.length : allUsers.length}</div>
-                </div>
-                <FiUsers className="w-4 h-4 text-green-500" />
-              </div>
-            </div>
-            <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-md p-2 border-l-4 border-l-blue-400">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-blue-600 dark:text-blue-400">Total Roles</div>
-                  <div className="text-lg font-bold text-blue-900 dark:text-blue-100">{summary?.totalRoles || 0}</div>
-                </div>
-                <FiFile className="w-4 h-4 text-blue-500" />
-              </div>
-            </div>
-            <div className="bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-md p-2 border-l-4 border-l-purple-400">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-purple-600 dark:text-purple-400">Total Modules</div>
-                  <div className="text-lg font-bold text-purple-900 dark:text-purple-100">{filteredModules.length}</div>
-                </div>
-                <FiGrid className="w-4 h-4 text-purple-500" />
-              </div>
-            </div>
-            <div className="bg-orange-50 dark:bg-orange-900/20 border border-orange-200 dark:border-orange-800 rounded-md p-2 border-l-4 border-l-orange-400">
-              <div className="flex items-center justify-between">
-                <div>
-                  <div className="text-xs text-orange-600 dark:text-orange-400">Active Category</div>
-                  <div className="text-sm font-bold text-orange-900 dark:text-orange-100">Business ERP</div>
-                </div>
-              </div>
-            </div>
+    <SuperAdminShell>
+      <div className="flex flex-col h-full gap-4">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Module Management</h1>
+            <p className="text-sm text-gray-500 dark:text-gray-400">
+              Assign roles and pages to clients/admins
+            </p>
           </div>
           <button
-            onClick={() => loadReport(true)}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border border-blue-200 dark:border-blue-800 rounded-md transition-colors"
-            title="Refresh all data"
+            onClick={() => loadData(true)}
+            disabled={isDataRefreshing}
+            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
-            <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-            </svg>
+            <FiRefreshCw className={isDataRefreshing ? 'animate-spin' : ''} />
             Refresh
           </button>
         </div>
 
-        {/* Error Display */}
-        {error && (
-          <div className="p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-md">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <svg className="w-5 h-5 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-                </svg>
-                <span className="text-sm text-red-800 dark:text-red-200">{error}</span>
+        {/* Main 3-Column Grid */}
+        <div className="flex-1 overflow-hidden">
+          <div className="grid grid-cols-3 gap-4 h-full">
+            {/* Column 1: Clients */}
+            <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
+              <div className="text-sm font-semibold mb-2 flex items-center gap-2">
+                <FiUsers className="text-green-600" />
+                Clients
+                <span className="text-xs font-normal text-gray-500">{clients.length}</span>
               </div>
-              {(error.includes('Unauthorized') || error.includes('401') || error.includes('expired') || error.includes('Session')) && (
-                <button
-                  onClick={() => window.location.href = '/auth/login'}
-                  className="px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-700 rounded-md"
-                >
-                  Re-login
-                </button>
-              )}
-            </div>
-          </div>
-        )}
-
-  {/* Quick action removed as requested */}
-
-        {/* Save status */}
-        {(saveError || saveSuccess) && (
-          <div className={`p-2 text-xs rounded border ${saveError ? 'bg-red-50 border-red-300 text-red-700 dark:bg-red-900/20 dark:border-red-800 dark:text-red-300' : 'bg-green-50 border-green-300 text-green-700 dark:bg-green-900/20 dark:border-green-800 dark:text-green-300'}`}>
-            {saveError || saveSuccess}
-          </div>
-        )}
-
-        {/* Four Column Layout: Clients/Users | Roles | Modules | Pages */}
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-          {/* 1. Clients (for SUPER_ADMIN) or Users */}
-          <div className="rounded-lg border bg-white dark:bg-gray-900 p-3">
-            <div className="space-y-1 max-h-[520px] overflow-y-auto">
-              {isSuperAdmin ? (
-                <>
-                  {/* Always show Clients - selection stays static when clicking role/module */}
-                  {clients.length === 0 && <div className="text-xs text-gray-500">No clients found</div>}
-                  {clients.map((client, idx) => {
+              <div className="space-y-1 max-h-[520px] overflow-y-auto">
+                {clients.length === 0 ? (
+                  <div className="text-xs text-gray-500 text-center py-4">No clients found</div>
+                ) : (
+                  clients.map(client => {
                     const isSelected = selectedClientId === client.id;
                     return (
                       <button
-                        type="button"
+                        key={client.id}
                         onClick={() => {
                           setSelectedClientId(client.id);
+                          setSelectedRoleId(null);
                         }}
-                        key={client.id}
-                        className={`text-left w-full relative pl-2 rounded-md border p-3 hover:bg-gray-50 dark:hover:bg-gray-800 transition-all ${isSelected ? 'border-green-500 bg-green-50 dark:bg-green-900/30 ring-2 ring-green-400 dark:ring-green-600' : 'border-gray-200 dark:border-gray-700'}`}
+                        className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition ${
+                          isSelected
+                            ? "border-green-500 bg-green-100 dark:bg-green-900/40 ring-2 ring-green-300"
+                            : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                        }`}
                       >
-                        <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${isSelected ? 'bg-green-500' : colorForIndex(idx)}`} />
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-1.5">
-                              <span className={`text-xs font-medium truncate ${isSelected ? 'text-green-700 dark:text-green-300' : 'text-gray-900 dark:text-gray-100'}`}>{client.name}</span>
-                              {isSelected && (
-                                <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-green-500 text-white flex-shrink-0">
-                                  <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                  </svg>
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            {isSelected && <span className="text-green-600">✓</span>}
+                            <span className="font-medium truncate">{client.name}</span>
+                          </div>
+                          {client.client_code && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                              {client.client_code}
+                            </span>
+                          )}
+                        </div>
+                        {client.email && (
+                          <div className="text-[10px] text-gray-500 truncate mt-0.5">{client.email}</div>
+                        )}
+                      </button>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Column 2: Roles */}
+            <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
+              <div className="text-sm font-semibold mb-2 flex items-center gap-2">
+                <FiShield className="text-purple-600" />
+                Roles
+                <span className="text-xs font-normal text-gray-500">
+                  {selectedClientId ? `(${assignedRoleIds.length}/${allRoles.length} assigned)` : `${allRoles.length} total`}
+                </span>
+              </div>
+              
+              {/* Action buttons for role assignment */}
+              {selectedClientId && allRoles.length > 0 && (
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={() => setAssignedRoleIds(allRoles.map(r => r.id))}
+                    className="text-[10px] px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    onClick={() => setAssignedRoleIds([])}
+                    className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  >
+                    Deselect All
+                  </button>
+                  <div className="flex-1" />
+                  {rolesSaveStatus === 'success' && (
+                    <span className="text-[10px] text-green-600 font-medium">✓ Saved!</span>
+                  )}
+                  <button
+                    onClick={handleSaveClientRoles}
+                    disabled={rolesSaving}
+                    className={`text-xs px-3 py-1 rounded font-medium transition ${
+                      rolesSaving
+                        ? 'bg-gray-400 text-white cursor-wait'
+                        : rolesSaveStatus === 'success'
+                        ? 'bg-green-500 text-white'
+                        : 'bg-green-600 text-white hover:bg-green-700'
+                    }`}
+                  >
+                    {rolesSaving ? 'Saving...' : rolesSaveStatus === 'success' ? '✓ Saved' : 'Save'}
+                  </button>
+                </div>
+              )}
+              
+              <div className="space-y-1 max-h-[480px] overflow-y-auto">
+                {!selectedClientId ? (
+                  <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
+                    ⚠️ Select a Client to assign roles
+                  </div>
+                ) : allRoles.length === 0 ? (
+                  <div className="text-xs text-gray-500 text-center py-4">
+                    No roles available in the system.
+                  </div>
+                ) : (
+                  allRoles.map(role => {
+                    const isSelectedForViewing = selectedRoleId === role.id;
+                    const isAssigned = assignedRoleIds.includes(role.id);
+                    const userCount = role.userCount || role.users?.length || 0;
+                    return (
+                      <div
+                        key={role.id}
+                        className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer transition ${
+                          isSelectedForViewing
+                            ? 'border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300'
+                            : isAssigned
+                            ? 'border-green-300 bg-green-50 dark:bg-green-900/20 hover:bg-green-100'
+                            : 'border-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50'
+                        }`}
+                      >
+                        {/* Checkbox for assigning role */}
+                        <input
+                          type="checkbox"
+                          checked={isAssigned}
+                          onChange={() => {
+                            setAssignedRoleIds(prev =>
+                              prev.includes(role.id)
+                                ? prev.filter(id => id !== role.id)
+                                : [...prev, role.id]
+                            );
+                          }}
+                          className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        
+                        {/* Role info - click to select for viewing pages */}
+                        <button
+                          onClick={() => setSelectedRoleId(role.id)}
+                          className="flex-1 text-left"
+                        >
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <span className="font-medium text-xs truncate">{role.display_name || role.name}</span>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                                <FiUsers className="w-3 h-3" />
+                                {userCount}
+                              </span>
+                              {role.level !== undefined && (
+                                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                                  role.level >= 9 
+                                    ? 'bg-purple-100 text-purple-700'
+                                    : role.level >= 7
+                                    ? 'bg-blue-100 text-blue-700'
+                                    : role.level >= 5
+                                    ? 'bg-green-100 text-green-700'
+                                    : 'bg-orange-100 text-orange-700'
+                                }`}>
+                                  L{role.level}
                                 </span>
                               )}
                             </div>
-                            <div className="text-[10px] text-blue-600 dark:text-blue-400 truncate mt-0.5">{client.email}</div>
-                            <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-                              <span className={`inline-flex items-center px-1.5 py-0.5 rounded mr-1 ${client.status === 'ACTIVE' ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-300' : 'bg-gray-100 dark:bg-gray-900/30 text-gray-700 dark:text-gray-300'}`}>
-                                {client.status}
+                          </div>
+                        </button>
+                      </div>
+                    );
+                  })
+                )}
+              </div>
+            </div>
+
+            {/* Column 3: Pages */}
+            <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
+              <div className="text-sm font-semibold mb-1 flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <FiGrid className="text-blue-600" />
+                  Pages
+                  {selectedRoleId && selectedRole && (
+                    <span className="text-xs font-normal text-purple-600 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded">
+                      {selectedRole.display_name || selectedRole.name}
+                    </span>
+                  )}
+                  <span className="text-xs font-normal text-gray-500">
+                    {selectedRoleId ? `(${rolePagesSelectedIds.size}/${rolePages.length} selected)` : ''}
+                  </span>
+                </div>
+                {rolePagesLoading && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Loading...</span>
+                )}
+                {rolePagesSaving && (
+                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">Saving...</span>
+                )}
+              </div>
+
+              <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-2 italic">
+                Check pages to grant access to this role.
+              </div>
+
+              {/* Action buttons */}
+              {selectedRoleId && rolePages.length > 0 && (
+                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+                  <button
+                    onClick={handleSelectAllRolePages}
+                    className="text-[10px] px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
+                  >
+                    Select All
+                  </button>
+                  <button
+                    onClick={handleDeselectAllRolePages}
+                    className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  >
+                    Deselect All
+                  </button>
+                  <div className="flex-1" />
+                  <button
+                    onClick={handleSaveRolePages}
+                    disabled={!rolePagesHasChanges || rolePagesSaving}
+                    className={`text-xs px-3 py-1 rounded font-medium transition ${
+                      rolePagesHasChanges && !rolePagesSaving
+                        ? 'bg-green-600 text-white hover:bg-green-700'
+                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                    }`}
+                  >
+                    {rolePagesSaving ? 'Saving...' : rolePagesHasChanges ? 'Save' : 'Saved'}
+                  </button>
+                </div>
+              )}
+
+              <div className="space-y-1 max-h-[480px] overflow-y-auto">
+                {!selectedRoleId ? (
+                  <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
+                    ⚠️ Select a Role from Column 2 to see pages
+                  </div>
+                ) : rolePagesLoading ? (
+                  <div className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-300 flex items-center gap-2">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                    Loading pages...
+                  </div>
+                ) : rolePages.length === 0 ? (
+                  <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-300">
+                    No pages available in the system.
+                  </div>
+                ) : (
+                  rolePages.map((page, pageIndex) => {
+                    const isSelected = rolePagesSelectedIds.has(page.id);
+                    const uniqueKey = `${page.routeId || pageIndex}-${page.id || page.path}`;
+                    return (
+                      <div
+                        key={uniqueKey}
+                        onClick={() => toggleRolePageSelection(page.id)}
+                        className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer transition ${
+                          isSelected
+                            ? 'border-green-300 bg-green-50 dark:bg-green-900/20'
+                            : 'border-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleRolePageSelection(page.id)}
+                          className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                        <div className="flex-1 min-w-0">
+                          <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
+                            {page.name || page.path || page.id}
+                          </div>
+                          <div className="text-[10px] text-gray-500 truncate flex items-center gap-2">
+                            <span>{page.path || page.id}</span>
+                            {page.module && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+                                {page.module}
                               </span>
-                            </div>
-                            {isSelected && (
-                              <div className="text-[10px] text-green-600 dark:text-green-400 mt-1 font-medium">✓ Selected - Toggle pages on the right</div>
                             )}
                           </div>
                         </div>
-                      </button>
+                      </div>
                     );
-                  })}
-                </>
-              ) : (
-                <>
-                  {allUsers.length === 0 && <div className="text-xs text-gray-500">No users found</div>}
-                  {allUsers.map((user, idx) => (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setSelectedUserId(user.userId);
-                        setSelectedRoleId(user.roleId);
-                      }}
-                      key={user.userId}
-                      className={`text-left w-full relative pl-2 rounded-md border p-3 hover:bg-gray-50 dark:hover:bg-gray-800 ${selectedUserId === user.userId ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30' : 'border-gray-200 dark:border-gray-700'}`}
-                    >
-                      <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${colorForIndex(idx)}`} />
-                      <div className="flex items-start justify-between gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{user.username}</div>
-                          <div className="text-[10px] text-blue-600 dark:text-blue-400 truncate mt-0.5">{user.email}</div>
-                          <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-1">
-                            <span className="inline-flex items-center px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 mr-1">
-                              {user.roleDisplayName}
-                            </span>
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  ))}
-                </>
-              )}
-            </div>
-          </div>
-
-          {/* 2. Roles */}
-          <div className="rounded-lg border bg-white dark:bg-gray-900 p-3">
-            <div className="space-y-1 max-h-[520px] overflow-y-auto">
-              {filteredRoles.length === 0 && <div className="text-xs text-gray-500">No Roles</div>}
-              {filteredRoles.map((r, idx) => {
-                const isSelected = selectedRoleId === r.roleId;
-                const barColor = isSelected ? 'bg-blue-500' : colorForIndex(idx);
-                return (
-                  <button
-                    key={r.roleId}
-                    onClick={() => { setSelectedRoleId(r.roleId); }}
-                    className={`relative pl-2 w-full text-left rounded-md border px-3 py-2 text-xs transition-all ${isSelected ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-400 dark:ring-blue-600' : 'border-gray-200 dark:border-gray-700 hover:border-blue-300'}`}
-                    title={r.roleName}
-                  >
-                    <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${barColor}`} />
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`truncate font-medium ${isSelected ? 'text-blue-700 dark:text-blue-300' : ''}`}>{r.roleDisplayName}</span>
-                        {isSelected && (
-                          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-500 text-white flex-shrink-0">
-                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </span>
-                        )}
-                      </div>
-                      <span className={`inline-flex items-center justify-center min-w-[24px] h-6 px-2 rounded-full text-xs font-semibold ${r.userCount > 0 ? 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-300' : 'bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400'}`}>{r.userCount}</span>
-                    </div>
-                    <div className={`text-[10px] mt-1 ${isSelected ? 'text-blue-600 dark:text-blue-400' : 'text-gray-500 dark:text-gray-400'}`}>{r.roleName}</div>
-                    {isSelected && (
-                      <div className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 font-medium">✓ Selected - Now pick a user</div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 3. Modules */}
-          <div className="rounded-lg border bg-white dark:bg-gray-900 p-3">
-            <div className="space-y-1 max-h-[520px] overflow-y-auto">
-              {filteredModules.length === 0 && <div className="text-xs text-gray-500">No Modules</div>}
-              {filteredModules.map((m, idx) => {
-                const isSelected = selectedModuleName === m.module_name;
-                const pageCount = getModulePageCount(m);
-                const usersCount = getModuleUsersCount(m);
-                const barColor = isSelected ? 'bg-purple-500' : colorForIndex(idx);
-                return (
-                  <button
-                    key={m.id}
-                    onClick={() => {
-                      setSelectedModuleName(m.module_name);
-                      // Don't reset roleId/userId - keep user selection
-                      requestAnimationFrame(() => {
-                        const fourthRow = document.querySelector('[data-fourth-row]') as HTMLElement | null;
-                        if (fourthRow?.scrollIntoView) {
-                          try {
-                            fourthRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-                          } catch {
-                            // ignore - fallback below
-                            const rect = fourthRow.getBoundingClientRect();
-                            window.scrollTo({ top: window.scrollY + rect.top - 80, behavior: 'smooth' });
-                          }
-                        }
-                      });
-                    }}
-                    className={`relative pl-2 w-full text-left rounded-md border p-3 transition-all ${isSelected ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-400 dark:ring-purple-600' : 'border-gray-200 dark:border-gray-700 hover:border-purple-300'}`}
-                    title={m.display_name || m.name}
-                  >
-                    <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${barColor}`} />
-                    <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5">
-                        <span className={`text-xs truncate font-medium ${isSelected ? 'text-purple-700 dark:text-purple-300' : ''}`}>{m.display_name || m.name}</span>
-                        {isSelected && (
-                          <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-purple-500 text-white flex-shrink-0">
-                            <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                            </svg>
-                          </span>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-1">
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300" title="Pages in this module">
-                          {pageCount}
-                        </span>
-                        <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300" title="Total users (all roles)">
-                          {usersCount}
-                        </span>
-                      </div>
-                    </div>
-                    {isSelected && (
-                      <div className="text-[10px] text-purple-600 dark:text-purple-400 mt-1 font-medium">✓ Selected - Toggle pages on the right</div>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* 4. Pages */}
-          <div data-fourth-row className="rounded-lg border bg-white dark:bg-gray-900 p-3">
-            {!selectedModuleName && (
-              <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300">⚠️ Select a module to view pages</div>
-            )}
-
-            {selectedModuleName && (
-              <>
-                {modulePages.length > 0 ? (
-                  <>
-                    <div className="space-y-2 max-h-[520px] overflow-y-auto pr-1">
-                      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-1 gap-2">
-                        {!selectedUserId && (
-                          <div className="col-span-full rounded-md border border-yellow-300 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 p-2 text-xs text-yellow-800 dark:text-yellow-200">
-                            {isSuperAdmin && !selectedRoleId 
-                              ? '1️⃣ First, select a Role from column 2 to see users'
-                              : isSuperAdmin && selectedRoleId 
-                              ? '2️⃣ Now select a User from column 1 to enable page toggles'
-                              : 'Select a user to enable page toggles.'}
-                          </div>
-                        )}
-                        {modulePages.map((page, idx) => {
-                          const isAllowed = pagePermissions[page.key] === true; // Default to false
-                          return (
-                            <div key={page.key} className={`relative pl-2 flex items-center justify-between p-3 rounded-lg border transition-all ${isAllowed ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20' : 'border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800'}`}>
-                              <span className={`absolute left-0 top-0 bottom-0 w-1 rounded-l ${colorForIndex(idx)}`} />
-                              <div className="flex-1 min-w-0 mr-3">
-                                <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">{page.label}</div>
-                                <div className="text-[10px] text-gray-500 dark:text-gray-400 mt-0.5">{isAllowed ? '✓ Allowed' : '✗ Disallowed'}</div>
-                              </div>
-                              <button
-                                onClick={() => selectedUserId && togglePagePermission(page.key)}
-                                className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${isAllowed ? 'bg-green-600 dark:bg-green-500' : 'bg-gray-300 dark:bg-gray-600'}`}
-                                role="switch"
-                                aria-checked={isAllowed}
-                                disabled={!selectedUserId}
-                                title={isAllowed ? 'Click to disallow' : 'Click to allow'}
-                              >
-                                <span
-                                  aria-hidden="true"
-                                  className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out ${isAllowed ? 'translate-x-5' : 'translate-x-0'}`}
-                                />
-                              </button>
-                            </div>
-                          );
-                        })}
-                      </div>
-                    </div>
-
-                    {/* Save/Reset Buttons */}
-                    <div className="flex items-center justify-end gap-2 mt-3">
-                      <button
-                        onClick={handleSave}
-                        disabled={saving || !selectedUserId}
-                        className={`px-3 py-1.5 text-xs font-medium text-white rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${saving ? 'bg-blue-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700'}`}
-                        title={saving ? 'Saving...' : 'Save permissions'}
-                      >
-                        {saving ? 'Saving…' : 'Save'}
-                      </button>
-                      <button
-                        onClick={reloadFromServer}
-                        className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50"
-                        disabled={!selectedUserId}
-                        title="Reload from server"
-                      >
-                        Reload
-                      </button>
-                      <button
-                        onClick={() => {
-                          const resetPermissions: Record<string, boolean> = {};
-                          modulePages.forEach(page => {
-                            resetPermissions[page.key] = true;
-                          });
-                          setPagePermissions(resetPermissions);
-                          toast({ title: 'Reset', description: 'Toggles reset to allowed.' });
-                        }}
-                        className="px-3 py-1.5 text-xs font-medium text-gray-700 dark:text-gray-300 bg-gray-100 dark:bg-gray-800 hover:bg-gray-200 dark:hover:bg-gray-700 rounded-md transition-colors focus:outline-none focus:ring-2 focus:ring-gray-500 focus:ring-offset-2 disabled:opacity-50"
-                        disabled={!selectedUserId}
-                      >
-                        Reset
-                      </button>
-                    </div>
-                  </>
-                ) : (
-                  <div className="rounded-lg border border-yellow-300 dark:border-yellow-800 bg-yellow-50 dark:bg-yellow-900/20 p-3">
-                    <div className="text-xs text-yellow-700 dark:text-yellow-300">⚠️ This module has no pages defined in the API response. Pages will appear here once the backend includes page data.</div>
-                    <div className="text-[10px] text-gray-600 dark:text-gray-400 mt-2">Expected API field: <code className="bg-gray-800 text-green-400 px-1 rounded">{`pages: ["page1", "page2", ...]`}</code></div>
-                  </div>
+                  })
                 )}
-              </>
-            )}
+              </div>
+            </div>
           </div>
         </div>
 
-        {/* Client Details Bottom Section - Grid Style like Enterprise Admin */}
-        {isSuperAdmin && selectedClientId && (
-          <div className="mt-4 rounded-lg border bg-white/40 dark:bg-gray-900/30 p-4">
-            <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-4">
-                <h3 className="text-sm font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                  <FiGrid className="w-4 h-4 text-emerald-600" />
-                  Client Modules Overview
-                  <span className="text-xs font-normal text-gray-500 dark:text-gray-400">
-                    — {clients.find(c => c.id === selectedClientId)?.name || 'Selected Client'}
-                  </span>
-                </h3>
-                {/* Add/Remove Button */}
+        {/* Bottom Section: All Roles Overview */}
+        <div className="flex-shrink-0 rounded-lg border bg-white/40 dark:bg-gray-900/30 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <div className="flex items-center gap-4">
+              <div className="text-sm font-semibold flex items-center gap-2">
+                <FiShield className="text-purple-600" />
+                All Roles Overview
+                <span className="text-xs font-normal text-gray-500">({allRoles.length} roles)</span>
+              </div>
+              {selectedClientId ? (
                 <button
-                  onClick={() => setIsModuleAssignMode(!isModuleAssignMode)}
+                  onClick={() => setIsRoleAssignMode(!isRoleAssignMode)}
                   className={`text-sm font-semibold px-4 py-1.5 rounded-lg transition flex items-center gap-2 shadow-sm ${
-                    isModuleAssignMode
+                    isRoleAssignMode
                       ? "bg-green-600 text-white hover:bg-green-700"
-                      : "bg-emerald-600 text-white hover:bg-emerald-700"
+                      : "bg-purple-600 text-white hover:bg-purple-700"
                   }`}
                 >
-                  {isModuleAssignMode ? "✓ Done" : "Add/Remove Modules"}
+                  {isRoleAssignMode ? "✓ Done" : "Add/Remove Roles"}
                 </button>
-              </div>
-              <div className="flex items-center gap-3">
-                <div className="flex items-center gap-3 text-xs">
-                  <span className="flex items-center gap-1">
-                    <span className="w-3 h-3 rounded bg-green-500"></span>
-                    Allowed ({clientDetails?.modules.filter(m => m.can_view || m.can_create || m.can_edit || m.can_delete).length || 0})
-                  </span>
-                  <span className="flex items-center gap-1">
-                    <span className="w-3 h-3 rounded bg-red-500"></span>
-                    No Access ({clientDetails?.modules.filter(m => !m.can_view && !m.can_create && !m.can_edit && !m.can_delete).length || 0})
-                  </span>
-                </div>
-                <button
-                  onClick={() => {
-                    setClientDetails(null);
-                    setLoadingClientDetails(true);
-                    fetch(`/api/system/clients/${selectedClientId}/permissions?ensure=true`, { credentials: 'include' })
-                      .then(res => res.json())
-                      .then(data => {
-                        setClientDetails({
-                          modules: data.data || [],
-                          users: [],
-                        });
-                      })
-                      .catch(console.error)
-                      .finally(() => setLoadingClientDetails(false));
-                  }}
-                  className="px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/30 rounded-md transition-colors border border-blue-200 dark:border-blue-800"
-                >
-                  ↻ Refresh
-                </button>
-              </div>
+              ) : (
+                <span className="text-xs text-gray-500 italic">Select a Client to assign roles</span>
+              )}
             </div>
-
-            {loadingClientDetails ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-blue-500"></div>
-                <span className="ml-2 text-xs text-gray-500">Loading client modules...</span>
-              </div>
-            ) : clientDetails && clientDetails.modules.length > 0 ? (
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-                {clientDetails.modules.map((mp) => {
-                  const hasAnyPermission = mp.can_view || mp.can_create || mp.can_edit || mp.can_delete;
-                  const moduleName = mp.module?.display_name || mp.module?.module_name || `Module ${mp.module_id}`;
-                  const permCount = [mp.can_view, mp.can_create, mp.can_edit, mp.can_delete].filter(Boolean).length;
-                  
-                  return (
-                    <div
-                      key={mp.id}
-                      className={`relative rounded-md border px-3 py-2 text-xs transition ${
-                        hasAnyPermission
-                          ? "border-green-500 bg-green-50 dark:bg-green-900/20"
-                          : "border-red-400 bg-red-50 dark:bg-red-900/20"
-                      } ${isModuleAssignMode ? 'cursor-pointer hover:ring-2' : 'cursor-default'}`}
-                      title={`View: ${mp.can_view ? '✓' : '✗'} | Create: ${mp.can_create ? '✓' : '✗'} | Edit: ${mp.can_edit ? '✓' : '✗'} | Delete: ${mp.can_delete ? '✓' : '✗'}`}
-                    >
-                      {/* Add/Remove overlay button when in assign mode */}
-                      {isModuleAssignMode && (
-                        <button
-                          onClick={async (e) => {
-                            e.stopPropagation();
-                            // Toggle permission - if has permission, remove all. If no permission, add all.
-                            const newPermissions = {
-                              can_view: !hasAnyPermission,
-                              can_create: !hasAnyPermission,
-                              can_edit: !hasAnyPermission,
-                              can_delete: !hasAnyPermission
-                            };
-                            try {
-                              const res = await fetch(`/api/system/clients/${selectedClientId}/permissions/${mp.module_id}`, {
-                                method: 'PUT',
-                                headers: { 'Content-Type': 'application/json' },
-                                credentials: 'include',
-                                body: JSON.stringify(newPermissions)
-                              });
-                              if (res.ok) {
-                                // Refresh client details
-                                const refreshRes = await fetch(`/api/system/clients/${selectedClientId}/permissions?ensure=true`, { credentials: 'include' });
-                                if (refreshRes.ok) {
-                                  const data = await refreshRes.json();
-                                  setClientDetails({ modules: data.data || [], users: [] });
-                                }
-                                toast({ title: hasAnyPermission ? 'Removed' : 'Added', description: `${moduleName} ${hasAnyPermission ? 'removed from' : 'added to'} client` });
-                              }
-                            } catch (err) {
-                              console.error('Error updating permission:', err);
-                            }
-                          }}
-                          className={`absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full flex items-center justify-center text-lg font-bold shadow-lg transition-transform hover:scale-110 ${
-                            hasAnyPermission 
-                              ? "bg-red-500 hover:bg-red-600 text-white"
-                              : "bg-green-500 hover:bg-green-600 text-white"
-                          }`}
-                          title={hasAnyPermission ? `Remove ${moduleName}` : `Add ${moduleName}`}
-                        >
-                          {hasAnyPermission ? '−' : '+'}
-                        </button>
-                      )}
-                      <div className="flex items-center gap-1.5">
-                        {hasAnyPermission ? (
-                          <span className="text-green-600 dark:text-green-400 font-bold text-sm">✓</span>
-                        ) : (
-                          <span className="text-red-600 dark:text-red-400 font-bold text-sm">✗</span>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate font-medium text-gray-800 dark:text-gray-200">{moduleName}</div>
-                          <div className="flex items-center justify-between gap-1 mt-0.5">
-                            <span className="text-[10px] text-gray-500 dark:text-gray-400">
-                              {mp.module?.module_name || ''}
-                            </span>
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                              permCount === 4
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                : permCount >= 2
-                                ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-300'
-                                : permCount === 1
-                                ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-                                : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                            }`}>
-                              {permCount}/4
-                            </span>
-                          </div>
-                          {/* Permission icons row */}
-                          <div className="flex items-center gap-1 mt-1">
-                            <span className={`text-[9px] px-1 py-0.5 rounded ${mp.can_view ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800'}`} title="View">V</span>
-                            <span className={`text-[9px] px-1 py-0.5 rounded ${mp.can_create ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800'}`} title="Create">C</span>
-                            <span className={`text-[9px] px-1 py-0.5 rounded ${mp.can_edit ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800'}`} title="Edit">E</span>
-                            <span className={`text-[9px] px-1 py-0.5 rounded ${mp.can_delete ? 'bg-green-100 text-green-600 dark:bg-green-900/50 dark:text-green-400' : 'bg-gray-100 text-gray-400 dark:bg-gray-800'}`} title="Delete">D</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-center py-8 text-sm text-gray-500 dark:text-gray-400">
-                <FiGrid className="w-8 h-8 mx-auto mb-2 text-gray-300 dark:text-gray-600" />
-                <p>No module permissions assigned to this client yet.</p>
-                <p className="text-xs mt-1">Click "Add/Remove Modules" to assign modules to this client.</p>
-              </div>
-            )}
+            <div className="flex items-center gap-3 text-xs">
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded bg-green-500"></span>
+                Assigned ({assignedRoleIds.length})
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-3 h-3 rounded bg-red-500"></span>
+                Not Assigned ({allRoles.length - assignedRoleIds.length})
+              </span>
+              <span className="flex items-center gap-1">
+                <FiUsers className="w-3 h-3 text-blue-500" />
+                Total Users: {allRoles.reduce((sum, r) => sum + (r.userCount || r.users?.length || 0), 0)}
+              </span>
+            </div>
           </div>
-        )}
+
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+            {allRoles.map(role => {
+              const isSelected = selectedRoleId === role.id;
+              const userCount = role.userCount || role.users?.length || 0;
+              const isAssigned = assignedRoleIds.includes(role.id);
+
+              return (
+                <div key={role.id} className="relative">
+                  {isRoleAssignMode && selectedClientId && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAssignedRoleIds(prev =>
+                          prev.includes(role.id)
+                            ? prev.filter(id => id !== role.id)
+                            : [...prev, role.id]
+                        );
+                      }}
+                      className={`absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full flex items-center justify-center text-lg font-bold shadow-lg transition-transform hover:scale-110 ${
+                        isAssigned
+                          ? "bg-red-500 hover:bg-red-600 text-white"
+                          : "bg-green-500 hover:bg-green-600 text-white"
+                      }`}
+                      title={isAssigned ? `Remove ${role.name}` : `Add ${role.name}`}
+                    >
+                      {isAssigned ? '−' : '+'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (isRoleAssignMode && selectedClientId) {
+                        setAssignedRoleIds(prev =>
+                          prev.includes(role.id)
+                            ? prev.filter(id => id !== role.id)
+                            : [...prev, role.id]
+                        );
+                      } else {
+                        setSelectedRoleId(role.id);
+                      }
+                    }}
+                    className={`w-full text-left rounded-md border px-3 py-2 text-xs cursor-pointer transition hover:ring-2 ${
+                      isSelected
+                        ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-300"
+                        : isAssigned
+                        ? "border-green-500 bg-green-50 dark:bg-green-900/20 hover:ring-green-300"
+                        : "border-red-400 bg-red-50 dark:bg-red-900/20 hover:ring-red-300"
+                    }`}
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {isAssigned ? (
+                          <span className="text-green-600">✓</span>
+                        ) : (
+                          <span className="text-red-500">✗</span>
+                        )}
+                        <span className="font-medium truncate">{role.display_name || role.name}</span>
+                      </div>
+                      {role.level !== undefined && (
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                          role.level >= 9 
+                            ? 'bg-purple-100 text-purple-700'
+                            : role.level >= 7
+                            ? 'bg-blue-100 text-blue-700'
+                            : role.level >= 5
+                            ? 'bg-green-100 text-green-700'
+                            : role.level >= 3
+                            ? 'bg-orange-100 text-orange-700'
+                            : 'bg-red-100 text-red-700'
+                        }`}>
+                          L{role.level}
+                        </span>
+                      )}
+                    </div>
+                    <div className="text-[10px] text-gray-500 flex items-center gap-1 mt-1">
+                      <FiUsers className="w-3 h-3" />
+                      {userCount} users
+                    </div>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
         </div>
       </div>
     </SuperAdminShell>

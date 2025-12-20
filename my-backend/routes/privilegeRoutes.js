@@ -74,16 +74,65 @@ router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) =>
     const prismaInstance = new PrismaClient();
     
     try {
-      // Get roles assigned to this user (as assignee)
-      const assignedRoles = await prismaInstance.adminRoleAssignment.findMany({
-        where: {
-          assignee_id: userId,
-          is_active: true
-        },
-        include: {
-          rbac_roles: true
+      // Handle both UUID and integer user IDs
+      let userIdInt = parseInt(userId);
+      let userSuperAdminId = superAdminId;
+      
+      // If userId is a UUID (not a valid integer), try to find the legacy_id and super_admin_id
+      if (isNaN(userIdInt)) {
+        console.log(`[assignable-roles] UUID detected: ${userId}, looking up legacy_id and super_admin_id`);
+        try {
+          const user = await prismaInstance.user.findUnique({
+            where: { id: userId },
+            select: { legacy_id: true, super_admin_id: true }
+          });
+          if (user?.legacy_id) {
+            userIdInt = user.legacy_id;
+            console.log(`[assignable-roles] Found legacy_id: ${userIdInt}`);
+          }
+          if (user?.super_admin_id) {
+            userSuperAdminId = user.super_admin_id;
+            console.log(`[assignable-roles] Found super_admin_id: ${userSuperAdminId}`);
+          }
+          
+          // If no legacy_id and no super_admin_id, return empty roles
+          if (!user?.legacy_id && !user?.super_admin_id) {
+            console.log(`[assignable-roles] No legacy_id or super_admin_id found, returning empty roles`);
+            return res.json({
+              success: true,
+              data: [],
+              source: 'no_legacy_id',
+              message: 'No roles have been assigned to you. Please contact your Super Admin.',
+              total: 0,
+              timestamp: new Date().toISOString()
+            });
+          }
+        } catch (lookupErr) {
+          console.error('[assignable-roles] Error looking up user:', lookupErr.message);
+          return res.json({
+            success: true,
+            data: [],
+            source: 'lookup_error',
+            message: 'No roles have been assigned to you. Please contact your Super Admin.',
+            total: 0,
+            timestamp: new Date().toISOString()
+          });
         }
-      });
+      }
+      
+      // Get roles assigned to this user (as assignee) - only if we have a valid integer ID
+      let assignedRoles = [];
+      if (!isNaN(userIdInt)) {
+        assignedRoles = await prismaInstance.adminRoleAssignment.findMany({
+          where: {
+            assignee_id: userIdInt,
+            is_active: true
+          },
+          include: {
+            rbac_roles: true
+          }
+        });
+      }
       
       console.log('[assignable-roles] Assigned roles for user:', assignedRoles.length);
       
@@ -112,8 +161,82 @@ router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) =>
         });
       }
       
-      // If no explicit role assignments, check if user's Super Admin has any module assignments
-      // that would imply certain roles (fallback to empty for now - strict permission model)
+      // If no explicit role assignments for this Admin, check if their Super Admin has roles
+      // Admin users inherit roles from their Super Admin if no direct assignments
+      const isAdmin = userRole.toUpperCase() === 'ADMIN' || userRole.toUpperCase() === 'SYSTEM_ADMIN';
+      
+      if (isAdmin) {
+        console.log('[assignable-roles] ADMIN user has no direct roles, checking Super Admin assignments');
+        
+        // First try to use userSuperAdminId that was already looked up, or superAdminId from req.user
+        let adminSuperAdminId = userSuperAdminId || superAdminId;
+        
+        // If not available, get the Admin's super_admin_id from the users table
+        if (!adminSuperAdminId && !isNaN(userIdInt)) {
+          try {
+            const adminUserResult = await prismaInstance.$queryRaw`
+              SELECT super_admin_id FROM users WHERE id = ${userIdInt} LIMIT 1
+            `;
+            adminSuperAdminId = adminUserResult?.[0]?.super_admin_id;
+          } catch (e) {
+            console.warn('[assignable-roles] Failed to query users table:', e.message);
+          }
+        }
+        
+        if (adminSuperAdminId) {
+          console.log('[assignable-roles] Admin has super_admin_id:', adminSuperAdminId);
+          
+          // Get roles assigned to the Super Admin (which Admin can inherit)
+          const superAdminRoles = await prismaInstance.adminRoleAssignment.findMany({
+            where: {
+              assignee_id: adminSuperAdminId,
+              is_active: true
+            },
+            include: {
+              rbac_roles: true
+            }
+          });
+          
+          if (superAdminRoles.length > 0) {
+            const roles = superAdminRoles
+              .filter(ar => ar.rbac_roles)
+              .map(ar => ({
+                id: ar.rbac_roles.id,
+                name: ar.rbac_roles.name,
+                description: ar.rbac_roles.description,
+                level: ar.rbac_roles.level || ar.rbac_roles.role_level || 0,
+                is_active: ar.rbac_roles.is_active
+              }))
+              .filter(role => {
+                const roleName = (role.name || '').toLowerCase();
+                // Exclude super admin/enterprise admin roles
+                return !roleName.includes('super') && !roleName.includes('enterprise');
+              });
+            
+            console.log('[assignable-roles] Inherited roles from Super Admin:', roles.length);
+            
+            return res.json({
+              success: true,
+              data: roles,
+              source: 'inherited_from_super_admin',
+              total: roles.length,
+              timestamp: new Date().toISOString()
+            });
+          }
+        }
+        
+        console.log('[assignable-roles] ADMIN user has no roles assigned (no Super Admin roles to inherit)');
+        
+        return res.json({
+          success: true,
+          data: [],
+          source: 'no_admin_assignments',
+          message: 'No roles have been assigned to you by Super Admin. Please contact your Super Admin to grant role assignment permissions.',
+          total: 0,
+          timestamp: new Date().toISOString()
+        });
+      }
+      
       console.log('[assignable-roles] No explicit role assignments found for user:', userId);
       
       return res.json({
@@ -202,10 +325,15 @@ router.patch('/roles/:roleId/status', authMiddleware.authenticate, rbacMiddlewar
     let used = 'rbac';
     try {
       await rbacService.setRoleStatus(Number(roleId), is_active);
-    } catch (e) {
+    } catch (rbacErr) {
+      void rbacErr; // Intentionally ignored
       used = 'privilege';
       // Fallback to privilegeService in-memory override or roles table if available
-      try { await privilegeService.setRoleStatus(roleId, is_active); } catch { /* ignored */ }
+      try { 
+        await privilegeService.setRoleStatus(roleId, is_active); 
+      } catch (fallbackErr) { 
+        void fallbackErr; // Intentionally ignored
+      }
     }
 
     // Optionally log audit trail
@@ -220,11 +348,18 @@ router.patch('/roles/:roleId/status', authMiddleware.authenticate, rbacMiddlewar
         ip_address: req.ip,
         user_agent: req.get('User-Agent')
       })
-    } catch {}
+    } catch (auditErr) { 
+      void auditErr; // Audit logging is optional
+    }
 
     // Return fresh roles list to simplify client sync
     let roles = []
-    try { roles = await rbacService.getAllRoles(); } catch { roles = await privilegeService.getAllRoles(); }
+    try { 
+      roles = await rbacService.getAllRoles(); 
+    } catch (rolesErr) { 
+      void rolesErr;
+      roles = await privilegeService.getAllRoles(); 
+    }
 
     return res.json({ success: true, data: { updated: true, source: used, roles }, timestamp: new Date().toISOString() })
   } catch (error) {
@@ -352,9 +487,12 @@ router.get('/users', [
         const prisma = getPrisma();
         
         const rbacUsers = await prisma.$queryRaw`
-          SELECT DISTINCT u.id, u.username, u.email, u.role, u.created_at as "createdAt", u.updated_at as "updatedAt"
+          SELECT DISTINCT u.id, u.username, u.email, u.role, 
+                 u.created_at as "createdAt", u.updated_at as "updatedAt",
+                 r.level as "roleLevel", r.name as "roleName"
           FROM users u
           INNER JOIN rbac_user_roles ur ON u.id = ur.user_id
+          INNER JOIN rbac_roles r ON ur.role_id = r.id
           WHERE ur.role_id = ${roleId}
           ORDER BY u.username
         `;
@@ -368,10 +506,11 @@ router.get('/users', [
             first_name: u.username,
             last_name: '',
             role_id: u.role,
+            role_level: u.roleLevel || 1,
             is_active: true,
             created_at: u.createdAt?.toISOString() || new Date().toISOString(),
             updated_at: u.updatedAt?.toISOString() || new Date().toISOString(),
-            role: { id: u.role, name: u.role }
+            role: { id: u.role, name: u.roleName || u.role, level: u.roleLevel || 1 }
           }));
           
           return res.json({

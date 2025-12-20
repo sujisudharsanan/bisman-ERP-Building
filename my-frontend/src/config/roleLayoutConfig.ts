@@ -99,6 +99,55 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
     allowedPages: ['/hub-incharge', '/hub-incharge/*', '/chat', '/chat/*'],
   },
 
+  BRANCH_INCHARGE: {
+    showHeader: true,
+    showSidebar: true,
+    showFooter: true,
+    menuItems: [
+      { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: 'Home' },
+      { id: 'tasks', label: 'My Tasks', href: '/dashboard/tasks', icon: 'CheckSquare' },
+      { id: 'inventory', label: 'Inventory', href: '/dashboard/inventory', icon: 'Package' },
+      { id: 'sales', label: 'Sales', href: '/dashboard/sales', icon: 'TrendingUp' },
+      { id: 'approvals', label: 'Approvals', href: '/common/task-approvals', icon: 'FileCheck' },
+      { id: 'messages', label: 'Messages', href: '/chat', icon: 'MessageSquare' },
+      { id: 'ai-assistant', label: 'AI Assistant', href: '/chat/ai', icon: 'Bot' },
+      { id: 'settings', label: 'User Settings', href: '/common/user-settings', icon: 'Settings' },
+    ],
+    allowedPages: ['/dashboard', '/dashboard/*', '/chat', '/chat/*', '/common/*'],
+  },
+
+  HUB_INCHARGE: {
+    showHeader: true,
+    showSidebar: true,
+    showFooter: true,
+    menuItems: [
+      { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: 'Home' },
+      { id: 'tasks', label: 'My Tasks', href: '/dashboard/tasks', icon: 'CheckSquare' },
+      { id: 'inventory', label: 'Inventory', href: '/dashboard/inventory', icon: 'Package' },
+      { id: 'sales', label: 'Sales', href: '/dashboard/sales', icon: 'TrendingUp' },
+      { id: 'approvals', label: 'Approvals', href: '/common/task-approvals', icon: 'FileCheck' },
+      { id: 'messages', label: 'Messages', href: '/chat', icon: 'MessageSquare' },
+      { id: 'ai-assistant', label: 'AI Assistant', href: '/chat/ai', icon: 'Bot' },
+      { id: 'settings', label: 'User Settings', href: '/common/user-settings', icon: 'Settings' },
+    ],
+    allowedPages: ['/dashboard', '/dashboard/*', '/chat', '/chat/*', '/common/*'],
+  },
+
+  STORE_INCHARGE: {
+    showHeader: true,
+    showSidebar: true,
+    showFooter: true,
+    menuItems: [
+      { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: 'Home' },
+      { id: 'tasks', label: 'My Tasks', href: '/dashboard/tasks', icon: 'CheckSquare' },
+      { id: 'inventory', label: 'Inventory', href: '/dashboard/inventory', icon: 'Package' },
+      { id: 'sales', label: 'Sales', href: '/dashboard/sales', icon: 'TrendingUp' },
+      { id: 'messages', label: 'Messages', href: '/chat', icon: 'MessageSquare' },
+      { id: 'settings', label: 'User Settings', href: '/common/user-settings', icon: 'Settings' },
+    ],
+    allowedPages: ['/dashboard', '/dashboard/*', '/chat', '/chat/*', '/common/*'],
+  },
+
   CFO: {
     showHeader: true,
     showSidebar: true,

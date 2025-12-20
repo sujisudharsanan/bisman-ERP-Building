@@ -256,6 +256,30 @@ export const ROLE_DEFAULT_PAGES: RoleDefaultPages[] = [
     ],
   },
   {
+    role: 'BRANCH_INCHARGE',
+    description: 'Branch operations management',
+    defaultPages: [
+      'dashboard',
+      'common-user-settings',
+      'common-task-approvals',
+      'operations/inventory-management',
+      'operations/stock-management',
+      'sales-dashboard',
+    ],
+  },
+  {
+    role: 'BRANCH INCHARGE',
+    description: 'Branch operations management (space format)',
+    defaultPages: [
+      'dashboard',
+      'common-user-settings',
+      'common-task-approvals',
+      'operations/inventory-management',
+      'operations/stock-management',
+      'sales-dashboard',
+    ],
+  },
+  {
     role: 'WAREHOUSE MANAGER',
     description: 'Warehouse operations and logistics',
     defaultPages: [

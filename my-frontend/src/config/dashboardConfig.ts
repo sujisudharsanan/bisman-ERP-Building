@@ -77,6 +77,17 @@ export const DASHBOARD_CONFIGS: Record<string, RoleConfig> = {
     welcomeMessage: 'Welcome to your Store Operations Dashboard',
   },
   
+  BRANCH_INCHARGE: {
+    displayName: 'Branch Incharge',
+    columns: WORKFLOW_COLUMNS,
+    accentColor: 'border-indigo-500',
+    loadingText: 'Loading Branch Dashboard...',
+    showRightPanel: true,
+    useWorkflowTasks: true,
+    allowTaskCreation: true,
+    welcomeMessage: 'Welcome to your Branch Operations Dashboard',
+  },
+  
   OPERATIONS_MANAGER: {
     displayName: 'Operations Manager',
     columns: STANDARD_COLUMNS,

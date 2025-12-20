@@ -28,7 +28,46 @@ router.get('/', authMiddleware.authenticate, async (req, res) => {
       });
     }
 
-    const userIdInt = parseInt(userId);
+    // Handle both UUID and integer user IDs
+    let userIdInt = parseInt(userId);
+    
+    // If userId is a UUID (not a valid integer), try to find the legacy_id
+    if (isNaN(userIdInt)) {
+      console.log(`[permissions] UUID detected: ${userId}, looking up legacy_id`);
+      try {
+        const user = await prisma.User.findUnique({
+          where: { id: userId },
+          select: { legacy_id: true }
+        });
+        if (user?.legacy_id) {
+          userIdInt = user.legacy_id;
+          console.log(`[permissions] Found legacy_id: ${userIdInt}`);
+        } else {
+          // No legacy_id - return empty permissions (user not in rbac_user_permissions)
+          console.log(`[permissions] No legacy_id found for UUID user, returning empty permissions`);
+          return res.json({
+            success: true,
+            data: {
+              userId: userId,
+              allowedPages: [],
+              cached: false
+            },
+            timestamp: new Date().toISOString()
+          });
+        }
+      } catch (lookupErr) {
+        console.error('[permissions] Error looking up user:', lookupErr.message);
+        return res.json({
+          success: true,
+          data: {
+            userId: userId,
+            allowedPages: [],
+            cached: false
+          },
+          timestamp: new Date().toISOString()
+        });
+      }
+    }
 
     // ✅ PERFORMANCE: Check cache first
     const cached = cacheService.permissions.getByUser(userIdInt);

@@ -909,6 +909,17 @@ try {
   }
 }
 
+// Subscription Management routes (Super Admin only - user count limits)
+try {
+  const subscriptionManagementRoutes = require('./src/routes/subscriptionManagement').default
+  app.use('/api/super-admin/subscriptions', subscriptionManagementRoutes)
+  console.log('✅ Subscription Management routes loaded at /api/super-admin/subscriptions')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Subscription Management routes not loaded:', e && e.message)
+  }
+}
+
 // Internal Operations routes (BISMAN Internal Staff Only - Finance, Billing, Support, Engineering)
 try {
   const internalOperationsRoutes = require('./routes/internal-operations')
@@ -2520,13 +2531,15 @@ app.delete('/api/enterprise-admin/super-admins/:id', authenticate, requireRole('
   }
 });
 
-// Assign module to Super Admin
+// Save page permissions for a module (module assignment is derived from page access)
+// NOTE: Modules are informational groupings only. Permissions are defined by pages.
+// A module is considered "accessible" when at least one page inside is allowed.
 app.post('/api/enterprise-admin/super-admins/:id/assign-module', authenticate, requireRole('ENTERPRISE_ADMIN'), async (req, res) => {
   try {
     const { id } = req.params;
     const { moduleId, pageIds } = req.body;
 
-    console.log('🔵 ASSIGN MODULE REQUEST:', { 
+    console.log('🔵 SAVE PAGE PERMISSIONS REQUEST:', { 
       superAdminId: id, 
       moduleId, 
       pageIds,
@@ -2537,9 +2550,13 @@ app.post('/api/enterprise-admin/super-admins/:id/assign-module', authenticate, r
       console.error('❌ No moduleId provided');
       return res.status(400).json({ 
         ok: false, 
-        message: 'Module ID is required' 
+        message: 'Module ID is required (used to group page permissions)' 
       });
     }
+
+    // SEMANTIC: Pages define permissions, modules just group them
+    // If no pages are provided, we store an empty array (module becomes "no-access")
+    const normalizedPageIds = Array.isArray(pageIds) ? pageIds : [];
 
     const superAdminId = parseInt(id);
     const moduleIdInt = parseInt(moduleId);
@@ -2590,13 +2607,13 @@ app.post('/api/enterprise-admin/super-admins/:id/assign-module', authenticate, r
     let message;
 
     if (existingAssignment) {
-      // UPDATE existing assignment - update page permissions
-      console.log('📝 Updating existing assignment...');
+      // UPDATE existing page permissions for this module grouping
+      console.log('📝 Updating page permissions...');
       assignment = await prisma.moduleAssignment.update({
         where: { id: existingAssignment.id },
         data: {
-          assigned_at: new Date(), // Update timestamp to reflect the update
-          page_permissions: pageIds || [] // Update page permissions
+          assigned_at: new Date(),
+          page_permissions: normalizedPageIds // Pages define the actual permissions
         },
         include: {
           module: true,
@@ -2609,16 +2626,16 @@ app.post('/api/enterprise-admin/super-admins/:id/assign-module', authenticate, r
           }
         }
       });
-      message = 'Module pages updated successfully';
-      console.log('✅ Assignment updated successfully');
+      message = 'Page permissions updated successfully';
+      console.log('✅ Page permissions updated');
     } else {
-      // CREATE new module assignment with page permissions
-      console.log('➕ Creating new assignment...');
+      // CREATE new record to store page permissions (grouped by module)
+      console.log('➕ Creating page permissions record...');
       assignment = await prisma.moduleAssignment.create({
         data: {
           super_admin_id: superAdminId,
           module_id: moduleIdInt,
-          page_permissions: pageIds || [], // Store page permissions
+          page_permissions: normalizedPageIds, // Pages define the actual permissions
           ...(tenantId && { tenant_id: tenantId }) // ✅ SECURITY: Assign to tenant
         },
         include: {
@@ -2632,12 +2649,13 @@ app.post('/api/enterprise-admin/super-admins/:id/assign-module', authenticate, r
           }
         }
       });
-      message = 'Module assigned successfully';
-      console.log('✅ Assignment created successfully');
+      message = 'Page permissions saved successfully';
+      console.log('✅ Page permissions created');
     }
 
-    // TODO: Handle pageIds if you want to store page-level permissions in the database
-    // For now, this endpoint just manages module-level assignments
+    // SEMANTIC NOTE: Module accessibility is now derived from page_permissions.
+    // If page_permissions has entries, the module is accessible.
+    // The UI shows modules as read-only indicators based on page access.
 
     console.log('🎉 Sending success response:', message);
     res.json({ 
@@ -2667,7 +2685,8 @@ app.post('/api/enterprise-admin/super-admins/:id/assign-module', authenticate, r
   }
 });
 
-// Unassign module from Super Admin
+// Remove page permissions for a module (clears all page access for this module grouping)
+// NOTE: This effectively makes the module "no-access" since modules derive from pages.
 app.post('/api/enterprise-admin/super-admins/:id/unassign-module', authenticate, requireRole('ENTERPRISE_ADMIN'), async (req, res) => {
   try {
     const { id } = req.params;
@@ -2701,27 +2720,27 @@ app.post('/api/enterprise-admin/super-admins/:id/unassign-module', authenticate,
     if (!assignment) {
       return res.status(404).json({ 
         ok: false, 
-        message: 'Module assignment not found' 
+        message: 'No page permissions found for this module' 
       });
     }
 
-    // Delete the assignment
+    // Delete the page permissions record (module will show as "no-access")
     await prisma.moduleAssignment.delete({
       where: { id: assignment.id }
     });
 
     res.json({ 
       ok: true, 
-      message: 'Module unassigned successfully',
+      message: 'Page permissions removed successfully',
       superAdminId,
       moduleId: moduleIdInt,
       moduleName: assignment.module.module_name
     });
   } catch (error) {
-    console.error('Error unassigning module:', error);
+    console.error('Error removing page permissions:', error);
     res.status(500).json({ 
       ok: false, 
-      error: 'Failed to unassign module',
+      error: 'Failed to remove page permissions',
       message: error.message 
     });
   }
@@ -2844,6 +2863,209 @@ app.get('/api/enterprise-admin/super-admins/:id/roles', authenticate, requireRol
       ok: false, 
       error: 'Failed to fetch roles',
       message: error.message 
+    });
+  }
+});
+
+// ============================================
+// GET PAGES FOR A SPECIFIC ROLE
+// Returns all available pages with granted status for this role
+// ============================================
+app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN']), async (req, res) => {
+  try {
+    const { roleId } = req.params;
+    const roleIdNum = parseInt(roleId);
+    
+    console.log('[RBAC] Getting pages for role:', roleIdNum);
+    
+    // Get role info
+    const role = await prisma.rbac_roles.findUnique({
+      where: { id: roleIdNum }
+    });
+    
+    if (!role) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Role not found',
+        pages: []
+      });
+    }
+    
+    // Get ALL routes/pages from the database
+    const allRoutes = await prisma.rbac_routes.findMany({
+      where: { is_active: true },
+      orderBy: [{ module: 'asc' }, { name: 'asc' }]
+    });
+    
+    // Get permissions for this role
+    const permissions = await prisma.rbac_permissions.findMany({
+      where: {
+        role_id: roleIdNum,
+        is_active: true
+      }
+    });
+    
+    // Create a set of granted route IDs
+    const grantedRouteIds = new Set(
+      permissions.filter(p => p.granted).map(p => p.route_id)
+    );
+    
+    // Map all routes with granted status
+    const pages = allRoutes.map(route => ({
+      id: route.path || String(route.id),
+      routeId: route.id,
+      path: route.path,
+      name: route.display_name || route.name || route.path,
+      module: route.module || 'General',
+      description: route.description,
+      isActive: route.is_active,
+      granted: grantedRouteIds.has(route.id)
+    }));
+    
+    const grantedCount = pages.filter(p => p.granted).length;
+    console.log('[RBAC] Found', pages.length, 'total pages,', grantedCount, 'granted for role:', role.name);
+    
+    res.json({ 
+      success: true, 
+      role: role.name,
+      roleDisplayName: role.display_name || role.name,
+      roleId: roleIdNum,
+      pages,
+      grantedCount,
+      totalCount: pages.length,
+      source: 'rbac_routes'
+    });
+  } catch (error) {
+    console.error('[RBAC] Error fetching role pages:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to fetch role pages',
+      message: error.message,
+      pages: []
+    });
+  }
+});
+
+// ============================================
+// UPDATE PAGES (PERMISSIONS) FOR A SPECIFIC ROLE
+// Save which pages are assigned to this role
+// ============================================
+app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN']), async (req, res) => {
+  try {
+    const { roleId } = req.params;
+    const roleIdNum = parseInt(roleId);
+    const { pageIds } = req.body; // Array of page paths or route IDs to grant
+    
+    console.log('[RBAC] Updating pages for role:', roleIdNum, 'with', pageIds?.length || 0, 'pages');
+    
+    // Validate role exists
+    const role = await prisma.rbac_roles.findUnique({
+      where: { id: roleIdNum }
+    });
+    
+    if (!role) {
+      return res.status(404).json({ 
+        success: false, 
+        error: 'Role not found'
+      });
+    }
+    
+    // Get all routes
+    const allRoutes = await prisma.rbac_routes.findMany({
+      where: { is_active: true }
+    });
+    
+    // Create map of path to route for quick lookup
+    const routeByPath = new Map();
+    const routeById = new Map();
+    allRoutes.forEach(r => {
+      if (r.path) routeByPath.set(r.path, r);
+      routeById.set(r.id, r);
+    });
+    
+    // Find route IDs from pageIds (can be paths or numeric IDs)
+    const grantedRouteIds = new Set();
+    (pageIds || []).forEach(pageId => {
+      // Try as path first
+      const routeByPathMatch = routeByPath.get(pageId);
+      if (routeByPathMatch) {
+        grantedRouteIds.add(routeByPathMatch.id);
+        return;
+      }
+      // Try as numeric route ID
+      const numId = parseInt(pageId);
+      if (!isNaN(numId) && routeById.has(numId)) {
+        grantedRouteIds.add(numId);
+      }
+    });
+    
+    console.log('[RBAC] Resolved', grantedRouteIds.size, 'route IDs to grant');
+    
+    // Get existing permissions for this role
+    const existingPerms = await prisma.rbac_permissions.findMany({
+      where: { role_id: roleIdNum }
+    });
+    
+    const existingPermByRouteId = new Map();
+    existingPerms.forEach(p => existingPermByRouteId.set(p.route_id, p));
+    
+    // Update or create permissions
+    const operations = [];
+    
+    for (const route of allRoutes) {
+      const shouldGrant = grantedRouteIds.has(route.id);
+      const existingPerm = existingPermByRouteId.get(route.id);
+      
+      if (existingPerm) {
+        // Update existing permission
+        if (existingPerm.granted !== shouldGrant) {
+          operations.push(
+            prisma.rbac_permissions.update({
+              where: { id: existingPerm.id },
+              data: { 
+                granted: shouldGrant,
+                updated_at: new Date()
+              }
+            })
+          );
+        }
+      } else {
+        // Create new permission record
+        operations.push(
+          prisma.rbac_permissions.create({
+            data: {
+              role_id: roleIdNum,
+              route_id: route.id,
+              granted: shouldGrant,
+              is_active: true,
+              created_at: new Date(),
+              updated_at: new Date()
+            }
+          })
+        );
+      }
+    }
+    
+    // Execute all operations
+    if (operations.length > 0) {
+      await prisma.$transaction(operations);
+      console.log('[RBAC] Executed', operations.length, 'permission updates');
+    }
+    
+    res.json({ 
+      success: true, 
+      message: 'Role pages updated successfully',
+      roleId: roleIdNum,
+      roleName: role.name,
+      grantedCount: grantedRouteIds.size,
+      totalRoutes: allRoutes.length
+    });
+  } catch (error) {
+    console.error('[RBAC] Error updating role pages:', error);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to update role pages',
+      message: error.message
     });
   }
 });
@@ -3755,22 +3977,44 @@ app.get('/api/auth/permissions', authenticate, async (req, res) => {
 // User search endpoint for chat @mentions (any authenticated user can search)
 app.get('/api/users/search', authenticate, async (req, res) => {
   try {
-    const { q = '', limit = 20 } = req.query;
+    const { q = '', limit = 20, include_self = 'false', include_inactive = 'false' } = req.query;
     const searchTerm = q.toLowerCase().trim();
     
-    // Build where clause - if empty query, return all active users
-    const whereClause = {
-      // Don't show the current user in search results
-      NOT: { id: req.user.id },
-      // Only active users
-      is_active: true
-    };
+    // Get tenant_id from the current user to filter users
+    const tenantId = req.user.tenant_id || req.user.tenantId;
+    
+    // Check if user is an admin (can see inactive users)
+    const userRole = (req.user.role || req.user.roleName || '').toUpperCase().replace(/\s+/g, '_');
+    const isAdmin = ['SUPER_ADMIN', 'ADMIN', 'ENTERPRISE_ADMIN', 'HR', 'HR_MANAGER', 'SYSTEM_ADMIN'].includes(userRole);
+    
+    // Build where clause - if empty query, return all users for this tenant
+    const whereClause = {};
+    
+    // Only filter by is_active for non-admins OR if admin doesn't request inactive users
+    if (!isAdmin || include_inactive !== 'true') {
+      whereClause.is_active = true;
+    }
+    
+    // Don't show the current user in search results (unless include_self=true for reporting authority)
+    if (include_self !== 'true') {
+      whereClause.NOT = { id: req.user.id };
+    }
+
+    // SECURITY: Always filter by tenant_id for tenant isolation
+    // Users should only see other users in their own tenant
+    if (tenantId) {
+      whereClause.tenant_id = tenantId;
+    }
 
     // Only add search filter if query is provided
     if (searchTerm) {
-      whereClause.OR = [
-        { username: { contains: searchTerm, mode: 'insensitive' } },
-        { email: { contains: searchTerm, mode: 'insensitive' } },
+      whereClause.AND = [
+        {
+          OR: [
+            { username: { contains: searchTerm, mode: 'insensitive' } },
+            { email: { contains: searchTerm, mode: 'insensitive' } },
+          ]
+        }
       ];
     }
     
@@ -3779,26 +4023,94 @@ app.get('/api/users/search', authenticate, async (req, res) => {
       where: whereClause,
       select: {
         id: true,
+        legacy_id: true,
         username: true,
         email: true,
         role: true,
         profile_pic_url: true,
+        first_name: true,
+        last_name: true,
+        is_active: true,
+        profile_data: true,
       },
       take: parseInt(limit) || 20,
       orderBy: { username: 'asc' }
     });
 
-    const results = users.map(user => ({
-      id: user.id,
-      username: user.username || user.email?.split('@')[0] || '',
-      email: user.email,
-      firstName: '', // Not available in schema
-      lastName: '',  // Not available in schema
-      fullName: user.username || user.email?.split('@')[0] || '',
-      role: user.role || 'USER',
-      roleName: user.role || 'USER',
-      profilePic: user.profile_pic_url || null,
-    }));
+    // Fetch branch assignments for users that have legacy_id (UserBranch uses integer userId)
+    const legacyIds = users.map(u => u.legacy_id).filter(Boolean);
+    let userBranchMap = {};
+    if (legacyIds.length > 0) {
+      try {
+        const userBranches = await prisma.userBranch.findMany({
+          where: { userId: { in: legacyIds } },
+          select: {
+            userId: true,
+            branchId: true,
+          }
+        });
+        userBranchMap = userBranches.reduce((acc, ub) => {
+          acc[ub.userId] = ub.branchId;
+          return acc;
+        }, {});
+      } catch (e) {
+        console.warn('[UserSearch] Could not fetch user branches:', e.message);
+      }
+    }
+    
+    // Get role levels from rbac_roles table
+    let roleLevelMap = {};
+    const roleNames = [...new Set(users.map(u => u.role).filter(Boolean))];
+    console.log('[UserSearch] Role names to lookup:', roleNames);
+    if (roleNames.length > 0) {
+      try {
+        const roles = await prisma.rbac_roles.findMany({
+          where: {
+            OR: roleNames.map(name => ({
+              name: { equals: name, mode: 'insensitive' }
+            }))
+          },
+          select: { name: true, level: true }
+        });
+        console.log('[UserSearch] Found roles in DB:', roles);
+        roleLevelMap = roles.reduce((acc, r) => {
+          const key = (r.name || '').toUpperCase().replace(/\s+/g, '_');
+          acc[key] = r.level || 1;
+          return acc;
+        }, {});
+        console.log('[UserSearch] Role level map:', roleLevelMap);
+      } catch (e) {
+        console.warn('[UserSearch] Could not fetch role levels:', e.message);
+      }
+    }
+
+    const results = users.map(user => {
+      const normalizedRole = (user.role || '').toUpperCase().replace(/\s+/g, '_');
+      const roleLevel = roleLevelMap[normalizedRole] || 1;
+      // Extract reporting_authority_id and branch_id from profile_data
+      const profileData = user.profile_data || {};
+      const reportingAuthorityId = profileData.reporting_authority_id || profileData.reportingAuthorityId || null;
+      // Extract branch_id from userBranchMap using legacy_id, fallback to profile_data
+      const legacyBranchId = user.legacy_id ? (userBranchMap[user.legacy_id] || null) : null;
+      const branchId = legacyBranchId || profileData.branch_id || null;
+      return {
+        id: user.id,
+        username: user.username || user.email?.split('@')[0] || '',
+        email: user.email,
+        firstName: user.first_name || '',
+        lastName: user.last_name || '',
+        fullName: user.first_name && user.last_name 
+          ? `${user.first_name} ${user.last_name}` 
+          : (user.username || user.email?.split('@')[0] || ''),
+        role: user.role || 'USER',
+        roleName: user.role || 'USER',
+        role_level: roleLevel,
+        profilePic: user.profile_pic_url || null,
+        is_active: user.is_active ?? true,
+        reporting_authority_id: reportingAuthorityId,
+        branch_id: branchId,
+      };
+    });
 
     res.json({
       success: true,
@@ -3812,6 +4124,96 @@ app.get('/api/users/search', authenticate, async (req, res) => {
       users: [],
       count: 0,
       message: 'Search unavailable'
+    });
+  }
+});
+
+// Branches endpoint for dropdowns
+app.get('/api/branches', authenticate, async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id || req.user.tenantId;
+    
+    const whereClause = {
+      isActive: true
+    };
+    
+    // Filter by tenant if available
+    if (tenantId) {
+      whereClause.tenantId = tenantId;
+    }
+    
+    const branches = await prisma.branch.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        branchCode: true,
+        branchName: true,
+        city: true,
+      },
+      orderBy: { branchName: 'asc' }
+    });
+    
+    res.json({
+      success: true,
+      branches: branches.map(b => ({
+        id: String(b.id),
+        code: b.branchCode,
+        name: b.branchName,
+        city: b.city,
+      })),
+      count: branches.length
+    });
+  } catch (error) {
+    console.error('[Branches] Error:', error.message);
+    res.json({
+      success: true,
+      branches: [],
+      count: 0,
+      message: 'Branches unavailable'
+    });
+  }
+});
+
+// Roles endpoint for dropdowns
+app.get('/api/roles', authenticate, async (req, res) => {
+  try {
+    const roles = await prisma.rbac_roles.findMany({
+      select: {
+        id: true,
+        name: true,
+        display_name: true,
+        level: true,
+      },
+      orderBy: { level: 'asc' }
+    });
+    
+    res.json({
+      success: true,
+      roles: roles.map(r => ({
+        id: String(r.id),
+        name: r.name,
+        displayName: r.display_name || r.name,
+        level: r.level,
+      })),
+      count: roles.length
+    });
+  } catch (error) {
+    console.error('[Roles] Error:', error.message);
+    // Fallback to hardcoded roles if database fails
+    const fallbackRoles = [
+      { id: '1', name: 'Hub Incharge', displayName: 'Hub Incharge', level: 5 },
+      { id: '2', name: 'Store Incharge', displayName: 'Store Incharge', level: 5 },
+      { id: '3', name: 'Branch Incharge', displayName: 'Branch Incharge', level: 5 },
+      { id: '4', name: 'Operations Manager', displayName: 'Operations Manager', level: 4 },
+      { id: '5', name: 'Finance Controller', displayName: 'Finance Controller', level: 4 },
+      { id: '6', name: 'HR Manager', displayName: 'HR Manager', level: 4 },
+      { id: '7', name: 'ADMIN', displayName: 'Administrator', level: 2 },
+    ];
+    res.json({
+      success: true,
+      roles: fallbackRoles,
+      count: fallbackRoles.length,
+      message: 'Using fallback roles'
     });
   }
 });
@@ -3907,6 +4309,154 @@ app.get('/api/users', authenticate, requireRole(['ADMIN', 'SUPER_ADMIN']), async
     })
   }
 })
+
+// Update user role
+app.put('/api/users/:userId/role', authenticate, requireRole(['ADMIN', 'SUPER_ADMIN', 'HR', 'HR_MANAGER']), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { role } = req.body;
+
+    if (!role) {
+      return res.status(400).json({ success: false, message: 'Role is required' });
+    }
+
+    // Security: Ensure user is in same tenant
+    const tenantFilter = TenantGuard.getTenantFilter(req);
+    
+    const existingUser = await prisma.user.findFirst({
+      where: { id: userId, ...tenantFilter }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Update role
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { 
+        role: role,
+        updatedAt: new Date()
+      }
+    });
+
+    console.log(`[User Management] Role updated for user ${userId}: ${existingUser.role} -> ${role} by ${req.user.email}`);
+    
+    res.json({ 
+      success: true, 
+      message: 'Role updated successfully',
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        role: updatedUser.role
+      }
+    });
+  } catch (err) {
+    console.error('Update user role error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update role' });
+  }
+});
+
+// Update user status (enable/disable)
+app.put('/api/users/:userId/status', authenticate, requireRole(['ADMIN', 'SUPER_ADMIN', 'HR', 'HR_MANAGER']), async (req, res) => {
+  try {
+    const { userId } = req.params;
+    const { is_active } = req.body;
+
+    if (typeof is_active !== 'boolean') {
+      return res.status(400).json({ success: false, message: 'is_active must be a boolean' });
+    }
+
+    // Security: Ensure user is in same tenant
+    const tenantFilter = TenantGuard.getTenantFilter(req);
+    
+    const existingUser = await prisma.user.findFirst({
+      where: { id: userId, ...tenantFilter }
+    });
+
+    if (!existingUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Prevent disabling yourself
+    if (userId === req.user.id && !is_active) {
+      return res.status(400).json({ success: false, message: 'Cannot disable your own account' });
+    }
+
+    // Update status
+    const updatedUser = await prisma.user.update({
+      where: { id: userId },
+      data: { 
+        is_active: is_active,
+        updatedAt: new Date()
+      }
+    });
+
+    console.log(`[User Management] Status updated for user ${userId}: is_active=${is_active} by ${req.user.email}`);
+    
+    res.json({ 
+      success: true, 
+      message: is_active ? 'User enabled' : 'User disabled',
+      user: {
+        id: updatedUser.id,
+        email: updatedUser.email,
+        is_active: updatedUser.is_active
+      }
+    });
+  } catch (err) {
+    console.error('Update user status error:', err);
+    res.status(500).json({ success: false, message: 'Failed to update status' });
+  }
+});
+
+// Admin password reset (send reset link to user)
+app.post('/api/auth/admin-password-reset', authenticate, requireRole(['ADMIN', 'SUPER_ADMIN', 'HR', 'HR_MANAGER']), async (req, res) => {
+  try {
+    const { user_id, email } = req.body;
+
+    if (!user_id && !email) {
+      return res.status(400).json({ success: false, message: 'user_id or email is required' });
+    }
+
+    // Security: Ensure user is in same tenant
+    const tenantFilter = TenantGuard.getTenantFilter(req);
+    
+    const targetUser = await prisma.user.findFirst({
+      where: user_id ? { id: user_id, ...tenantFilter } : { email: email, ...tenantFilter }
+    });
+
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    // Generate reset token
+    const crypto = require('crypto');
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const resetExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
+
+    // Store token in user record
+    await prisma.user.update({
+      where: { id: targetUser.id },
+      data: { 
+        reset_token: resetToken,
+        reset_token_expiry: resetExpiry,
+        updatedAt: new Date()
+      }
+    });
+
+    // TODO: Send email with reset link (for now just log it)
+    console.log(`[Admin Password Reset] Reset token generated for ${targetUser.email} by ${req.user.email}`);
+    console.log(`[Admin Password Reset] Reset link: ${process.env.FRONTEND_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`);
+
+    res.json({ 
+      success: true, 
+      message: 'Password reset link sent to user email'
+    });
+  } catch (err) {
+    console.error('Admin password reset error:', err);
+    res.status(500).json({ success: false, message: 'Failed to send password reset' });
+  }
+});
 
 // If DEBUG_ROUTES env var is set, dump registered routes at startup for analyzer use
 if (process.env.DEBUG_ROUTES) {

@@ -415,12 +415,18 @@ router.delete('/super-admins/:id', async (req, res) => {
 
 /**
  * POST /api/enterprise/super-admins/:id/assign-modules
- * Assign modules to a super admin
+ * DEPRECATED: Use /api/enterprise-admin/super-admins/:id/assign-module with pageIds instead.
+ * 
+ * NOTE: Modules are informational groupings only. Permissions are defined by pages.
+ * This endpoint is kept for backward compatibility but should not be used for new code.
+ * A module is considered "accessible" when at least one page inside is allowed.
  */
 router.post('/super-admins/:id/assign-modules', async (req, res) => {
   try {
     const superAdminId = parseInt(req.params.id);
     const { moduleIds } = req.body;
+
+    console.warn('⚠️ DEPRECATED: assign-modules endpoint called. Use assign-module with pageIds instead.');
 
     if (!Array.isArray(moduleIds)) {
       return res.status(400).json({ 

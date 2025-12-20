@@ -6,7 +6,7 @@
 
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/common/hooks/useAuth';
 import { useRouter } from 'next/navigation';
 import TopNavbar from '@/components/layout/TopNavbar';
@@ -27,6 +27,25 @@ export default function SuperAdminLayout({
   // header remains fixed across pages
   const { user, loading, isAuthenticated } = useAuth();
   const router = useRouter();
+  
+  // Track if component is mounted (client-side) to prevent hydration mismatch
+  const [isMounted, setIsMounted] = useState(false);
+  
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
+  // During SSR or initial render, show nothing to prevent hydration mismatch
+  if (!isMounted) {
+    return (
+      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-4"></div>
+          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+        </div>
+      </div>
+    );
+  }
 
   // Show loading state
   if (loading) {

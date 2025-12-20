@@ -19,6 +19,32 @@ const router = express.Router();
 const { authenticate } = require('../../middleware/auth');
 const { getPrisma } = require('../../lib/prisma');
 
+// Helper to convert UUID user ID to legacy integer ID for database fields
+async function resolveUserIdToInt(userId, prisma) {
+  const isUUID = typeof userId === 'string' && 
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(userId);
+  
+  if (!isUUID) return userId; // Already an integer
+  
+  try {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { legacy_id: true }
+    });
+    if (user?.legacy_id) {
+      return user.legacy_id;
+    }
+  } catch (e) {
+    console.warn('[contracts] Failed to lookup user legacy_id:', e.message);
+  }
+  
+  // Fallback: use a hash of the UUID to generate an integer
+  return Math.abs(userId.split('').reduce((a, b) => {
+    a = ((a << 5) - a) + b.charCodeAt(0);
+    return a & a;
+  }, 0));
+}
+
 // Helper to generate contract number
 function generateContractNumber(type) {
   const prefix = {
@@ -298,7 +324,8 @@ router.get('/:id', authenticate, async (req, res) => {
 router.post('/', authenticate, async (req, res) => {
   try {
     const prisma = getPrisma();
-    const userId = req.user.id;
+    const createdByUserId = await resolveUserIdToInt(req.user.id, prisma);
+    
     const {
       // Basic info
       contract_type,
@@ -378,7 +405,7 @@ router.post('/', authenticate, async (req, res) => {
           status,
           tags: tags || [],
           internal_notes,
-          created_by: userId
+          created_by: createdByUserId
         }
       });
 
@@ -467,7 +494,7 @@ router.post('/', authenticate, async (req, res) => {
           action: 'CREATED',
           action_details: `Contract created with status: ${status}`,
           new_values: { contract_type, title, party_name, status },
-          performed_by: userId,
+          performed_by: createdByUserId,
           performed_by_name: req.user.name || req.user.email
         }
       });
@@ -521,7 +548,7 @@ router.put('/:id', authenticate, async (req, res) => {
   try {
     const prisma = getPrisma();
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = await resolveUserIdToInt(req.user.id, prisma);
     const updateData = req.body;
 
     // Fetch existing contract
@@ -655,7 +682,7 @@ router.patch('/:id/status', authenticate, async (req, res) => {
   try {
     const prisma = getPrisma();
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = await resolveUserIdToInt(req.user.id, prisma);
     const { status, termination_reason } = req.body;
 
     const validStatuses = ['DRAFT', 'ACTIVE', 'EXPIRED', 'TERMINATED', 'SUSPENDED'];
@@ -800,7 +827,7 @@ router.post('/:id/documents', authenticate, async (req, res) => {
   try {
     const prisma = getPrisma();
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = await resolveUserIdToInt(req.user.id, prisma);
     const {
       file_name,
       file_url,
@@ -866,7 +893,7 @@ router.post('/:id/renew', authenticate, async (req, res) => {
   try {
     const prisma = getPrisma();
     const { id } = req.params;
-    const userId = req.user.id;
+    const userId = await resolveUserIdToInt(req.user.id, prisma);
     const { new_end_date, new_monthly_amount } = req.body;
 
     const contract = await prisma.contract.findUnique({

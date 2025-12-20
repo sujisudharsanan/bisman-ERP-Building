@@ -412,4 +412,133 @@ router.get('/clients/:id/usage/daily', authMiddleware, async (req, res) => {
   } catch (e) { res.status(500).json({ error: 'Failed to fetch usage', details: e.message }); }
 });
 
+// ============================================
+// GET ROLES FOR A CLIENT
+// Returns all roles assigned to this client
+// ============================================
+router.get('/clients/:id/roles', authMiddleware, async (req, res) => {
+  try {
+    const user = req.user;
+    const { id } = req.params;
+    
+    // Client ID can be UUID string or integer
+    const clientId = id;
+    
+    if (!clientId) {
+      return res.status(400).json({ error: 'Invalid client ID' });
+    }
+    
+    // Check authorization
+    const role = user?.role;
+    const isSuperAdminRole = role === 'SUPER_ADMIN' || user?.userType === 'SUPER_ADMIN';
+    if (!isPlatformAdmin(role) && !isSuperAdminRole) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    
+    // Get client_roles from client_role_assignments table
+    let assignedRoleIds = [];
+    try {
+      const assignments = await prisma.clientRoleAssignment.findMany({
+        where: { client_id: clientId }
+      });
+      assignedRoleIds = assignments.map(a => a.role_id);
+      console.log('[clientManagement] Found', assignedRoleIds.length, 'role assignments for client:', clientId);
+    } catch (tableErr) {
+      console.error('[clientManagement] Error fetching role assignments:', tableErr.message);
+    }
+    
+    // Get full role details
+    let roles = [];
+    if (assignedRoleIds.length > 0) {
+      try {
+        roles = await prisma.rbac_roles.findMany({
+          where: { id: { in: assignedRoleIds } }
+        });
+      } catch (roleErr) {
+        console.warn('[clientManagement] Could not fetch role details:', roleErr.message);
+      }
+    }
+    
+    res.json({ 
+      success: true, 
+      clientId,
+      roleIds: assignedRoleIds,
+      roles: roles.map(r => ({
+        id: r.id,
+        name: r.name,
+        display_name: r.display_name || r.name,
+        level: r.level
+      }))
+    });
+  } catch (e) {
+    console.error('[clientManagement] Error fetching client roles:', e);
+    res.status(500).json({ error: 'Failed to fetch client roles', details: e.message });
+  }
+});
+
+// ============================================
+// UPDATE ROLES FOR A CLIENT
+// Save which roles are assigned to this client
+// ============================================
+router.post('/clients/:id/roles', authMiddleware, async (req, res) => {
+  try {
+    const user = req.user;
+    const { id } = req.params;
+    const { roleIds } = req.body;
+    
+    // Client ID can be UUID string or integer
+    const clientId = id;
+    
+    if (!clientId) {
+      return res.status(400).json({ error: 'Invalid client ID' });
+    }
+    
+    // Check authorization
+    const role = user?.role;
+    const isSuperAdminRole = role === 'SUPER_ADMIN' || user?.userType === 'SUPER_ADMIN';
+    if (!isPlatformAdmin(role) && !isSuperAdminRole) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    
+    const roleIdsArray = Array.isArray(roleIds) ? roleIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id)) : [];
+    
+    console.log('[clientManagement] Saving roles for client:', clientId, 'roleIds:', roleIdsArray);
+    
+    // Use ClientRoleAssignment table
+    try {
+      // Delete existing assignments
+      await prisma.clientRoleAssignment.deleteMany({
+        where: { client_id: clientId }
+      });
+      
+      // Create new assignments
+      if (roleIdsArray.length > 0) {
+        await prisma.clientRoleAssignment.createMany({
+          data: roleIdsArray.map(roleId => ({
+            client_id: clientId,
+            role_id: roleId,
+            created_at: new Date(),
+            updated_at: new Date()
+          }))
+        });
+      }
+      
+      console.log('[clientManagement] Saved', roleIdsArray.length, 'roles for client:', clientId);
+      
+      res.json({ 
+        success: true, 
+        clientId,
+        message: 'Client roles updated successfully',
+        roleCount: roleIdsArray.length
+      });
+    } catch (dbErr) {
+      console.error('[clientManagement] Database error saving roles:', dbErr.message);
+      res.status(500).json({ error: 'Failed to save client roles', details: dbErr.message });
+    }
+  } catch (e) {
+    console.error('[clientManagement] Error saving client roles:', e);
+    res.status(500).json({ error: 'Failed to save client roles', details: e.message });
+  }
+});
+
 module.exports = router;

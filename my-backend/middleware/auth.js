@@ -101,14 +101,45 @@ async function authenticate(req, res, next) {
           user.userType = 'SUPER_ADMIN'
         }
       } else {
-        // Regular user
+        // Regular user (includes ADMIN users from legacy users table)
         console.log('[authenticate] Looking up User with id:', subjectId)
         if (subjectId != null) {
-          user = await prisma.user.findUnique({ where: { id: subjectId } })
+          // First try users_enhanced (UUID-based User model) if id looks like a UUID
+          const isUUID = typeof subjectId === 'string' && subjectId.includes('-');
+          if (isUUID) {
+            try {
+              user = await prisma.user.findUnique({ where: { id: subjectId } })
+            } catch (e) {
+              console.log('[authenticate] User not found in users_enhanced')
+            }
+          }
+          
+          // If not found or id is an integer, try the legacy users table
+          if (!user) {
+            try {
+              const parsedId = parseInt(subjectId);
+              if (!isNaN(parsedId)) {
+                const legacyResult = await prisma.$queryRaw`
+                  SELECT id, username, email, role, is_active, "productType", tenant_id, super_admin_id, profile_pic_url
+                  FROM users 
+                  WHERE id = ${parsedId}
+                  LIMIT 1
+                `;
+                if (legacyResult && legacyResult[0]) {
+                  user = legacyResult[0];
+                  console.log('[authenticate] Found user in legacy users table:', user.email);
+                }
+              }
+            } catch (legacyErr) {
+              console.warn('[authenticate] Legacy users lookup failed:', legacyErr.message);
+            }
+          }
         }
         if (user) {
           delete user.password
+          delete user.password_hash
           user.roleName = user.role || null
+          user.userType = user.role?.toUpperCase() === 'ADMIN' ? 'ADMIN' : 'USER'
         }
       }
       

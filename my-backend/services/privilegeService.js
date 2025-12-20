@@ -4,6 +4,8 @@
 
 // Use shared Prisma singleton to avoid multiple pools
 const { getPrisma } = require('../lib/prisma');
+// TenantGuard available for future multi-tenant isolation
+// eslint-disable-next-line no-unused-vars
 const TenantGuard = require('../middleware/tenantGuard'); // ✅ SECURITY: Multi-tenant isolation
 const { FallbackService } = require('./fallbackService'); // ✅ ROBUST: Centralized fallback handling
 const prisma = getPrisma();
@@ -13,6 +15,7 @@ let _dbReadyCache = { ready: null, checkedAt: 0 };
 const DB_READY_TTL_MS = 30_000; // 30s
 
 // In-memory overrides for role status (used only when DB is available)
+// eslint-disable-next-line no-unused-vars
 const ROLE_STATUS_OVERRIDES = new Map(); // roleId -> boolean
 
 // Determine if database is not only configured but also has required tables
@@ -32,17 +35,20 @@ async function isDbReady() {
     const ready = !!(row && row.users);
     _dbReadyCache = { ready, checkedAt: now };
     return ready;
-  } catch (e) {
+  } catch (dbErr) {
     // If query fails (e.g., no permissions or bad schema), treat as not ready
+    void dbErr;
     _dbReadyCache = { ready: false, checkedAt: now };
     return false;
   }
 }
 
 // Helper functions
+// eslint-disable-next-line no-unused-vars
 const isDbConfigured = () => Boolean(process.env.DATABASE_URL);
 const nowIso = () => new Date().toISOString();
 
+// eslint-disable-next-line no-unused-vars
 const DEFAULT_ROLES = [
   // Core
   { id: 'SUPER_ADMIN', name: 'Super Admin', description: 'Full system access', level: 10, is_active: true },
@@ -73,6 +79,7 @@ const DEFAULT_ROLES = [
 ].map(r => ({ ...r, created_at: nowIso(), updated_at: nowIso(), user_count: 0 }));
 
 // DEFAULT_FEATURES for schema sync operations
+// eslint-disable-next-line no-unused-vars
 const DEFAULT_FEATURES = [
   // User Management
   { id: 'feature:user_list', name: 'User List', module: 'User Management', description: 'View user list' },
@@ -187,8 +194,9 @@ class PrivilegeService {
           data: { is_active: Boolean(isActive), updated_at: new Date() }
         });
         return { success: true, persisted: true, role: updated };
-      } catch (e) {
+      } catch (schemaErr) {
         // Schema may not have is_active; ignore
+        void schemaErr;
         return { success: true, persisted: false };
       }
     } catch (error) {
@@ -246,19 +254,44 @@ class PrivilegeService {
           where: roleVariations.length > 0 ? { role: { in: roleVariations } } : {},
           orderBy: [{ username: 'asc' }]
         });
+        
+        // Try to get role levels from rbac_roles table for each user
+        const roleNames = [...new Set(users.map(u => u.role).filter(Boolean))];
+        let roleLevelMap = {};
+        if (roleNames.length > 0) {
+          try {
+            const roles = await this.prisma.$queryRaw`
+              SELECT name, level FROM rbac_roles 
+              WHERE UPPER(REPLACE(name, ' ', '_')) IN (${roleNames.map(r => r.toUpperCase().replace(/\s+/g, '_'))})
+            `;
+            if (roles && roles.length > 0) {
+              roleLevelMap = roles.reduce((acc, r) => {
+                acc[r.name.toUpperCase().replace(/\s+/g, '_')] = r.level || 1;
+                return acc;
+              }, {});
+            }
+          } catch (e) {
+            console.warn('[getUsersByRole] Could not fetch role levels:', e.message);
+          }
+        }
 
-        return users.map(user => ({
-          id: String(user.id),
-          username: user.username,
-          email: user.email,
-          first_name: user.username,
-          last_name: '',
-          role_id: user.role,
-          is_active: true,
-          created_at: user.createdAt?.toISOString() || new Date().toISOString(),
-          updated_at: user.updatedAt?.toISOString() || new Date().toISOString(),
-          role: { id: user.role, name: user.role }
-        }));
+        return users.map(user => {
+          const normalizedRole = (user.role || '').toUpperCase().replace(/\s+/g, '_');
+          const roleLevel = roleLevelMap[normalizedRole] || 1;
+          return {
+            id: String(user.id),
+            username: user.username,
+            email: user.email,
+            first_name: user.username,
+            last_name: '',
+            role_id: user.role,
+            role_level: roleLevel,
+            is_active: true,
+            created_at: user.createdAt?.toISOString() || new Date().toISOString(),
+            updated_at: user.updatedAt?.toISOString() || new Date().toISOString(),
+            role: { id: user.role, name: user.role, level: roleLevel }
+          };
+        });
       },
       moduleName: 'privilege',
       operationName: 'getUsersByRole',
@@ -382,7 +415,7 @@ class PrivilegeService {
   }
 
   // Update role or user privileges
-  async updatePrivileges(type, targetId, privileges, updatedBy) {
+  async updatePrivileges(type, targetId, privileges, _updatedBy) {
     try {
       const result = await this.prisma.$transaction(async (tx) => {
         const oldValues = [];
@@ -747,7 +780,7 @@ class PrivilegeService {
   }
 
   // Helper method to generate privilege matrix data
-  async generatePrivilegeMatrix(options) {
+  async generatePrivilegeMatrix(_options) {
     // Implementation details for generating matrix data
     // This would query roles, users, features, and privileges
     // and format them into a matrix structure
@@ -755,13 +788,13 @@ class PrivilegeService {
   }
 
   // Helper method to convert data to CSV
-  convertToCSV(data) {
+  convertToCSV(_data) {
     // CSV conversion logic
     return '';
   }
 
   // Helper method to convert data to PDF
-  async convertToPDF(data) {
+  async convertToPDF(_data) {
     // PDF conversion logic
     return Buffer.from('');
   }

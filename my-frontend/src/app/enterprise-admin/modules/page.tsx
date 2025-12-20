@@ -174,8 +174,16 @@ export default function Page() {
   const [isAssignMode, setIsAssignMode] = useState(false); // Toggle for showing + icons on unassigned modules
   const [isRoleAssignMode, setIsRoleAssignMode] = useState(false); // Toggle for role assignment mode
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
-  const [bottomView, setBottomView] = useState<'roles' | 'modules'>('modules'); // What to show in bottom section
+  // Bottom section always shows roles only (modules are managed via page permissions in column 4)
   const [assignedRoleIds, setAssignedRoleIds] = useState<number[]>([]); // Roles assigned to selected Super Admin
+  
+  // Pages for selected role
+  const [rolePagesLoading, setRolePagesLoading] = useState(false);
+  const [rolePages, setRolePages] = useState<Array<{ id: string; routeId?: number; path: string; name: string; module?: string; granted?: boolean }>>([]);
+  const [rolePagesSaving, setRolePagesSaving] = useState(false);
+  const [rolePagesSelectedIds, setRolePagesSelectedIds] = useState<Set<string>>(new Set());
+  const [rolePagesInitialIds, setRolePagesInitialIds] = useState<Set<string>>(new Set());
+  const [rolePagesHasChanges, setRolePagesHasChanges] = useState(false);
   
   // Create Super Admin modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -292,6 +300,124 @@ export default function Page() {
       }
     };
   }, [assignedRoleIds, selectedAdminId]);
+
+  // Load pages for the selected role
+  useEffect(() => {
+    if (!selectedRoleId) {
+      setRolePages([]);
+      setRolePagesSelectedIds(new Set());
+      setRolePagesInitialIds(new Set());
+      setRolePagesHasChanges(false);
+      return;
+    }
+    
+    const loadRolePages = async () => {
+      setRolePagesLoading(true);
+      try {
+        console.log('📄 Loading pages for role:', selectedRoleId);
+        const response = await fetch(`/api/rbac/roles/${selectedRoleId}/pages`, {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && Array.isArray(data.pages)) {
+            setRolePages(data.pages);
+            // Track which pages are granted (selected)
+            const grantedIds = new Set<string>(
+              data.pages.filter((p: { granted?: boolean }) => p.granted).map((p: { id: string }) => p.id)
+            );
+            setRolePagesSelectedIds(grantedIds);
+            setRolePagesInitialIds(new Set(grantedIds));
+            setRolePagesHasChanges(false);
+            console.log('✅ Loaded', data.pages.length, 'pages,', grantedIds.size, 'granted for role');
+          } else {
+            setRolePages([]);
+            setRolePagesSelectedIds(new Set());
+            setRolePagesInitialIds(new Set());
+          }
+        } else {
+          console.error('⚠️ API failed with status:', response.status);
+          setRolePages([]);
+          setRolePagesSelectedIds(new Set());
+          setRolePagesInitialIds(new Set());
+        }
+      } catch (error) {
+        console.error('❌ Error loading role pages:', error);
+        setRolePages([]);
+        setRolePagesSelectedIds(new Set());
+        setRolePagesInitialIds(new Set());
+      } finally {
+        setRolePagesLoading(false);
+      }
+    };
+    
+    loadRolePages();
+  }, [selectedRoleId]);
+
+  // Track changes for role pages
+  useEffect(() => {
+    const currentIds = [...rolePagesSelectedIds].sort().join(',');
+    const initialIds = [...rolePagesInitialIds].sort().join(',');
+    setRolePagesHasChanges(currentIds !== initialIds);
+  }, [rolePagesSelectedIds, rolePagesInitialIds]);
+
+  // Save role pages handler
+  const handleSaveRolePages = async () => {
+    if (!selectedRoleId) return;
+    
+    setRolePagesSaving(true);
+    try {
+      const pageIds = Array.from(rolePagesSelectedIds);
+      console.log('💾 Saving', pageIds.length, 'pages for role:', selectedRoleId);
+      
+      const response = await fetch(`/api/rbac/roles/${selectedRoleId}/pages`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ pageIds })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log('✅ Saved role pages:', data);
+        // Update initial to current (no more unsaved changes)
+        setRolePagesInitialIds(new Set(rolePagesSelectedIds));
+        setRolePagesHasChanges(false);
+      } else {
+        console.error('❌ Save failed:', response.status);
+        alert('Failed to save role pages');
+      }
+    } catch (error) {
+      console.error('❌ Save error:', error);
+      alert('Error saving role pages');
+    } finally {
+      setRolePagesSaving(false);
+    }
+  };
+
+  // Toggle page selection for role
+  const toggleRolePageSelection = (pageId: string) => {
+    setRolePagesSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(pageId)) {
+        newSet.delete(pageId);
+      } else {
+        newSet.add(pageId);
+      }
+      return newSet;
+    });
+  };
+
+  // Select all / Deselect all for role pages
+  const handleSelectAllRolePages = () => {
+    const allIds = new Set(rolePages.map(p => p.id));
+    setRolePagesSelectedIds(allIds);
+  };
+
+  const handleDeselectAllRolePages = () => {
+    setRolePagesSelectedIds(new Set());
+  };
 
   // Compute whether there are unsaved changes by comparing current selection with initial state
   const hasChanges = useMemo(() => {
@@ -744,6 +870,47 @@ export default function Page() {
     if (!selectedAdmin) return 0;
     return selectedAdmin.assignedModules?.length || 0;
   }, [selectedAdmin]);
+
+  // RBAC: Derive module accessibility status from page permissions
+  // Modules are NOT directly assigned - they are accessible when at least one page inside is allowed
+  const getModuleAccessStatus = useCallback((m: Module): { status: 'accessible' | 'partial' | 'no-access'; pageCount: number; allowedCount: number } => {
+    const modulePages = m.pages || [];
+    const totalPages = modulePages.length;
+    
+    if (!selectedAdmin || !selectedModuleId) {
+      // Check from pagePermissions if admin is selected
+      if (selectedAdmin) {
+        const modKey = String(m.id);
+        const moduleKey = m.moduleKey || '';
+        const assignedPages = selectedAdmin.pagePermissions?.[modKey] 
+          || selectedAdmin.pagePermissions?.[moduleKey] 
+          || [];
+        const allowedCount = assignedPages.length;
+        
+        if (allowedCount === 0) return { status: 'no-access', pageCount: totalPages, allowedCount: 0 };
+        if (allowedCount >= totalPages) return { status: 'accessible', pageCount: totalPages, allowedCount };
+        return { status: 'partial', pageCount: totalPages, allowedCount };
+      }
+      return { status: 'no-access', pageCount: totalPages, allowedCount: 0 };
+    }
+    
+    // For always accessible modules
+    if (m.alwaysAccessible || m.moduleKey === 'common' || m.moduleKey === 'chat') {
+      return { status: 'accessible', pageCount: totalPages, allowedCount: totalPages };
+    }
+    
+    // Count allowed pages from pagePermissions
+    const modKey = String(m.id);
+    const moduleKey = m.moduleKey || '';
+    const assignedPages = selectedAdmin.pagePermissions?.[modKey] 
+      || selectedAdmin.pagePermissions?.[moduleKey] 
+      || [];
+    const allowedCount = assignedPages.length;
+    
+    if (allowedCount === 0) return { status: 'no-access', pageCount: totalPages, allowedCount: 0 };
+    if (allowedCount >= totalPages) return { status: 'accessible', pageCount: totalPages, allowedCount };
+    return { status: 'partial', pageCount: totalPages, allowedCount };
+  }, [selectedAdmin, selectedModuleId]);
 
   const pagesForSelectedModule = useMemo(() => {
     if (!selectedModuleId) return [] as { id: string; title?: string; path: string; isAssigned?: boolean }[];
@@ -1449,20 +1616,16 @@ export default function Page() {
 
         {/* 3. Roles - Only show allocated/assigned roles */}
         <div 
-          onClick={() => setBottomView('roles')}
-          className={`rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3 cursor-pointer transition hover:border-purple-400 hover:shadow-md ${
-            bottomView === 'roles' ? 'border-purple-500 ring-2 ring-purple-200 dark:ring-purple-800' : ''
-          }`}
+          className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3"
         >
           <div className="text-sm font-semibold mb-2 flex items-center justify-between">
-            <div className={`flex items-center gap-2 ${bottomView === 'roles' ? 'text-purple-600' : ''}`}>
+            <div className="flex items-center gap-2">
               <FiShield className="text-purple-600" />
               Roles
               <span className="text-xs font-normal text-gray-500">{assignedRoleIds.length}</span>
-              {bottomView === 'roles' && <span className="text-[10px] text-purple-500">▼</span>}
             </div>
           </div>
-          <div className="space-y-1 max-h-[520px] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+          <div className="space-y-1 max-h-[520px] overflow-y-auto">
             {/* Top section always shows only assigned/allocated roles */}
             {(() => {
               if (!selectedAdminId) {
@@ -1543,111 +1706,134 @@ export default function Page() {
           </div>
         </div>
 
-        {/* 4. Modules - Show assigned modules for selected Super Admin */}
-        <div 
-          onClick={() => setBottomView('modules')}
-          className={`rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3 cursor-pointer transition hover:border-emerald-400 hover:shadow-md ${
-            bottomView === 'modules' ? 'border-emerald-500 ring-2 ring-emerald-200 dark:ring-emerald-800' : ''
-          }`}
-        >
-          <div className="text-sm font-semibold mb-2 flex items-center justify-between">
-            <div className={`flex items-center gap-2 ${bottomView === 'modules' ? 'text-emerald-600' : ''}`}>
-              <FiPackage className="text-emerald-600" />
-              Modules
-              <span className="text-xs font-normal text-gray-500">{selectedAdminId ? moduleGroups.assigned.length : filteredModules.length}</span>
-              {bottomView === 'modules' && <span className="text-[10px] text-emerald-500">▼</span>}
+        {/* 4. Pages - Show pages for the selected role */}
+        <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
+          <div className="text-sm font-semibold mb-1 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <FiGrid className="text-blue-600" />
+              Pages
+              {selectedRoleId && selectedRole && (
+                <span className="text-xs font-normal text-purple-600 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded">
+                  {selectedRole.display_name || selectedRole.name}
+                </span>
+              )}
+              <span className="text-xs font-normal text-gray-500">
+                {selectedRoleId ? `(${rolePagesSelectedIds.size}/${rolePages.length} selected)` : ''}
+              </span>
             </div>
+            {rolePagesLoading && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">
+                Loading...
+              </span>
+            )}
+            {rolePagesSaving && (
+              <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">
+                Saving...
+              </span>
+            )}
           </div>
-          <div className="space-y-1 max-h-[520px] overflow-y-auto" onClick={(e) => e.stopPropagation()}>
-            {!selectedAdminId ? (
+          
+          {/* Microcopy */}
+          <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-2 italic">
+            Check pages to grant access to this role.
+          </div>
+
+          {/* Action buttons - Select All, Deselect All, Save */}
+          {selectedRoleId && rolePages.length > 0 && (
+            <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+              <button
+                onClick={handleSelectAllRolePages}
+                className="text-[10px] px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200 dark:bg-blue-900/30 dark:text-blue-300"
+              >
+                Select All
+              </button>
+              <button
+                onClick={handleDeselectAllRolePages}
+                className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300"
+              >
+                Deselect All
+              </button>
+              <div className="flex-1" />
+              <button
+                onClick={handleSaveRolePages}
+                disabled={!rolePagesHasChanges || rolePagesSaving}
+                className={`text-xs px-3 py-1 rounded font-medium transition ${
+                  rolePagesHasChanges && !rolePagesSaving
+                    ? 'bg-green-600 text-white hover:bg-green-700'
+                    : 'bg-gray-200 text-gray-400 cursor-not-allowed dark:bg-gray-700'
+                }`}
+              >
+                {rolePagesSaving ? 'Saving...' : rolePagesHasChanges ? 'Save' : 'Saved'}
+              </button>
+            </div>
+          )}
+
+          <div className="space-y-1 max-h-[480px] overflow-y-auto">
+            {!selectedRoleId ? (
               <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
-                ⚠️ Select a Super Admin to see assigned modules
+                ⚠️ Select a Role from Column 3 to see pages
               </div>
-            ) : moduleGroups.assigned.length === 0 ? (
+            ) : rolePagesLoading ? (
+              <div className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-300 dark:border-blue-700 flex items-center gap-2">
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                Loading pages...
+              </div>
+            ) : rolePages.length === 0 ? (
               <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-300 dark:border-gray-600">
-                No modules assigned to this Super Admin.
+                No pages available in the system.
               </div>
             ) : (
-              /* Show only assigned modules for the selected Super Admin */
-              moduleGroups.assigned.map((m) => {
-                const isAlwaysAccessible = m.alwaysAccessible || m.moduleKey === 'common' || m.moduleKey === 'chat';
-                const isSelected = (selectedModuleKey && selectedModuleKey === m.moduleKey) || (selectedModuleId != null && Number.isFinite(Number(m.id)) && selectedModuleId === Number(m.id));
-                
-                return (
-                  <div key={m.id} className="flex items-center gap-1">
-                    <button
-                      onClick={() => {
-                        const nextModuleId = Number.isFinite(Number(m.id)) ? Number(m.id) : null;
-                        setSelectedModuleId(nextModuleId);
-                        setSelectedModuleKey(m.moduleKey);
-                        // Clear page selection when changing modules
-                        isInitialLoadRef.current = true;
-                        setSelectedPageIds([]);
-                        initialPageIdsRef.current = [];
-                        lastSavedRef.current = '';
-                      }}
-                      className={`flex-1 text-left rounded-md border px-3 py-2 text-xs transition cursor-pointer ${
+              <>
+                {/* Page list with checkboxes */}
+                {rolePages.map((page, pageIndex) => {
+                  const isSelected = rolePagesSelectedIds.has(page.id);
+                  const uniqueKey = `${page.routeId || pageIndex}-${page.id || page.path}`;
+                  return (
+                    <div
+                      key={uniqueKey}
+                      onClick={() => toggleRolePageSelection(page.id)}
+                      className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer transition ${
                         isSelected
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/30 ring-2 ring-blue-300 dark:ring-blue-700"
-                          : isAlwaysAccessible
-                          ? "border-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30"
-                          : "border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30"
+                          ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-700'
+                          : 'border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700'
                       }`}
-                      title={`${m.moduleKey} - ${isAlwaysAccessible ? 'Always Accessible' : 'Available'}`}
                     >
-                      <div className="flex flex-col gap-1">
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="truncate flex items-center gap-1.5">
-                            {isSelected && (
-                              <span className="inline-flex items-center justify-center w-4 h-4 rounded-full bg-blue-500 text-white flex-shrink-0">
-                                <svg className="w-2.5 h-2.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                                </svg>
-                              </span>
-                            )}
-                            {isAlwaysAccessible ? (
-                              <FiUnlock className={`text-sm ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-blue-600 dark:text-blue-400'}`} />
-                            ) : (
-                              <FiPackage className={`text-sm ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-green-600 dark:text-green-400'}`} />
-                            )}
-                            <span className={`font-medium ${isSelected ? 'text-blue-700 dark:text-blue-300' : ''}`}>{m.name}</span>
-                          </span>
-                          <span className="text-[10px] text-gray-500 shrink-0">
-                            {m.pages?.length || 0} pages
-                          </span>
+                      {/* Checkbox */}
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleRolePageSelection(page.id)}
+                        className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
+                          {page.name || page.path || page.id}
                         </div>
-                        <div className="flex items-center gap-1 pl-5">
-                          <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                            (m.businessCategory ?? '').toLowerCase() === 'all' || m.alwaysAccessible
-                              ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                              : (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP'
-                              ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-                              : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                          }`}>
-                            {(m.businessCategory ?? '').toLowerCase() === 'all' || m.alwaysAccessible
-                              ? '🔄 Shared'
-                              : (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP'
-                              ? '⛽ Pump'
-                              : '💼 ERP'}
-                          </span>
+                        <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-2">
+                          <span>{page.path || page.id}</span>
+                          {page.module && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                              {page.module}
+                            </span>
+                          )}
                         </div>
                       </div>
-                    </button>
-                  </div>
-                );
-              })
+                    </div>
+                  );
+                })}
+              </>
             )}
           </div>
         </div>
         </div>
       </div>
 
-      {/* Static bottom section - Toggle between Roles and Modules */}
+      {/* Static bottom section - Roles Overview */}
       <div className="flex-shrink-0 rounded-lg border bg-white/40 dark:bg-gray-900/30 p-4">
-        {bottomView === 'roles' ? (
-          /* Show All Roles Grid */
-          <>
-            <div className="flex items-center justify-between mb-3">
+        {/* Show All Roles Grid */}
+        <>
+          <div className="flex items-center justify-between mb-3">
               <div className="flex items-center gap-4">
                 <div className="text-sm font-semibold flex items-center gap-2">
                   <FiShield className="text-purple-600" />
@@ -1724,7 +1910,6 @@ export default function Page() {
                           );
                         } else {
                           setSelectedRoleId(role.id);
-                          setBottomView('modules'); // Switch to modules after selecting a role
                         }
                       }}
                       className={`w-full text-left rounded-md border px-3 py-2 text-xs cursor-pointer transition hover:ring-2 ${
@@ -1773,155 +1958,6 @@ export default function Page() {
               })}
             </div>
           </>
-        ) : (
-          /* Show All Modules Grid */
-          <>
-            <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-4">
-                <div className="text-sm font-semibold flex items-center gap-2">
-                  <FiPackage className="text-emerald-600" />
-                  {category === 'pump' ? 'Pump Management' : 'Business ERP'} Modules {selectedAdmin ? `- ${selectedAdmin.name}` : ''} {selectedRole ? `| Role: ${selectedRole.display_name || selectedRole.name}` : ''}
-                </div>
-                {/* Add/Remove button - prominent placement */}
-                <button
-                  onClick={() => setIsAssignMode(!isAssignMode)}
-                  className={`text-sm font-semibold px-4 py-1.5 rounded-lg transition flex items-center gap-2 shadow-sm ${
-                    isAssignMode
-                      ? "bg-green-600 text-white hover:bg-green-700"
-                      : "bg-emerald-600 text-white hover:bg-emerald-700"
-                  }`}
-                >
-                  {isAssignMode ? "✓ Done" : "Add/Remove"}
-                </button>
-              </div>
-              <div className="flex items-center gap-3 text-xs">
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-green-500"></span>
-                  Assigned {selectedAdminId ? `(${moduleGroups.assigned.filter(m => !m.alwaysAccessible).length})` : ''}
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-red-500"></span>
-                  Not Assigned {selectedAdminId ? `(${moduleGroups.unassigned.length})` : ''}
-                </span>
-                <span className="flex items-center gap-1">
-                  <FiUnlock className="w-3 h-3 text-blue-500" />
-                  Always Accessible ({modules.filter(m => m.alwaysAccessible).length})
-                </span>
-              </div>
-            </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-              {filteredModules.map((m) => {
-                const isExplicitlyAssigned = selectedAdmin ? isModuleAssigned(m, selectedAdmin.assignedModules || []) : false;
-                const isPump = (m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP' || m.productType === 'PUMP_MANAGEMENT';
-                const isAlwaysAccessible = m.alwaysAccessible || m.moduleKey === 'common' || m.moduleKey === 'chat';
-                const isShared = (m.businessCategory ?? '').toLowerCase() === 'all' || m.alwaysAccessible === true;
-                const canAssign = isAssignMode && !isExplicitlyAssigned && !isAlwaysAccessible && selectedAdminId;
-                const canUnassign = isAssignMode && isExplicitlyAssigned && !isAlwaysAccessible && selectedAdminId;
-                
-                return (
-                  <div key={m.id} className="relative">
-                    {/* Show + button overlay when in assign mode for unassigned modules */}
-                    {canAssign && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          quickAssignModule(m);
-                        }}
-                        disabled={saving}
-                        className="absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full bg-green-500 hover:bg-green-600 text-white flex items-center justify-center text-lg font-bold shadow-lg transition-transform hover:scale-110"
-                        title={`Assign ${m.name}`}
-                      >
-                        +
-                      </button>
-                    )}
-                    {/* Show - button overlay when in assign mode for assigned modules */}
-                    {canUnassign && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          quickUnassignModule(m);
-                        }}
-                        disabled={saving}
-                        className="absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full bg-red-500 hover:bg-red-600 text-white flex items-center justify-center text-lg font-bold shadow-lg transition-transform hover:scale-110"
-                        title={`Unassign ${m.name}`}
-                      >
-                        −
-                      </button>
-                    )}
-                    {/* Clickable card for editing page permissions */}
-                    <button
-                      onClick={() => {
-                        const nextModuleId = Number.isFinite(Number(m.id)) ? Number(m.id) : null;
-                        setSelectedModuleId(nextModuleId);
-                        setSelectedModuleKey(m.moduleKey);
-                        if (selectedAdmin && nextModuleId) {
-                          const existing = selectedAdmin.pagePermissions?.[String(nextModuleId)] 
-                            || selectedAdmin.pagePermissions?.[m.moduleKey] 
-                            || [];
-                          // Use saved permissions - do NOT auto-select all pages
-                          const initialPages = existing.map(canonicalPageId);
-                          isInitialLoadRef.current = true;
-                          setSelectedPageIds(initialPages);
-                          // Initialize lastSavedRef to prevent auto-save from triggering on initial load
-                          lastSavedRef.current = `${selectedAdmin.id}-${nextModuleId}-${[...initialPages].sort().join(',')}`;
-                        } else {
-                          isInitialLoadRef.current = true;
-                          setSelectedPageIds([]);
-                          lastSavedRef.current = '';
-                        }
-                      }}
-                      className={`w-full text-left rounded-md border px-3 py-2 text-xs cursor-pointer transition hover:ring-2 hover:ring-blue-300 ${
-                        isAlwaysAccessible
-                          ? "border-blue-500 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/30"
-                          : !selectedAdminId
-                          ? "border-gray-300 bg-gray-50 dark:bg-gray-800/30 hover:bg-gray-100 dark:hover:bg-gray-800/50"
-                          : isExplicitlyAssigned
-                          ? "border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30"
-                          : "border-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30"
-                      }`}
-                      title={`${m.name} - ${isAlwaysAccessible ? 'Always Accessible - Click to edit page permissions' : !selectedAdminId ? 'Select a Super Admin to see status' : isExplicitlyAssigned ? 'Assigned - Click to manage pages' : 'Not Assigned'}`}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        {isAlwaysAccessible ? (
-                          <FiUnlock className="text-blue-600 dark:text-blue-400 text-sm" />
-                        ) : !selectedAdminId ? (
-                          <span className="text-gray-400 text-sm">○</span>
-                        ) : isExplicitlyAssigned ? (
-                          <span className="text-green-600 dark:text-green-400 font-bold text-sm">✓</span>
-                        ) : (
-                          <span className="text-red-600 dark:text-red-400 font-bold text-sm">✗</span>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate font-medium">{m.name}</div>
-                          <div className="flex items-center justify-between gap-1">
-                            <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-medium ${
-                              isShared || isAlwaysAccessible
-                                ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                                : isPump
-                                ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-                                : (m.businessCategory ?? '').toLowerCase().includes('enterprise')
-                                ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-300'
-                                : 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-300'
-                            }`}>
-                              {isShared || isAlwaysAccessible
-                                ? '🔄 Shared'
-                                : isPump
-                                ? '⛽ Pump'
-                                : (m.businessCategory ?? '').toLowerCase().includes('enterprise')
-                                ? '🏢 Enterprise'
-                                : '💼 ERP'}
-                            </span>
-                            <span className="text-[10px] text-gray-400">{m.pages?.length || 0} pgs</span>
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  </div>
-                );
-              })}
-            </div>
-          </>
-        )}
       </div>
 
       {/* Create Super Admin Modal */}

@@ -1,0 +1,337 @@
+/**
+ * Subscription Enforcement Middleware
+ * 
+ * Enforces subscription-based user count restrictions at runtime.
+ * 
+ * CORE RULE: User limits are enforced based on client's subscription, NOT role permissions.
+ * RBAC does not control capacity. Subscription does.
+ * 
+ * This middleware:
+ * - Calculates active user count dynamically (never cached)
+ * - Blocks user creation/activation when limits exceeded
+ * - Logs USER_LIMIT_EXCEEDED events for audit
+ */
+
+import { Request, Response, NextFunction } from 'express';
+import { PrismaClient } from '@prisma/client';
+
+const prisma = new PrismaClient();
+
+export interface SubscriptionLimits {
+  max_users: number;
+  max_active_users?: number;
+  current_user_count: number;
+  current_active_user_count: number;
+  plan_name: string;
+  plan_id: number;
+  subscription_status: string;
+  can_create_user: boolean;
+  can_activate_user: boolean;
+  limit_message?: string;
+}
+
+/**
+ * Get subscription limits for a client (by tenant_id/client_id)
+ * Always calculates dynamically - no cached values
+ */
+export async function getClientSubscriptionLimits(clientId: string): Promise<SubscriptionLimits | null> {
+  try {
+    // Get client's subscription with plan details
+    const clientSubscription = await prisma.clientSubscription.findUnique({
+      where: { client_id: clientId },
+      include: {
+        plan: true,
+        client: true
+      }
+    });
+
+    if (!clientSubscription) {
+      // No subscription found - use defaults from client's subscriptionPlan field
+      const client = await prisma.client.findUnique({
+        where: { id: clientId }
+      });
+
+      if (!client) {
+        return null;
+      }
+
+      // Default limits for 'free' plan
+      const defaultLimits: SubscriptionLimits = {
+        max_users: 5,
+        max_active_users: 5,
+        current_user_count: 0,
+        current_active_user_count: 0,
+        plan_name: client.subscriptionPlan || 'free',
+        plan_id: 0,
+        subscription_status: client.subscriptionStatus || 'active',
+        can_create_user: true,
+        can_activate_user: true
+      };
+
+      // Count users for this client
+      const userCounts = await countClientUsers(clientId);
+      defaultLimits.current_user_count = userCounts.total;
+      defaultLimits.current_active_user_count = userCounts.active;
+      defaultLimits.can_create_user = userCounts.total < defaultLimits.max_users;
+      defaultLimits.can_activate_user = userCounts.active < (defaultLimits.max_active_users || defaultLimits.max_users);
+
+      if (!defaultLimits.can_create_user) {
+        defaultLimits.limit_message = `User limit reached for ${defaultLimits.plan_name} plan (${defaultLimits.max_users} users). Upgrade required.`;
+      }
+
+      return defaultLimits;
+    }
+
+    const plan = clientSubscription.plan;
+    
+    // Calculate current user counts dynamically
+    const userCounts = await countClientUsers(clientId);
+
+    // -1 means unlimited
+    const maxUsers = plan.max_users === -1 ? Infinity : plan.max_users;
+    const maxActiveUsers = maxUsers; // Use same limit for active users unless you add a separate field
+
+    const limits: SubscriptionLimits = {
+      max_users: plan.max_users,
+      max_active_users: plan.max_users,
+      current_user_count: userCounts.total,
+      current_active_user_count: userCounts.active,
+      plan_name: plan.name,
+      plan_id: plan.id,
+      subscription_status: clientSubscription.state,
+      can_create_user: userCounts.total < maxUsers,
+      can_activate_user: userCounts.active < maxActiveUsers
+    };
+
+    // Check subscription status - suspended/cancelled clients can't add users
+    if (['SUSPENDED', 'CANCELLED'].includes(clientSubscription.state)) {
+      limits.can_create_user = false;
+      limits.can_activate_user = false;
+      limits.limit_message = `Subscription is ${clientSubscription.state.toLowerCase()}. Please contact support.`;
+    } else if (!limits.can_create_user) {
+      limits.limit_message = `User limit reached for ${plan.name} plan (${plan.max_users} users). Upgrade required.`;
+    }
+
+    return limits;
+  } catch (error) {
+    console.error('[SubscriptionEnforcement] Error getting limits:', error);
+    return null;
+  }
+}
+
+/**
+ * Count users for a client - always calculated dynamically
+ */
+async function countClientUsers(clientId: string): Promise<{ total: number; active: number }> {
+  try {
+    // Count all users for this client
+    const totalCount = await prisma.user.count({
+      where: { tenant_id: clientId }
+    });
+
+    // Count active users for this client
+    const activeCount = await prisma.user.count({
+      where: {
+        tenant_id: clientId,
+        is_active: true
+      }
+    });
+
+    return { total: totalCount, active: activeCount };
+  } catch (error) {
+    console.error('[SubscriptionEnforcement] Error counting users:', error);
+    return { total: 0, active: 0 };
+  }
+}
+
+/**
+ * Log subscription limit exceeded event for audit
+ */
+export async function logUserLimitExceeded(
+  clientId: string,
+  attemptedBy: number | string,
+  action: 'CREATE_USER' | 'ACTIVATE_USER' | 'BULK_IMPORT',
+  limits: SubscriptionLimits
+): Promise<void> {
+  try {
+    await prisma.auditLog.create({
+      data: {
+        user_id: typeof attemptedBy === 'number' ? attemptedBy : parseInt(attemptedBy) || 0,
+        action: 'USER_LIMIT_EXCEEDED',
+        table_name: 'subscription_enforcement',
+        record_id: 0,
+        old_values: null,
+        new_values: {
+          event: 'USER_LIMIT_EXCEEDED',
+          client_id: clientId,
+          subscription_plan_id: limits.plan_id,
+          plan_name: limits.plan_name,
+          max_users: limits.max_users,
+          current_user_count: limits.current_user_count,
+          current_active_user_count: limits.current_active_user_count,
+          attempted_action: action,
+          attempted_by: attemptedBy,
+          timestamp: new Date().toISOString()
+        }
+      }
+    });
+    console.log(`[SubscriptionEnforcement] USER_LIMIT_EXCEEDED logged for client ${clientId}`);
+  } catch (error) {
+    console.error('[SubscriptionEnforcement] Error logging limit exceeded:', error);
+  }
+}
+
+/**
+ * Middleware to check user creation limit
+ * Use this before creating a new user
+ */
+export function checkUserCreationLimit() {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const currentUser = (req as any).user;
+      
+      // Get tenant_id from request body or current user
+      const tenantId = req.body.tenant_id || currentUser?.tenant_id;
+
+      if (!tenantId) {
+        // No tenant context - skip enforcement (enterprise admin creating for multiple tenants)
+        console.log('[SubscriptionEnforcement] No tenant_id - skipping limit check');
+        return next();
+      }
+
+      const limits = await getClientSubscriptionLimits(tenantId);
+
+      if (!limits) {
+        console.log('[SubscriptionEnforcement] No subscription found - allowing action');
+        return next();
+      }
+
+      // Attach limits to request for downstream use
+      (req as any).subscriptionLimits = limits;
+
+      if (!limits.can_create_user) {
+        // Log the attempt
+        await logUserLimitExceeded(tenantId, currentUser?.id || 'unknown', 'CREATE_USER', limits);
+
+        return res.status(403).json({
+          error: 'User limit reached',
+          message: limits.limit_message || 'User limit reached for current subscription plan. Upgrade required.',
+          subscription: {
+            plan_name: limits.plan_name,
+            max_users: limits.max_users,
+            current_count: limits.current_user_count
+          }
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('[SubscriptionEnforcement] Middleware error:', error);
+      // Don't block on errors - allow action but log
+      next();
+    }
+  };
+}
+
+/**
+ * Middleware to check user activation limit
+ * Use this before activating a deactivated user
+ */
+export function checkUserActivationLimit() {
+  return async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const currentUser = (req as any).user;
+      const { id } = req.params;
+      const { status } = req.body;
+
+      // Only check when activating
+      if (status !== 'active') {
+        return next();
+      }
+
+      // Get the user being activated to find their tenant
+      const userToActivate = await prisma.user.findUnique({
+        where: { id: id },
+        select: { tenant_id: true, is_active: true }
+      });
+
+      if (!userToActivate?.tenant_id) {
+        // No tenant context - skip enforcement
+        return next();
+      }
+
+      // If user is already active, no need to check
+      if (userToActivate.is_active) {
+        return next();
+      }
+
+      const limits = await getClientSubscriptionLimits(userToActivate.tenant_id);
+
+      if (!limits) {
+        return next();
+      }
+
+      // Attach limits to request
+      (req as any).subscriptionLimits = limits;
+
+      if (!limits.can_activate_user) {
+        // Log the attempt
+        await logUserLimitExceeded(userToActivate.tenant_id, currentUser?.id || 'unknown', 'ACTIVATE_USER', limits);
+
+        return res.status(403).json({
+          error: 'User limit reached',
+          message: limits.limit_message || 'Active user limit reached for current subscription plan. Upgrade required.',
+          subscription: {
+            plan_name: limits.plan_name,
+            max_users: limits.max_users,
+            current_active_count: limits.current_active_user_count
+          }
+        });
+      }
+
+      next();
+    } catch (error) {
+      console.error('[SubscriptionEnforcement] Activation check error:', error);
+      next();
+    }
+  };
+}
+
+/**
+ * Get subscription info for UI display
+ * Returns limits info for Admin UI to show capacity indicators
+ */
+export async function getSubscriptionInfoForUI(clientId: string) {
+  const limits = await getClientSubscriptionLimits(clientId);
+
+  if (!limits) {
+    return {
+      has_subscription: false,
+      can_create_user: true,
+      can_activate_user: true
+    };
+  }
+
+  return {
+    has_subscription: true,
+    plan_name: limits.plan_name,
+    plan_id: limits.plan_id,
+    subscription_status: limits.subscription_status,
+    max_users: limits.max_users,
+    current_user_count: limits.current_user_count,
+    current_active_user_count: limits.current_active_user_count,
+    remaining_slots: limits.max_users === -1 ? 'unlimited' : Math.max(0, limits.max_users - limits.current_user_count),
+    can_create_user: limits.can_create_user,
+    can_activate_user: limits.can_activate_user,
+    limit_message: limits.limit_message,
+    usage_percentage: limits.max_users === -1 ? 0 : Math.round((limits.current_user_count / limits.max_users) * 100)
+  };
+}
+
+export default {
+  getClientSubscriptionLimits,
+  checkUserCreationLimit,
+  checkUserActivationLimit,
+  logUserLimitExceeded,
+  getSubscriptionInfoForUI
+};

@@ -88,17 +88,18 @@ model rbac_permissions {
 }
 
 model rbac_roles {
-  id                     Int                   @id @default(autoincrement())
-  name                   String                @unique @db.VarChar(50)
+  id                     Int                      @id @default(autoincrement())
+  name                   String                   @unique @db.VarChar(50)
   description            String?
-  level                  Int?                  @default(1)
-  created_at             DateTime?             @default(now()) @db.Timestamp(6)
-  updated_at             DateTime?             @default(now()) @db.Timestamp(6)
-  display_name           String?               @db.VarChar(150)
-  status                 String?               @default("active") @db.VarChar(20)
+  level                  Int?                     @default(1)
+  created_at             DateTime?                @default(now()) @db.Timestamp(6)
+  updated_at             DateTime?                @default(now()) @db.Timestamp(6)
+  display_name           String?                  @db.VarChar(150)
+  status                 String?                  @default("active") @db.VarChar(20)
   admin_role_assignments AdminRoleAssignment[]
   rbac_permissions       rbac_permissions[]
   rbac_user_roles        rbac_user_roles[]
+  clientRoleAssignments  ClientRoleAssignment[]
 }
 
 model rbac_routes {
@@ -293,6 +294,9 @@ model Client {
   billingOverrides        BillingOverride[]
   subscriptionAuditLogs   SubscriptionAuditLog[]
   subscriptionInvoices    SubscriptionInvoice[]
+  
+  // Role assignments for this client
+  roleAssignments         ClientRoleAssignment[]
 
   @@index([super_admin_id], map: "idx_clients_super_admin")
   @@index([productType], map: "idx_clients_product_type")
@@ -302,6 +306,24 @@ model Client {
   @@index([stripe_subscription_id], map: "idx_clients_stripe_subscription")
   @@index([unique_id], map: "idx_clients_unique_id")
   @@map("clients")
+}
+
+// Client-Role assignments - tracks which roles are assigned to each client
+model ClientRoleAssignment {
+  id         Int      @id @default(autoincrement())
+  client_id  String   @db.Uuid
+  role_id    Int
+  created_at DateTime @default(now()) @db.Timestamp(6)
+  updated_at DateTime @default(now()) @updatedAt @db.Timestamp(6)
+  created_by Int?
+
+  client     Client     @relation(fields: [client_id], references: [id], onDelete: Cascade)
+  role       rbac_roles @relation(fields: [role_id], references: [id], onDelete: Cascade)
+
+  @@unique([client_id, role_id])
+  @@index([client_id], map: "idx_client_role_assignments_client")
+  @@index([role_id], map: "idx_client_role_assignments_role")
+  @@map("client_role_assignments")
 }
 
 model ClientSequence {

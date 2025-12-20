@@ -10,6 +10,7 @@
  * - DELETE /api/system/users/:id       - Delete user
  * - GET    /api/system/users/export    - Export users to CSV/Excel
  * - PUT    /api/system/users/:id/status - Update user status
+ * - GET    /api/system/users/subscription-info - Get subscription limits for UI
  */
 
 import { Router, Request, Response } from 'express';
@@ -17,6 +18,11 @@ import { PrismaClient } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import { authMiddleware } from '../../middleware/auth';
 import { CORE_ROLES } from '../constants/roles';
+import { 
+  checkUserCreationLimit, 
+  checkUserActivationLimit,
+  getSubscriptionInfoForUI 
+} from '../middleware/subscriptionEnforcement';
 
 const router = Router();
 const prisma = new PrismaClient();
@@ -187,11 +193,16 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
 /**
  * Create new user
  * POST /api/system/users
+ * 
+ * SUBSCRIPTION ENFORCEMENT: User count is checked against client's subscription limit.
+ * If limit is reached, returns 403 with upgrade message.
  */
-router.post('/', authMiddleware, async (req: Request, res: Response) => {
+router.post('/', authMiddleware, checkUserCreationLimit(), async (req: Request, res: Response) => {
   try {
     const currentUserId = (req as any).user?.id;
     const currentUserRole = (req as any).user?.role;
+    const currentUserTenantId = (req as any).user?.tenant_id;
+    const currentUserSuperAdminId = (req as any).user?.super_admin_id;
 
     // Only admins can create users
   if (!CORE_ROLES.includes(currentUserRole)) {
@@ -209,7 +220,14 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
       profile_pic_url,
       assignedModules,
       pagePermissions,
+      first_name,
+      last_name,
+      mobile,
     } = req.body;
+
+    // Use provided tenant_id/super_admin_id or inherit from current user
+    const finalTenantId = tenant_id || currentUserTenantId || null;
+    const finalSuperAdminId = super_admin_id || currentUserSuperAdminId || null;
 
     // Validation
     if (!username || !email || !password) {
@@ -247,44 +265,58 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
     // Hash password
     const hashedPassword = await bcrypt.hash(password, 10);
 
+    // Generate UUID for the new user
+    const { v4: uuidv4 } = await import('uuid');
+
     // Create user
     const newUser = await prisma.user.create({
       data: {
+        id: uuidv4(),
         username,
         email,
-        password: hashedPassword,
+        password_hash: hashedPassword,
         role: role || 'USER',
-        productType,
-        tenant_id: tenant_id || null,
-        super_admin_id: super_admin_id || null,
+        product_type: productType,
+        tenant_id: finalTenantId,
+        super_admin_id: finalSuperAdminId,
         profile_pic_url: profile_pic_url || null,
-        assignedModules: assignedModules || null,
-        pagePermissions: pagePermissions || null,
+        assigned_modules: assignedModules || null,
+        page_permissions: pagePermissions || null,
+        first_name: first_name || null,
+        last_name: last_name || null,
+        phone: mobile || null,
+        is_active: true,
       },
       select: {
         id: true,
         username: true,
         email: true,
         role: true,
-        productType: true,
-        createdAt: true,
+        product_type: true,
+        created_at: true,
+        first_name: true,
+        last_name: true,
       },
     });
 
-    // Create audit log
-    await prisma.auditLog.create({
-      data: {
-        user_id: currentUserId,
-        action: 'CREATE_USER',
-        table_name: 'users',
-        record_id: newUser.id,
-        new_values: {
-          username: newUser.username,
-          email: newUser.email,
-          role: newUser.role,
+    // Create audit log (non-blocking - don't fail user creation if audit fails)
+    try {
+      await prisma.auditLog.create({
+        data: {
+          user_id: typeof currentUserId === 'string' ? parseInt(currentUserId) || null : currentUserId,
+          action: 'CREATE_USER',
+          table_name: 'users_enhanced',
+          new_values: {
+            id: newUser.id,
+            username: newUser.username,
+            email: newUser.email,
+            role: newUser.role,
+          },
         },
-      },
-    });
+      });
+    } catch (auditError) {
+      console.error('Audit log creation failed (non-blocking):', auditError);
+    }
 
     res.status(201).json({
       success: true,
@@ -310,9 +342,14 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
     const currentUserRole = (req as any).user?.role;
     const { id } = req.params;
 
-    // Check if user exists
-    const existingUser = await prisma.user.findUnique({
-      where: { id: Number(id) },
+    // Check if user exists (ID can be UUID string or legacy integer)
+    const existingUser = await prisma.user.findFirst({
+      where: {
+        OR: [
+          { id: id },
+          { legacy_id: !isNaN(Number(id)) ? Number(id) : undefined },
+        ].filter(Boolean)
+      },
     });
 
     if (!existingUser) {
@@ -321,7 +358,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
 
     // Permission check: users can edit themselves, admins can edit anyone
     if (
-  currentUserId !== Number(id) &&
+  currentUserId !== existingUser.id &&
   !CORE_ROLES.includes(currentUserRole)
     ) {
       return res.status(403).json({ error: 'Insufficient permissions to edit this user' });
@@ -338,6 +375,8 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
       profile_pic_url,
       assignedModules,
       pagePermissions,
+      reporting_authority_id,
+      branch_id,
     } = req.body;
 
     // Build update data
@@ -373,42 +412,83 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
           error: 'Password must be at least 8 characters long',
         });
       }
-      updateData.password = await bcrypt.hash(password, 10);
+      updateData.password_hash = await bcrypt.hash(password, 10);
     }
 
     // Only admins can change roles and product types
   if (CORE_ROLES.includes(currentUserRole)) {
       if (role !== undefined) updateData.role = role;
-      if (productType !== undefined) updateData.productType = productType;
+      if (productType !== undefined) updateData.product_type = productType;
       if (tenant_id !== undefined) updateData.tenant_id = tenant_id;
       if (super_admin_id !== undefined) updateData.super_admin_id = super_admin_id;
-      if (assignedModules !== undefined) updateData.assignedModules = assignedModules;
-      if (pagePermissions !== undefined) updateData.pagePermissions = pagePermissions;
+      if (assignedModules !== undefined) updateData.assigned_modules = assignedModules;
+      if (pagePermissions !== undefined) updateData.page_permissions = pagePermissions;
+      
+      // Handle reporting authority and branch (store in profile_data JSON)
+      const existingProfileData = (existingUser as any).profile_data || {};
+      let profileDataUpdated = false;
+      
+      if (reporting_authority_id !== undefined) {
+        existingProfileData.reporting_authority_id = reporting_authority_id || null;
+        profileDataUpdated = true;
+      }
+      
+      if (branch_id !== undefined) {
+        existingProfileData.branch_id = branch_id || null;
+        profileDataUpdated = true;
+      }
+      
+      if (profileDataUpdated) {
+        updateData.profile_data = existingProfileData;
+      }
     }
 
     if (profile_pic_url !== undefined) updateData.profile_pic_url = profile_pic_url;
 
-    // Update user
+    // Update user using the actual UUID from the existing user
     const updatedUser = await prisma.user.update({
-      where: { id: Number(id) },
+      where: { id: existingUser.id },
       data: updateData,
       select: {
         id: true,
         username: true,
         email: true,
         role: true,
-        productType: true,
-        updatedAt: true,
+        product_type: true,
+        updated_at: true,
       },
     });
+    
+    // Handle branch assignment if provided
+    if (branch_id !== undefined && CORE_ROLES.includes(currentUserRole)) {
+      // Remove existing branch assignments
+      await prisma.userBranch.deleteMany({
+        where: { userId: existingUser.legacy_id || 0 },
+      }).catch(() => {
+        // Ignore if no existing assignments
+      });
+      
+      // Add new branch assignment if provided
+      if (branch_id) {
+        await prisma.userBranch.create({
+          data: {
+            userId: existingUser.legacy_id || 0,
+            branchId: parseInt(branch_id),
+            isPrimary: true,
+          },
+        }).catch((e: Error) => {
+          console.error('Failed to assign branch:', e.message);
+        });
+      }
+    }
 
     // Create audit log
-    await prisma.auditLog.create({
+    prisma.auditLog.create({
       data: {
         user_id: currentUserId,
         action: 'UPDATE_USER',
         table_name: 'users',
-        record_id: updatedUser.id,
+        record_id: String(updatedUser.id),
         old_values: {
           username: existingUser.username,
           email: existingUser.email,
@@ -420,7 +500,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
           role: updatedUser.role,
         },
       },
-    });
+    }).catch(() => {});
 
     res.json({
       success: true,
@@ -578,10 +658,14 @@ router.get('/export/csv', authMiddleware, async (req: Request, res: Response) =>
 });
 
 /**
+/**
  * Update user status (activate/deactivate)
  * PUT /api/system/users/:id/status
+ * 
+ * SUBSCRIPTION ENFORCEMENT: When activating, checks if active user limit is reached.
+ * If limit is reached, returns 403 with upgrade message.
  */
-router.put('/:id/status', authMiddleware, async (req: Request, res: Response) => {
+router.put('/:id/status', authMiddleware, checkUserActivationLimit(), async (req: Request, res: Response) => {
   try {
     const currentUserId = (req as any).user?.id;
     const currentUserRole = (req as any).user?.role;
@@ -643,6 +727,46 @@ router.put('/:id/status', authMiddleware, async (req: Request, res: Response) =>
     console.error('Update user status error:', error);
     res.status(500).json({
       error: 'Failed to update user status',
+      details: error.message,
+    });
+  }
+});
+
+/**
+ * Get subscription info for UI
+ * GET /api/system/users/subscription-info
+ * 
+ * Returns current subscription limits for displaying in Admin UI.
+ * Used to show/disable "Add User" button based on capacity.
+ */
+router.get('/subscription-info', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const currentUser = (req as any).user;
+    const tenantId = currentUser?.tenant_id;
+
+    if (!tenantId) {
+      // No tenant context - return unlimited (for enterprise admin)
+      return res.json({
+        success: true,
+        data: {
+          has_subscription: false,
+          can_create_user: true,
+          can_activate_user: true,
+          message: 'No tenant context - unlimited access'
+        }
+      });
+    }
+
+    const subscriptionInfo = await getSubscriptionInfoForUI(tenantId);
+
+    res.json({
+      success: true,
+      data: subscriptionInfo
+    });
+  } catch (error: any) {
+    console.error('Get subscription info error:', error);
+    res.status(500).json({
+      error: 'Failed to get subscription info',
       details: error.message,
     });
   }

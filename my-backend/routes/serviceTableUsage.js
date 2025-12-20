@@ -37,9 +37,8 @@ const SENSITIVE_TABLES = [
   'security_events'
 ];
 
-// All routes require admin
-router.use(authenticate);
-router.use(requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN']));
+// Note: Each route applies middleware individually to avoid affecting other routes mounted at /api/admin
+const adminOnly = [authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN'])];
 
 /**
  * GET /api/admin/service-table-usage
@@ -52,7 +51,7 @@ router.use(requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN']));
  * - since - ISO date string for lastSeen filter
  * - staleThresholdDays - flag services not seen in N days (default: 30)
  */
-router.get('/service-table-usage', async (req, res) => {
+router.get('/service-table-usage', ...adminOnly, async (req, res) => {
   try {
     const {
       page = 1,
@@ -198,7 +197,7 @@ router.get('/service-table-usage', async (req, res) => {
  * GET /api/admin/service-table-usage/:serviceName
  * Get detailed usage for a specific service
  */
-router.get('/service-table-usage/:serviceName', async (req, res) => {
+router.get('/service-table-usage/:serviceName', ...adminOnly, async (req, res) => {
   try {
     const { serviceName } = req.params;
     const { days = 30 } = req.query;
@@ -315,7 +314,7 @@ router.get('/service-table-usage/:serviceName', async (req, res) => {
  * POST /api/admin/mark-suspicious
  * Mark a service as suspicious for investigation
  */
-router.post('/mark-suspicious', async (req, res) => {
+router.post('/mark-suspicious', ...adminOnly, async (req, res) => {
   try {
     const { serviceName, reason, severity = 'MEDIUM' } = req.body;
 
@@ -390,7 +389,7 @@ router.post('/mark-suspicious', async (req, res) => {
  * POST /api/admin/resolve-suspicious
  * Resolve a suspicious service flag
  */
-router.post('/resolve-suspicious', async (req, res) => {
+router.post('/resolve-suspicious', ...adminOnly, async (req, res) => {
   try {
     const { serviceName, notes } = req.body;
 
@@ -428,7 +427,7 @@ router.post('/resolve-suspicious', async (req, res) => {
  * GET /api/admin/sensitive-tables
  * Get access stats for sensitive tables only
  */
-router.get('/sensitive-tables', async (req, res) => {
+router.get('/sensitive-tables', ...adminOnly, async (req, res) => {
   try {
     const { hours = 24 } = req.query;
     const sinceDate = new Date();
@@ -478,7 +477,7 @@ router.get('/sensitive-tables', async (req, res) => {
  * GET /api/admin/suspicious-services
  * List all flagged suspicious services
  */
-router.get('/suspicious-services', async (req, res) => {
+router.get('/suspicious-services', ...adminOnly, async (req, res) => {
   try {
     const { includeResolved = false } = req.query;
 

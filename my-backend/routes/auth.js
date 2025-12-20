@@ -239,6 +239,7 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
     }
 
     // 3. Try Regular User (if DB available)
+    // First try users_enhanced (Prisma User model), then legacy users table for ADMIN users
     let regularUser = null;
     if (prisma) {
       try {
@@ -249,27 +250,55 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
       } catch (e) {
         console.warn('[auth.routes] regularUser lookup failed/timeout, continuing:', e.message);
       }
+      
+      // If not found in users_enhanced, try the legacy users table (for ADMIN users with integer IDs)
+      if (!regularUser) {
+        try {
+          const legacyResult = await withTimeout(
+            prisma.$queryRaw`
+              SELECT id, username, email, password_hash, role, is_active, 
+                     "productType", tenant_id, super_admin_id, profile_pic_url
+              FROM users 
+              WHERE email = ${email}
+              LIMIT 1
+            `,
+            3000
+          );
+          if (legacyResult && legacyResult[0]) {
+            regularUser = legacyResult[0];
+            regularUser.isLegacyUser = true;
+            console.log('[auth.routes] Found user in legacy users table:', email);
+          }
+        } catch (legacyErr) {
+          console.warn('[auth.routes] Legacy users lookup failed:', legacyErr.message);
+        }
+      }
     }
 
     if (regularUser) {
+      console.log('[auth.routes] Found regularUser:', regularUser.email, 'hasPasswordHash:', !!regularUser.password_hash);
       let isValidPassword = false;
       try {
         // Use password_hash column (renamed from password for clarity)
         const passwordHash = regularUser.password_hash || regularUser.password;
+        console.log('[auth.routes] Password hash type:', typeof passwordHash, 'length:', passwordHash?.length || 0);
         isValidPassword = typeof passwordHash === 'string' && passwordHash.length > 0 
           ? bcrypt.compareSync(password, passwordHash)
           : false;
+        console.log('[auth.routes] Password validation result:', isValidPassword);
       } catch (e) {
-        console.warn('⚠️ Password compare failed for Regular User (likely missing/invalid hash)');
+        console.warn('⚠️ Password compare failed for Regular User (likely missing/invalid hash):', e.message);
         isValidPassword = false;
       }
       
       if (isValidPassword) {
-        console.log('✅ Authenticated as Regular User');
+        // Determine userType based on role - ADMIN users get userType: 'ADMIN'
+        const userTypeValue = regularUser.role === 'ADMIN' ? 'ADMIN' : 'USER';
+        console.log(`✅ Authenticated as ${userTypeValue} (role: ${regularUser.role})`);
 
         // Log successful login
         auditService.logLoginAttempt(true, email, req.ip, {
-          userType: 'USER',
+          userType: userTypeValue,
           userId: regularUser.id,
           role: regularUser.role,
           tenantId: regularUser.tenant_id
@@ -281,7 +310,7 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
           username: regularUser.username,
           name: regularUser.username,
           role: regularUser.role,
-          userType: 'USER',
+          userType: userTypeValue,
           productType: regularUser.productType || 'BUSINESS_ERP',
           tenant_id: regularUser.tenant_id,
           super_admin_id: regularUser.super_admin_id,
@@ -295,15 +324,16 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
           email: regularUser.email,
           name: regularUser.username,
           role: regularUser.role,
-          userType: 'USER',
+          userType: userTypeValue,
           productType: regularUser.productType,
-          tenant_id: regularUser.tenant_id
+          tenant_id: regularUser.tenant_id,
+          super_admin_id: regularUser.super_admin_id
         });
 
         const refreshToken = generateRefreshToken({
           id: regularUser.id,
           email: regularUser.email,
-          userType: 'USER'
+          userType: userTypeValue
         });
 
         // Persist refresh token for regular users

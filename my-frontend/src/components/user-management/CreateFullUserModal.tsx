@@ -5,8 +5,9 @@ import {
   X, User, Mail, Phone, Save, Plus, Trash2, Upload, 
   FileText, Building, Shield, GraduationCap, Users,
   CheckCircle, AlertCircle, Eye, EyeOff, MapPin,
-  Crown, Key, Calendar
+  Crown, Key, Calendar, AlertTriangle
 } from 'lucide-react';
+import { useSubscriptionLimits } from '@/hooks/useSubscriptionLimits';
 import type { 
   CreateUserData, 
   UserRole, 
@@ -35,6 +36,17 @@ export function CreateFullUserModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSensitiveFields, setShowSensitiveFields] = useState(false);
+
+  // Subscription limit check
+  const { 
+    activeUsers, 
+    maxUsers, 
+    remainingSlots, 
+    isLimitReached, 
+    canCreateUser, 
+    planName,
+    loading: subscriptionLoading 
+  } = useSubscriptionLimits();
 
   const [formData, setFormData] = useState<CreateUserData>({
     // Basic user data
@@ -243,6 +255,12 @@ export function CreateFullUserModal({
   };
 
   const handleSubmit = async () => {
+    // Check subscription limit before proceeding
+    if (isLimitReached) {
+      setErrors({ submit: 'User limit reached for your subscription. Please upgrade to create more users.' });
+      return;
+    }
+
     if (!validateStep(totalSteps)) {
       return;
     }
@@ -1177,6 +1195,32 @@ export function CreateFullUserModal({
             <span className={currentStep >= 5 ? 'text-blue-600 font-medium' : ''}>Background</span>
             <span className={currentStep >= 6 ? 'text-blue-600 font-medium' : ''}>Review</span>
           </div>
+
+          {/* Subscription Limit Warning */}
+          {isLimitReached && (
+            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-sm font-medium text-red-800">User Limit Reached</p>
+                <p className="text-sm text-red-600">
+                  Your subscription ({planName}) allows {maxUsers} users. 
+                  You currently have {activeUsers} active users. 
+                  Please upgrade your subscription or deactivate existing users to create new accounts.
+                </p>
+              </div>
+            </div>
+          )}
+          
+          {/* Subscription Usage Info */}
+          {!isLimitReached && maxUsers !== null && (
+            <div className="mt-4 p-2 bg-blue-50 border border-blue-100 rounded-lg flex items-center justify-between text-sm">
+              <span className="text-blue-700">
+                <Users className="w-4 h-4 inline mr-1" />
+                User slots: {activeUsers}/{maxUsers} ({remainingSlots} remaining)
+              </span>
+              {planName && <span className="text-blue-600 font-medium">{planName}</span>}
+            </div>
+          )}
         </div>
 
         {/* Form Content */}
@@ -1200,13 +1244,19 @@ export function CreateFullUserModal({
               <button
                 type="button"
                 onClick={handleSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting || isLimitReached}
+                title={isLimitReached ? 'User limit reached for your subscription' : undefined}
                 className="px-8 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center space-x-2"
               >
                 {isSubmitting ? (
                   <>
                     <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
                     <span>Creating User...</span>
+                  </>
+                ) : isLimitReached ? (
+                  <>
+                    <AlertTriangle className="w-4 h-4" />
+                    <span>Limit Reached</span>
                   </>
                 ) : (
                   <>
