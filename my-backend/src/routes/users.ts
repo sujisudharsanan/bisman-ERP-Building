@@ -24,6 +24,18 @@ import {
   getSubscriptionInfoForUI 
 } from '../middleware/subscriptionEnforcement';
 
+// Type definitions
+interface AuthenticatedUser {
+  id: string;
+  role: string;
+  tenant_id?: string;
+  super_admin_id?: string;
+}
+
+interface AuthenticatedRequest extends Request {
+  user?: AuthenticatedUser;
+}
+
 const router = Router();
 const prisma = new PrismaClient();
 
@@ -37,14 +49,14 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
       search = '',
       role,
       productType,
-      status = 'active',
+      status: _status = 'active', // eslint-disable-line @typescript-eslint/no-unused-vars
       page = '1',
       limit = '20',
       sortBy = 'createdAt',
       sortOrder = 'desc',
     } = req.query;
 
-    const where: any = {};
+    const where: Record<string, unknown> = {};
 
     // Search filter (username or email)
     if (search) {
@@ -106,11 +118,12 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
         totalPages: Math.ceil(total / Number(limit)),
       },
     });
-  } catch (error: any) {
-    console.error('List users error:', error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('List users error:', err);
     res.status(500).json({
       error: 'Failed to fetch users',
-      details: error.message,
+      details: err.message,
     });
   }
 });
@@ -173,10 +186,10 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
  */
 router.post('/', authMiddleware, checkUserCreationLimit(), async (req: Request, res: Response) => {
   try {
-    const currentUserId = (req as any).user?.id;
-    const currentUserRole = (req as any).user?.role;
-    const currentUserTenantId = (req as any).user?.tenant_id;
-    const currentUserSuperAdminId = (req as any).user?.super_admin_id;
+    const currentUserId = (req as AuthenticatedRequest).user?.id;
+    const currentUserRole = (req as AuthenticatedRequest).user?.role;
+    const currentUserTenantId = (req as AuthenticatedRequest).user?.tenant_id;
+    const currentUserSuperAdminId = (req as AuthenticatedRequest).user?.super_admin_id;
 
     // Only admins can create users
   if (!CORE_ROLES.includes(currentUserRole)) {
@@ -297,11 +310,12 @@ router.post('/', authMiddleware, checkUserCreationLimit(), async (req: Request, 
       data: newUser,
       message: 'User created successfully',
     });
-  } catch (error: any) {
-    console.error('Create user error:', error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('Create user error:', err);
     res.status(500).json({
       error: 'Failed to create user',
-      details: error.message,
+      details: err.message,
     });
   }
 });
@@ -312,8 +326,8 @@ router.post('/', authMiddleware, checkUserCreationLimit(), async (req: Request, 
  */
 router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const currentUserId = (req as any).user?.id;
-    const currentUserRole = (req as any).user?.role;
+    const currentUserId = (req as AuthenticatedRequest).user?.id;
+    const currentUserRole = (req as AuthenticatedRequest).user?.role;
     const { id } = req.params;
 
     // Check if user exists (ID can be UUID string or legacy integer)
@@ -354,7 +368,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
     } = req.body;
 
     // Build update data
-    const updateData: any = {};
+    const updateData: Record<string, unknown> = {};
 
     if (username !== undefined) updateData.username = username;
     if (email !== undefined) {
@@ -399,7 +413,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
       if (pagePermissions !== undefined) updateData.page_permissions = pagePermissions;
       
       // Handle reporting authority and branch (store in profile_data JSON)
-      const existingProfileData = (existingUser as any).profile_data || {};
+      const existingProfileData = ((existingUser as Record<string, unknown>).profile_data || {}) as Record<string, unknown>;
       let profileDataUpdated = false;
       
       if (reporting_authority_id !== undefined) {
@@ -496,8 +510,8 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
  */
 router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const currentUserId = (req as any).user?.id;
-    const currentUserRole = (req as any).user?.role;
+    const currentUserId = (req as AuthenticatedRequest).user?.id;
+    const currentUserRole = (req as AuthenticatedRequest).user?.role;
     const { id } = req.params;
 
     // Only admins can delete users
@@ -546,11 +560,12 @@ router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
       success: true,
       message: 'User deleted successfully',
     });
-  } catch (error: any) {
-    console.error('Delete user error:', error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('Delete user error:', err);
     res.status(500).json({
       error: 'Failed to delete user',
-      details: error.message,
+      details: err.message,
     });
   }
 });

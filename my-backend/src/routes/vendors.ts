@@ -20,6 +20,25 @@ import multer from 'multer';
 import path from 'path';
 import fs from 'fs';
 
+// Type definitions
+interface AuthenticatedUser {
+  id: string;
+  role: string;
+  tenant_id?: string;
+}
+
+interface AuthenticatedRequest extends Request {
+  user?: AuthenticatedUser;
+}
+
+interface VendorRecord {
+  id: number;
+  name: string;
+  email?: string;
+  phone?: string;
+  [key: string]: unknown;
+}
+
 const router = Router();
 const prisma = new PrismaClient();
 
@@ -156,11 +175,11 @@ router.get('/banks', authMiddleware, async (req: Request, res: Response) => {
       success: true,
       data: banks,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get banks error:', error);
     res.status(500).json({
       error: 'Failed to fetch bank list',
-      details: error.message,
+      details: error instanceof Error ? error.message : 'Unknown error',
     });
   }
 });
@@ -175,11 +194,12 @@ router.get('/states', authMiddleware, async (req: Request, res: Response) => {
       success: true,
       data: INDIAN_STATES,
     });
-  } catch (error: any) {
-    console.error('Get states error:', error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('Get states error:', err);
     res.status(500).json({
       error: 'Failed to fetch states list',
-      details: error.message,
+      details: err.message,
     });
   }
 });
@@ -254,7 +274,7 @@ router.get('/ifsc/:code', authMiddleware, async (req: Request, res: Response) =>
  */
 router.get('/search', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthenticatedRequest).user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -298,11 +318,12 @@ router.get('/search', authMiddleware, async (req: Request, res: Response) => {
       success: true,
       data: vendors,
     });
-  } catch (error: any) {
-    console.error('Vendor search error:', error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('Vendor search error:', err);
     res.status(500).json({
       error: 'Failed to search vendors',
-      details: error.message,
+      details: err.message,
     });
   }
 });
@@ -313,7 +334,7 @@ router.get('/search', authMiddleware, async (req: Request, res: Response) => {
  */
 router.get('/', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthenticatedRequest).user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -333,7 +354,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
 
     // Build WHERE conditions
     const conditions: string[] = ['deleted_at IS NULL'];
-    const params: any[] = [];
+    const params: (string | number)[] = [];
     let paramIndex = 1;
 
     if (search) {
@@ -344,13 +365,13 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
 
     if (role_type && role_type !== 'all') {
       conditions.push(`role_type = $${paramIndex}`);
-      params.push(role_type);
+      params.push(role_type as string);
       paramIndex++;
     }
 
     if (status && status !== 'all') {
       conditions.push(`status = $${paramIndex}`);
-      params.push(status);
+      params.push(status as string);
       paramIndex++;
     }
 
@@ -390,11 +411,12 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
         totalPages: Math.ceil(total / limitNum),
       },
     });
-  } catch (error: any) {
-    console.error('List vendors error:', error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('List vendors error:', err);
     res.status(500).json({
       error: 'Failed to fetch vendors',
-      details: error.message,
+      details: err.message,
     });
   }
 });
@@ -412,7 +434,7 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
       WHERE id = ${id}::uuid AND deleted_at IS NULL
     `;
 
-    const vendor = (vendors as any[])[0];
+    const vendor = (vendors as VendorRecord[])[0];
 
     if (!vendor) {
       return res.status(404).json({ error: 'Vendor not found' });
@@ -422,11 +444,12 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
       success: true,
       data: vendor,
     });
-  } catch (error: any) {
-    console.error('Get vendor error:', error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('Get vendor error:', err);
     res.status(500).json({
       error: 'Failed to fetch vendor',
-      details: error.message,
+      details: err.message,
     });
   }
 });
@@ -440,7 +463,7 @@ router.post('/', authMiddleware, vendorDocFields, async (req: Request, res: Resp
   let uploadedFilePaths: string[] = [];
   
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthenticatedRequest).user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -451,7 +474,10 @@ router.post('/', authMiddleware, vendorDocFields, async (req: Request, res: Resp
       supporting_doc?: multer.File[];
       gst_certificate?: multer.File[];
     }
-    const files = (req as any).files as MulterFiles | undefined;
+    interface MulterRequest extends Request {
+      files?: MulterFiles;
+    }
+    const files = (req as MulterRequest).files;
     const panFile = files?.pan_file?.[0];
     const supportingDoc = files?.supporting_doc?.[0];
     const gstCertificate = files?.gst_certificate?.[0];
@@ -596,7 +622,7 @@ router.post('/', authMiddleware, vendorDocFields, async (req: Request, res: Resp
       RETURNING *
     `;
 
-    const vendor = (result as any[])[0];
+    const vendor = (result as VendorRecord[])[0];
 
     res.status(201).json({
       success: true,
@@ -627,7 +653,7 @@ router.post('/', authMiddleware, vendorDocFields, async (req: Request, res: Resp
  */
 router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = (req as AuthenticatedRequest).user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -640,7 +666,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
       SELECT * FROM non_privileged_users WHERE id = ${id}::uuid AND deleted_at IS NULL
     `;
 
-    if ((existingVendors as any[]).length === 0) {
+    if ((existingVendors as VendorRecord[]).length === 0) {
       return res.status(404).json({ error: 'Vendor not found' });
     }
 
@@ -655,7 +681,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
     ];
 
     const updateParts: string[] = ['updated_at = NOW()'];
-    const values: any[] = [];
+    const values: (string | number | boolean | null)[] = [];
     let paramIndex = 1;
 
     for (const field of allowedFields) {
@@ -680,18 +706,19 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
       ...values
     );
 
-    const vendor = (result as any[])[0];
+    const vendor = (result as VendorRecord[])[0];
 
     res.json({
       success: true,
       data: vendor,
       message: 'Vendor updated successfully',
     });
-  } catch (error: any) {
-    console.error('Update vendor error:', error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('Update vendor error:', err);
     res.status(500).json({
       error: 'Failed to update vendor',
-      details: error.message,
+      details: err.message,
     });
   }
 });
@@ -711,7 +738,7 @@ router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
       RETURNING id
     `;
 
-    if ((result as any[]).length === 0) {
+    if ((result as VendorRecord[]).length === 0) {
       return res.status(404).json({ error: 'Vendor not found' });
     }
 
@@ -719,11 +746,12 @@ router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
       success: true,
       message: 'Vendor deleted successfully',
     });
-  } catch (error: any) {
-    console.error('Delete vendor error:', error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('Delete vendor error:', err);
     res.status(500).json({
       error: 'Failed to delete vendor',
-      details: error.message,
+      details: err.message,
     });
   }
 });
@@ -743,7 +771,7 @@ router.get('/check-account/:accountNumber', authMiddleware, async (req: Request,
       LIMIT 1
     `;
 
-    const vendor = (vendors as any[])[0];
+    const vendor = (vendors as VendorRecord[])[0];
 
     res.json({
       success: true,
@@ -752,11 +780,12 @@ router.get('/check-account/:accountNumber', authMiddleware, async (req: Request,
       isFirstTime: !vendor,
       requiresProof: !vendor, // First-time vendors need supporting documents
     });
-  } catch (error: any) {
-    console.error('Check account error:', error);
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('Check account error:', err);
     res.status(500).json({
       error: 'Failed to check account',
-      details: error.message,
+      details: err.message,
     });
   }
 });

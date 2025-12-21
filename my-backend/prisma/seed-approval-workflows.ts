@@ -9,8 +9,43 @@ import { PrismaClient } from '@prisma/client'
 
 const prisma = new PrismaClient()
 
+// Stage configuration type
+interface WorkflowStage {
+  name: string
+  code: string
+  description: string
+  stage_order: number
+  assignee_type: string
+  assigned_role?: string | null
+  fallback_strategy: string
+  secondary_fallback?: string | null
+  is_optional: boolean
+  is_conditional?: boolean
+  min_amount?: number | null
+  max_amount?: number | null
+  require_comment?: boolean
+  sla_hours: number
+  escalation_hours: number
+}
+
+// Workflow configuration type
+interface WorkflowConfig {
+  name: string
+  code: string
+  description: string
+  entity_type: string
+  version: number
+  is_active: boolean
+  is_default: boolean
+  allow_parallel_stages: boolean
+  require_all_approvals: boolean
+  max_rejection_count: number
+  expiry_days: number
+  stages: WorkflowStage[]
+}
+
 // Default 6-stage Payment Request Workflow Configuration
-const PAYMENT_REQUEST_WORKFLOW = {
+const PAYMENT_REQUEST_WORKFLOW: WorkflowConfig = {
   name: 'Standard Payment Request Workflow',
   code: 'PAYMENT_REQUEST_STD',
   description: 'Standard 6-stage payment request approval workflow with smart fallback strategies',
@@ -62,21 +97,20 @@ const PAYMENT_REQUEST_WORKFLOW = {
       sla_hours: 24,
       escalation_hours: 48,
     },
-    {
-      name: 'Payment Authorization',
-      code: 'PAYMENT_AUTHORIZATION',
-      description: 'CFO authorizes payment for high-value transactions',
-      stage_order: 4,
-      assignee_type: 'role',
-      assigned_role: 'CFO',
-      fallback_strategy: 'escalate_to_owner',
-      secondary_fallback: 'auto_assign_admin',
-      is_optional: true,
-      is_conditional: true,
-      min_amount: 50000,
-      sla_hours: 48,
-      escalation_hours: 72,
-    },
+{
+  name: 'Payment Authorization',
+  code: 'PAYMENT_AUTHORIZATION',
+  description: 'CFO authorizes payment for high-value transactions',
+  stage_order: 4,
+  assignee_type: 'role',
+  assigned_role: 'CFO',
+  fallback_strategy: 'escalate_to_owner',
+  is_optional: true,
+  is_conditional: true,
+  min_amount: 50000,
+  sla_hours: 48,
+  escalation_hours: 72,
+},
     {
       name: 'Payment Execution',
       code: 'PAYMENT_EXECUTION',
@@ -105,7 +139,7 @@ const PAYMENT_REQUEST_WORKFLOW = {
 }
 
 // Additional workflow templates for other entity types
-const EXPENSE_CLAIM_WORKFLOW = {
+const EXPENSE_CLAIM_WORKFLOW: WorkflowConfig = {
   name: 'Employee Expense Claim Workflow',
   code: 'EXPENSE_CLAIM_STD',
   description: 'Standard 4-stage expense claim approval workflow',
@@ -167,9 +201,9 @@ const EXPENSE_CLAIM_WORKFLOW = {
       escalation_hours: 72,
     },
   ],
-}
+};
 
-const PURCHASE_ORDER_WORKFLOW = {
+const PURCHASE_ORDER_WORKFLOW: WorkflowConfig = {
   name: 'Purchase Order Approval Workflow',
   code: 'PURCHASE_ORDER_STD',
   description: 'Standard 5-stage purchase order approval workflow',
@@ -317,19 +351,18 @@ async function seedApprovalWorkflows(tenantId: string, createdBy: string) {
           ${stage.assignee_type},
           ${stage.assigned_role || null},
           ${stage.fallback_strategy},
-          ${(stage as any).secondary_fallback || null},
+          ${stage.secondary_fallback || null},
           ${stage.is_optional || false},
-          ${(stage as any).is_conditional || false},
-          ${(stage as any).min_amount || null},
-          ${(stage as any).max_amount || null},
-          ${(stage as any).require_comment || false},
+          ${stage.is_conditional || false},
+          ${stage.min_amount || null},
+          ${stage.max_amount || null},
+          ${stage.require_comment || false},
           ${stage.sla_hours},
           ${stage.escalation_hours},
           NOW()
         )
       `
     }
-
     console.log(`[seed] Created ${workflow.stages.length} stages for ${workflow.code}`)
   }
 }
@@ -350,7 +383,7 @@ async function main() {
     
     try {
       await seedApprovalWorkflows(systemTenantId, systemUserId)
-    } catch (err) {
+    } catch {
       console.log('[seed] Could not create for system tenant, tenants table may not exist yet')
     }
   } else {
