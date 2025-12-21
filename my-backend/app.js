@@ -920,6 +920,28 @@ try {
   }
 }
 
+// Vendor Management routes (Non-Privileged Users - vendors, building owners, creditors)
+try {
+  const vendorRoutes = require('./src/routes/vendors').default
+  app.use('/api/vendors', vendorRoutes)
+  console.log('✅ Vendor Management routes loaded at /api/vendors')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Vendor Management routes not loaded:', e && e.message)
+  }
+}
+
+// Approval Workflow routes (Multi-tenant stage-based approval engine)
+try {
+  const approvalRoutes = require('./src/routes/approvals').default
+  app.use('/api/approvals', approvalRoutes)
+  console.log('✅ Approval Workflow routes loaded at /api/approvals')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Approval Workflow routes not loaded:', e && e.message)
+  }
+}
+
 // Internal Operations routes (BISMAN Internal Staff Only - Finance, Billing, Support, Engineering)
 try {
   const internalOperationsRoutes = require('./routes/internal-operations')
@@ -4170,6 +4192,78 @@ app.get('/api/branches', authenticate, async (req, res) => {
       branches: [],
       count: 0,
       message: 'Branches unavailable'
+    });
+  }
+});
+
+// Vendor search endpoint for payment requests
+app.get('/api/vendors/search', authenticate, async (req, res) => {
+  try {
+    const { q = '', limit = 10 } = req.query;
+    const searchTerm = q.toString().toLowerCase().trim();
+    const tenantId = req.user.tenant_id || req.user.tenantId;
+
+    if (!searchTerm || searchTerm.length < 1) {
+      return res.json({ success: true, vendors: [], count: 0 });
+    }
+
+    // Try to find vendors in non_privileged_users table
+    const whereClause = {
+      is_active: true,
+      OR: [
+        { name: { contains: searchTerm, mode: 'insensitive' } },
+        { contact_person: { contains: searchTerm, mode: 'insensitive' } },
+        { email: { contains: searchTerm, mode: 'insensitive' } },
+        { phone: { contains: searchTerm, mode: 'insensitive' } },
+        { pan_number: { contains: searchTerm, mode: 'insensitive' } },
+      ]
+    };
+
+    if (tenantId) {
+      whereClause.tenant_id = tenantId;
+    }
+
+    const vendors = await prisma.non_privileged_user.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        name: true,
+        user_type: true,
+        contact_person: true,
+        email: true,
+        phone: true,
+        pan_number: true,
+        bank_name: true,
+        account_number: true,
+        ifsc_code: true,
+      },
+      take: parseInt(limit) || 10,
+      orderBy: { name: 'asc' }
+    });
+
+    res.json({
+      success: true,
+      vendors: vendors.map(v => ({
+        id: v.id,
+        name: v.name,
+        type: v.user_type,
+        contactPerson: v.contact_person,
+        email: v.email,
+        phone: v.phone,
+        panNumber: v.pan_number,
+        bankName: v.bank_name,
+        accountNumber: v.account_number,
+        ifscCode: v.ifsc_code,
+      })),
+      count: vendors.length
+    });
+  } catch (error) {
+    console.error('[VendorSearch] Error:', error.message);
+    res.json({
+      success: true,
+      vendors: [],
+      count: 0,
+      message: 'Vendor search unavailable'
     });
   }
 });

@@ -366,7 +366,31 @@ router.get('/stats/overview', authenticateUser, async (req, res) => {
  */
 router.get('/performance-metrics', authenticateUser, async (req, res) => {
   try {
-    const userId = req.user.id;
+    const rawUserId = req.user.id;
+    
+    // Resolve UUID to legacy integer ID for database queries
+    let userId = rawUserId;
+    if (typeof rawUserId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawUserId)) {
+      // Look up legacy_id from users_enhanced table
+      const userLookup = await prisma.user.findUnique({
+        where: { id: rawUserId },
+        select: { legacy_id: true }
+      });
+      if (userLookup?.legacy_id) {
+        userId = userLookup.legacy_id;
+      } else {
+        console.warn(`[performance-metrics] UUID ${rawUserId} has no legacy_id, returning defaults`);
+        return res.json({
+          success: true,
+          data: {
+            onTimeRate: 0,
+            responseTime: 0,
+            completionRate: 0,
+            qualityScore: 0
+          }
+        });
+      }
+    }
     
     // Calculate metrics based on last 30 days
     const metricsQuery = await prisma.$queryRaw`

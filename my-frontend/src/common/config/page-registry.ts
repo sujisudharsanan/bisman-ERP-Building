@@ -394,6 +394,22 @@ export const MODULES: Record<string, ModuleMetadata> = {
     order: -1, // Show at very top for internal staff
     hidden: true, // Hidden from regular users - internal BISMAN staff only
   },
+  'super-admin': {
+    id: 'super-admin',
+    name: 'Super Admin',
+    icon: Shield,
+    description: 'Super Admin management, client oversight and system tools',
+    color: 'indigo',
+    order: -2, // Show near top for Super Admins
+  },
+  'enterprise-admin': {
+    id: 'enterprise-admin',
+    name: 'Enterprise Admin',
+    icon: Building,
+    description: 'Enterprise-level administration and multi-tenant management',
+    color: 'violet',
+    order: -3, // Show at very top for Enterprise Admins
+  },
   common: {
     id: 'common',
     name: 'Common',
@@ -1921,6 +1937,32 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     description: 'Comprehensive audit logging and compliance tracking',
     order: 12,
+  },
+  {
+    id: 'admin-system-flow',
+    name: 'System Flow',
+    path: '/admin/system-flow',
+    iconKey: "Workflow",
+    module: 'admin',
+    permissions: ['admin-dashboard', 'authenticated'],
+    roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN'],
+    status: 'active',
+    showInSidebar: true,
+    description: 'Visualize role hierarchy, approval flows, and organizational structure',
+    order: 13,
+  },
+  {
+    id: 'admin-task-approvals',
+    name: 'Task Approvals',
+    path: '/admin/task-approvals',
+    iconKey: "FileCheck",
+    module: 'admin',
+    permissions: ['admin-dashboard', 'authenticated'],
+    roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN'],
+    status: 'active',
+    showInSidebar: true,
+    description: 'Manage and approve pending tasks across your organization',
+    order: 14,
   },
   {
     id: 'admin-client-dashboard',

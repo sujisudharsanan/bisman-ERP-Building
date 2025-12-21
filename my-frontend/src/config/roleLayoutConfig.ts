@@ -44,6 +44,7 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
       { id: 'user-creation', label: 'User Creation', href: '/super-admin/system/user-creation', icon: 'UserPlus' },
       { id: 'roles-users', label: 'Roles & Users', href: '/super-admin/system/roles-users-report', icon: 'FileText' },
       { id: 'permission-manager', label: 'Permissions', href: '/super-admin/system/permission-manager', icon: 'Lock' },
+      { id: 'system-flow', label: 'System Flow', href: '/admin/system-flow', icon: 'Workflow' },
       { id: 'system-settings', label: 'Settings', href: '/super-admin/system/system-settings', icon: 'Settings' },
       { id: 'backup-restore', label: 'Backup', href: '/super-admin/system/backup-restore', icon: 'Database' },
     ],
@@ -58,11 +59,13 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
       { id: 'dashboard', label: 'Dashboard', href: '/admin', icon: 'LayoutDashboard' },
       { id: 'users', label: 'Users', href: '/admin/users', icon: 'Users' },
       { id: 'permissions', label: 'Permissions', href: '/admin/permissions', icon: 'Shield' },
+      { id: 'approvals', label: 'Task Approvals', href: '/admin/task-approvals', icon: 'FileCheck' },
+      { id: 'system-flow', label: 'System Flow', href: '/admin/system-flow', icon: 'Workflow' },
       { id: 'reports', label: 'Reports', href: '/admin/reports', icon: 'BarChart2' },
       { id: 'finance', label: 'Finance', href: '/finance', icon: 'Wallet' },
       { id: 'settings', label: 'Settings', href: '/admin/settings', icon: 'Settings' },
     ],
-    allowedPages: ['/admin', '/admin/*', '/finance', '/reports', '/settings'],
+    allowedPages: ['/admin', '/admin/*', '/finance', '/finance/*', '/reports', '/settings'],
   },
 
   MANAGER: {

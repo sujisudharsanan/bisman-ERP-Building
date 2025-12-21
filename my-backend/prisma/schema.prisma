@@ -732,6 +732,338 @@ model ApproverSelectionLog {
   @@map("approver_selection_logs")
 }
 
+// ═══════════════════════════════════════════════════════════════════════════════
+// APPROVAL WORKFLOW ENGINE MODELS
+// Multi-tenant, stage-based approval workflow system
+// ═══════════════════════════════════════════════════════════════════════════════
+
+/// Master template for approval workflows - defines the workflow structure
+model ApprovalWorkflowTemplate {
+  id                    String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id             String   @db.Uuid
+  
+  name                  String   @db.VarChar(100)
+  code                  String   @db.VarChar(50)           // Unique code like 'PAYMENT_REQUEST_WORKFLOW'
+  description           String?
+  entity_type           String   @db.VarChar(50)           // payment_request, purchase_order, etc.
+  
+  version               Int      @default(1)
+  is_active             Boolean  @default(true)
+  is_default            Boolean  @default(false)          // Default workflow for entity type
+  
+  allow_parallel_stages Boolean  @default(false)          // Can stages run in parallel?
+  require_all_approvals Boolean  @default(true)           // All stages must approve?
+  max_rejection_count   Int      @default(3)              // Max rejections before permanent reject
+  expiry_days           Int      @default(30)             // Days before workflow expires
+  
+  created_by            String   @db.Uuid
+  created_at            DateTime @default(now()) @db.Timestamptz(6)
+  updated_by            String?  @db.Uuid
+  updated_at            DateTime? @db.Timestamptz(6)
+  
+  stages                ApprovalWorkflowStage[]
+  instances             ApprovalInstance[]
+  delegations           ApprovalDelegation[]
+
+  @@unique([tenant_id, code, version])
+  @@index([tenant_id], map: "idx_workflow_templates_tenant")
+  @@index([entity_type], map: "idx_workflow_templates_entity")
+  @@index([is_active], map: "idx_workflow_templates_active")
+  @@map("approval_workflow_templates")
+}
+
+/// Defines individual stages within a workflow template
+model ApprovalWorkflowStage {
+  id                     String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workflow_template_id   String   @db.Uuid
+  
+  name                   String   @db.VarChar(100)
+  code                   String   @db.VarChar(50)          // e.g., 'BUSINESS_APPROVAL', 'FINANCE_VALIDATION'
+  description            String?
+  stage_order            Int                               // Execution order (1, 2, 3...)
+  
+  // Assignment configuration
+  assignee_type          String   @db.VarChar(30)          // specific_user, role, department_head, initiator_manager, dynamic
+  assigned_user_id       String?  @db.Uuid                 // If assignee_type = 'specific_user'
+  assigned_role          String?  @db.VarChar(50)          // If assignee_type = 'role'
+  assignment_condition   Json?                             // Dynamic conditions for assignment
+  
+  // Fallback configuration (CRITICAL for never blocking workflows)
+  fallback_strategy      String   @default("auto_assign_admin") @db.VarChar(30)  // auto_assign_admin, auto_approve, escalate_to_owner, etc.
+  fallback_user_id       String?  @db.Uuid                 // Specific fallback user
+  fallback_role          String?  @db.VarChar(50)          // Fallback role
+  secondary_fallback     String?  @db.VarChar(30)          // If first fallback also fails
+  
+  // Stage rules
+  is_optional            Boolean  @default(false)          // Can this stage be skipped?
+  is_conditional         Boolean  @default(false)          // Stage only activates if condition met
+  condition_expression   Json?                             // JSON condition: {"amount_gte": 10000}
+  allow_self_approval    Boolean  @default(false)          // Can initiator approve their own request?
+  require_comment        Boolean  @default(false)          // Require comment on approval/rejection
+  
+  // Thresholds (for amount-based workflows)
+  min_amount             Decimal? @db.Decimal(15, 2)       // Minimum amount for this stage to activate
+  max_amount             Decimal? @db.Decimal(15, 2)       // Maximum amount this stage can approve
+  
+  // SLA configuration
+  sla_hours              Int      @default(24)             // Hours to complete this stage
+  escalation_hours       Int      @default(48)             // Hours before auto-escalation
+  
+  created_at             DateTime @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime? @db.Timestamptz(6)
+  
+  template               ApprovalWorkflowTemplate @relation(fields: [workflow_template_id], references: [id], onDelete: Cascade)
+  stage_instances        ApprovalStageInstance[]
+  delegations            ApprovalDelegation[]      @relation("StageDelegations")
+
+  @@unique([workflow_template_id, stage_order])
+  @@unique([workflow_template_id, code])
+  @@index([workflow_template_id], map: "idx_workflow_stages_template")
+  @@index([workflow_template_id, stage_order], map: "idx_workflow_stages_order")
+  @@map("approval_workflow_stages")
+}
+
+/// Runtime instances of workflows - one per approval request
+model ApprovalInstance {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id              String    @db.Uuid
+  workflow_template_id   String    @db.Uuid
+  
+  // What is being approved
+  entity_type            String    @db.VarChar(50)          // payment_request, purchase_order, etc.
+  entity_id              String    @db.Uuid                 // ID of the payment_request, PO, etc.
+  entity_reference       String?   @db.VarChar(100)         // Human-readable reference (PR-2024-001)
+  
+  // Instance state
+  status                 String    @default("draft") @db.VarChar(20)  // draft, in_progress, completed, rejected, cancelled, expired
+  current_stage_id       String?   @db.Uuid                 // Currently active stage
+  current_stage_order    Int       @default(0)
+  
+  // Request context
+  requested_amount       Decimal?  @db.Decimal(15, 2)       // For amount-based stage conditions
+  request_metadata       Json?                              // Additional context for approval
+  
+  // Tracking
+  initiated_by           String    @db.Uuid
+  initiated_at           DateTime  @default(now()) @db.Timestamptz(6)
+  completed_at           DateTime? @db.Timestamptz(6)
+  completed_by           String?   @db.Uuid
+  
+  // Rejection tracking
+  rejection_count        Int       @default(0)
+  last_rejection_reason  String?
+  last_rejected_by       String?   @db.Uuid
+  last_rejected_at       DateTime? @db.Timestamptz(6)
+  
+  // Expiry
+  expires_at             DateTime? @db.Timestamptz(6)
+  
+  created_at             DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime? @db.Timestamptz(6)
+  
+  template               ApprovalWorkflowTemplate @relation(fields: [workflow_template_id], references: [id])
+  stage_instances        ApprovalStageInstance[]
+  audit_logs             ApprovalAuditLog[]
+  notifications          ApprovalNotification[]
+  payment_execution      PaymentExecution?
+
+  @@index([tenant_id], map: "idx_approval_instances_tenant")
+  @@index([entity_type, entity_id], map: "idx_approval_instances_entity")
+  @@index([status], map: "idx_approval_instances_status")
+  @@index([initiated_by], map: "idx_approval_instances_initiated_by")
+  @@index([current_stage_id], map: "idx_approval_instances_current_stage")
+  @@map("approval_instances")
+}
+
+/// Runtime state of each stage within an approval instance
+model ApprovalStageInstance {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  approval_instance_id   String    @db.Uuid
+  workflow_stage_id      String    @db.Uuid
+  
+  // Stage state
+  status                 String    @default("pending") @db.VarChar(20)  // pending, active, approved, rejected, skipped, escalated, auto_approved
+  stage_order            Int
+  
+  // Resolved approver (determined at runtime)
+  resolved_approver_id   String?   @db.Uuid                 // The actual user who should approve
+  resolved_via           String?   @db.VarChar(30)          // How the approver was resolved
+  fallback_applied       String?   @db.VarChar(30)          // If fallback was used, which one
+  fallback_reason        String?                            // Why fallback was applied
+  
+  // Action tracking
+  actioned_by            String?   @db.Uuid                 // Who approved/rejected
+  actioned_at            DateTime? @db.Timestamptz(6)
+  action_comment         String?
+  
+  // SLA tracking
+  activated_at           DateTime? @db.Timestamptz(6)       // When stage became active
+  due_at                 DateTime? @db.Timestamptz(6)       // SLA deadline
+  escalated_at           DateTime? @db.Timestamptz(6)
+  escalated_to           String?   @db.Uuid
+  
+  // Attempt tracking (for re-submissions after rejection)
+  attempt_number         Int       @default(1)
+  
+  created_at             DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime? @db.Timestamptz(6)
+  
+  approval_instance      ApprovalInstance @relation(fields: [approval_instance_id], references: [id], onDelete: Cascade)
+  workflow_stage         ApprovalWorkflowStage @relation(fields: [workflow_stage_id], references: [id])
+  audit_logs             ApprovalAuditLog[]
+
+  @@unique([approval_instance_id, workflow_stage_id, attempt_number])
+  @@index([approval_instance_id], map: "idx_stage_instances_approval")
+  @@index([status], map: "idx_stage_instances_status")
+  @@index([resolved_approver_id], map: "idx_stage_instances_approver")
+  @@index([due_at], map: "idx_stage_instances_due")
+  @@map("approval_stage_instances")
+}
+
+/// Comprehensive audit trail for all approval actions
+model ApprovalAuditLog {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id              String    @db.Uuid
+  approval_instance_id   String    @db.Uuid
+  stage_instance_id      String?   @db.Uuid
+  
+  // Action details
+  action                 String    @db.VarChar(50)          // initiated, approved, rejected, escalated, etc.
+  action_category        String    @db.VarChar(30)          // workflow, stage, system
+  
+  // Actor
+  performed_by           String?   @db.Uuid                 // NULL for system actions
+  performed_by_name      String?   @db.VarChar(200)
+  performed_by_role      String?   @db.VarChar(50)
+  is_system_action       Boolean   @default(false)
+  
+  // Context
+  previous_status        String?   @db.VarChar(50)
+  new_status             String?   @db.VarChar(50)
+  comment                String?
+  metadata               Json?                              // Additional context (IP, device, etc.)
+  
+  performed_at           DateTime  @default(now()) @db.Timestamptz(6)
+  
+  approval_instance      ApprovalInstance @relation(fields: [approval_instance_id], references: [id], onDelete: Cascade)
+  stage_instance         ApprovalStageInstance? @relation(fields: [stage_instance_id], references: [id])
+
+  @@index([tenant_id], map: "idx_audit_log_tenant")
+  @@index([approval_instance_id], map: "idx_audit_log_instance")
+  @@index([performed_at], map: "idx_audit_log_performed_at")
+  @@index([action], map: "idx_audit_log_action")
+  @@map("approval_audit_log")
+}
+
+/// Temporary delegation of approval authority (vacation, etc.)
+model ApprovalDelegation {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id              String    @db.Uuid
+  
+  // Delegation details
+  delegator_id           String    @db.Uuid                 // User delegating authority
+  delegate_id            String    @db.Uuid                 // User receiving authority
+  
+  // Scope
+  workflow_template_id   String?   @db.Uuid                 // NULL = all workflows
+  stage_id               String?   @db.Uuid                 // NULL = all stages
+  entity_type            String?   @db.VarChar(50)          // NULL = all entity types
+  max_amount             Decimal?  @db.Decimal(15, 2)       // Maximum amount they can approve
+  
+  // Validity
+  valid_from             DateTime  @db.Timestamptz(6)
+  valid_until            DateTime  @db.Timestamptz(6)
+  is_active              Boolean   @default(true)
+  
+  // Metadata
+  reason                 String?
+  created_at             DateTime  @default(now()) @db.Timestamptz(6)
+  created_by             String    @db.Uuid
+  revoked_at             DateTime? @db.Timestamptz(6)
+  revoked_by             String?   @db.Uuid
+
+  template               ApprovalWorkflowTemplate? @relation(fields: [workflow_template_id], references: [id])
+  stage                  ApprovalWorkflowStage? @relation("StageDelegations", fields: [stage_id], references: [id])
+
+  @@index([tenant_id], map: "idx_delegation_tenant")
+  @@index([delegator_id], map: "idx_delegation_delegator")
+  @@index([delegate_id], map: "idx_delegation_delegate")
+  @@index([is_active, valid_from, valid_until], map: "idx_delegation_active")
+  @@map("approval_delegation")
+}
+
+/// Queue for approval notifications
+model ApprovalNotification {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id              String    @db.Uuid
+  approval_instance_id   String    @db.Uuid
+  stage_instance_id      String?   @db.Uuid
+  
+  // Notification details
+  notification_type      String    @db.VarChar(50)          // approval_required, approved, rejected, escalated, reminder
+  recipient_id           String    @db.Uuid
+  recipient_email        String?   @db.VarChar(255)
+  
+  // Content
+  title                  String    @db.VarChar(255)
+  message                String
+  action_url             String?   @db.VarChar(500)
+  
+  // Delivery tracking
+  channel                String    @default("in_app") @db.VarChar(30)  // in_app, email, sms, push
+  sent_at                DateTime? @db.Timestamptz(6)
+  read_at                DateTime? @db.Timestamptz(6)
+  delivery_status        String    @default("pending") @db.VarChar(20)  // pending, sent, delivered, failed
+  retry_count            Int       @default(0)
+  
+  created_at             DateTime  @default(now()) @db.Timestamptz(6)
+  
+  approval_instance      ApprovalInstance @relation(fields: [approval_instance_id], references: [id], onDelete: Cascade)
+
+  @@index([tenant_id], map: "idx_notifications_tenant")
+  @@index([recipient_id], map: "idx_notifications_recipient")
+  @@index([delivery_status], map: "idx_notifications_pending")
+  @@map("approval_notifications")
+}
+
+/// Payment execution tracking (final stage of payment workflow)
+model PaymentExecution {
+  id                     String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  approval_instance_id   String    @unique @db.Uuid
+  
+  // Payment details
+  transaction_number     String    @db.VarChar(100)
+  payment_method         String?   @db.VarChar(50)          // bank_transfer, cheque, upi, etc.
+  payment_date           DateTime  @db.Date
+  
+  // Amount
+  amount                 Decimal   @db.Decimal(15, 2)
+  currency               String    @default("INR") @db.VarChar(10)
+  
+  // Execution tracking
+  executed_by            String    @db.Uuid
+  executed_at            DateTime  @default(now()) @db.Timestamptz(6)
+  
+  // Verification
+  verified_by            String?   @db.Uuid
+  verified_at            DateTime? @db.Timestamptz(6)
+  
+  // References
+  bank_reference         String?   @db.VarChar(100)
+  receipt_url            String?   @db.VarChar(500)
+  notes                  String?
+  
+  created_at             DateTime  @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime? @db.Timestamptz(6)
+  
+  approval_instance      ApprovalInstance @relation(fields: [approval_instance_id], references: [id], onDelete: Cascade)
+
+  @@index([transaction_number], map: "idx_payment_execution_transaction")
+  @@index([executed_by], map: "idx_payment_execution_executed_by")
+  @@index([payment_date], map: "idx_payment_execution_date")
+  @@map("payment_execution")
+}
+
 model PaymentActivityLog {
   id               Int            @id @default(autoincrement())
   paymentRequestId String

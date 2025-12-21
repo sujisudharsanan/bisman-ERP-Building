@@ -28,7 +28,12 @@ import {
   Receipt,
   FileText,
   GripVertical,
+  UserPlus,
+  AlertTriangle,
+  ChevronDown,
 } from 'lucide-react';
+import { VendorCreationModal } from '../../vendors/VendorCreationModal';
+import { VendorSearchResult } from '@/types/vendor';
 import { cn } from '@/lib/utils';
 import { Task, TaskPriority, TaskStatus, CreateTaskInput, CustomField, RecurringFrequency, RecurringConfig } from '@/types/task';
 
@@ -128,8 +133,22 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
   const [beneficiaryName, setBeneficiaryName] = useState('');
   const [accountNumber, setAccountNumber] = useState('');
   const [bankName, setBankName] = useState('');
+  const [ifscCode, setIfscCode] = useState('');
+  const [branchName, setBranchName] = useState('');
   const [invoiceNumber, setInvoiceNumber] = useState('');
   const [paymentNotes, setPaymentNotes] = useState('');
+
+  // Vendor/Beneficiary selection state
+  const [selectedVendor, setSelectedVendor] = useState<VendorSearchResult | null>(null);
+  const [vendorQuery, setVendorQuery] = useState('');
+  const [vendorResults, setVendorResults] = useState<VendorSearchResult[]>([]);
+  const [showVendorDropdown, setShowVendorDropdown] = useState(false);
+  const [searchingVendors, setSearchingVendors] = useState(false);
+  const [showVendorModal, setShowVendorModal] = useState(false);
+  const [isFirstTimeVendor, setIsFirstTimeVendor] = useState(false);
+  const [hasSupportingDocument, setHasSupportingDocument] = useState<boolean | null>(null);
+  const vendorSearchRef = useRef<HTMLDivElement>(null);
+  const vendorSearchTimeout = useRef<NodeJS.Timeout>();
 
   // Assignees state (multiple)
   const [assignees, setAssignees] = useState<UserOption[]>([]);
@@ -259,6 +278,99 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
     setAssignees(assignees.filter(a => a.id !== userId));
   };
 
+  // Search vendors for beneficiary autocomplete
+  const searchVendors = useCallback(async (query: string) => {
+    if (query.length < 2) {
+      setVendorResults([]);
+      return;
+    }
+
+    setSearchingVendors(true);
+    try {
+      const res = await fetch(`/api/vendors/search?q=${encodeURIComponent(query)}&limit=10`, {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setVendorResults(data.data || []);
+      }
+    } catch (err) {
+      console.error('Vendor search error:', err);
+    } finally {
+      setSearchingVendors(false);
+    }
+  }, []);
+
+  // Debounced vendor search
+  const handleVendorSearch = (value: string) => {
+    setVendorQuery(value);
+    setBeneficiaryName(value);
+    setShowVendorDropdown(true);
+    setSelectedVendor(null);
+    if (vendorSearchTimeout.current) clearTimeout(vendorSearchTimeout.current);
+    vendorSearchTimeout.current = setTimeout(() => searchVendors(value), 300);
+  };
+
+  // Select vendor and auto-fill bank details
+  const selectVendor = (vendor: VendorSearchResult) => {
+    setSelectedVendor(vendor);
+    setBeneficiaryName(vendor.full_name);
+    setAccountNumber(vendor.account_number);
+    setBankName(vendor.bank_name);
+    setIfscCode(vendor.ifsc_code);
+    setVendorQuery('');
+    setShowVendorDropdown(false);
+    setVendorResults([]);
+    setIsFirstTimeVendor(false);
+    setHasSupportingDocument(null);
+  };
+
+  // Clear selected vendor
+  const clearSelectedVendor = () => {
+    setSelectedVendor(null);
+    setBeneficiaryName('');
+    setAccountNumber('');
+    setBankName('');
+    setIfscCode('');
+    setBranchName('');
+    setIsFirstTimeVendor(false);
+    setHasSupportingDocument(null);
+  };
+
+  // Handle vendor creation from modal
+  const handleVendorCreated = (vendor: any) => {
+    setSelectedVendor({
+      id: vendor.id,
+      full_name: vendor.full_name,
+      business_name: vendor.business_name,
+      role_type: vendor.role_type,
+      bank_name: vendor.bank_name,
+      account_number: vendor.account_number,
+      ifsc_code: vendor.ifsc_code,
+      pan_number: vendor.pan_number,
+      contact_number: vendor.contact_number,
+      email: vendor.email,
+      status: vendor.status,
+    });
+    setBeneficiaryName(vendor.full_name);
+    setAccountNumber(vendor.account_number);
+    setBankName(vendor.bank_name);
+    setIfscCode(vendor.ifsc_code);
+    setIsFirstTimeVendor(true);
+    setShowVendorModal(false);
+  };
+
+  // Click outside handler for vendor dropdown
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (vendorSearchRef.current && !vendorSearchRef.current.contains(e.target as Node)) {
+        setShowVendorDropdown(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
   // Validation
   const validate = (): boolean => {
     const newErrors: Record<string, string> = {};
@@ -277,6 +389,10 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
     if (activeTab === 'payment') {
       if (!paymentAmount || isNaN(Number(paymentAmount)) || Number(paymentAmount) <= 0) {
         newErrors.paymentAmount = 'Please enter a valid amount';
+      }
+      // First-time vendor document check
+      if (isFirstTimeVendor && hasSupportingDocument === false) {
+        newErrors.supportingDocument = 'Supporting document is required for first-time vendors';
       }
     }
 
@@ -608,29 +724,115 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
 
                 {/* Beneficiary Details */}
                 <div className="border border-gray-200 dark:border-gray-700 rounded-xl p-4 bg-gray-50/50 dark:bg-gray-800/30">
-                  <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-4 flex items-center gap-2">
-                    <Building2 className="w-4 h-4" />
-                    Beneficiary Details
-                  </h3>
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-sm font-medium text-gray-700 dark:text-gray-300 flex items-center gap-2">
+                      <Building2 className="w-4 h-4" />
+                      Beneficiary Details
+                    </h3>
+                    <button
+                      type="button"
+                      onClick={() => setShowVendorModal(true)}
+                      className="text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400 flex items-center gap-1"
+                    >
+                      <UserPlus className="w-4 h-4" />
+                      Add New Vendor
+                    </button>
+                  </div>
+                  
                   <div className="space-y-4">
-                    <div>
+                    {/* Beneficiary Name with Autocomplete */}
+                    <div ref={vendorSearchRef} className="relative">
                       <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                        Beneficiary Name
+                        Beneficiary Name <span className="text-red-500">*</span>
                       </label>
-                      <input
-                        type="text"
-                        value={beneficiaryName}
-                        onChange={(e) => setBeneficiaryName(e.target.value)}
-                        placeholder="Enter beneficiary name"
-                        className={cn(
-                          'w-full px-4 py-2.5 rounded-lg border bg-white dark:bg-gray-800',
-                          'text-gray-900 dark:text-white placeholder:text-gray-400',
-                          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
-                          'border-gray-200 dark:border-gray-600',
-                          'transition-all duration-200'
-                        )}
-                      />
+                      {selectedVendor ? (
+                        <div className="flex items-center justify-between px-4 py-2.5 rounded-lg border border-green-300 dark:border-green-600 bg-green-50 dark:bg-green-900/20">
+                          <div className="flex items-center gap-2">
+                            <CheckCircle className="w-4 h-4 text-green-600 dark:text-green-400" />
+                            <span className="text-gray-900 dark:text-white font-medium">{selectedVendor.full_name}</span>
+                            {selectedVendor.business_name && (
+                              <span className="text-xs text-gray-500">({selectedVendor.business_name})</span>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={clearSelectedVendor}
+                            className="text-gray-400 hover:text-red-500"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="relative">
+                            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                            <input
+                              type="text"
+                              value={beneficiaryName}
+                              onChange={(e) => handleVendorSearch(e.target.value)}
+                              onFocus={() => beneficiaryName.length >= 2 && setShowVendorDropdown(true)}
+                              placeholder="Search existing vendor or enter name..."
+                              className={cn(
+                                'w-full pl-10 pr-4 py-2.5 rounded-lg border bg-white dark:bg-gray-800',
+                                'text-gray-900 dark:text-white placeholder:text-gray-400',
+                                'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                                'border-gray-200 dark:border-gray-600',
+                                'transition-all duration-200'
+                              )}
+                            />
+                            {searchingVendors && (
+                              <Loader2 className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-500 animate-spin" />
+                            )}
+                          </div>
+                          
+                          {/* Vendor Search Dropdown */}
+                          {showVendorDropdown && (vendorResults.length > 0 || beneficiaryName.length >= 2) && (
+                            <div className="absolute z-10 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-600 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                              {vendorResults.length > 0 ? (
+                                vendorResults.map(vendor => (
+                                  <button
+                                    key={vendor.id}
+                                    type="button"
+                                    onClick={() => selectVendor(vendor)}
+                                    className="w-full px-4 py-3 text-left hover:bg-gray-100 dark:hover:bg-gray-700 border-b border-gray-100 dark:border-gray-700 last:border-0"
+                                  >
+                                    <div className="flex items-center justify-between">
+                                      <div>
+                                        <p className="text-sm font-medium text-gray-900 dark:text-white">{vendor.full_name}</p>
+                                        {vendor.business_name && (
+                                          <p className="text-xs text-gray-500">{vendor.business_name}</p>
+                                        )}
+                                      </div>
+                                      <div className="text-right">
+                                        <p className="text-xs text-gray-500">{vendor.bank_name}</p>
+                                        <p className="text-xs font-mono text-gray-400">...{vendor.account_number.slice(-4)}</p>
+                                      </div>
+                                    </div>
+                                  </button>
+                                ))
+                              ) : (
+                                <div className="p-4 text-center">
+                                  <p className="text-sm text-gray-500 mb-2">No matching vendors found</p>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setShowVendorDropdown(false);
+                                      setShowVendorModal(true);
+                                    }}
+                                    className="text-sm text-blue-600 hover:text-blue-700 flex items-center gap-1 mx-auto"
+                                  >
+                                    <UserPlus className="w-4 h-4" />
+                                    Create new vendor
+                                  </button>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </>
+                      )}
                     </div>
+
+                    {/* Account Number and IFSC */}
                     <div className="grid grid-cols-2 gap-4">
                       <div>
                         <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
@@ -641,9 +843,13 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
                           value={accountNumber}
                           onChange={(e) => setAccountNumber(e.target.value)}
                           placeholder="Enter account number"
+                          readOnly={!!selectedVendor}
                           className={cn(
-                            'w-full px-4 py-2.5 rounded-lg border bg-white dark:bg-gray-800',
-                            'text-gray-900 dark:text-white placeholder:text-gray-400',
+                            'w-full px-4 py-2.5 rounded-lg border',
+                            selectedVendor 
+                              ? 'bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300' 
+                              : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white',
+                            'placeholder:text-gray-400',
                             'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
                             'border-gray-200 dark:border-gray-600',
                             'transition-all duration-200'
@@ -652,16 +858,20 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
                       </div>
                       <div>
                         <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
-                          Bank Name
+                          IFSC Code
                         </label>
                         <input
                           type="text"
-                          value={bankName}
-                          onChange={(e) => setBankName(e.target.value)}
-                          placeholder="Enter bank name"
+                          value={ifscCode}
+                          onChange={(e) => setIfscCode(e.target.value.toUpperCase())}
+                          placeholder="e.g., HDFC0001234"
+                          readOnly={!!selectedVendor}
                           className={cn(
-                            'w-full px-4 py-2.5 rounded-lg border bg-white dark:bg-gray-800',
-                            'text-gray-900 dark:text-white placeholder:text-gray-400',
+                            'w-full px-4 py-2.5 rounded-lg border uppercase',
+                            selectedVendor 
+                              ? 'bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300' 
+                              : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white',
+                            'placeholder:text-gray-400',
                             'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
                             'border-gray-200 dark:border-gray-600',
                             'transition-all duration-200'
@@ -669,6 +879,79 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
                         />
                       </div>
                     </div>
+
+                    {/* Bank Name */}
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+                        Bank Name
+                      </label>
+                      <input
+                        type="text"
+                        value={bankName}
+                        onChange={(e) => setBankName(e.target.value)}
+                        placeholder="Enter bank name"
+                        readOnly={!!selectedVendor}
+                        className={cn(
+                          'w-full px-4 py-2.5 rounded-lg border',
+                          selectedVendor 
+                            ? 'bg-gray-50 dark:bg-gray-800/50 text-gray-700 dark:text-gray-300' 
+                            : 'bg-white dark:bg-gray-800 text-gray-900 dark:text-white',
+                          'placeholder:text-gray-400',
+                          'focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent',
+                          'border-gray-200 dark:border-gray-600',
+                          'transition-all duration-200'
+                        )}
+                      />
+                    </div>
+
+                    {/* First-time vendor warning */}
+                    {(isFirstTimeVendor || (!selectedVendor && beneficiaryName.length > 0 && accountNumber.length > 0)) && (
+                      <div className="p-4 rounded-xl bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800">
+                        <div className="flex items-start gap-3">
+                          <AlertTriangle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+                          <div className="flex-1">
+                            <p className="text-sm font-medium text-amber-800 dark:text-amber-300">
+                              First-time vendor - Supporting document required
+                            </p>
+                            <p className="text-xs text-amber-700 dark:text-amber-400 mt-1">
+                              Without proof (cancelled cheque, passbook, or bank statement), this payment request may be rejected.
+                            </p>
+                            
+                            <div className="mt-3 flex gap-3">
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="hasSupportingDoc"
+                                  checked={hasSupportingDocument === true}
+                                  onChange={() => setHasSupportingDocument(true)}
+                                  className="w-4 h-4 text-green-600 border-gray-300 focus:ring-green-500"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">Yes, I have proof</span>
+                              </label>
+                              <label className="flex items-center gap-2 cursor-pointer">
+                                <input
+                                  type="radio"
+                                  name="hasSupportingDoc"
+                                  checked={hasSupportingDocument === false}
+                                  onChange={() => setHasSupportingDocument(false)}
+                                  className="w-4 h-4 text-red-600 border-gray-300 focus:ring-red-500"
+                                />
+                                <span className="text-sm text-gray-700 dark:text-gray-300">No proof available</span>
+                              </label>
+                            </div>
+                            
+                            {hasSupportingDocument === false && (
+                              <p className="mt-2 text-xs text-red-600 dark:text-red-400 flex items-center gap-1">
+                                <AlertCircle className="w-3 h-3" />
+                                Payment may be rejected without supporting documents
+                              </p>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Additional Notes */}
                     <div>
                       <label className="block text-sm font-medium text-gray-600 dark:text-gray-400 mb-1.5">
                         Additional Notes
@@ -810,7 +1093,8 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
             </div>
             )}
 
-            {/* Priority & Due Date Row */}
+            {/* Priority & Due Date Row - Only for Task tab */}
+            {activeTab === 'task' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Priority */}
               <div>
@@ -880,8 +1164,10 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
                 )}
               </div>
             </div>
+            )}
 
-            {/* Assignees (Multiple) */}
+            {/* Assignees (Multiple) - Only for Task tab */}
+            {activeTab === 'task' && (
             <div ref={userSearchRef}>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
                 <User className="w-4 h-4 inline mr-1" />
@@ -1001,8 +1287,10 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
                 </p>
               )}
             </div>
+            )}
 
-            {/* Estimated Hours & Tags Row */}
+            {/* Estimated Hours & Tags Row - Only for Task tab */}
+            {activeTab === 'task' && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Estimated Hours */}
               <div>
@@ -1075,6 +1363,7 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
                 )}
               </div>
             </div>
+            )}
 
             {/* Recurring Task Section */}
             <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
@@ -1303,6 +1592,13 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
           </div>
         </form>
       </div>
+
+      {/* Vendor Creation Modal */}
+      <VendorCreationModal
+        isOpen={showVendorModal}
+        onClose={() => setShowVendorModal(false)}
+        onVendorCreated={handleVendorCreated}
+      />
     </div>
   );
 }
