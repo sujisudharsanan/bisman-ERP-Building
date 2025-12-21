@@ -111,20 +111,68 @@ const getTaskWithDetails = async (taskId) => {
   const query = `
     SELECT 
       t.*,
-      creator.id as creator_id, creator.username as creator_name, creator.email as creator_email,
-      assignee.id as assignee_id, assignee.username as assignee_name, assignee.email as assignee_email,
-      approver.id as approver_id, approver.username as approver_name, approver.email as approver_email,
+      creator.id as creator_legacy_id, creator.username as creator_name, creator.email as creator_email,
+      assignee.id as assignee_legacy_id, assignee.username as assignee_name, assignee.email as assignee_email,
+      approver.id as approver_legacy_id, approver.username as approver_name, approver.email as approver_email,
+      creator_enh.id as creator_uuid,
+      assignee_enh.id as assignee_uuid,
+      approver_enh.id as approver_uuid,
       (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
       (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
     FROM workflow_tasks t
     LEFT JOIN users creator ON t.creator_id = creator.id
     LEFT JOIN users assignee ON t.assignee_id = assignee.id
     LEFT JOIN users approver ON t.approver_id = approver.id
+    LEFT JOIN users_enhanced creator_enh ON creator_enh.legacy_id = t.creator_id
+    LEFT JOIN users_enhanced assignee_enh ON assignee_enh.legacy_id = t.assignee_id
+    LEFT JOIN users_enhanced approver_enh ON approver_enh.legacy_id = t.approver_id
     WHERE t.id = $1
   `;
   
   const result = await getDbPool().query(query, [taskId]);
-  return result.rows[0];
+  const row = result.rows[0];
+  
+  if (row) {
+    // Map UUIDs to the expected field names for frontend compatibility
+    row.creator_id = row.creator_uuid || row.creator_legacy_id;
+    row.assignee_id = row.assignee_uuid || row.assignee_legacy_id;
+    row.approver_id = row.approver_uuid || row.approver_legacy_id;
+  }
+  
+  return row;
+};
+
+/**
+ * Resolve user ID from UUID to legacy integer ID
+ * Used when dealing with users from users_enhanced table
+ */
+const resolveUserIdToLegacy = async (rawId, dbClient = null) => {
+  if (!rawId) return null;
+  
+  // If it's already a valid integer, return it
+  const parsedInt = parseInt(rawId);
+  if (!isNaN(parsedInt) && parsedInt > 0 && String(parsedInt) === String(rawId)) {
+    return parsedInt;
+  }
+  
+  // Check if it's a UUID (36 char format with dashes)
+  const isUUID = typeof rawId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawId);
+  
+  if (isUUID) {
+    // Look up legacy_id from users_enhanced table
+    const db = dbClient || getDbPool();
+    const result = await db.query(
+      'SELECT legacy_id FROM users_enhanced WHERE id = $1',
+      [rawId]
+    );
+    if (result.rows.length > 0 && result.rows[0].legacy_id) {
+      return result.rows[0].legacy_id;
+    }
+    console.warn(`[resolveUserIdToLegacy] UUID ${rawId} has no legacy_id mapping`);
+    return null;
+  }
+  
+  return null;
 };
 
 // ============================================
@@ -155,11 +203,45 @@ exports.createTask = async (req, res) => {
       status = 'OPEN'
     } = req.body;
     
-    // Parse IDs (handle both JSON numbers and FormData strings)
-    const assigneeId = rawAssigneeId ? parseInt(rawAssigneeId) : null;
-    const approverId = rawApproverId ? parseInt(rawApproverId) : null;
+    // Helper function to resolve user ID (handles UUID, integer, or string integer)
+    const resolveUserId = async (rawId) => {
+      if (!rawId) return null;
+      
+      // If it's already a valid integer, return it
+      const parsedInt = parseInt(rawId);
+      if (!isNaN(parsedInt) && parsedInt > 0 && String(parsedInt) === String(rawId)) {
+        return parsedInt;
+      }
+      
+      // Check if it's a UUID (36 char format with dashes)
+      const isUUID = typeof rawId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawId);
+      
+      if (isUUID) {
+        // Look up legacy_id from users_enhanced table
+        const result = await client.query(
+          'SELECT legacy_id FROM users_enhanced WHERE id = $1',
+          [rawId]
+        );
+        if (result.rows.length > 0 && result.rows[0].legacy_id) {
+          return result.rows[0].legacy_id;
+        }
+        console.warn(`[createTask] UUID ${rawId} has no legacy_id mapping`);
+        return null;
+      }
+      
+      return null;
+    };
     
-    const creatorId = req.user.id;
+    // Resolve assigneeId and approverId (handles UUID or integer)
+    const assigneeId = await resolveUserId(rawAssigneeId);
+    const approverId = await resolveUserId(rawApproverId);
+    
+    // Resolve creator ID (from auth - could be UUID)
+    let creatorId = req.user.id;
+    if (typeof creatorId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(creatorId)) {
+      const resolved = await resolveUserId(creatorId);
+      if (resolved) creatorId = resolved;
+    }
     
     // Validation - for drafts, only title is required
     if (!title) {
@@ -403,8 +485,12 @@ exports.getTasks = async (req, res) => {
  */
 exports.getDashboardTasks = async (req, res) => {
   try {
-    const userId = req.user.id;
-    console.log('[Dashboard] Fetching tasks for user:', userId);
+    const rawUserId = req.user.id;
+    console.log('[Dashboard] Fetching tasks for user:', rawUserId);
+    
+    // Resolve UUID to legacy integer ID if needed
+    const userId = await resolveUserIdToLegacy(rawUserId) || rawUserId;
+    console.log('[Dashboard] Resolved userId:', userId);
     
     // Fetch all tasks where user is creator, assignee, or approver
     // DRAFT tasks only visible to creator, others visible to all parties
@@ -550,19 +636,23 @@ exports.getTaskQuickView = async (req, res) => {
   try {
     const taskId = req.params.id;
     
-    // Get task with details
+    // Get task with details - join to users_enhanced to get UUID for proper frontend comparison
     const taskQuery = `
       SELECT 
         t.*,
-        creator.id as creator_id, creator.username as creator_name, 
+        creator.id as creator_legacy_id, creator.username as creator_name, 
         creator.first_name as creator_first_name, creator.last_name as creator_last_name,
-        assignee.id as assignee_id, assignee.username as assignee_name,
+        assignee.id as assignee_legacy_id, assignee.username as assignee_name,
         assignee.first_name as assignee_first_name, assignee.last_name as assignee_last_name,
+        creator_enh.id as creator_uuid,
+        assignee_enh.id as assignee_uuid,
         (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
         (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
       FROM workflow_tasks t
       LEFT JOIN users creator ON t.creator_id = creator.id
       LEFT JOIN users assignee ON t.assignee_id = assignee.id
+      LEFT JOIN users_enhanced creator_enh ON creator_enh.legacy_id = t.creator_id
+      LEFT JOIN users_enhanced assignee_enh ON assignee_enh.legacy_id = t.assignee_id
       WHERE t.id = $1
     `;
     const taskResult = await getDbPool().query(taskQuery, [taskId]);
@@ -575,6 +665,10 @@ exports.getTaskQuickView = async (req, res) => {
     }
     
     const taskRow = taskResult.rows[0];
+    
+    // Use UUID if available, fallback to legacy integer ID
+    const creatorId = taskRow.creator_uuid || taskRow.creator_legacy_id;
+    const assigneeId = taskRow.assignee_uuid || taskRow.assignee_legacy_id;
     
     // Get messages (limited for quick view)
     const messagesQuery = `
@@ -604,21 +698,24 @@ exports.getTaskQuickView = async (req, res) => {
       description: taskRow.description,
       status: taskRow.status,
       priority: taskRow.priority || 'MEDIUM',
-      creatorId: taskRow.creator_id,
-      assigneeId: taskRow.assignee_id,
+      creatorId: creatorId,
+      assigneeId: assigneeId,
+      // Also include legacy IDs for any components that need them
+      creator_id: creatorId,
+      assignee_id: assigneeId,
       dueDate: taskRow.due_date,
       createdAt: taskRow.created_at,
       updatedAt: taskRow.updated_at,
       messageCount: parseInt(taskRow.message_count || 0),
       attachmentCount: parseInt(taskRow.attachment_count || 0),
       creator: taskRow.creator_name ? {
-        id: taskRow.creator_id,
+        id: creatorId,
         username: taskRow.creator_name,
         firstName: taskRow.creator_first_name,
         lastName: taskRow.creator_last_name,
       } : null,
       assignee: taskRow.assignee_name ? {
-        id: taskRow.assignee_id,
+        id: assigneeId,
         username: taskRow.assignee_name,
         firstName: taskRow.assignee_first_name,
         lastName: taskRow.assignee_last_name,

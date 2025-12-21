@@ -561,10 +561,31 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
   };
 
   // Check if current user is the task creator (handle both creator.id and creatorId, and type coercion)
+  // Support both UUID strings and legacy integer IDs
   const creatorId = task?.creator?.id ?? task?.creatorId;
   const assigneeId = task?.assignee?.id ?? (task as any)?.assigneeId;
-  const isTaskCreator = currentUserId && creatorId && Number(creatorId) === Number(currentUserId);
-  const isTaskAssignee = currentUserId && assigneeId && Number(assigneeId) === Number(currentUserId);
+  
+  // Compare IDs as strings to handle both UUID and integer IDs
+  const normalizeId = (id: any): string => (id != null ? String(id) : '');
+  const isTaskCreator = currentUserId && creatorId && normalizeId(creatorId) === normalizeId(currentUserId);
+  const isTaskAssignee = currentUserId && assigneeId && normalizeId(assigneeId) === normalizeId(currentUserId);
+
+  // Debug logging for permission issues
+  console.log('[TaskDetailView] Permission check:', {
+    taskId,
+    taskStatus: task?.status,
+    currentUserId,
+    currentUserIdType: typeof currentUserId,
+    creatorId,
+    creatorIdType: typeof creatorId,
+    assigneeId,
+    assigneeIdType: typeof assigneeId,
+    isTaskCreator,
+    isTaskAssignee,
+    taskCreatorObj: task?.creator,
+    taskAssigneeObj: task?.assignee,
+    rawTask: task
+  });
 
   const toggleSection = (section: keyof typeof expandedSections) => {
     setExpandedSections(prev => ({ ...prev, [section]: !prev[section] }));

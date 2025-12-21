@@ -174,13 +174,35 @@ export function TaskDetailDrawer({ taskId, isOpen, onClose, onTaskDeleted }: Tas
   }, [messages]);
 
   // Check user permissions for Maker-Checker workflow
+  // IMPORTANT: Compare IDs as strings to handle both UUID and integer IDs
   const currentUserId = user?.id;
-  const isCreator = task?.creator_id === currentUserId;
-  const isAssignee = task?.assignee_id === currentUserId || task?.assigned_to === currentUserId;
+  const normalizeId = (id: any): string => (id != null ? String(id) : '');
+  
+  const isCreator = currentUserId != null && task?.creator_id != null && 
+    normalizeId(task.creator_id) === normalizeId(currentUserId);
+  const isAssignee = currentUserId != null && (
+    (task?.assignee_id != null && normalizeId(task.assignee_id) === normalizeId(currentUserId)) || 
+    (task?.assigned_to != null && normalizeId(task.assigned_to) === normalizeId(currentUserId))
+  );
+  
+  // Debug logging for task permission issues
+  if (task && currentUserId) {
+    console.debug('[TaskDetailDrawer] Permission check:', {
+      taskId: task.id,
+      taskStatus: task.status,
+      currentUserId,
+      creator_id: task.creator_id,
+      assignee_id: task.assignee_id,
+      assigned_to: task.assigned_to,
+      isCreator,
+      isAssignee
+    });
+  }
   
   // Maker-Checker workflow permissions
   const taskStatus = task?.status || '';
-  const canAcceptAndStart = isAssignee && taskStatus === 'ASSIGNED';
+  // Accept/Start available for OPEN, ASSIGNED, or DRAFT status
+  const canAcceptAndStart = isAssignee && ['OPEN', 'ASSIGNED', 'DRAFT'].includes(taskStatus);
   const canSubmitForReview = isAssignee && taskStatus === 'IN_PROGRESS';
   const canResubmit = isAssignee && (taskStatus === 'NEED_ATTENTION' || taskStatus === 'EDITING');
   const canApprove = isCreator && taskStatus === 'IN_REVIEW';

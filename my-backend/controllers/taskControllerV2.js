@@ -23,6 +23,44 @@ const getDbPool = () => {
   return pool;
 };
 
+/**
+ * Resolve user ID (UUID to legacy integer ID)
+ * The workflow_tasks table uses integer user IDs, but auth returns UUID.
+ * This helper looks up the legacy_id from users_enhanced for UUID users.
+ */
+const resolveUserId = async (rawId, client = null) => {
+  if (!rawId) return null;
+  
+  // If it's already a valid integer, return it
+  const parsedInt = parseInt(rawId);
+  if (!isNaN(parsedInt) && parsedInt > 0 && String(parsedInt) === String(rawId)) {
+    return parsedInt;
+  }
+  
+  // Check if it's a UUID (36 char format with dashes)
+  const isUUID = typeof rawId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawId);
+  
+  if (isUUID) {
+    try {
+      // Look up legacy_id from users_enhanced table
+      const pool = client || getDbPool();
+      const result = await pool.query(
+        'SELECT legacy_id FROM users_enhanced WHERE id = $1',
+        [rawId]
+      );
+      if (result.rows.length > 0 && result.rows[0].legacy_id) {
+        return result.rows[0].legacy_id;
+      }
+      console.warn(`[resolveUserId] UUID ${rawId} has no legacy_id mapping`);
+    } catch (e) {
+      console.error('[resolveUserId] Lookup failed:', e.message);
+    }
+    return null;
+  }
+  
+  return null;
+};
+
 // Task Status enum
 const TaskStatus = {
   DRAFT: 'DRAFT',
@@ -86,7 +124,9 @@ const emitToTenant = (tenantId, event, data) => {
  */
 const listTasks = async (req, res) => {
   try {
-    const userId = req.user.id;
+    // Resolve UUID to legacy integer ID for queries
+    const rawUserId = req.user.id;
+    const userId = await resolveUserId(rawUserId) || rawUserId;
     const tenantId = req.user.tenant_id;
     const { status, assigneeId, creatorId, search, priority, page = 1, limit = 50 } = req.query;
     
@@ -214,21 +254,27 @@ const listTasks = async (req, res) => {
  */
 const getKanbanTasks = async (req, res) => {
   try {
-    const userId = req.user.id;
+    // Resolve UUID to legacy integer ID for queries
+    const rawUserId = req.user.id;
+    const userId = await resolveUserId(rawUserId) || rawUserId;
     const tenantId = req.user.tenant_id;
     const { viewMode = 'all' } = req.query; // 'all', 'my-work', 'my-requests'
     
-    // Build query with mandatory tenant isolation
+    // Build query with mandatory tenant isolation - include UUIDs for frontend comparison
     let query = `
       SELECT 
         t.*,
         creator.username as creator_name,
         assignee.username as assignee_name,
+        creator_enh.id as creator_uuid,
+        assignee_enh.id as assignee_uuid,
         (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
         (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
       FROM workflow_tasks t
       LEFT JOIN users creator ON t.creator_id = creator.id
       LEFT JOIN users assignee ON t.assignee_id = assignee.id
+      LEFT JOIN users_enhanced creator_enh ON creator_enh.legacy_id = t.creator_id
+      LEFT JOIN users_enhanced assignee_enh ON assignee_enh.legacy_id = t.assignee_id
       WHERE (t.is_archived = FALSE OR t.is_archived IS NULL)
         AND t.status NOT IN ('CANCELLED', 'ARCHIVED')
     `;
@@ -276,14 +322,26 @@ const getKanbanTasks = async (req, res) => {
       DONE: []
     };
     
+    // Helper for ID comparison (supports both UUID and legacy integer)
+    const normalizeId = (id) => (id != null ? String(id) : '');
+    
     result.rows.forEach(task => {
-      const isCreator = task.creator_id === userId;
-      const isAssignee = task.assignee_id === userId;
+      // Compare using UUIDs first, then fallback to legacy IDs
+      const creatorUuid = task.creator_uuid;
+      const assigneeUuid = task.assignee_uuid;
+      const isCreator = normalizeId(rawUserId) === normalizeId(creatorUuid) || 
+                        normalizeId(userId) === normalizeId(task.creator_id);
+      const isAssignee = normalizeId(rawUserId) === normalizeId(assigneeUuid) || 
+                         normalizeId(userId) === normalizeId(task.assignee_id);
+      
+      // Replace task IDs with UUIDs for frontend
+      task.creator_id = creatorUuid || task.creator_id;
+      task.assignee_id = assigneeUuid || task.assignee_id;
       
       // Determine available actions based on maker-checker state machine
       const availableActions = [];
       if (isAssignee) {
-        if (task.status === 'ASSIGNED') availableActions.push('START_WORK');
+        if (['ASSIGNED', 'OPEN', 'DRAFT'].includes(task.status)) availableActions.push('START_WORK');
         if (task.status === 'IN_PROGRESS') availableActions.push('SUBMIT_FOR_REVIEW');
         if (task.status === 'EDITING') availableActions.push('RESUBMIT');
       }
@@ -301,7 +359,7 @@ const getKanbanTasks = async (req, res) => {
         canComplete: isCreator && task.status === 'IN_REVIEW',
         canReject: isCreator && task.status === 'IN_REVIEW',
         canSubmitForReview: isAssignee && task.status === 'IN_PROGRESS',
-        canStartWork: isAssignee && task.status === 'ASSIGNED'
+        canStartWork: isAssignee && ['ASSIGNED', 'OPEN', 'DRAFT'].includes(task.status)
       };
       
       // Transform for Kanban display
@@ -357,10 +415,11 @@ const getKanbanTasks = async (req, res) => {
 const getTaskById = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    // Get raw user ID (could be UUID or legacy integer)
+    const rawUserId = req.user.id;
     const tenantId = req.user.tenant_id;
     
-    // Build query with tenant isolation
+    // Build query with tenant isolation - join to users_enhanced for UUID support
     let query = `
       SELECT 
         t.*,
@@ -368,11 +427,15 @@ const getTaskById = async (req, res) => {
         creator.email as creator_email,
         assignee.username as assignee_name,
         assignee.email as assignee_email,
+        creator_enh.id as creator_uuid,
+        assignee_enh.id as assignee_uuid,
         (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
         (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
       FROM workflow_tasks t
       LEFT JOIN users creator ON t.creator_id = creator.id
       LEFT JOIN users assignee ON t.assignee_id = assignee.id
+      LEFT JOIN users_enhanced creator_enh ON creator_enh.legacy_id = t.creator_id
+      LEFT JOIN users_enhanced assignee_enh ON assignee_enh.legacy_id = t.assignee_id
       WHERE t.id = $1
     `;
     
@@ -397,16 +460,27 @@ const getTaskById = async (req, res) => {
     
     const task = result.rows[0];
     
-    // Check permission
-    const hasAccess = task.creator_id === userId || 
-                      task.assignee_id === userId ||
-                      task.approver_id === String(userId);
+    // Resolve user ID for permission checks - use UUID from users_enhanced if available
+    const userUuid = rawUserId; // The request user ID (could be UUID)
+    const userCreatorUuid = task.creator_uuid;
+    const userAssigneeUuid = task.assignee_uuid;
+    
+    // Compare using string for UUIDs, fallback to legacy integer comparison
+    const normalizeId = (id) => (id != null ? String(id) : '');
+    
+    // Check permission - compare UUIDs first, then legacy IDs
+    const isCreator = normalizeId(userUuid) === normalizeId(userCreatorUuid) || 
+                      normalizeId(userUuid) === normalizeId(task.creator_id);
+    const isAssignee = normalizeId(userUuid) === normalizeId(userAssigneeUuid) || 
+                       normalizeId(userUuid) === normalizeId(task.assignee_id);
+    const hasAccess = isCreator || isAssignee || 
+                      normalizeId(userUuid) === normalizeId(task.approver_id);
     
     if (!hasAccess) {
       // Check if participant
       const participantCheck = await getDbPool().query(
         'SELECT 1 FROM task_participants WHERE task_id = $1 AND user_id = $2',
-        [id, userId]
+        [id, task.creator_id] // Use legacy ID for participant check
       );
       
       if (participantCheck.rows.length === 0) {
@@ -417,12 +491,15 @@ const getTaskById = async (req, res) => {
       }
     }
     
-    // Add role info
+    // Use UUID for creator_id and assignee_id in response (for frontend comparison)
+    task.creator_id = userCreatorUuid || task.creator_id;
+    task.assignee_id = userAssigneeUuid || task.assignee_id;
+    
     task.statusInfo = {
-      isCreator: task.creator_id === userId,
-      isAssignee: task.assignee_id === userId,
-      canComplete: task.assignee_id === userId && !['COMPLETED', 'DONE', 'CANCELLED'].includes(task.status),
-      canCancel: task.creator_id === userId && !['COMPLETED', 'DONE', 'CANCELLED'].includes(task.status)
+      isCreator,
+      isAssignee,
+      canComplete: isAssignee && !['COMPLETED', 'DONE', 'CANCELLED'].includes(task.status),
+      canCancel: isCreator && !['COMPLETED', 'DONE', 'CANCELLED'].includes(task.status)
     };
     
     res.json({
@@ -445,17 +522,22 @@ const getTaskById = async (req, res) => {
  */
 const createTask = async (req, res) => {
   try {
-    const userId = req.user.id;
+    // Resolve UUID to legacy integer ID for database operations
+    const rawUserId = req.user.id;
+    const userId = await resolveUserId(rawUserId) || rawUserId;
     const tenantId = req.user.tenant_id;
     const {
       title,
       description,
-      assigneeId,
+      assigneeId: rawAssigneeId,
       priority = 'MEDIUM',
       dueDate,
       status: rawStatus = 'OPEN',
       tags = []
     } = req.body;
+    
+    // Resolve assignee UUID to integer if needed
+    const assigneeId = rawAssigneeId ? (await resolveUserId(rawAssigneeId) || rawAssigneeId) : null;
     
     // Normalize status to uppercase for consistency
     const status = rawStatus.toUpperCase();
@@ -554,17 +636,22 @@ const createTask = async (req, res) => {
 const updateTask = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    // Resolve UUID to legacy integer ID for database operations
+    const rawUserId = req.user.id;
+    const userId = await resolveUserId(rawUserId) || rawUserId;
     const tenantId = req.user.tenant_id;
     const {
       title,
       description,
-      assigneeId,
+      assigneeId: rawAssigneeId,
       priority,
       dueDate,
       progress,
       tags
     } = req.body;
+    
+    // Resolve assignee UUID if provided
+    const assigneeId = rawAssigneeId ? (await resolveUserId(rawAssigneeId) || rawAssigneeId) : undefined;
     
     // Get existing task with tenant isolation
     let existingQuery = 'SELECT * FROM workflow_tasks WHERE id = $1';
@@ -685,7 +772,9 @@ const updateTask = async (req, res) => {
 const updateTaskStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    // Resolve UUID to legacy integer ID for database operations
+    const rawUserId = req.user.id;
+    const userId = await resolveUserId(rawUserId) || rawUserId;
     const tenantId = req.user.tenant_id;
     const { status, reason } = req.body;
     
@@ -853,7 +942,9 @@ const updateTaskStatus = async (req, res) => {
 const updateTaskPosition = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    // Resolve UUID to legacy integer ID for database operations
+    const rawUserId = req.user.id;
+    const userId = await resolveUserId(rawUserId) || rawUserId;
     const tenantId = req.user.tenant_id;
     const { position, status } = req.body;
     
@@ -938,7 +1029,9 @@ const updateTaskPosition = async (req, res) => {
 const deleteTask = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    // Resolve UUID to legacy integer ID for database operations
+    const rawUserId = req.user.id;
+    const userId = await resolveUserId(rawUserId) || rawUserId;
     const tenantId = req.user.tenant_id;
     
     // Get existing task with tenant isolation
@@ -1085,7 +1178,9 @@ const getTaskMessages = async (req, res) => {
 const createTaskMessage = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    // Resolve UUID to legacy integer ID for database operations
+    const rawUserId = req.user.id;
+    const userId = await resolveUserId(rawUserId) || rawUserId;
     const tenantId = req.user.tenant_id;
     const { content, replyToId } = req.body;
     
@@ -1199,7 +1294,9 @@ const getTaskAttachments = async (req, res) => {
 const uploadTaskAttachment = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    // Resolve UUID to legacy integer ID for database operations
+    const rawUserId = req.user.id;
+    const userId = await resolveUserId(rawUserId) || rawUserId;
     const tenantId = req.user.tenant_id;
     
     if (!req.file) {
@@ -1341,7 +1438,9 @@ const logTaskAudit = async (taskId, actorId, actorName, actorRole, action, fromS
 const transitionTaskStatus = async (req, res) => {
   try {
     const { id } = req.params;
-    const userId = req.user.id;
+    // Resolve UUID to legacy integer ID for database operations
+    const rawUserId = req.user.id;
+    const userId = await resolveUserId(rawUserId) || rawUserId;
     const userName = req.user.username || req.user.email;
     const userRole = req.user.role;
     const tenantId = req.user.tenant_id;
