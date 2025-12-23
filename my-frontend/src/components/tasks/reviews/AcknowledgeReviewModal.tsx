@@ -15,12 +15,12 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Badge } from '@/components/ui/badge';
+} from '@/components/ui/Dialog';
+import Button from '@/components/ui/Button';
+import { Label } from '@/components/ui/Label';
+import { Textarea } from '@/components/ui/Textarea';
+import { Alert, AlertDescription } from '@/components/ui/Alert';
+import Badge from '@/components/ui/Badge';
 import {
   CheckCircle2,
   Eye,
@@ -148,7 +148,7 @@ export function AcknowledgeReviewModal({
                   : 'Add an optional note about your review...'
               }
               value={acknowledgmentNote}
-              onChange={(e) => setAcknowledgmentNote(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLTextAreaElement>) => setAcknowledgmentNote(e.target.value)}
               rows={3}
             />
           </div>

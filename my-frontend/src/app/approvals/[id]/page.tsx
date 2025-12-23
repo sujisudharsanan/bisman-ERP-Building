@@ -136,7 +136,7 @@ const StatusBadge: React.FC<{ status: string; large?: boolean }> = ({ status, la
 export default function ApprovalDetailPage() {
   const router = useRouter();
   const params = useParams();
-  const instanceId = params.id as string;
+  const instanceId = params?.id as string;
   const { user } = useAuth();
 
   // State

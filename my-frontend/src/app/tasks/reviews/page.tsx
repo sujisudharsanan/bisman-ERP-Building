@@ -9,12 +9,12 @@
 
 import React, { useState } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Input } from '@/components/ui/input';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
+import Badge from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/Tabs';
+import Input from '@/components/ui/Input';
+import { Skeleton } from '@/components/ui/Skeleton';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import {
   Eye,

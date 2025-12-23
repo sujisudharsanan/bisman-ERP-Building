@@ -15,10 +15,10 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
+} from '@/components/ui/Dialog';
+import Button from '@/components/ui/Button';
+import { Textarea } from '@/components/ui/Textarea';
+import { Label } from '@/components/ui/Label';
 import {
   Select,
   SelectContent,
@@ -26,9 +26,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Switch } from '@/components/ui/Switch';
+import Badge from '@/components/ui/Badge';
+import { Alert, AlertDescription } from '@/components/ui/Alert';
 import {
   HelpCircle,
   User,
@@ -264,7 +264,7 @@ export function RequestClarificationModal({
               <Label>Urgency</Label>
               <Select 
                 value={urgency} 
-                onValueChange={(v) => setUrgency(v as ClarificationUrgency)}
+                onValueChange={(v: string) => setUrgency(v as ClarificationUrgency)}
               >
                 <SelectTrigger>
                   <SelectValue />
@@ -288,7 +288,7 @@ export function RequestClarificationModal({
               </Label>
               <Select 
                 value={expiryHours.toString()} 
-                onValueChange={(v) => setExpiryHours(parseInt(v))}
+                onValueChange={(v: string) => setExpiryHours(parseInt(v))}
               >
                 <SelectTrigger>
                   <SelectValue />

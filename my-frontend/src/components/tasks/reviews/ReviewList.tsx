@@ -9,10 +9,10 @@
 
 import React from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
+import Badge from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Skeleton } from '@/components/ui/Skeleton';
 import {
   Eye,
   CheckCircle2,

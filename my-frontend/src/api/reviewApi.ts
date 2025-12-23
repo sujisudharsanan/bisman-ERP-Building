@@ -5,7 +5,7 @@
  * Allows forwarding completed tasks for FYI, confirmation, audit, or knowledge purposes.
  */
 
-import { apiClient } from './client';
+import apiClient from '@/services/apiClient';
 import {
   TaskReview,
   ReviewComment,

@@ -16,10 +16,10 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-} from '@/components/ui/dialog';
-import { Button } from '@/components/ui/button';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
+} from '@/components/ui/Dialog';
+import Button from '@/components/ui/Button';
+import { Label } from '@/components/ui/Label';
+import { Textarea } from '@/components/ui/Textarea';
 import {
   Select,
   SelectContent,
@@ -27,9 +27,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
-import { Badge } from '@/components/ui/badge';
-import { Alert, AlertDescription } from '@/components/ui/alert';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/RadioGroup';
+import Badge from '@/components/ui/Badge';
+import { Alert, AlertDescription } from '@/components/ui/Alert';
 import {
   Eye,
   Send,
@@ -273,7 +273,7 @@ export function SendForReviewModal({
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
               <Label>Priority</Label>
-              <Select value={priority} onValueChange={(v) => setPriority(v as 'low' | 'normal' | 'high')}>
+              <Select value={priority} onValueChange={(v: string) => setPriority(v as 'low' | 'normal' | 'high')}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>

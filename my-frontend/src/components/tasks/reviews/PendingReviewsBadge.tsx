@@ -9,14 +9,14 @@
 
 import React, { useState } from 'react';
 import { formatDistanceToNow } from 'date-fns';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
+import Button from '@/components/ui/Button';
+import Badge from '@/components/ui/Badge';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from '@/components/ui/popover';
-import { Skeleton } from '@/components/ui/skeleton';
+} from '@/components/ui/Popover';
+import { Skeleton } from '@/components/ui/Skeleton';
 import {
   Eye,
   ChevronRight,
