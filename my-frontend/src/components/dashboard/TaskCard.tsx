@@ -109,7 +109,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments
 
   return (
     <div 
-      className={`bg-white dark:bg-slate-800 rounded-lg p-4 hover:bg-gray-50 dark:hover:bg-slate-700 hover:scale-[1.01] transition-all duration-200 cursor-pointer border ${cardBorderClass} shadow-sm hover:shadow-md border-l-[3px] ${borderColorClass}`}
+      className={`bg-white dark:bg-slate-800 rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-slate-700 hover:scale-[1.01] transition-all duration-200 cursor-pointer border ${cardBorderClass} shadow-sm hover:shadow-md border-l-[3px] ${borderColorClass}`}
       onClick={onClick}
       role="button"
       tabIndex={0}

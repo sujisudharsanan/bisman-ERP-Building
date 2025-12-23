@@ -28,13 +28,15 @@ import {
   Trophy,
   Timer,
   Sparkles,
-  Pencil
+  Pencil,
+  UserCheck
 } from 'lucide-react';
 import { calculateTimeStatus, getTimeStatusStyles, type TimeStatus, formatDuration } from '@/lib/utils/timeTracking';
 import { IntelligentAssistantPanel } from '@/components/chat/IntelligentAssistantPanel';
 import { TaskFormV2 } from '@/components/tasks/v2/TaskFormV2';
 import { CreateTaskInput, TaskPriority } from '@/types/task';
 import { Bot } from 'lucide-react';
+import { SendForReviewModal } from '@/components/tasks/reviews/SendForReviewModal';
 
 interface TaskAttachment {
   id: number;
@@ -139,7 +141,9 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
   const [timeStatusTick, setTimeStatusTick] = useState(0); // For triggering re-calculation
   const [showEditForm, setShowEditForm] = useState(false);
   const [updatingTask, setUpdatingTask] = useState(false);
+  const [showReviewModal, setShowReviewModal] = useState(false); // For post-completion review
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
 
   useEffect(() => {
     fetchTaskDetails();
@@ -895,6 +899,18 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
             </button>
           )}
 
+          {/* Request Higher Review Button - For completed tasks */}
+          {isCompleted && (
+            <button
+              onClick={() => setShowReviewModal(true)}
+              className="flex-1 px-4 py-2 text-sm font-medium bg-amber-600 hover:bg-amber-500 text-white rounded-lg transition-colors flex items-center justify-center gap-2"
+              title="Request review from higher authority"
+            >
+              <UserCheck className="w-4 h-4" />
+              Request Higher Review
+            </button>
+          )}
+
           {/* Edit Button - For creator when task is OPEN (before work starts) */}
           {isTaskCreator && isOpen && (
             <button
@@ -1384,6 +1400,16 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
           onSubmit={handleEditTask}
           onCancel={() => setShowEditForm(false)}
           isLoading={updatingTask}
+        />
+      )}
+
+      {/* Post-Completion Review Modal */}
+      {showReviewModal && task && (
+        <SendForReviewModal
+          isOpen={showReviewModal}
+          onClose={() => setShowReviewModal(false)}
+          taskId={typeof task.id === 'string' ? parseInt(task.id) : task.id}
+          taskTitle={task.title}
         />
       )}
     </div>

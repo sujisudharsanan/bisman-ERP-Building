@@ -53,11 +53,15 @@ export default function ChatGuard() {
     const handleOpenTask = (e: Event) => {
       console.log('📋 Task click event received in ChatGuard - opening chat panel');
       const detail = (e as CustomEvent).detail;
+      // Store pending task in sessionStorage for ChatInterface to pick up on mount
+      if (detail && detail.id) {
+        sessionStorage.setItem('pendingTaskOpen', JSON.stringify(detail));
+      }
       setIsChatOpen(true);
-      // Re-dispatch after ChatInterface mounts
+      // Also dispatch internal event after a delay as backup
       setTimeout(() => {
         window.dispatchEvent(new CustomEvent('openTaskInChatInternal', { detail }));
-      }, 150);
+      }, 350);
     };
 
     window.addEventListener('openTaskInChat', handleOpenTask);
@@ -112,7 +116,11 @@ export default function ChatGuard() {
       {/* Spark Assistant Chat Interface */}
       {isChatOpen && (
         <div className="fixed bottom-4 right-4 z-[999] w-[440px] h-[600px] shadow-2xl rounded-lg overflow-hidden animate-slide-in">
-          <CleanChatInterface onClose={() => setIsChatOpen(false)} />
+          <CleanChatInterface onClose={() => {
+            setIsChatOpen(false);
+            // Dispatch closeTaskPanel to restore dashboard layout
+            window.dispatchEvent(new CustomEvent('closeTaskPanel'));
+          }} />
         </div>
       )}
     </>

@@ -538,6 +538,39 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
 
   // Listen for task open events from dashboard
   useEffect(() => {
+    // Check for pending task stored by ChatGuard on mount
+    const pendingTaskStr = sessionStorage.getItem('pendingTaskOpen');
+    if (pendingTaskStr) {
+      try {
+        const task = JSON.parse(pendingTaskStr);
+        sessionStorage.removeItem('pendingTaskOpen');
+        console.log('[Chat] Found pending task on mount:', task);
+        if (task && task.id) {
+          const taskForPanel: Task = {
+            id: String(task.id),
+            title: task.title || 'Untitled Task',
+            status: task.status || 'DRAFT',
+            priority: task.priority
+          };
+          setOpenTasks(prev => {
+            if (prev.find(t => t.id === taskForPanel.id)) {
+              return prev;
+            }
+            return [...prev, taskForPanel];
+          });
+          setIsTaskPanelExpanded(true);
+          setActiveView('task');
+          setSelectedTaskId(String(task.id));
+          setSelectedUserId(null);
+          setIsSidebarCollapsed(true);
+          setIsFullscreen(true);
+        }
+      } catch (e) {
+        console.error('[Chat] Failed to parse pending task:', e);
+        sessionStorage.removeItem('pendingTaskOpen');
+      }
+    }
+
     const handleOpenTaskInChat = (event: CustomEvent) => {
       const task = event.detail;
       console.log('[Chat] Received openTaskInChat event:', task);
@@ -576,6 +609,15 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       window.removeEventListener('openTaskInChatInternal', handleOpenTaskInChat as EventListener);
     };
   }, []); // No dependencies - event handler uses functional updates
+
+  // Notify layout when fullscreen mode changes (for dashboard to adjust Kanban width)
+  useEffect(() => {
+    if (isFullscreen) {
+      window.dispatchEvent(new CustomEvent('openTaskInChat'));
+    } else {
+      window.dispatchEvent(new CustomEvent('closeTaskPanel'));
+    }
+  }, [isFullscreen]);
 
   // Real-time user search with debouncing
   const searchUsers = async (query: string) => {

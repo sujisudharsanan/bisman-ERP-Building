@@ -63,11 +63,11 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = 
   const awaitingApprovalCount = tasks.filter(t => t.status === 'IN_REVIEW').length;
 
   return (
-    <div className="relative flex flex-col flex-1 min-w-[13rem] max-w-[17rem] max-h-[calc(100vh-200px)] p-4 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700/50 shadow-sm">
+    <div className="relative flex flex-col flex-1 min-w-[10rem] max-w-[14rem] max-h-[calc(100vh-200px)] p-3 bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700/50 shadow-sm">
       {/* Column Header */}
-      <div className="flex items-center justify-between mb-4 flex-shrink-0">
-        <div className="flex items-center gap-2 flex-1 flex-wrap">
-          <h2 className={`font-semibold text-sm uppercase tracking-wide ${columnStyle.textColor}`}>{title}</h2>
+      <div className="flex items-center justify-between mb-3 flex-shrink-0">
+        <div className="flex items-center gap-1.5 flex-1 flex-wrap">
+          <h2 className={`font-semibold text-xs uppercase tracking-wide ${columnStyle.textColor}`}>{title}</h2>
           {/* Count badge */}
           <span className={`text-xs font-medium px-2 py-0.5 rounded-full ${columnStyle.badgeBg} ${columnStyle.badgeText}`}>
             {tasks.length}

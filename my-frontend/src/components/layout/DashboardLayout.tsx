@@ -50,7 +50,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
     <ErrorBoundary>
       <div
         className="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col theme-transition"
-        style={{ ['--sidebar-width' as any]: sidebarOpen ? '13rem' : '3.5rem' }}
+        style={{ 
+          ['--sidebar-width' as any]: sidebarOpen ? '13rem' : '3.5rem',
+          ['--task-panel-width' as any]: taskPanelOpen ? '33.33vw' : '0'
+        }}
       >
         {/* Top Navbar - Fixed at top */}
         <ErrorBoundary fallback={<div className="h-16 bg-red-100 dark:bg-red-900/20 flex items-center justify-center"><p className="text-red-600 text-sm">TopNavbar Error</p></div>}>
@@ -67,7 +70,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
           {/* Main Content - Use CSS variable for consistent margin */}
           <main 
             className="flex-1 overflow-auto transition-all duration-300 p-6"
-            style={{ marginLeft: 'var(--sidebar-width)' }}
+            style={{ 
+              marginLeft: 'var(--sidebar-width)',
+              marginRight: taskPanelOpen ? '33.33vw' : '0' 
+            }}
           >
             <ErrorBoundary fallback={
               <div className="p-8 text-center">

@@ -53,8 +53,8 @@ CREATE TABLE IF NOT EXISTS customers (
     -- Audit
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_by INTEGER REFERENCES users(id),
-    updated_by INTEGER REFERENCES users(id),
+    created_by INTEGER ,
+    updated_by INTEGER ,
     
     -- Constraints
     CONSTRAINT uk_customers_tenant_code UNIQUE (tenant_id, code),
@@ -138,8 +138,8 @@ CREATE TABLE IF NOT EXISTS vendors (
     -- Audit
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_by INTEGER REFERENCES users(id),
-    updated_by INTEGER REFERENCES users(id),
+    created_by INTEGER ,
+    updated_by INTEGER ,
     
     -- Constraints
     CONSTRAINT uk_vendors_tenant_code UNIQUE (tenant_id, code),
@@ -237,8 +237,8 @@ CREATE TABLE IF NOT EXISTS items (
     -- Audit
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
-    created_by INTEGER REFERENCES users(id),
-    updated_by INTEGER REFERENCES users(id),
+    created_by INTEGER ,
+    updated_by INTEGER ,
     
     -- Constraints
     CONSTRAINT uk_items_tenant_sku UNIQUE (tenant_id, sku),
