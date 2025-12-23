@@ -224,18 +224,18 @@ export default function SuperAdminSystemPage() {
 
   return (
     <SuperAdminShell>
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">System Administration</h1>
-              <p className="text-gray-600 mt-2">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">System Administration</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-2">
                 Monitor and manage system health, performance, and security
               </p>
             </div>
             <div className="flex items-center gap-4">
-              <div className="text-sm text-gray-500">
+              <div className="text-sm text-gray-500 dark:text-gray-400">
                 Last updated: {lastRefresh.toLocaleTimeString()}
               </div>
               <button

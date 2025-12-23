@@ -1,6 +1,8 @@
 /**
  * Task Card Component - Professional Redesign
  * Clean header/content structure with status pills and hover actions
+ * 
+ * Global UX Rule: All entities displayed with Name • ID format
  */
 
 import React, { useState } from 'react';
@@ -8,6 +10,7 @@ import { Task } from '@/types/task';
 import { StatusBadge } from './StatusBadge';
 import { PriorityBadge } from './PriorityBadge';
 import { MessageSquare, Paperclip, Calendar, MoreHorizontal, User, ExternalLink } from 'lucide-react';
+import { formatEntityId, getUserDisplayName } from '@/lib/utils/entityDisplay';
 
 interface TaskCardProps {
   task: Task;
@@ -92,13 +95,19 @@ export const TaskCard: React.FC<TaskCardProps> = ({
         </p>
       )}
 
-      {/* Assignee - Subtle with Avatar */}
+      {/* Assignee - Displayed with Name • U-ID format */}
       {task.assignee && task.assignee.firstName && task.assignee.lastName && (
         <div className="flex items-center gap-2 mb-3 text-xs text-gray-500 dark:text-gray-400">
           <div className="w-5 h-5 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-[10px] font-medium text-gray-600 dark:text-gray-300">
             {task.assignee.firstName[0]}{task.assignee.lastName[0]}
           </div>
-          <span className="truncate">{task.assignee.firstName} {task.assignee.lastName}</span>
+          <span className="truncate flex items-center gap-1">
+            <span>{task.assignee.firstName} {task.assignee.lastName}</span>
+            <span className="text-gray-400 dark:text-gray-500">•</span>
+            <span className="font-mono text-[10px] text-gray-400 dark:text-gray-500">
+              {formatEntityId(task.assignee.id, 'USER')}
+            </span>
+          </span>
         </div>
       )}
 

@@ -8,7 +8,7 @@ export default function AdminPermissionsPage() {
   return (
     <RequirePermission action="admin.permissions.view" route="/admin/permissions">
       <DashboardLayout role="ADMIN">
-        <div className="max-w-7xl mx-auto px-4 md:px-6 py-6">
+        <div className="w-full px-4 md:px-6 py-6">
           <div className="mb-6 border-b border-gray-200 pb-4">
             <h1 className="text-3xl font-bold leading-tight text-gray-900">Permission Management</h1>
             <p className="mt-2 text-sm text-gray-600">

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import TaskCard from './TaskCard';
-import { CheckCircle, AlertTriangle, Clock, PlayCircle } from 'lucide-react';
+import { CheckCircle, AlertTriangle, Clock, PlayCircle, HelpCircle } from 'lucide-react';
 
 interface KanbanColumnProps {
   title: string;
@@ -13,7 +13,7 @@ interface KanbanColumnProps {
 }
 
 const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = false, onCreate, onTaskClick }) => {
-  // Refined color semantics: Green for Done, Orange/Red for Need Attention
+  // Refined color semantics: Green for Done, Orange/Red for Need Attention, Purple for Clarification
   // Using colors that work well in both light and dark modes
   const getColumnStyle = (title: string) => {
     const styles: Record<string, { textColor: string; badgeBg: string; badgeText: string; borderColor: string }> = {
@@ -23,6 +23,8 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = 
       'EDITING': { textColor: 'text-orange-600 dark:text-orange-400', badgeBg: 'bg-orange-500', badgeText: 'text-white', borderColor: 'border-l-orange-500' },
       'NEED ATTENTION': { textColor: 'text-red-600 dark:text-red-400', badgeBg: 'bg-red-500', badgeText: 'text-white', borderColor: 'border-l-red-500' },
       'DONE': { textColor: 'text-green-600 dark:text-green-400', badgeBg: 'bg-green-500', badgeText: 'text-white', borderColor: 'border-l-green-500' },
+      'WAITING FOR CLARIFICATION': { textColor: 'text-purple-600 dark:text-purple-400', badgeBg: 'bg-purple-500', badgeText: 'text-white', borderColor: 'border-l-purple-500' },
+      'CLARIFICATION': { textColor: 'text-purple-600 dark:text-purple-400', badgeBg: 'bg-purple-500', badgeText: 'text-white', borderColor: 'border-l-purple-500' },
     };
     return styles[title] || { textColor: 'text-gray-600 dark:text-gray-400', badgeBg: 'bg-gray-500', badgeText: 'text-white', borderColor: 'border-l-gray-500' };
   };
@@ -45,6 +47,10 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = 
       'DONE': { 
         icon: <CheckCircle className="w-8 h-8 text-green-500/30" />, 
         message: 'Completed tasks appear here' 
+      },
+      'WAITING FOR CLARIFICATION': { 
+        icon: <HelpCircle className="w-8 h-8 text-purple-500/30" />, 
+        message: 'Tasks awaiting clarification appear here' 
       },
     };
     return emptyStates[title] || { icon: <Clock className="w-8 h-8 text-gray-500/30" />, message: 'No tasks' };

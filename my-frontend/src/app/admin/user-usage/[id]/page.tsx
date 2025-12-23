@@ -1148,7 +1148,7 @@ export default function UserUsagePage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+      <div className="w-full space-y-6">
         {/* Error Banner */}
         {error && (
           <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800 text-yellow-700 dark:text-yellow-300 flex items-center gap-3">

@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { MessageSquare, Paperclip, User, Clock, CheckCircle, AlertCircle, AlertTriangle, Trophy, Timer, Sparkles } from 'lucide-react';
 import { calculateTimeStatus, getTimeStatusStyles, type TimeStatus, formatDuration } from '@/lib/utils/timeTracking';
+import { formatEntityId } from '@/lib/utils/entityDisplay';
 
 interface TaskCardProps {
   title: string;
@@ -35,15 +36,17 @@ const statusConfig: Record<string, { label: string; bgColor: string; textColor: 
 const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments, attachments, onClick, taskId, taskData, columnBorderColor }) => {
   // Generate display ID from taskId, taskData, or fallback
   const displayTaskId = taskId || taskData?.unique_id || taskData?.serialNumber || 
-    (taskData?.id ? `TSK-${String(taskData.id).padStart(5, '0')}` : null);
+    (taskData?.id ? formatEntityId(taskData.id, 'TASK') : null);
 
   // Get status info
   const taskStatus = taskData?.status || 'DRAFT';
   const statusInfo = statusConfig[taskStatus] || statusConfig.DRAFT;
   
-  // Get creator and assignee names
+  // Get creator and assignee info with IDs
   const creatorName = taskData?.creator_name || taskData?.creator?.username || null;
+  const creatorId = taskData?.creator_id || taskData?.creator?.id || null;
   const assigneeName = taskData?.assignee_name || taskData?.assignee?.username || null;
+  const assigneeId = taskData?.assignee_id || taskData?.assignee?.id || null;
   
   // Check if current user is creator or assignee
   const isCreator = taskData?.statusInfo?.isCreator;
@@ -56,6 +59,7 @@ const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments
   const showAsAssignedBy = isAssignee && !isCreator;
   const displayLabel = showAsAssignedBy ? 'By' : 'To';
   const displayName = showAsAssignedBy ? creatorName : assigneeName;
+  const displayUserId = showAsAssignedBy ? creatorId : assigneeId;
 
   // Only show progress if > 0
   const showProgress = progress !== undefined && progress > 0;
@@ -207,13 +211,23 @@ const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments
         </div>
       )}
       
-      {/* Footer: By Creator Name (My Work) or To Assignee Name (My Requests), Comments, Attachments */}
+      {/* Footer: By Creator Name • U-ID (My Work) or To Assignee Name • U-ID (My Requests) */}
       <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-slate-600/30">
-        {/* By/To Name - context-aware */}
+        {/* By/To Name with User ID - context-aware */}
         <div className="flex items-center gap-1 text-[10px] text-gray-500 dark:text-slate-400 min-w-0 flex-1 mr-2">
           <span className="text-gray-400 dark:text-slate-500 shrink-0">{displayLabel}</span>
           {displayName ? (
-            <span className="text-gray-700 dark:text-slate-300 truncate">{displayName}</span>
+            <span className="text-gray-700 dark:text-slate-300 truncate flex items-center gap-1">
+              <span>{displayName}</span>
+              {displayUserId && (
+                <>
+                  <span className="text-gray-400 dark:text-slate-500">•</span>
+                  <span className="font-mono text-gray-400 dark:text-slate-500">
+                    {formatEntityId(displayUserId, 'USER')}
+                  </span>
+                </>
+              )}
+            </span>
           ) : (
             <span className="text-gray-400 dark:text-slate-500 italic">Unassigned</span>
           )}

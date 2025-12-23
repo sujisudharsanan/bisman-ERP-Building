@@ -896,7 +896,7 @@ export default function SubscriptionManagementPage() {
   const totalTenants = Object.values(planBreakdown).reduce((a, b) => a + b, 0);
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="w-full">
       {/* Header */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900 dark:text-white">

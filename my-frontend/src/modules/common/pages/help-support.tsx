@@ -462,7 +462,7 @@ export default function HelpSupportPage() {
       )}
 
       {/* Header */}
-      <div className="max-w-7xl mx-auto mb-6">
+      <div className="w-full mb-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-12 h-12 bg-blue-600 rounded-lg flex items-center justify-center">
@@ -507,7 +507,7 @@ export default function HelpSupportPage() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full">
         {/* MY TICKETS LIST VIEW */}
         {activeView === 'list' && (
           <div className="space-y-6">

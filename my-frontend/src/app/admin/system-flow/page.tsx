@@ -2,12 +2,14 @@
 
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useAuth } from '@/common/hooks/useAuth';
+import { useDecisionLoad } from '@/hooks/useDecisionLoad';
 import { 
   Shield, Users, Briefcase, Building2, FileCheck, 
   ChevronRight, AlertTriangle, CheckCircle, ArrowUp,
   Sparkles, RefreshCw, Info, TrendingUp, XCircle,
   ZoomIn, ZoomOut, Move, RotateCcw, UserCheck, UserX,
-  Flame, Activity, Plus, HelpCircle, Zap, Heart
+  Flame, Activity, Plus, HelpCircle, Zap, Heart,
+  Search, GitBranch, Clock, Target
 } from 'lucide-react';
 
 // =============================================================================
@@ -561,6 +563,33 @@ export default function SystemFlowPage() {
   const [pan, setPan] = useState({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
+
+  // Task Trace state
+  const [taskTraceInput, setTaskTraceInput] = useState('');
+  const [showTaskTracePanel, setShowTaskTracePanel] = useState(false);
+
+  // =========================================================================
+  // LIVE DECISION LOAD DATA HOOK
+  // =========================================================================
+  const {
+    liveRoleData,
+    adminPressure,
+    liveMetrics,
+    isLoading: isLoadingLiveData,
+    fetchLiveData,
+    getLiveRoleIntelligence,
+    hasLiveData,
+    // Simulation
+    runSimulation: runLiveSimulation,
+    simulationResults: liveSimulationResults,
+    isSimulating: isLiveSimulating,
+    clearSimulation,
+    // Task trace
+    traceTask,
+    taskTrace,
+    isTracing,
+    clearTaskTrace
+  } = useDecisionLoad();
 
   // Fetch real role data from API
   useEffect(() => {
@@ -1133,6 +1162,273 @@ export default function SystemFlowPage() {
             </div>
           )}
 
+          {/* ================================================================= */}
+          {/* LIVE DECISION LOAD METRICS (Real Mode Only) */}
+          {/* ================================================================= */}
+          {viewMode === 'real' && hasLiveData && (
+            <div className="space-y-4">
+              {/* Live Stress & Admin Pressure Row */}
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Admin Pressure Panel */}
+                {adminPressure && (
+                  <div className={`bg-gradient-to-br rounded-xl p-5 border ${
+                    adminPressure.pressureLevel === 'CRITICAL' 
+                      ? 'from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/30 border-red-300 dark:border-red-700'
+                      : adminPressure.pressureLevel === 'WARNING'
+                        ? 'from-amber-50 to-amber-100 dark:from-amber-900/30 dark:to-amber-800/30 border-amber-300 dark:border-amber-700'
+                        : 'from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/30 border-green-300 dark:border-green-700'
+                  }`}>
+                    <div className="flex items-center justify-between mb-3">
+                      <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                        <Target className="w-5 h-5" />
+                        Admin Pressure Analysis
+                      </h3>
+                      <span className={`px-3 py-1 rounded-full text-xs font-bold text-white ${
+                        adminPressure.pressureLevel === 'CRITICAL' ? 'bg-red-500' :
+                        adminPressure.pressureLevel === 'WARNING' ? 'bg-amber-500' : 'bg-green-500'
+                      }`}>
+                        {adminPressure.pressureLevel}
+                      </span>
+                    </div>
+                    
+                    {/* Progress Bar */}
+                    <div className="mb-4">
+                      <div className="flex justify-between text-sm mb-1">
+                        <span className="text-gray-600 dark:text-gray-400">Admin Load</span>
+                        <span className="font-bold">{adminPressure.adminPercentage}%</span>
+                      </div>
+                      <div className="h-3 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full transition-all duration-500 ${
+                            adminPressure.pressureLevel === 'CRITICAL' ? 'bg-red-500' :
+                            adminPressure.pressureLevel === 'WARNING' ? 'bg-amber-500' : 'bg-green-500'
+                          }`}
+                          style={{ width: `${Math.min(100, adminPressure.adminPercentage)}%` }}
+                        />
+                      </div>
+                    </div>
+
+                    {/* Stats Row */}
+                    <div className="grid grid-cols-3 gap-3 mb-4">
+                      <div className="text-center p-2 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+                        <div className="text-xl font-bold text-gray-900 dark:text-white">{adminPressure.adminApprovals}</div>
+                        <div className="text-xs text-gray-500">Admin Approvals</div>
+                      </div>
+                      <div className="text-center p-2 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+                        <div className="text-xl font-bold text-amber-600">{adminPressure.fallbackApprovals}</div>
+                        <div className="text-xs text-gray-500">Via Fallback</div>
+                      </div>
+                      <div className="text-center p-2 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+                        <div className="text-xl font-bold text-blue-600">{adminPressure.autoApprovals}</div>
+                        <div className="text-xs text-gray-500">Auto-Approved</div>
+                      </div>
+                    </div>
+
+                    {/* Insight Message */}
+                    <p className="text-sm text-gray-700 dark:text-gray-300 p-3 bg-white/70 dark:bg-gray-800/70 rounded-lg border-l-4 border-blue-500">
+                      {adminPressure.insightMessage}
+                    </p>
+
+                    {/* Redirected From Roles */}
+                    {adminPressure.redirectedFromRoles.length > 0 && (
+                      <div className="mt-3">
+                        <p className="text-xs text-gray-500 mb-2">Load redirected from missing roles:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {adminPressure.redirectedFromRoles.map((role, idx) => (
+                            <span key={idx} className="px-2 py-1 bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-200 rounded text-xs font-medium">
+                              {role}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* Live Stress Metrics Panel */}
+                <div className="bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-blue-900/30 dark:to-indigo-800/30 rounded-xl p-5 border border-blue-200 dark:border-blue-700">
+                  <div className="flex items-center justify-between mb-3">
+                    <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                      <Activity className="w-5 h-5 text-blue-600" />
+                      Live Stress Metrics
+                    </h3>
+                    <button
+                      onClick={fetchLiveData}
+                      disabled={isLoadingLiveData}
+                      className="p-2 rounded-lg bg-blue-100 dark:bg-blue-900/50 text-blue-600 dark:text-blue-400 hover:bg-blue-200 transition-colors"
+                      title="Refresh live data"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isLoadingLiveData ? 'animate-spin' : ''}`} />
+                    </button>
+                  </div>
+
+                  {/* Stress Overview */}
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-4">
+                    <div className="text-center p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+                      <div className="text-2xl font-bold text-gray-900 dark:text-white">{liveMetrics.totalPending}</div>
+                      <div className="text-xs text-gray-500">Pending</div>
+                    </div>
+                    <div className="text-center p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+                      <div className="text-2xl font-bold text-amber-600">{liveMetrics.totalFallbacks}</div>
+                      <div className="text-xs text-gray-500">Fallbacks</div>
+                    </div>
+                    <div className="text-center p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+                      <div className="text-2xl font-bold text-red-600">{liveMetrics.totalSlaBreaches}</div>
+                      <div className="text-xs text-gray-500">SLA Breaches</div>
+                    </div>
+                    <div className="text-center p-3 bg-white/50 dark:bg-gray-800/50 rounded-lg">
+                      <div className="text-2xl font-bold text-orange-600">{liveMetrics.overloadedCount}</div>
+                      <div className="text-xs text-gray-500">Overloaded</div>
+                    </div>
+                  </div>
+
+                  {/* Overloaded Roles List */}
+                  {liveMetrics.overloadedRoles.length > 0 && (
+                    <div>
+                      <p className="text-xs text-gray-500 mb-2">Roles under high stress:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {liveMetrics.overloadedRoles.map((role, idx) => (
+                          <span key={idx} className="px-2 py-1 bg-orange-100 text-orange-800 dark:bg-orange-900/50 dark:text-orange-200 rounded text-xs font-medium">
+                            {role}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Task Trace Panel */}
+              <div className="bg-gradient-to-br from-purple-50 to-violet-100 dark:from-purple-900/30 dark:to-violet-800/30 rounded-xl p-4 border border-purple-200 dark:border-purple-700">
+                <div className="flex items-center justify-between mb-3">
+                  <h3 className="font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                    <GitBranch className="w-5 h-5 text-purple-600" />
+                    Task Journey Trace
+                  </h3>
+                  <button
+                    onClick={() => setShowTaskTracePanel(!showTaskTracePanel)}
+                    className="text-sm text-purple-600 dark:text-purple-400 hover:underline"
+                  >
+                    {showTaskTracePanel ? 'Hide' : 'Show'} Panel
+                  </button>
+                </div>
+
+                {showTaskTracePanel && (
+                  <div className="space-y-3">
+                    {/* Search Input */}
+                    <div className="flex gap-2">
+                      <input
+                        type="text"
+                        value={taskTraceInput}
+                        onChange={(e) => setTaskTraceInput(e.target.value)}
+                        placeholder="Enter Task ID to trace approval path..."
+                        className="flex-1 px-4 py-2 border border-purple-300 dark:border-purple-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                        onKeyDown={(e) => e.key === 'Enter' && taskTraceInput && traceTask(taskTraceInput)}
+                      />
+                      <button
+                        onClick={() => taskTraceInput && traceTask(taskTraceInput)}
+                        disabled={!taskTraceInput || isTracing}
+                        className="px-4 py-2 bg-purple-500 hover:bg-purple-600 disabled:bg-gray-300 text-white rounded-lg transition-colors flex items-center gap-2"
+                      >
+                        {isTracing ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Search className="w-4 h-4" />}
+                        Trace
+                      </button>
+                    </div>
+
+                    {/* Trace Results */}
+                    {taskTrace && (
+                      <div className="bg-white/70 dark:bg-gray-800/70 rounded-lg p-4">
+                        {/* Summary */}
+                        <div className="flex items-center justify-between mb-3 pb-3 border-b border-purple-200 dark:border-purple-700">
+                          <div>
+                            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                              {taskTrace.entityType}
+                            </span>
+                            <span className={`ml-2 text-xs px-2 py-0.5 rounded ${
+                              taskTrace.instanceStatus === 'approved' 
+                                ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300' 
+                                : taskTrace.instanceStatus === 'pending'
+                                  ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300'
+                                  : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+                            }`}>
+                              {taskTrace.instanceStatus}
+                            </span>
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {taskTrace.summary.completedStages}/{taskTrace.summary.totalStages} stages
+                          </div>
+                        </div>
+
+                        {/* Stages Timeline */}
+                        <div className="space-y-0">
+                          {taskTrace.stages.map((stage, idx) => (
+                            <div key={idx} className="relative pl-6 pb-3">
+                              {/* Timeline Line */}
+                              {idx < taskTrace.stages.length - 1 && (
+                                <div className={`absolute left-2 top-5 w-0.5 h-full ${
+                                  stage.isCompleted ? 'bg-green-500' : 'bg-gray-300 dark:bg-gray-600'
+                                }`} />
+                              )}
+                              
+                              {/* Timeline Dot */}
+                              <div className={`absolute left-0 top-1 w-4 h-4 rounded-full border-2 ${
+                                stage.isCurrent 
+                                  ? 'bg-yellow-500 border-yellow-500 animate-pulse'
+                                  : stage.isCompleted
+                                    ? 'bg-green-500 border-green-500'
+                                    : stage.isRejected
+                                      ? 'bg-red-500 border-red-500'
+                                      : 'bg-gray-200 border-gray-300 dark:bg-gray-700 dark:border-gray-600'
+                              }`} />
+
+                              {/* Stage Content */}
+                              <div className={`${stage.isCurrent ? 'bg-yellow-50 dark:bg-yellow-900/20 -ml-2 pl-4 pr-2 py-1 rounded' : ''}`}>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                                    {stage.name}
+                                  </span>
+                                  <span className="text-xs text-gray-500 dark:text-gray-400">{stage.role}</span>
+                                </div>
+                                <div className="flex flex-wrap gap-2 mt-1 text-xs">
+                                  {stage.approver.name && (
+                                    <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                                      <Users className="w-3 h-3" /> {stage.approver.name}
+                                    </span>
+                                  )}
+                                  <span className="text-gray-600 dark:text-gray-400 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" /> {stage.waitHours}h
+                                  </span>
+                                  {stage.slaBreached && (
+                                    <span className="text-red-600 dark:text-red-400 flex items-center gap-1">
+                                      <AlertTriangle className="w-3 h-3" /> SLA Breach
+                                    </span>
+                                  )}
+                                  {stage.fallbackApplied && (
+                                    <span className="text-amber-600 dark:text-amber-400 flex items-center gap-1">
+                                      <TrendingUp className="w-3 h-3" /> Fallback
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+
+                        {/* Clear button */}
+                        <button
+                          onClick={clearTaskTrace}
+                          className="mt-2 text-xs text-purple-600 dark:text-purple-400 hover:underline"
+                        >
+                          Clear trace
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
           {/* Simulation Mode: Show simulated business intelligence */}
           {viewMode === 'simulation' && (
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
@@ -1424,7 +1720,10 @@ export default function SystemFlowPage() {
 
                     {/* Role Nodes - with business intelligence */}
                     {rolesConfig.filter(l => l.level < 10).map(levelConfig => {
-                      const roles = levelConfig.roles;
+                      // Exclude 'Admin' from L9 since it's represented by the Center Hub
+                      const roles = levelConfig.level === 9 
+                        ? levelConfig.roles.filter(r => r.name !== 'Admin')
+                        : levelConfig.roles;
                       return roles.map((role, idx) => {
                         const pos = getNodePosition(levelConfig.level, idx, roles.length, levelConfig.wing);
                         const nodeKey = `L${levelConfig.level}-${role.name}`;
@@ -1459,11 +1758,13 @@ export default function SystemFlowPage() {
                                   : isInPath
                                   ? 'bg-amber-50 dark:bg-amber-900/30 border-amber-300 dark:border-amber-600'
                                   : isMissing && !isVirtuallyAdded
-                                  ? 'bg-gray-100 dark:bg-gray-800 border-dashed border-gray-400 dark:border-gray-500 opacity-70'
+                                  ? 'bg-gray-100 dark:bg-gray-800 border-dashed border-gray-400 dark:border-gray-500 opacity-60'
                                   : isVirtuallyAdded
                                   ? 'bg-green-50 dark:bg-green-900/30 border-green-400 dark:border-green-500 border-dashed'
                                   : viewMode === 'real' && hasRealUsers
-                                  ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-400 dark:border-emerald-600'
+                                  ? 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-400 dark:border-emerald-600 shadow-emerald-200/50'
+                                  : viewMode === 'real' && !hasRealUsers
+                                  ? 'bg-gray-100 dark:bg-gray-800 border-dashed border-gray-400 dark:border-gray-500 opacity-60'
                                   : getStressColor(intelligence.stressLevel, intelligence.status)
                               }`}
                               style={{
@@ -1513,8 +1814,10 @@ export default function SystemFlowPage() {
                               <div className={`text-[10px] font-bold px-2 py-0.5 rounded mb-1 inline-block ${
                                 isActive || isCurrentStep
                                   ? 'bg-white/10 text-amber-400'
-                                  : isMissing && !isVirtuallyAdded
+                                  : (isMissing && !isVirtuallyAdded) || (viewMode === 'real' && !hasRealUsers)
                                   ? 'bg-gray-200 dark:bg-gray-700 text-gray-500 dark:text-gray-400'
+                                  : viewMode === 'real' && hasRealUsers
+                                  ? 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-400'
                                   : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400'
                               }`}>
                                 L{levelConfig.level}
@@ -1524,7 +1827,7 @@ export default function SystemFlowPage() {
                               <div className={`text-xs font-bold leading-tight ${
                                 isActive || isCurrentStep 
                                   ? 'text-white' 
-                                  : isMissing && !isVirtuallyAdded
+                                  : (isMissing && !isVirtuallyAdded) || (viewMode === 'real' && !hasRealUsers)
                                   ? 'text-gray-500 dark:text-gray-400'
                                   : getWingTextColor(levelConfig.wing)
                               }`}>
@@ -1541,6 +1844,13 @@ export default function SystemFlowPage() {
                                 </div>
                               )}
                               
+                              {/* Real mode: Show "No users" for unassigned roles */}
+                              {viewMode === 'real' && !hasRealUsers && (
+                                <div className="mt-1 text-[9px] text-gray-500 italic">
+                                  No users
+                                </div>
+                              )}
+                              
                               {/* Simulation mode: Stress indicator */}
                               {viewMode === 'simulation' && !isMissing && !isVirtuallyAdded && intelligence.tasksHandled > 0 && (
                                 <div className="mt-1 flex items-center gap-1">
@@ -1549,10 +1859,10 @@ export default function SystemFlowPage() {
                                 </div>
                               )}
                               
-                              {/* Missing role indicator */}
-                              {isMissing && !isVirtuallyAdded && (
+                              {/* Missing role indicator - simulation mode only */}
+                              {viewMode === 'simulation' && isMissing && !isVirtuallyAdded && (
                                 <div className="mt-1 text-[9px] text-gray-500 italic">
-                                  {viewMode === 'real' ? 'No users' : 'Not assigned'}
+                                  Not assigned
                                 </div>
                               )}
                               

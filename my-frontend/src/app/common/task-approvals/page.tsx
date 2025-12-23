@@ -1,6 +1,9 @@
 /**
- * Task Approvals page - Redirects to the main approval queue
- * The main implementation is in /finance/payment-approval-queue
+ * Task Approvals page - Redirects to the main governance-first approval page
+ * 
+ * GOVERNANCE PRINCIPLE:
+ * This page represents AUTHORITY, not WORKLOAD.
+ * "Show me all tasks that require MY decision, review, or acknowledgment."
  */
 'use client';
 
@@ -11,8 +14,8 @@ export default function Page() {
   const router = useRouter();
   
   useEffect(() => {
-    // Redirect to the main task approval queue
-    router.replace('/finance/payment-approval-queue');
+    // Redirect to the governance-first task approval page
+    router.replace('/approvals');
   }, [router]);
   
   return (

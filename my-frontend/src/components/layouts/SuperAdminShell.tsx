@@ -176,8 +176,8 @@ function SuperAdminShellInner({ title = 'Retail Client Management', children }: 
       </aside>
 
       {/* Main content */}
-  <div className="content-under-navbar lg:pl-52 min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">{children}</div>
+      <div className="content-under-navbar lg:pl-52 min-h-screen">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-6">{children}</div>
       </div>
     </div>
   );

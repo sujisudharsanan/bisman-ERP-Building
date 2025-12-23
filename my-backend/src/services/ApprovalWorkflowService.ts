@@ -78,14 +78,62 @@ interface ApproverResolutionResult {
 }
 
 // ============================================================================
+// GOVERNANCE HELPERS
+// ============================================================================
+
+/**
+ * Check if action requires mandatory comment (governance enforcement)
+ */
+function requiresComment(
+  actionType: AuditActionType,
+  actorLevel?: number,
+  hasFallback?: boolean,
+  isOverride?: boolean
+): boolean {
+  // L9+ actions always require comment
+  if (actorLevel && actorLevel >= 9) return true;
+  
+  // Fallback actions require comment
+  if (hasFallback) return true;
+  
+  // Override actions require comment
+  if (isOverride) return true;
+  
+  // Specific action types require comment
+  const commentRequiredActions: AuditActionType[] = [
+    'auto_approved',
+    'stage_skipped',
+    'escalated'
+  ];
+  
+  return commentRequiredActions.includes(actionType);
+}
+
+// ============================================================================
 // HELPERS
 // ============================================================================
 
-async function createAuditLog(params: AuditLogParams): Promise<void> {
+interface CreateAuditLogWithGovernanceParams extends AuditLogParams {
+  actorLevel?: number;
+  isOverrideAction?: boolean;
+  overrideType?: string;
+}
+
+async function createAuditLog(params: CreateAuditLogWithGovernanceParams): Promise<void> {
+  const hasFallback = params.metadata?.fallbackStrategy !== undefined;
+  const commentRequired = requiresComment(
+    params.actionType,
+    params.actorLevel,
+    hasFallback,
+    params.isOverrideAction
+  );
+  const commentProvided = !!(params.comment && params.comment.trim());
+  
   await prisma.$executeRaw`
     INSERT INTO approval_audit_log (
       approval_instance_id, stage_instance_id, action, action_category,
-      performed_by, comment, metadata, performed_at
+      performed_by, comment, metadata, performed_at,
+      actor_business_level, is_override_action, override_type, comment_required, validation_passed
     ) VALUES (
       ${params.instanceId}::uuid,
       ${params.stageInstanceId ? params.stageInstanceId : null}::uuid,
@@ -94,7 +142,12 @@ async function createAuditLog(params: AuditLogParams): Promise<void> {
       ${params.actorId ? params.actorId : null}::uuid,
       ${params.comment || null},
       ${params.metadata ? JSON.stringify(params.metadata) : null}::jsonb,
-      NOW()
+      NOW(),
+      ${params.actorLevel || null},
+      ${params.isOverrideAction || hasFallback || false},
+      ${params.overrideType || (hasFallback ? 'FALLBACK_APPLIED' : null)},
+      ${commentRequired},
+      ${!commentRequired || commentProvided}
     )
   `;
 }

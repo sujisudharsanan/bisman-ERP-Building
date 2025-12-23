@@ -61,6 +61,7 @@ const ROLE_TO_LEVEL = {
   'Supervisor': 2,
   'Branch Incharge': 3,
   'Store Incharge': 3,
+  'Hub Incharge': 3,
   'Accounts Payable': 4,
   'Procurement Officer': 4,
   'Accounts': 5,
@@ -72,6 +73,11 @@ const ROLE_TO_LEVEL = {
   'Treasury': 7,
   'Finance Controller': 8,
   'IT Admin': 8,
+  // Deputy roles - level 8.5 (rounded to 8 for integer comparisons, but tracked separately)
+  'CFO Deputy': 8,
+  'CFO_DEPUTY': 8,
+  'Admin Deputy': 8,
+  'ADMIN_DEPUTY': 8,
   'Admin': 9,
   'CFO': 9,
   'System Administrator': 9,
@@ -278,6 +284,128 @@ function getSuggestedApprovalChain(creatorLevel, finalApprovalLevel) {
   return chain;
 }
 
+// ============================================================================
+// DEPUTY ROLE CONFIGURATION
+// Deputies can approve but cannot override. Overrides remain L9+ only.
+// ============================================================================
+
+const DEPUTY_ROLES = {
+  'CFO Deputy': { level: 8.5, principalRole: 'CFO', canOverride: false },
+  'CFO_DEPUTY': { level: 8.5, principalRole: 'CFO', canOverride: false },
+  'Admin Deputy': { level: 8.5, principalRole: 'Admin', canOverride: false },
+  'ADMIN_DEPUTY': { level: 8.5, principalRole: 'Admin', canOverride: false },
+};
+
+/**
+ * Check if a role is a deputy role
+ * @param {string} roleName - The role name
+ * @returns {boolean} Is deputy role
+ */
+function isDeputyRole(roleName) {
+  if (!roleName) return false;
+  const normalized = roleName.trim();
+  return !!DEPUTY_ROLES[normalized];
+}
+
+/**
+ * Get deputy configuration for a role
+ * @param {string} roleName - The role name
+ * @returns {Object|null} Deputy configuration
+ */
+function getDeputyConfig(roleName) {
+  if (!roleName) return null;
+  const normalized = roleName.trim();
+  return DEPUTY_ROLES[normalized] || null;
+}
+
+/**
+ * Check if user can perform override actions
+ * Overrides require L9+ AND cannot be deputies
+ * @param {number} level - Business level
+ * @param {string} roleName - Role name
+ * @returns {boolean} Can override
+ */
+function canOverride(level, roleName) {
+  // Deputies cannot override regardless of level
+  if (isDeputyRole(roleName)) {
+    return false;
+  }
+  // Only L9+ can override
+  return level >= 9;
+}
+
+/**
+ * Check if user can force-approve (admin override)
+ * @param {number} level - Business level
+ * @param {string} roleName - Role name
+ * @returns {boolean} Can force approve
+ */
+function canForceApprove(level, roleName) {
+  return canOverride(level, roleName);
+}
+
+/**
+ * Check if user can force-reject (admin override)
+ * @param {number} level - Business level
+ * @param {string} roleName - Role name
+ * @returns {boolean} Can force reject
+ */
+function canForceReject(level, roleName) {
+  return canOverride(level, roleName);
+}
+
+// ============================================================================
+// PEER-APPROVAL CONTROL
+// Enforces approver_level > creator_level except when whitelisted
+// ============================================================================
+
+/**
+ * Check if peer approval is allowed for this specific action
+ * @param {number} approverLevel - Approver's business level
+ * @param {number} creatorLevel - Creator's business level
+ * @param {boolean} peerApprovalWhitelisted - Stage allows peer approval
+ * @param {number} minLevelAbove - Minimum levels above creator required
+ * @returns {{allowed: boolean, reason?: string}}
+ */
+function checkPeerApprovalAllowed(approverLevel, creatorLevel, peerApprovalWhitelisted = false, minLevelAbove = 1) {
+  const levelDiff = approverLevel - creatorLevel;
+  
+  // Approver is above creator by required amount
+  if (levelDiff >= minLevelAbove) {
+    return { allowed: true };
+  }
+  
+  // Same level or below - check whitelist
+  if (levelDiff <= 0) {
+    if (peerApprovalWhitelisted && levelDiff === 0) {
+      return { 
+        allowed: true, 
+        reason: 'Peer approval allowed by workflow configuration',
+        peerApprovalUsed: true
+      };
+    }
+    return {
+      allowed: false,
+      reason: levelDiff === 0 
+        ? 'Peer approval not allowed. Approver must be at least 1 level above creator.'
+        : 'Approver cannot be below creator level.',
+      approverLevel,
+      creatorLevel,
+      levelDiff
+    };
+  }
+  
+  // Level diff is positive but less than required
+  return {
+    allowed: false,
+    reason: `Approver must be at least ${minLevelAbove} level(s) above creator. Current difference: ${levelDiff}`,
+    approverLevel,
+    creatorLevel,
+    required: minLevelAbove,
+    actual: levelDiff
+  };
+}
+
 /**
  * Express middleware to enforce business level for approvals
  * Adds business level context to request
@@ -287,12 +415,19 @@ function businessLevelMiddleware(req, res, next) {
     // Add business level context
     req.user.businessLevel = req.user.business_level || getBusinessLevelFromRole(req.user.role);
     req.user.businessLevelLabel = getLevelLabel(req.user.businessLevel);
+    req.user.isDeputy = isDeputyRole(req.user.role);
+    req.user.deputyConfig = getDeputyConfig(req.user.role);
     
     // Add helper functions
     req.user.canReview = (creatorLevel) => canReview(req.user.businessLevel, creatorLevel);
     req.user.canApprove = (requiredLevel) => canApprove(req.user.businessLevel, requiredLevel);
     req.user.canAssignTask = (targetLevel) => canAssignTask(req.user.businessLevel, targetLevel);
     req.user.canEscalate = (targetLevel) => canEscalate(req.user.businessLevel, targetLevel);
+    req.user.canOverride = () => canOverride(req.user.businessLevel, req.user.role);
+    req.user.canForceApprove = () => canForceApprove(req.user.businessLevel, req.user.role);
+    req.user.canForceReject = () => canForceReject(req.user.businessLevel, req.user.role);
+    req.user.checkPeerApproval = (creatorLevel, whitelisted, minAbove) => 
+      checkPeerApprovalAllowed(req.user.businessLevel, creatorLevel, whitelisted, minAbove);
   }
   next();
 }
@@ -350,6 +485,7 @@ module.exports = {
   BUSINESS_LEVELS,
   ROLE_TO_LEVEL,
   LEVEL_LABELS,
+  DEPUTY_ROLES,
   
   // Utility functions
   getBusinessLevelFromRole,
@@ -360,6 +496,16 @@ module.exports = {
   canApprove,
   canAssignTask,
   canEscalate,
+  
+  // Deputy & Override checks
+  isDeputyRole,
+  getDeputyConfig,
+  canOverride,
+  canForceApprove,
+  canForceReject,
+  
+  // Peer-approval control
+  checkPeerApprovalAllowed,
   
   // Level queries
   getReviewerLevels,

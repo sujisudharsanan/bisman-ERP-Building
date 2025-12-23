@@ -229,7 +229,7 @@ export default function HRPolicyPage() {
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Header */}
       <div className="bg-gradient-to-r from-blue-600 to-indigo-700 dark:from-blue-700 dark:to-indigo-800 text-white">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-12">
           <div className="flex items-center gap-4 mb-4">
             <div className="p-3 bg-white/10 rounded-xl backdrop-blur-sm">
               <FileText className="w-8 h-8" />
@@ -247,7 +247,7 @@ export default function HRPolicyPage() {
 
       {/* Quick Navigation */}
       <div className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-10 shadow-sm">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center gap-2 py-4 overflow-x-auto">
             <span className="text-sm font-medium text-gray-600 dark:text-gray-400 whitespace-nowrap">
               Quick Links:
@@ -266,7 +266,7 @@ export default function HRPolicyPage() {
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-8">
         <div className="space-y-6">
           {sections.map((section, index) => (
             <div

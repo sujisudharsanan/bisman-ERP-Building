@@ -805,6 +805,95 @@ try {
 }
 
 // ===================================================================
+// APPROVAL AUTHORITY DASHBOARD - Governance Metrics 📊
+// ===================================================================
+// CEO/Admin view for organizational decision engine:
+// - Approval Load per Role
+// - SLA Breach Heatmap
+// - Auto-Approval % by Workflow
+// - Fallback Usage Frequency
+// - Rejection Loops by Creator
+// - Missing Role Impact
+// ===================================================================
+try {
+  const approvalDashboardRoutes = require('./routes/approvalDashboardRoutes')
+  app.use('/api/approval-dashboard', approvalDashboardRoutes)
+  console.log('✅ Approval Dashboard routes loaded at /api/approval-dashboard')
+} catch (e) {
+  console.warn('Approval Dashboard routes not loaded:', e && e.message)
+}
+
+// ===================================================================
+// TASK APPROVAL PAGE - Governance-First Task Approval System
+// ===================================================================
+// Enterprise task approval with strict visibility rules:
+// - L1-L5: See only tasks awaiting their approval
+// - L6-L8: See subordinate completions + own approvals (dept-restricted)
+// - L9-L10: Control tower - sees everything
+// Query-level enforcement, no frontend filtering for security
+// ===================================================================
+try {
+  const taskApprovalRoutes = require('./routes/taskApprovalRoutes')
+  app.use('/api/task-approvals', taskApprovalRoutes)
+  console.log('✅ Task Approval routes loaded at /api/task-approvals')
+} catch (e) {
+  console.warn('Task Approval routes not loaded:', e && e.message)
+}
+
+// ===================================================================
+// TASK CLARIFICATION SYSTEM - Cross-user/department clarification
+// ===================================================================
+// Enables requesting clarification from other users or departments
+// WITHOUT changing task ownership, approval chain, or authority.
+// Purple visual indicator for "WAITING_FOR_CLARIFICATION" status.
+try {
+  const clarificationRoutes = require('./routes/clarificationRoutes')
+  app.use('/api/clarifications', authenticate, setTenantContext, clarificationRoutes)
+  console.log('✅ Task Clarification routes loaded at /api/clarifications')
+} catch (e) {
+  console.warn('Task Clarification routes not loaded:', e && e.message)
+}
+
+// ===================================================================
+// POST-COMPLETION REVIEW - Forward COMPLETED tasks for review
+// ===================================================================
+// Allows users to forward completed tasks to other users/departments for:
+// - FYI (For Information Only)
+// - Confirmation (Request understanding confirmation)
+// - Audit (Compliance/audit review)
+// - Knowledge (Training/reference)
+// Task status remains COMPLETED - no approval chain reopened
+// Yellow visual indicator for "COMPLETED + Under Review"
+try {
+  const reviewRoutes = require('./routes/reviewRoutes')
+  app.use('/api/reviews', authenticate, setTenantContext, reviewRoutes)
+  console.log('✅ Post-Completion Review routes loaded at /api/reviews')
+} catch (e) {
+  console.warn('Post-Completion Review routes not loaded:', e && e.message)
+}
+
+// ===================================================================
+// DECISION LOAD MAP - Business Pressure & Decision Flow Visualization
+// ===================================================================
+// Powers the "System Flow" / "Decision Load Map" page:
+// - Role stress visualization with live metrics
+// - Approval flow edge data (normal, fallback, bottleneck)
+// - Admin pressure analysis
+// - Simulation engine for what-if scenarios
+// - Task trace for live path visualization
+// 
+// Base endpoint: /api/decision-load/*
+// Access: L6+ (Manager and above)
+// ===================================================================
+try {
+  const decisionLoadRoutes = require('./routes/decisionLoadRoutes')
+  app.use('/api/decision-load', decisionLoadRoutes)
+  console.log('✅ Decision Load Map routes loaded at /api/decision-load')
+} catch (e) {
+  console.warn('Decision Load Map routes not loaded:', e && e.message)
+}
+
+// ===================================================================
 // CHAT MODULE - Modular Chat System 🚀
 // ===================================================================
 // Modular architecture with organized structure:
@@ -933,7 +1022,7 @@ try {
 
 // Approval Workflow routes (Multi-tenant stage-based approval engine)
 try {
-  const approvalRoutes = require('./src/routes/approvals').default
+  const approvalRoutes = require('./dist/routes/approvals').default
   app.use('/api/approvals', approvalRoutes)
   console.log('✅ Approval Workflow routes loaded at /api/approvals')
 } catch (e) {

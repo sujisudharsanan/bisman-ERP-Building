@@ -73,7 +73,7 @@ export default function UserCreationPage() {
   // Loading state
   if (isLoading) {
     return (
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12">
           <div className="flex flex-col items-center justify-center space-y-4">
             <Loader2 className="w-12 h-12 text-blue-600 dark:text-blue-400 animate-spin" />
@@ -87,7 +87,7 @@ export default function UserCreationPage() {
   // Error state
   if (error) {
     return (
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full">
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-12">
           <div className="flex flex-col items-center justify-center space-y-4">
             <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center">
@@ -110,7 +110,7 @@ export default function UserCreationPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto">
+    <div className="w-full">
       {/* Header */}
       <div className="mb-6">
         <button

@@ -71,7 +71,11 @@ const TaskStatus = {
   BLOCKED: 'BLOCKED',
   COMPLETED: 'COMPLETED',
   CANCELLED: 'CANCELLED',
-  ARCHIVED: 'ARCHIVED'
+  ARCHIVED: 'ARCHIVED',
+  // Cancel flow statuses
+  CANCEL_REQUESTED: 'CANCEL_REQUESTED',
+  // Clarification flow status
+  WAITING_FOR_CLARIFICATION: 'WAITING_FOR_CLARIFICATION'
 };
 
 // Task Priority enum
@@ -83,21 +87,25 @@ const TaskPriority = {
   CRITICAL: 'CRITICAL'
 };
 
-// Valid status transitions
+// Valid status transitions (including cancel flow and clarification)
 const validTransitions = {
   [TaskStatus.DRAFT]: [TaskStatus.OPEN, TaskStatus.ASSIGNED, TaskStatus.CANCELLED],
-  [TaskStatus.OPEN]: [TaskStatus.ASSIGNED, TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED],
-  [TaskStatus.ASSIGNED]: [TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED, TaskStatus.OPEN],
-  [TaskStatus.IN_PROGRESS]: [TaskStatus.IN_REVIEW, TaskStatus.BLOCKED, TaskStatus.COMPLETED, TaskStatus.CANCELLED, 'DONE'], // DONE is alias for COMPLETED
-  [TaskStatus.IN_REVIEW]: [TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, TaskStatus.BLOCKED, 'DONE'],
-  [TaskStatus.BLOCKED]: [TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED],
+  [TaskStatus.OPEN]: [TaskStatus.ASSIGNED, TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED, TaskStatus.CANCEL_REQUESTED, TaskStatus.WAITING_FOR_CLARIFICATION],
+  [TaskStatus.ASSIGNED]: [TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED, TaskStatus.OPEN, TaskStatus.CANCEL_REQUESTED, TaskStatus.WAITING_FOR_CLARIFICATION],
+  [TaskStatus.IN_PROGRESS]: [TaskStatus.IN_REVIEW, TaskStatus.BLOCKED, TaskStatus.COMPLETED, TaskStatus.CANCELLED, TaskStatus.CANCEL_REQUESTED, TaskStatus.WAITING_FOR_CLARIFICATION, 'DONE'],
+  [TaskStatus.IN_REVIEW]: [TaskStatus.IN_PROGRESS, TaskStatus.COMPLETED, TaskStatus.BLOCKED, TaskStatus.CANCEL_REQUESTED, TaskStatus.WAITING_FOR_CLARIFICATION, 'DONE'],
+  [TaskStatus.BLOCKED]: [TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED, TaskStatus.CANCEL_REQUESTED, TaskStatus.WAITING_FOR_CLARIFICATION],
   [TaskStatus.COMPLETED]: [TaskStatus.ARCHIVED],
   [TaskStatus.CANCELLED]: [TaskStatus.ARCHIVED],
   [TaskStatus.ARCHIVED]: [],
+  // Cancel request can be acknowledged (approved) or rejected (back to previous)
+  [TaskStatus.CANCEL_REQUESTED]: [TaskStatus.CANCELLED, TaskStatus.IN_PROGRESS, TaskStatus.IN_REVIEW, TaskStatus.OPEN],
+  // Clarification: can return to any active status (controlled by clarification service)
+  [TaskStatus.WAITING_FOR_CLARIFICATION]: [TaskStatus.OPEN, TaskStatus.ASSIGNED, TaskStatus.IN_PROGRESS, TaskStatus.IN_REVIEW, TaskStatus.BLOCKED],
   // Legacy/Alternative status names (for backward compatibility)
-  'TODO': [TaskStatus.ASSIGNED, TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED], // Same as OPEN
-  'PENDING': [TaskStatus.ASSIGNED, TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED], // Same as OPEN
-  'DONE': [TaskStatus.ARCHIVED], // Same as COMPLETED
+  'TODO': [TaskStatus.ASSIGNED, TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED],
+  'PENDING': [TaskStatus.ASSIGNED, TaskStatus.IN_PROGRESS, TaskStatus.CANCELLED],
+  'DONE': [TaskStatus.ARCHIVED],
 };
 
 // Socket.IO instance (set from app.js)

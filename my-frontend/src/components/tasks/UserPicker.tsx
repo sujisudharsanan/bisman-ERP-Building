@@ -1,6 +1,8 @@
 /**
  * User Picker Component
  * Select users with search, avatars, and role filtering
+ * 
+ * Global UX Rule: All users displayed with Name • U-ID format
  */
 
 'use client';
@@ -8,6 +10,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, X, ChevronDown, User, Check } from 'lucide-react';
 import { UserAvatar } from './UserAvatar';
+import { formatEntityId, getUserDisplayName, matchesSearch } from '@/lib/utils/entityDisplay';
 
 export interface UserOption {
   id: number;
@@ -18,6 +21,8 @@ export interface UserOption {
   firstName?: string;
   lastName?: string;
   avatar?: string;
+  /** Pre-formatted display label: "Name • U-ID" */
+  displayLabel?: string;
 }
 
 interface UserPickerProps {
@@ -123,14 +128,27 @@ export const UserPicker: React.FC<UserPickerProps> = ({
     ];
   };
 
+  // Filter users by search query - matches name, email, role, and ID (including partial ID)
   const filteredUsers = users.filter(user => {
-    const query = searchQuery.toLowerCase();
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return true;
+    
+    const displayName = getLocalUserDisplayName(user);
+    const userId = formatEntityId(user.id, 'USER').toLowerCase();
+    
     return (
+      // Match by name
+      displayName.toLowerCase().includes(query) ||
+      // Match by username
       user.username.toLowerCase().includes(query) ||
+      // Match by email
       user.email.toLowerCase().includes(query) ||
-      (user.firstName && user.firstName.toLowerCase().includes(query)) ||
-      (user.lastName && user.lastName.toLowerCase().includes(query)) ||
-      (user.roleName && user.roleName.toLowerCase().includes(query))
+      // Match by role
+      (user.roleName && user.roleName.toLowerCase().includes(query)) ||
+      // Match by formatted ID (e.g., "U-00001")
+      userId.includes(query) ||
+      // Match by raw ID
+      String(user.id).includes(query)
     );
   });
 
@@ -147,11 +165,19 @@ export const UserPicker: React.FC<UserPickerProps> = ({
     onUserSelect(0, {} as UserOption);
   };
 
-  const getUserDisplayName = (user: UserOption): string => {
+  // Local function to get user display name (for name part only)
+  const getLocalUserDisplayName = (user: UserOption): string => {
     if (user.firstName && user.lastName) {
       return `${user.firstName} ${user.lastName}`;
     }
     return user.username;
+  };
+
+  // Get full display label with ID: "Name • U-ID"
+  const getUserDisplayLabel = (user: UserOption): string => {
+    const name = getLocalUserDisplayName(user);
+    const userId = formatEntityId(user.id, 'USER');
+    return `${name} • ${userId}`;
   };
 
   return (
@@ -185,12 +211,17 @@ export const UserPicker: React.FC<UserPickerProps> = ({
           {selectedUser ? (
             <>
               <UserAvatar 
-                name={getUserDisplayName(selectedUser)} 
+                name={getLocalUserDisplayName(selectedUser)} 
                 size="sm"
               />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                  {getUserDisplayName(selectedUser)}
+                {/* Display Name • U-ID format */}
+                <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex items-center gap-1.5">
+                  <span>{getLocalUserDisplayName(selectedUser)}</span>
+                  <span className="text-gray-400 dark:text-gray-500">•</span>
+                  <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
+                    {formatEntityId(selectedUser.id, 'USER')}
+                  </span>
                 </p>
                 <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                   {selectedUser.roleName || selectedUser.role || 'User'}
@@ -270,12 +301,17 @@ export const UserPicker: React.FC<UserPickerProps> = ({
                     `}
                   >
                     <UserAvatar 
-                      name={getUserDisplayName(user)} 
+                      name={getLocalUserDisplayName(user)} 
                       size="sm"
                     />
                     <div className="flex-1 text-left min-w-0">
-                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate">
-                        {getUserDisplayName(user)}
+                      {/* Display Name • U-ID format in dropdown */}
+                      <p className="text-sm font-medium text-gray-900 dark:text-white truncate flex items-center gap-1.5">
+                        <span>{getLocalUserDisplayName(user)}</span>
+                        <span className="text-gray-400 dark:text-gray-500">•</span>
+                        <span className="text-xs font-mono text-gray-500 dark:text-gray-400">
+                          {formatEntityId(user.id, 'USER')}
+                        </span>
                       </p>
                       <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
                         {user.email}

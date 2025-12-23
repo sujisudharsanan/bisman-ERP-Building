@@ -1046,7 +1046,7 @@ const EnterpriseSecurityDashboard: React.FC<EnterpriseSecurityDashboardProps> = 
     <div className={`min-h-screen bg-gray-50 ${className}`}>
       {/* Header */}
       <div className="bg-white shadow-sm border-b sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900 flex items-center">
@@ -1076,7 +1076,7 @@ const EnterpriseSecurityDashboard: React.FC<EnterpriseSecurityDashboardProps> = 
       </div>
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
         {/* Overview Cards */}
         <OverviewSection
           scanResult={scanResult}

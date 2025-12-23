@@ -102,7 +102,7 @@ function PageContent({ searchParams, params }: PageProps) {
     return (
   <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col">
         <PageHeader />
-        <div className="flex-1 max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+        <div className="flex-1 w-full py-6 sm:px-6 lg:px-8">
           <Card className="p-6">
             <div className="text-center">
               <div className="text-red-600 text-sm">{data.error}</div>
@@ -123,7 +123,7 @@ function PageContent({ searchParams, params }: PageProps) {
   <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col content-under-navbar">
       <PageHeader />
 
-      <main className="flex-1 max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
+      <main className="flex-1 w-full py-6 sm:px-6 lg:px-8">
         <div className="px-4 py-6 sm:px-0">
           {/* Main Content Card */}
           <Card className="p-6">
@@ -189,7 +189,7 @@ function PageContent({ searchParams, params }: PageProps) {
 function PageHeader() {
   return (
     <header className="bg-white shadow">
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
+      <div className="w-full py-6 px-4 sm:px-6 lg:px-8">
         <div className="flex justify-between items-center">
           <h1 className="text-3xl font-bold text-gray-900">Page Title</h1>
 

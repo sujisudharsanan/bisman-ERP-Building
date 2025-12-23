@@ -92,6 +92,123 @@ router.get(
 );
 
 /**
+ * @route   GET /api/tasks/performance-metrics
+ * @desc    Get user's performance metrics for dashboard
+ * @access  Private
+ * NOTE: Must be BEFORE /:id routes to avoid being caught as an ID
+ */
+router.get(
+  '/performance-metrics',
+  authenticate,
+  async (req, res) => {
+    const { PrismaClient } = require('@prisma/client');
+    const prisma = new PrismaClient();
+    
+    try {
+      const rawUserId = req.user.id;
+      
+      // Resolve UUID to legacy integer ID for database queries
+      let userId = rawUserId;
+      if (typeof rawUserId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawUserId)) {
+        // Look up legacy_id from users_enhanced table
+        const userLookup = await prisma.user.findUnique({
+          where: { id: rawUserId },
+          select: { legacy_id: true }
+        });
+        if (userLookup?.legacy_id) {
+          userId = userLookup.legacy_id;
+        } else {
+          console.warn(`[performance-metrics] UUID ${rawUserId} has no legacy_id, returning defaults`);
+          return res.json({
+            success: true,
+            data: {
+              onTimeRate: 0,
+              responseTime: 0,
+              completionRate: 0,
+              qualityScore: 0
+            }
+          });
+        }
+      }
+      
+      // Calculate metrics based on last 30 days
+      const metricsQuery = await prisma.$queryRaw`
+        WITH user_tasks AS (
+          SELECT 
+            t.*,
+            CASE 
+              WHEN t.status IN ('COMPLETED', 'DONE') AND t.due_date IS NOT NULL AND t.updated_at <= t.due_date THEN 1
+              WHEN t.status IN ('COMPLETED', 'DONE') AND t.due_date IS NULL THEN 1
+              ELSE 0
+            END as on_time,
+            CASE 
+              WHEN t.status IN ('COMPLETED', 'DONE') THEN 1
+              ELSE 0
+            END as completed,
+            EXTRACT(EPOCH FROM (
+              COALESCE(
+                (SELECT MIN(created_at) FROM task_messages WHERE task_id = t.id AND sender_id = t.assignee_id),
+                NOW()
+              ) - t.created_at
+            )) / 3600 as response_hours
+          FROM workflow_tasks t
+          WHERE (t.assignee_id = ${userId}::integer OR t.creator_id = ${userId}::integer)
+            AND t.created_at >= NOW() - INTERVAL '30 days'
+            AND t.status NOT IN ('CANCELLED', 'ARCHIVED')
+        )
+        SELECT 
+          COUNT(*) as total_tasks,
+          SUM(completed) as completed_tasks,
+          SUM(on_time) as on_time_tasks,
+          AVG(CASE WHEN response_hours > 0 THEN response_hours ELSE NULL END) as avg_response_hours
+        FROM user_tasks
+      `;
+      
+      const metrics = metricsQuery[0] || { total_tasks: 0, completed_tasks: 0, on_time_tasks: 0, avg_response_hours: 0 };
+      
+      const totalTasks = parseInt(metrics.total_tasks) || 0;
+      const completedTasks = parseInt(metrics.completed_tasks) || 0;
+      const onTimeTasks = parseInt(metrics.on_time_tasks) || 0;
+      const avgResponseHours = parseFloat(metrics.avg_response_hours) || 0;
+      
+      // Calculate percentages
+      const onTimeRate = completedTasks > 0 ? Math.round((onTimeTasks / completedTasks) * 100) : 0;
+      const completionRate = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      const responseTimeScore = Math.max(0, Math.min(100, Math.round(100 - (avgResponseHours * 4))));
+      const qualityScore = Math.min(100, Math.max(0, Math.round(onTimeRate * 0.9 + 10)));
+      
+      res.json({
+        success: true,
+        data: {
+          onTimeRate,
+          responseTime: responseTimeScore,
+          completionRate,
+          qualityScore,
+          _raw: {
+            totalTasks,
+            completedTasks,
+            onTimeTasks,
+            avgResponseHours: Math.round(avgResponseHours * 10) / 10
+          }
+        }
+      });
+    } catch (error) {
+      console.error('Error fetching performance metrics:', error);
+      res.status(500).json({ 
+        success: false,
+        error: 'Failed to fetch performance metrics',
+        data: {
+          onTimeRate: 0,
+          responseTime: 0,
+          completionRate: 0,
+          qualityScore: 0
+        }
+      });
+    }
+  }
+);
+
+/**
  * @route   GET /api/tasks/:id/quick-view
  * @desc    Get task details with messages for quick view panel
  * @access  Private

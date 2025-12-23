@@ -257,7 +257,7 @@ export default function PaymentRequestPage() {
 
   return (
     <SuperAdminLayout>
-      <div className="p-6 max-w-7xl mx-auto">
+      <div className="p-6 w-full">
         {/* Header */}
         <div className="mb-6">
           <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-2">

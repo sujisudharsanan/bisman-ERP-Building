@@ -357,7 +357,7 @@ export default function SplashScreen({
         
         <div className="splash-hero-content">
           <div className={`splash-logo-container ${!showContent ? 'fade-out' : ''}`}>
-            <img src="/brand/logo-2.svg" alt="Bisman ERP Solutions" className="splash-bisman-logo" />
+            <span className="text-3xl md:text-4xl font-bold text-white tracking-wide">Eazymiles India Pvt Ltd</span>
           </div>
           
           {/* Client branding section - shows if client logo/name is available */}

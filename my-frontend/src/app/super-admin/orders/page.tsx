@@ -190,15 +190,15 @@ export default function SuperAdminOrdersPage() {
 
   return (
     <SuperAdminShell>
-      <div className="max-w-7xl mx-auto">
-    <div className="min-h-screen bg-gray-50 p-6">
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+      <div className="w-full">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">
             <div>
-              <h1 className="text-3xl font-bold text-gray-900">Order Management</h1>
-              <p className="text-gray-600 mt-2">
+              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Order Management</h1>
+              <p className="text-gray-600 dark:text-gray-400 mt-2">
                 Comprehensive order tracking and management system
               </p>
             </div>

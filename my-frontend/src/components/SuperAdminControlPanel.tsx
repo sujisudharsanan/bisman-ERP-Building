@@ -1235,7 +1235,7 @@ const SuperAdminControlPanel: React.FC = () => {
 
       {/* Main Content */}
   <div className="content-under-navbar lg:pl-52 min-h-screen">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
         {error && (
           <div className="mb-6 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-slate-800 rounded-lg p-4">
             <div className="flex">

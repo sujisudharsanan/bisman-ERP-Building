@@ -821,7 +821,7 @@ export function UserProfile({ userId, currentUser }: UserProfileProps) {
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <div className="bg-white shadow-sm border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 py-6">
+        <div className="w-full px-4 py-6">
           <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
               <div className="w-16 h-16 bg-blue-600 rounded-full flex items-center justify-center">
@@ -896,7 +896,7 @@ export function UserProfile({ userId, currentUser }: UserProfileProps) {
       </div>
 
       {/* Content */}
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="w-full px-4 py-8">
         {activeTab === 'overview' && (
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
             {/* User ID Banner */}

@@ -1127,19 +1127,19 @@ export default function SubscriptionPlansSettingsPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+    <div className="w-full py-4">
       {/* Header */}
       <div className="mb-8">
         <Link
           href="/super-admin/subscriptions"
-          className="inline-flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-4"
+          className="inline-flex items-center gap-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 mb-4"
         >
           <FiArrowLeft className="w-4 h-4" />
           Back to Subscriptions
         </Link>
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-3xl font-bold text-gray-900 flex items-center gap-3">
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100 flex items-center gap-3">
               <FiPackage className="w-8 h-8 text-blue-600" />
               Subscription Plans
             </h1>

@@ -459,12 +459,12 @@ const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
   }
 
   return (
-    <div className={`p-6 bg-white rounded-lg shadow-md ${className}`}>
+    <div className={`p-6 bg-white dark:bg-gray-800 rounded-lg shadow-md ${className}`}>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <div className="flex items-center space-x-2">
-          <Shield className="w-6 h-6 text-blue-600" />
-          <h2 className="text-xl font-semibold text-gray-900">
+          <Shield className="w-6 h-6 text-blue-600 dark:text-blue-400" />
+          <h2 className="text-xl font-semibold text-gray-900 dark:text-gray-100">
             Security Dashboard
           </h2>
           {securityStatus && (
@@ -475,12 +475,12 @@ const SecurityDashboard: React.FC<SecurityDashboardProps> = ({
         </div>
         <div className="flex items-center space-x-4">
           {alerts.filter(a => !a.acknowledged).length > 0 && (
-            <span className="flex items-center text-red-600 text-sm">
+            <span className="flex items-center text-red-600 dark:text-red-400 text-sm">
               <Bell className="w-4 h-4 mr-1" />
               {alerts.filter(a => !a.acknowledged).length} alerts
             </span>
           )}
-          <div className="text-sm text-gray-500">Last audit: {lastAuditTime}</div>
+          <div className="text-sm text-gray-500 dark:text-gray-400">Last audit: {lastAuditTime}</div>
         </div>
       </div>
 

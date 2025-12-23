@@ -67,7 +67,7 @@ export default function RoleLayout({
     <div className="min-h-screen bg-gray-50">
       {/* Header */}
       <header className={`bg-gradient-to-r ${getRoleColor()} shadow-lg`}>
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Left side - Role info */}
             <div className="flex items-center space-x-4">
@@ -122,13 +122,13 @@ export default function RoleLayout({
       </header>
 
       {/* Main content */}
-      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+      <main className="w-full px-4 sm:px-6 lg:px-8 py-8">
         {children}
       </main>
 
       {/* Footer */}
       <footer className="bg-white border-t border-gray-200 mt-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+        <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
             <div className="text-gray-600 text-sm">
               © 2024 BISMAN ERP. All rights reserved.

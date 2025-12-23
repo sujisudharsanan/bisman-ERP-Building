@@ -16,6 +16,7 @@ export enum TaskStatus {
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
   ARCHIVED = 'ARCHIVED',
+  WAITING_FOR_CLARIFICATION = 'WAITING_FOR_CLARIFICATION',
 }
 
 export enum TaskPriority {
@@ -71,6 +72,8 @@ export interface TaskUser {
   avatar?: string;
   roleName?: string;
   department?: string;
+  /** Pre-formatted display label: "Name • U-ID" - use this in UI */
+  displayLabel?: string;
 }
 
 // ============================================
@@ -85,6 +88,8 @@ export interface Task {
   description: string | null;
   status: TaskStatus;
   priority: TaskPriority;
+  /** Pre-formatted display label: "Title • TSK-ID" - use this in UI */
+  displayLabel?: string;
   
   // User relationships
   creatorId: number;
@@ -530,4 +535,299 @@ export interface FormattedTask {
   description: string;
   formattedDescription: string;
   spellCheckResults?: SpellCheckResult;
+}
+
+// ============================================
+// CLARIFICATION TYPES
+// ============================================
+
+export enum ClarificationStatus {
+  PENDING = 'pending',
+  RESPONDED = 'responded',
+  EXPIRED = 'expired',
+  CANCELLED = 'cancelled',
+}
+
+export enum ClarificationUrgency {
+  LOW = 'low',
+  NORMAL = 'normal',
+  HIGH = 'high',
+  CRITICAL = 'critical',
+}
+
+export interface ClarificationAttachment {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
+  size?: number;
+}
+
+export interface TaskClarification {
+  id: string;
+  taskId: number;
+  tenantId?: string;
+  
+  // Requester info
+  requesterId: number;
+  requesterName?: string;
+  requesterDepartment?: string;
+  requesterUsername?: string;
+  requesterEmail?: string;
+  
+  // Responder info
+  responderId?: number;
+  responderDepartmentId?: string;
+  responderName?: string;
+  responderType: 'user' | 'department';
+  responderUsername?: string;
+  responderEmail?: string;
+  
+  // Question
+  question: string;
+  attachments?: ClarificationAttachment[];
+  
+  // Response
+  response?: string;
+  responseAttachments?: ClarificationAttachment[];
+  respondedById?: number;
+  respondedByName?: string;
+  respondedByUsername?: string;
+  respondedAt?: string;
+  
+  // Status
+  status: ClarificationStatus;
+  urgency: ClarificationUrgency;
+  
+  // SLA tracking
+  pauseSla: boolean;
+  slaPausedAt?: string;
+  slaResumedAt?: string;
+  slaPausedHours?: number;
+  
+  // Expiry
+  expiryHours: number;
+  expiresAt?: string;
+  
+  // Previous task state
+  previousTaskStatus?: string;
+  
+  // Timestamps
+  createdAt: string;
+  updatedAt?: string;
+  
+  // Task info (from joins)
+  taskTitle?: string;
+  taskDescription?: string;
+  currentTaskStatus?: string;
+  taskPriority?: string;
+}
+
+export interface ClarificationAuditEntry {
+  id: number;
+  clarificationId: string;
+  taskId: number;
+  actorId: number;
+  actorName?: string;
+  actorRole?: string;
+  actorUsername?: string;
+  actorEmail?: string;
+  action: string;
+  oldStatus?: string;
+  newStatus?: string;
+  comment?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+export interface PendingClarificationsResponse {
+  success: boolean;
+  clarifications: TaskClarification[];
+  total: number;
+  page: number;
+  limit: number;
+  hasMore: boolean;
+}
+
+export interface ClarificationStats {
+  pendingCount: number;
+  respondedCount: number;
+  expiredCount: number;
+  cancelledCount: number;
+  avgPauseHours?: number;
+  avgResponseHours?: number;
+}
+
+// ============================================
+// POST-COMPLETION REVIEW TYPES
+// ============================================
+
+/**
+ * Review purposes - why the task is being sent for review
+ */
+export enum ReviewPurpose {
+  FYI = 'FYI',                     // For Information Only
+  CONFIRMATION = 'CONFIRMATION',   // Request confirmation of understanding
+  AUDIT = 'AUDIT',                 // For audit/compliance review
+  KNOWLEDGE = 'KNOWLEDGE',         // Knowledge sharing/training
+}
+
+/**
+ * Review status lifecycle
+ */
+export enum ReviewStatus {
+  PENDING = 'PENDING',
+  ACKNOWLEDGED = 'ACKNOWLEDGED',
+  COMMENTED = 'COMMENTED',
+  EXPIRED = 'EXPIRED',
+  CANCELLED = 'CANCELLED',
+}
+
+/**
+ * Purpose option for UI selection
+ */
+export interface ReviewPurposeOption {
+  value: ReviewPurpose;
+  label: string;
+  description: string;
+}
+
+/**
+ * Review attachment
+ */
+export interface ReviewAttachment {
+  id: string;
+  name: string;
+  url: string;
+  type: string;
+  size?: number;
+}
+
+/**
+ * Review comment
+ */
+export interface ReviewComment {
+  id: string;
+  reviewId: string;
+  authorId: number;
+  authorName?: string;
+  authorEmail?: string;
+  content: string;
+  attachments?: ReviewAttachment[];
+  parentId?: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+/**
+ * Task review - main entity
+ */
+export interface TaskReview {
+  id: string;
+  taskId: number;
+  tenantId?: string;
+  
+  // Sender info
+  senderId: number;
+  senderName?: string;
+  senderEmail?: string;
+  
+  // Reviewer info (specific user)
+  reviewerId?: number;
+  reviewerName?: string;
+  reviewerEmail?: string;
+  
+  // Reviewer department (alternative to specific user)
+  reviewerDepartmentId?: string;
+  
+  // Review details
+  purpose: ReviewPurpose;
+  note?: string;
+  attachments?: ReviewAttachment[];
+  
+  // Status
+  status: ReviewStatus;
+  
+  // Acknowledgment
+  acknowledgmentNote?: string;
+  acknowledgedAt?: string;
+  acknowledgedBy?: number;
+  acknowledgedByName?: string;
+  
+  // Expiry
+  expiryDays?: number;
+  expiresAt?: string;
+  
+  // Priority
+  priority: 'low' | 'normal' | 'high';
+  
+  // Timestamps
+  createdAt: string;
+  updatedAt?: string;
+  
+  // Task info (from joins)
+  taskTitle?: string;
+  taskDescription?: string;
+  taskStatus?: string;
+  taskPriority?: string;
+  taskCompletedAt?: string;
+  
+  // Comment count
+  commentCount?: number;
+  
+  // Comments (when expanded)
+  comments?: ReviewComment[];
+}
+
+/**
+ * Review audit entry
+ */
+export interface ReviewAuditEntry {
+  id: number;
+  reviewId: string;
+  actorId: number;
+  actorName?: string;
+  actorEmail?: string;
+  action: 'send' | 'view' | 'comment' | 'acknowledge' | 'cancel' | 'expire';
+  oldStatus?: string;
+  newStatus?: string;
+  comment?: string;
+  metadata?: Record<string, unknown>;
+  createdAt: string;
+}
+
+/**
+ * Review statistics for dashboard
+ */
+export interface ReviewStats {
+  pendingToReview: number;
+  pendingSent: number;
+  totalAcknowledged: number;
+  totalSent: number;
+}
+
+/**
+ * API response types
+ */
+export interface PendingReviewsResponse {
+  success: boolean;
+  reviews: TaskReview[];
+  pagination: {
+    page: number;
+    limit: number;
+    total: number;
+    pages: number;
+  };
+}
+
+export interface ReviewDetailsResponse {
+  success: boolean;
+  review: TaskReview & {
+    comments: ReviewComment[];
+  };
+}
+
+export interface ReviewAuditResponse {
+  success: boolean;
+  audit: ReviewAuditEntry[];
 }

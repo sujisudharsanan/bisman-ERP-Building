@@ -81,7 +81,7 @@ export default function ERP_DashboardLayout({ role }: ERPDashboardLayoutProps) {
     // Skeleton loaders
     return (
       <div className="min-h-screen bg-theme p-8 theme-transition">
-        <div className="max-w-7xl mx-auto">
+        <div className="w-full">
           <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div className="h-8 w-1/3 bg-gray-700 rounded animate-pulse" />
             <div className="h-8 w-1/4 bg-gray-700 rounded animate-pulse" />
@@ -109,7 +109,7 @@ export default function ERP_DashboardLayout({ role }: ERPDashboardLayoutProps) {
 
   return (
     <div className="min-h-screen bg-theme p-8 theme-transition">
-      <div className="max-w-7xl mx-auto">
+      <div className="w-full">
         {/* Greeting and quick actions */}
         <div className="mb-8 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>

@@ -231,6 +231,159 @@ const emitBulkTasksDeleted = (io, taskIds, deleterId) => {
   io.emit('tasks:bulk_deleted', { taskIds, userId: deleterId });
 };
 
+/**
+ * Emit clarification requested event
+ * Notifies the responder that they have a pending clarification
+ */
+const emitClarificationRequested = (io, clarification, task, requesterId) => {
+  // Notify task room
+  io.to(`task:${task.id}`).emit('task:clarification_requested', { 
+    clarification, 
+    task, 
+    userId: requesterId 
+  });
+  
+  // Notify the responder
+  if (clarification.responder_id) {
+    io.to(`user:${clarification.responder_id}`).emit('clarification:new', { 
+      clarification,
+      taskId: task.id,
+      taskTitle: task.title,
+    });
+  }
+  
+  // Notify task owner and creator
+  io.to(`user:${task.creator_id}`).emit('task:clarification_requested', { 
+    clarification, 
+    task, 
+    userId: requesterId 
+  });
+  io.to(`user:${task.assignee_id}`).emit('task:clarification_requested', { 
+    clarification, 
+    task, 
+    userId: requesterId 
+  });
+};
+
+/**
+ * Emit clarification response event
+ * Notifies the requester that their clarification has been answered
+ */
+const emitClarificationResponse = (io, clarification, task, responderId, taskResumed) => {
+  // Notify task room
+  io.to(`task:${task.id}`).emit('task:clarification_responded', { 
+    clarification, 
+    task, 
+    userId: responderId,
+    taskResumed,
+  });
+  
+  // Notify the requester
+  io.to(`user:${clarification.requester_id}`).emit('clarification:response', { 
+    clarification,
+    taskId: task.id,
+    taskTitle: task.title,
+    taskResumed,
+  });
+  
+  // Notify task participants
+  io.to(`user:${task.creator_id}`).emit('task:clarification_responded', { 
+    clarification, 
+    task, 
+    userId: responderId,
+    taskResumed,
+  });
+  io.to(`user:${task.assignee_id}`).emit('task:clarification_responded', { 
+    clarification, 
+    task, 
+    userId: responderId,
+    taskResumed,
+  });
+};
+
+// ============================================
+// POST-COMPLETION REVIEW EVENTS
+// ============================================
+
+/**
+ * Emit review requested event
+ * Notifies the reviewer that they have a new review request
+ */
+const emitReviewRequested = (io, review, tenantId) => {
+  // Notify the reviewer
+  if (review.reviewer_id) {
+    io.to(`user:${review.reviewer_id}`).emit('review:new', { 
+      review,
+      taskId: review.task_id,
+      taskTitle: review.task_title,
+      senderName: review.sender_name,
+      purpose: review.purpose,
+    });
+  }
+  
+  // Broadcast to tenant for department-based reviews
+  if (review.reviewer_department_id) {
+    io.to(`tenant:${tenantId}`).emit('review:department_requested', {
+      review,
+      departmentId: review.reviewer_department_id,
+    });
+  }
+  
+  // Notify task room
+  io.to(`task:${review.task_id}`).emit('task:review_requested', { 
+    review,
+  });
+};
+
+/**
+ * Emit review acknowledged event
+ * Notifies the sender that their review has been acknowledged
+ */
+const emitReviewAcknowledged = (io, review, _tenantId) => {
+  // Notify the sender
+  io.to(`user:${review.sender_id}`).emit('review:acknowledged', { 
+    review,
+    taskId: review.task_id,
+    acknowledgedBy: review.acknowledged_by_name,
+  });
+  
+  // Notify task room
+  io.to(`task:${review.task_id}`).emit('task:review_acknowledged', { 
+    review,
+  });
+};
+
+/**
+ * Emit review comment event
+ * Notifies participants of new comments on a review
+ */
+const emitReviewCommented = (io, reviewId, comment, _tenantId) => {
+  // Notify review participants
+  io.to(`review:${reviewId}`).emit('review:comment_added', {
+    reviewId,
+    comment,
+  });
+};
+
+/**
+ * Emit review cancelled event
+ * Notifies the reviewer that the review was cancelled
+ */
+const emitReviewCancelled = (io, review, _tenantId) => {
+  // Notify the reviewer
+  if (review.reviewer_id) {
+    io.to(`user:${review.reviewer_id}`).emit('review:cancelled', { 
+      review,
+      taskId: review.task_id,
+    });
+  }
+  
+  // Notify task room
+  io.to(`task:${review.task_id}`).emit('task:review_cancelled', { 
+    review,
+  });
+};
+
 module.exports = {
   initializeTaskSocket,
   emitTaskCreated,
@@ -247,5 +400,13 @@ module.exports = {
   emitAttachmentsAdded,
   emitAttachmentDeleted,
   emitBulkTasksUpdated,
-  emitBulkTasksDeleted
+  emitBulkTasksDeleted,
+  // Clarification events
+  emitClarificationRequested,
+  emitClarificationResponse,
+  // Review events
+  emitReviewRequested,
+  emitReviewAcknowledged,
+  emitReviewCommented,
+  emitReviewCancelled,
 };

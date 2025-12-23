@@ -301,15 +301,15 @@ export const SuperAdminDashboard: React.FC = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">SuperAdmin Dashboard</h1>
-          <p className="text-sm text-gray-500">
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-gray-100">SuperAdmin Dashboard</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
             System overview and key performance metrics
             {lastRefresh && (
-              <span className="ml-2 text-gray-400">
+              <span className="ml-2 text-gray-400 dark:text-gray-500">
                 • Updated {lastRefresh.toLocaleTimeString()}
               </span>
             )}
@@ -321,8 +321,8 @@ export const SuperAdminDashboard: React.FC = () => {
             onClick={refetch}
             disabled={loading}
             className={`
-              p-2 rounded-lg border border-gray-200 bg-white
-              ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}
+              p-2 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800
+              ${loading ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50 dark:hover:bg-gray-700'}
             `}
             title="Refresh data"
           >
