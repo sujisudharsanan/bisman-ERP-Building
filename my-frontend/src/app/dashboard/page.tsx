@@ -56,6 +56,21 @@ export default function UnifiedDashboardPage() {
     completionRate: 0,
     qualityScore: 0
   });
+  const [taskPanelOpen, setTaskPanelOpen] = useState(false);
+  
+  // Track task panel open/close for layout adjustments
+  useEffect(() => {
+    const handleOpenTaskPanel = () => setTaskPanelOpen(true);
+    const handleCloseTaskPanel = () => setTaskPanelOpen(false);
+    
+    window.addEventListener('openTaskInChat', handleOpenTaskPanel);
+    window.addEventListener('closeTaskPanel', handleCloseTaskPanel);
+    
+    return () => {
+      window.removeEventListener('openTaskInChat', handleOpenTaskPanel);
+      window.removeEventListener('closeTaskPanel', handleCloseTaskPanel);
+    };
+  }, []);
   
   // Get role-specific configuration
   const roleName = user?.roleName || user?.role || '';
@@ -433,8 +448,8 @@ export default function UnifiedDashboardPage() {
                   </div>
                 </div>
                 
-                {/* Right Panel - profile hidden since it's now in top bar */}
-                {config.showRightPanel && (
+                {/* Right Panel - hidden when task panel is open */}
+                {config.showRightPanel && !taskPanelOpen && (
                   <div className="flex-none hidden lg:block h-full">
                     <RightPanel 
                       mode="dock" 
