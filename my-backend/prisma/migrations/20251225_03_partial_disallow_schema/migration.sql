@@ -40,7 +40,7 @@ ADD COLUMN IF NOT EXISTS line_item_count INTEGER DEFAULT 0;
 
 ALTER TABLE settlement_line_items
 ADD COLUMN IF NOT EXISTS is_disallowed BOOLEAN DEFAULT false,
-ADD COLUMN IF NOT EXISTS disallowed_by UUID REFERENCES users(id),
+ADD COLUMN IF NOT EXISTS disallowed_by UUID REFERENCES users_enhanced(id),
 ADD COLUMN IF NOT EXISTS disallowed_at TIMESTAMP,
 ADD COLUMN IF NOT EXISTS disallowed_role VARCHAR(50),
 ADD COLUMN IF NOT EXISTS disallow_reason TEXT,
@@ -57,7 +57,7 @@ CREATE INDEX IF NOT EXISTS idx_sli_disallowed ON settlement_line_items(is_disall
 
 CREATE TABLE IF NOT EXISTS settlement_disallow_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  settlement_id UUID NOT NULL REFERENCES settlements(id) ON DELETE CASCADE,
+  settlement_id UUID NOT NULL  ON DELETE CASCADE,
   line_item_id UUID NOT NULL REFERENCES settlement_line_items(id) ON DELETE CASCADE,
   payment_request_id VARCHAR(255) NOT NULL,
   
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS settlement_disallow_history (
   amount_disallowed DECIMAL(18,2) NOT NULL,
   
   -- Who disallowed
-  disallowed_by UUID NOT NULL REFERENCES users(id),
+  disallowed_by UUID NOT NULL REFERENCES users_enhanced(id),
   disallowed_by_name VARCHAR(255),
   disallowed_role VARCHAR(50) NOT NULL,        -- FINANCE_CONTROLLER or CFO
   
@@ -98,14 +98,14 @@ CREATE INDEX IF NOT EXISTS idx_sdh_disallowed_by ON settlement_disallow_history(
 
 CREATE TABLE IF NOT EXISTS utr_correction_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  settlement_id UUID NOT NULL REFERENCES settlements(id) ON DELETE CASCADE,
+  settlement_id UUID NOT NULL  ON DELETE CASCADE,
   
   -- UTR values
   old_utr VARCHAR(100),
   new_utr VARCHAR(100) NOT NULL,
   
   -- Who corrected
-  corrected_by UUID NOT NULL REFERENCES users(id),
+  corrected_by UUID NOT NULL REFERENCES users_enhanced(id),
   corrected_by_name VARCHAR(255),
   corrected_role VARCHAR(50),
   
@@ -130,7 +130,7 @@ CREATE INDEX IF NOT EXISTS idx_uch_new_utr ON utr_correction_history(new_utr);
 
 CREATE TABLE IF NOT EXISTS settlement_failure_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  settlement_id UUID NOT NULL REFERENCES settlements(id) ON DELETE CASCADE,
+  settlement_id UUID NOT NULL  ON DELETE CASCADE,
   
   -- Failure details
   failure_code VARCHAR(50),
@@ -143,13 +143,13 @@ CREATE TABLE IF NOT EXISTS settlement_failure_history (
   bank_reference VARCHAR(100),
   
   -- Who reported (if manual)
-  reported_by UUID REFERENCES users(id),
+  reported_by UUID REFERENCES users_enhanced(id),
   reported_by_name VARCHAR(255),
   
   -- Recovery
   recovery_action VARCHAR(50),                 -- RETRY, CANCEL, REQUEUE
   recovered_at TIMESTAMP,
-  recovered_by UUID REFERENCES users(id),
+  recovered_by UUID REFERENCES users_enhanced(id),
   
   -- Audit
   tenant_id UUID,

@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS settlements (
   -- Status & Workflow
   status VARCHAR(50) DEFAULT 'DRAFT',
   current_stage VARCHAR(50) DEFAULT 'ACCOUNTANT_DRAFT',
-  current_approver_id UUID REFERENCES users(id),
+  current_approver_id UUID REFERENCES users_enhanced(id),
   
   -- Banking
   utr_number VARCHAR(100),
@@ -84,18 +84,18 @@ CREATE TABLE IF NOT EXISTS settlements (
   attachments JSONB DEFAULT '[]',
   
   -- Audit
-  created_by UUID NOT NULL REFERENCES users(id),
-  submitted_by UUID REFERENCES users(id),
+  created_by UUID NOT NULL REFERENCES users_enhanced(id),
+  submitted_by UUID REFERENCES users_enhanced(id),
   submitted_at TIMESTAMP,
-  finance_approved_by UUID REFERENCES users(id),
+  finance_approved_by UUID REFERENCES users_enhanced(id),
   finance_approved_at TIMESTAMP,
-  cfo_approved_by UUID REFERENCES users(id),
+  cfo_approved_by UUID REFERENCES users_enhanced(id),
   cfo_approved_at TIMESTAMP,
-  sent_to_bank_by UUID REFERENCES users(id),
+  sent_to_bank_by UUID REFERENCES users_enhanced(id),
   sent_to_bank_at TIMESTAMP,
-  executed_by UUID REFERENCES users(id),      -- Banker
+  executed_by UUID REFERENCES users_enhanced(id),      -- Banker
   executed_at TIMESTAMP,
-  rejected_by UUID REFERENCES users(id),
+  rejected_by UUID REFERENCES users_enhanced(id),
   rejected_at TIMESTAMP,
   rejection_reason TEXT,
   rejection_stage VARCHAR(50),
@@ -128,7 +128,7 @@ CREATE INDEX IF NOT EXISTS idx_settlements_utr ON settlements(utr_number);
 
 CREATE TABLE IF NOT EXISTS settlement_line_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  settlement_id UUID NOT NULL REFERENCES settlements(id) ON DELETE CASCADE,
+  settlement_id UUID NOT NULL  ON DELETE CASCADE,
   payment_request_id VARCHAR(255) NOT NULL,   -- References payment_requests.id
   
   -- Amounts for THIS settlement (supports partial payments)
@@ -189,7 +189,7 @@ ALTER TABLE payment_requests
 ADD COLUMN IF NOT EXISTS owned_by_accounts BOOLEAN DEFAULT false;
 
 ALTER TABLE payment_requests 
-ADD COLUMN IF NOT EXISTS accounts_owner_id UUID REFERENCES users(id);
+ADD COLUMN IF NOT EXISTS accounts_owner_id UUID REFERENCES users_enhanced(id);
 
 ALTER TABLE payment_requests 
 ADD COLUMN IF NOT EXISTS accounts_takeover_at TIMESTAMP;
@@ -205,7 +205,7 @@ ADD COLUMN IF NOT EXISTS accounts_takeover_at TIMESTAMP;
 CREATE TABLE IF NOT EXISTS payment_request_partial_payments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   payment_request_id VARCHAR(255) NOT NULL,
-  settlement_id UUID NOT NULL REFERENCES settlements(id),
+  settlement_id UUID NOT NULL ,
   
   -- Amounts
   amount_paid DECIMAL(18,2) NOT NULL,
@@ -222,7 +222,7 @@ CREATE TABLE IF NOT EXISTS payment_request_partial_payments (
   is_final_payment BOOLEAN DEFAULT false,
   
   -- Audit
-  executed_by UUID REFERENCES users(id),
+  executed_by UUID REFERENCES users_enhanced(id),
   executed_at TIMESTAMP DEFAULT NOW(),
   
   tenant_id UUID,
@@ -239,7 +239,7 @@ CREATE INDEX IF NOT EXISTS idx_prpp_utr ON payment_request_partial_payments(utr_
 
 CREATE TABLE IF NOT EXISTS settlement_approvals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  settlement_id UUID NOT NULL REFERENCES settlements(id) ON DELETE CASCADE,
+  settlement_id UUID NOT NULL  ON DELETE CASCADE,
   
   -- Action
   action VARCHAR(50) NOT NULL,                -- SUBMIT, APPROVE, REJECT, SEND_TO_BANK, EXECUTE
@@ -248,7 +248,7 @@ CREATE TABLE IF NOT EXISTS settlement_approvals (
   stage VARCHAR(50),
   
   -- Actor
-  actor_id UUID NOT NULL REFERENCES users(id),
+  actor_id UUID NOT NULL REFERENCES users_enhanced(id),
   actor_name VARCHAR(255),
   actor_role VARCHAR(100),
   actor_level INTEGER,

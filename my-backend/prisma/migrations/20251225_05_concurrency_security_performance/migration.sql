@@ -285,7 +285,7 @@ $$ LANGUAGE plpgsql;
 -- Table: Track all actors in a settlement lifecycle
 CREATE TABLE IF NOT EXISTS settlement_actor_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  settlement_id UUID NOT NULL REFERENCES settlements(id),
+  settlement_id UUID NOT NULL ,
   
   -- Actor info
   actor_id UUID NOT NULL,
@@ -416,7 +416,7 @@ $$ LANGUAGE plpgsql;
 CREATE TABLE IF NOT EXISTS settlement_approval_tokens (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
-  settlement_id UUID NOT NULL REFERENCES settlements(id),
+  settlement_id UUID NOT NULL ,
   
   -- Token details
   token_hash VARCHAR(128) NOT NULL UNIQUE,  -- SHA-512 of actual token
@@ -566,7 +566,7 @@ CREATE TABLE IF NOT EXISTS settlement_fraud_signals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   
   -- Context
-  settlement_id UUID REFERENCES settlements(id),
+  settlement_id UUID ,
   payment_request_id UUID,
   user_id UUID,
   

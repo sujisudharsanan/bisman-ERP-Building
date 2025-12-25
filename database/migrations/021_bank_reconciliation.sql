@@ -163,7 +163,7 @@ CREATE TABLE IF NOT EXISTS bank_statements (
     
     -- Statement identification
     statement_number VARCHAR(100),
-    bank_account_id UUID REFERENCES bank_accounts(id),
+    bank_account_id UUID,  -- Optional reference to user_bank_accounts
     bank_name VARCHAR(255) NOT NULL,
     account_number VARCHAR(100),
     

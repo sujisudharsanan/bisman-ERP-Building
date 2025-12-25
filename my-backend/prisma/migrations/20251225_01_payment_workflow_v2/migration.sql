@@ -35,7 +35,7 @@ ALTER TABLE payment_requests
 ADD COLUMN IF NOT EXISTS approved_amount DECIMAL(18,2);
 
 ALTER TABLE payment_requests 
-ADD COLUMN IF NOT EXISTS approved_by UUID REFERENCES users(id);
+ADD COLUMN IF NOT EXISTS approved_by UUID REFERENCES users_enhanced(id);
 
 ALTER TABLE payment_requests 
 ADD COLUMN IF NOT EXISTS approved_at TIMESTAMP;
@@ -51,13 +51,13 @@ ALTER TABLE payment_requests
 ADD COLUMN IF NOT EXISTS settled_at TIMESTAMP;
 
 ALTER TABLE payment_requests 
-ADD COLUMN IF NOT EXISTS settled_by UUID REFERENCES users(id);
+ADD COLUMN IF NOT EXISTS settled_by UUID REFERENCES users_enhanced(id);
 
 ALTER TABLE payment_requests 
 ADD COLUMN IF NOT EXISTS accounted_at TIMESTAMP;
 
 ALTER TABLE payment_requests 
-ADD COLUMN IF NOT EXISTS accounted_by UUID REFERENCES users(id);
+ADD COLUMN IF NOT EXISTS accounted_by UUID REFERENCES users_enhanced(id);
 
 ALTER TABLE payment_requests 
 ADD COLUMN IF NOT EXISTS accounting_voucher_number VARCHAR(100);
@@ -83,7 +83,7 @@ ADD COLUMN IF NOT EXISTS escalation_reason TEXT;
 
 -- Resolution tracking
 ALTER TABLE payment_requests 
-ADD COLUMN IF NOT EXISTS resolved_by UUID REFERENCES users(id);
+ADD COLUMN IF NOT EXISTS resolved_by UUID REFERENCES users_enhanced(id);
 
 ALTER TABLE payment_requests 
 ADD COLUMN IF NOT EXISTS resolved_at TIMESTAMP;
@@ -93,7 +93,7 @@ ADD COLUMN IF NOT EXISTS resolution_reason TEXT;
 
 -- Hierarchy tracking
 ALTER TABLE payment_requests 
-ADD COLUMN IF NOT EXISTS requested_by UUID REFERENCES users(id);
+ADD COLUMN IF NOT EXISTS requested_by UUID REFERENCES users_enhanced(id);
 
 ALTER TABLE payment_requests 
 ADD COLUMN IF NOT EXISTS requester_level INTEGER;
@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS payment_settlement_batches (
   batch_number VARCHAR(50) NOT NULL UNIQUE,
   
   -- Batch details
-  tenant_id UUID NOT NULL REFERENCES tenants(id),
+  tenant_id UUID NOT NULL ,
   batch_type VARCHAR(50) DEFAULT 'WEEKLY', -- DAILY, WEEKLY, MONTHLY
   
   -- Amount summary
@@ -144,8 +144,8 @@ CREATE TABLE IF NOT EXISTS payment_settlement_batches (
   settled_at TIMESTAMP,
   
   -- Audit
-  created_by UUID REFERENCES users(id),
-  processed_by UUID REFERENCES users(id),
+  created_by UUID REFERENCES users_enhanced(id),
+  processed_by UUID REFERENCES users_enhanced(id),
   
   CONSTRAINT valid_batch_status CHECK (
     status IN ('OPEN', 'LOCKED', 'PROCESSING', 'SETTLED', 'FAILED', 'CANCELLED')
@@ -164,7 +164,7 @@ CREATE TABLE IF NOT EXISTS payment_request_messages (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   payment_request_id VARCHAR(255) NOT NULL,
   
-  sender_id UUID NOT NULL REFERENCES users(id),
+  sender_id UUID NOT NULL REFERENCES users_enhanced(id),
   content TEXT NOT NULL,
   message_type VARCHAR(50) DEFAULT 'COMMENT',
   
