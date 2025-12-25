@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
+import { getRoleDisplayName } from '@/utils/roleDisplay';
 import { 
   Send, 
   Sparkles,
@@ -1744,7 +1745,7 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
                   <div className="flex-1 text-left min-w-0">
                     <p className="text-white text-sm font-medium truncate">{chatUser.name}</p>
                     {chatUser.roleName && (
-                      <p className="text-gray-500 text-[11px] truncate capitalize">{chatUser.roleName.replace(/_/g, ' ').toLowerCase()}</p>
+                      <p className="text-gray-500 text-[11px] truncate">{getRoleDisplayName(chatUser.roleName)}</p>
                     )}
                   </div>
                   {/* Unread Badge */}

@@ -13,6 +13,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import { Circle, AlertCircle } from 'lucide-react';
 import { safeComponent } from '@/lib/safeComponent';
 import { useAuth } from '@/common/hooks/useAuth';
+import { getRoleDisplayName } from '@/utils/roleDisplay';
 import {
   PAGE_REGISTRY,
   type PageMetadata,
@@ -786,7 +787,7 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
           {user && (
             <div className="mt-2 px-2 py-1.5 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
               <p className="text-[11px] text-gray-600 dark:text-gray-300 font-medium capitalize">
-                {(user.roleName || user.role || 'User').replace(/_/g, ' ').toLowerCase()}
+                {getRoleDisplayName(user.roleName || user.role)}
               </p>
             </div>
           )}

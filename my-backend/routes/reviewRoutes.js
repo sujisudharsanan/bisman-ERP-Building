@@ -8,10 +8,10 @@
 const express = require('express');
 const router = express.Router();
 const reviewService = require('../services/reviewService');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 
 // All routes require authentication
-router.use(authenticateToken);
+router.use(authenticate);
 
 /**
  * POST /api/reviews
@@ -272,6 +272,99 @@ router.get('/task/:taskId', async (req, res) => {
   } catch (error) {
     console.error('Error getting task reviews:', error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+/**
+ * GET /api/reviews/available-reviewers
+ * Get available users and departments for review selection
+ * NOTE: This route MUST be defined BEFORE /:id to prevent route matching issues
+ */
+router.get('/available-reviewers', async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id;
+    const currentUserId = req.user.id;
+    const { q = '', limit = 50 } = req.query;
+    const searchTerm = q.toLowerCase().trim();
+    
+    // Get prisma client
+    const { getPrisma } = require('../lib/prisma');
+    const prisma = getPrisma();
+    
+    // Fetch active users in the same tenant (excluding current user)
+    const whereClause = {
+      is_active: true,
+      tenant_id: tenantId,
+      NOT: { id: currentUserId }
+    };
+    
+    // Add search filter if query provided
+    if (searchTerm) {
+      whereClause.AND = [
+        {
+          OR: [
+            { username: { contains: searchTerm, mode: 'insensitive' } },
+            { email: { contains: searchTerm, mode: 'insensitive' } },
+          ]
+        }
+      ];
+    }
+    
+    const users = await prisma.user.findMany({
+      where: whereClause,
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        role: true,
+        profile_data: true,
+      },
+      take: parseInt(limit) || 50,
+      orderBy: { username: 'asc' }
+    });
+    
+    // Map users to required format
+    const availableUsers = users.map(user => {
+      const profileData = user.profile_data || {};
+      return {
+        id: user.id,
+        name: user.username || user.email?.split('@')[0] || '',
+        email: user.email,
+        department: profileData.department || user.role || ''
+      };
+    });
+    
+    // Fetch active departments for this tenant
+    let availableDepartments = [];
+    try {
+      const departments = await prisma.$queryRaw`
+        SELECT id::text, name, code
+        FROM departments
+        WHERE tenant_id = ${tenantId}::uuid AND is_active = true
+        ORDER BY name ASC
+      `;
+      availableDepartments = departments.map(d => ({
+        id: d.id,
+        name: d.name,
+        code: d.code
+      }));
+    } catch (deptError) {
+      console.warn('[Reviews] Could not fetch departments:', deptError.message);
+      // Continue without departments - they may not have the departments table
+    }
+    
+    res.json({
+      success: true,
+      users: availableUsers,
+      departments: availableDepartments
+    });
+  } catch (error) {
+    console.error('[Reviews] Error fetching available reviewers:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to fetch available reviewers',
+      message: error.message
+    });
   }
 });
 

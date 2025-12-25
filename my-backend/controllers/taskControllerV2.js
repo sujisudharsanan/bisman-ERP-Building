@@ -541,11 +541,41 @@ const createTask = async (req, res) => {
       priority = 'MEDIUM',
       dueDate,
       status: rawStatus = 'OPEN',
-      tags = []
+      tags = [],
+      skipHierarchyCheck = false  // Allow bypassing for system-created tasks
     } = req.body;
     
     // Resolve assignee UUID to integer if needed
     const assigneeId = rawAssigneeId ? (await resolveUserId(rawAssigneeId) || rawAssigneeId) : null;
+    
+    // ============================================
+    // HIERARCHY CHECK: Subordinates cannot assign to superiors
+    // ============================================
+    if (assigneeId && !skipHierarchyCheck) {
+      try {
+        const taskRequestService = require('../services/taskRequestService');
+        const hierarchyCheck = await taskRequestService.checkAssignmentHierarchy(userId, assigneeId);
+        
+        if (hierarchyCheck.requiresRequest) {
+          // Return 403 with specific code so frontend can show request modal
+          return res.status(403).json({
+            success: false,
+            error: 'Request-based workflow required',
+            code: 'HIERARCHY_REQUIRES_REQUEST',
+            message: hierarchyCheck.reason,
+            details: {
+              creatorLevel: hierarchyCheck.creatorLevel,
+              assigneeLevel: hierarchyCheck.assigneeLevel,
+              creatorRoleName: hierarchyCheck.creatorRoleName,
+              assigneeRoleName: hierarchyCheck.assigneeRoleName
+            }
+          });
+        }
+      } catch (hierarchyError) {
+        console.warn('[TaskController] Hierarchy check failed, allowing task creation:', hierarchyError.message);
+        // Continue with task creation if hierarchy check fails (graceful degradation)
+      }
+    }
     
     // Normalize status to uppercase for consistency
     const status = rawStatus.toUpperCase();

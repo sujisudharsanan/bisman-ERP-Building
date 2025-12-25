@@ -756,6 +756,28 @@ router.get('/me', async (req, res) => {
       if (user) {
         user.name = user.username;
         user.userType = 'USER';
+        
+        // Fetch client branding info for splash screen
+        if (user.tenant_id) {
+          try {
+            const client = await prisma.client.findUnique({
+              where: { id: user.tenant_id },
+              select: {
+                name: true,
+                logo: true,
+                settings: true
+              }
+            });
+            if (client) {
+              const branding = client.settings?.branding || {};
+              user.clientDisplayName = branding.display_name || client.name || null;
+              user.clientLogo = branding.logo_url || client.logo || null;
+              user.clientPrimaryColor = branding.theme_primary_color || null;
+            }
+          } catch (clientErr) {
+            console.warn('Failed to fetch client branding:', clientErr.message);
+          }
+        }
       }
     }
 

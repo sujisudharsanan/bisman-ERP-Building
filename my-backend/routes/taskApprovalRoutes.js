@@ -8,10 +8,10 @@
  * 
  * "Show me all tasks that require MY decision, review, or acknowledgment."
  * 
- * VISIBILITY RULES:
- * - L1-L5 (Staff/Officers): See ONLY tasks awaiting their approval
- * - L6-L8 (Managers/Dept Heads): See tasks awaiting approval + subordinate completions for review
- * - L9-L10 (Admin/Super Admin): See ALL tasks, ALL departments, control tower view
+ * VISIBILITY RULES (10-100 authority scale):
+ * - 10-50 (Staff/Officers): See ONLY tasks awaiting their approval
+ * - 60-85 (Managers/Dept Heads): See tasks awaiting approval + subordinate completions for review
+ * - 90-100 (Admin/Super Admin): See ALL tasks, ALL departments, control tower view
  * 
  * CRITICAL: No cross-department visibility for non-admins.
  * Visibility is enforced at QUERY level, not frontend filtering.
@@ -23,7 +23,11 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient();
-const { getBusinessLevelFromRole } = require('../lib/businessHierarchy');
+const { 
+  getBusinessLevelFromRole, 
+  getEffectiveAuthorityLevelFromUser,
+  AUTHORITY_LEVELS
+} = require('../lib/businessHierarchy');
 
 // ============================================================================
 // MIDDLEWARE
@@ -31,6 +35,7 @@ const { getBusinessLevelFromRole } = require('../lib/businessHierarchy');
 
 /**
  * Attach user business level and department context
+ * Uses unified 10-100 authority scale
  */
 function attachUserContext(req, res, next) {
   const user = req.user;
@@ -42,13 +47,19 @@ function attachUserContext(req, res, next) {
     });
   }
 
-  // Get business level from role
-  req.userLevel = user.businessLevel || user.business_level || getBusinessLevelFromRole(user.role || user.roleName) || 1;
+  // Get effective authority level (considers overrides)
+  const roleLevel = getBusinessLevelFromRole(user.role || user.roleName);
+  const effectiveLevel = getEffectiveAuthorityLevelFromUser(user) || roleLevel || AUTHORITY_LEVELS.STAFF;
+  
+  req.userLevel = effectiveLevel;
   req.userId = user.id;
   req.tenantId = user.tenantId || user.tenant_id || user.enterpriseId;
   req.departmentId = user.departmentId || user.department_id || null;
   req.hubId = user.hubId || user.hub_id || null;
-  req.isAdmin = req.userLevel >= 9;
+  // Admin threshold is 90+ on 10-100 scale
+  req.isAdmin = effectiveLevel >= AUTHORITY_LEVELS.ADMIN;
+  // Manager threshold is 60+ on 10-100 scale
+  req.isManager = effectiveLevel >= AUTHORITY_LEVELS.BRANCH_INCHARGE && effectiveLevel < AUTHORITY_LEVELS.ADMIN;
   
   next();
 }
@@ -98,21 +109,26 @@ router.get('/', async (req, res) => {
     const userLevel = req.userLevel;
     const userDepartmentId = req.departmentId;
     const isAdmin = req.isAdmin;
+    const isManager = req.isManager;
 
     // Build the visibility filter based on role
     // CRITICAL: This is where governance is enforced
+    // Uses 10-100 authority scale:
+    // - 90-100 (Admin+): See everything
+    // - 60-85 (Manager): See tasks where they are approver + subordinate reviews
+    // - 10-55 (Staff): See only tasks awaiting their approval
     let visibilityFilter = '';
     
     if (isAdmin) {
-      // L9+ sees everything in the tenant
+      // Level 90+ sees everything in the tenant
       visibilityFilter = `AND ai.tenant_id = '${tenantId}'::uuid`;
       
       // Admin can filter by department
       if (department && department !== 'all') {
         visibilityFilter += ` AND pr.department_id = '${department}'::uuid`;
       }
-    } else if (userLevel >= 6 && userLevel <= 8) {
-      // L6-L8: See tasks where they are approver, reviewer, or escalation target
+    } else if (isManager) {
+      // Level 60-85: See tasks where they are approver, reviewer, or escalation target
       // AND tasks from direct subordinates requiring review
       // RESTRICTED to their department only
       visibilityFilter = `
@@ -122,7 +138,7 @@ router.get('/', async (req, res) => {
           asi.resolved_approver_id = '${userId}'::uuid
           -- User is escalation target
           OR asi.escalated_to = '${userId}'::uuid
-          -- User is completion reviewer (L6-L8 can see completed tasks from subordinates)
+          -- User is completion reviewer (Managers can see completed tasks from subordinates)
           OR (
             asi.status = 'approved' 
             AND EXISTS (
@@ -135,7 +151,7 @@ router.get('/', async (req, res) => {
         ${userDepartmentId ? `AND (pr.department_id = '${userDepartmentId}'::uuid OR pr.department_id IS NULL)` : ''}
       `;
     } else {
-      // L1-L5: See ONLY tasks awaiting their approval
+      // Level 10-55: See ONLY tasks awaiting their approval
       // NO department-wide visibility, NO subordinate visibility
       visibilityFilter = `
         AND ai.tenant_id = '${tenantId}'::uuid
@@ -191,7 +207,7 @@ router.get('/', async (req, res) => {
       searchFilter = `
         AND (
           ai.entity_reference ILIKE '%${searchTerm}%'
-          OR creator.full_name ILIKE '%${searchTerm}%'
+          OR CONCAT(creator.first_name, ' ', creator.last_name) ILIKE '%${searchTerm}%'
           OR creator.email ILIKE '%${searchTerm}%'
           OR aws.name ILIKE '%${searchTerm}%'
         )
@@ -212,7 +228,7 @@ router.get('/', async (req, res) => {
         
         -- Creator info
         ai.initiated_by as "createdById",
-        COALESCE(creator.full_name, creator.email, 'Unknown') as "createdByName",
+        COALESCE(TRIM(CONCAT(creator.first_name, ' ', creator.last_name)), creator.email, 'Unknown') as "createdByName",
         creator.email as "createdByEmail",
         creator_role.name as "createdByRole",
         
@@ -229,7 +245,7 @@ router.get('/', async (req, res) => {
         
         -- Approver info
         asi.resolved_approver_id as "approverId",
-        COALESCE(approver.full_name, approver.email, 'Unassigned') as "approverName",
+        COALESCE(TRIM(CONCAT(approver.first_name, ' ', approver.last_name)), approver.email, 'Unassigned') as "approverName",
         
         -- SLA info
         asi.due_at as "slaDeadline",
@@ -246,7 +262,7 @@ router.get('/', async (req, res) => {
         -- Escalation info
         asi.escalated_at as "escalatedAt",
         asi.escalated_to as "escalatedToId",
-        COALESCE(escalated_user.full_name, escalated_user.email) as "escalatedToName",
+        COALESCE(TRIM(CONCAT(escalated_user.first_name, ' ', escalated_user.last_name)), escalated_user.email) as "escalatedToName",
         
         -- Fallback info
         asi.fallback_applied as "fallbackApplied",
@@ -262,7 +278,7 @@ router.get('/', async (req, res) => {
         -- Action authority for this user
         CASE WHEN asi.resolved_approver_id = '${userId}'::uuid THEN true ELSE false END as "canApprove",
         CASE WHEN asi.resolved_approver_id = '${userId}'::uuid THEN true ELSE false END as "canReject",
-        CASE WHEN ${userLevel} >= 9 THEN true ELSE false END as "canOverride",
+        CASE WHEN ${userLevel} >= 90 THEN true ELSE false END as "canOverride",
         
         -- Days in queue
         EXTRACT(DAY FROM NOW() - ai.created_at)::int as "daysInQueue"
@@ -270,11 +286,11 @@ router.get('/', async (req, res) => {
       FROM approval_instances ai
       JOIN approval_stage_instances asi ON asi.approval_instance_id = ai.id AND asi.status = 'active'
       JOIN approval_workflow_stages aws ON asi.workflow_stage_id = aws.id
-      LEFT JOIN users creator ON ai.initiated_by = creator.id
+      LEFT JOIN users_enhanced creator ON ai.initiated_by = creator.id
       LEFT JOIN user_roles ur ON creator.id = ur.user_id AND ur.is_primary = true
       LEFT JOIN roles creator_role ON ur.role_id = creator_role.id
-      LEFT JOIN users approver ON asi.resolved_approver_id = approver.id
-      LEFT JOIN users escalated_user ON asi.escalated_to = escalated_user.id
+      LEFT JOIN users_enhanced approver ON asi.resolved_approver_id = approver.id
+      LEFT JOIN users_enhanced escalated_user ON asi.escalated_to = escalated_user.id
       LEFT JOIN payment_requests pr ON ai.entity_type = 'payment_request' AND ai.entity_id = pr.id
       LEFT JOIN departments dept ON pr.department_id = dept.id
       
@@ -302,7 +318,7 @@ router.get('/', async (req, res) => {
       FROM approval_instances ai
       JOIN approval_stage_instances asi ON asi.approval_instance_id = ai.id AND asi.status = 'active'
       JOIN approval_workflow_stages aws ON asi.workflow_stage_id = aws.id
-      LEFT JOIN users creator ON ai.initiated_by = creator.id
+      LEFT JOIN users_enhanced creator ON ai.initiated_by = creator.id
       LEFT JOIN payment_requests pr ON ai.entity_type = 'payment_request' AND ai.entity_id = pr.id
       LEFT JOIN departments dept ON pr.department_id = dept.id
       
@@ -354,7 +370,7 @@ router.get('/', async (req, res) => {
         userLevel,
         isAdmin,
         departmentRestricted: !isAdmin && userDepartmentId,
-        visibilityScope: isAdmin ? 'all' : userLevel >= 6 ? 'department_subordinates' : 'personal_only'
+        visibilityScope: isAdmin ? 'all' : isManager ? 'department_subordinates' : 'personal_only'
       }
     });
   } catch (error) {
@@ -385,6 +401,7 @@ router.get('/:instanceId', async (req, res) => {
     const tenantId = req.tenantId;
     const userLevel = req.userLevel;
     const isAdmin = req.isAdmin;
+    const isManager = req.isManager;
     const userDepartmentId = req.departmentId;
 
     // Get instance with authorization check
@@ -406,7 +423,7 @@ router.get('/:instanceId', async (req, res) => {
         ai.last_rejection_reason as "lastRejectionReason",
         
         -- Creator info
-        COALESCE(creator.full_name, creator.email) as "createdByName",
+        COALESCE(TRIM(CONCAT(creator.first_name, ' ', creator.last_name)), creator.email) as "createdByName",
         creator.email as "createdByEmail",
         
         -- Department
@@ -417,7 +434,7 @@ router.get('/:instanceId', async (req, res) => {
         ARRAY(SELECT jsonb_array_elements_text(pr.metadata->'allowed_viewers')) as "allowedViewers"
         
       FROM approval_instances ai
-      LEFT JOIN users creator ON ai.initiated_by = creator.id
+      LEFT JOIN users_enhanced creator ON ai.initiated_by = creator.id
       LEFT JOIN payment_requests pr ON ai.entity_type = 'payment_request' AND ai.entity_id = pr.id
       WHERE ai.id = '${instanceId}'::uuid
     `;
@@ -455,8 +472,8 @@ router.get('/:instanceId', async (req, res) => {
       }
     }
 
-    // Department check for non-admins (L6-L8)
-    if (!isAdmin && userLevel >= 6 && userLevel <= 8 && userDepartmentId) {
+    // Department check for managers (level 60-85)
+    if (isManager && userDepartmentId) {
       if (instance.departmentId && instance.departmentId !== userDepartmentId) {
         // Check if user is approver or escalation target
         const hasAccessQuery = `
@@ -476,8 +493,8 @@ router.get('/:instanceId', async (req, res) => {
       }
     }
 
-    // For L1-L5, verify they are approver or escalation target
-    if (userLevel < 6) {
+    // For staff level (below 60), verify they are approver or escalation target
+    if (userLevel < AUTHORITY_LEVELS.BRANCH_INCHARGE) {
       const hasAccessQuery = `
         SELECT 1 FROM approval_stage_instances asi
         WHERE asi.approval_instance_id = '${instanceId}'::uuid
@@ -519,15 +536,15 @@ router.get('/:instanceId', async (req, res) => {
         aws.sla_hours as "slaHours",
         
         -- Approver info
-        COALESCE(approver.full_name, approver.email, 'Unassigned') as "approverName",
+        COALESCE(TRIM(CONCAT(approver.first_name, ' ', approver.last_name)), approver.email, 'Unassigned') as "approverName",
         approver.email as "approverEmail",
         
         -- Actioner info (who actually approved/rejected)
-        COALESCE(actioner.full_name, actioner.email) as "actionerName",
+        COALESCE(TRIM(CONCAT(actioner.first_name, ' ', actioner.last_name)), actioner.email) as "actionerName",
         actioner.email as "actionerEmail",
         
         -- Escalated to info
-        COALESCE(esc_user.full_name, esc_user.email) as "escalatedToName",
+        COALESCE(TRIM(CONCAT(esc_user.first_name, ' ', esc_user.last_name)), esc_user.email) as "escalatedToName",
         
         -- Time tracking
         CASE 
@@ -538,9 +555,9 @@ router.get('/:instanceId', async (req, res) => {
         
       FROM approval_stage_instances asi
       JOIN approval_workflow_stages aws ON asi.workflow_stage_id = aws.id
-      LEFT JOIN users approver ON asi.resolved_approver_id = approver.id
-      LEFT JOIN users actioner ON asi.actioned_by = actioner.id
-      LEFT JOIN users esc_user ON asi.escalated_to = esc_user.id
+      LEFT JOIN users_enhanced approver ON asi.resolved_approver_id = approver.id
+      LEFT JOIN users_enhanced actioner ON asi.actioned_by = actioner.id
+      LEFT JOIN users_enhanced esc_user ON asi.escalated_to = esc_user.id
       WHERE asi.approval_instance_id = '${instanceId}'::uuid
       ORDER BY asi.stage_order ASC
     `;
@@ -553,14 +570,14 @@ router.get('/:instanceId', async (req, res) => {
         aal.id,
         aal.action_type as "actionType",
         aal.performed_by as "performedById",
-        COALESCE(u.full_name, u.email) as "performedByName",
+        COALESCE(TRIM(CONCAT(u.first_name, ' ', u.last_name)), u.email) as "performedByName",
         aal.comment,
         aal.metadata,
         aal.created_at as "createdAt",
         aal.is_override_action as "isOverride",
         aal.override_type as "overrideType"
       FROM approval_audit_log aal
-      LEFT JOIN users u ON aal.performed_by = u.id
+      LEFT JOIN users_enhanced u ON aal.performed_by = u.id
       WHERE aal.approval_instance_id = '${instanceId}'::uuid
     `;
 
@@ -577,8 +594,10 @@ router.get('/:instanceId', async (req, res) => {
     const currentStage = stages.find(s => s.status === 'active');
     const canApprove = currentStage && currentStage.approverId === userId;
     const canReject = canApprove;
+    // Rework requires being actioner or having higher authority level
+    const stageLevel = stages[0]?.minAuthorityLevel || AUTHORITY_LEVELS.BRANCH_INCHARGE;
     const canRequestRework = instance.status === 'completed_pending_review' && stages.some(
-      s => s.actionedBy === userId || (userLevel > (parseInt(stages[0]?.assignedRole?.match(/L(\d+)/)?.[1]) || 1))
+      s => s.actionedBy === userId || (userLevel > stageLevel)
     );
     const canOverride = isAdmin;
 
@@ -875,8 +894,8 @@ router.post('/:instanceId/request-rework', async (req, res) => {
     const creatorInfo = await prisma.$queryRawUnsafe(creatorQuery);
     
     if (creatorInfo.length === 0 || creatorInfo[0].reports_to !== userId) {
-      // Check if admin
-      if (req.userLevel < 9) {
+      // Check if admin (level 90+)
+      if (req.userLevel < AUTHORITY_LEVELS.ADMIN) {
         return res.status(403).json({
           success: false,
           error: 'You are not authorized to request rework on this task',
@@ -925,7 +944,7 @@ router.post('/:instanceId/request-rework', async (req, res) => {
  * POST /api/task-approvals/:instanceId/override
  * 
  * Admin override action (approve all pending stages).
- * REQUIRES: L9+ and mandatory comment.
+ * REQUIRES: Level 90+ and mandatory comment.
  */
 router.post('/:instanceId/override', async (req, res) => {
   try {
@@ -935,8 +954,8 @@ router.post('/:instanceId/override', async (req, res) => {
     const tenantId = req.tenantId;
     const userLevel = req.userLevel;
 
-    // Admin only
-    if (userLevel < 9) {
+    // Admin only (level 90+)
+    if (userLevel < AUTHORITY_LEVELS.ADMIN) {
       return res.status(403).json({
         success: false,
         error: 'Admin access required for override',

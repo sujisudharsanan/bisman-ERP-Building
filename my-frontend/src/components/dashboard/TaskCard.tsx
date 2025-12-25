@@ -16,6 +16,7 @@ interface TaskCardProps {
   onClick?: () => void;
   taskData?: any;
   taskId?: string | number;
+  isSelected?: boolean;
 }
 
 // Refined status configuration with proper color semantics - shortened labels for compact display
@@ -33,7 +34,7 @@ const statusConfig: Record<string, { label: string; bgColor: string; textColor: 
   DONE: { label: 'Done', bgColor: 'bg-green-100 dark:bg-green-500/10', textColor: 'text-green-600 dark:text-green-400', borderColor: 'border-l-green-400', icon: <CheckCircle size={10} /> },
 };
 
-const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments, attachments, onClick, taskId, taskData, columnBorderColor }) => {
+const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments, attachments, onClick, taskId, taskData, columnBorderColor, isSelected }) => {
   // Generate display ID from taskId, taskData, or fallback
   const displayTaskId = taskId || taskData?.unique_id || taskData?.serialNumber || 
     (taskData?.id ? formatEntityId(taskData.id, 'TASK') : null);
@@ -99,17 +100,19 @@ const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments
   }
 
   // Card border for overdue/on-time tasks
-  const cardBorderClass = isOverdue 
-    ? 'border-red-300 dark:border-red-500/50' 
-    : isCompletedEarly 
-      ? 'border-amber-300 dark:border-amber-500/50'
-      : isCompletedOnTime 
-        ? 'border-green-300 dark:border-green-500/50'
-        : 'border-gray-200/80 dark:border-slate-600/60';
+  const cardBorderClass = isSelected
+    ? 'border-indigo-400 dark:border-indigo-500 ring-2 ring-indigo-400/50 dark:ring-indigo-500/50'
+    : isOverdue 
+      ? 'border-red-300 dark:border-red-500/50' 
+      : isCompletedEarly 
+        ? 'border-amber-300 dark:border-amber-500/50'
+        : isCompletedOnTime 
+          ? 'border-green-300 dark:border-green-500/50'
+          : 'border-gray-200/80 dark:border-slate-600/60';
 
   return (
     <div 
-      className={`bg-white dark:bg-slate-800 rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-slate-700 hover:scale-[1.01] transition-all duration-200 cursor-pointer border ${cardBorderClass} shadow-sm hover:shadow-md border-l-[3px] ${borderColorClass}`}
+      className={`bg-white dark:bg-slate-800 rounded-lg p-3 hover:bg-gray-50 dark:hover:bg-slate-700 hover:scale-[1.01] transition-all duration-200 cursor-pointer border ${cardBorderClass} shadow-sm hover:shadow-md border-l-[3px] ${borderColorClass} ${isSelected ? 'scale-[1.02] shadow-lg' : ''}`}
       onClick={onClick}
       role="button"
       tabIndex={0}

@@ -1,0 +1,42 @@
+{
+  "accountant": {
+    "email": "rohit.desai@bisman.demo",
+    "password": "Demo@123",
+    "role": "ACCOUNTS_PAYABLE"
+  },
+  "financeController": {
+    "email": "meera.singh@bisman.demo",
+    "password": "Demo@123",
+    "role": "FINANCE_CONTROLLER"
+  },
+  "cfo": {
+    "email": "rajesh.verma@bisman.demo",
+    "password": "Demo@123",
+    "role": "CFO"
+  },
+  "banker": {
+    "email": "rohit.desai@bisman.demo",
+    "password": "Demo@123",
+    "role": "ACCOUNTS_PAYABLE"
+  },
+  "requester": {
+    "email": "arun.kumar@bisman.demo",
+    "password": "Demo@123",
+    "role": "HUB_INCHARGE"
+  },
+  "hubIncharge": {
+    "email": "arun.kumar@bisman.demo",
+    "password": "Demo@123",
+    "role": "HUB_INCHARGE"
+  },
+  "superAdmin": {
+    "email": "business_superadmin@bisman.demo",
+    "password": "Demo@123",
+    "role": "SUPER_ADMIN"
+  },
+  "regionalHead": {
+    "email": "vikram.reddy@bisman.demo",
+    "password": "Demo@123",
+    "role": "OPERATIONS_MANAGER"
+  }
+}

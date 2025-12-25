@@ -56,7 +56,7 @@ export const DASHBOARD_CONFIGS: Record<string, RoleConfig> = {
   // ═══════════════════════════════════════════════════════════════════════════
   
   HUB_INCHARGE: {
-    displayName: 'Hub Incharge',
+    displayName: 'Hub In-Charge',  // Updated: was "Hub Incharge"
     columns: WORKFLOW_COLUMNS,
     accentColor: 'border-blue-500',
     loadingText: 'Loading Hub Dashboard...',
@@ -67,7 +67,7 @@ export const DASHBOARD_CONFIGS: Record<string, RoleConfig> = {
   },
   
   STORE_INCHARGE: {
-    displayName: 'Store Incharge',
+    displayName: 'Store In-Charge',
     columns: WORKFLOW_COLUMNS,
     accentColor: 'border-cyan-500',
     loadingText: 'Loading Store Dashboard...',
@@ -78,7 +78,7 @@ export const DASHBOARD_CONFIGS: Record<string, RoleConfig> = {
   },
   
   BRANCH_INCHARGE: {
-    displayName: 'Branch Incharge',
+    displayName: 'Branch Manager',  // Updated: was "Branch Incharge"
     columns: WORKFLOW_COLUMNS,
     accentColor: 'border-indigo-500',
     loadingText: 'Loading Branch Dashboard...',
@@ -88,11 +88,21 @@ export const DASHBOARD_CONFIGS: Record<string, RoleConfig> = {
     welcomeMessage: 'Welcome to your Branch Operations Dashboard',
   },
   
+  BRANCH_MANAGER: {
+    displayName: 'Regional Manager',  // Level 75: Multi-branch authority
+    columns: STANDARD_COLUMNS,
+    accentColor: 'border-purple-500',
+    loadingText: 'Loading Regional Dashboard...',
+    showRightPanel: true,
+    allowTaskCreation: true,
+    welcomeMessage: 'Welcome to your Regional Operations Dashboard',
+  },
+  
   OPERATIONS_MANAGER: {
-    displayName: 'Operations Manager',
+    displayName: 'General Manager',  // Level 80: Cross-region authority
     columns: STANDARD_COLUMNS,
     accentColor: 'border-emerald-500',
-    loadingText: 'Loading Operations Dashboard...',
+    loadingText: 'Loading General Manager Dashboard...',
     showRightPanel: true,
     allowTaskCreation: true,
   },

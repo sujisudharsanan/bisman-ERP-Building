@@ -19,6 +19,44 @@ import {
 } from '@/types/task';
 
 // ============================================
+// AVAILABLE REVIEWERS
+// ============================================
+
+export interface AvailableReviewer {
+  id: number;
+  name: string;
+  email: string;
+  department?: string;
+}
+
+export interface AvailableDepartment {
+  id: string;
+  name: string;
+  code?: string;
+}
+
+export interface AvailableReviewersResponse {
+  success: boolean;
+  users: AvailableReviewer[];
+  departments: AvailableDepartment[];
+}
+
+/**
+ * Get available users and departments for review selection
+ */
+export async function getAvailableReviewers(
+  query?: string
+): Promise<AvailableReviewersResponse> {
+  const params = new URLSearchParams();
+  if (query) {
+    params.set('q', query);
+  }
+  const url = `/api/reviews/available-reviewers${params.toString() ? `?${params.toString()}` : ''}`;
+  const response = await apiClient.get<AvailableReviewersResponse>(url);
+  return response.data;
+}
+
+// ============================================
 // SEND FOR REVIEW
 // ============================================
 

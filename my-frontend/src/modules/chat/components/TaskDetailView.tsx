@@ -37,6 +37,7 @@ import { TaskFormV2 } from '@/components/tasks/v2/TaskFormV2';
 import { CreateTaskInput, TaskPriority } from '@/types/task';
 import { Bot } from 'lucide-react';
 import { SendForReviewModal } from '@/components/tasks/reviews/SendForReviewModal';
+import { useAvailableReviewers } from '@/hooks/useReviews';
 
 interface TaskAttachment {
   id: number;
@@ -143,6 +144,11 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
   const [updatingTask, setUpdatingTask] = useState(false);
   const [showReviewModal, setShowReviewModal] = useState(false); // For post-completion review
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  // Fetch available reviewers when review modal might be shown
+  const { data: reviewersData } = useAvailableReviewers();
+  const availableUsers = reviewersData?.users || [];
+  const availableDepartments = reviewersData?.departments || [];
 
 
   useEffect(() => {
@@ -561,6 +567,41 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
       day: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
+    });
+  };
+
+  // Enterprise timeline date formatting - relative time for recent, date for older
+  const formatTimelineDate = (dateStr?: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    
+    return date.toLocaleDateString('en-US', {
+      month: 'short',
+      day: 'numeric',
+    });
+  };
+
+  // Full date and time formatting for timeline right corner
+  const formatFullDateTime = (dateStr?: string) => {
+    if (!dateStr) return '';
+    const date = new Date(dateStr);
+    return date.toLocaleString('en-US', {
+      month: 'short',
+      day: 'numeric',
+      year: 'numeric',
+      hour: 'numeric',
+      minute: '2-digit',
+      hour12: true,
     });
   };
 
@@ -1087,7 +1128,7 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
         </div>
         )}
 
-        {/* Activity/Messages Section - Unified Timeline */}
+        {/* Activity/Messages Section - Enterprise Timeline */}
         <div className="bg-[#252836] rounded-lg overflow-hidden">
           <button
             onClick={() => toggleSection('messages')}
@@ -1106,58 +1147,125 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
             )}
           </button>
           {expandedSections.messages && (
-            <div className="px-3 pb-3 max-h-60 overflow-y-auto">
+            <div className="px-3 pb-3 max-h-80 overflow-y-auto">
               {task.messages && task.messages.length > 0 ? (
-                <div className="space-y-3">
-                  {task.messages.map((message) => {
+                <div className="space-y-1">
+                  {task.messages.map((message, index) => {
                     // Check if this is a system/activity message
                     const isSystemMessage = message.senderType === 'SYSTEM' || 
                       message.content?.startsWith('🚀') || 
                       message.content?.startsWith('📋') ||
                       message.content?.startsWith('✅') ||
-                      message.content?.startsWith('❌');
+                      message.content?.startsWith('❌') ||
+                      message.content?.startsWith('🔄') ||
+                      message.content?.startsWith('👤') ||
+                      message.content?.startsWith('⏰');
+                    
+                    // Get event icon based on content
+                    const getEventIcon = () => {
+                      if (message.content?.includes('created') || message.content?.startsWith('🚀')) 
+                        return <div className="w-2 h-2 rounded-full bg-green-500" />;
+                      if (message.content?.includes('assigned') || message.content?.startsWith('👤')) 
+                        return <div className="w-2 h-2 rounded-full bg-blue-500" />;
+                      if (message.content?.includes('completed') || message.content?.startsWith('✅')) 
+                        return <div className="w-2 h-2 rounded-full bg-emerald-500" />;
+                      if (message.content?.includes('cancelled') || message.content?.startsWith('❌')) 
+                        return <div className="w-2 h-2 rounded-full bg-red-500" />;
+                      if (message.content?.includes('status') || message.content?.startsWith('🔄')) 
+                        return <div className="w-2 h-2 rounded-full bg-amber-500" />;
+                      return <div className="w-2 h-2 rounded-full bg-gray-500" />;
+                    };
                     
                     if (isSystemMessage) {
-                      // Render as activity log entry
+                      // Enterprise Activity Log Entry - Scannable Layout
                       return (
-                        <div key={message.id} className="flex items-center gap-2 py-1.5 px-2 bg-gray-700/20 rounded-lg border-l-2 border-blue-500/50">
-                          <div className="flex-1 min-w-0">
-                            <p className="text-xs text-gray-300">{message.content}</p>
+                        <div 
+                          key={message.id} 
+                          className="group py-2 px-2.5 rounded-md hover:bg-gray-700/20 transition-colors"
+                        >
+                          {/* Row 1: Event Icon + Event Description + Full DateTime on Right */}
+                          <div className="flex items-start gap-2.5">
+                            <div className="mt-1.5 flex-shrink-0">
+                              {getEventIcon()}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              {/* Event Description - Primary, readable */}
+                              <p className="text-sm text-gray-200 leading-relaxed">
+                                {message.content}
+                              </p>
+                              {/* Row 2: Actor + Relative Time */}
+                              <div className="flex items-center gap-2 mt-1">
+                                {message.senderName && message.senderName !== 'System' && (
+                                  <span className="text-xs text-gray-500">
+                                    {message.senderName}
+                                  </span>
+                                )}
+                                {message.createdAt && (
+                                  <span className="text-[10px] text-gray-600 opacity-70 group-hover:opacity-100 transition-opacity">
+                                    {formatTimelineDate(message.createdAt)}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                            {/* Full Date & Time on Right Corner */}
                             {message.createdAt && (
-                              <span className="text-[10px] text-gray-500">
-                                {formatDate(message.createdAt)}
-                              </span>
+                              <div className="flex-shrink-0 text-right">
+                                <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                                  {formatFullDateTime(message.createdAt)}
+                                </span>
+                              </div>
                             )}
                           </div>
                         </div>
                       );
                     }
                     
-                    // Render as regular chat message
+                    // Regular Chat Message - User Comment Layout
                     return (
-                      <div key={message.id} className="flex gap-2">
-                        <div className="w-6 h-6 rounded-full bg-gray-700 flex items-center justify-center text-[10px] text-white flex-shrink-0">
-                          {message.senderName?.charAt(0) || 'U'}
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <span className="text-xs font-medium text-white">
-                              {message.senderName || 'Unknown'}
-                            </span>
-                            {message.createdAt && (
-                              <span className="text-[10px] text-gray-500">
-                                {formatDate(message.createdAt)}
-                              </span>
-                            )}
+                      <div 
+                        key={message.id} 
+                        className="group py-2.5 px-2.5 rounded-md hover:bg-gray-700/20 transition-colors"
+                      >
+                        {/* Row 1: Avatar + Message Content + Full DateTime on Right */}
+                        <div className="flex items-start gap-2.5">
+                          <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-[10px] text-white font-medium flex-shrink-0">
+                            {message.senderName?.charAt(0)?.toUpperCase() || 'U'}
                           </div>
-                          <p className="text-sm text-gray-300 mt-0.5">{message.content}</p>
+                          <div className="flex-1 min-w-0">
+                            {/* Message Content - Primary */}
+                            <p className="text-sm text-gray-200 leading-relaxed">
+                              {message.content}
+                            </p>
+                            {/* Row 2: Actor Name + Relative Timestamp */}
+                            <div className="flex items-center gap-2 mt-1">
+                              <span className="text-xs font-medium text-gray-400">
+                                {message.senderName || 'Unknown'}
+                              </span>
+                              {message.createdAt && (
+                                <span className="text-[10px] text-gray-600 opacity-70 group-hover:opacity-100 transition-opacity">
+                                  {formatTimelineDate(message.createdAt)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                          {/* Full Date & Time on Right Corner */}
+                          {message.createdAt && (
+                            <div className="flex-shrink-0 text-right">
+                              <span className="text-[10px] text-gray-500 whitespace-nowrap">
+                                {formatFullDateTime(message.createdAt)}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       </div>
                     );
                   })}
                 </div>
               ) : (
-                <p className="text-gray-500 text-sm italic">No activity yet</p>
+                <div className="py-6 text-center">
+                  <p className="text-gray-500 text-sm">No activity yet</p>
+                  <p className="text-gray-600 text-xs mt-1">Events will appear here as they happen</p>
+                </div>
               )}
               <div ref={messagesEndRef} />
             </div>
@@ -1410,6 +1518,8 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
           onClose={() => setShowReviewModal(false)}
           taskId={typeof task.id === 'string' ? parseInt(task.id) : task.id}
           taskTitle={task.title}
+          availableUsers={availableUsers}
+          availableDepartments={availableDepartments}
         />
       )}
     </div>

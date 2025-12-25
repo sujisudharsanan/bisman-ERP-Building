@@ -20,6 +20,7 @@ import {
   type EntityType, 
   type DisplayFormat 
 } from '@/lib/utils/entityDisplay';
+import { getRoleDisplayName } from '@/utils/roleDisplay';
 
 // ============================================
 // DISPLAY LABEL COMPONENT
@@ -253,7 +254,7 @@ export const UserLabel: React.FC<UserLabelProps> = ({
       />
       {showRole && (user.role || user.roleName) && (
         <span className="px-1.5 py-0.5 text-[10px] font-medium rounded bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300">
-          {user.roleName || user.role}
+          {getRoleDisplayName(user.roleName || user.role)}
         </span>
       )}
     </span>

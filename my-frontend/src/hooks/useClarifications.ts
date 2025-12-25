@@ -7,7 +7,7 @@
 'use client';
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useToast } from '@/hooks/useToast';
+import { useToast } from './useToast';
 import {
   requestClarification,
   respondToClarification,

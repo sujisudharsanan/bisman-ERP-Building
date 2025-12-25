@@ -4,6 +4,7 @@ import React, { useMemo, useState, useEffect } from "react";
 import { useAuth } from "@/common/hooks/useAuth";
 import { useRouter } from 'next/navigation';
 import { getIcon } from "@/components/layout/BaseSidebar";
+import { getRoleDisplayName } from '@/utils/roleDisplay';
 import {
   Settings,
   Bell,
@@ -676,7 +677,7 @@ export default function UserSettingsPage() {
                     </h2>
                     <p className="text-sm text-gray-600 dark:text-gray-400">{user?.email}</p>
                     <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                      {(user as any)?.roleName || (user as any)?.role || 'User'}
+                      {getRoleDisplayName((user as any)?.roleName || (user as any)?.role)}
                     </p>
                   </div>
                 </div>

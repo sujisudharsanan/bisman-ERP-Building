@@ -1,0 +1,108 @@
+{
+  "paymentRequest": {
+    "draft": {
+      "id": "pr_test_draft_001",
+      "status": "DRAFT",
+      "amount": 50000,
+      "description": "Test payment request in draft",
+      "requesterId": "user_requester_001"
+    },
+    "approved": {
+      "id": "pr_test_approved_001",
+      "status": "APPROVED",
+      "amount": 75000,
+      "description": "Test approved payment request",
+      "requesterId": "user_requester_001"
+    },
+    "partiallyApproved": {
+      "id": "pr_test_partial_001",
+      "status": "PARTIALLY_APPROVED",
+      "amount": 100000,
+      "approvedAmount": 80000,
+      "description": "Test partially approved request",
+      "requesterId": "user_requester_001"
+    },
+    "accounted": {
+      "id": "pr_test_accounted_001",
+      "status": "ACCOUNTED",
+      "amount": 60000,
+      "description": "Test accounted payment request",
+      "requesterId": "user_requester_001"
+    },
+    "queuedForSettlement": {
+      "id": "pr_test_queued_001",
+      "status": "QUEUED_FOR_SETTLEMENT",
+      "amount": 45000,
+      "description": "Test queued payment request",
+      "settlementId": "stl_test_001"
+    },
+    "partiallySettled": {
+      "id": "pr_test_partial_settled_001",
+      "status": "PARTIALLY_SETTLED",
+      "amount": 100000,
+      "paidAmount": 60000,
+      "remainingAmount": 40000,
+      "description": "Test partially settled request"
+    }
+  },
+  "settlement": {
+    "draft": {
+      "id": "stl_test_draft_001",
+      "status": "DRAFT",
+      "totalAmount": 250000,
+      "itemCount": 5
+    },
+    "submittedToFinance": {
+      "id": "stl_test_submitted_001",
+      "status": "SUBMITTED_TO_FINANCE",
+      "totalAmount": 150000,
+      "itemCount": 3
+    },
+    "fcApproved": {
+      "id": "stl_test_fc_001",
+      "status": "FINANCE_CONTROLLER_APPROVED",
+      "totalAmount": 120000,
+      "itemCount": 2
+    },
+    "cfoApproved": {
+      "id": "stl_test_cfo_001",
+      "status": "CFO_APPROVED",
+      "totalAmount": 200000,
+      "itemCount": 4
+    },
+    "sentToBank": {
+      "id": "stl_test_bank_001",
+      "status": "SENT_TO_BANK",
+      "totalAmount": 180000,
+      "itemCount": 3
+    },
+    "paid": {
+      "id": "stl_test_paid_001",
+      "status": "PAID",
+      "totalAmount": 100000,
+      "itemCount": 2,
+      "utr": "UTR123456789012"
+    },
+    "failed": {
+      "id": "stl_test_failed_001",
+      "status": "FAILED",
+      "totalAmount": 90000,
+      "itemCount": 2,
+      "failureReason": "Bank declined transaction"
+    }
+  },
+  "vendors": [
+    {
+      "id": "vendor_001",
+      "name": "Test Vendor A",
+      "bankAccount": "1234567890",
+      "ifsc": "HDFC0001234"
+    },
+    {
+      "id": "vendor_002",
+      "name": "Test Vendor B",
+      "bankAccount": "0987654321",
+      "ifsc": "ICIC0005678"
+    }
+  ]
+}

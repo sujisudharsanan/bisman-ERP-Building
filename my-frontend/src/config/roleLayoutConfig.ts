@@ -75,14 +75,13 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
     menuItems: [
       { id: 'dashboard', label: 'Dashboard', href: '/operations-manager', icon: 'Home' },
       { id: 'tasks', label: 'Tasks', href: '/operations-manager/tasks', icon: 'CheckSquare', badge: 5 },
+      { id: 'requests', label: 'My Requests', href: '/dashboard/requests', icon: 'GitPullRequest' },
       { id: 'team', label: 'Team', href: '/operations-manager/team', icon: 'Users' },
       { id: 'reports', label: 'Reports', href: '/operations-manager/reports', icon: 'BarChart2' },
       { id: 'calendar', label: 'Calendar', href: '/operations-manager/calendar', icon: 'Calendar' },
-      { id: 'messages', label: 'Messages', href: '/chat', icon: 'MessageSquare', badge: 3 },
-      { id: 'ai-assistant', label: 'AI Assistant', href: '/chat/ai', icon: 'Bot' },
       { id: 'settings', label: 'Settings', href: '/operations-manager/settings', icon: 'Settings' },
     ],
-    allowedPages: ['/operations-manager', '/operations-manager/*', '/reports', '/finance', '/chat', '/chat/*'],
+    allowedPages: ['/operations-manager', '/operations-manager/*', '/reports', '/finance', '/dashboard/requests'],
   },
 
   STAFF: {
@@ -92,14 +91,13 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
     menuItems: [
       { id: 'dashboard', label: 'Dashboard', href: '/hub-incharge', icon: 'Home' },
       { id: 'tasks', label: 'My Tasks', href: '/hub-incharge/tasks', icon: 'CheckSquare', badge: 8 },
+      { id: 'requests', label: 'My Requests', href: '/dashboard/requests', icon: 'GitPullRequest' },
       { id: 'inventory', label: 'Inventory', href: '/hub-incharge/inventory', icon: 'ShoppingCart' },
       { id: 'sales', label: 'Sales', href: '/hub-incharge/sales', icon: 'Wallet' },
       { id: 'approvals', label: 'Approvals', href: '/hub-incharge/approvals', icon: 'FileText' },
-      { id: 'messages', label: 'Messages', href: '/chat', icon: 'MessageSquare' },
-      { id: 'ai-assistant', label: 'AI Assistant', href: '/chat/ai', icon: 'Bot' },
       { id: 'settings', label: 'Settings', href: '/hub-incharge/settings', icon: 'Settings' },
     ],
-    allowedPages: ['/hub-incharge', '/hub-incharge/*', '/chat', '/chat/*'],
+    allowedPages: ['/hub-incharge', '/hub-incharge/*'],
   },
 
   BRANCH_INCHARGE: {
@@ -109,14 +107,13 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
     menuItems: [
       { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: 'Home' },
       { id: 'tasks', label: 'My Tasks', href: '/dashboard/tasks', icon: 'CheckSquare' },
+      { id: 'requests', label: 'My Requests', href: '/dashboard/requests', icon: 'GitPullRequest' },
       { id: 'inventory', label: 'Inventory', href: '/dashboard/inventory', icon: 'Package' },
       { id: 'sales', label: 'Sales', href: '/dashboard/sales', icon: 'TrendingUp' },
       { id: 'approvals', label: 'Approvals', href: '/common/task-approvals', icon: 'FileCheck' },
-      { id: 'messages', label: 'Messages', href: '/chat', icon: 'MessageSquare' },
-      { id: 'ai-assistant', label: 'AI Assistant', href: '/chat/ai', icon: 'Bot' },
       { id: 'settings', label: 'User Settings', href: '/common/user-settings', icon: 'Settings' },
     ],
-    allowedPages: ['/dashboard', '/dashboard/*', '/chat', '/chat/*', '/common/*'],
+    allowedPages: ['/dashboard', '/dashboard/*', '/common/*'],
   },
 
   HUB_INCHARGE: {
@@ -126,14 +123,13 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
     menuItems: [
       { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: 'Home' },
       { id: 'tasks', label: 'My Tasks', href: '/dashboard/tasks', icon: 'CheckSquare' },
+      { id: 'requests', label: 'My Requests', href: '/dashboard/requests', icon: 'GitPullRequest' },
       { id: 'inventory', label: 'Inventory', href: '/dashboard/inventory', icon: 'Package' },
       { id: 'sales', label: 'Sales', href: '/dashboard/sales', icon: 'TrendingUp' },
       { id: 'approvals', label: 'Approvals', href: '/common/task-approvals', icon: 'FileCheck' },
-      { id: 'messages', label: 'Messages', href: '/chat', icon: 'MessageSquare' },
-      { id: 'ai-assistant', label: 'AI Assistant', href: '/chat/ai', icon: 'Bot' },
       { id: 'settings', label: 'User Settings', href: '/common/user-settings', icon: 'Settings' },
     ],
-    allowedPages: ['/dashboard', '/dashboard/*', '/chat', '/chat/*', '/common/*'],
+    allowedPages: ['/dashboard', '/dashboard/*', '/common/*'],
   },
 
   STORE_INCHARGE: {
@@ -145,10 +141,9 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
       { id: 'tasks', label: 'My Tasks', href: '/dashboard/tasks', icon: 'CheckSquare' },
       { id: 'inventory', label: 'Inventory', href: '/dashboard/inventory', icon: 'Package' },
       { id: 'sales', label: 'Sales', href: '/dashboard/sales', icon: 'TrendingUp' },
-      { id: 'messages', label: 'Messages', href: '/chat', icon: 'MessageSquare' },
       { id: 'settings', label: 'User Settings', href: '/common/user-settings', icon: 'Settings' },
     ],
-    allowedPages: ['/dashboard', '/dashboard/*', '/chat', '/chat/*', '/common/*'],
+    allowedPages: ['/dashboard', '/dashboard/*', '/common/*'],
   },
 
   CFO: {
@@ -189,6 +184,7 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
     menuItems: [
       { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: 'Home' },
       { id: 'tasks', label: 'Tasks', href: '/dashboard/tasks', icon: 'CheckSquare' },
+      { id: 'requests', label: 'My Requests', href: '/dashboard/requests', icon: 'GitPullRequest' },
       { id: 'reports', label: 'Reports', href: '/dashboard/reports', icon: 'BarChart2' },
       { id: 'settings', label: 'Settings', href: '/dashboard/settings', icon: 'Settings' },
     ],

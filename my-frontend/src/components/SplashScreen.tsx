@@ -9,19 +9,27 @@ interface SplashScreenProps {
   clientName?: string;
 }
 
-// Get user's first name from localStorage
-function getUserFirstName(): string {
-  if (typeof window === 'undefined') return 'You';
+// Get client/company name from localStorage (for personalized welcome)
+function getClientName(): string {
+  if (typeof window === 'undefined') return '';
   try {
-    const firstName = localStorage.getItem('first_name');
-    if (firstName && firstName.trim()) {
-      // Capitalize first letter
-      return firstName.trim().charAt(0).toUpperCase() + firstName.trim().slice(1);
+    // Try multiple sources for client name
+    const brandingData = localStorage.getItem('bisman_client_branding');
+    if (brandingData) {
+      const branding = JSON.parse(brandingData);
+      if (branding.name && branding.name.trim() && branding.name !== 'BISMAN') {
+        return branding.name.trim();
+      }
+    }
+    // Fallback to direct localStorage values
+    const clientName = localStorage.getItem('client_name') || localStorage.getItem('company_name');
+    if (clientName && clientName.trim()) {
+      return clientName.trim();
     }
   } catch {
     // Ignore localStorage errors
   }
-  return 'You';
+  return '';
 }
 
 export default function SplashScreen({
@@ -36,17 +44,19 @@ export default function SplashScreen({
   const [phase, setPhase] = useState<'typing1' | 'pause' | 'deleting' | 'typing2' | 'done'>('typing1');
   const hasRun = useRef(false);
   const onCompleteRef = useRef(onComplete);
-  const [userName, setUserName] = useState('You');
+  const [companyName, setCompanyName] = useState('');
   
   // Keep ref updated
   useEffect(() => {
     onCompleteRef.current = onComplete;
   }, [onComplete]);
 
-  // Get user name on client side
+  // Get company name on client side - prioritize prop, then localStorage
   useEffect(() => {
-    setUserName(getUserFirstName());
-  }, []);
+    const storedClientName = getClientName();
+    // Use prop first, then stored value
+    setCompanyName(clientName || storedClientName || '');
+  }, [clientName]);
   
   const prefix = 'Designed ';
   const typePart1 = 'for Genius';
@@ -332,9 +342,14 @@ export default function SplashScreen({
         }
         
         .splash-powered-section {
-          margin-top: 2rem;
+          position: fixed;
+          bottom: 2rem;
+          left: 0;
+          right: 0;
+          text-align: center;
           font-size: 1rem;
           animation: splashFadeIn 2s ease-out 1s both;
+          z-index: 20;
         }
         
         .splash-powered-section.fade-out {
@@ -356,21 +371,15 @@ export default function SplashScreen({
         <div className={`splash-hero-bg ${!showContent ? 'fade-out' : ''}`}></div>
         
         <div className="splash-hero-content">
+          {/* Main branding - client display name or BISMAN as fallback */}
           <div className={`splash-logo-container ${!showContent ? 'fade-out' : ''}`}>
-            <span className="text-3xl md:text-4xl font-bold text-white tracking-wide">Eazymiles India Pvt Ltd</span>
+            {clientLogo ? (
+              <img src={clientLogo} alt={clientName || 'BISMAN'} className="h-16 md:h-20 object-contain mb-4" />
+            ) : null}
+            <span className="text-3xl md:text-4xl font-bold text-white tracking-wide">
+              {clientName || 'BISMAN'}
+            </span>
           </div>
-          
-          {/* Client branding section - shows if client logo/name is available */}
-          {(clientLogo || clientName) && (
-            <div className={`splash-client-branding ${!showContent ? 'fade-out' : ''}`}>
-              {clientLogo && (
-                <img src={clientLogo} alt={clientName || 'Client'} className="splash-client-logo" />
-              )}
-              {clientName && (
-                <span className="splash-client-name">{clientName}</span>
-              )}
-            </div>
-          )}
           
           <h2 className={`splash-title-heading ${!showContent ? 'fade-out' : ''}`}>
             <span className="splash-typing-text">
@@ -385,12 +394,18 @@ export default function SplashScreen({
             </span>
             {phase !== 'done' && <span className="splash-typing-cursor"></span>}
           </h2>
-          
-          {/* Powered by BISMAN for User Name */}
-          <div className={`splash-powered-section ${!showContent ? 'fade-out' : ''}`}>
-            <span className="splash-powered-text">Powered by BISMAN for </span>
-            <span className="splash-user-name">{userName}</span>
-          </div>
+        </div>
+        
+        {/* Company Welcome Message - positioned as footer */}
+        <div className={`splash-powered-section ${!showContent ? 'fade-out' : ''}`}>
+          {companyName ? (
+            <>
+              <span className="splash-powered-text">Welcome to </span>
+              <span className="splash-user-name">{companyName}</span>
+            </>
+          ) : (
+            <span className="splash-powered-text">Welcome</span>
+          )}
         </div>
       </section>
     </div>

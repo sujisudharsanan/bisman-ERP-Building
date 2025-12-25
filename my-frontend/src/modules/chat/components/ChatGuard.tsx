@@ -115,7 +115,8 @@ export default function ChatGuard() {
 
       {/* Spark Assistant Chat Interface */}
       {isChatOpen && (
-        <div className="fixed bottom-4 right-4 z-[999] w-[440px] h-[600px] shadow-2xl rounded-lg overflow-hidden animate-slide-in">
+        <div className="fixed z-[999] shadow-2xl overflow-hidden animate-slide-in
+          inset-0 sm:inset-auto sm:bottom-4 sm:right-4 sm:w-[440px] sm:h-[600px] sm:rounded-lg">
           <CleanChatInterface onClose={() => {
             setIsChatOpen(false);
             // Dispatch closeTaskPanel to restore dashboard layout

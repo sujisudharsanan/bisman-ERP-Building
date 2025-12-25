@@ -834,10 +834,61 @@ try {
 // ===================================================================
 try {
   const taskApprovalRoutes = require('./routes/taskApprovalRoutes')
-  app.use('/api/task-approvals', taskApprovalRoutes)
+  app.use('/api/task-approvals', authenticate, setTenantContext, taskApprovalRoutes)
   console.log('✅ Task Approval routes loaded at /api/task-approvals')
 } catch (e) {
   console.warn('Task Approval routes not loaded:', e && e.message)
+}
+
+// ===================================================================
+// PAYMENT REQUEST WORKFLOW - Task-Style Payment Approval System
+// ===================================================================
+// Payment requests with amount-based routing:
+// - Amount ≤ 5000: Manager → Accounts → Finance → CFO → Banker
+// - Amount > 5000: Manager → Manager² → Accounts → Finance → CFO → Banker
+// Finance-originated: Only Finance Controller/CFO can reject
+// Send-back: Only to immediate previous level
+// ===================================================================
+try {
+  const paymentWorkflowRoutes = require('./routes/paymentWorkflowRoutes')
+  app.use('/api/payment-workflow', authenticate, setTenantContext, paymentWorkflowRoutes)
+  console.log('✅ Payment Workflow routes loaded at /api/payment-workflow')
+} catch (e) {
+  console.warn('Payment Workflow routes not loaded:', e && e.message)
+}
+
+// ===================================================================
+// SETTLEMENT WORKFLOW - Accountant consolidation & payment execution
+// ===================================================================
+// Role-segregated settlement system:
+// - Accountant: Full visibility into approved payment requests, creates settlements
+// - Finance Controller/CFO: Approves settlements based on amount thresholds
+// - Banker: Executes payment, enters UTR which propagates to all linked requests
+// - Non-accountants: See only settlement-level tasks (no individual request details)
+// ===================================================================
+try {
+  const settlementRoutes = require('./routes/settlementRoutes')
+  app.use('/api/settlements', authenticate, setTenantContext, settlementRoutes)
+  console.log('✅ Settlement routes loaded at /api/settlements')
+} catch (e) {
+  console.warn('Settlement routes not loaded:', e && e.message)
+}
+
+// ===================================================================
+// BANK RECONCILIATION - Multi-bank statement parsing & matching
+// ===================================================================
+// Enterprise-grade bank reconciliation:
+// - Admin: Manage bank parsing templates (CSV/Excel column mappings)
+// - Accountant: Upload statements, run auto-match, manual match, finalize
+// - CFO/Auditor: View-only access to reconciliation status and audit trail
+// Features: 50K+ row performance, UTR matching, confidence scoring, full audit
+// ===================================================================
+try {
+  const bankReconciliationRoutes = require('./routes/bankReconciliationRoutes')
+  app.use('/api/reconciliation', authenticate, setTenantContext, bankReconciliationRoutes)
+  console.log('✅ Bank Reconciliation routes loaded at /api/reconciliation')
+} catch (e) {
+  console.warn('Bank Reconciliation routes not loaded:', e && e.message)
 }
 
 // ===================================================================
@@ -1244,6 +1295,17 @@ try {
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Task routes not loaded:', e && e.message)
+  }
+}
+
+// Task Request routes (hierarchical workflow)
+try {
+  const taskRequestRoutes = require('./routes/taskRequestRoutes')
+  app.use('/api/task-requests', authenticate, setTenantContext, taskRequestRoutes)
+  console.log('✅ Task Request routes loaded (protected)')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Task Request routes not loaded:', e && e.message)
   }
 }
 

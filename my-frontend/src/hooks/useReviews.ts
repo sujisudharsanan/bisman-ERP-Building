@@ -19,6 +19,7 @@ import {
   getReviewAudit,
   getReviewStats,
   getReviewPurposes,
+  getAvailableReviewers,
   SendForReviewRequest,
   AcknowledgeReviewRequest,
   AddReviewCommentRequest,
@@ -46,6 +47,8 @@ export const reviewKeys = {
     [...reviewKeys.all, 'audit', reviewId] as const,
   stats: () => [...reviewKeys.all, 'stats'] as const,
   purposes: () => [...reviewKeys.all, 'purposes'] as const,
+  availableReviewers: (query?: string) => 
+    [...reviewKeys.all, 'available-reviewers', query] as const,
 };
 
 // ============================================
@@ -134,6 +137,17 @@ export function useReviewPurposes() {
     queryKey: reviewKeys.purposes(),
     queryFn: () => getReviewPurposes(),
     staleTime: 24 * 60 * 60 * 1000, // 24 hours - rarely changes
+  });
+}
+
+/**
+ * Get available users and departments for review selection
+ */
+export function useAvailableReviewers(query?: string) {
+  return useQuery({
+    queryKey: reviewKeys.availableReviewers(query),
+    queryFn: () => getAvailableReviewers(query),
+    staleTime: 30 * 1000, // 30 seconds
   });
 }
 

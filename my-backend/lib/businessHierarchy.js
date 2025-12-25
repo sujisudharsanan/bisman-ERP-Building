@@ -1,110 +1,128 @@
 /**
  * ============================================================================
- * BUSINESS HIERARCHY SYSTEM
+ * BUSINESS HIERARCHY SYSTEM (UNIFIED 10-100 SCALE)
  * ============================================================================
  * 
  * PURPOSE:
  * This module handles BUSINESS HIERARCHY (workflow approvals, escalation)
- * which is COMPLETELY SEPARATE from SECURITY ACCESS.
+ * using a UNIFIED 10-100 scale for both security and business levels.
  * 
- * KEY PRINCIPLE:
- * - SECURITY decides what you can SEE (pages, modules, data)
- * - BUSINESS LEVEL decides what you can APPROVE (workflow actions)
- * 
- * BUSINESS LEVELS (L1 - L10):
- * L10: Super Admin
- * L9:  Admin, CFO, System Administrator
- * L8:  Finance Controller, IT Admin
- * L7:  Operations Manager, Treasury
- * L6:  Compliance, Legal, Manager
- * L5:  Accounts, Banker
- * L4:  Accounts Payable, Procurement Officer
- * L3:  Branch Incharge, Store Incharge
- * L2:  Supervisor
- * L1:  Staff
+ * AUTHORITY LEVELS (10-100 scale):
+ * 100: Super Admin
+ * 90:  Admin
+ * 85:  CFO, Finance Controller
+ * 80:  Operations Manager
+ * 75:  Branch Manager
+ * 70:  Manager, Finance Manager, HR Manager
+ * 60:  Branch Incharge
+ * 55:  Hub Incharge
+ * 40:  Store Incharge
+ * 30:  Accountant, HR Executive
+ * 20:  Staff, User
+ * 10:  Viewer
  * 
  * WORKFLOW RULES:
- * - canReview: business_level = target_level + 1 (immediate superior)
- * - canApprove: business_level >= required_approval_level
- * - canAssignTask: business_level >= target_user_level
- * - canEscalate: can only escalate to higher business_level
+ * - canReview: effective_level > creator_level (any higher level can review)
+ * - canApprove: effective_level >= required_approval_level
+ * - canAssignTask: effective_level >= target_user_level
+ * - canEscalate: can only escalate to higher effective_level
+ * 
+ * AUTHORITY OVERRIDE:
+ * Users can have temporary authority overrides stored in users.authority_override_level
+ * Effective level = authority_override_level ?? role.level
  * 
  * @module lib/businessHierarchy
  */
 
-// Business level constants
+// Import the unified authority level system
+const authorityLevel = require('./authorityLevel');
+
+// Re-export authority level constants for compatibility
+const AUTHORITY_LEVELS = authorityLevel.AUTHORITY_LEVELS;
+const TIER_THRESHOLDS = authorityLevel.TIER_THRESHOLDS;
+
+// Legacy BUSINESS_LEVELS mapping (deprecated - use AUTHORITY_LEVELS instead)
 const BUSINESS_LEVELS = {
-  STAFF: 1,
-  SUPERVISOR: 2,
-  BRANCH_INCHARGE: 3,
-  STORE_INCHARGE: 3,
-  ACCOUNTS_PAYABLE: 4,
-  PROCUREMENT_OFFICER: 4,
-  ACCOUNTS: 5,
-  BANKER: 5,
-  COMPLIANCE: 6,
-  LEGAL: 6,
-  MANAGER: 6,
-  OPERATIONS_MANAGER: 7,
-  TREASURY: 7,
-  FINANCE_CONTROLLER: 8,
-  IT_ADMIN: 8,
-  ADMIN: 9,
-  CFO: 9,
-  SYSTEM_ADMINISTRATOR: 9,
-  SUPER_ADMIN: 10
+  STAFF: 20,
+  USER: 20,
+  SUPERVISOR: 25,
+  ACCOUNTANT: 30,
+  HR_EXECUTIVE: 30,
+  STORE_INCHARGE: 40,
+  HUB_INCHARGE: 55,
+  BRANCH_INCHARGE: 60,
+  COMPLIANCE: 65,
+  LEGAL: 65,
+  MANAGER: 70,
+  FINANCE_MANAGER: 70,
+  HR_MANAGER: 70,
+  BRANCH_MANAGER: 75,
+  OPERATIONS_MANAGER: 80,
+  TREASURY: 80,
+  FINANCE_CONTROLLER: 85,
+  CFO: 85,
+  IT_ADMIN: 85,
+  ADMIN: 90,
+  SYSTEM_ADMINISTRATOR: 90,
+  SUPER_ADMIN: 100
 };
 
-// Role to business level mapping
+// Role to authority level mapping (10-100 scale)
 const ROLE_TO_LEVEL = {
-  'Staff': 1,
-  'Supervisor': 2,
-  'Branch Incharge': 3,
-  'Store Incharge': 3,
-  'Hub Incharge': 3,
-  'Accounts Payable': 4,
-  'Procurement Officer': 4,
-  'Accounts': 5,
-  'Banker': 5,
-  'Compliance': 6,
-  'Legal': 6,
-  'Manager': 6,
-  'Operations Manager': 7,
-  'Treasury': 7,
-  'Finance Controller': 8,
-  'IT Admin': 8,
-  // Deputy roles - level 8.5 (rounded to 8 for integer comparisons, but tracked separately)
-  'CFO Deputy': 8,
-  'CFO_DEPUTY': 8,
-  'Admin Deputy': 8,
-  'ADMIN_DEPUTY': 8,
-  'Admin': 9,
-  'CFO': 9,
-  'System Administrator': 9,
-  'Super Admin': 10
+  'Staff': 20,
+  'User': 20,
+  'Viewer': 10,
+  'Supervisor': 25,
+  'Accountant': 30,
+  'HR Executive': 30,
+  'Store Incharge': 40,
+  'Hub Incharge': 55,
+  'Branch Incharge': 60,
+  'Compliance': 65,
+  'Legal': 65,
+  'Manager': 70,
+  'Finance Manager': 70,
+  'HR Manager': 70,
+  'Branch Manager': 75,
+  'Operations Manager': 80,
+  'Treasury': 80,
+  'Finance Controller': 85,
+  'CFO': 85,
+  'IT Admin': 85,
+  'CFO Deputy': 80,
+  'CFO_DEPUTY': 80,
+  'Admin Deputy': 80,
+  'ADMIN_DEPUTY': 80,
+  'Admin': 90,
+  'System Administrator': 90,
+  'Super Admin': 100
 };
 
-// Level labels for UI display
+// Level labels for UI display (10-100 scale)
 const LEVEL_LABELS = {
-  1: 'L1 - Staff',
-  2: 'L2 - Supervisor',
-  3: 'L3 - Incharge',
-  4: 'L4 - Officer',
-  5: 'L5 - Accounts',
-  6: 'L6 - Manager',
-  7: 'L7 - Operations',
-  8: 'L8 - Controller',
-  9: 'L9 - Executive',
-  10: 'L10 - Super Admin'
+  10: 'Viewer',
+  20: 'Staff',
+  25: 'Supervisor',
+  30: 'Officer',
+  40: 'Store Incharge',
+  55: 'Hub Incharge',
+  60: 'Branch Incharge',
+  65: 'Compliance/Legal',
+  70: 'Manager',
+  75: 'Branch Manager',
+  80: 'Operations',
+  85: 'Controller/CFO',
+  90: 'Admin',
+  100: 'Super Admin'
 };
 
 /**
- * Get business level from role name
+ * Get business level from role name (returns 10-100 scale)
  * @param {string} roleName - The role name
- * @returns {number} Business level (1-10)
+ * @returns {number} Authority level (10-100)
  */
 function getBusinessLevelFromRole(roleName) {
-  if (!roleName) return 1;
+  if (!roleName) return AUTHORITY_LEVELS.STAFF;
   
   // Normalize role name
   const normalized = roleName.trim();
@@ -123,29 +141,34 @@ function getBusinessLevelFromRole(roleName) {
   }
   
   // Default to Staff level
-  return 1;
+  return AUTHORITY_LEVELS.STAFF;
 }
 
 /**
- * Get label for a business level
- * @param {number} level - Business level (1-10)
+ * Get label for an authority level
+ * @param {number} level - Authority level (10-100)
  * @returns {string} Human-readable label
  */
 function getLevelLabel(level) {
-  return LEVEL_LABELS[level] || `L${level}`;
+  // Find closest label
+  const sortedKeys = Object.keys(LEVEL_LABELS).map(Number).sort((a, b) => b - a);
+  for (const key of sortedKeys) {
+    if (level >= key) return LEVEL_LABELS[key];
+  }
+  return LEVEL_LABELS[10] || 'Viewer';
 }
 
 /**
  * Check if a user can REVIEW another user's work
- * Rule: Reviewer must be exactly ONE level above the creator
+ * Rule: Reviewer must have HIGHER level than creator
  * 
- * @param {number} reviewerLevel - Business level of reviewer
- * @param {number} creatorLevel - Business level of work creator
+ * @param {number} reviewerLevel - Authority level of reviewer
+ * @param {number} creatorLevel - Authority level of work creator
  * @returns {boolean} Can review
  */
 function canReview(reviewerLevel, creatorLevel) {
-  // Reviewer must be exactly one level higher
-  return reviewerLevel === creatorLevel + 1;
+  // Reviewer must have higher level
+  return reviewerLevel > creatorLevel;
 }
 
 /**
@@ -185,53 +208,40 @@ function canEscalate(escalatorLevel, targetLevel) {
 }
 
 /**
- * Get all users who can review work from a given level
- * @param {number} creatorLevel - Business level of work creator
+ * Get all levels that can review work from a given level
+ * @param {number} creatorLevel - Authority level of work creator
  * @returns {number[]} Array of levels that can review
  */
 function getReviewerLevels(creatorLevel) {
-  // Only the immediate superior can review
-  const reviewerLevel = creatorLevel + 1;
-  return reviewerLevel <= 10 ? [reviewerLevel] : [];
+  // Any higher level can review
+  return Object.values(ROLE_TO_LEVEL).filter(level => level > creatorLevel);
 }
 
 /**
- * Get all users who can approve at a given level
+ * Get all levels that can approve at a given level
  * @param {number} requiredLevel - Minimum level required
  * @returns {number[]} Array of levels that can approve
  */
 function getApproverLevels(requiredLevel) {
-  const levels = [];
-  for (let i = requiredLevel; i <= 10; i++) {
-    levels.push(i);
-  }
-  return levels;
+  return Object.values(ROLE_TO_LEVEL).filter(level => level >= requiredLevel);
 }
 
 /**
- * Get all users a given level can assign tasks to
- * @param {number} assignerLevel - Business level of assigner
+ * Get all levels a given level can assign tasks to
+ * @param {number} assignerLevel - Authority level of assigner
  * @returns {number[]} Array of levels that can receive tasks
  */
 function getAssignableLevels(assignerLevel) {
-  const levels = [];
-  for (let i = 1; i <= assignerLevel; i++) {
-    levels.push(i);
-  }
-  return levels;
+  return Object.values(ROLE_TO_LEVEL).filter(level => level <= assignerLevel);
 }
 
 /**
- * Get all users a given level can escalate to
- * @param {number} escalatorLevel - Business level of escalator
+ * Get all levels a given level can escalate to
+ * @param {number} escalatorLevel - Authority level of escalator
  * @returns {number[]} Array of levels that can receive escalations
  */
 function getEscalationTargetLevels(escalatorLevel) {
-  const levels = [];
-  for (let i = escalatorLevel + 1; i <= 10; i++) {
-    levels.push(i);
-  }
-  return levels;
+  return Object.values(ROLE_TO_LEVEL).filter(level => level > escalatorLevel);
 }
 
 /**
@@ -286,14 +296,14 @@ function getSuggestedApprovalChain(creatorLevel, finalApprovalLevel) {
 
 // ============================================================================
 // DEPUTY ROLE CONFIGURATION
-// Deputies can approve but cannot override. Overrides remain L9+ only.
+// Deputies can approve but cannot override. Overrides remain level 90+ only.
 // ============================================================================
 
 const DEPUTY_ROLES = {
-  'CFO Deputy': { level: 8.5, principalRole: 'CFO', canOverride: false },
-  'CFO_DEPUTY': { level: 8.5, principalRole: 'CFO', canOverride: false },
-  'Admin Deputy': { level: 8.5, principalRole: 'Admin', canOverride: false },
-  'ADMIN_DEPUTY': { level: 8.5, principalRole: 'Admin', canOverride: false },
+  'CFO Deputy': { level: 80, principalRole: 'CFO', canOverride: false },
+  'CFO_DEPUTY': { level: 80, principalRole: 'CFO', canOverride: false },
+  'Admin Deputy': { level: 80, principalRole: 'Admin', canOverride: false },
+  'ADMIN_DEPUTY': { level: 80, principalRole: 'Admin', canOverride: false },
 };
 
 /**
@@ -320,8 +330,8 @@ function getDeputyConfig(roleName) {
 
 /**
  * Check if user can perform override actions
- * Overrides require L9+ AND cannot be deputies
- * @param {number} level - Business level
+ * Overrides require level 90+ AND cannot be deputies
+ * @param {number} level - Authority level
  * @param {string} roleName - Role name
  * @returns {boolean} Can override
  */
@@ -330,13 +340,13 @@ function canOverride(level, roleName) {
   if (isDeputyRole(roleName)) {
     return false;
   }
-  // Only L9+ can override
-  return level >= 9;
+  // Only level 90+ (Admin+) can override
+  return level >= AUTHORITY_LEVELS.ADMIN;
 }
 
 /**
  * Check if user can force-approve (admin override)
- * @param {number} level - Business level
+ * @param {number} level - Authority level
  * @param {string} roleName - Role name
  * @returns {boolean} Can force approve
  */
@@ -346,7 +356,7 @@ function canForceApprove(level, roleName) {
 
 /**
  * Check if user can force-reject (admin override)
- * @param {number} level - Business level
+ * @param {number} level - Authority level
  * @param {string} roleName - Role name
  * @returns {boolean} Can force reject
  */
@@ -408,47 +418,68 @@ function checkPeerApprovalAllowed(approverLevel, creatorLevel, peerApprovalWhite
 
 /**
  * Express middleware to enforce business level for approvals
- * Adds business level context to request
+ * Adds business level context to request using the unified 10-100 scale
  */
 function businessLevelMiddleware(req, res, next) {
   if (req.user) {
-    // Add business level context
-    req.user.businessLevel = req.user.business_level || getBusinessLevelFromRole(req.user.role);
+    // Get authority level from role or stored business_level
+    const roleLevel = getBusinessLevelFromRole(req.user.role);
+    const storedLevel = req.user.business_level || req.user.businessLevel;
+    
+    // Use the higher of role level or stored level, but prefer authorityLevel system
+    req.user.businessLevel = storedLevel && storedLevel >= 10 ? storedLevel : roleLevel;
     req.user.businessLevelLabel = getLevelLabel(req.user.businessLevel);
     req.user.isDeputy = isDeputyRole(req.user.role);
     req.user.deputyConfig = getDeputyConfig(req.user.role);
     
-    // Add helper functions
-    req.user.canReview = (creatorLevel) => canReview(req.user.businessLevel, creatorLevel);
-    req.user.canApprove = (requiredLevel) => canApprove(req.user.businessLevel, requiredLevel);
-    req.user.canAssignTask = (targetLevel) => canAssignTask(req.user.businessLevel, targetLevel);
-    req.user.canEscalate = (targetLevel) => canEscalate(req.user.businessLevel, targetLevel);
-    req.user.canOverride = () => canOverride(req.user.businessLevel, req.user.role);
-    req.user.canForceApprove = () => canForceApprove(req.user.businessLevel, req.user.role);
-    req.user.canForceReject = () => canForceReject(req.user.businessLevel, req.user.role);
+    // Check for authority override
+    const overrideLevel = req.user.authority_override_level || req.user.authorityOverrideLevel;
+    const overrideEnd = req.user.override_end_date || req.user.overrideEndDate;
+    
+    if (overrideLevel !== null && overrideLevel !== undefined) {
+      if (!overrideEnd || new Date(overrideEnd) > new Date()) {
+        req.user.effectiveLevel = overrideLevel;
+        req.user.hasActiveOverride = true;
+      } else {
+        req.user.effectiveLevel = req.user.businessLevel;
+        req.user.hasActiveOverride = false;
+      }
+    } else {
+      req.user.effectiveLevel = req.user.businessLevel;
+      req.user.hasActiveOverride = false;
+    }
+    
+    // Add helper functions using effective level
+    req.user.canReview = (creatorLevel) => canReview(req.user.effectiveLevel, creatorLevel);
+    req.user.canApprove = (requiredLevel) => canApprove(req.user.effectiveLevel, requiredLevel);
+    req.user.canAssignTask = (targetLevel) => canAssignTask(req.user.effectiveLevel, targetLevel);
+    req.user.canEscalate = (targetLevel) => canEscalate(req.user.effectiveLevel, targetLevel);
+    req.user.canOverride = () => canOverride(req.user.effectiveLevel, req.user.role);
+    req.user.canForceApprove = () => canForceApprove(req.user.effectiveLevel, req.user.role);
+    req.user.canForceReject = () => canForceReject(req.user.effectiveLevel, req.user.role);
     req.user.checkPeerApproval = (creatorLevel, whitelisted, minAbove) => 
-      checkPeerApprovalAllowed(req.user.businessLevel, creatorLevel, whitelisted, minAbove);
+      checkPeerApprovalAllowed(req.user.effectiveLevel, creatorLevel, whitelisted, minAbove);
   }
   next();
 }
 
 /**
  * Create an approval enforcement middleware
- * @param {number} requiredLevel - Minimum business level required
+ * @param {number} requiredLevel - Minimum authority level required (10-100 scale)
  * @returns {Function} Express middleware
  */
 function requireApprovalLevel(requiredLevel) {
   return (req, res, next) => {
-    const userLevel = req.user?.business_level || req.user?.businessLevel || 1;
+    const userLevel = req.user?.effectiveLevel || req.user?.business_level || req.user?.businessLevel || AUTHORITY_LEVELS.STAFF;
     
     if (!canApprove(userLevel, requiredLevel)) {
       return res.status(403).json({
         error: 'Approval Not Authorized',
-        message: `This action requires Business Level ${requiredLevel} or higher. Your level: L${userLevel}`,
-        code: 'BUSINESS_LEVEL_INSUFFICIENT',
+        message: `This action requires Authority Level ${requiredLevel} or higher. Your level: ${userLevel}`,
+        code: 'AUTHORITY_LEVEL_INSUFFICIENT',
         required: requiredLevel,
         current: userLevel,
-        hint: 'Business Level controls approvals and escalation only. This is separate from security access.'
+        hint: 'Authority Level controls approvals and escalation. Use authority overrides for temporary elevation.'
       });
     }
     next();
@@ -457,23 +488,23 @@ function requireApprovalLevel(requiredLevel) {
 
 /**
  * Create a review enforcement middleware
- * Ensures reviewer is exactly one level above creator
+ * Ensures reviewer has higher level than creator
  * @param {Function} getCreatorLevel - Function to extract creator level from request
  * @returns {Function} Express middleware
  */
 function requireReviewLevel(getCreatorLevel) {
   return async (req, res, next) => {
-    const userLevel = req.user?.business_level || req.user?.businessLevel || 1;
+    const userLevel = req.user?.effectiveLevel || req.user?.business_level || req.user?.businessLevel || AUTHORITY_LEVELS.STAFF;
     const creatorLevel = await getCreatorLevel(req);
     
     if (!canReview(userLevel, creatorLevel)) {
       return res.status(403).json({
         error: 'Review Not Authorized',
-        message: `Only L${creatorLevel + 1} can review L${creatorLevel} work. Your level: L${userLevel}`,
-        code: 'BUSINESS_LEVEL_REVIEW_MISMATCH',
-        required: creatorLevel + 1,
+        message: `Reviewer level (${userLevel}) must be higher than creator level (${creatorLevel}).`,
+        code: 'AUTHORITY_LEVEL_REVIEW_MISMATCH',
+        requiredMinimum: creatorLevel + 1,
         current: userLevel,
-        hint: 'Reviews must be done by immediate superiors (one level above).'
+        hint: 'Reviews must be done by someone with higher authority.'
       });
     }
     next();
@@ -481,7 +512,11 @@ function requireReviewLevel(getCreatorLevel) {
 }
 
 module.exports = {
-  // Constants
+  // New unified constants
+  AUTHORITY_LEVELS,
+  TIER_THRESHOLDS,
+  
+  // Legacy constants (deprecated - use AUTHORITY_LEVELS)
   BUSINESS_LEVELS,
   ROLE_TO_LEVEL,
   LEVEL_LABELS,
@@ -520,5 +555,17 @@ module.exports = {
   // Middleware
   businessLevelMiddleware,
   requireApprovalLevel,
-  requireReviewLevel
+  requireReviewLevel,
+  
+  // Re-export authorityLevel functions for convenience
+  getEffectiveAuthorityLevel: authorityLevel.getEffectiveAuthorityLevel,
+  getEffectiveAuthorityLevelFromUser: authorityLevel.getEffectiveAuthorityLevelFromUser,
+  hasMinimumAuthority: authorityLevel.hasMinimumAuthority,
+  canApprovePayments: authorityLevel.canApprovePayments,
+  canApproveTasks: authorityLevel.canApproveTasks,
+  isAdmin: authorityLevel.isAdmin,
+  getNextEscalationLevel: authorityLevel.getNextEscalationLevel,
+  getUsersAtOrAboveLevel: authorityLevel.getUsersAtOrAboveLevel,
+  grantAuthorityOverride: authorityLevel.grantAuthorityOverride,
+  revokeAuthorityOverride: authorityLevel.revokeAuthorityOverride,
 };

@@ -50,6 +50,7 @@ export default function UnifiedDashboardPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
   const [viewMode, setViewMode] = useState<ViewMode>('my-work');
+  const [selectedTaskId, setSelectedTaskId] = useState<string | null>(null);
   const [performanceMetrics, setPerformanceMetrics] = useState<PerformanceMetrics>({
     onTimeRate: 0,
     responseTime: 0,
@@ -58,10 +59,19 @@ export default function UnifiedDashboardPage() {
   });
   const [taskPanelOpen, setTaskPanelOpen] = useState(false);
   
-  // Track task panel open/close for layout adjustments
+  // Track task panel open/close for layout adjustments and selected task
   useEffect(() => {
-    const handleOpenTaskPanel = () => setTaskPanelOpen(true);
-    const handleCloseTaskPanel = () => setTaskPanelOpen(false);
+    const handleOpenTaskPanel = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      if (customEvent.detail?.id) {
+        setSelectedTaskId(customEvent.detail.id);
+      }
+      setTaskPanelOpen(true);
+    };
+    const handleCloseTaskPanel = () => {
+      setTaskPanelOpen(false);
+      setSelectedTaskId(null);
+    };
     
     window.addEventListener('openTaskInChat', handleOpenTaskPanel);
     window.addEventListener('closeTaskPanel', handleCloseTaskPanel);
@@ -299,7 +309,9 @@ export default function UnifiedDashboardPage() {
       <div className="h-full max-w-full min-h-0">
         <div className="w-full min-h-0">
           {/* Search Bar, Status Filter, and Profile */}
-          <div className="mb-4 px-3 md:px-4">
+          <div className={`mb-4 px-3 md:px-4 transition-all duration-300 ease-in-out ${
+            taskPanelOpen ? 'sm:pr-[460px] lg:pr-[470px]' : ''
+          }`}>
             <div className="flex flex-col sm:flex-row gap-3 items-stretch sm:items-center">
               {/* View Mode Toggle - My Work / My Requests (no All tab) */}
               <div className="flex items-center bg-white dark:bg-slate-800/80 backdrop-blur-sm border border-gray-200 dark:border-slate-700 rounded-lg p-1">
@@ -426,7 +438,11 @@ export default function UnifiedDashboardPage() {
           <main className="flex-1 flex flex-col overflow-hidden min-h-0">
             <div className="w-full flex-1 overflow-hidden">
               {/* Standard Kanban View with Maker-Checker data source */}
-              <div className="flex justify-between gap-3 md:gap-5 mb-1 ml-3 md:ml-4 mr-3 md:mr-4 h-full">
+              <div className={`flex justify-between gap-3 md:gap-5 mb-1 ml-3 md:ml-4 h-full transition-all duration-300 ease-in-out ${
+                taskPanelOpen 
+                  ? 'mr-3 md:mr-4 sm:mr-[460px] lg:mr-[470px]' 
+                  : 'mr-3 md:mr-4'
+              }`}>
                 {/* Kanban Columns */}
                 <div className="flex-1 min-w-0 overflow-hidden">
                   <div className="grid gap-3 md:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 auto-rows-fr h-full overflow-y-auto pr-1 pb-0 mb-0 custom-scrollbar min-h-0">
@@ -441,6 +457,7 @@ export default function UnifiedDashboardPage() {
                             showCreate={canShowCreate}
                             onCreate={canShowCreate ? handleCreateTask : undefined}
                             onTaskClick={handleTaskClick}
+                            selectedTaskId={selectedTaskId}
                           />
                         </div>
                       );

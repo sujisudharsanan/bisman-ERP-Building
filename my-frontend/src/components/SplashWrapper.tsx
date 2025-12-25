@@ -101,15 +101,29 @@ export default function SplashWrapper({ children, companyName = "BISMAN ERP" }: 
     if (user && !authLoading) {
       // Extract client branding from user data (use type assertion for extended properties)
       const userData = user as Record<string, unknown>;
+      const userType = userData.userType as string | undefined;
+      
+      // SuperAdmin and EnterpriseAdmin should show BISMAN branding
+      const isSuperOrEnterprise = userType === 'SUPER_ADMIN' || userType === 'ENTERPRISE_ADMIN';
+      
       const branding: ClientBranding = {
-        logo: (userData.clientLogo || userData.profile_pic_url || userData.logo) as string | undefined,
-        name: (userData.clientName || userData.companyName || userData.tenant_name || userData.name) as string | undefined,
-        primaryColor: (userData.primaryColor || userData.themeColor) as string | undefined,
+        // For regular users, use client branding; for super/enterprise admin, use BISMAN
+        logo: isSuperOrEnterprise 
+          ? undefined  // Will use BISMAN logo/name
+          : (userData.clientLogo || userData.profile_pic_url || userData.logo) as string | undefined,
+        name: isSuperOrEnterprise 
+          ? 'BISMAN'  // Force BISMAN for super/enterprise admin
+          : (userData.clientDisplayName || userData.clientName || userData.companyName || userData.tenant_name) as string | undefined,
+        primaryColor: (userData.clientPrimaryColor || userData.primaryColor || userData.themeColor) as string | undefined,
       };
-      // Only save if we have at least a logo or name
-      if (branding.logo || branding.name) {
+      
+      // Only save if we have at least a logo or name (and not super/enterprise admin)
+      if (!isSuperOrEnterprise && (branding.logo || branding.name)) {
         setClientBranding(branding);
         saveClientBranding(branding);
+      } else if (isSuperOrEnterprise) {
+        // Clear any saved client branding for super/enterprise admin
+        setClientBranding({ name: 'BISMAN' });
       }
     }
   }, [user, authLoading]);

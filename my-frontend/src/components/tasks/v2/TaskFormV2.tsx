@@ -2,6 +2,7 @@
  * TaskFormV2 - Modern Task Creation/Edit Form
  * Clean, professional design with validation
  * Includes custom fields and recurring task options
+ * Includes hierarchical task request workflow
  */
 
 'use client';
@@ -36,6 +37,8 @@ import { VendorCreationModal } from '../../vendors/VendorCreationModal';
 import { VendorSearchResult } from '@/types/vendor';
 import { cn } from '@/lib/utils';
 import { Task, TaskPriority, TaskStatus, CreateTaskInput, CustomField, RecurringFrequency, RecurringConfig } from '@/types/task';
+import TaskRequestModal from '../TaskRequestModal';
+import { useHierarchyCheck, HierarchyCheckResult } from '@/hooks/useHierarchyCheck';
 
 // ============================================
 // TYPES
@@ -159,6 +162,12 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
   const userSearchRef = useRef<HTMLDivElement>(null);
   const searchTimeout = useRef<NodeJS.Timeout>();
 
+  // Hierarchy check state (for request workflow)
+  const { checkHierarchy, loading: hierarchyLoading } = useHierarchyCheck();
+  const [showRequestModal, setShowRequestModal] = useState(false);
+  const [pendingAssignee, setPendingAssignee] = useState<UserOption | null>(null);
+  const [hierarchyInfo, setHierarchyInfo] = useState<HierarchyCheckResult | null>(null);
+
   // Validation
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
@@ -262,15 +271,76 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
     searchTimeout.current = setTimeout(() => searchUsers(value), 250);
   };
 
-  // Select user (add to assignees list)
-  const selectUser = (user: UserOption) => {
+  // Select user (add to assignees list) - with hierarchy check
+  const selectUser = async (user: UserOption) => {
     // Don't add if already in list
     if (assignees.some(a => a.id === user.id)) return;
+    
+    // Only check hierarchy for new task creation (not edit mode)
+    if (mode === 'create') {
+      const result = await checkHierarchy(user.id);
+      
+      if (result?.isViolation) {
+        // Hierarchy violation - show request modal instead of direct assignment
+        setPendingAssignee(user);
+        setHierarchyInfo(result);
+        setShowRequestModal(true);
+        setShowUserDropdown(false);
+        setUserResults([]);
+        return;
+      }
+    }
+    
+    // No violation - proceed with normal assignment
     setAssignees([...assignees, user]);
     setUserQuery('');
     setShowUserDropdown(false);
     setUserResults([]);
     setErrors({ ...errors, assignee: '' });
+  };
+
+  // Handle sending task as request (from modal)
+  const handleSendRequest = async (requestData: {
+    title: string;
+    description?: string;
+    priority: string;
+    suggestedDueDate?: string;
+    requestedTo: number;
+  }) => {
+    try {
+      const response = await fetch('/api/task-requests', {
+        method: 'POST',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: requestData.title || title,
+          description: requestData.description || description,
+          priority: requestData.priority || priority,
+          suggestedDueDate: requestData.suggestedDueDate || (dueDate ? `${dueDate}T${dueTime || '18:00'}:00` : undefined),
+          requestedToId: requestData.requestedTo,
+        }),
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to send request');
+      }
+      
+      // Success - close modal and form
+      setShowRequestModal(false);
+      setPendingAssignee(null);
+      setHierarchyInfo(null);
+      
+      // Notify parent that request was sent instead of task created
+      // The onCancel will close the form
+      onCancel();
+      
+    } catch (error: any) {
+      console.error('[TaskFormV2] Send request error:', error);
+      throw error; // Re-throw so modal can show error
+    }
   };
 
   // Remove user from assignees
@@ -1599,6 +1669,35 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
         onClose={() => setShowVendorModal(false)}
         onVendorCreated={handleVendorCreated}
       />
+
+      {/* Task Request Modal - shown when hierarchy violation detected */}
+      {showRequestModal && pendingAssignee && hierarchyInfo && (
+        <TaskRequestModal
+          isOpen={showRequestModal}
+          onClose={() => {
+            setShowRequestModal(false);
+            setPendingAssignee(null);
+            setHierarchyInfo(null);
+          }}
+          onSendRequest={handleSendRequest}
+          taskData={{
+            title: title,
+            description: description,
+            priority: priority,
+            dueDate: dueDate ? `${dueDate}T${dueTime || '18:00'}:00` : undefined,
+            assigneeId: pendingAssignee.id,
+            assigneeName: pendingAssignee.fullName || pendingAssignee.username,
+            assigneeRoleName: pendingAssignee.role || 'Unknown Role',
+          }}
+          hierarchyInfo={{
+            creatorLevel: hierarchyInfo.creatorLevel,
+            assigneeLevel: hierarchyInfo.assigneeLevel,
+            creatorRoleName: hierarchyInfo.creatorRoleName,
+            assigneeRoleName: hierarchyInfo.assigneeRoleName,
+          }}
+          loading={hierarchyLoading}
+        />
+      )}
     </div>
   );
 }

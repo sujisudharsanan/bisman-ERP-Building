@@ -10,9 +10,10 @@ interface KanbanColumnProps {
   showCreate?: boolean;
   onCreate?: () => void;
   onTaskClick?: (task: any) => void;
+  selectedTaskId?: string | null;
 }
 
-const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = false, onCreate, onTaskClick }) => {
+const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = false, onCreate, onTaskClick, selectedTaskId }) => {
   // Refined color semantics: Green for Done, Orange/Red for Need Attention, Purple for Clarification
   // Using colors that work well in both light and dark modes
   const getColumnStyle = (title: string) => {
@@ -110,6 +111,7 @@ const KanbanColumn: React.FC<KanbanColumnProps> = ({ title, tasks, showCreate = 
               columnBorderColor={columnStyle.borderColor}
               onClick={() => onTaskClick?.(task)}
               taskData={task}
+              isSelected={selectedTaskId === task.id}
             />
           ))
         )}
