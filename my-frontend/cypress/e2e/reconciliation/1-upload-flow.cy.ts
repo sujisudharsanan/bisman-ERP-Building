@@ -122,7 +122,9 @@ describe('Bank Reconciliation - Upload Flow', () => {
             if ($input.length > 0) {
               const dataTransfer = new DataTransfer();
               dataTransfer.items.add(testFile);
-              $input[0].files = dataTransfer.files;
+              const inputEl = $input[0] as HTMLInputElement;
+              // @ts-ignore
+              inputEl.files = dataTransfer.files;
               cy.wrap($input).trigger('change', { force: true });
               
               // Should show filename
@@ -144,7 +146,8 @@ describe('Bank Reconciliation - Upload Flow', () => {
             if ($input.length > 0) {
               const dataTransfer = new DataTransfer();
               dataTransfer.items.add(testFile);
-              $input[0].files = dataTransfer.files;
+              const inputEl = $input[0] as HTMLInputElement;
+              inputEl.files = dataTransfer.files;
               cy.wrap($input).trigger('change', { force: true });
               
               // Should show preview table
@@ -213,20 +216,20 @@ describe('Bank Reconciliation - Upload Flow', () => {
           const txtContent = 'This is not a CSV file';
           const blob = new Blob([txtContent], { type: 'text/plain' });
           const testFile = new File([blob], 'test.txt', { type: 'text/plain' });
-          
           cy.get('input[type="file"]').then(($input) => {
             if ($input.length > 0) {
               const dataTransfer = new DataTransfer();
               dataTransfer.items.add(testFile);
-              $input[0].files = dataTransfer.files;
+              const inputEl = $input[0] as HTMLInputElement;
+              inputEl.files = dataTransfer.files;
               cy.wrap($input).trigger('change', { force: true });
               
               // Should show error or reject the file
-              cy.get('body').should(($body) => {
-                const hasError = $body.text().includes('Only CSV') || 
-                                $body.text().includes('not allowed') ||
-                                $body.find('.text-red-').length > 0;
-                // Accept either error message or file rejection
+              cy.get('body').should(($b) => {
+                const hasError = $b.text().includes('Only CSV') || 
+                                $b.text().includes('not allowed') ||
+                                $b.find('.text-red-').length > 0;
+                expect(hasError).to.be.true;
               });
             }
           });

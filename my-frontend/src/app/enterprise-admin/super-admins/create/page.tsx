@@ -172,8 +172,25 @@ export default function CreateSuperAdminPage() {
       return;
     }
 
-    if (formData.password.length < 6) {
-      alert('Password must be at least 6 characters long!');
+    // Password complexity validation
+    const passwordErrors = [];
+    if (formData.password.length < 12) {
+      passwordErrors.push('at least 12 characters');
+    }
+    if (!/[a-z]/.test(formData.password)) {
+      passwordErrors.push('a lowercase letter');
+    }
+    if (!/[A-Z]/.test(formData.password)) {
+      passwordErrors.push('an uppercase letter');
+    }
+    if (!/\d/.test(formData.password)) {
+      passwordErrors.push('a number');
+    }
+    if (!/[@$!%*?&#]/.test(formData.password)) {
+      passwordErrors.push('a special character (@$!%*?&#)');
+    }
+    if (passwordErrors.length > 0) {
+      alert(`Password must contain: ${passwordErrors.join(', ')}`);
       return;
     }
 

@@ -3,6 +3,7 @@ const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const { authenticate, requireRole } = require('../middleware/auth');
+const { validatePassword } = require('../lib/passwordValidator');
 const prisma = new PrismaClient();
 
 // Apply authentication middleware to all routes
@@ -237,10 +238,12 @@ router.post('/', requireEnterpriseAdmin, async (req, res) => {
       });
     }
 
-    if (password.length < 8) {
+    // Validate password using centralized validator
+    const passwordValidation = validatePassword(password);
+    if (!passwordValidation.valid) {
       return res.status(400).json({ 
         ok: false, 
-        error: 'Password must be at least 8 characters long' 
+        error: passwordValidation.errors[0] 
       });
     }
 
@@ -535,10 +538,12 @@ router.post('/:id/reset-password', requireEnterpriseAdmin, async (req, res) => {
     const adminId = parseInt(req.params.id);
     const { newPassword } = req.body;
 
-    if (!newPassword || newPassword.length < 8) {
+    // Validate password using centralized validator
+    const passwordValidation = validatePassword(newPassword);
+    if (!passwordValidation.valid) {
       return res.status(400).json({ 
         ok: false, 
-        error: 'Password must be at least 8 characters long' 
+        error: passwordValidation.errors[0] 
       });
     }
 

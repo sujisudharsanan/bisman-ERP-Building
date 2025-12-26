@@ -105,8 +105,16 @@ export default function UserFormModal({
     // Password validation (only for create mode or if password is being changed)
     if (!existingUser && !formData.password) {
       newErrors['password'] = 'Password is required';
-    } else if (formData.password && formData.password.length < 8) {
-      newErrors['password'] = 'Password must be at least 8 characters';
+    } else if (formData.password && formData.password.length < 12) {
+      newErrors['password'] = 'Password must be at least 12 characters';
+    } else if (formData.password && !/[A-Z]/.test(formData.password)) {
+      newErrors['password'] = 'Password must contain an uppercase letter';
+    } else if (formData.password && !/[a-z]/.test(formData.password)) {
+      newErrors['password'] = 'Password must contain a lowercase letter';
+    } else if (formData.password && !/[0-9]/.test(formData.password)) {
+      newErrors['password'] = 'Password must contain a number';
+    } else if (formData.password && !/[!@#$%^&*(),.?":{}|<>]/.test(formData.password)) {
+      newErrors['password'] = 'Password must contain a special character';
     }
 
     // Role validation
@@ -247,7 +255,7 @@ export default function UserFormModal({
                       ? 'border-red-500'
                       : 'border-gray-300 dark:border-gray-600'
                   }`}
-                  placeholder="Enter password (min 8 characters)"
+                  placeholder="Enter password (min 12 characters)"
                 />
                 <button
                   type="button"

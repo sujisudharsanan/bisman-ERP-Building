@@ -4,6 +4,7 @@ const { PrismaClient } = require('@prisma/client');
 const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 const { protectBusinessLevel, logBusinessLevelChange, getBusinessLevelInfo } = require('../middleware/businessLevelProtection');
+const { validatePassword, generateSecurePassword } = require('../lib/passwordValidator');
 
 const requireEnterpriseAdmin = (req, res, next) => {
   const userRole = (req.user?.role || '').toUpperCase();
@@ -397,8 +398,24 @@ router.post('/bulk/import', requireEnterpriseAdmin, async (req, res) => {
           continue;
         }
 
+        // Validate or generate password
+        let finalPassword = password;
+        if (!password) {
+          // Generate a secure random password if none provided
+          finalPassword = generateSecurePassword(16);
+          // Note: In production, this should be sent to the user via email
+        } else {
+          // Validate provided password
+          const passwordValidation = validatePassword(password);
+          if (!passwordValidation.valid) {
+            results.failed++;
+            results.errors.push({ email, error: `Password validation failed: ${passwordValidation.errors[0]}` });
+            continue;
+          }
+        }
+
         // Hash password
-        const hashedPassword = await bcrypt.hash(password || 'Welcome@123', 10);
+        const hashedPassword = await bcrypt.hash(finalPassword, 12);
 
         // Create user
         await prisma.user.create({

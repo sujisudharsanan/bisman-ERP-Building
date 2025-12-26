@@ -93,13 +93,24 @@ function validateAdminInput(data) {
     errors.push('Valid email address is required');
   }
 
-  if (!data.password || data.password.length < 8) {
-    errors.push('Password must be at least 8 characters');
+  if (!data.password || data.password.length < 12) {
+    errors.push('Password must be at least 12 characters');
   }
 
-  // Password strength check
-  if (data.password && !/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)/.test(data.password)) {
-    errors.push('Password must contain at least one uppercase, one lowercase, and one number');
+  // Password complexity check
+  if (data.password) {
+    if (!/[A-Z]/.test(data.password)) {
+      errors.push('Password must contain at least one uppercase letter');
+    }
+    if (!/[a-z]/.test(data.password)) {
+      errors.push('Password must contain at least one lowercase letter');
+    }
+    if (!/[0-9]/.test(data.password)) {
+      errors.push('Password must contain at least one number');
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(data.password)) {
+      errors.push('Password must contain at least one special character');
+    }
   }
 
   if (!data.organizationName || data.organizationName.trim().length < 2) {

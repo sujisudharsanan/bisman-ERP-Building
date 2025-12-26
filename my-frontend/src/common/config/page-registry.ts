@@ -279,6 +279,11 @@ export interface PageMetadata {
   description?: string;
   badge?: string; // Optional badge text (e.g., "New", "Beta")
   order?: number; // Display order within module
+  
+  // Governance tracking fields (optional)
+  reviewed_by?: string; // Email or name of reviewer who validated this page
+  reviewed_at?: string; // ISO date string when page was reviewed
+  owner?: string; // Page owner/maintainer (email or name)
 }
 
 // Module metadata
@@ -559,6 +564,19 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     description: 'View user activity logs',
     order: 5,
+  },
+  {
+    id: 'enterprise-admin-page-governance',
+    name: 'Page Governance',
+    path: '/enterprise-admin/page-governance',
+    iconKey: "Shield",
+    module: 'enterprise-admin',
+    permissions: ['enterprise-admin'],
+    roles: ['ENTERPRISE_ADMIN'],
+    status: 'active',
+    showInSidebar: true,
+    description: 'View and audit all registered pages in the ERP',
+    order: 6,
   },
   {
     id: 'enterprise-admin-billing',

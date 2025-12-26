@@ -231,10 +231,30 @@ router.post('/', authMiddleware, checkUserCreationLimit(), async (req: Request, 
       });
     }
 
-    // Password strength validation
-    if (password.length < 8) {
+    // Password strength validation - minimum 12 chars with complexity
+    if (password.length < 12) {
       return res.status(400).json({
-        error: 'Password must be at least 8 characters long',
+        error: 'Password must be at least 12 characters long',
+      });
+    }
+    if (!/[A-Z]/.test(password)) {
+      return res.status(400).json({
+        error: 'Password must contain at least one uppercase letter',
+      });
+    }
+    if (!/[a-z]/.test(password)) {
+      return res.status(400).json({
+        error: 'Password must contain at least one lowercase letter',
+      });
+    }
+    if (!/[0-9]/.test(password)) {
+      return res.status(400).json({
+        error: 'Password must contain at least one number',
+      });
+    }
+    if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+      return res.status(400).json({
+        error: 'Password must contain at least one special character',
       });
     }
 
@@ -394,10 +414,30 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
     }
 
     if (password !== undefined) {
-      // Password strength validation
-      if (password.length < 8) {
+      // Password strength validation - minimum 12 chars with complexity
+      if (password.length < 12) {
         return res.status(400).json({
-          error: 'Password must be at least 8 characters long',
+          error: 'Password must be at least 12 characters long',
+        });
+      }
+      if (!/[A-Z]/.test(password)) {
+        return res.status(400).json({
+          error: 'Password must contain at least one uppercase letter',
+        });
+      }
+      if (!/[a-z]/.test(password)) {
+        return res.status(400).json({
+          error: 'Password must contain at least one lowercase letter',
+        });
+      }
+      if (!/[0-9]/.test(password)) {
+        return res.status(400).json({
+          error: 'Password must contain at least one number',
+        });
+      }
+      if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
+        return res.status(400).json({
+          error: 'Password must contain at least one special character',
         });
       }
       updateData.password_hash = await bcrypt.hash(password, 10);

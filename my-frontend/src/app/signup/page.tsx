@@ -173,11 +173,11 @@ const INDUSTRIES = [
 
 function checkPasswordStrength(password: string): PasswordStrength {
   const requirements = {
-    length: password.length >= 8,
+    length: password.length >= 12,
     uppercase: /[A-Z]/.test(password),
     lowercase: /[a-z]/.test(password),
     number: /[0-9]/.test(password),
-    special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+    special: /[@$!%*?&#^()_+\-=[\]{}|;:,.<>]/.test(password),
   };
 
   const score = Object.values(requirements).filter(Boolean).length;
@@ -270,7 +270,7 @@ function StepIndicator({ currentStep }: { currentStep: number }) {
 // Password requirements indicator
 function PasswordRequirements({ strength }: { strength: PasswordStrength }) {
   const items = [
-    { key: 'length', label: 'At least 8 characters' },
+    { key: 'length', label: 'At least 12 characters' },
     { key: 'uppercase', label: 'One uppercase letter' },
     { key: 'lowercase', label: 'One lowercase letter' },
     { key: 'number', label: 'One number' },

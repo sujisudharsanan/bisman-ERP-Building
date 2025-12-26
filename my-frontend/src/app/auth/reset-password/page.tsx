@@ -94,11 +94,14 @@ export default function ResetPasswordPage() {
     const suggestions: string[] = [];
     let score = 0;
 
-    // Length check
-    if (newPassword.length >= 8) score += 1;
-    else suggestions.push('Use at least 8 characters');
-
-    if (newPassword.length >= 12) score += 1;
+    // Length check - minimum 12 characters required
+    if (newPassword.length >= 12) score += 2;
+    else if (newPassword.length >= 8) {
+      score += 1;
+      suggestions.push('Use at least 12 characters for better security');
+    } else {
+      suggestions.push('Use at least 12 characters');
+    }
 
     // Character variety checks
     if (/[a-z]/.test(newPassword)) score += 1;
@@ -135,9 +138,9 @@ export default function ResetPasswordPage() {
     e.preventDefault();
     setError(null);
 
-    // Validation
-    if (!newPassword || newPassword.length < 8) {
-      setError('Password must be at least 8 characters long');
+    // Validation - require 12 characters minimum
+    if (!newPassword || newPassword.length < 12) {
+      setError('Password must be at least 12 characters long');
       return;
     }
 

@@ -23,14 +23,14 @@ export default function ChangePasswordPage() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
-  // Password strength validation
+  // Password strength validation - Updated to 12 character minimum
   const validatePasswordStrength = (password: string) => {
     const checks = {
-      length: password.length >= 8,
+      length: password.length >= 12,
       uppercase: /[A-Z]/.test(password),
       lowercase: /[a-z]/.test(password),
       number: /[0-9]/.test(password),
-      special: /[!@#$%^&*(),.?":{}|<>]/.test(password),
+      special: /[@$!%*?&#^()_+\-=[\]{}|;:,.<>]/.test(password),
     };
     return checks;
   };
@@ -161,7 +161,7 @@ export default function ChangePasswordPage() {
                   <p className="text-xs font-medium text-gray-700 dark:text-gray-300">Password Requirements:</p>
                   <div className="space-y-1">
                     {[
-                      { key: 'length', label: 'At least 8 characters' },
+                      { key: 'length', label: 'At least 12 characters' },
                       { key: 'uppercase', label: 'One uppercase letter' },
                       { key: 'lowercase', label: 'One lowercase letter' },
                       { key: 'number', label: 'One number' },

@@ -23,6 +23,7 @@ const { body, validationResult } = require('express-validator');
 const pool = require('../config/database');
 const { sendPasswordResetEmail, sendPasswordChangeConfirmationEmail } = require('../services/emailService');
 const logger = require('../utils/logger');
+const { validatePassword: centralPasswordValidator } = require('../lib/passwordValidator');
 
 const router = express.Router();
 
@@ -31,7 +32,7 @@ const router = express.Router();
 // ============================================================================
 const TOKEN_TTL_HOURS = 1;
 const TOKEN_BYTES = 32; // 256 bits
-const PASSWORD_MIN_LENGTH = 8;
+const PASSWORD_MIN_LENGTH = 12; // Updated to 12 characters
 const BCRYPT_ROUNDS = 12;
 
 // ============================================================================
@@ -81,37 +82,13 @@ function hashToken(token) {
 }
 
 /**
- * Validate password strength
+ * Validate password strength using centralized validator
  * @param {string} password
  * @returns {object} { valid: boolean, errors: string[] }
  */
 function validatePasswordStrength(password) {
-  const errors = [];
-  
-  if (!password || password.length < PASSWORD_MIN_LENGTH) {
-    errors.push(`Password must be at least ${PASSWORD_MIN_LENGTH} characters long`);
-  }
-  
-  if (!/[a-z]/.test(password)) {
-    errors.push('Password must contain at least one lowercase letter');
-  }
-  
-  if (!/[A-Z]/.test(password)) {
-    errors.push('Password must contain at least one uppercase letter');
-  }
-  
-  if (!/[0-9]/.test(password)) {
-    errors.push('Password must contain at least one number');
-  }
-  
-  if (!/[!@#$%^&*(),.?":{}|<>]/.test(password)) {
-    errors.push('Password must contain at least one special character');
-  }
-  
-  return {
-    valid: errors.length === 0,
-    errors
-  };
+  // Use centralized password validator
+  return centralPasswordValidator(password);
 }
 
 /**

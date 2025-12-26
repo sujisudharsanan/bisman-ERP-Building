@@ -1352,8 +1352,25 @@ export default function Page() {
       setCreateError('Password is required');
       return;
     }
-    if (createForm.password.length < 6) {
-      setCreateError('Password must be at least 6 characters');
+    // Password complexity validation
+    const passwordErrors = [];
+    if (createForm.password.length < 12) {
+      passwordErrors.push('at least 12 characters');
+    }
+    if (!/[a-z]/.test(createForm.password)) {
+      passwordErrors.push('a lowercase letter');
+    }
+    if (!/[A-Z]/.test(createForm.password)) {
+      passwordErrors.push('an uppercase letter');
+    }
+    if (!/\d/.test(createForm.password)) {
+      passwordErrors.push('a number');
+    }
+    if (!/[@$!%*?&#]/.test(createForm.password)) {
+      passwordErrors.push('a special character (@$!%*?&#)');
+    }
+    if (passwordErrors.length > 0) {
+      setCreateError(`Password must contain: ${passwordErrors.join(', ')}`);
       return;
     }
     if (createForm.password !== createForm.confirmPassword) {

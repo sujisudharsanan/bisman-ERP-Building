@@ -64,8 +64,16 @@ router.post('/',
       .withMessage('Industry must be max 50 characters'),
     body('adminPassword')
       .optional()
-      .isLength({ min: 8 })
-      .withMessage('Password must be at least 8 characters')
+      .isLength({ min: 12 })
+      .withMessage('Password must be at least 12 characters')
+      .matches(/[A-Z]/)
+      .withMessage('Password must contain at least one uppercase letter')
+      .matches(/[a-z]/)
+      .withMessage('Password must contain at least one lowercase letter')
+      .matches(/[0-9]/)
+      .withMessage('Password must contain at least one number')
+      .matches(/[!@#$%^&*(),.?":{}|<>]/)
+      .withMessage('Password must contain at least one special character')
   ],
   async (req, res) => {
     try {

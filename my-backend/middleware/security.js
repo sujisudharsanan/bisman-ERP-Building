@@ -1,6 +1,8 @@
 const rateLimit = require('express-rate-limit')
 const validator = require('validator')
 const bcrypt = require('bcryptjs')
+const jwt = require('jsonwebtoken')
+const { validatePassword: validatePasswordStrength } = require('../lib/passwordValidator')
 
 // Rate limiting for authentication endpoints
 const authLimiter = rateLimit({
@@ -13,16 +15,11 @@ const authLimiter = rateLimit({
   legacyHeaders: false,
 })
 
-// Password validation rules
+// Password validation rules - using centralized validator
 const validatePassword = (password) => {
-  if (!password || password.length < 8) {
-    return { valid: false, message: 'Password must be at least 8 characters long' }
-  }
-  if (!/(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]/.test(password)) {
-    return {
-      valid: false,
-      message: 'Password must contain at least one uppercase letter, one lowercase letter, one number, and one special character'
-    }
+  const result = validatePasswordStrength(password);
+  if (!result.valid) {
+    return { valid: false, message: result.errors[0] }
   }
   return { valid: true }
 }

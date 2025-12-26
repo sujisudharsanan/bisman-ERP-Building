@@ -6,13 +6,14 @@ const { getPrisma } = require('../lib/prisma');
 const { AppError, ERROR_CODES, asyncHandler } = require('../middleware/errorHandler');
 const { auditService } = require('../services/auditService');
 // Security: Brute force protection with CAPTCHA
-const { loginBruteForceProtection, verifyCaptcha } = require('../middleware/bruteForceProtection');
+const { loginBruteForceProtection } = require('../middleware/bruteForceProtection');
 // Rate limiter import removed - all rate limiting disabled for development
+// Note: sanitizeInput not used on login - would break existing users with legacy passwords
 
 let prisma = null;
 try {
   prisma = getPrisma();
-} catch (e) {
+} catch {
   console.warn('[auth.routes] Prisma not available, will use dev fallback if enabled');
   prisma = null;
 }
@@ -55,8 +56,6 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
 
   console.log(`🔐 Login attempt for: ${email}`);
 
-    const user = null;
-    const userType = null;
     let authData = null;
 
     // Helper to run queries with timeout
@@ -90,7 +89,7 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
         isValidPassword = typeof passwordHash === 'string' && passwordHash.length > 0 
           ? bcrypt.compareSync(password, passwordHash)
           : false;
-      } catch (e) {
+      } catch {
         console.warn('⚠️ Password compare failed for Enterprise Admin (likely missing/invalid hash)');
         isValidPassword = false;
       }
@@ -166,7 +165,7 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
         isValidPassword = typeof passwordHash === 'string' && passwordHash.length > 0 
           ? bcrypt.compareSync(password, passwordHash)
           : false;
-      } catch (e) {
+      } catch {
         console.warn('⚠️ Password compare failed for Super Admin (likely missing/invalid hash)');
         isValidPassword = false;
       }
@@ -471,17 +470,17 @@ router.post('/logout', async (req, res) => {
           where: { session_token: hashedToken },
           data: { is_active: false }
         });
-      } catch (e) {
+      } catch {
         // Defensive: if user_sessions table doesn't exist yet in prod, don't crash logout
         console.warn('user_sessions.updateMany failed (likely missing table). Continuing logout.');
       }
     }
 
   // Clear cookies (both modern and legacy names)
-  try { res.clearCookie('access_token', { path: '/' }); } catch (e) {}
-  try { res.clearCookie('refresh_token', { path: '/' }); } catch (e) {}
-  try { res.clearCookie('accessToken', { path: '/' }); } catch (e) {}
-  try { res.clearCookie('refreshToken', { path: '/' }); } catch (e) {}
+  try { res.clearCookie('access_token', { path: '/' }); } catch { /* ignore */ }
+  try { res.clearCookie('refresh_token', { path: '/' }); } catch { /* ignore */ }
+  try { res.clearCookie('accessToken', { path: '/' }); } catch { /* ignore */ }
+  try { res.clearCookie('refreshToken', { path: '/' }); } catch { /* ignore */ }
 
     res.json({ message: 'Logout successful' });
   } catch (error) {
@@ -650,7 +649,7 @@ router.get('/me/permissions', async (req, res) => {
         select: { page_key: true }
       });
       rbacPages = rbacPerms.map(p => p.page_key);
-    } catch (e) {
+    } catch {
       // Table might not exist
     }
 
