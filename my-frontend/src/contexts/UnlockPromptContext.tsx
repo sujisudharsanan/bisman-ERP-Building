@@ -7,17 +7,13 @@
  * When API calls return MICRO_UNLOCK_REQUIRED errors, this provider
  * intercepts them and displays the unlock modal.
  * 
+ * NOTE: This context works alongside the UnlockPromptProvider from 
+ * @/components/subscription/UnlockPrompt which handles the actual modal display.
+ * 
  * @module contexts/UnlockPromptContext
  */
 
 import React, { createContext, useContext, useState, useCallback, useEffect } from 'react';
-import dynamic from 'next/dynamic';
-
-// Lazy load the UnlockPrompt component
-const UnlockPrompt = dynamic(
-  () => import('@/components/subscription/UnlockPrompt'),
-  { ssr: false }
-);
 
 // ============================================================================
 // TYPES
@@ -179,26 +175,18 @@ export function UnlockPromptProvider({ children }: UnlockPromptProviderProps) {
     handleApiResponse
   };
 
+  // Note: The actual modal is rendered by the UnlockPromptProvider from
+  // @/components/subscription/UnlockPrompt. This context only tracks state
+  // and intercepts API responses.
+  // Ensure your app is wrapped with both providers or use the UnlockPromptProvider
+  // from @/components/subscription/UnlockPrompt for modal display.
+  
+  // Suppress unused variable warning - handleUnlockSuccess is kept for future use
+  void handleUnlockSuccess;
+
   return (
     <UnlockPromptContext.Provider value={contextValue}>
       {children}
-      
-      {/* Render the UnlockPrompt modal */}
-      {promptData && (
-        <UnlockPrompt
-          isOpen={isVisible}
-          onClose={hideUnlockPrompt}
-          onUnlockSuccess={handleUnlockSuccess}
-          featureKey={promptData.featureKey}
-          featureName={promptData.featureName}
-          description={promptData.description}
-          currentUsage={promptData.currentUsage}
-          usageLimit={promptData.usageLimit}
-          resetInSeconds={promptData.resetInSeconds}
-          unlockPrice={promptData.unlockPrice}
-          currency={promptData.currency}
-        />
-      )}
     </UnlockPromptContext.Provider>
   );
 }

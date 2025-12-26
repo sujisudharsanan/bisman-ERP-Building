@@ -1,7 +1,7 @@
 // server.js - Start Express API and optionally serve the exported Next.js app
 // Build: 2025-11-26T15:07:00Z - NUCLEAR REBUILD v4
 // Commit: 891a089f (Latest fix with root route handler)
-try { require('dotenv').config(); } catch (_) {}
+try { require('dotenv').config(); } catch { /* dotenv not available */ }
 
 const path = require('path');
 const express = require('express');
@@ -204,7 +204,7 @@ async function start() {
 
   // Initialize AI Analytics Cron Jobs
   try {
-    const aiCron = require('./cron/aiAnalyticsJob');
+    require('./cron/aiAnalyticsJob');
     console.log('[startup] ✅ AI Analytics cron jobs initialized');
   } catch (cronError) {
     console.warn('[startup] AI cron jobs not initialized:', cronError.message);
@@ -272,29 +272,8 @@ async function start() {
     console.log('[startup] Running in API-only mode');
   }
   
-  // Remove old fallback block (dead code)
-  if (false) {
-    // Fallback root route if Next.js is not available
-    app.get('/', (_req, res) => {
-      res.status(200).json({
-        name: 'BISMAN ERP Backend API',
-        version: '1.0.0',
-        status: 'online (API-only mode)',
-        environment: process.env.NODE_ENV || 'development',
-        endpoints: {
-          health: '/api/health',
-          auth: '/api/auth/*',
-          tasks: '/api/tasks/*',
-          chat: '/api/chat/*',
-          ai: '/api/langchain/*',
-          calls: '/api/calls/*',
-          metrics: '/metrics'
-        },
-        note: 'Frontend not available in this deployment',
-        documentation: 'https://github.com/sujisudharsanan/bisman-ERP-Building'
-      });
-    });
-  }
+  // Remove old fallback block (dead code was removed in cleanup)
+  // Note: Root route is already registered above in API-only mode
 
   const port = process.env.PORT || 8080;
   const serverInstance = server.listen(port, '0.0.0.0', () => {

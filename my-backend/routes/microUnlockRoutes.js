@@ -16,11 +16,13 @@ const spendControlService = require('../services/subscription/spendControlServic
 // Admin roles that can see pricing
 const ADMIN_ROLES = ['SUPER_ADMIN', 'ADMIN', 'OWNER', 'ENTERPRISE_ADMIN', 'TENANT_ADMIN'];
 
-function isAdminUser(user) {
+// Helper to check if user is admin (reserved for future use)
+function _isAdminUser(user) {
   if (!user) return false;
   const role = (user.role_name || user.role || '').toUpperCase();
   return ADMIN_ROLES.includes(role);
 }
+void _isAdminUser; // Suppress unused warning - reserved for future use
 
 // ============================================================================
 // MIDDLEWARE

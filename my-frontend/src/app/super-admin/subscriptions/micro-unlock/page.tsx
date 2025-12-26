@@ -50,9 +50,9 @@ import {
   History,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
-import { Badge } from '@/components/ui/Badge';
+import Button from '@/components/ui/Button';
+import Input from '@/components/ui/Input';
+import Badge from '@/components/ui/Badge';
 import { Switch } from '@/components/ui/Switch';
 
 // ============================================================================
@@ -196,7 +196,7 @@ function FeatureCatalogTable({
             <Input
               placeholder="Search features..."
               value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchQuery(e.target.value)}
               className="pl-9 w-64"
             />
           </div>
@@ -358,7 +358,7 @@ function EditFeatureModal({
             <Input
               type="number"
               value={price}
-              onChange={(e) => setPrice(parseFloat(e.target.value) || 0)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPrice(parseFloat(e.target.value) || 0)}
               min={0}
               step={10}
             />
@@ -371,7 +371,7 @@ function EditFeatureModal({
             <Input
               type="number"
               value={limit}
-              onChange={(e) => setLimit(parseInt(e.target.value) || 0)}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLimit(parseInt(e.target.value) || 0)}
               min={-1}
             />
             <p className="text-xs text-gray-500 mt-1">
@@ -588,7 +588,7 @@ function SubscriptionPlansManager({
                     <label className="block text-sm font-medium mb-1">Plan Code</label>
                     <Input
                       value={formData.plan_code}
-                      onChange={(e) => setFormData(prev => ({ ...prev, plan_code: e.target.value.toUpperCase() }))}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, plan_code: e.target.value.toUpperCase() }))}
                       placeholder="e.g., PROFESSIONAL"
                       disabled={!!editingPlan}
                     />
@@ -597,7 +597,7 @@ function SubscriptionPlansManager({
                     <label className="block text-sm font-medium mb-1">Plan Name</label>
                     <Input
                       value={formData.plan_name}
-                      onChange={(e) => setFormData(prev => ({ ...prev, plan_name: e.target.value }))}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, plan_name: e.target.value }))}
                       placeholder="e.g., Professional"
                     />
                   </div>
@@ -607,7 +607,7 @@ function SubscriptionPlansManager({
                   <label className="block text-sm font-medium mb-1">Description</label>
                   <Input
                     value={formData.description}
-                    onChange={(e) => setFormData(prev => ({ ...prev, description: e.target.value }))}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, description: e.target.value }))}
                     placeholder="Brief plan description"
                   />
                 </div>
@@ -618,7 +618,7 @@ function SubscriptionPlansManager({
                     <Input
                       type="number"
                       value={formData.base_price_monthly}
-                      onChange={(e) => setFormData(prev => ({ ...prev, base_price_monthly: parseFloat(e.target.value) || 0 }))}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, base_price_monthly: parseFloat(e.target.value) || 0 }))}
                     />
                   </div>
                   <div>
@@ -626,7 +626,7 @@ function SubscriptionPlansManager({
                     <Input
                       type="number"
                       value={formData.base_price_yearly}
-                      onChange={(e) => setFormData(prev => ({ ...prev, base_price_yearly: parseFloat(e.target.value) || 0 }))}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, base_price_yearly: parseFloat(e.target.value) || 0 }))}
                     />
                   </div>
                 </div>
@@ -658,7 +658,7 @@ function SubscriptionPlansManager({
                     <label className="block text-sm font-medium mb-1">Badge Text</label>
                     <Input
                       value={formData.badge_text}
-                      onChange={(e) => setFormData(prev => ({ ...prev, badge_text: e.target.value }))}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, badge_text: e.target.value }))}
                       placeholder="e.g., Most Popular"
                     />
                   </div>
@@ -667,7 +667,7 @@ function SubscriptionPlansManager({
                     <Input
                       type="number"
                       value={formData.sort_order}
-                      onChange={(e) => setFormData(prev => ({ ...prev, sort_order: parseInt(e.target.value) || 0 }))}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, sort_order: parseInt(e.target.value) || 0 }))}
                     />
                   </div>
                   <div className="flex items-center gap-4 pt-6">
@@ -675,7 +675,7 @@ function SubscriptionPlansManager({
                       <input
                         type="checkbox"
                         checked={formData.is_public}
-                        onChange={(e) => setFormData(prev => ({ ...prev, is_public: e.target.checked }))}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, is_public: e.target.checked }))}
                         className="rounded"
                       />
                       <span className="text-sm">Public</span>
@@ -684,7 +684,7 @@ function SubscriptionPlansManager({
                       <input
                         type="checkbox"
                         checked={formData.is_popular}
-                        onChange={(e) => setFormData(prev => ({ ...prev, is_popular: e.target.checked }))}
+                        onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, is_popular: e.target.checked }))}
                         className="rounded"
                       />
                       <span className="text-sm">Popular</span>

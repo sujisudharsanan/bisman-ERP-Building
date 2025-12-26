@@ -872,6 +872,7 @@ export default function RolesUsersReportPage() {
                     <div className="text-[10px] text-gray-500 flex items-center gap-1 mt-1">
                       <FiUsers className="w-3 h-3" />
                       {userCount} users
+                    </div>
                   </button>
                 </div>
               );

@@ -494,7 +494,8 @@ async function calculateTenantMetrics(tenantId) {
  */
 async function getRevenueAnalytics(options = {}) {
   const prisma = getPrisma();
-  const { startDate, endDate, groupBy = 'month' } = options;
+  const { startDate, endDate, groupBy: _groupBy = 'month' } = options;
+  void _groupBy; // Reserved for future use when we support different groupings
 
   const now = new Date();
   const defaultStart = new Date(now.getFullYear(), now.getMonth() - 11, 1);

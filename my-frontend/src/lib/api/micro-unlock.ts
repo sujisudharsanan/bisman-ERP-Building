@@ -280,7 +280,7 @@ export async function getSubscriptionDashboard(): Promise<SubscriptionPageData> 
   const data: DashboardResponse = await response.json();
   
   if (!response.ok || !data.ok) {
-    handleApiError(data as Record<string, unknown>, response);
+    handleApiError(data as unknown as Record<string, unknown>, response);
   }
   
   return data.data;
@@ -303,7 +303,7 @@ export async function getBillingSummary(): Promise<BillingSummary> {
   const data: BillingSummaryResponse = await response.json();
   
   if (!response.ok || !data.ok) {
-    handleApiError(data as Record<string, unknown>, response);
+    handleApiError(data as unknown as Record<string, unknown>, response);
   }
   
   return data.billing;
@@ -388,7 +388,7 @@ export async function getRevenueAnalytics(): Promise<RevenueAnalytics> {
   const data: RevenueResponse = await response.json();
   
   if (!response.ok || !data.ok) {
-    handleApiError(data as Record<string, unknown>, response);
+    handleApiError(data as unknown as Record<string, unknown>, response);
   }
   
   return data.analytics;

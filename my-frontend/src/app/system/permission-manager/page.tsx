@@ -368,7 +368,6 @@ export default function PermissionManagerPage() {
             disabled={!perms.canSelect || !hasUnsavedChanges} 
           />
         </div>
-        </div>
       </div>
 
       {/* Assignment Dialog */}
