@@ -1140,7 +1140,7 @@ const logRequestHistory = async (pool, data) => {
     const roleInfo = await getUserRoleLevel(actorId, pool);
     actorRoleLevel = roleInfo.level;
     actorRoleName = roleInfo.roleName;
-  } catch (e) {
+  } catch {
     // Ignore - actor info is optional
   }
   

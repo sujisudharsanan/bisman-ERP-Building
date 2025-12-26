@@ -24,10 +24,7 @@ const path = require('path');
 
 const {
   bankReconciliationService,
-  StatementStatus,
-  LineStatus,
   BatchStatus,
-  MatchType,
   ReconciliationRoles
 } = require('../services/BankReconciliationService');
 
@@ -833,7 +830,7 @@ router.get('/audit/:entityType/:entityId', requirePermission('CAN_VIEW'), async 
 // ERROR HANDLER
 // ============================================================================
 
-router.use((error, req, res, next) => {
+router.use((error, req, res, _next) => {
   console.error('[BankReconciliationRoutes] Error:', error);
 
   const statusCode = error.statusCode || 500;

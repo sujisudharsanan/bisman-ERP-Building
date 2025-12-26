@@ -1,3 +1,4 @@
+/* global process, console, URL */
 /**
  * ============================================================================
  * SETTLEMENT SYSTEM API STRESS TEST
@@ -12,8 +13,8 @@
  * - Test users exist in database
  */
 
-const http = require('http');
-const https = require('https');
+import http from 'http';
+import https from 'https';
 
 // ============================================================================
 // CONFIGURATION
@@ -85,7 +86,7 @@ function makeRequest(method, path, body = null, token = null) {
         try {
           const json = data ? JSON.parse(data) : {};
           resolve({ status: res.statusCode, data: json, headers: res.headers });
-        } catch (e) {
+        } catch {
           resolve({ status: res.statusCode, data: data, headers: res.headers });
         }
       });
@@ -131,7 +132,7 @@ async function setup() {
       try {
         user.token = await login('demo_hub_incharge@bisman.demo', 'Demo@123');
         console.log(`  ✅ ${role}: using fallback user`);
-      } catch (e) {
+      } catch {
         console.log(`  ❌ ${role}: failed to login`);
       }
     }
@@ -261,9 +262,7 @@ async function testIdempotency() {
     return;
   }
   
-  const idempotencyKey = `test-${Date.now()}`;
-  
-  // Make same request twice with same idempotency key
+  // Make same request twice to verify idempotent behavior
   try {
     const response1 = await makeRequest('GET', '/api/settlements', null, token);
     const response2 = await makeRequest('GET', '/api/settlements', null, token);

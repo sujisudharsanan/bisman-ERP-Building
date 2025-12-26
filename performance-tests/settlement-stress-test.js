@@ -1,3 +1,4 @@
+/* global require, __dirname, console, setTimeout, process */
 /**
  * ============================================================================
  * SETTLEMENT SYSTEM STRESS TEST
@@ -646,6 +647,7 @@ async function verifyBalances() {
 // CLEANUP
 // ============================================================================
 
+// eslint-disable-next-line no-unused-vars
 async function cleanup() {
   console.log('🧹 Cleaning up test data...\n');
   

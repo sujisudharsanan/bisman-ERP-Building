@@ -26,7 +26,6 @@
  */
 
 const { getPrisma } = require('../lib/prisma');
-const { Readable } = require('stream');
 const crypto = require('crypto');
 
 // ============================================================================
@@ -247,7 +246,6 @@ class BankReconciliationService {
    * Auto-detect template from file content
    */
   async detectTemplate(fileContent, fileName, tenantId) {
-    const prisma = this.getPrisma();
     const templates = await this.getTemplates(tenantId);
 
     const fileExt = fileName.split('.').pop().toLowerCase();
@@ -549,7 +547,7 @@ class BankReconciliationService {
     if (mappings.credit !== undefined && mappings.debit !== undefined) {
       // Separate credit/debit columns
       const creditVal = getValue('credit');
-      const debitVal = getValue('debit');
+      // debitVal checked implicitly - if creditVal is 0 or empty, it's a debit
       isCredit = creditVal && parseFloat(creditVal.replace(/[^0-9.-]/g, '')) > 0;
     } else if (template.credit_indicator?.column !== undefined) {
       // Credit indicator column
@@ -1092,7 +1090,7 @@ class BankReconciliationService {
     }
 
     // Get statistics
-    const [lineCounts, matchCount, exceptionCount] = await Promise.all([
+    const [lineCounts, , exceptionCount] = await Promise.all([
       prisma.bank_statement_lines.groupBy({
         by: ['status'],
         where: { statement_id: batch.statement_id },
