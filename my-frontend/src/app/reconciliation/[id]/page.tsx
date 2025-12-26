@@ -137,7 +137,7 @@ type TabType = 'pending' | 'matched' | 'exceptions';
 export default function ReconciliationBatchPage() {
   const router = useRouter();
   const params = useParams();
-  const batchId = params.id as string;
+  const batchId = (Array.isArray(params?.id) ? params?.id[0] : params?.id) ?? '';
   const { user, isAuthenticated, loading: authLoading } = useAuth();
   
   const [activeTab, setActiveTab] = useState<TabType>('pending');
