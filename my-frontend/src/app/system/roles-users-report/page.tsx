@@ -463,12 +463,12 @@ export default function RolesUsersReportPage() {
         <button
           onClick={() => loadData(true)}
           disabled={isDataRefreshing}
-            className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
-          >
-            <FiRefreshCw className={isDataRefreshing ? 'animate-spin' : ''} />
-            Refresh
-          </button>
-        </div>
+          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+        >
+          <FiRefreshCw className={isDataRefreshing ? 'animate-spin' : ''} />
+          Refresh
+        </button>
+      </div>
 
         {/* Main 3-Column Grid */}
         <div className="flex-1 overflow-hidden">
