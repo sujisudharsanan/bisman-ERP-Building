@@ -1,29 +1,31 @@
 {
   "meta": {
     "version": "1.0.0",
-    "exportedAt": "2025-12-12T02:50:51.835Z",
+    "exportedAt": "2025-12-26T12:37:58.598Z",
     "source": "my-frontend/src/common/config/page-registry.ts",
     "generator": "scripts/export-page-registry.js"
   },
   "statistics": {
-    "totalPages": 103,
-    "totalModules": 2,
+    "totalPages": 141,
+    "totalModules": 3,
     "pagesByModule": {
-      "super-admin": 12,
-      "enterprise-admin": 1,
+      "super-admin": 16,
+      "enterprise-admin": 10,
       "hr": 1,
-      "system": 11,
-      "finance": 31,
+      "system": 13,
+      "governance": 3,
+      "internal": 3,
+      "finance": 36,
       "procurement": 5,
-      "operations": 13,
+      "operations": 14,
       "compliance": 9,
-      "common": 4,
-      "billing": 5,
-      "admin": 6,
+      "common": 10,
+      "billing": 2,
+      "admin": 14,
       "qa": 5
     },
     "pagesByStatus": {
-      "active": 103,
+      "active": 141,
       "coming-soon": 0,
       "disabled": 0
     }
@@ -40,6 +42,12 @@
       "name": "Compliance & Legal",
       "description": "Compliance and legal management",
       "order": 5
+    },
+    "admin": {
+      "id": "admin",
+      "name": "Internal Operations",
+      "description": "BISMAN internal team management, support sessions, and customer assistance",
+      "order": 0
     }
   },
   "pages": [
@@ -134,6 +142,141 @@
       ]
     },
     {
+      "id": "enterprise-admin-dashboard",
+      "name": "Enterprise Dashboard",
+      "path": "/enterprise-admin/dashboard",
+      "module": "enterprise-admin",
+      "status": "active",
+      "description": "Enterprise-level dashboard and metrics",
+      "order": 1,
+      "permissions": [
+        "enterprise-admin"
+      ],
+      "roles": [
+        "ENTERPRISE_ADMIN"
+      ]
+    },
+    {
+      "id": "enterprise-admin-modules",
+      "name": "Module Management",
+      "path": "/enterprise-admin/modules",
+      "module": "enterprise-admin",
+      "status": "active",
+      "description": "Manage ERP modules and features",
+      "order": 2,
+      "permissions": [
+        "enterprise-admin"
+      ],
+      "roles": [
+        "ENTERPRISE_ADMIN"
+      ]
+    },
+    {
+      "id": "enterprise-admin-super-admins",
+      "name": "Super Admins",
+      "path": "/enterprise-admin/super-admins",
+      "module": "enterprise-admin",
+      "status": "active",
+      "description": "Manage super admin accounts",
+      "order": 3,
+      "permissions": [
+        "enterprise-admin"
+      ],
+      "roles": [
+        "ENTERPRISE_ADMIN"
+      ]
+    },
+    {
+      "id": "enterprise-admin-logs",
+      "name": "System Logs",
+      "path": "/enterprise-admin/logs",
+      "module": "enterprise-admin",
+      "status": "active",
+      "description": "View system logs and audit trail",
+      "order": 4,
+      "permissions": [
+        "enterprise-admin"
+      ],
+      "roles": [
+        "ENTERPRISE_ADMIN"
+      ]
+    },
+    {
+      "id": "enterprise-admin-activity-logs",
+      "name": "Activity Logs",
+      "path": "/enterprise-admin/activity-logs",
+      "module": "enterprise-admin",
+      "status": "active",
+      "description": "View user activity logs",
+      "order": 5,
+      "permissions": [
+        "enterprise-admin"
+      ],
+      "roles": [
+        "ENTERPRISE_ADMIN"
+      ]
+    },
+    {
+      "id": "enterprise-admin-page-governance",
+      "name": "Page Governance",
+      "path": "/enterprise-admin/page-governance",
+      "module": "enterprise-admin",
+      "status": "active",
+      "description": "View and audit all registered pages in the ERP",
+      "order": 6,
+      "permissions": [
+        "enterprise-admin"
+      ],
+      "roles": [
+        "ENTERPRISE_ADMIN"
+      ]
+    },
+    {
+      "id": "enterprise-admin-billing",
+      "name": "Billing Management",
+      "path": "/enterprise-admin/billing",
+      "module": "enterprise-admin",
+      "status": "active",
+      "description": "Manage tenant billing and subscriptions",
+      "order": 6,
+      "permissions": [
+        "enterprise-admin"
+      ],
+      "roles": [
+        "ENTERPRISE_ADMIN"
+      ]
+    },
+    {
+      "id": "enterprise-admin-settings",
+      "name": "Enterprise Settings",
+      "path": "/enterprise-admin/settings",
+      "module": "enterprise-admin",
+      "status": "active",
+      "description": "Configure enterprise-wide settings",
+      "order": 7,
+      "permissions": [
+        "enterprise-admin"
+      ],
+      "roles": [
+        "ENTERPRISE_ADMIN"
+      ]
+    },
+    {
+      "id": "enterprise-admin-monitoring",
+      "name": "System Monitoring",
+      "path": "/enterprise-admin/monitoring",
+      "module": "enterprise-admin",
+      "status": "active",
+      "description": "Monitor system health and performance",
+      "order": 8,
+      "permissions": [
+        "enterprise-admin"
+      ],
+      "roles": [
+        "ENTERPRISE_ADMIN"
+      ]
+    },
+    {
       "id": "super-admin-backup-restore",
       "name": "Backup & Restore",
       "path": "/super-admin/system/backup-restore",
@@ -209,29 +352,11 @@
       ]
     },
     {
-      "id": "admin-contracts",
-      "name": "Contracts & Agreements",
-      "path": "/admin/contracts",
-      "module": "admin",
-      "status": "active",
-      "description": "Manage agreements, renewals, documents, and contract lifecycle",
-      "order": 30,
-      "permissions": [
-        "contracts-management"
-      ],
-      "roles": [
-        "SUPER_ADMIN",
-        "ENTERPRISE_ADMIN",
-        "ADMIN"
-      ]
-    },
-    {
       "id": "user-creation",
       "name": "Create New User",
       "path": "/hr/user-creation",
       "module": "hr",
       "status": "active",
-      "showInSidebar": false,
       "description": "Two-stage user creation with KYC workflow - HR creates request and sends KYC link or creates user immediately",
       "order": 2,
       "permissions": [
@@ -257,9 +382,9 @@
         "user-management"
       ],
       "roles": [
+        "SUPER_ADMIN",
         "SYSTEM_ADMIN",
-        "SYSTEM ADMINISTRATOR",
-        "ADMIN"
+        "SYSTEM ADMINISTRATOR"
       ]
     },
     {
@@ -274,9 +399,9 @@
         "user-management"
       ],
       "roles": [
+        "SUPER_ADMIN",
         "SYSTEM_ADMIN",
-        "SYSTEM ADMINISTRATOR",
-        "ADMIN"
+        "SYSTEM ADMINISTRATOR"
       ]
     },
     {
@@ -292,9 +417,9 @@
         "system-settings"
       ],
       "roles": [
+        "SUPER_ADMIN",
         "SYSTEM_ADMIN",
-        "SYSTEM ADMINISTRATOR",
-        "ADMIN"
+        "SYSTEM ADMINISTRATOR"
       ]
     },
     {
@@ -310,9 +435,9 @@
         "system-settings"
       ],
       "roles": [
+        "SUPER_ADMIN",
         "SYSTEM_ADMIN",
-        "SYSTEM ADMINISTRATOR",
-        "ADMIN"
+        "SYSTEM ADMINISTRATOR"
       ]
     },
     {
@@ -327,10 +452,128 @@
         "system-settings"
       ],
       "roles": [
+        "SUPER_ADMIN",
         "SYSTEM_ADMIN",
-        "ADMIN",
         "SYSTEM ADMINISTRATOR",
         "IT ADMIN"
+      ]
+    },
+    {
+      "id": "audit-integrity",
+      "name": "Audit Integrity",
+      "path": "/system/audit-integrity-dashboard",
+      "module": "system",
+      "status": "active",
+      "description": "Validate audit log integrity for compliance",
+      "order": 5,
+      "permissions": [
+        "governance-access"
+      ],
+      "roles": [
+        "ENTERPRISE_ADMIN",
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "governance-audit-integrity",
+      "name": "Audit Integrity",
+      "path": "/governance/audit-integrity",
+      "module": "governance",
+      "status": "active",
+      "description": "Verify audit log completeness for compliance",
+      "order": 2,
+      "permissions": [
+        "governance-access"
+      ],
+      "roles": [
+        "ENTERPRISE_ADMIN",
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "governance-security-violations",
+      "name": "Security Violations",
+      "path": "/governance/security-violations",
+      "module": "governance",
+      "status": "active",
+      "description": "Review access denials and security events",
+      "order": 3,
+      "permissions": [
+        "governance-access"
+      ],
+      "roles": [
+        "ENTERPRISE_ADMIN",
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "governance-rbac-structure",
+      "name": "RBAC Structure",
+      "path": "/governance/rbac-structure",
+      "module": "governance",
+      "status": "active",
+      "description": "Understand role hierarchy and access control",
+      "order": 4,
+      "permissions": [
+        "governance-access"
+      ],
+      "roles": [
+        "ENTERPRISE_ADMIN",
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "internal-support-sessions",
+      "name": "Support Sessions",
+      "path": "/internal/support-sessions",
+      "module": "internal",
+      "status": "active",
+      "description": "Manage time-limited customer support sessions",
+      "order": 2,
+      "permissions": [
+        "internal-operations"
+      ],
+      "roles": [
+        "BISMAN_SUPPORT",
+        "BISMAN_CUSTOMER_CARE",
+        "ENTERPRISE_ADMIN"
+      ]
+    },
+    {
+      "id": "internal-customer-assistance",
+      "name": "Customer Assistance",
+      "path": "/internal/customers",
+      "module": "internal",
+      "status": "active",
+      "description": "View and assist customer accounts with audit logging",
+      "order": 3,
+      "permissions": [
+        "internal-operations"
+      ],
+      "roles": [
+        "BISMAN_SUPPORT",
+        "BISMAN_CUSTOMER_CARE",
+        "ENTERPRISE_ADMIN"
+      ]
+    },
+    {
+      "id": "internal-support-playbooks",
+      "name": "Support Playbooks",
+      "path": "/internal/playbooks",
+      "module": "internal",
+      "status": "active",
+      "description": "Step-by-step guides for handling common support scenarios",
+      "order": 4,
+      "permissions": [
+        "internal-operations"
+      ],
+      "roles": [
+        "BISMAN_FINANCE",
+        "BISMAN_BILLING",
+        "BISMAN_SUPPORT",
+        "BISMAN_ENGINEERING",
+        "BISMAN_CUSTOMER_CARE",
+        "ENTERPRISE_ADMIN"
       ]
     },
     {
@@ -349,9 +592,9 @@
         "pump-management"
       ],
       "roles": [
+        "SUPER_ADMIN",
         "SYSTEM_ADMIN",
-        "SYSTEM ADMINISTRATOR",
-        "ADMIN"
+        "SYSTEM ADMINISTRATOR"
       ]
     },
     {
@@ -366,8 +609,8 @@
         "system-settings"
       ],
       "roles": [
+        "SUPER_ADMIN",
         "SYSTEM_ADMIN",
-        "ADMIN",
         "SYSTEM ADMINISTRATOR",
         "IT ADMIN"
       ]
@@ -384,9 +627,9 @@
         "system-settings"
       ],
       "roles": [
+        "SUPER_ADMIN",
         "SYSTEM_ADMIN",
-        "SYSTEM ADMINISTRATOR",
-        "ADMIN"
+        "SYSTEM ADMINISTRATOR"
       ]
     },
     {
@@ -401,10 +644,35 @@
         "system-settings"
       ],
       "roles": [
+        "SUPER_ADMIN",
         "SYSTEM_ADMIN",
-        "ADMIN",
         "SYSTEM ADMINISTRATOR",
         "IT ADMIN"
+      ]
+    },
+    {
+      "id": "trust-security",
+      "name": "Trust & Security",
+      "path": "/trust-security",
+      "module": "system",
+      "status": "active",
+      "description": "Learn how BISMAN ERP keeps your data safe and private",
+      "order": 10,
+      "permissions": [],
+      "roles": [
+        "ENTERPRISE_ADMIN",
+        "SUPER_ADMIN",
+        "ADMIN",
+        "MANAGER",
+        "STAFF",
+        "OPERATOR",
+        "VIEWER",
+        "AUDITOR",
+        "HUB_INCHARGE",
+        "STORE_INCHARGE",
+        "FINANCE_CONTROLLER",
+        "CFO",
+        "CEO"
       ]
     },
     {
@@ -423,13 +691,73 @@
       ]
     },
     {
-      "id": "ai-handling",
-      "name": "AI Handling",
-      "path": "/super-admin/ai-handling",
+      "id": "subscriptions",
+      "name": "Subscriptions",
+      "path": "/super-admin/subscriptions",
       "module": "super-admin",
       "status": "active",
-      "description": "AI configuration and management",
-      "order": 5,
+      "description": "Subscription management console",
+      "order": 3,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "subscription-plans",
+      "name": "Plan Management",
+      "path": "/super-admin/subscriptions/plans",
+      "module": "super-admin",
+      "status": "active",
+      "description": "Create and manage subscription plans",
+      "order": 3,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "subscription-tenants",
+      "name": "Tenant Subscriptions",
+      "path": "/super-admin/subscriptions/tenants",
+      "module": "super-admin",
+      "status": "active",
+      "description": "Manage tenant subscription status",
+      "order": 3,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "subscription-billing",
+      "name": "Billing Overrides",
+      "path": "/super-admin/subscriptions/billing",
+      "module": "super-admin",
+      "status": "active",
+      "description": "Apply custom billing and overrides",
+      "order": 3,
+      "permissions": [
+        "system-settings"
+      ],
+      "roles": [
+        "SUPER_ADMIN"
+      ]
+    },
+    {
+      "id": "subscription-audit",
+      "name": "Subscription Audit",
+      "path": "/super-admin/subscriptions/audit",
+      "module": "super-admin",
+      "status": "active",
+      "description": "View subscription audit logs",
+      "order": 3,
       "permissions": [
         "system-settings"
       ],
@@ -452,9 +780,9 @@
         "pump-management"
       ],
       "roles": [
+        "SUPER_ADMIN",
         "SYSTEM_ADMIN",
-        "SYSTEM ADMINISTRATOR",
-        "ADMIN"
+        "SYSTEM ADMINISTRATOR"
       ]
     },
     {
@@ -469,9 +797,9 @@
         "system-settings"
       ],
       "roles": [
+        "SUPER_ADMIN",
         "SYSTEM_ADMIN",
-        "SYSTEM ADMINISTRATOR",
-        "ADMIN"
+        "SYSTEM ADMINISTRATOR"
       ]
     },
     {
@@ -964,6 +1292,103 @@
       ]
     },
     {
+      "id": "bank-reconciliation-list",
+      "name": "Bank Reconciliation",
+      "path": "/reconciliation",
+      "module": "finance",
+      "status": "active",
+      "description": "Bank statement reconciliation batches",
+      "order": 32,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "FINANCE_CONTROLLER",
+        "ACCOUNTS",
+        "ACCOUNTS_PAYABLE",
+        "BANKER",
+        "TREASURY",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "bank-reconciliation-upload",
+      "name": "Upload Statement",
+      "path": "/reconciliation/upload",
+      "module": "finance",
+      "status": "active",
+      "description": "Upload bank statements for reconciliation",
+      "order": 33,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "ACCOUNTS",
+        "ACCOUNTS_PAYABLE",
+        "BANKER",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "settlements-list",
+      "name": "Settlements",
+      "path": "/settlements",
+      "module": "finance",
+      "status": "active",
+      "description": "View and manage settlements",
+      "order": 34,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "FINANCE_CONTROLLER",
+        "ACCOUNTS",
+        "ACCOUNTS_PAYABLE",
+        "TREASURY",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "payment-summary-report",
+      "name": "Payment Summary",
+      "path": "/reports/payment-summary",
+      "module": "finance",
+      "status": "active",
+      "description": "Executive dashboard with payment KPIs and charts",
+      "order": 35,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "FINANCE_CONTROLLER",
+        "ACCOUNTS_PAYABLE",
+        "TREASURY",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "settlement-audit-report",
+      "name": "Settlement Audit",
+      "path": "/reports/settlement-audit",
+      "module": "finance",
+      "status": "active",
+      "description": "Compliance-focused settlement audit trail report",
+      "order": 36,
+      "permissions": [
+        "executive-dashboard"
+      ],
+      "roles": [
+        "CFO",
+        "FINANCE_CONTROLLER",
+        "AUDITOR",
+        "COMPLIANCE",
+        "ADMIN"
+      ]
+    },
+    {
       "id": "purchase-request",
       "name": "Purchase Request",
       "path": "/procurement/purchase-request",
@@ -1340,7 +1765,46 @@
         "inventory-management"
       ],
       "roles": [
-        "STORE INCHARGE"
+        "STORE INCHARGE",
+        "STORE_INCHARGE"
+      ]
+    },
+    {
+      "id": "branch-incharge-dashboard",
+      "name": "Branch Dashboard",
+      "path": "/dashboard",
+      "module": "operations",
+      "status": "active",
+      "description": "Branch operations management dashboard",
+      "order": 0,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "BRANCH INCHARGE",
+        "BRANCH_INCHARGE"
+      ]
+    },
+    {
+      "id": "branch-task-approvals",
+      "name": "Task Approvals",
+      "path": "/common/task-approvals",
+      "module": "common",
+      "status": "active",
+      "description": "Review and approve tasks",
+      "order": 10,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "BRANCH INCHARGE",
+        "BRANCH_INCHARGE",
+        "HUB INCHARGE",
+        "HUB_INCHARGE",
+        "STORE INCHARGE",
+        "STORE_INCHARGE",
+        "ADMIN",
+        "MANAGER"
       ]
     },
     {
@@ -1404,21 +1868,6 @@
       ]
     },
     {
-      "id": "common-help-center",
-      "name": "Help Center",
-      "path": "/common/help-center",
-      "module": "common",
-      "status": "active",
-      "description": "Get help and support resources",
-      "order": 3,
-      "permissions": [
-        "authenticated"
-      ],
-      "roles": [
-        "ALL"
-      ]
-    },
-    {
       "id": "common-user-settings",
       "name": "User Settings",
       "path": "/common/user-settings",
@@ -1446,6 +1895,98 @@
       ],
       "roles": [
         "ALL"
+      ]
+    },
+    {
+      "id": "task-clarifications",
+      "name": "Task Clarifications",
+      "path": "/tasks/clarifications",
+      "module": "common",
+      "status": "active",
+      "description": "View and respond to task clarification requests",
+      "order": 6,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
+      "id": "task-reviews",
+      "name": "Task Reviews",
+      "path": "/tasks/reviews",
+      "module": "common",
+      "status": "active",
+      "description": "View and manage post-completion task reviews",
+      "order": 7,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
+      "id": "approvals",
+      "name": "Approvals",
+      "path": "/approvals",
+      "module": "common",
+      "status": "active",
+      "description": "View and manage pending approvals",
+      "order": 8,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
+      "id": "task-create",
+      "name": "Create Task",
+      "path": "/tasks/create",
+      "module": "common",
+      "status": "active",
+      "description": "Create a new task",
+      "order": 8,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
+      "id": "global-calendar",
+      "name": "Calendar",
+      "path": "/calendar",
+      "module": "common",
+      "status": "active",
+      "description": "View task deadlines and schedule",
+      "order": 9,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL"
+      ]
+    },
+    {
+      "id": "dashboard",
+      "name": "Dashboard",
+      "path": "/dashboard",
+      "module": "common",
+      "status": "active",
+      "description": "View your task dashboard with Kanban board",
+      "order": 0,
+      "permissions": [
+        "authenticated"
+      ],
+      "roles": [
+        "ALL",
+        "ADMIN",
+        "SUPER_ADMIN"
       ]
     },
     {
@@ -1484,6 +2025,19 @@
       ]
     },
     {
+      "id": "pricing",
+      "name": "Pricing",
+      "path": "/pricing",
+      "module": "billing",
+      "status": "active",
+      "description": "View subscription plans and pricing",
+      "order": 0,
+      "permissions": [
+        "public"
+      ],
+      "roles": []
+    },
+    {
       "id": "admin-sla-dashboard",
       "name": "SLA Dashboard",
       "path": "/admin/sla",
@@ -1513,6 +2067,42 @@
       "roles": [
         "SUPER_ADMIN",
         "ENTERPRISE_ADMIN"
+      ]
+    },
+    {
+      "id": "admin-system-flow",
+      "name": "System Flow",
+      "path": "/admin/system-flow",
+      "module": "admin",
+      "status": "active",
+      "description": "Visualize role hierarchy, approval flows, and organizational structure",
+      "order": 13,
+      "permissions": [
+        "admin-dashboard",
+        "authenticated"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "admin-task-approvals",
+      "name": "Task Approvals",
+      "path": "/admin/task-approvals",
+      "module": "admin",
+      "status": "active",
+      "description": "Manage and approve pending tasks across your organization",
+      "order": 14,
+      "permissions": [
+        "admin-dashboard",
+        "authenticated"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN",
+        "ADMIN"
       ]
     },
     {
@@ -1560,6 +2150,124 @@
       "permissions": [
         "admin-analytics",
         "authenticated"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "admin-contracts",
+      "name": "Contracts & Agreements",
+      "path": "/admin/contracts",
+      "module": "admin",
+      "status": "active",
+      "description": "Manage agreements, renewals, and contract lifecycle",
+      "order": 15,
+      "permissions": [
+        "admin-dashboard"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "admin-contracts-create",
+      "name": "Create Contract",
+      "path": "/admin/contracts/create",
+      "module": "admin",
+      "status": "active",
+      "description": "Create a new contract or agreement",
+      "order": 16,
+      "permissions": [
+        "admin-dashboard"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "admin-users-create",
+      "name": "Create User",
+      "path": "/admin/users/create",
+      "module": "admin",
+      "status": "active",
+      "description": "Create a new user account",
+      "order": 17,
+      "permissions": [
+        "admin-dashboard"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "admin-branches-create",
+      "name": "Create Branch",
+      "path": "/admin/branches/create",
+      "module": "admin",
+      "status": "active",
+      "description": "Create a new branch or location",
+      "order": 18,
+      "permissions": [
+        "admin-dashboard"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "admin-bank-templates",
+      "name": "Bank Templates",
+      "path": "/admin/bank-templates",
+      "module": "admin",
+      "status": "active",
+      "description": "Manage bank statement import templates",
+      "order": 19,
+      "permissions": [
+        "admin-dashboard"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "admin-clients",
+      "name": "Client Management",
+      "path": "/admin/clients",
+      "module": "admin",
+      "status": "active",
+      "description": "Manage client accounts and permissions",
+      "order": 20,
+      "permissions": [
+        "admin-dashboard"
+      ],
+      "roles": [
+        "SUPER_ADMIN",
+        "ENTERPRISE_ADMIN",
+        "ADMIN"
+      ]
+    },
+    {
+      "id": "admin-settings",
+      "name": "Admin Settings",
+      "path": "/admin/settings",
+      "module": "admin",
+      "status": "active",
+      "description": "Configure admin settings",
+      "order": 21,
+      "permissions": [
+        "admin-dashboard"
       ],
       "roles": [
         "SUPER_ADMIN",
