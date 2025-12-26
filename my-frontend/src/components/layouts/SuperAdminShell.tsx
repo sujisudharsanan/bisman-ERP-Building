@@ -101,7 +101,7 @@ function SuperAdminShellInner({ title = 'Retail Client Management', children }: 
           className="absolute left-0 top-0 bottom-0 border-r border-gray-200 dark:border-gray-800"
           style={{ width: 'var(--sidebar-width, 13rem)' }}
         />
-        <div className="max-w-screen-2xl mx-auto px-3 sm:px-4 lg:px-6">
+        <div className="w-full px-3 sm:px-4">
           <div className="flex items-center justify-between" style={{ height: 'var(--navbar-height)' }}>
             <div className="flex items-center gap-3">
               {/* Mobile menu button */}
@@ -176,9 +176,9 @@ function SuperAdminShellInner({ title = 'Retail Client Management', children }: 
       </aside>
 
       {/* Main content */}
-      <div className="content-under-navbar lg:pl-52 min-h-screen">
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-6">{children}</div>
-      </div>
+      <main className="content-under-navbar lg:pl-52 flex-1 w-full">
+        <div className="w-full p-3 sm:p-4">{children}</div>
+      </main>
     </div>
   );
 }

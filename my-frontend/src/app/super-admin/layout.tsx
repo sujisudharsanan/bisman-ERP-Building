@@ -34,10 +34,10 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
               
               {/* Main content */}
               <main 
-                className="min-h-[calc(100vh-3.5rem)] bg-gray-50 dark:bg-slate-900 transition-all duration-300"
+                className="min-h-[calc(100vh-3.5rem)] w-full bg-gray-50 dark:bg-slate-900 transition-all duration-300"
                 style={{ marginLeft: sidebarOpen ? '13rem' : '3.5rem', marginTop: '3.5rem' }}
               >
-                <div className="p-4 md:p-6 lg:p-8">
+                <div className="p-3 sm:p-4 lg:p-4 w-full">
                   {children}
                 </div>
               </main>

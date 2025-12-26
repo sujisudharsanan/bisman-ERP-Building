@@ -3,7 +3,7 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { FiUsers, FiPackage, FiGrid, FiShield, FiRefreshCw } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
-import SuperAdminShell from '@/components/layouts/SuperAdminShell';
+// Note: Layout is provided by /app/system/layout.tsx
 
 // Types
 type Module = {
@@ -425,49 +425,44 @@ export default function RolesUsersReportPage() {
   // Render
   if (loading) {
     return (
-      <SuperAdminShell>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="flex flex-col items-center gap-4">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
-            <p className="text-gray-500">Loading module management...</p>
-          </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="flex flex-col items-center gap-4">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500"></div>
+          <p className="text-gray-500">Loading module management...</p>
         </div>
-      </SuperAdminShell>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <SuperAdminShell>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <p className="text-red-500 mb-4">{error}</p>
-            <button
-              onClick={() => loadData(true)}
-              className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-            >
-              Retry
-            </button>
-          </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <p className="text-red-500 mb-4">{error}</p>
+          <button
+            onClick={() => loadData(true)}
+            className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+          >
+            Retry
+          </button>
         </div>
-      </SuperAdminShell>
+      </div>
     );
   }
 
   return (
-    <SuperAdminShell>
-      <div className="flex flex-col h-full gap-4">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Module Management</h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Assign roles and pages to clients/admins
-            </p>
-          </div>
-          <button
-            onClick={() => loadData(true)}
-            disabled={isDataRefreshing}
+    <div className="flex flex-col h-full gap-4 w-full">
+      {/* Header */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Module Management</h1>
+          <p className="text-sm text-gray-500 dark:text-gray-400">
+            Assign roles and pages to clients/admins
+          </p>
+        </div>
+        <button
+          onClick={() => loadData(true)}
+          disabled={isDataRefreshing}
             className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
           >
             <FiRefreshCw className={isDataRefreshing ? 'animate-spin' : ''} />
@@ -877,7 +872,6 @@ export default function RolesUsersReportPage() {
                     <div className="text-[10px] text-gray-500 flex items-center gap-1 mt-1">
                       <FiUsers className="w-3 h-3" />
                       {userCount} users
-                    </div>
                   </button>
                 </div>
               );
@@ -885,6 +879,6 @@ export default function RolesUsersReportPage() {
           </div>
         </div>
       </div>
-    </SuperAdminShell>
+    </div>
   );
 }

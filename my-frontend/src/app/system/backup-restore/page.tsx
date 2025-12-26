@@ -23,7 +23,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
-import SuperAdminShell from '@/components/layouts/SuperAdminShell';
+// Note: Layout is provided by /app/system/layout.tsx
 import BackupRestoreIllustration from '@/components/illustrations/BackupRestoreIllustration';
 import { 
   Database,
@@ -1247,27 +1247,26 @@ export default function BackupRestorePage() {
   const lastBackup = backups.length > 0 ? backups[0] : null;
 
   return (
-    <SuperAdminShell title="Backup & Restore">
-      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-        <div className="w-full py-6 space-y-6">
-          
-          {/* Page Header */}
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-[#16325C] dark:text-[#FEC925]">Backup & Restore</h1>
-              <p className="text-gray-500 dark:text-gray-400 mt-1">Manage system backups, restore points, and data recovery</p>
-            </div>
-            <div className="flex items-center gap-3">
-              <button 
-                onClick={() => {
-                  fetchBackups();
-                  fetchActivities();
-                }}
-                className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
-              >
-                <RefreshCw className={`w-4 h-4 ${loadingBackups ? 'animate-spin' : ''}`} />
-                Refresh
-              </button>
+    <div className="w-full">
+      <div className="w-full py-6 space-y-6">
+        
+        {/* Page Header */}
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-2xl font-bold text-[#16325C] dark:text-[#FEC925]">Backup & Restore</h1>
+            <p className="text-gray-500 dark:text-gray-400 mt-1">Manage system backups, restore points, and data recovery</p>
+          </div>
+          <div className="flex items-center gap-3">
+            <button 
+              onClick={() => {
+                fetchBackups();
+                fetchActivities();
+              }}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
+            >
+              <RefreshCw className={`w-4 h-4 ${loadingBackups ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
               <ManualBackupButton onBackupTriggered={() => {
                 fetchBackups();
                 fetchActivities();
@@ -1407,12 +1406,11 @@ export default function BackupRestorePage() {
           <ActivityLogTable
             activities={activities}
             loading={loadingActivities}
-            pagination={activityPagination}
-            onPageChange={(offset) => fetchActivities(offset)}
-          />
+          pagination={activityPagination}
+          onPageChange={(offset) => fetchActivities(offset)}
+        />
 
-        </div>
       </div>
-    </SuperAdminShell>
+    </div>
   );
 }

@@ -177,7 +177,7 @@ export default function UnifiedPaymentRequestPage() {
 
 	return (
 		<SuperAdminLayout title="Payment Request" description="Create and track your payment requests">
-			<div className="p-4 sm:p-5 lg:p-6 w-full">
+			<div className="w-full">
 
 				{/* Tabs */}
 			  <div className="border-b border-gray-200 dark:border-gray-700 mb-4">

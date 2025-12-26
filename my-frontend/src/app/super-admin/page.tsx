@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/hooks/useAuth';
 import PermissionGuard from '@/common/components/PermissionGuard';
-import SuperAdminLayout from '@/common/layouts/superadmin-layout';
+// Note: Layout is provided by /app/super-admin/layout.tsx
 
 // ✅ PERFORMANCE: Lazy load the heavy SuperAdminDashboard
 // This component loads charts and aggregated data
@@ -82,9 +82,7 @@ export default function SuperAdminPage() {
 
   return (
     <PermissionGuard requirePermissions={true}>
-      <SuperAdminLayout>
-        <SuperAdminDashboard />
-      </SuperAdminLayout>
+      <SuperAdminDashboard />
     </PermissionGuard>
   );
 }

@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/hooks/useAuth';
-import SuperAdminShell from '@/components/layouts/SuperAdminShell';
+// Note: Layout is provided by /app/super-admin/layout.tsx
 import { 
   ShoppingCart, 
   Package, 
@@ -189,25 +189,22 @@ export default function SuperAdminOrdersPage() {
   };
 
   return (
-    <SuperAdminShell>
-      <div className="w-full">
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      <div className="w-full">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Order Management</h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
-                Comprehensive order tracking and management system
-              </p>
-            </div>
-            <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2">
-              <Plus className="h-4 w-4" />
-              New Order
-            </button>
+    <div className="w-full">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">Order Management</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              Comprehensive order tracking and management system
+            </p>
           </div>
+          <button className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2">
+            <Plus className="h-4 w-4" />
+            New Order
+          </button>
         </div>
+      </div>
 
         {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
@@ -392,13 +389,10 @@ export default function SuperAdminOrdersPage() {
         <div className="text-center">
               <h3 className="text-lg font-semibold text-gray-900 mb-2">Pending Actions</h3>
               <p className="text-3xl font-bold text-orange-600">8</p>
-              <p className="text-sm text-gray-500">Orders require attention</p>
-            </div>
+            <p className="text-sm text-gray-500">Orders require attention</p>
           </div>
         </div>
       </div>
     </div>
-  </div>
-    </SuperAdminShell>
   );
 }

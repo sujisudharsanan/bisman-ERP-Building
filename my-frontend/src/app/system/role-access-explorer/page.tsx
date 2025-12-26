@@ -4,10 +4,7 @@
 export const dynamic = 'force-dynamic';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import nextDynamic from 'next/dynamic';
-
-// Load layout client-side only to avoid production prerender errors
-const SuperAdminShell = nextDynamic(() => import('@/components/layouts/SuperAdminShell'), { ssr: false });
+// Note: Layout is provided by /app/system/layout.tsx
 
 type RoleKey =
   | 'super-admin'
@@ -231,23 +228,22 @@ export default function RoleAccessExplorerPage() {
     scenarioFilter === 'all' || scenarioFilter === cat;
 
   return (
-  <SuperAdminShell title="Interactive Role & Access Explorer">
-      <div className="p-4 sm:p-6 lg:p-8">
-        <header className="mb-8">
-          <h1 className="text-3xl font-bold text-blue-700 dark:text-blue-300">Interactive Role & Access Explorer</h1>
-          <p className="mt-2 text-lg text-slate-600 dark:text-slate-300">
-            An interactive dashboard for exploring the Role Hierarchy & Workflow Access Report (Draft v0.1).
-          </p>
-        </header>
+    <div className="w-full">
+      <header className="mb-8">
+        <h1 className="text-3xl font-bold text-blue-700 dark:text-blue-300">Interactive Role & Access Explorer</h1>
+        <p className="mt-2 text-lg text-slate-600 dark:text-slate-300">
+          An interactive dashboard for exploring the Role Hierarchy & Workflow Access Report (Draft v0.1).
+        </p>
+      </header>
 
-        <nav className="flex flex-wrap gap-2 bg-white p-3 rounded-lg shadow-sm border border-slate-200 mb-8 dark:bg-slate-900 dark:border-slate-700">
-          <button
-            onClick={() => setView('matrix')}
-            className={`${navBtnBase} ${view === 'matrix' ? navBtnActive : ''}`}
-            id="nav-matrix"
-          >
-            Interactive Matrix
-          </button>
+      <nav className="flex flex-wrap gap-2 bg-white p-3 rounded-lg shadow-sm border border-slate-200 mb-8 dark:bg-slate-900 dark:border-slate-700">
+        <button
+          onClick={() => setView('matrix')}
+          className={`${navBtnBase} ${view === 'matrix' ? navBtnActive : ''}`}
+          id="nav-matrix"
+        >
+          Interactive Matrix
+        </button>
           <button
             onClick={() => setView('workflows')}
             className={`${navBtnBase} ${view === 'workflows' ? navBtnActive : ''}`}
@@ -802,16 +798,15 @@ export default function RoleAccessExplorerPage() {
               {showScenario('ui') && (
                 <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 dark:bg-slate-900 dark:border-slate-700 text-slate-800 dark:text-slate-100">
                   <span className="text-xs font-semibold uppercase text-pink-600 dark:text-pink-300">UI/UX</span>
-                  <p className="font-medium mt-1">18. Notification badge increments</p>
-                  <p className="text-sm text-slate-600 dark:text-slate-300">
-                    <span className="font-medium">Expected:</span> Increments on new message for member only
-                  </p>
-                </div>
-              )}
-            </div>
-          </section>
-        )}
-      </div>
-    </SuperAdminShell>
+                <p className="font-medium mt-1">18. Notification badge increments</p>
+                <p className="text-sm text-slate-600 dark:text-slate-300">
+                  <span className="font-medium">Expected:</span> Increments on new message for member only
+                </p>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+    </div>
   );
 }

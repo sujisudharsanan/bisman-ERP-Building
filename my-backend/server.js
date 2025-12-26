@@ -219,6 +219,15 @@ async function start() {
     console.warn('[startup] Security Monitor cron not initialized:', securityCronError.message);
   }
 
+  // Initialize Micro-Unlock Billing Cron Jobs
+  try {
+    const microUnlockJobs = require('../jobs/microUnlockBillingJobs');
+    microUnlockJobs.initializeMicroUnlockJobs();
+    console.log('[startup] ✅ Micro-Unlock Billing cron jobs initialized');
+  } catch (microUnlockCronError) {
+    console.warn('[startup] Micro-Unlock Billing cron not initialized:', microUnlockCronError.message);
+  }
+
   // Prepare Next.js if available
   if (nextApp) {
     try {

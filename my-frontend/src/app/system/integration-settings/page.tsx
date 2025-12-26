@@ -1,14 +1,14 @@
 'use client';
 
 import React from 'react';
-import SuperAdminShell from '@/components/layouts/SuperAdminShell';
+// Note: Layout is provided by /app/system/layout.tsx
 import { IntegrationsPage } from '@/components/integrations';
 
 export default function IntegrationSettingsPage() {
   return (
-    <SuperAdminShell title="Integration Settings">
+    <div className="w-full">
       <IntegrationsPage />
-    </SuperAdminShell>
+    </div>
   );
 }
 

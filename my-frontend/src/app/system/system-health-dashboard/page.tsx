@@ -34,7 +34,7 @@ import {
   Terminal,
   Info
 } from 'lucide-react'
-import SuperAdminShell from '@/components/layouts/SuperAdminShell'
+// Note: Layout is provided by /app/system/layout.tsx
 import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line } from 'recharts'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -634,35 +634,32 @@ export default function SystemHealthDashboardPage() {
 
   if (loading && !healthStatus) {
     return (
-      <SuperAdminShell>
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="text-center">
-            <RefreshCw className="w-8 h-8 text-[#FEC925] animate-spin mx-auto mb-4" />
-            <p className="text-gray-600 dark:text-gray-400">Loading system health data...</p>
-          </div>
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="text-center">
+          <RefreshCw className="w-8 h-8 text-[#FEC925] animate-spin mx-auto mb-4" />
+          <p className="text-gray-600 dark:text-gray-400">Loading system health data...</p>
         </div>
-      </SuperAdminShell>
+      </div>
     )
   }
 
   return (
-    <SuperAdminShell>
-      <div className="space-y-6 pb-8">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-              <Activity className="w-8 h-8 text-[#FEC925]" />
-              System Health Dashboard
-            </h1>
-            <p className="text-gray-500 dark:text-gray-400 mt-1">
-              Real-time monitoring of system performance and health metrics
-            </p>
-          </div>
+    <div className="space-y-6 pb-8 w-full">
+      {/* Header */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+            <Activity className="w-8 h-8 text-[#FEC925]" />
+            System Health Dashboard
+          </h1>
+          <p className="text-gray-500 dark:text-gray-400 mt-1">
+            Real-time monitoring of system performance and health metrics
+          </p>
+        </div>
 
-          <div className="flex items-center gap-3 flex-wrap">
-            {/* Auto Refresh Toggle */}
-            <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg px-3 py-2 shadow-sm">
+        <div className="flex items-center gap-3 flex-wrap">
+          {/* Auto Refresh Toggle */}
+          <div className="flex items-center gap-2 bg-white dark:bg-gray-800 rounded-lg px-3 py-2 shadow-sm">
               <button
                 onClick={() => setAutoRefresh(!autoRefresh)}
                 className={`p-1.5 rounded-md transition-colors ${autoRefresh ? 'bg-green-100 text-green-600 dark:bg-green-900/30 dark:text-green-400' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400'}`}
@@ -1132,12 +1129,11 @@ export default function SystemHealthDashboardPage() {
               <div className="text-center py-8 text-gray-500">
                 <CheckCircle className="w-12 h-12 mx-auto mb-3 text-green-500" />
                 <p className="font-medium">All Clear!</p>
-                <p className="text-sm">No active alerts at this time</p>
-              </div>
-            )}
-          </div>
-        </SectionPanel>
-      </div>
-    </SuperAdminShell>
+              <p className="text-sm">No active alerts at this time</p>
+            </div>
+          )}
+        </div>
+      </SectionPanel>
+    </div>
   )
 }

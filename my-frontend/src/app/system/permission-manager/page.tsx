@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import Link from 'next/link';
-import SuperAdminShell from '@/components/layouts/SuperAdminShell';
+// Note: Layout is provided by /app/system/layout.tsx
 import ClientManagementTabs from '@/components/common/ClientManagementTabs';
 import RoleSearch from './components/RoleSearch';
 import UserSearch from './components/UserSearch';
@@ -119,25 +119,24 @@ export default function PermissionManagerPage() {
   };
 
   return (
-    <SuperAdminShell title="Permission Manager">
-      <div className="p-4 md:p-6">
-        {/* Shared Tabs Navigation */}
-        <ClientManagementTabs />
-        
-        <div className="space-y-4">
-        {/* Search Row */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
-              <span className="text-red-500">*</span> Select Role
-            </label>
-            <RoleSearch value={perms.role} onChange={(r) => { perms.setRole(r); perms.setUser(null); setHasUnsavedChanges(false); }} />
-            {perms.role && (
-              <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                Selected: <strong>{perms.role.name}</strong>
-                {perms.role.userCount !== undefined && ` (${perms.role.userCount} users)`}
-              </p>
-            )}
+    <div className="w-full">
+      {/* Shared Tabs Navigation */}
+      <ClientManagementTabs />
+      
+      <div className="space-y-4">
+      {/* Search Row */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div>
+          <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
+            <span className="text-red-500">*</span> Select Role
+          </label>
+          <RoleSearch value={perms.role} onChange={(r) => { perms.setRole(r); perms.setUser(null); setHasUnsavedChanges(false); }} />
+          {perms.role && (
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              Selected: <strong>{perms.role.name}</strong>
+              {perms.role.userCount !== undefined && ` (${perms.role.userCount} users)`}
+            </p>
+          )}
           </div>
           <div>
             <label className="block text-xs font-medium text-gray-600 dark:text-gray-300 mb-1">
@@ -381,6 +380,6 @@ export default function PermissionManagerPage() {
           onSuccess={handleAssignSuccess}
         />
       )}
-    </SuperAdminShell>
+    </div>
   );
 }

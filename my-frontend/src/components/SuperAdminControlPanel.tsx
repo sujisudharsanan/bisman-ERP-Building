@@ -1163,10 +1163,10 @@ const SuperAdminControlPanel: React.FC = () => {
   );
 
   return (
-    <div className="min-h-screen w-full bg-gray-50 dark:bg-slate-900">
+    <div className="min-h-screen w-full bg-gray-50 dark:bg-slate-900 flex flex-col">
       {/* Fixed Top Bar */}
   <div className="fixed top-0 left-0 right-0 bg-white dark:bg-slate-900 border-b border-gray-200 dark:border-transparent z-50 shadow-sm">
-        <div className="max-w-screen-2xl mx-auto px-3 sm:px-4 lg:px-6">
+        <div className="w-full px-3 sm:px-4">
           <div className="flex items-center justify-between h-14">
             <div className="flex items-center gap-3">
               {/* Mobile menu button */}
@@ -1234,8 +1234,8 @@ const SuperAdminControlPanel: React.FC = () => {
       </aside>
 
       {/* Main Content */}
-  <div className="content-under-navbar lg:pl-52 min-h-screen">
-        <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
+  <main className="content-under-navbar lg:pl-52 flex-1 w-full">
+        <div className="w-full p-3 sm:p-4">
         {error && (
           <div className="mb-6 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-slate-800 rounded-lg p-4">
             <div className="flex">
@@ -1303,7 +1303,7 @@ const SuperAdminControlPanel: React.FC = () => {
           </>
         )}
         </div>
-      </div>
+      </main>
       
       {/* User Management Modals and Components */}
       {showInviteModal && (

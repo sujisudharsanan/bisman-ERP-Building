@@ -26,7 +26,7 @@ import {
 
 import type { LucideIcon } from 'lucide-react';
 import PageDirectory from '@/components/settings/PageDirectory';
-import SuperAdminShell from '@/components/layouts/SuperAdminShell';
+// Note: Layout is provided by /app/super-admin/layout.tsx
 
 interface SystemMetric {
   name: string;
@@ -223,31 +223,30 @@ export default function SuperAdminSystemPage() {
   };
 
   return (
-    <SuperAdminShell>
-      <div className="w-full">
-        {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">System Administration</h1>
-              <p className="text-gray-600 dark:text-gray-400 mt-2">
-                Monitor and manage system health, performance, and security
-              </p>
+    <div className="w-full">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-gray-100">System Administration</h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-2">
+              Monitor and manage system health, performance, and security
+            </p>
+          </div>
+          <div className="flex items-center gap-4">
+            <div className="text-sm text-gray-500 dark:text-gray-400">
+              Last updated: {lastRefresh.toLocaleTimeString()}
             </div>
-            <div className="flex items-center gap-4">
-              <div className="text-sm text-gray-500 dark:text-gray-400">
-                Last updated: {lastRefresh.toLocaleTimeString()}
-              </div>
-              <button
-                onClick={handleRefresh}
-                className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
-              >
-                <RefreshCw className="h-4 w-4" />
-                Refresh
-              </button>
-            </div>
+            <button
+              onClick={handleRefresh}
+              className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 flex items-center gap-2"
+            >
+              <RefreshCw className="h-4 w-4" />
+              Refresh
+            </button>
           </div>
         </div>
+      </div>
 
         {/* System Health Overview */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 mb-8">
@@ -387,15 +386,14 @@ export default function SuperAdminSystemPage() {
             <button className="p-3 bg-white border border-red-300 rounded-lg hover:bg-red-50 text-red-700 font-medium">
               System Restart
             </button>
-            <button className="p-3 bg-white border border-red-300 rounded-lg hover:bg-red-50 text-red-700 font-medium">
-              Database Maintenance
-            </button>
-            <button className="p-3 bg-white border border-red-300 rounded-lg hover:bg-red-50 text-red-700 font-medium">
-              Emergency Shutdown
-            </button>
-          </div>
+          <button className="p-3 bg-white border border-red-300 rounded-lg hover:bg-red-50 text-red-700 font-medium">
+            Database Maintenance
+          </button>
+          <button className="p-3 bg-white border border-red-300 rounded-lg hover:bg-red-50 text-red-700 font-medium">
+            Emergency Shutdown
+          </button>
         </div>
       </div>
-    </SuperAdminShell>
+    </div>
   );
 }

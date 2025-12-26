@@ -1203,6 +1203,17 @@ try {
   }
 }
 
+// Micro-Unlock Subscription routes (Pay-per-feature billing)
+try {
+  const microUnlockRoutes = require('./routes/microUnlockRoutes')
+  app.use('/api/micro-unlock', microUnlockRoutes)
+  console.log('✅ Micro-Unlock routes loaded at /api/micro-unlock')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Micro-Unlock routes not loaded:', e && e.message)
+  }
+}
+
 // Stripe webhook (raw body required)
 try {
   const stripeWebhook = require('./routes/webhooks/stripeWebhook')

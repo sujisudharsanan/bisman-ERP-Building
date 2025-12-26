@@ -1,6 +1,6 @@
 "use client";
 import React, { useEffect, useState } from 'react';
-import SuperAdminShell from '@/components/layouts/SuperAdminShell';
+// Note: Layout is provided by /app/system/layout.tsx
 import ClientForm, { ClientFormValues } from '@/components/clients/ClientForm';
 import { useParams } from 'next/navigation';
 import API_BASE from '@/config/api';
@@ -47,23 +47,21 @@ export default function EditClientPage() {
   }, [id]);
 
   return (
-    <SuperAdminShell>
-      <div className="p-4 md:p-6 max-w-5xl mx-auto">
-        <div className="flex items-center justify-between mb-6">
-          <div>
-            <h1 className="text-2xl font-semibold">Edit Client</h1>
-            <p className="text-gray-500">Modify enterprise client details</p>
-          </div>
-          <Link href="/system/user-management" className="text-sm text-blue-600">Back to Client List</Link>
+    <div className="w-full">
+      <div className="flex items-center justify-between mb-6">
+        <div>
+          <h1 className="text-2xl font-semibold">Edit Client</h1>
+          <p className="text-gray-500">Modify enterprise client details</p>
         </div>
-        {loading && <p className="text-sm text-gray-500">Loading...</p>}
-        {!loading && initial && (
-          <>
-            <ClientForm mode="edit" clientId={id} initial={initial} onSuccess={() => { alert('Updated'); }} />
-            <ClientDocuments clientId={id} />
-          </>
-        )}
+        <Link href="/system/user-management" className="text-sm text-blue-600">Back to Client List</Link>
       </div>
-    </SuperAdminShell>
+      {loading && <p className="text-sm text-gray-500">Loading...</p>}
+      {!loading && initial && (
+        <>
+          <ClientForm mode="edit" clientId={id} initial={initial} onSuccess={() => { alert('Updated'); }} />
+          <ClientDocuments clientId={id} />
+        </>
+      )}
+    </div>
   );
 }

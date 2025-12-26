@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import SuperAdminShell from '@/components/layouts/SuperAdminShell';
+// Note: Layout is provided by /app/system/layout.tsx
 import ClientManagementTabs from '@/components/common/ClientManagementTabs';
 import ClientForm from '@/components/clients/ClientForm';
 import API_BASE from '@/config/api';
@@ -113,9 +113,8 @@ export default function ClientManagementPage() {
   });
 
   return (
-    <SuperAdminShell>
-      <div className="p-4 md:p-6">
-        <ClientManagementTabs />
+    <div className="w-full">
+      <ClientManagementTabs />
 
         <div className="flex justify-end gap-2 mb-4">
           <button onClick={fetchClients} className="inline-flex items-center px-3 py-2 border rounded-md text-sm dark:border-gray-600 dark:text-gray-200">
@@ -222,6 +221,5 @@ export default function ClientManagementPage() {
           </div>
         </div>
       </div>
-    </SuperAdminShell>
   );
 }
