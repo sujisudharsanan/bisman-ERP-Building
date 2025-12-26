@@ -470,417 +470,416 @@ export default function RolesUsersReportPage() {
         </button>
       </div>
 
-        {/* Main 3-Column Grid */}
-        <div className="flex-1 overflow-hidden">
-          <div className="grid grid-cols-3 gap-4 h-full">
-            {/* Column 1: Clients */}
-            <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
-              <div className="text-sm font-semibold mb-2 flex items-center gap-2">
-                <FiUsers className="text-green-600" />
-                Clients
-                <span className="text-xs font-normal text-gray-500">{clients.length}</span>
+      {/* Main 3-Column Grid */}
+      <div className="flex-1 overflow-hidden">
+        <div className="grid grid-cols-3 gap-4 h-full">
+          {/* Column 1: Clients */}
+          <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
+            <div className="text-sm font-semibold mb-2 flex items-center gap-2">
+              <FiUsers className="text-green-600" />
+              Clients
+              <span className="text-xs font-normal text-gray-500">{clients.length}</span>
+            </div>
+            <div className="space-y-1 max-h-[520px] overflow-y-auto">
+              {clients.length === 0 ? (
+                <div className="text-xs text-gray-500 text-center py-4">No clients found</div>
+              ) : (
+                clients.map(client => {
+                  const isSelected = selectedClientId === client.id;
+                  return (
+                    <button
+                      key={client.id}
+                      onClick={() => {
+                        setSelectedClientId(client.id);
+                        setSelectedRoleId(null);
+                      }}
+                      className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition ${
+                        isSelected
+                          ? "border-green-500 bg-green-100 dark:bg-green-900/40 ring-2 ring-green-300"
+                          : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          {isSelected && <span className="text-green-600">✓</span>}
+                          <span className="font-medium truncate">{client.name}</span>
+                        </div>
+                        {client.client_code && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
+                            {client.client_code}
+                          </span>
+                        )}
+                      </div>
+                      {client.email && (
+                        <div className="text-[10px] text-gray-500 truncate mt-0.5">{client.email}</div>
+                      )}
+                    </button>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Column 2: Roles */}
+          <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
+            <div className="text-sm font-semibold mb-2 flex items-center gap-2">
+              <FiShield className="text-purple-600" />
+              Roles
+              <span className="text-xs font-normal text-gray-500">
+                {selectedClientId ? `(${assignedRoleIds.length}/${allRoles.length} assigned)` : `${allRoles.length} total`}
+              </span>
+            </div>
+            
+            {/* Action buttons for role assignment */}
+            {selectedClientId && allRoles.length > 0 && (
+              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={() => setAssignedRoleIds(allRoles.map(r => r.id))}
+                  className="text-[10px] px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200"
+                >
+                  Select All
+                </button>
+                <button
+                  onClick={() => setAssignedRoleIds([])}
+                  className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                >
+                  Deselect All
+                </button>
+                <div className="flex-1" />
+                {rolesSaveStatus === 'success' && (
+                  <span className="text-[10px] text-green-600 font-medium">✓ Saved!</span>
+                )}
+                <button
+                  onClick={handleSaveClientRoles}
+                  disabled={rolesSaving}
+                  className={`text-xs px-3 py-1 rounded font-medium transition ${
+                    rolesSaving
+                      ? 'bg-gray-400 text-white cursor-wait'
+                      : rolesSaveStatus === 'success'
+                      ? 'bg-green-500 text-white'
+                      : 'bg-green-600 text-white hover:bg-green-700'
+                  }`}
+                >
+                  {rolesSaving ? 'Saving...' : rolesSaveStatus === 'success' ? '✓ Saved' : 'Save'}
+                </button>
               </div>
-              <div className="space-y-1 max-h-[520px] overflow-y-auto">
-                {clients.length === 0 ? (
-                  <div className="text-xs text-gray-500 text-center py-4">No clients found</div>
-                ) : (
-                  clients.map(client => {
-                    const isSelected = selectedClientId === client.id;
-                    return (
-                      <button
-                        key={client.id}
-                        onClick={() => {
-                          setSelectedClientId(client.id);
-                          setSelectedRoleId(null);
+            )}
+            
+            <div className="space-y-1 max-h-[480px] overflow-y-auto">
+              {!selectedClientId ? (
+                <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
+                  ⚠️ Select a Client to assign roles
+                </div>
+              ) : allRoles.length === 0 ? (
+                <div className="text-xs text-gray-500 text-center py-4">
+                  No roles available in the system.
+                </div>
+              ) : (
+                allRoles.map(role => {
+                  const isSelectedForViewing = selectedRoleId === role.id;
+                  const isAssigned = assignedRoleIds.includes(role.id);
+                  const userCount = role.userCount || role.users?.length || 0;
+                  return (
+                    <div
+                      key={role.id}
+                      className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer transition ${
+                        isSelectedForViewing
+                          ? 'border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300'
+                          : isAssigned
+                          ? 'border-green-300 bg-green-50 dark:bg-green-900/20 hover:bg-green-100'
+                          : 'border-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50'
+                      }`}
+                    >
+                      {/* Checkbox for assigning role */}
+                      <input
+                        type="checkbox"
+                        checked={isAssigned}
+                        onChange={() => {
+                          setAssignedRoleIds(prev =>
+                            prev.includes(role.id)
+                              ? prev.filter(id => id !== role.id)
+                              : [...prev, role.id]
+                          );
                         }}
-                        className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition ${
-                          isSelected
-                            ? "border-green-500 bg-green-100 dark:bg-green-900/40 ring-2 ring-green-300"
-                            : "border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800"
-                        }`}
+                        className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      
+                      {/* Role info - click to select for viewing pages */}
+                      <button
+                        onClick={() => setSelectedRoleId(role.id)}
+                        className="flex-1 text-left"
                       >
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
-                            {isSelected && <span className="text-green-600">✓</span>}
-                            <span className="font-medium truncate">{client.name}</span>
+                            <span className="font-medium text-xs truncate">{role.display_name || role.name}</span>
                           </div>
-                          {client.client_code && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300">
-                              {client.client_code}
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                              <FiUsers className="w-3 h-3" />
+                              {userCount}
                             </span>
-                          )}
-                        </div>
-                        {client.email && (
-                          <div className="text-[10px] text-gray-500 truncate mt-0.5">{client.email}</div>
-                        )}
-                      </button>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            {/* Column 2: Roles */}
-            <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
-              <div className="text-sm font-semibold mb-2 flex items-center gap-2">
-                <FiShield className="text-purple-600" />
-                Roles
-                <span className="text-xs font-normal text-gray-500">
-                  {selectedClientId ? `(${assignedRoleIds.length}/${allRoles.length} assigned)` : `${allRoles.length} total`}
-                </span>
-              </div>
-              
-              {/* Action buttons for role assignment */}
-              {selectedClientId && allRoles.length > 0 && (
-                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
-                  <button
-                    onClick={() => setAssignedRoleIds(allRoles.map(r => r.id))}
-                    className="text-[10px] px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200"
-                  >
-                    Select All
-                  </button>
-                  <button
-                    onClick={() => setAssignedRoleIds([])}
-                    className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  >
-                    Deselect All
-                  </button>
-                  <div className="flex-1" />
-                  {rolesSaveStatus === 'success' && (
-                    <span className="text-[10px] text-green-600 font-medium">✓ Saved!</span>
-                  )}
-                  <button
-                    onClick={handleSaveClientRoles}
-                    disabled={rolesSaving}
-                    className={`text-xs px-3 py-1 rounded font-medium transition ${
-                      rolesSaving
-                        ? 'bg-gray-400 text-white cursor-wait'
-                        : rolesSaveStatus === 'success'
-                        ? 'bg-green-500 text-white'
-                        : 'bg-green-600 text-white hover:bg-green-700'
-                    }`}
-                  >
-                    {rolesSaving ? 'Saving...' : rolesSaveStatus === 'success' ? '✓ Saved' : 'Save'}
-                  </button>
-                </div>
-              )}
-              
-              <div className="space-y-1 max-h-[480px] overflow-y-auto">
-                {!selectedClientId ? (
-                  <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
-                    ⚠️ Select a Client to assign roles
-                  </div>
-                ) : allRoles.length === 0 ? (
-                  <div className="text-xs text-gray-500 text-center py-4">
-                    No roles available in the system.
-                  </div>
-                ) : (
-                  allRoles.map(role => {
-                    const isSelectedForViewing = selectedRoleId === role.id;
-                    const isAssigned = assignedRoleIds.includes(role.id);
-                    const userCount = role.userCount || role.users?.length || 0;
-                    return (
-                      <div
-                        key={role.id}
-                        className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer transition ${
-                          isSelectedForViewing
-                            ? 'border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300'
-                            : isAssigned
-                            ? 'border-green-300 bg-green-50 dark:bg-green-900/20 hover:bg-green-100'
-                            : 'border-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50'
-                        }`}
-                      >
-                        {/* Checkbox for assigning role */}
-                        <input
-                          type="checkbox"
-                          checked={isAssigned}
-                          onChange={() => {
-                            setAssignedRoleIds(prev =>
-                              prev.includes(role.id)
-                                ? prev.filter(id => id !== role.id)
-                                : [...prev, role.id]
-                            );
-                          }}
-                          className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        
-                        {/* Role info - click to select for viewing pages */}
-                        <button
-                          onClick={() => setSelectedRoleId(role.id)}
-                          className="flex-1 text-left"
-                        >
-                          <div className="flex items-center justify-between">
-                            <div className="flex items-center gap-2">
-                              <span className="font-medium text-xs truncate">{role.display_name || role.name}</span>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                                <FiUsers className="w-3 h-3" />
-                                {userCount}
-                              </span>
-                              {role.level !== undefined && (
-                                <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
-                                  role.level >= 9 
-                                    ? 'bg-purple-100 text-purple-700'
-                                    : role.level >= 7
-                                    ? 'bg-blue-100 text-blue-700'
-                                    : role.level >= 5
-                                    ? 'bg-green-100 text-green-700'
-                                    : 'bg-orange-100 text-orange-700'
-                                }`}>
-                                  L{role.level}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-                        </button>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-            </div>
-
-            {/* Column 3: Pages */}
-            <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
-              <div className="text-sm font-semibold mb-1 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <FiGrid className="text-blue-600" />
-                  Pages
-                  {selectedRoleId && selectedRole && (
-                    <span className="text-xs font-normal text-purple-600 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded">
-                      {selectedRole.display_name || selectedRole.name}
-                    </span>
-                  )}
-                  <span className="text-xs font-normal text-gray-500">
-                    {selectedRoleId ? `(${rolePagesSelectedIds.size}/${rolePages.length} selected)` : ''}
-                  </span>
-                </div>
-                {rolePagesLoading && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Loading...</span>
-                )}
-                {rolePagesSaving && (
-                  <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">Saving...</span>
-                )}
-              </div>
-
-              <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-2 italic">
-                Check pages to grant access to this role.
-              </div>
-
-              {/* Action buttons */}
-              {selectedRoleId && rolePages.length > 0 && (
-                <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
-                  <button
-                    onClick={handleSelectAllRolePages}
-                    className="text-[10px] px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
-                  >
-                    Select All
-                  </button>
-                  <button
-                    onClick={handleDeselectAllRolePages}
-                    className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
-                  >
-                    Deselect All
-                  </button>
-                  <div className="flex-1" />
-                  <button
-                    onClick={handleSaveRolePages}
-                    disabled={!rolePagesHasChanges || rolePagesSaving}
-                    className={`text-xs px-3 py-1 rounded font-medium transition ${
-                      rolePagesHasChanges && !rolePagesSaving
-                        ? 'bg-green-600 text-white hover:bg-green-700'
-                        : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                    }`}
-                  >
-                    {rolePagesSaving ? 'Saving...' : rolePagesHasChanges ? 'Save' : 'Saved'}
-                  </button>
-                </div>
-              )}
-
-              <div className="space-y-1 max-h-[480px] overflow-y-auto">
-                {!selectedRoleId ? (
-                  <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
-                    ⚠️ Select a Role from Column 2 to see pages
-                  </div>
-                ) : rolePagesLoading ? (
-                  <div className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-300 flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                    Loading pages...
-                  </div>
-                ) : rolePages.length === 0 ? (
-                  <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-300">
-                    No pages available in the system.
-                  </div>
-                ) : (
-                  rolePages.map((page, pageIndex) => {
-                    const isSelected = rolePagesSelectedIds.has(page.id);
-                    const uniqueKey = `${page.routeId || pageIndex}-${page.id || page.path}`;
-                    return (
-                      <div
-                        key={uniqueKey}
-                        onClick={() => toggleRolePageSelection(page.id)}
-                        className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer transition ${
-                          isSelected
-                            ? 'border-green-300 bg-green-50 dark:bg-green-900/20'
-                            : 'border-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50'
-                        }`}
-                      >
-                        <input
-                          type="checkbox"
-                          checked={isSelected}
-                          onChange={() => toggleRolePageSelection(page.id)}
-                          className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                        <div className="flex-1 min-w-0">
-                          <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
-                            {page.name || page.path || page.id}
-                          </div>
-                          <div className="text-[10px] text-gray-500 truncate flex items-center gap-2">
-                            <span>{page.path || page.id}</span>
-                            {page.module && (
-                              <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
-                                {page.module}
+                            {role.level !== undefined && (
+                              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                                role.level >= 9 
+                                  ? 'bg-purple-100 text-purple-700'
+                                  : role.level >= 7
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : role.level >= 5
+                                  ? 'bg-green-100 text-green-700'
+                                  : 'bg-orange-100 text-orange-700'
+                              }`}>
+                                L{role.level}
                               </span>
                             )}
                           </div>
                         </div>
-                      </div>
-                    );
-                  })
+                      </button>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Column 3: Pages */}
+          <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
+            <div className="text-sm font-semibold mb-1 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <FiGrid className="text-blue-600" />
+                Pages
+                {selectedRoleId && selectedRole && (
+                  <span className="text-xs font-normal text-purple-600 bg-purple-50 dark:bg-purple-900/30 px-2 py-0.5 rounded">
+                    {selectedRole.display_name || selectedRole.name}
+                  </span>
                 )}
+                <span className="text-xs font-normal text-gray-500">
+                  {selectedRoleId ? `(${rolePagesSelectedIds.size}/${rolePages.length} selected)` : ''}
+                </span>
               </div>
+              {rolePagesLoading && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-blue-100 text-blue-700">Loading...</span>
+              )}
+              {rolePagesSaving && (
+                <span className="text-[10px] px-2 py-0.5 rounded-full bg-orange-100 text-orange-700">Saving...</span>
+              )}
+            </div>
+
+            <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-2 italic">
+              Check pages to grant access to this role.
+            </div>
+
+            {/* Action buttons */}
+            {selectedRoleId && rolePages.length > 0 && (
+              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+                <button
+                  onClick={handleSelectAllRolePages}
+                  className="text-[10px] px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
+                >
+                  Select All
+                </button>
+                <button
+                  onClick={handleDeselectAllRolePages}
+                  className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                >
+                  Deselect All
+                </button>
+                <div className="flex-1" />
+                <button
+                  onClick={handleSaveRolePages}
+                  disabled={!rolePagesHasChanges || rolePagesSaving}
+                  className={`text-xs px-3 py-1 rounded font-medium transition ${
+                    rolePagesHasChanges && !rolePagesSaving
+                      ? 'bg-green-600 text-white hover:bg-green-700'
+                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+                  }`}
+                >
+                  {rolePagesSaving ? 'Saving...' : rolePagesHasChanges ? 'Save' : 'Saved'}
+                </button>
+              </div>
+            )}
+
+            <div className="space-y-1 max-h-[480px] overflow-y-auto">
+              {!selectedRoleId ? (
+                <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
+                  ⚠️ Select a Role from Column 2 to see pages
+                </div>
+              ) : rolePagesLoading ? (
+                <div className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-300 flex items-center gap-2">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
+                  Loading pages...
+                </div>
+              ) : rolePages.length === 0 ? (
+                <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-300">
+                  No pages available in the system.
+                </div>
+              ) : (
+                rolePages.map((page, pageIndex) => {
+                  const isSelected = rolePagesSelectedIds.has(page.id);
+                  const uniqueKey = `${page.routeId || pageIndex}-${page.id || page.path}`;
+                  return (
+                    <div
+                      key={uniqueKey}
+                      onClick={() => toggleRolePageSelection(page.id)}
+                      className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer transition ${
+                        isSelected
+                          ? 'border-green-300 bg-green-50 dark:bg-green-900/20'
+                          : 'border-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50'
+                      }`}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => toggleRolePageSelection(page.id)}
+                        className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      <div className="flex-1 min-w-0">
+                        <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
+                          {page.name || page.path || page.id}
+                        </div>
+                        <div className="text-[10px] text-gray-500 truncate flex items-center gap-2">
+                          <span>{page.path || page.id}</span>
+                          {page.module && (
+                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700">
+                              {page.module}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Bottom Section: All Roles Overview */}
-        <div className="flex-shrink-0 rounded-lg border bg-white/40 dark:bg-gray-900/30 p-4">
-          <div className="flex items-center justify-between mb-3">
-            <div className="flex items-center gap-4">
-              <div className="text-sm font-semibold flex items-center gap-2">
-                <FiShield className="text-purple-600" />
-                All Roles Overview
-                <span className="text-xs font-normal text-gray-500">({allRoles.length} roles)</span>
-              </div>
-              {selectedClientId ? (
+      {/* Bottom Section: All Roles Overview */}
+      <div className="flex-shrink-0 rounded-lg border bg-white/40 dark:bg-gray-900/30 p-4">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-4">
+            <div className="text-sm font-semibold flex items-center gap-2">
+              <FiShield className="text-purple-600" />
+              All Roles Overview
+              <span className="text-xs font-normal text-gray-500">({allRoles.length} roles)</span>
+            </div>
+            {selectedClientId ? (
+              <button
+                onClick={() => setIsRoleAssignMode(!isRoleAssignMode)}
+                className={`text-sm font-semibold px-4 py-1.5 rounded-lg transition flex items-center gap-2 shadow-sm ${
+                  isRoleAssignMode
+                    ? "bg-green-600 text-white hover:bg-green-700"
+                    : "bg-purple-600 text-white hover:bg-purple-700"
+                }`}
+              >
+                {isRoleAssignMode ? "✓ Done" : "Add/Remove Roles"}
+              </button>
+            ) : (
+              <span className="text-xs text-gray-500 italic">Select a Client to assign roles</span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 text-xs">
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded bg-green-500"></span>
+              Assigned ({assignedRoleIds.length})
+            </span>
+            <span className="flex items-center gap-1">
+              <span className="w-3 h-3 rounded bg-red-500"></span>
+              Not Assigned ({allRoles.length - assignedRoleIds.length})
+            </span>
+            <span className="flex items-center gap-1">
+              <FiUsers className="w-3 h-3 text-blue-500" />
+              Total Users: {allRoles.reduce((sum, r) => sum + (r.userCount || r.users?.length || 0), 0)}
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+          {allRoles.map(role => {
+            const isSelected = selectedRoleId === role.id;
+            const userCount = role.userCount || role.users?.length || 0;
+            const isAssigned = assignedRoleIds.includes(role.id);
+
+            return (
+              <div key={role.id} className="relative">
+                {isRoleAssignMode && selectedClientId && (
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAssignedRoleIds(prev =>
+                        prev.includes(role.id)
+                          ? prev.filter(id => id !== role.id)
+                          : [...prev, role.id]
+                      );
+                    }}
+                    className={`absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full flex items-center justify-center text-lg font-bold shadow-lg transition-transform hover:scale-110 ${
+                      isAssigned
+                        ? "bg-red-500 hover:bg-red-600 text-white"
+                        : "bg-green-500 hover:bg-green-600 text-white"
+                    }`}
+                    title={isAssigned ? `Remove ${role.name}` : `Add ${role.name}`}
+                  >
+                    {isAssigned ? '−' : '+'}
+                  </button>
+                )}
                 <button
-                  onClick={() => setIsRoleAssignMode(!isRoleAssignMode)}
-                  className={`text-sm font-semibold px-4 py-1.5 rounded-lg transition flex items-center gap-2 shadow-sm ${
-                    isRoleAssignMode
-                      ? "bg-green-600 text-white hover:bg-green-700"
-                      : "bg-purple-600 text-white hover:bg-purple-700"
+                  onClick={() => {
+                    if (isRoleAssignMode && selectedClientId) {
+                      setAssignedRoleIds(prev =>
+                        prev.includes(role.id)
+                          ? prev.filter(id => id !== role.id)
+                          : [...prev, role.id]
+                      );
+                    } else {
+                      setSelectedRoleId(role.id);
+                    }
+                  }}
+                  className={`w-full text-left rounded-md border px-3 py-2 text-xs cursor-pointer transition hover:ring-2 ${
+                    isSelected
+                      ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-300"
+                      : isAssigned
+                      ? "border-green-500 bg-green-50 dark:bg-green-900/20 hover:ring-green-300"
+                      : "border-red-400 bg-red-50 dark:bg-red-900/20 hover:ring-red-300"
                   }`}
                 >
-                  {isRoleAssignMode ? "✓ Done" : "Add/Remove Roles"}
-                </button>
-              ) : (
-                <span className="text-xs text-gray-500 italic">Select a Client to assign roles</span>
-              )}
-            </div>
-            <div className="flex items-center gap-3 text-xs">
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded bg-green-500"></span>
-                Assigned ({assignedRoleIds.length})
-              </span>
-              <span className="flex items-center gap-1">
-                <span className="w-3 h-3 rounded bg-red-500"></span>
-                Not Assigned ({allRoles.length - assignedRoleIds.length})
-              </span>
-              <span className="flex items-center gap-1">
-                <FiUsers className="w-3 h-3 text-blue-500" />
-                Total Users: {allRoles.reduce((sum, r) => sum + (r.userCount || r.users?.length || 0), 0)}
-              </span>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-            {allRoles.map(role => {
-              const isSelected = selectedRoleId === role.id;
-              const userCount = role.userCount || role.users?.length || 0;
-              const isAssigned = assignedRoleIds.includes(role.id);
-
-              return (
-                <div key={role.id} className="relative">
-                  {isRoleAssignMode && selectedClientId && (
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setAssignedRoleIds(prev =>
-                          prev.includes(role.id)
-                            ? prev.filter(id => id !== role.id)
-                            : [...prev, role.id]
-                        );
-                      }}
-                      className={`absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full flex items-center justify-center text-lg font-bold shadow-lg transition-transform hover:scale-110 ${
-                        isAssigned
-                          ? "bg-red-500 hover:bg-red-600 text-white"
-                          : "bg-green-500 hover:bg-green-600 text-white"
-                      }`}
-                      title={isAssigned ? `Remove ${role.name}` : `Add ${role.name}`}
-                    >
-                      {isAssigned ? '−' : '+'}
-                    </button>
-                  )}
-                  <button
-                    onClick={() => {
-                      if (isRoleAssignMode && selectedClientId) {
-                        setAssignedRoleIds(prev =>
-                          prev.includes(role.id)
-                            ? prev.filter(id => id !== role.id)
-                            : [...prev, role.id]
-                        );
-                      } else {
-                        setSelectedRoleId(role.id);
-                      }
-                    }}
-                    className={`w-full text-left rounded-md border px-3 py-2 text-xs cursor-pointer transition hover:ring-2 ${
-                      isSelected
-                        ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-300"
-                        : isAssigned
-                        ? "border-green-500 bg-green-50 dark:bg-green-900/20 hover:ring-green-300"
-                        : "border-red-400 bg-red-50 dark:bg-red-900/20 hover:ring-red-300"
-                    }`}
-                  >
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-2">
-                        {isAssigned ? (
-                          <span className="text-green-600">✓</span>
-                        ) : (
-                          <span className="text-red-500">✗</span>
-                        )}
-                        <span className="font-medium truncate">{role.display_name || role.name}</span>
-                      </div>
-                      {role.level !== undefined && (
-                        <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
-                          role.level >= 9 
-                            ? 'bg-purple-100 text-purple-700'
-                            : role.level >= 7
-                            ? 'bg-blue-100 text-blue-700'
-                            : role.level >= 5
-                            ? 'bg-green-100 text-green-700'
-                            : role.level >= 3
-                            ? 'bg-orange-100 text-orange-700'
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          L{role.level}
-                        </span>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {isAssigned ? (
+                        <span className="text-green-600">✓</span>
+                      ) : (
+                        <span className="text-red-500">✗</span>
                       )}
+                      <span className="font-medium truncate">{role.display_name || role.name}</span>
                     </div>
-                    <div className="text-[10px] text-gray-500 flex items-center gap-1 mt-1">
-                      <FiUsers className="w-3 h-3" />
-                      {userCount} users
-                    </div>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                    {role.level !== undefined && (
+                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                        role.level >= 9 
+                          ? 'bg-purple-100 text-purple-700'
+                          : role.level >= 7
+                          ? 'bg-blue-100 text-blue-700'
+                          : role.level >= 5
+                          ? 'bg-green-100 text-green-700'
+                          : role.level >= 3
+                          ? 'bg-orange-100 text-orange-700'
+                          : 'bg-red-100 text-red-700'
+                      }`}>
+                        L{role.level}
+                      </span>
+                    )}
+                  </div>
+                  <div className="text-[10px] text-gray-500 flex items-center gap-1 mt-1">
+                    <FiUsers className="w-3 h-3" />
+                    {userCount} users
+                  </div>
+                </button>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>
   );
 }
-// Build cache bust: 20251226_181127
+// Build cache bust: 20251226_190000
