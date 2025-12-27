@@ -171,7 +171,7 @@ export default function LandingPage() {
                       <i className="bi bi-play-circle"></i><span>Watch Demo</span>
                     </a>
                   </div>
-                  <p style={{ fontSize: 12, marginTop: 15, color: 'rgba(255,255,255,0.6)' }}>No credit card required • 14-day free trial • Cancel anytime</p>
+                  <p style={{ fontSize: 12, marginTop: 15, color: 'rgba(255,255,255,0.6)' }}>No credit card required • Cancel anytime</p>
                 </div>
                 <div className="col-lg-6 order-1 order-lg-2 hero-img" data-aos="zoom-out">
                   <img src="/arsha/img/hero-img.png" className="img-fluid animated" alt="BISMAN ERP Dashboard" />
@@ -586,7 +586,7 @@ export default function LandingPage() {
                       { q: 'Can I import data from my existing system?', a: 'Yes! We support data migration from Excel, Tally, SAP, and most common ERP systems. Our team handles the migration to ensure data integrity.' },
                       { q: 'Is my data secure?', a: 'Absolutely. We use bank-grade encryption, role-based access control (RBAC), and complete audit trails. Your data is isolated and backed up continuously across multiple regions.' },
                       { q: 'What kind of support do you provide?', a: 'We offer 24/7 support via chat, email, and phone. Every client gets a dedicated success manager to ensure you get maximum value from BISMAN.' },
-                      { q: 'Can I try before I buy?', a: 'Yes! We offer a 14-day free trial with full access to all features. No credit card required to start.' },
+                      { q: 'Can I try before I buy?', a: 'Yes! We offer a free trial with full access to all features. No credit card required to start.' },
                     ].map((faq, idx) => (
                       <div key={idx} className={`faq-item ${activeFaq === idx + 10 ? 'faq-active' : ''}`} onClick={() => toggleFaq(idx + 10)} data-aos="fade-up" data-aos-delay={200 + idx * 100}>
                         <i className="faq-icon bi bi-question-circle"></i>

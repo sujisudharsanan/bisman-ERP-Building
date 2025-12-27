@@ -1106,7 +1106,7 @@ model OtpToken {
 model Thread {
   id          String          @id @default(cuid())
   title       String?         @db.VarChar(200)
-  createdById Int
+  createdById String?         @db.Uuid
   createdAt   DateTime        @default(now()) @db.Timestamp(6)
   updatedAt   DateTime        @default(now()) @updatedAt @db.Timestamp(6)
   callLogs    CallLog[]
@@ -1120,7 +1120,7 @@ model Thread {
 model ThreadMember {
   id       String    @id @default(cuid())
   threadId String
-  userId   Int
+  userId   String?   @db.Uuid
   role     String    @default("member") @db.VarChar(50)
   joinedAt DateTime  @default(now()) @db.Timestamp(6)
   leftAt   DateTime?
@@ -1138,7 +1138,7 @@ model CallLog {
   id               String    @id @default(cuid())
   room_name        String    @db.VarChar(255)
   thread_id        String
-  initiator_id     Int
+  initiator_id     String?   @db.Uuid
   call_type        String    @default("audio") @db.VarChar(20)
   status           String    @default("ringing") @db.VarChar(30)
   started_at       DateTime  @default(now()) @db.Timestamp(6)
@@ -1164,7 +1164,7 @@ model CallLog {
 model ThreadMessage {
   id                String              @id @default(cuid())
   threadId          String
-  senderId          Int
+  senderId          String              @db.Uuid
   content           String
   type              String              @default("text") @db.VarChar(50)
   attachments       Json?
@@ -1198,7 +1198,7 @@ model ThreadMessage {
 
 model AssistantMemory {
   id                String   @id @default(cuid())
-  userId            Int      @unique
+  userId            String   @unique @db.Uuid
   lastBranchId      Int?
   lastModule        String?  @db.VarChar(100)
   preferences       Json?
@@ -1978,7 +1978,7 @@ model knex_migrations_lock {
 model message_reactions {
   id              BigInt        @id @default(autoincrement())
   message_id      String
-  user_id         Int
+  user_id         String        @db.Uuid
   emoji           String        @db.VarChar(20)
   created_at      DateTime      @default(now()) @db.Timestamp(6)
   thread_messages ThreadMessage @relation(fields: [message_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
@@ -1993,7 +1993,7 @@ model message_reactions {
 model message_reads {
   id              BigInt        @id @default(autoincrement())
   message_id      String
-  user_id         Int
+  user_id         String        @db.Uuid
   read_at         DateTime      @default(now()) @db.Timestamp(6)
   thread_messages ThreadMessage @relation(fields: [message_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 

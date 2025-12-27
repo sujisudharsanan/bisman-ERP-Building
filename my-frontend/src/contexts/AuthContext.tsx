@@ -220,14 +220,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
           return null;
         }
       } else {
-        // Login failed - error handled by caller
-        setLoading(false);
-        return null;
+        // Login failed - parse error message from server
+        try {
+          const errorData = await response.json();
+          const errorMessage = errorData.message || errorData.error || 'Login failed. Please check your credentials.';
+          const error = new Error(errorMessage);
+          (error as Error & { code?: string }).code = errorData.code;
+          setLoading(false);
+          throw error;
+        } catch (parseError) {
+          if (parseError instanceof Error && parseError.message !== 'Login failed. Please check your credentials.') {
+            setLoading(false);
+            throw parseError;
+          }
+          setLoading(false);
+          throw new Error('Login failed. Please check your credentials.');
+        }
       }
-    } catch {
-      // Network or other error during login
+    } catch (err) {
+      // Re-throw login errors so they can be caught by the UI
       setLoading(false);
-      return null;
+      throw err;
     }
   };
 

@@ -14,8 +14,14 @@
 const { v4: uuidv4 } = require('uuid');
 const bcrypt = require('bcryptjs');
 const crypto = require('crypto');
-const prisma = require('../../lib/prisma');
-const redis = require('../../lib/redisClient');
+const { getPrisma } = require('../../lib/prisma');
+const prisma = getPrisma();
+let redis = null;
+try {
+  redis = require('../../lib/redisClient');
+} catch (e) {
+  console.warn('[Onboarding] Redis not available');
+}
 // Optional email service - may not be configured in dev
 let emailService = null;
 try {
@@ -142,12 +148,12 @@ async function checkEmailExists(email) {
  * Check if company name is already taken
  */
 async function checkCompanyExists(companyName) {
-  const tenant = await prisma.tenant.findFirst({
+  const client = await prisma.client.findFirst({
     where: { 
       name: { equals: companyName, mode: 'insensitive' }
     }
   });
-  return !!tenant;
+  return !!client;
 }
 
 /**
@@ -175,7 +181,7 @@ function generateTenantSlug(companyName) {
 }
 
 /**
- * Create a new tenant with all required resources
+ * Create a new tenant (Client) with all required resources
  */
 async function createTenant(params) {
   const {
@@ -209,33 +215,90 @@ async function createTenant(params) {
   }
 
   // Generate IDs and credentials
-  const tenantId = uuidv4();
+  const clientId = uuidv4();
   const adminUserId = uuidv4();
   // Use provided password or generate temporary one
   const temporaryPassword = adminPassword || generateTemporaryPassword();
-  const mustChangePassword = !adminPassword; // Only require change if password was auto-generated
+  const mustChangePassword = !adminPassword;
   const passwordHash = await bcrypt.hash(temporaryPassword, 12);
-  const tenantSlug = generateTenantSlug(companyName);
 
-  // Calculate trial expiration
-  const trialExpiresAt = plan === 'trial'
+  // Calculate trial expiration (14 days from now)
+  const trialStartDate = new Date();
+  const trialEndDate = plan === 'trial'
     ? new Date(Date.now() + TRIAL_PERIOD_DAYS * 24 * 60 * 60 * 1000)
     : null;
 
+  // Generate unique client code
+  const clientCode = `CLI-${Date.now().toString(36).toUpperCase()}`;
+  
+  // Generate username from email
+  const username = adminEmail.toLowerCase().split('@')[0] + '_' + Date.now().toString(36);
+
   // Use transaction for atomicity
   const result = await prisma.$transaction(async (tx) => {
-    // 1. Create tenant
-    const tenant = await tx.tenant.create({
+    // 1. Find a default SuperAdmin (required for Client)
+    const superAdmin = await tx.superAdmin.findFirst({
+      where: { is_active: true },
+      orderBy: { id: 'asc' }
+    });
+    
+    if (!superAdmin) {
+      throw new Error('No active SuperAdmin found. Please contact support.');
+    }
+
+    // 2. Create Client (this is the "tenant" in this system)
+    const client = await tx.client.create({
       data: {
-        id: tenantId,
+        id: clientId,
         name: companyName,
-        slug: tenantSlug,
-        plan: plan,
-        status: 'active',
-        trial_expires_at: trialExpiresAt,
+        client_code: clientCode,
+        legal_name: companyName,
+        client_type: 'Organization',
+        industry: industry || null,
+        status: 'Active',
+        onboarding_status: 'pending',
+        productType: 'BUSINESS_ERP',
+        super_admin_id: superAdmin.id,
+        subscriptionPlan: plan === 'trial' ? 'trial' : 'free',
+        subscriptionStatus: plan === 'trial' ? 'trial' : 'active',
+        is_active: true,
+        trial_start_date: plan === 'trial' ? trialStartDate : null,
+        trial_end_date: trialEndDate,
+        timezone: timezone || 'Asia/Kolkata',
         settings: {
-          ...DEFAULT_SETTINGS,
-          timezone: timezone || 'UTC',
+          timezone: timezone || 'Asia/Kolkata',
+          currency: 'INR',
+          dateFormat: 'DD/MM/YYYY',
+          locale: 'en-IN',
+          industry: industry || null,
+          mustChangePassword: mustChangePassword
+        },
+      },
+    });
+
+    // 3. Create admin user in users_enhanced table
+    const adminUser = await tx.user.create({
+      data: {
+        id: adminUserId,
+        username: username,
+        email: adminEmail.toLowerCase(),
+        password_hash: passwordHash,
+        first_name: adminName.split(' ')[0] || adminName,
+        last_name: adminName.split(' ').slice(1).join(' ') || '',
+        phone: phone || null,
+        role: 'ADMIN',
+        is_active: true,
+        email_verified: false,
+        tenant_id: clientId,
+        super_admin_id: superAdmin.id,
+        product_type: 'BUSINESS_ERP',
+        preferences: {
+          mustChangePassword: mustChangePassword,
+          theme: 'light',
+          notifications: true
+        },
+        profile_data: {
+          companyName: companyName,
           industry: industry || null
         },
         created_at: new Date(),
@@ -243,186 +306,47 @@ async function createTenant(params) {
       }
     });
 
-    // 2. Create default roles
-    const roles = [];
-    for (const roleTemplate of DEFAULT_ROLES) {
-      const role = await tx.rbacRole.create({
+    // 4. Subscription will be selected by user on Welcome page after first login
+    // No automatic subscription creation here
+    console.log(`[Onboarding] Client ${client.id} created - subscription will be selected on Welcome page`);
+
+    // 5. Create audit log entry
+    try {
+      await tx.auditLog.create({
         data: {
-          id: uuidv4(),
-          tenant_id: tenantId,
-          name: roleTemplate.name,
-          display_name: roleTemplate.display_name,
-          permissions: roleTemplate.permissions,
-          is_system: roleTemplate.is_system,
-          created_at: new Date(),
-          updated_at: new Date()
+          action: 'CLIENT_CREATED',
+          table_name: 'clients',
+          new_values: {
+            company_name: companyName,
+            plan: plan,
+            admin_email: adminEmail,
+            ip_address: ipAddress,
+            user_agent: userAgent,
+          },
+          created_at: new Date()
         }
       });
-      roles.push(role);
+    } catch (auditErr) {
+      console.warn('[Onboarding] Could not create audit log:', auditErr.message);
     }
 
-    // Find admin role ID
-    const adminRole = roles.find(r => r.name === 'admin');
-
-    // 3. Create admin user
-    const adminUser = await tx.user.create({
-      data: {
-        id: adminUserId,
-        tenant_id: tenantId,
-        email: adminEmail.toLowerCase(),
-        name: adminName,
-        password_hash: passwordHash,
-        phone: phone || null,
-        role_id: adminRole.id,
-        is_active: true,
-        is_verified: false,
-        must_change_password: mustChangePassword,
-        created_at: new Date(),
-        updated_at: new Date()
-      }
-    });
-
-    // 4. Create tenant_usage starter row
-    await tx.tenantUsage.create({
-      data: {
-        tenant_id: tenantId,
-        date: new Date(),
-        api_calls: 0,
-        storage_bytes: 0,
-        active_users: 1
-      }
-    });
-
-    // 5. Get or create default subscription plan
-    const subscriptionPlan = await tx.subscriptionPlan.findFirst({
-      where: { 
-        OR: [
-          { plan_code: DEFAULT_SUBSCRIPTION_PLAN },
-          { plan_code: 'STARTER' },
-          { plan_code: 'FREE' }
-        ],
-        is_active: true 
-      },
-      orderBy: { sort_order: 'asc' }
-    });
-
-    // Create client and subscription if plan exists
-    let client = null;
-    let clientSubscription = null;
-    
-    if (subscriptionPlan) {
-      // Generate unique client code
-      const clientCode = `CLI-${Date.now().toString(36).toUpperCase()}`;
-      
-      // Find or create a default super admin for self-signup clients
-      const superAdmin = await tx.superAdmin.findFirst({
-        where: { is_active: true },
-        orderBy: { id: 'asc' }
-      });
-      
-      // If no super admin exists, we can't create a client (skip)
-      if (!superAdmin) {
-        console.warn('[Onboarding] No active SuperAdmin found, skipping client creation');
-      } else {
-        // 6. Create Client record
-        client = await tx.client.create({
-          data: {
-            name: companyName,
-            client_code: clientCode,
-            legal_name: companyName,
-            client_type: 'Organization',
-            status: 'Active',
-            onboarding_status: 'pending',
-            productType: 'BUSINESS_ERP',
-            super_admin_id: superAdmin.id,
-            subscriptionPlan: subscriptionPlan.plan_code,
-            subscriptionStatus: plan === 'trial' ? 'trial' : 'active',
-            is_active: true,
-            trial_start_date: plan === 'trial' ? new Date() : null,
-            trial_end_date: trialExpiresAt,
-            timezone: timezone || 'Asia/Kolkata',
-            industry: industry || null,
-            settings: {
-              timezone: timezone || 'Asia/Kolkata',
-              currency: 'INR',
-              dateFormat: 'DD/MM/YYYY',
-              locale: 'en-IN',
-              industry: industry || null
-            },
-          },
-        });
-
-        // 7. Create Client Subscription
-        clientSubscription = await tx.clientSubscription.create({
-          data: {
-            client_id: client.id,
-            plan_id: subscriptionPlan.id,
-            state: plan === 'trial' ? 'TRIAL' : 'ACTIVE',
-            billing_cycle: 'MONTHLY',
-            trial_start_date: plan === 'trial' ? new Date() : null,
-            trial_end_date: trialExpiresAt,
-            current_period_start: new Date(),
-            current_period_end: trialExpiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
-            next_billing_date: trialExpiresAt,
-            current_user_count: 1,
-            current_storage_used: 0,
-            current_api_calls: 0,
-            is_active: true,
-          },
-        });
-
-        // Update user with clientId
-        await tx.user.update({
-          where: { id: adminUserId },
-          data: { clientId: client.id }
-        });
-
-        console.log(`[Onboarding] Created client ${client.id} with subscription ${clientSubscription.id}`);
-      }
-    } else {
-      console.warn('[Onboarding] No default subscription plan found, skipping client/subscription creation');
-    }
-
-    // 8. Create audit log entry
-    await tx.auditLog.create({
-      data: {
-        id: uuidv4(),
-        tenant_id: tenantId,
-        user_id: adminUserId,
-        action: 'TENANT_CREATED',
-        resource_type: 'tenant',
-        resource_id: tenantId,
-        details: {
-          company_name: companyName,
-          plan: plan,
-          admin_email: adminEmail,
-          ip_address: ipAddress,
-          user_agent: userAgent,
-          client_id: client?.id || null,
-          subscription_id: clientSubscription?.id || null
-        },
-        created_at: new Date()
-      }
-    });
-
-    return { tenant, adminUser, roles, client, clientSubscription };
+    return { client, adminUser };
   });
 
   // Generate login URL
   const baseUrl = process.env.FRONTEND_URL || 'https://app.bisman.io';
   const loginUrl = `${baseUrl}/auth/login`;
 
-  // Build response
+  // Build response - subscription will be selected on Welcome page
   const response = {
     success: true,
-    tenantId,
+    tenantId: clientId,
+    clientId: result.client.id,
     adminUserId,
-    temporaryPassword,
+    temporaryPassword: adminPassword ? undefined : temporaryPassword,
     loginUrl,
-    trialExpiresAt: trialExpiresAt?.toISOString() || null,
-    clientId: result.client?.id || null,
-    subscriptionId: result.clientSubscription?.id || null,
-    subscriptionPlan: result.clientSubscription ? DEFAULT_SUBSCRIPTION_PLAN : null
+    trialExpiresAt: trialEndDate?.toISOString() || null,
+    needsSubscription: true, // User will select subscription on Welcome page
   };
 
   // Store idempotency result (without password)
@@ -432,27 +356,21 @@ async function createTenant(params) {
     await storeIdempotency(idempotencyKey, cachedResponse);
   }
 
-  // 6. Send welcome email (async, don't block)
-  sendWelcomeEmail({
-    email: adminEmail,
-    name: adminName,
-    companyName,
-    tenantSlug,
-    temporaryPassword,
-    loginUrl,
-    trialExpiresAt
-  }).catch(err => {
-    console.error('[Onboarding] Failed to send welcome email:', err);
-  });
+  // Send welcome email (async, don't block)
+  if (!adminPassword) {
+    sendWelcomeEmail({
+      email: adminEmail,
+      name: adminName,
+      companyName,
+      temporaryPassword,
+      loginUrl,
+      trialExpiresAt: trialEndDate
+    }).catch(err => {
+      console.error('[Onboarding] Failed to send welcome email:', err);
+    });
+  }
 
-  // 7. Enqueue background provisioning jobs
-  enqueueProvisioningJobs(tenantId, {
-    companyName,
-    adminEmail,
-    plan
-  }).catch(err => {
-    console.error('[Onboarding] Failed to enqueue provisioning jobs:', err);
-  });
+  console.log(`[Onboarding] Successfully created client ${clientId} with admin user ${adminUserId}`);
 
   return response;
 }
@@ -465,12 +383,10 @@ async function sendWelcomeEmail(params) {
     email,
     name,
     companyName,
-    tenantSlug,
     temporaryPassword,
     loginUrl,
     trialExpiresAt
   } = params;
-
   const subject = `Welcome to BISMAN ERP - ${companyName}`;
 
   const html = `
@@ -598,19 +514,26 @@ async function enqueueProvisioningJobs(tenantId, params) {
 /**
  * Resend welcome email
  */
-async function resendWelcomeEmail(tenantId, email) {
+async function resendWelcomeEmail(clientId, email) {
+  // Find user by tenant_id (which is clientId in this system)
   const user = await prisma.user.findFirst({
     where: {
-      tenant_id: tenantId,
+      tenant_id: clientId,
       email: email.toLowerCase()
-    },
-    include: {
-      tenant: true
     }
   });
 
   if (!user) {
     throw new Error('User not found');
+  }
+
+  // Get client info
+  const client = await prisma.client.findUnique({
+    where: { id: clientId }
+  });
+
+  if (!client) {
+    throw new Error('Client not found');
   }
 
   // Generate new temporary password
@@ -622,51 +545,56 @@ async function resendWelcomeEmail(tenantId, email) {
     where: { id: user.id },
     data: {
       password_hash: passwordHash,
-      must_change_password: true,
+      preferences: {
+        ...(user.preferences || {}),
+        mustChangePassword: true
+      },
       updated_at: new Date()
     }
   });
 
   const baseUrl = process.env.FRONTEND_URL || 'https://app.bisman.io';
-  const loginUrl = `${baseUrl}/login?tenant=${user.tenant.slug}`;
+  const loginUrl = `${baseUrl}/auth/login`;
 
   await sendWelcomeEmail({
     email: user.email,
-    name: user.name,
-    companyName: user.tenant.name,
-    tenantSlug: user.tenant.slug,
+    name: user.first_name || user.username,
+    companyName: client.name,
     temporaryPassword,
     loginUrl,
-    trialExpiresAt: user.tenant.trial_expires_at
+    trialExpiresAt: client.trial_end_date
   });
 }
 
 /**
- * Get provisioning status for a tenant
+ * Get provisioning status for a client
  */
-async function getProvisioningStatus(tenantId) {
-  const tenant = await prisma.tenant.findUnique({
-    where: { id: tenantId },
-    include: {
-      users: {
-        take: 1,
-        orderBy: { created_at: 'asc' }
-      }
-    }
+async function getProvisioningStatus(clientId) {
+  const client = await prisma.client.findUnique({
+    where: { id: clientId }
   });
 
-  if (!tenant) return null;
+  if (!client) return null;
+
+  // Find admin user for this client
+  const adminUser = await prisma.user.findFirst({
+    where: { 
+      tenant_id: clientId,
+      role: 'ADMIN'
+    },
+    orderBy: { created_at: 'asc' }
+  });
 
   // Check provisioning status from Redis or DB
   let provisioningStatus = {
-    storage: 'pending',
-    seedData: 'pending',
-    billing: 'pending'
+    storage: 'complete',
+    seedData: 'complete',
+    billing: 'complete'
   };
 
   if (redis) {
     try {
-      const status = await redis.hgetall(`tenant:${tenantId}:provisioning`);
+      const status = await redis.hgetall(`client:${clientId}:provisioning`);
       if (status && Object.keys(status).length > 0) {
         provisioningStatus = status;
       }
@@ -676,17 +604,17 @@ async function getProvisioningStatus(tenantId) {
   }
 
   return {
-    tenantId: tenant.id,
-    companyName: tenant.name,
-    status: tenant.status,
-    plan: tenant.plan,
-    trialExpiresAt: tenant.trial_expires_at,
-    createdAt: tenant.created_at,
+    clientId: client.id,
+    companyName: client.name,
+    status: client.status,
+    plan: client.subscriptionPlan,
+    trialExpiresAt: client.trial_end_date,
+    createdAt: client.created_at,
     provisioning: provisioningStatus,
-    adminUser: tenant.users[0] ? {
-      id: tenant.users[0].id,
-      email: tenant.users[0].email,
-      isVerified: tenant.users[0].is_verified
+    adminUser: adminUser ? {
+      id: adminUser.id,
+      email: adminUser.email,
+      isVerified: adminUser.email_verified
     } : null
   };
 }

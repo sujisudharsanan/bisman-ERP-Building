@@ -19,23 +19,13 @@ const prisma = getPrisma();
 router.use(authenticate);
 
 /**
- * Get the integer user ID for chat/thread operations.
- * Thread/ThreadMember tables use Int for createdById/userId,
- * but User.id is now UUID. Use legacy_id if available.
+ * Get the user ID for chat/thread operations.
+ * Thread/ThreadMember tables now use UUID for createdById/userId.
+ * Returns the user's UUID id directly.
  */
 function getChatUserId(req) {
-  // Prefer legacy_id (Int) if available
-  if (req.user.legacy_id) {
-    return req.user.legacy_id;
-  }
-  // Try parsing UUID as int (will fail for real UUIDs, returns NaN)
-  const parsed = parseInt(req.user.id);
-  if (!isNaN(parsed)) {
-    return parsed;
-  }
-  // Fallback - should not reach here in production
-  console.warn('[getChatUserId] No valid integer ID found for user:', req.user.email);
-  return 0;
+  // Return UUID id directly
+  return req.user.id;
 }
 
 // ==================== THREADS ====================

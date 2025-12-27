@@ -1013,6 +1013,126 @@ router.get('/admin/grace-periods', ...adminOnly, async (req, res) => {
 });
 
 // ============================================================================
+// CLIENT-FACING FEATURE ACCESS CHECK
+// ============================================================================
+
+/**
+ * GET /api/micro-unlock/feature-access/:featureKey
+ * Client-friendly feature access check
+ * 
+ * Returns:
+ * - is_allowed: boolean (true = feature available)
+ * - For restricted features:
+ *   - restriction_type: 'unlockable' (soft lock) or 'upgrade_required' (hard lock)
+ *   - unlock_price: number (only for unlockable)
+ *   - required_plan_name: string (only for upgrade_required)
+ * 
+ * NOTE: Never exposes "soft lock" / "hard lock" terminology to clients
+ */
+router.get('/feature-access/:featureKey', authenticate, async (req, res) => {
+  try {
+    const { featureKey } = req.params;
+    const tenantId = getTenantId(req);
+    const userId = req.user?.id;
+
+    if (!tenantId) {
+      return res.status(400).json({
+        ok: false,
+        error: 'Tenant context required',
+      });
+    }
+
+    // Get feature access details
+    const access = await microUnlockService.checkFeatureAccess(
+      tenantId,
+      userId,
+      featureKey
+    );
+
+    // Get feature definition for name and description
+    const { getPrisma } = require('../lib/prisma');
+    const prisma = getPrisma();
+    
+    const featureDef = await prisma.$queryRaw`
+      SELECT 
+        mfd.feature_code,
+        mfd.feature_name,
+        mfd.description,
+        mfd.category,
+        pfc.lock_mode,
+        pfc.unlock_price,
+        pfc.is_enabled,
+        msp.plan_code,
+        msp.name as plan_name
+      FROM master_feature_definitions mfd
+      LEFT JOIN client_subscriptions cs ON cs.client_id = ${tenantId}::uuid
+      LEFT JOIN master_subscription_plans msp ON msp.id = cs.plan_id
+      LEFT JOIN plan_feature_controls pfc ON pfc.feature_code = mfd.feature_code AND pfc.plan_id = msp.id
+      WHERE mfd.feature_code = ${featureKey}
+      LIMIT 1
+    `;
+
+    const feature = featureDef[0] || null;
+    const isAllowed = access.allowed || (feature?.is_enabled && feature?.lock_mode === 'none');
+    
+    // Determine restriction type (client-friendly naming)
+    let restrictionType = null;
+    let requiredPlanName = null;
+    let requiredPlanCode = null;
+    
+    if (!isAllowed && feature) {
+      if (feature.lock_mode === 'soft') {
+        // Soft lock = unlockable with payment
+        restrictionType = 'unlockable';
+      } else if (feature.lock_mode === 'hard') {
+        // Hard lock = upgrade required
+        restrictionType = 'upgrade_required';
+        // Find the minimum plan that includes this feature
+        const plansWithFeature = await prisma.$queryRaw`
+          SELECT msp.plan_code, msp.name, msp.sort_order
+          FROM plan_feature_controls pfc
+          JOIN master_subscription_plans msp ON msp.id = pfc.plan_id
+          WHERE pfc.feature_code = ${featureKey}
+            AND pfc.lock_mode = 'none'
+            AND pfc.is_enabled = true
+          ORDER BY msp.sort_order ASC
+          LIMIT 1
+        `;
+        if (plansWithFeature.length > 0) {
+          requiredPlanCode = plansWithFeature[0].plan_code;
+          requiredPlanName = plansWithFeature[0].name;
+        } else {
+          requiredPlanName = 'Enterprise';
+          requiredPlanCode = 'ENTERPRISE';
+        }
+      }
+    }
+
+    res.json({
+      ok: true,
+      feature_key: featureKey,
+      feature_name: feature?.feature_name || featureKey.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      description: feature?.description || null,
+      category: feature?.category || null,
+      is_allowed: isAllowed,
+      restriction_type: restrictionType,
+      unlock_price: restrictionType === 'unlockable' ? parseFloat(feature?.unlock_price || access.unlock_price || 0) : null,
+      currency: 'INR',
+      required_plan_name: requiredPlanName,
+      required_plan_code: requiredPlanCode,
+      current_plan_name: feature?.plan_name || null,
+      current_plan_code: feature?.plan_code || null,
+    });
+  } catch (error) {
+    console.error('[MicroUnlock] Feature access check error:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'Failed to check feature access',
+    });
+  }
+});
+
+// ============================================================================
 // HELPER FUNCTIONS
 // ============================================================================
 

@@ -63,6 +63,25 @@ export default function StandardLoginPage() {
       if (user) {
         setSuccess('Login successful! Redirecting...');
         await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Check if user needs to complete workspace setup (subscription selection)
+        try {
+          const welcomeCheck = await fetch('/api/welcome/status', { 
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          if (welcomeCheck.ok) {
+            const welcomeData = await welcomeCheck.json();
+            if (welcomeData.needsSetup) {
+              console.log('🎯 User needs to complete workspace setup, redirecting to /welcome');
+              window.location.replace('/welcome');
+              return;
+            }
+          }
+        } catch (welcomeErr) {
+          console.warn('Could not check welcome status:', welcomeErr);
+        }
+
         const roleValue = (user.roleName || user.role || '').toUpperCase().replace(/\s+/g, '_');
         
         let targetPath = '/dashboard';
@@ -78,8 +97,20 @@ export default function StandardLoginPage() {
       } else {
         setError('Login failed. Please check your credentials.');
       }
-    } catch {
-      setError('Network error. Please check your connection and try again.');
+    } catch (err: unknown) {
+      // Extract error message from axios response or fallback to generic message
+      let errorMessage = 'Network error. Please check your connection and try again.';
+      if (err && typeof err === 'object') {
+        const axiosError = err as { response?: { data?: { message?: string; error?: string } }; message?: string };
+        if (axiosError.response?.data?.message) {
+          errorMessage = axiosError.response.data.message;
+        } else if (axiosError.response?.data?.error) {
+          errorMessage = axiosError.response.data.error;
+        } else if (axiosError.message) {
+          errorMessage = axiosError.message;
+        }
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -98,6 +129,24 @@ export default function StandardLoginPage() {
 
         // Small delay to ensure cookies are set before redirect
         await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Check if user needs to complete workspace setup (subscription selection)
+        try {
+          const welcomeCheck = await fetch('/api/welcome/status', { 
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          if (welcomeCheck.ok) {
+            const welcomeData = await welcomeCheck.json();
+            if (welcomeData.needsSetup) {
+              console.log('🎯 User needs to complete workspace setup, redirecting to /welcome');
+              window.location.replace('/welcome');
+              return;
+            }
+          }
+        } catch (welcomeErr) {
+          console.warn('Could not check welcome status:', welcomeErr);
+        }
 
         // Normalize role name - handle both 'role' and 'roleName' fields
         const roleValue = (user.roleName || user.role || '').toUpperCase().replace(/\s+/g, '_');
@@ -133,9 +182,20 @@ export default function StandardLoginPage() {
       } else {
         setError('Login failed. Please check your credentials.');
       }
-    } catch {
-      setError('Network error. Please check your connection and try again.');
-      // Error logged for debugging purposes
+    } catch (err: unknown) {
+      // Extract error message from axios response or fallback to generic message
+      let errorMessage = 'Network error. Please check your connection and try again.';
+      if (err && typeof err === 'object') {
+        const axiosError = err as { response?: { data?: { message?: string; error?: string } }; message?: string };
+        if (axiosError.response?.data?.message) {
+          errorMessage = axiosError.response.data.message;
+        } else if (axiosError.response?.data?.error) {
+          errorMessage = axiosError.response.data.error;
+        } else if (axiosError.message) {
+          errorMessage = axiosError.message;
+        }
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -247,10 +307,30 @@ export default function StandardLoginPage() {
               </div>
             )}
 
-            {/* Error message */}
+            {/* Error message - prominent toast-style popup */}
             {error && (
-              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg text-red-700 dark:text-red-300 text-sm break-words">
-                {error}
+              <div className="mb-4 p-4 bg-red-50 dark:bg-red-900/40 border-l-4 border-red-500 dark:border-red-400 rounded-lg shadow-lg animate-shake">
+                <div className="flex items-start">
+                  <div className="flex-shrink-0">
+                    <svg className="h-5 w-5 text-red-500 dark:text-red-400" viewBox="0 0 20 20" fill="currentColor">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <div className="ml-3">
+                    <h3 className="text-sm font-semibold text-red-800 dark:text-red-200">Login Failed</h3>
+                    <p className="text-sm text-red-700 dark:text-red-300 mt-1">{error}</p>
+                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setError('')}
+                    className="ml-auto -mx-1.5 -my-1.5 bg-red-50 dark:bg-red-900/40 text-red-500 dark:text-red-400 rounded-lg p-1.5 hover:bg-red-100 dark:hover:bg-red-800 inline-flex h-8 w-8"
+                  >
+                    <span className="sr-only">Dismiss</span>
+                    <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M4.293 4.293a1 1 0 011.414 0L10 8.586l4.293-4.293a1 1 0 111.414 1.414L11.414 10l4.293 4.293a1 1 0 01-1.414 1.414L10 11.414l-4.293 4.293a1 1 0 01-1.414-1.414L8.586 10 4.293 5.707a1 1 0 010-1.414z" clipRule="evenodd" />
+                    </svg>
+                  </button>
+                </div>
               </div>
             )}
 
@@ -270,7 +350,6 @@ export default function StandardLoginPage() {
                 required
                 autoComplete="email"
               />
-              {error && <p className="text-red-500 dark:text-red-400 text-sm mt-2">Enter an email or phone number</p>}
             </div>
 
             <div>

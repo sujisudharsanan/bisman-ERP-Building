@@ -153,7 +153,7 @@ router.get('/pricing-page', async (req, res) => {
       },
       {
         question: 'Is there a free trial?',
-        answer: 'Yes, all new accounts start with a 14-day free trial on the Starter plan with full access to test the platform.',
+        answer: 'Yes, all new accounts start with a free trial on the Starter plan with full access to test the platform.',
       },
       {
         question: 'What payment methods do you accept?',

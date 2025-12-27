@@ -102,7 +102,7 @@ const PLANS: Plan[] = [
       integrations: 2,
     },
     cta: 'Start Free Trial',
-    ctaNote: '14-day free trial, no credit card required',
+    ctaNote: 'No credit card required',
   },
   {
     id: 'PROFESSIONAL',
@@ -135,7 +135,7 @@ const PLANS: Plan[] = [
       integrations: 10,
     },
     cta: 'Start Free Trial',
-    ctaNote: '14-day free trial, no credit card required',
+    ctaNote: 'No credit card required',
   },
   {
     id: 'BUSINESS',
@@ -169,7 +169,7 @@ const PLANS: Plan[] = [
       integrations: 25,
     },
     cta: 'Start Free Trial',
-    ctaNote: '14-day free trial, dedicated onboarding',
+    ctaNote: 'Dedicated onboarding included',
   },
   {
     id: 'ENTERPRISE',
@@ -255,8 +255,8 @@ const FEATURE_CATEGORIES = [
 // FAQ data
 const FAQ_ITEMS = [
   {
-    question: 'How does the 14-day free trial work?',
-    answer: 'Start with any paid plan for free. No credit card required. You get full access to all features of your chosen plan. At the end of 14 days, you can upgrade, downgrade, or cancel with no obligations.',
+    question: 'How does the free trial work?',
+    answer: 'Start with any paid plan for free. No credit card required. You get full access to all features of your chosen plan. You can upgrade, downgrade, or cancel with no obligations.',
   },
   {
     question: 'Can I switch plans anytime?',
@@ -753,8 +753,7 @@ export default function PricingPage() {
               Simple, Transparent Pricing
             </h1>
             <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
-              Choose the perfect plan for your business. All plans include a 14-day free trial.
-              No credit card required.
+              Choose the perfect plan for your business. No credit card required.
             </p>
           </motion.div>
 

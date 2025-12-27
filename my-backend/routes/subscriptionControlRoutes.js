@@ -339,8 +339,7 @@ router.put('/plans/:id', ...superAdminOnly, async (req, res) => {
       cfo_approval_threshold,
       invoice_cycle_days,
       grace_period_days,
-      read_only_after_grace,
-      apply_to_all_tenants
+      read_only_after_grace
     } = req.body;
 
     // Get current plan for audit
@@ -657,17 +656,9 @@ router.put('/plans/:planId/features', ...superAdminOnly, async (req, res) => {
     const validationErrors = [];
     
     for (const feature of features) {
-      const { feature_code, free_limit, approval_threshold, lock_mode, unlock_price } = feature;
+      const { feature_code, free_limit, approval_threshold, lock_mode } = feature;
       
-      // Rule: Approval limit > creation limit
-      if (approval_threshold && free_limit && approval_threshold > free_limit && free_limit !== -1) {
-        // This is actually OK - approval threshold is for amounts, not counts
-      }
-      
-      // Rule: Hard lock + unlock price exists
-      if (lock_mode === 'hard' && unlock_price > 0) {
-        validationErrors.push(`${feature_code}: Cannot have unlock price for hard-locked feature`);
-      }
+      // Rule: Hard lock + unlock price is auto-fixed now, no need to reject
       
       // Rule: Zero creation + non-zero approval makes no sense
       if (free_limit === 0 && approval_threshold && approval_threshold > 0 && lock_mode !== 'hard') {
@@ -692,7 +683,6 @@ router.put('/plans/:planId/features', ...superAdminOnly, async (req, res) => {
         feature_code,
         free_limit,
         limit_period = 'monthly',
-        unlock_price = 0,
         unlock_unit = 'per month',
         currency = 'INR',
         approval_threshold,
@@ -701,6 +691,9 @@ router.put('/plans/:planId/features', ...superAdminOnly, async (req, res) => {
         is_visible = true,
         show_in_pricing = true
       } = feature;
+      
+      // Auto-fix: If hard locked, force unlock_price to 0
+      const unlock_price = lock_mode === 'hard' ? 0 : (feature.unlock_price || 0);
 
       // Upsert
       const existing = await prisma.$queryRaw`
@@ -865,7 +858,6 @@ router.get('/tenants', ...superAdminOnly, async (req, res) => {
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     let whereClause = 'WHERE 1=1';
-    const params = [];
 
     if (plan_id) {
       whereClause += ` AND tpa.plan_id = ${parseInt(plan_id)}`;
@@ -874,7 +866,7 @@ router.get('/tenants', ...superAdminOnly, async (req, res) => {
       whereClause += ` AND (c.name ILIKE '%${search}%' OR c.client_code ILIKE '%${search}%')`;
     }
 
-    const tenants = await prisma.$queryRaw`
+    const tenants = await prisma.$queryRawUnsafe(`
       SELECT 
         c.id as tenant_id,
         c.name as tenant_name,
@@ -890,9 +882,10 @@ router.get('/tenants', ...superAdminOnly, async (req, res) => {
       FROM clients c
       LEFT JOIN tenant_plan_assignments tpa ON tpa.tenant_id = c.id AND tpa.is_active = TRUE
       LEFT JOIN master_subscription_plans msp ON msp.id = tpa.plan_id
+      ${whereClause}
       ORDER BY c.name
       LIMIT ${parseInt(limit)} OFFSET ${offset}
-    `;
+    `);
 
     const total = await prisma.$queryRaw`
       SELECT COUNT(*) as count FROM clients
@@ -1000,11 +993,12 @@ router.get('/audit-log', ...superAdminOnly, async (req, res) => {
     if (target_type) whereClause += ` AND target_type = '${target_type}'`;
     if (action) whereClause += ` AND action = '${action}'`;
 
-    const logs = await prisma.$queryRaw`
+    const logs = await prisma.$queryRawUnsafe(`
       SELECT * FROM plan_change_audit_log
+      ${whereClause}
       ORDER BY changed_at DESC
       LIMIT ${parseInt(limit)} OFFSET ${offset}
-    `;
+    `);
 
     const total = await prisma.$queryRaw`
       SELECT COUNT(*) as count FROM plan_change_audit_log
@@ -1057,9 +1051,9 @@ router.post('/validate-plan', ...superAdminOnly, async (req, res) => {
       }
 
       for (const feature of features) {
-        // Hard lock with unlock price
+        // Hard lock with unlock price - will be auto-fixed on save
         if (feature.lock_mode === 'hard' && feature.unlock_price > 0) {
-          errors.push(`${feature.feature_code}: Hard locked features cannot have unlock price`);
+          warnings.push(`${feature.feature_code}: Hard locked features will have unlock price auto-cleared to ₹0`);
         }
 
         // Zero limit without lock

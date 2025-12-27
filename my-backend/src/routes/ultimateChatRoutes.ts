@@ -62,7 +62,7 @@ const extractUser = async (req: Request, res: Response, next: Function) => {
       });
     }
     
-    (req as any).userId = parseInt(userId as string);
+    (req as any).userId = userId; // UUID string, no parseInt
     (req as any).userRole = userQuery.rows[0].role as UserRole;
     
     next();

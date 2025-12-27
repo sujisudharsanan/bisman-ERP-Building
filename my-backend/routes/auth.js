@@ -43,10 +43,10 @@ function generateRefreshToken(payload) {
  * Protected by brute force detection with CAPTCHA requirement when threshold exceeded
  */
 router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) => {
-  const { email, password } = req.body;
+  const { email: rawEmail, password } = req.body;
 
   // Validation
-  if (!email || !password) {
+  if (!rawEmail || !password) {
     throw new AppError(
       'Email and password are required',
       ERROR_CODES.MISSING_REQUIRED_FIELD,
@@ -54,6 +54,9 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
     );
   }
 
+  // Normalize email to lowercase for case-insensitive lookup
+  const email = rawEmail.toLowerCase().trim();
+  
   console.log(`🔐 Login attempt for: ${email}`);
 
     let authData = null;
@@ -295,6 +298,30 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
         const userTypeValue = regularUser.role === 'ADMIN' ? 'ADMIN' : 'USER';
         console.log(`✅ Authenticated as ${userTypeValue} (role: ${regularUser.role})`);
 
+        // Fetch tenant/client info for splash screen branding
+        let tenantInfo = null;
+        if (regularUser.tenant_id && prisma) {
+          try {
+            tenantInfo = await prisma.client.findUnique({
+              where: { id: regularUser.tenant_id },
+              select: { 
+                id: true, 
+                name: true, 
+                trade_name: true,
+                logo: true,
+                settings: true,
+                client_code: true
+              }
+            });
+          } catch (e) {
+            console.warn('[auth.routes] Failed to fetch tenant info:', e.message);
+          }
+        }
+        
+        // Extract primary color from settings if available
+        const clientSettings = tenantInfo?.settings || {};
+        const primaryColor = clientSettings.primaryColor || clientSettings.themeColor || null;
+
         // Log successful login
         auditService.logLoginAttempt(true, email, req.ip, {
           userType: userTypeValue,
@@ -315,7 +342,13 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
           super_admin_id: regularUser.super_admin_id,
           assignedModules: regularUser.assignedModules || [],
           pagePermissions: regularUser.pagePermissions || {},
-          profile_pic_url: regularUser.profile_pic_url
+          profile_pic_url: regularUser.profile_pic_url,
+          // Include tenant/client branding info for splash screen
+          tenant_name: tenantInfo?.trade_name || tenantInfo?.name || null,
+          clientName: tenantInfo?.trade_name || tenantInfo?.name || null,
+          clientDisplayName: tenantInfo?.trade_name || tenantInfo?.name || null,
+          clientLogo: tenantInfo?.logo || null,
+          clientPrimaryColor: primaryColor
         };
 
         const accessToken = generateAccessToken({
@@ -336,22 +369,26 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
         });
 
         // Persist refresh token for regular users
-        try {
-          const crypto = require('crypto');
-          const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
-          const expiryDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+        // Note: Skip session persistence for UUID users (user_sessions expects Int user_id)
+        // Only legacy users with integer IDs can use the session table
+        if (regularUser.isLegacyUser && typeof regularUser.id === 'number') {
+          try {
+            const crypto = require('crypto');
+            const hashedToken = crypto.createHash('sha256').update(refreshToken).digest('hex');
+            const expiryDate = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
 
-          await prisma.user_sessions.create({
-            data: {
-              session_token: hashedToken,
-              user_id: regularUser.id,
-              expires_at: expiryDate,
-              created_at: new Date(),
-              is_active: true,
-            },
-          });
-        } catch (dbError) {
-          console.error('Failed to persist session:', dbError);
+            await prisma.user_sessions.create({
+              data: {
+                session_token: hashedToken,
+                user_id: regularUser.id,
+                expires_at: expiryDate,
+                created_at: new Date(),
+                is_active: true,
+              },
+            });
+          } catch (dbError) {
+            console.error('Failed to persist session:', dbError);
+          }
         }
 
         // Set cookies
@@ -373,14 +410,21 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
     // Invalid credentials - no fallback, database is the single source of truth
     console.log('❌ Invalid credentials for:', email);
     
+    // Determine if user was found to provide specific error message
+    const userFound = !!(enterpriseAdmin || superAdmin || regularUser);
+    const errorMessage = userFound 
+      ? 'Incorrect password. Please try again.'
+      : 'No account found with this email address.';
+    const errorCode = userFound ? 'INVALID_PASSWORD' : 'USER_NOT_FOUND';
+    
     // Log failed login attempt
     auditService.logLoginAttempt(false, email, req.ip, {
-      reason: 'Invalid credentials'
+      reason: errorMessage
     }).catch(() => {}); // Don't block on audit logging
     
     throw new AppError(
-      'Invalid email or password',
-      ERROR_CODES.INVALID_CREDENTIALS,
+      errorMessage,
+      errorCode,
       401
     );
 }));
@@ -763,15 +807,20 @@ router.get('/me', async (req, res) => {
               where: { id: user.tenant_id },
               select: {
                 name: true,
+                trade_name: true,
                 logo: true,
                 settings: true
               }
             });
             if (client) {
               const branding = client.settings?.branding || {};
-              user.clientDisplayName = branding.display_name || client.name || null;
+              const clientSettings = client.settings || {};
+              // Priority: settings.branding.display_name > trade_name > name
+              user.clientDisplayName = branding.display_name || client.trade_name || client.name || null;
+              user.clientName = user.clientDisplayName;
+              user.tenant_name = user.clientDisplayName;
               user.clientLogo = branding.logo_url || client.logo || null;
-              user.clientPrimaryColor = branding.theme_primary_color || null;
+              user.clientPrimaryColor = branding.theme_primary_color || clientSettings.primaryColor || clientSettings.themeColor || null;
             }
           } catch (clientErr) {
             console.warn('Failed to fetch client branding:', clientErr.message);

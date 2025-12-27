@@ -27,8 +27,6 @@ import {
   BarChart3,
   Shield,
   ArrowRight,
-  Globe,
-  Clock,
 } from 'lucide-react';
 
 // ============================================================================
@@ -38,8 +36,8 @@ import {
 const signupSchema = z.object({
   orgName: z.string().min(2, 'Organization name must be at least 2 characters'),
   businessType: z.string().min(1, 'Please select a business type'),
-  country: z.string().min(1, 'Please select a country'),
-  timezone: z.string().min(1, 'Please select a timezone'),
+  country: z.string().optional(),
+  timezone: z.string().optional(),
   fullName: z.string().min(2, 'Full name must be at least 2 characters'),
   email: z.string().email('Please enter a valid email address'),
   phone: z.string().optional(),
@@ -139,6 +137,27 @@ function detectCountryFromTimezone(timezone: string): string {
   return mapping[timezone] || 'IN';
 }
 
+// Auto-detect country using browser locale and timezone
+async function detectCountry(): Promise<string> {
+  // Method 1: Try browser locale
+  try {
+    const locale = navigator.language || (navigator as { userLanguage?: string }).userLanguage || 'en-US';
+    const regionMatch = locale.match(/-([A-Z]{2})$/);
+    if (regionMatch) {
+      const countryCode = regionMatch[1];
+      if (COUNTRIES.find(c => c.code === countryCode)) {
+        return countryCode;
+      }
+    }
+  } catch {
+    // Fallback to timezone detection
+  }
+
+  // Method 2: Fallback to timezone-based detection
+  const timezone = detectTimezone();
+  return detectCountryFromTimezone(timezone);
+}
+
 // ============================================================================
 // MAIN COMPONENT
 // ============================================================================
@@ -151,7 +170,7 @@ export default function SignupPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [detectedInfo, setDetectedInfo] = useState({ country: '', timezone: '' });
+  const [detectedInfo, setDetectedInfo] = useState({ country: '', timezone: '', countryAutoDetected: false });
 
   const [formData, setFormData] = useState({
     orgName: '',
@@ -168,16 +187,19 @@ export default function SignupPage() {
 
   // Auto-detect country and timezone on mount
   useEffect(() => {
-    const timezone = detectTimezone();
-    const countryCode = detectCountryFromTimezone(timezone);
-    const country = COUNTRIES.find(c => c.code === countryCode);
-    
-    setDetectedInfo({ country: countryCode, timezone });
-    setFormData(prev => ({
-      ...prev,
-      timezone: timezone,
-      country: countryCode,
-    }));
+    const initDetection = async () => {
+      const timezone = detectTimezone();
+      const countryCode = await detectCountry();
+      const country = COUNTRIES.find(c => c.code === countryCode);
+      
+      setDetectedInfo({ country: countryCode, timezone, countryAutoDetected: true });
+      setFormData(prev => ({
+        ...prev,
+        timezone: timezone,
+        country: countryCode,
+      }));
+    };
+    initDetection();
   }, []);
 
   const updateField = (field: string, value: string | boolean) => {
@@ -286,7 +308,7 @@ export default function SignupPage() {
             </div>
           </div>
           <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
-            Your 14-day trial has started. You can login immediately!
+            Your free trial has started. You can login immediately!
           </p>
           <button
             onClick={() => router.push('/auth/login')}
@@ -301,32 +323,32 @@ export default function SignupPage() {
 
   return (
     <div className="h-screen overflow-hidden bg-gradient-to-br from-violet-50 via-white to-purple-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 flex">
-      {/* Left Panel - Branding */}
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-violet-600 to-purple-700 p-12 flex-col justify-between overflow-hidden">
+      {/* Left Panel - Branding (Compact) */}
+      <div className="hidden lg:flex lg:w-[380px] xl:w-[420px] bg-gradient-to-br from-violet-600 to-purple-700 p-8 flex-col justify-between">
         <div>
           <Link href="/" className="inline-block">
-            <h1 className="text-3xl font-bold text-white">BISMAN ERP</h1>
+            <h1 className="text-2xl font-bold text-white">BISMAN ERP</h1>
           </Link>
-          <p className="text-violet-200 mt-2">Enterprise Resource Planning</p>
+          <p className="text-violet-200 text-sm mt-1">Enterprise Resource Planning</p>
         </div>
 
-        <div className="space-y-8">
+        <div className="space-y-6">
           <div>
-            <h2 className="text-3xl font-bold text-white mb-4">
-              Start your 14-day free trial
+            <h2 className="text-2xl font-bold text-white mb-2">
+              Start your free trial
             </h2>
-            <p className="text-violet-200 text-lg">
+            <p className="text-violet-200 text-sm">
               No credit card required. Full access to all features.
             </p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-3">
             {FEATURES.map((feature, idx) => {
               const Icon = feature.icon;
               return (
-                <div key={idx} className="flex items-center gap-3 text-white">
-                  <div className="w-10 h-10 bg-white/20 rounded-lg flex items-center justify-center">
-                    <Icon className="w-5 h-5" />
+                <div key={idx} className="flex items-center gap-3 text-white text-sm">
+                  <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Icon className="w-4 h-4" />
                   </div>
                   <span>{feature.text}</span>
                 </div>
@@ -335,270 +357,232 @@ export default function SignupPage() {
           </div>
         </div>
 
-        <div className="text-violet-200 text-sm">
+        <div className="text-violet-200 text-xs">
           © {new Date().getFullYear()} BISMAN ERP. All rights reserved.
         </div>
       </div>
 
-      {/* Right Panel - Form */}
-      <div className="flex-1 flex items-start justify-center p-4 sm:p-8 overflow-y-auto">
-        <div className="w-full max-w-lg my-auto py-4">
+      {/* Right Panel - Compact Form */}
+      <div className="flex-1 flex items-center justify-center p-4 lg:p-6">
+        <div className="w-full max-w-xl">
           {/* Mobile Logo */}
-          <div className="lg:hidden text-center mb-8">
+          <div className="lg:hidden text-center mb-4">
             <Link href="/" className="inline-block">
-              <h1 className="text-3xl font-bold text-violet-600 dark:text-violet-400">
+              <h1 className="text-2xl font-bold text-violet-600 dark:text-violet-400">
                 BISMAN ERP
               </h1>
             </Link>
-            <p className="text-gray-600 dark:text-gray-400 mt-2">
-              Start your free 14-day trial
+            <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
+              Start your free trial
             </p>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-xl border border-gray-200 dark:border-slate-700 p-6 sm:p-8">
-            <h2 className="text-2xl font-bold text-gray-900 dark:text-white mb-2">
-              Create Your Organization
-            </h2>
-            <p className="text-gray-600 dark:text-gray-400 mb-6">
-              Fill in the details to get started
-            </p>
+          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 p-5 lg:p-6">
+            <div className="flex items-center justify-between mb-4">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+                  Create Your Organization
+                </h2>
+                <p className="text-gray-500 dark:text-gray-400 text-sm">
+                  Fill in the details to get started
+                </p>
+              </div>
+            </div>
 
             {/* Error Banner */}
             {error && (
-              <div className="mb-6 p-4 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
                 <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>
               </div>
             )}
 
-            <form onSubmit={handleSubmit} className="space-y-5">
-              {/* Organization Section */}
-              <div className="space-y-4">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-                  Organization Details
-                </h3>
-
+            <form onSubmit={handleSubmit} className="space-y-4">
+              {/* Row 1: Organization Name + Business Type */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Organization Name *
                   </label>
                   <input
                     type="text"
                     value={formData.orgName}
                     onChange={(e) => updateField('orgName', e.target.value)}
-                    className={`w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors ${
+                    className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent ${
                       fieldErrors.orgName ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
                     }`}
                     placeholder="Enter organization name"
                   />
                   {fieldErrors.orgName && (
-                    <p className="mt-1 text-sm text-red-600">{fieldErrors.orgName}</p>
+                    <p className="mt-0.5 text-xs text-red-600">{fieldErrors.orgName}</p>
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Business Type *
-                    </label>
-                    <select
-                      value={formData.businessType}
-                      onChange={(e) => updateField('businessType', e.target.value)}
-                      className={`w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors ${
-                        fieldErrors.businessType ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
-                      }`}
-                    >
-                      <option value="">Select type</option>
-                      {BUSINESS_TYPES.map((type) => (
-                        <option key={type} value={type}>{type}</option>
-                      ))}
-                    </select>
-                    {fieldErrors.businessType && (
-                      <p className="mt-1 text-sm text-red-600">{fieldErrors.businessType}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Country *
-                    </label>
-                    <select
-                      value={formData.country}
-                      onChange={(e) => updateField('country', e.target.value)}
-                      className={`w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors ${
-                        fieldErrors.country ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
-                      }`}
-                    >
-                      <option value="">Select country</option>
-                      {COUNTRIES.map((country) => (
-                        <option key={country.code} value={country.code}>{country.name}</option>
-                      ))}
-                    </select>
-                    {fieldErrors.country && (
-                      <p className="mt-1 text-sm text-red-600">{fieldErrors.country}</p>
-                    )}
-                  </div>
-                </div>
-
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Timezone * {detectedInfo.timezone && <span className="text-xs text-gray-400">(auto-detected)</span>}
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Business Type *
                   </label>
                   <select
-                    value={formData.timezone}
-                    onChange={(e) => updateField('timezone', e.target.value)}
-                    className={`w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors ${
-                      fieldErrors.timezone ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
+                    value={formData.businessType}
+                    onChange={(e) => updateField('businessType', e.target.value)}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent ${
+                      fieldErrors.businessType ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
                     }`}
                   >
-                    <option value="">Select timezone</option>
-                    {TIMEZONES.map((tz) => (
-                      <option key={tz.value} value={tz.value}>{tz.label}</option>
+                    <option value="">Select type</option>
+                    {BUSINESS_TYPES.map((type) => (
+                      <option key={type} value={type}>{type}</option>
                     ))}
                   </select>
-                  {fieldErrors.timezone && (
-                    <p className="mt-1 text-sm text-red-600">{fieldErrors.timezone}</p>
+                  {fieldErrors.businessType && (
+                    <p className="mt-0.5 text-xs text-red-600">{fieldErrors.businessType}</p>
                   )}
                 </div>
               </div>
 
-              {/* Admin Section */}
-              <div className="space-y-4 pt-4 border-t border-gray-200 dark:border-slate-700">
-                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 uppercase tracking-wide">
-                  Admin Account
-                </h3>
+              {/* Auto-detected location info */}
+              <p className="text-xs text-gray-500 dark:text-gray-400">
+                we have identified your country, time zone and state.
+              </p>
 
+              {/* Divider */}
+              <div className="border-t border-gray-200 dark:border-slate-700 pt-3">
+                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
+                  Admin Account
+                </p>
+              </div>
+
+              {/* Row 3: Full Name + Email */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
                     Full Name *
                   </label>
                   <input
                     type="text"
                     value={formData.fullName}
                     onChange={(e) => updateField('fullName', e.target.value)}
-                    className={`w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors ${
+                    className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent ${
                       fieldErrors.fullName ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
                     }`}
-                    placeholder="Enter your full name"
+                    placeholder="Your full name"
                   />
                   {fieldErrors.fullName && (
-                    <p className="mt-1 text-sm text-red-600">{fieldErrors.fullName}</p>
+                    <p className="mt-0.5 text-xs text-red-600">{fieldErrors.fullName}</p>
                   )}
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Email *
-                    </label>
-                    <input
-                      type="email"
-                      value={formData.email}
-                      onChange={(e) => updateField('email', e.target.value)}
-                      className={`w-full px-4 py-2.5 border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors ${
-                        fieldErrors.email ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
-                      }`}
-                      placeholder="Enter email address"
-                    />
-                    {fieldErrors.email && (
-                      <p className="mt-1 text-sm text-red-600">{fieldErrors.email}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Phone (Optional)
-                    </label>
-                    <input
-                      type="tel"
-                      value={formData.phone}
-                      onChange={(e) => updateField('phone', e.target.value)}
-                      className="w-full px-4 py-2.5 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors"
-                      placeholder="Enter phone number"
-                    />
-                  </div>
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Email *
+                  </label>
+                  <input
+                    type="email"
+                    value={formData.email}
+                    onChange={(e) => updateField('email', e.target.value)}
+                    className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent ${
+                      fieldErrors.email ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
+                    }`}
+                    placeholder="admin@company.com"
+                  />
+                  {fieldErrors.email && (
+                    <p className="mt-0.5 text-xs text-red-600">{fieldErrors.email}</p>
+                  )}
                 </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Password *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showPassword ? 'text' : 'password'}
-                        value={formData.password}
-                        onChange={(e) => updateField('password', e.target.value)}
-                        className={`w-full px-4 py-2.5 pr-10 border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors ${
-                          fieldErrors.password ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
-                        }`}
-                        placeholder="••••••••"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    {fieldErrors.password && (
-                      <p className="mt-1 text-sm text-red-600">{fieldErrors.password}</p>
-                    )}
-                  </div>
-
-                  <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Confirm Password *
-                    </label>
-                    <div className="relative">
-                      <input
-                        type={showConfirmPassword ? 'text' : 'password'}
-                        value={formData.confirmPassword}
-                        onChange={(e) => updateField('confirmPassword', e.target.value)}
-                        className={`w-full px-4 py-2.5 pr-10 border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-colors ${
-                          fieldErrors.confirmPassword ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
-                        }`}
-                        placeholder="••••••••"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                      >
-                        {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                    {fieldErrors.confirmPassword && (
-                      <p className="mt-1 text-sm text-red-600">{fieldErrors.confirmPassword}</p>
-                    )}
-                  </div>
-                </div>
-
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Password must be at least 12 characters with uppercase, lowercase, number, and special character.
-                </p>
               </div>
 
-              {/* Terms */}
-              <div className="pt-4 border-t border-gray-200 dark:border-slate-700">
-                <div className="flex items-start gap-3">
+              {/* Row 4: Phone + Password */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Phone <span className="text-gray-400">(optional)</span>
+                  </label>
+                  <input
+                    type="tel"
+                    value={formData.phone}
+                    onChange={(e) => updateField('phone', e.target.value)}
+                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
+                    placeholder="+91 98765 43210"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Password *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showPassword ? 'text' : 'password'}
+                      value={formData.password}
+                      onChange={(e) => updateField('password', e.target.value)}
+                      className={`w-full px-3 py-2 pr-9 text-sm border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent ${
+                        fieldErrors.password ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
+                      }`}
+                      placeholder="Min 12 chars, Aa1@..."
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {fieldErrors.password && (
+                    <p className="mt-0.5 text-xs text-red-600">{fieldErrors.password}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Row 5: Confirm Password */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="sm:col-start-2">
+                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                    Confirm Password *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPassword ? 'text' : 'password'}
+                      value={formData.confirmPassword}
+                      onChange={(e) => updateField('confirmPassword', e.target.value)}
+                      className={`w-full px-3 py-2 pr-9 text-sm border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent ${
+                        fieldErrors.confirmPassword ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
+                      }`}
+                      placeholder="Re-enter password"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                    >
+                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {fieldErrors.confirmPassword && (
+                    <p className="mt-0.5 text-xs text-red-600">{fieldErrors.confirmPassword}</p>
+                  )}
+                </div>
+              </div>
+
+              {/* Terms + Submit in one row */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-gray-200 dark:border-slate-700">
+                <div className="flex items-start gap-2">
                   <input
                     type="checkbox"
                     id="acceptedTerms"
                     checked={formData.acceptedTerms}
                     onChange={(e) => updateField('acceptedTerms', e.target.checked)}
-                    className="mt-1 w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+                    className="mt-0.5 w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
                   />
-                  <label htmlFor="acceptedTerms" className="text-sm text-gray-600 dark:text-gray-400">
+                  <label htmlFor="acceptedTerms" className="text-xs text-gray-600 dark:text-gray-400">
                     I agree to the{' '}
-                    <Link href="/terms" className="text-violet-600 hover:underline">Terms of Service</Link>{' '}
+                    <Link href="/terms" className="text-violet-600 hover:underline">Terms</Link>{' '}
                     and{' '}
                     <Link href="/privacy" className="text-violet-600 hover:underline">Privacy Policy</Link>
                   </label>
                 </div>
                 {fieldErrors.acceptedTerms && (
-                  <p className="mt-1 text-sm text-red-600">{fieldErrors.acceptedTerms}</p>
+                  <p className="text-xs text-red-600">{fieldErrors.acceptedTerms}</p>
                 )}
               </div>
 
@@ -606,24 +590,24 @@ export default function SignupPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
               >
                 {isLoading ? (
                   <>
-                    <Loader2 className="w-5 h-5 animate-spin" />
-                    Creating Organization...
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Creating...
                   </>
                 ) : (
                   <>
-                    Create Your Organization
-                    <ArrowRight className="w-5 h-5" />
+                    Create Organization
+                    <ArrowRight className="w-4 h-4" />
                   </>
                 )}
               </button>
             </form>
 
             {/* Login Link */}
-            <p className="text-center mt-6 text-gray-600 dark:text-gray-400">
+            <p className="text-center mt-4 text-gray-600 dark:text-gray-400 text-sm">
               Already have an account?{' '}
               <Link href="/auth/login" className="text-violet-600 hover:underline font-medium">
                 Sign in

@@ -82,6 +82,8 @@ function getHttpStatus(errorCode) {
     
     // 401 - Unauthorized
     INVALID_CREDENTIALS: 401,
+    INVALID_PASSWORD: 401,
+    USER_NOT_FOUND: 401,
     TOKEN_EXPIRED: 401,
     TOKEN_INVALID: 401,
     TOKEN_MISSING: 401,
@@ -93,7 +95,6 @@ function getHttpStatus(errorCode) {
     
     // 404 - Not Found
     RESOURCE_NOT_FOUND: 404,
-    USER_NOT_FOUND: 404,
     
     // 409 - Conflict
     DUPLICATE_ENTRY: 409,

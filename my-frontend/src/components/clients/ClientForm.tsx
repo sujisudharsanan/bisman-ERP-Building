@@ -226,6 +226,20 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
   const [logoPreview, setLogoPreview] = useState<string | null>(null);
   const [logoFile, setLogoFile] = useState<File | null>(null);
   
+  // Quick Trial form state - matches signup page fields
+  const [quickForm, setQuickForm] = useState({
+    orgName: '',
+    businessType: '',
+    fullName: '',
+    email: '',
+    phone: '',
+    password: '',
+    confirmPassword: '',
+  });
+  const [showQuickPassword, setShowQuickPassword] = useState(false);
+  const [showQuickConfirmPassword, setShowQuickConfirmPassword] = useState(false);
+  const [quickErrors, setQuickErrors] = useState<Record<string, string>>({});
+  
   // Dynamic subscription plans state - start with empty, not defaults
   const [subscriptionPlans, setSubscriptionPlans] = useState<DynamicPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
@@ -447,6 +461,92 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
   // Add a ref to track if submission is in progress (prevents double-clicks)
   const isSubmittingRef = React.useRef(false);
 
+  // Quick Trial submission - uses same /api/onboard as signup page
+  async function submitQuickTrial() {
+    if (isSubmittingRef.current || loading) {
+      console.log('[ClientForm] Quick trial submission already in progress');
+      return;
+    }
+    
+    // Validate Quick Trial form
+    const errors: Record<string, string> = {};
+    if (!quickForm.orgName || quickForm.orgName.length < 2) {
+      errors.orgName = 'Organization name must be at least 2 characters';
+    }
+    if (!quickForm.businessType) {
+      errors.businessType = 'Please select a business type';
+    }
+    if (!quickForm.fullName || quickForm.fullName.length < 2) {
+      errors.fullName = 'Full name must be at least 2 characters';
+    }
+    if (!quickForm.email || !quickForm.email.includes('@')) {
+      errors.email = 'Please enter a valid email address';
+    }
+    if (!quickForm.password || quickForm.password.length < 12) {
+      errors.password = 'Password must be at least 12 characters';
+    } else {
+      if (!/[A-Z]/.test(quickForm.password)) errors.password = 'Password must contain at least one uppercase letter';
+      else if (!/[a-z]/.test(quickForm.password)) errors.password = 'Password must contain at least one lowercase letter';
+      else if (!/[0-9]/.test(quickForm.password)) errors.password = 'Password must contain at least one number';
+      else if (!/[!@#$%^&*(),.?":{}|<>]/.test(quickForm.password)) errors.password = 'Password must contain at least one special character';
+    }
+    if (quickForm.password !== quickForm.confirmPassword) {
+      errors.confirmPassword = "Passwords don't match";
+    }
+    
+    if (Object.keys(errors).length > 0) {
+      setQuickErrors(errors);
+      return;
+    }
+    setQuickErrors({});
+    
+    isSubmittingRef.current = true;
+    setLoading(true);
+    
+    try {
+      const baseURL = API_BASE || '';
+      const response = await fetch(`${baseURL}/api/onboard`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          companyName: quickForm.orgName,
+          adminEmail: quickForm.email,
+          adminName: quickForm.fullName,
+          adminPassword: quickForm.password,
+          plan: 'trial',
+          phone: quickForm.phone || undefined,
+          timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || 'Asia/Kolkata',
+          industry: quickForm.businessType,
+          idempotencyKey: crypto.randomUUID(),
+        }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok && data.success) {
+        const successMsg = `Trial started successfully!
+
+Organization: ${quickForm.orgName}
+Admin Email: ${quickForm.email}
+Password: (as you entered)
+
+Your 14-day trial has started. The admin can login immediately.`;
+        
+        alert(successMsg);
+        if (onSuccess) onSuccess(data);
+      } else {
+        alert(data.error || 'Failed to create organization. Please try again.');
+      }
+    } catch (err) {
+      console.error('Quick Trial error:', err);
+      alert('An unexpected error occurred. Please try again.');
+    } finally {
+      setLoading(false);
+      isSubmittingRef.current = false;
+    }
+  }
+
   async function submit() {
     // Prevent duplicate submissions
     if (isSubmittingRef.current || loading) {
@@ -645,8 +745,159 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
       {/* Tab Navigation */}
       {registrationMode === 'permanent' && <TabNav />}
 
-      {/* TAB: Basic Info */}
-      {(registrationMode === 'quick' || activeTab === 'basic') && (
+      {/* QUICK TRIAL FORM - Matches Signup Page */}
+      {mode === 'create' && registrationMode === 'quick' && (
+        <div className="space-y-6">
+          {/* Organization Details */}
+          <div className="border rounded-lg p-4 space-y-4">
+            <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+              <Building2 className="w-4 h-4" /> Organization Details
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Organization Name *</label>
+                <input 
+                  value={quickForm.orgName} 
+                  onChange={(e) => { setQuickForm({ ...quickForm, orgName: e.target.value }); if (quickErrors.orgName) setQuickErrors({ ...quickErrors, orgName: '' }); }} 
+                  className={`w-full border rounded-lg p-2.5 bg-white dark:bg-gray-800 ${quickErrors.orgName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                  placeholder="Enter organization name" 
+                />
+                {quickErrors.orgName && <p className="mt-1 text-xs text-red-600">{quickErrors.orgName}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Business Type *</label>
+                <select 
+                  value={quickForm.businessType} 
+                  onChange={(e) => { setQuickForm({ ...quickForm, businessType: e.target.value }); if (quickErrors.businessType) setQuickErrors({ ...quickErrors, businessType: '' }); }}
+                  className={`w-full border rounded-lg p-2.5 bg-white dark:bg-gray-800 ${quickErrors.businessType ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                >
+                  <option value="">Select type</option>
+                  <option>Sole Proprietorship</option>
+                  <option>Partnership</option>
+                  <option>Private Limited</option>
+                  <option>Public Limited</option>
+                  <option>LLP</option>
+                  <option>Non-Profit</option>
+                  <option>Other</option>
+                </select>
+                {quickErrors.businessType && <p className="mt-1 text-xs text-red-600">{quickErrors.businessType}</p>}
+              </div>
+            </div>
+          </div>
+
+          {/* Admin Account */}
+          <div className="border rounded-lg p-4 space-y-4">
+            <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+              <Users className="w-4 h-4" /> Admin Account
+            </h3>
+            <p className="text-sm text-gray-500 dark:text-gray-400">This will be the primary admin for the organization.</p>
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Full Name *</label>
+                <input 
+                  value={quickForm.fullName} 
+                  onChange={(e) => { setQuickForm({ ...quickForm, fullName: e.target.value }); if (quickErrors.fullName) setQuickErrors({ ...quickErrors, fullName: '' }); }}
+                  className={`w-full border rounded-lg p-2.5 bg-white dark:bg-gray-800 ${quickErrors.fullName ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                  placeholder="Your full name" 
+                />
+                {quickErrors.fullName && <p className="mt-1 text-xs text-red-600">{quickErrors.fullName}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email *</label>
+                <input 
+                  type="email"
+                  value={quickForm.email} 
+                  onChange={(e) => { setQuickForm({ ...quickForm, email: e.target.value }); if (quickErrors.email) setQuickErrors({ ...quickErrors, email: '' }); }}
+                  className={`w-full border rounded-lg p-2.5 bg-white dark:bg-gray-800 ${quickErrors.email ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                  placeholder="admin@company.com" 
+                />
+                {quickErrors.email && <p className="mt-1 text-xs text-red-600">{quickErrors.email}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone <span className="text-gray-400">(optional)</span></label>
+                <input 
+                  type="tel"
+                  value={quickForm.phone} 
+                  onChange={(e) => setQuickForm({ ...quickForm, phone: e.target.value })}
+                  className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800"
+                  placeholder="+91 98765 43210" 
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Password *</label>
+                <div className="relative">
+                  <input 
+                    type={showQuickPassword ? 'text' : 'password'}
+                    value={quickForm.password} 
+                    onChange={(e) => { setQuickForm({ ...quickForm, password: e.target.value }); if (quickErrors.password) setQuickErrors({ ...quickErrors, password: '' }); }}
+                    className={`w-full border rounded-lg p-2.5 pr-10 bg-white dark:bg-gray-800 ${quickErrors.password ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                    placeholder="Min 12 chars, Aa1@..." 
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowQuickPassword(!showQuickPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showQuickPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {quickErrors.password && <p className="mt-1 text-xs text-red-600">{quickErrors.password}</p>}
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm Password *</label>
+                <div className="relative">
+                  <input 
+                    type={showQuickConfirmPassword ? 'text' : 'password'}
+                    value={quickForm.confirmPassword} 
+                    onChange={(e) => { setQuickForm({ ...quickForm, confirmPassword: e.target.value }); if (quickErrors.confirmPassword) setQuickErrors({ ...quickErrors, confirmPassword: '' }); }}
+                    className={`w-full border rounded-lg p-2.5 pr-10 bg-white dark:bg-gray-800 ${quickErrors.confirmPassword ? 'border-red-500' : 'border-gray-300 dark:border-gray-600'}`}
+                    placeholder="Re-enter password" 
+                  />
+                  <button 
+                    type="button"
+                    onClick={() => setShowQuickConfirmPassword(!showQuickConfirmPassword)}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showQuickConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {quickErrors.confirmPassword && <p className="mt-1 text-xs text-red-600">{quickErrors.confirmPassword}</p>}
+              </div>
+            </div>
+          </div>
+
+          {/* Trial Info */}
+          <div className="bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+            <p className="text-sm text-blue-700 dark:text-blue-300">
+              <strong>Free Trial</strong> — Full access to all features. No credit card required.
+            </p>
+          </div>
+
+          {/* Submit Button */}
+          <div className="flex justify-end">
+            <button
+              onClick={submitQuickTrial}
+              disabled={loading}
+              className="px-6 py-3 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-medium rounded-lg transition-colors flex items-center gap-2"
+            >
+              {loading ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  Creating...
+                </>
+              ) : (
+                <>
+                  Start Trial
+                </>
+              )}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* TAB: Basic Info (Full Registration only) */}
+      {registrationMode === 'permanent' && activeTab === 'basic' && (
         <div className="space-y-6">
           {/* Basic Details */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -710,39 +961,35 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
           </div>
 
           {/* Primary Address */}
-          {registrationMode === 'permanent' && (
-            <div className="border rounded-lg p-4 space-y-4">
-              <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
-                <Building2 className="w-4 h-4" /> Primary Address
-              </h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input placeholder="Address Line 1" value={form.primary_address.line1} onChange={(e) => setForm({ ...form, primary_address: { ...form.primary_address, line1: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
-                <input placeholder="Address Line 2" value={form.primary_address.line2} onChange={(e) => setForm({ ...form, primary_address: { ...form.primary_address, line2: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
-                <input placeholder="City" value={form.primary_address.city} onChange={(e) => setForm({ ...form, primary_address: { ...form.primary_address, city: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
-                <input placeholder="State / Province" value={form.primary_address.state} onChange={(e) => setForm({ ...form, primary_address: { ...form.primary_address, state: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
-                <input placeholder="Country" value={form.primary_address.country} onChange={(e) => setForm({ ...form, primary_address: { ...form.primary_address, country: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
-                <input placeholder="ZIP / Postal Code" value={form.primary_address.pincode} onChange={(e) => setForm({ ...form, primary_address: { ...form.primary_address, pincode: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
-              </div>
+          <div className="border rounded-lg p-4 space-y-4">
+            <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
+              <Building2 className="w-4 h-4" /> Primary Address
+            </h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input placeholder="Address Line 1" value={form.primary_address.line1} onChange={(e) => setForm({ ...form, primary_address: { ...form.primary_address, line1: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
+              <input placeholder="Address Line 2" value={form.primary_address.line2} onChange={(e) => setForm({ ...form, primary_address: { ...form.primary_address, line2: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
+              <input placeholder="City" value={form.primary_address.city} onChange={(e) => setForm({ ...form, primary_address: { ...form.primary_address, city: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
+              <input placeholder="State / Province" value={form.primary_address.state} onChange={(e) => setForm({ ...form, primary_address: { ...form.primary_address, state: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
+              <input placeholder="Country" value={form.primary_address.country} onChange={(e) => setForm({ ...form, primary_address: { ...form.primary_address, country: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
+              <input placeholder="ZIP / Postal Code" value={form.primary_address.pincode} onChange={(e) => setForm({ ...form, primary_address: { ...form.primary_address, pincode: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
             </div>
-          )}
+          </div>
 
           {/* Primary Contact */}
-          {registrationMode === 'permanent' && (
-            <div className="border rounded-lg p-4 space-y-4">
-              <h3 className="font-semibold text-gray-800 dark:text-gray-200">Primary Contact</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input placeholder="Contact Name *" value={form.primary_contact.name} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, name: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
-                <input placeholder="Designation / Role" value={form.primary_contact.role} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, role: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
-                <div className="flex gap-2">
-                  <select value={form.primary_contact.phone_code} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, phone_code: e.target.value } })} className="w-24 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800">
-                    {COUNTRIES.map(c => <option key={c.code} value={c.phone}>{c.phone}</option>)}
-                  </select>
-                  <input placeholder="Phone Number *" value={form.primary_contact.phone} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, phone: e.target.value } })} className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
-                </div>
-                <input placeholder="Email Address *" type="email" value={form.primary_contact.email} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, email: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
+          <div className="border rounded-lg p-4 space-y-4">
+            <h3 className="font-semibold text-gray-800 dark:text-gray-200">Primary Contact</h3>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <input placeholder="Contact Name *" value={form.primary_contact.name} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, name: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
+              <input placeholder="Designation / Role" value={form.primary_contact.role} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, role: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
+              <div className="flex gap-2">
+                <select value={form.primary_contact.phone_code} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, phone_code: e.target.value } })} className="w-24 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800">
+                  {COUNTRIES.map(c => <option key={c.code} value={c.phone}>{c.phone}</option>)}
+                </select>
+                <input placeholder="Phone Number *" value={form.primary_contact.phone} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, phone: e.target.value } })} className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
               </div>
+              <input placeholder="Email Address *" type="email" value={form.primary_contact.email} onChange={(e) => setForm({ ...form, primary_contact: { ...form.primary_contact, email: e.target.value } })} className="border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
             </div>
-          )}
+          </div>
         </div>
       )}
 
@@ -1215,22 +1462,18 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
         </div>
       )}
 
-      {/* TAB: Users */}
-      {(registrationMode === 'quick' || activeTab === 'users') && (
+      {/* TAB: Users (Full Registration only) */}
+      {registrationMode === 'permanent' && activeTab === 'users' && (
         <div className="space-y-6">
           <div className="border rounded-lg p-4">
             <div className="flex items-center justify-between mb-4">
               <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2">
                 <Users className="w-4 h-4" /> Admin Users
               </h3>
-              {registrationMode === 'permanent' && (
-                <button onClick={addAdminUser} className="text-sm text-blue-600 hover:underline">+ Add User</button>
-              )}
+              <button onClick={addAdminUser} className="text-sm text-blue-600 hover:underline">+ Add User</button>
             </div>
             <p className="text-sm text-gray-500 mb-4">
-              {registrationMode === 'quick' 
-                ? 'Enter the primary admin email to provision the client account.' 
-                : 'Add admin users who will manage this client account.'}
+              Add admin users who will manage this client account.
             </p>
             
             {form.admin_users.map((adminU, idx) => (
@@ -1342,13 +1585,15 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
         </div>
       )}
 
-      {/* Submit Button */}
-      <div className="flex justify-end gap-3 pt-4 border-t">
-        <button onClick={submit} disabled={loading} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium flex items-center hover:bg-blue-700 disabled:opacity-50">
-          {loading && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />} 
-          {mode === 'create' ? (registrationMode === 'quick' ? 'Start Trial' : 'Create Client') : 'Update Client'}
-        </button>
-      </div>
+      {/* Submit Button (Full Registration only - Quick Trial has its own) */}
+      {(registrationMode === 'permanent' || mode === 'edit') && (
+        <div className="flex justify-end gap-3 pt-4 border-t">
+          <button onClick={submit} disabled={loading} className="px-6 py-2.5 bg-blue-600 text-white rounded-lg font-medium flex items-center hover:bg-blue-700 disabled:opacity-50">
+            {loading && <RefreshCw className="w-4 h-4 mr-2 animate-spin" />} 
+            {mode === 'create' ? 'Create Client' : 'Update Client'}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

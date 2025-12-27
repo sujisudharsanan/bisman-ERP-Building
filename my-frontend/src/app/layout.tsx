@@ -13,6 +13,11 @@ const inter = Inter({ subsets: ['latin'] });
 export const metadata: Metadata = {
   title: 'BISMAN ERP - Dashboard',
   description: 'Comprehensive ERP system with RBAC support',
+  icons: {
+    icon: '/brand/favicon.png',
+    shortcut: '/brand/favicon.png',
+    apple: '/brand/favicon.png',
+  },
 };
 
 export const viewport = {

@@ -54,14 +54,14 @@ const extractUser = async (req, res, next) => {
       }
     }
     
-    // Try x-user-id header (for internal calls)
+    // Try x-user-id header (for internal calls) - now supports UUID
     if (!userId && req.headers['x-user-id']) {
-      userId = parseInt(req.headers['x-user-id']);
+      userId = req.headers['x-user-id'];
     }
     
-    // Try request body userId
+    // Try request body userId - now supports UUID
     if (!userId && req.body?.userId) {
-      userId = parseInt(req.body.userId);
+      userId = req.body.userId;
     }
     
     // Lookup user role from DB if we have userId but no role

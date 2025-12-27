@@ -26,7 +26,7 @@ const pool = new Pool({
 
 // Middleware to extract user from request
 const extractUser = (req, res, next) => {
-  // Try different auth methods
+  // Try different auth methods - now supports UUID
   const userId = req.user?.id || req.user?.userId || req.headers['x-user-id'] || req.body.userId;
   
   if (!userId) {
@@ -36,7 +36,7 @@ const extractUser = (req, res, next) => {
     });
   }
   
-  req.userId = parseInt(userId);
+  req.userId = userId; // UUID string, no parseInt
   next();
 };
 

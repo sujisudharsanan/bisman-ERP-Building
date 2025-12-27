@@ -63,6 +63,25 @@ export default function StandardLoginPage() {
       if (user) {
         setSuccess('Login successful! Redirecting...');
         await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Check if user needs to complete workspace setup (subscription selection)
+        try {
+          const welcomeCheck = await fetch('/api/welcome/status', { 
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          if (welcomeCheck.ok) {
+            const welcomeData = await welcomeCheck.json();
+            if (welcomeData.needsSetup) {
+              console.log('🎯 User needs to complete workspace setup, redirecting to /welcome');
+              window.location.replace('/welcome');
+              return;
+            }
+          }
+        } catch (welcomeErr) {
+          console.warn('Could not check welcome status:', welcomeErr);
+        }
+
         const roleValue = (user.roleName || user.role || '').toUpperCase().replace(/\s+/g, '_');
         
         let targetPath = '/dashboard';
@@ -78,8 +97,20 @@ export default function StandardLoginPage() {
       } else {
         setError('Login failed. Please check your credentials.');
       }
-    } catch {
-      setError('Network error. Please check your connection and try again.');
+    } catch (err: unknown) {
+      // Extract error message from axios response or fallback to generic message
+      let errorMessage = 'Network error. Please check your connection and try again.';
+      if (err && typeof err === 'object') {
+        const axiosError = err as { response?: { data?: { message?: string; error?: string } }; message?: string };
+        if (axiosError.response?.data?.message) {
+          errorMessage = axiosError.response.data.message;
+        } else if (axiosError.response?.data?.error) {
+          errorMessage = axiosError.response.data.error;
+        } else if (axiosError.message) {
+          errorMessage = axiosError.message;
+        }
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -98,6 +129,24 @@ export default function StandardLoginPage() {
 
         // Small delay to ensure cookies are set before redirect
         await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Check if user needs to complete workspace setup (subscription selection)
+        try {
+          const welcomeCheck = await fetch('/api/welcome/status', { 
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          if (welcomeCheck.ok) {
+            const welcomeData = await welcomeCheck.json();
+            if (welcomeData.needsSetup) {
+              console.log('🎯 User needs to complete workspace setup, redirecting to /welcome');
+              window.location.replace('/welcome');
+              return;
+            }
+          }
+        } catch (welcomeErr) {
+          console.warn('Could not check welcome status:', welcomeErr);
+        }
 
         // Normalize role name - handle both 'role' and 'roleName' fields
         const roleValue = (user.roleName || user.role || '').toUpperCase().replace(/\s+/g, '_');
@@ -133,9 +182,20 @@ export default function StandardLoginPage() {
       } else {
         setError('Login failed. Please check your credentials.');
       }
-    } catch {
-      setError('Network error. Please check your connection and try again.');
-      // Error logged for debugging purposes
+    } catch (err: unknown) {
+      // Extract error message from axios response or fallback to generic message
+      let errorMessage = 'Network error. Please check your connection and try again.';
+      if (err && typeof err === 'object') {
+        const axiosError = err as { response?: { data?: { message?: string; error?: string } }; message?: string };
+        if (axiosError.response?.data?.message) {
+          errorMessage = axiosError.response.data.message;
+        } else if (axiosError.response?.data?.error) {
+          errorMessage = axiosError.response.data.error;
+        } else if (axiosError.message) {
+          errorMessage = axiosError.message;
+        }
+      }
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -270,7 +330,6 @@ export default function StandardLoginPage() {
                 required
                 autoComplete="email"
               />
-              {error && <p className="text-red-500 dark:text-red-400 text-sm mt-2">Enter an email or phone number</p>}
             </div>
 
             <div>

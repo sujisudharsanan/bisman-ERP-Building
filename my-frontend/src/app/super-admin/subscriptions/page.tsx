@@ -141,6 +141,7 @@ interface ValidationResult {
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
 const CATEGORY_LABELS: Record<string, string> = {
+  // Core categories
   user_access: '👤 User & Access',
   task_workflow: '📋 Task & Workflow',
   finance: '💰 Finance & Payments',
@@ -148,6 +149,18 @@ const CATEGORY_LABELS: Record<string, string> = {
   banking: '🏦 Banking & Reconciliation',
   documents: '📁 Documents & Storage',
   system: '⚙️ System & API',
+  // New categories from audit
+  security: '🔐 Security & Authentication',
+  rbac: '🛡️ RBAC & Permissions',
+  advanced_workflow: '⚡ Advanced Workflow',
+  advanced_finance: '💎 Advanced Finance',
+  advanced_reporting: '📈 Advanced Reporting',
+  notifications: '🔔 Notifications & Communication',
+  integrations: '🔗 Integrations & API',
+  enterprise: '🏢 Enterprise Features',
+  support: '🎧 Support & SLA',
+  compliance: '✅ Compliance & Audit',
+  backup: '💾 Backup & Recovery',
 };
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -158,6 +171,18 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   banking: <Building2 className="w-4 h-4" />,
   documents: <HardDrive className="w-4 h-4" />,
   system: <Cpu className="w-4 h-4" />,
+  // New category icons
+  security: <Lock className="w-4 h-4" />,
+  rbac: <Shield className="w-4 h-4" />,
+  advanced_workflow: <Zap className="w-4 h-4" />,
+  advanced_finance: <Calculator className="w-4 h-4" />,
+  advanced_reporting: <TrendingUp className="w-4 h-4" />,
+  notifications: <Activity className="w-4 h-4" />,
+  integrations: <Server className="w-4 h-4" />,
+  enterprise: <Building2 className="w-4 h-4" />,
+  support: <Settings className="w-4 h-4" />,
+  compliance: <CheckCircle className="w-4 h-4" />,
+  backup: <Database className="w-4 h-4" />,
 };
 
 const PLAN_ICONS: Record<string, React.ReactNode> = {
@@ -224,6 +249,46 @@ export default function SubscriptionControlPage() {
     });
     return grouped;
   }, [planFeatures]);
+
+  // Calculate category statistics
+  const categoryStats = useMemo(() => {
+    const stats: Record<string, { total: number; hardLocked: number; softLocked: number; unlimited: number; totalUnlockValue: number }> = {};
+    
+    Object.entries(featuresByCategory).forEach(([category, features]) => {
+      stats[category] = {
+        total: features.length,
+        hardLocked: features.filter(f => f.lock_mode === 'hard').length,
+        softLocked: features.filter(f => f.lock_mode === 'soft').length,
+        unlimited: features.filter(f => f.free_limit === -1).length,
+        totalUnlockValue: features.reduce((sum, f) => sum + (f.unlock_price || 0), 0),
+      };
+    });
+    
+    return stats;
+  }, [featuresByCategory]);
+
+  // Calculate global feature stats
+  const globalStats = useMemo(() => {
+    const total = planFeatures.length;
+    const hardLocked = planFeatures.filter(f => f.lock_mode === 'hard').length;
+    const softLocked = planFeatures.filter(f => f.lock_mode === 'soft').length;
+    const unlimited = planFeatures.filter(f => f.free_limit === -1).length;
+    const limited = planFeatures.filter(f => f.free_limit > 0 && f.free_limit !== -1).length;
+    const blocked = planFeatures.filter(f => f.free_limit === 0 && f.lock_mode !== 'none').length;
+    const totalUnlockValue = planFeatures.reduce((sum, f) => sum + (f.unlock_price || 0), 0);
+    const categoryCount = Object.keys(featuresByCategory).length;
+    
+    return {
+      total,
+      hardLocked,
+      softLocked,
+      unlimited,
+      limited,
+      blocked,
+      totalUnlockValue,
+      categoryCount,
+    };
+  }, [planFeatures, featuresByCategory]);
 
   // ============================================================================
   // DATA LOADING
@@ -510,9 +575,18 @@ export default function SubscriptionControlPage() {
 
   const updateFeature = (featureCode: string, updates: Partial<PlanFeatureControl>) => {
     setPlanFeatures(prev =>
-      prev.map(f =>
-        f.feature_code === featureCode ? { ...f, ...updates } : f
-      )
+      prev.map(f => {
+        if (f.feature_code !== featureCode) return f;
+        
+        const updated = { ...f, ...updates };
+        
+        // If lock_mode is set to 'hard', automatically clear unlock_price
+        if (updates.lock_mode === 'hard') {
+          updated.unlock_price = 0;
+        }
+        
+        return updated;
+      })
     );
     setHasChanges(true);
   };
@@ -816,6 +890,68 @@ export default function SubscriptionControlPage() {
                 ) : activeTab === 'features' ? (
                   /* FEATURE CONTROLS TAB */
                   <div className="space-y-4">
+                    {/* Feature Statistics Summary */}
+                    <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20 border border-indigo-100 dark:border-indigo-800">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-3">
+                        <BarChart3 className="w-5 h-5 text-indigo-600" />
+                        Feature Statistics for {selectedPlan?.name || 'Plan'}
+                      </h3>
+                      <div className="grid grid-cols-8 gap-3">
+                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center shadow-sm">
+                          <div className="text-2xl font-bold text-indigo-600">{globalStats.total}</div>
+                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Total Features</div>
+                        </div>
+                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center shadow-sm">
+                          <div className="text-2xl font-bold text-purple-600">{globalStats.categoryCount}</div>
+                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Categories</div>
+                        </div>
+                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center shadow-sm">
+                          <div className="text-2xl font-bold text-green-600">{globalStats.unlimited}</div>
+                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Unlimited</div>
+                        </div>
+                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center shadow-sm">
+                          <div className="text-2xl font-bold text-blue-600">{globalStats.limited}</div>
+                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Limited</div>
+                        </div>
+                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center shadow-sm">
+                          <div className="text-2xl font-bold text-yellow-600">{globalStats.softLocked}</div>
+                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Soft Locked</div>
+                        </div>
+                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center shadow-sm">
+                          <div className="text-2xl font-bold text-red-600">{globalStats.hardLocked}</div>
+                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Hard Locked</div>
+                        </div>
+                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center shadow-sm">
+                          <div className="text-2xl font-bold text-gray-600">{globalStats.blocked}</div>
+                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Blocked (0)</div>
+                        </div>
+                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center shadow-sm">
+                          <div className="text-2xl font-bold text-emerald-600">₹{globalStats.totalUnlockValue.toLocaleString()}</div>
+                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Unlock Value</div>
+                        </div>
+                      </div>
+                      
+                      {/* Category Breakdown Mini Cards */}
+                      <div className="mt-3 pt-3 border-t border-indigo-100 dark:border-indigo-700">
+                        <div className="text-xs font-medium text-gray-500 mb-2">Category Breakdown:</div>
+                        <div className="flex flex-wrap gap-2">
+                          {Object.entries(categoryStats).map(([category, stats]) => (
+                            <div 
+                              key={category} 
+                              className="flex items-center gap-2 px-2 py-1 bg-white/60 dark:bg-gray-800/60 rounded-md text-xs border border-gray-200 dark:border-gray-700"
+                            >
+                              {CATEGORY_ICONS[category]}
+                              <span className="font-medium">{CATEGORY_LABELS[category]?.split(' ').slice(1).join(' ') || category}</span>
+                              <span className="text-gray-400">|</span>
+                              <span className="text-green-600">{stats.unlimited}∞</span>
+                              <span className="text-yellow-600">{stats.softLocked}⚠</span>
+                              <span className="text-red-600">{stats.hardLocked}🔒</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Validation Sidebar */}
                     {validation && (validation.errors.length > 0 || validation.warnings.length > 0) && (
                       <div className="p-3 rounded-lg border bg-amber-50 dark:bg-amber-900/20 border-amber-200">
@@ -975,6 +1111,69 @@ export default function SubscriptionControlPage() {
                         )}
                       </div>
                     ))}
+
+                    {/* Display Settings - Moved here from Governance */}
+                    <div className="border rounded-lg p-4 mt-6">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
+                        <Eye className="w-5 h-5 text-blue-600" />
+                        Plan Display Settings
+                      </h3>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Badge Text
+                          </label>
+                          <input
+                            type="text"
+                            value={editingPlan?.badge_text || ''}
+                            onChange={e => updatePlanSettings({ badge_text: e.target.value || null })}
+                            placeholder="e.g., Popular, Best Value"
+                            className="w-full px-3 py-2 border rounded-lg"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Color Code
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <input
+                              type="color"
+                              value={editingPlan?.color_code || '#3B82F6'}
+                              onChange={e => updatePlanSettings({ color_code: e.target.value })}
+                              className="w-10 h-10 rounded border cursor-pointer"
+                            />
+                            <input
+                              type="text"
+                              value={editingPlan?.color_code || '#3B82F6'}
+                              onChange={e => updatePlanSettings({ color_code: e.target.value })}
+                              className="flex-1 px-3 py-2 border rounded-lg font-mono text-sm"
+                            />
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Sort Order
+                          </label>
+                          <input
+                            type="number"
+                            value={editingPlan?.sort_order || 0}
+                            onChange={e => updatePlanSettings({ sort_order: parseInt(e.target.value) || 0 })}
+                            className="w-full px-3 py-2 border rounded-lg"
+                          />
+                        </div>
+                      </div>
+                      <div className="flex gap-6 mt-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={editingPlan?.is_popular || false}
+                            onChange={e => updatePlanSettings({ is_popular: e.target.checked })}
+                            className="w-4 h-4 text-purple-600 rounded"
+                          />
+                          <span className="text-sm">Mark as Popular</span>
+                        </label>
+                      </div>
+                    </div>
                   </div>
                 ) : activeTab === 'governance' ? (
                   /* GOVERNANCE RULES TAB */
@@ -1073,69 +1272,6 @@ export default function SubscriptionControlPage() {
                             className="w-4 h-4 text-purple-600 rounded"
                           />
                           <span className="text-sm">Read-only after grace period</span>
-                        </label>
-                      </div>
-                    </div>
-
-                    {/* Display Settings */}
-                    <div className="border rounded-lg p-4">
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
-                        <Eye className="w-5 h-5 text-blue-600" />
-                        Display Settings
-                      </h3>
-                      <div className="grid grid-cols-3 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Badge Text
-                          </label>
-                          <input
-                            type="text"
-                            value={editingPlan?.badge_text || ''}
-                            onChange={e => updatePlanSettings({ badge_text: e.target.value || null })}
-                            placeholder="e.g., Popular, Best Value"
-                            className="w-full px-3 py-2 border rounded-lg"
-                          />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Color Code
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <input
-                              type="color"
-                              value={editingPlan?.color_code || '#3B82F6'}
-                              onChange={e => updatePlanSettings({ color_code: e.target.value })}
-                              className="w-10 h-10 rounded border cursor-pointer"
-                            />
-                            <input
-                              type="text"
-                              value={editingPlan?.color_code || '#3B82F6'}
-                              onChange={e => updatePlanSettings({ color_code: e.target.value })}
-                              className="flex-1 px-3 py-2 border rounded-lg font-mono text-sm"
-                            />
-                          </div>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Sort Order
-                          </label>
-                          <input
-                            type="number"
-                            value={editingPlan?.sort_order || 0}
-                            onChange={e => updatePlanSettings({ sort_order: parseInt(e.target.value) || 0 })}
-                            className="w-full px-3 py-2 border rounded-lg"
-                          />
-                        </div>
-                      </div>
-                      <div className="flex gap-6 mt-4">
-                        <label className="flex items-center gap-2 cursor-pointer">
-                          <input
-                            type="checkbox"
-                            checked={editingPlan?.is_popular || false}
-                            onChange={e => updatePlanSettings({ is_popular: e.target.checked })}
-                            className="w-4 h-4 text-purple-600 rounded"
-                          />
-                          <span className="text-sm">Mark as Popular</span>
                         </label>
                       </div>
                     </div>

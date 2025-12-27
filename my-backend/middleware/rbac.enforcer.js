@@ -28,6 +28,9 @@ const PUBLIC_ROUTES = [
   '/health',
   '/public',
   '/approval-flows/levels',
+  '/onboard',
+  '/onboard/check-email',
+  '/onboard/check-company',
 ];
 
 /**

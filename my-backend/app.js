@@ -515,7 +515,8 @@ app.use((req, res, next) => {
 app.use('/api', async (req, res, next) => {
   // Skip authentication for public routes (handled by rbacEnforcer's PUBLIC_ROUTES)
   const publicPaths = ['/api/auth/login', '/api/auth/register', '/api/auth/forgot-password', 
-                       '/api/auth/reset-password', '/api/auth/refresh', '/api/health', '/api/public'];
+                       '/api/auth/reset-password', '/api/auth/refresh', '/api/health', '/api/public',
+                       '/api/onboard'];
   const isPublic = publicPaths.some(p => req.path.toLowerCase().startsWith(p.replace('/api', '')));
   if (isPublic) return next();
   
@@ -1178,6 +1179,17 @@ try {
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Onboarding routes not loaded:', e && e.message)
+  }
+}
+
+// Welcome / Workspace Setup routes (subscription selection after signup)
+try {
+  const welcomeRoutes = require('./routes/welcomeRoutes')
+  app.use('/api/welcome', welcomeRoutes)
+  console.log('✅ Welcome routes loaded at /api/welcome')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Welcome routes not loaded:', e && e.message)
   }
 }
 
@@ -1981,10 +1993,21 @@ app.post('/api/token/refresh', async (req, res) => {
 // OLD /api/refresh alias REMOVED - Use /api/token/refresh directly
 // All clients should use the standard /api/token/refresh endpoint
 
-// This should be at the end of all other middleware and routes
+// Note: Primary error handler is at the end of this file (app.use(errorHandler))
+// This early catch is only for routes defined before this point
 app.use((err, req, res, _next) => {
   console.error('Global error handler:', err)
-  res.status(500).json({ error: 'Internal server error' })
+  // Use AppError properties if available
+  const statusCode = err.httpStatus || err.statusCode || 500;
+  const message = err.message || 'Internal server error';
+  const errorCode = err.errorCode || 'SERVER_ERROR';
+  
+  res.status(statusCode).json({ 
+    success: false,
+    error: message, 
+    message: message,
+    errorCode: errorCode
+  })
 })
 
 app.post('/api/logout', async (req, res) => {

@@ -2,7 +2,7 @@
 // Cache bust: 2025-12-02-1130
 try {
   require('dotenv').config()
-} catch (e) {
+} catch {
   // ignore if dotenv isn't installed in other environments
 }
 

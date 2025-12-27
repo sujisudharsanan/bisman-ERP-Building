@@ -60,10 +60,64 @@ const ROUTE_FEATURE_MAP = {
   'POST /api/upload': 'file_upload',
   'POST /api/files': 'file_upload',
   'GET /api/files/:id/download': 'file_download',
+  'POST /api/ocr/scan': 'ocr_extraction',
+  'POST /api/documents/bulk-upload': 'bulk_upload',
   
   // System & API
   'POST /api/webhooks': 'webhook_triggers',
   'GET /api/audit-logs': 'audit_log_access',
+  'GET /api/audit-logs/export': 'audit_log_export',
+  
+  // Security & Authentication (new)
+  'POST /api/auth/mfa/setup': 'mfa_authentication',
+  'POST /api/auth/sso/configure': 'sso_saml',
+  'PUT /api/admin/security/ip-whitelist': 'ip_whitelist',
+  'POST /api/admin/support-sessions': 'support_sessions',
+  
+  // RBAC & Permissions (new)
+  'POST /api/admin/roles': 'custom_role_creation',
+  'POST /api/admin/roles/:id/clone': 'role_cloning',
+  'POST /api/admin/roles/temporary': 'temporary_roles',
+  'POST /api/admin/delegation': 'delegation_rules',
+  'GET /api/admin/permissions/audit': 'permission_audit',
+  
+  // Advanced Workflow (new)
+  'POST /api/tasks/recurring': 'recurring_tasks',
+  'POST /api/tasks/templates': 'task_templates',
+  'PUT /api/tasks/:id/escalate': 'task_escalation',
+  'POST /api/automation/rules': 'workflow_automation',
+  'POST /api/sla/configure': 'sla_management',
+  
+  // Advanced Reporting (new)
+  'POST /api/dashboards': 'custom_dashboards',
+  'GET /api/analytics/kpi': 'kpi_analytics',
+  'POST /api/reports/builder': 'report_builder',
+  'POST /api/reports/schedule': 'scheduled_reports',
+  'POST /api/reports/share': 'report_sharing',
+  'GET /api/analytics/ai': 'ai_analytics',
+  
+  // Notifications (new)
+  'POST /api/notifications/email': 'email_notifications',
+  'POST /api/notifications/sms': 'sms_notifications',
+  'POST /api/notifications/push': 'push_notifications',
+  'POST /api/integrations/slack': 'slack_integration',
+  'POST /api/notifications/templates': 'notification_templates',
+  
+  // Integrations (new)
+  'POST /api/integrations/custom': 'custom_integrations',
+  'POST /api/keys': 'api_key_management',
+  'GET /api/export/bulk': 'data_export_api',
+  
+  // Enterprise Features (new)
+  'POST /api/entities': 'multi_entity',
+  'PUT /api/admin/branding': 'white_label',
+  'PUT /api/admin/domain': 'custom_domain',
+  'POST /api/sandbox': 'sandbox_environment',
+  
+  // Compliance (new)
+  'GET /api/compliance/reports': 'compliance_reports',
+  'POST /api/gdpr/export': 'gdpr_tools',
+  'GET /api/sox/audit': 'sox_compliance',
 };
 
 // Feature codes that should track amount-based approvals
@@ -72,6 +126,14 @@ const AMOUNT_BASED_FEATURES = [
   'payment_approval',
   'bank_transfer_execution',
   'refund_processing',
+];
+
+// Feature codes that are metered (per-usage billing)
+const METERED_FEATURES = [
+  'ocr_extraction',
+  'sms_notifications',
+  'ai_analytics',
+  'support_sessions',
 ];
 
 // ============================================================================
@@ -145,7 +207,7 @@ async function getTenantPlanFeatures(tenantId) {
 /**
  * Check if a feature is allowed for the tenant
  */
-async function checkFeatureAccess(tenantId, featureCode, options = {}) {
+async function checkFeatureAccess(tenantId, featureCode, _options = {}) {
   const prisma = getPrisma();
   
   try {
@@ -501,4 +563,5 @@ module.exports = {
   // Constants
   ROUTE_FEATURE_MAP,
   AMOUNT_BASED_FEATURES,
+  METERED_FEATURES,
 };

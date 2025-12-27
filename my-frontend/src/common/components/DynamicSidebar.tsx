@@ -441,7 +441,18 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
   // };
 
   // Check if current path matches
+  // Special handling for dashboard paths to prevent them from matching child routes
   const isActivePath = (path: string) => {
+    // Dashboard paths should only match exactly, not as prefix
+    const dashboardPaths = ['/super-admin', '/admin', '/enterprise-admin', '/dashboard'];
+    const isDashboardPath = dashboardPaths.includes(path);
+    
+    if (isDashboardPath) {
+      // Dashboard only highlights on exact match
+      return pathname === path;
+    }
+    
+    // For other paths, match exactly or as prefix
     return pathname === path || pathname?.startsWith(`${path}/`);
   };
 

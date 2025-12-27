@@ -127,7 +127,7 @@ const extractUser = async (req, res, next) => {
       }
       
       if (userInfo) {
-        req.userId = parseInt(userInfo.id);
+        req.userId = userInfo.id; // UUID string
         req.userRole = userInfo.role;
         req.userName = userName || userInfo.name;
         req.userType = userType || userInfo.role;
@@ -135,14 +135,14 @@ const extractUser = async (req, res, next) => {
       } else {
         // User not in DB, use JWT data if available
         console.log(`[UltimateChatAPI] User ${userId} not found in DB, using JWT data`);
-        req.userId = parseInt(userId);
+        req.userId = userId; // UUID string
         req.userRole = userType || 'guest';
         req.userName = userName || 'User';
         req.userType = userType || 'guest';
       }
     } catch (dbError) {
       console.warn('[UltimateChatAPI] DB lookup failed:', dbError.message);
-      req.userId = parseInt(userId);
+      req.userId = userId; // UUID string
       req.userRole = userType || 'guest';
       req.userName = userName || 'User';
       req.userType = userType || 'guest';
@@ -152,7 +152,7 @@ const extractUser = async (req, res, next) => {
   } catch (error) {
     console.error('[UltimateChatAPI] Auth error:', error);
     // Don't fail - allow guest access
-    req.userId = 0;
+    req.userId = null; // No valid user ID for guest
     req.userRole = 'guest';
     req.userName = 'Guest';
     req.userType = 'guest';
@@ -309,7 +309,7 @@ router.post('/greeting', async (req, res) => {
     const userRole = req.userRole;
     
     let userName = 'there';
-    let actualUserRole = userRole || 'guest';
+    const actualUserRole = userRole || 'guest';
     let lastLoginDate = null;
     let pendingTasksCount = 0;
     let pendingTasks = [];
