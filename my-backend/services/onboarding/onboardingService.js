@@ -3,11 +3,12 @@
  * 
  * Handles the complete tenant provisioning workflow:
  * 1. Validate and create tenant
- * 2. Create default roles (RBAC)
- * 3. Create admin user
- * 4. Initialize usage tracking
- * 5. Send welcome email
- * 6. Enqueue background provisioning jobs
+ * 2. Create Client record with subscription
+ * 3. Create default roles (RBAC)
+ * 4. Create admin user
+ * 5. Initialize usage tracking
+ * 6. Send welcome email
+ * 7. Enqueue background provisioning jobs
  */
 
 const { v4: uuidv4 } = require('uuid');
@@ -29,6 +30,9 @@ const TRIAL_PERIOD_DAYS = 14;
 
 // Idempotency cache TTL (24 hours)
 const IDEMPOTENCY_TTL = 24 * 60 * 60;
+
+// Default subscription plan code
+const DEFAULT_SUBSCRIPTION_PLAN = 'BASIC';
 
 // Default roles for new tenants
 const DEFAULT_ROLES = [
@@ -289,7 +293,97 @@ async function createTenant(params) {
       }
     });
 
-    // 5. Create audit log entry
+    // 5. Get or create default subscription plan
+    const subscriptionPlan = await tx.subscriptionPlan.findFirst({
+      where: { 
+        OR: [
+          { plan_code: DEFAULT_SUBSCRIPTION_PLAN },
+          { plan_code: 'STARTER' },
+          { plan_code: 'FREE' }
+        ],
+        is_active: true 
+      },
+      orderBy: { sort_order: 'asc' }
+    });
+
+    // Create client and subscription if plan exists
+    let client = null;
+    let clientSubscription = null;
+    
+    if (subscriptionPlan) {
+      // Generate unique client code
+      const clientCode = `CLI-${Date.now().toString(36).toUpperCase()}`;
+      
+      // Find or create a default super admin for self-signup clients
+      const superAdmin = await tx.superAdmin.findFirst({
+        where: { is_active: true },
+        orderBy: { id: 'asc' }
+      });
+      
+      // If no super admin exists, we can't create a client (skip)
+      if (!superAdmin) {
+        console.warn('[Onboarding] No active SuperAdmin found, skipping client creation');
+      } else {
+        // 6. Create Client record
+        client = await tx.client.create({
+          data: {
+            name: companyName,
+            client_code: clientCode,
+            legal_name: companyName,
+            client_type: 'Organization',
+            status: 'Active',
+            onboarding_status: 'pending',
+            productType: 'BUSINESS_ERP',
+            super_admin_id: superAdmin.id,
+            subscriptionPlan: subscriptionPlan.plan_code,
+            subscriptionStatus: plan === 'trial' ? 'trial' : 'active',
+            is_active: true,
+            trial_start_date: plan === 'trial' ? new Date() : null,
+            trial_end_date: trialExpiresAt,
+            timezone: timezone || 'Asia/Kolkata',
+            industry: industry || null,
+            settings: {
+              timezone: timezone || 'Asia/Kolkata',
+              currency: 'INR',
+              dateFormat: 'DD/MM/YYYY',
+              locale: 'en-IN',
+              industry: industry || null
+            },
+          },
+        });
+
+        // 7. Create Client Subscription
+        clientSubscription = await tx.clientSubscription.create({
+          data: {
+            client_id: client.id,
+            plan_id: subscriptionPlan.id,
+            state: plan === 'trial' ? 'TRIAL' : 'ACTIVE',
+            billing_cycle: 'MONTHLY',
+            trial_start_date: plan === 'trial' ? new Date() : null,
+            trial_end_date: trialExpiresAt,
+            current_period_start: new Date(),
+            current_period_end: trialExpiresAt || new Date(Date.now() + 30 * 24 * 60 * 60 * 1000),
+            next_billing_date: trialExpiresAt,
+            current_user_count: 1,
+            current_storage_used: 0,
+            current_api_calls: 0,
+            is_active: true,
+          },
+        });
+
+        // Update user with clientId
+        await tx.user.update({
+          where: { id: adminUserId },
+          data: { clientId: client.id }
+        });
+
+        console.log(`[Onboarding] Created client ${client.id} with subscription ${clientSubscription.id}`);
+      }
+    } else {
+      console.warn('[Onboarding] No default subscription plan found, skipping client/subscription creation');
+    }
+
+    // 8. Create audit log entry
     await tx.auditLog.create({
       data: {
         id: uuidv4(),
@@ -303,18 +397,20 @@ async function createTenant(params) {
           plan: plan,
           admin_email: adminEmail,
           ip_address: ipAddress,
-          user_agent: userAgent
+          user_agent: userAgent,
+          client_id: client?.id || null,
+          subscription_id: clientSubscription?.id || null
         },
         created_at: new Date()
       }
     });
 
-    return { tenant, adminUser, roles };
+    return { tenant, adminUser, roles, client, clientSubscription };
   });
 
   // Generate login URL
   const baseUrl = process.env.FRONTEND_URL || 'https://app.bisman.io';
-  const loginUrl = `${baseUrl}/login?tenant=${tenantSlug}`;
+  const loginUrl = `${baseUrl}/auth/login`;
 
   // Build response
   const response = {
@@ -323,7 +419,10 @@ async function createTenant(params) {
     adminUserId,
     temporaryPassword,
     loginUrl,
-    trialExpiresAt: trialExpiresAt?.toISOString() || null
+    trialExpiresAt: trialExpiresAt?.toISOString() || null,
+    clientId: result.client?.id || null,
+    subscriptionId: result.clientSubscription?.id || null,
+    subscriptionPlan: result.clientSubscription ? DEFAULT_SUBSCRIPTION_PLAN : null
   };
 
   // Store idempotency result (without password)

@@ -237,23 +237,14 @@ export default function SubscriptionControlPage() {
       if (res.ok) {
         const data = await res.json();
         setPlans(data.plans || []);
-      } else if (res.status === 401) {
-        setError('Authentication required. Please log in as a Super Admin to access this page.');
-        // Optionally redirect to login
-        window.location.href = '/login?redirect=/super-admin/subscriptions';
-      } else if (res.status === 403) {
-        setError('Access denied. You must be a Super Admin to view this page.');
       } else {
-        const errorData = await res.json().catch(() => ({}));
-        throw new Error(errorData.message || 'Failed to load plans');
+        throw new Error('Failed to load plans');
       }
     } catch (err) {
       console.error('[SubscriptionControl] Load plans error:', err);
-      if (!error) {
-        setError('Failed to load subscription plans. Please check your connection and try again.');
-      }
+      setError('Failed to load subscription plans');
     }
-  }, [error]);
+  }, []);
 
   const loadFeatures = useCallback(async () => {
     try {
@@ -308,31 +299,6 @@ export default function SubscriptionControlPage() {
   useEffect(() => {
     const loadAll = async () => {
       setLoading(true);
-      
-      // First check if user is authenticated as Super Admin
-      try {
-        const authRes = await fetch(`${API_BASE}/api/me`, { credentials: 'include' });
-        if (!authRes.ok) {
-          setError('Authentication required. Please log in as a Super Admin.');
-          setLoading(false);
-          return;
-        }
-        const authData = await authRes.json();
-        const user = authData.user || authData;
-        const userRole = user.role || user.roleName || user.userType;
-        
-        if (userRole !== 'SUPER_ADMIN' && userRole !== 'SYSTEM_ADMIN') {
-          setError(`Access denied. This page requires Super Admin access. Current role: ${userRole || 'undefined'}`);
-          setLoading(false);
-          return;
-        }
-      } catch (authErr) {
-        console.error('[SubscriptionControl] Auth check failed:', authErr);
-        setError('Failed to verify authentication. Please refresh the page.');
-        setLoading(false);
-        return;
-      }
-      
       await Promise.all([loadPlans(), loadFeatures(), loadInfraRates()]);
       setLoading(false);
     };

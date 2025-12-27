@@ -12,7 +12,7 @@ export function middleware(req: NextRequest) {
   if (staticOrApi) return NextResponse.next();
 
   // Auth exemptions - public pages that don't require login
-  if (pathname === '/debug-auth' || pathname.startsWith('/auth') || pathname === '/landing' || pathname.startsWith('/landing')) {
+  if (pathname === '/debug-auth' || pathname.startsWith('/auth') || pathname === '/landing' || pathname.startsWith('/landing') || pathname === '/signup' || pathname === '/get-started' || pathname.startsWith('/onboarding') || pathname === '/terms' || pathname === '/privacy' || pathname === '/pricing') {
     // Create response with request headers containing pathname
     const requestHeaders = new Headers(req.headers);
     requestHeaders.set('x-pathname', pathname);

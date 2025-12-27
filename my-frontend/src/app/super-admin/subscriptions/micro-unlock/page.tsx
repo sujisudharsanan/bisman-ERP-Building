@@ -14,6 +14,7 @@
  */
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Package,
@@ -48,6 +49,7 @@ import {
   Lock,
   Unlock,
   History,
+  ArrowLeft,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardFooter } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';

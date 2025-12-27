@@ -59,13 +59,14 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
       { id: 'dashboard', label: 'Dashboard', href: '/admin', icon: 'LayoutDashboard' },
       { id: 'users', label: 'Users', href: '/admin/users', icon: 'Users' },
       { id: 'permissions', label: 'Permissions', href: '/admin/permissions', icon: 'Shield' },
-      { id: 'approvals', label: 'Task Approvals', href: '/admin/task-approvals', icon: 'FileCheck' },
+      { id: 'approvals', label: 'Task Approvals', href: '/approvals', icon: 'FileCheck' },
+      { id: 'reconciliation', label: 'Reconciliation', href: '/reconciliation', icon: 'Scale' },
       { id: 'system-flow', label: 'System Flow', href: '/admin/system-flow', icon: 'Workflow' },
       { id: 'reports', label: 'Reports', href: '/admin/reports', icon: 'BarChart2' },
       { id: 'finance', label: 'Finance', href: '/finance', icon: 'Wallet' },
       { id: 'settings', label: 'Settings', href: '/admin/settings', icon: 'Settings' },
     ],
-    allowedPages: ['/admin', '/admin/*', '/finance', '/finance/*', '/reports', '/settings'],
+    allowedPages: ['/admin', '/admin/*', '/finance', '/finance/*', '/reports', '/settings', '/approvals', '/approvals/*', '/reconciliation', '/reconciliation/*'],
   },
 
   MANAGER: {
@@ -153,12 +154,13 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
     menuItems: [
       { id: 'dashboard', label: 'Dashboard', href: '/cfo-dashboard', icon: 'LayoutDashboard' },
       { id: 'finance', label: 'Finance', href: '/finance', icon: 'Wallet' },
+      { id: 'reconciliation', label: 'Reconciliation', href: '/reconciliation', icon: 'Scale' },
       { id: 'reports', label: 'Reports', href: '/cfo-dashboard/reports', icon: 'BarChart2' },
-      { id: 'approvals', label: 'Approvals', href: '/cfo-dashboard/approvals', icon: 'FileText', badge: 12 },
+      { id: 'approvals', label: 'Approvals', href: '/approvals', icon: 'FileCheck', badge: 12 },
       { id: 'budget', label: 'Budget', href: '/cfo-dashboard/budget', icon: 'ShoppingCart' },
       { id: 'settings', label: 'Settings', href: '/cfo-dashboard/settings', icon: 'Settings' },
     ],
-    allowedPages: ['/cfo-dashboard', '/cfo-dashboard/*', '/finance', '/reports'],
+    allowedPages: ['/cfo-dashboard', '/cfo-dashboard/*', '/finance', '/reports', '/approvals', '/approvals/*', '/reconciliation', '/reconciliation/*'],
   },
 
   IT_ADMIN: {

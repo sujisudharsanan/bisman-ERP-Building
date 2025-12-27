@@ -10,7 +10,7 @@
  * @module jobs/microUnlockExpiryJob
  */
 
-/* global require, module, console, process */
+/* eslint-env node */
 
 const cron = require('node-cron');
 const microUnlockService = require('../my-backend/services/subscription/microUnlockService');

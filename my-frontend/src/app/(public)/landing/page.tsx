@@ -166,7 +166,7 @@ export default function LandingPage() {
                   <h1>The Operating System for the Next Global Leader</h1>
                   <p>A unified, corporate-grade SaaS platform for ambitious business leaders. Scale from startup to enterprise on one secure, cloud-native system.</p>
                   <div className="d-flex">
-                    <a href="#pricing" className="btn-get-started">Start Your Free Trial</a>
+                    <a href="/signup" className="btn-get-started">Start Your Free Trial</a>
                     <a href="#about" className="btn-watch-video d-flex align-items-center">
                       <i className="bi bi-play-circle"></i><span>Watch Demo</span>
                     </a>
@@ -490,7 +490,7 @@ export default function LandingPage() {
                   <p>Join the ambitious leaders using BISMAN to unify their operations and scale globally. Start your transformation today.</p>
                 </div>
                 <div className="col-xl-3 d-flex align-items-center justify-content-center">
-                  <a className="cta-btn" href="#pricing">Start Free Trial</a>
+                  <a className="cta-btn" href="/signup">Start Free Trial</a>
                 </div>
               </div>
             </div>
@@ -653,7 +653,7 @@ export default function LandingPage() {
                       <li><i className="bi bi-check"></i> Core Accounting</li>
                       <li><i className="bi bi-check"></i> 5 Users included</li>
                     </ul>
-                    <a href="#" className="buy-btn">Get Started</a>
+                    <a href="/signup" className="buy-btn">Get Started</a>
                   </div>
                 </div>
                 <div className="col-lg-4" data-aos="zoom-in" data-aos-delay="200">
@@ -669,7 +669,7 @@ export default function LandingPage() {
                       <li><i className="bi bi-check"></i> HR & Payroll</li>
                       <li><i className="bi bi-check"></i> 25 Users included</li>
                     </ul>
-                    <a href="#" className="buy-btn">Get Started</a>
+                    <a href="/signup" className="buy-btn">Get Started</a>
                   </div>
                 </div>
                 <div className="col-lg-4" data-aos="zoom-in" data-aos-delay="300">
@@ -684,7 +684,7 @@ export default function LandingPage() {
                       <li><i className="bi bi-check"></i> Advanced Reporting</li>
                       <li><i className="bi bi-check"></i> Priority Support</li>
                     </ul>
-                    <a href="#" className="buy-btn">Get Started</a>
+                    <a href="/signup" className="buy-btn">Get Started</a>
                   </div>
                 </div>
               </div>
@@ -769,7 +769,7 @@ export default function LandingPage() {
           <div className="container" data-aos="fade-up">
             <h2 style={{ color: '#F5A623', fontSize: 42, fontWeight: 700, marginBottom: 20, fontFamily: 'var(--heading-font)' }}>Your ERP is ready. Are you?</h2>
             <p style={{ color: 'rgba(255,255,255,0.8)', fontSize: 18, maxWidth: 600, margin: '0 auto 30px' }}>Join the ambitious leaders using BISMAN to unify their operations and scale globally.</p>
-            <a href="#pricing" className="cta-btn">
+            <a href="/signup" className="cta-btn">
               Start Your Free Trial <i className="bi bi-chevron-right"></i>
             </a>
           </div>
