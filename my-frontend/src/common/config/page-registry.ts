@@ -1046,6 +1046,19 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     showInSidebar: false, // Sub-page of subscriptions
   },
   {
+    id: 'subscription-coupons',
+    name: 'Coupons',
+    path: '/super-admin/subscriptions/coupons',
+    iconKey: "Ticket",
+    module: 'super-admin',
+    permissions: ['system-settings'],
+    roles: ['SUPER_ADMIN'],
+    status: 'active',
+    description: 'Manage subscription activation coupons',
+    order: 4,
+    showInSidebar: false, // Sub-page of subscriptions
+  },
+  {
     id: 'server-logs',
     name: 'Server Logs',
     path: '/system/server-logs',

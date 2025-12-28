@@ -16,6 +16,7 @@
  */
 
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import Link from 'next/link';
 import {
   Shield,
   Settings,
@@ -53,6 +54,7 @@ import {
   Server,
   Cpu,
   Cloud,
+  Ticket,
 } from 'lucide-react';
 
 // ============================================================================
@@ -705,6 +707,13 @@ export default function SubscriptionControlPage() {
             <RefreshCw className="w-4 h-4" />
             Refresh
           </button>
+          <Link
+            href="/super-admin/subscriptions/coupons"
+            className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700"
+          >
+            <Ticket className="w-4 h-4" />
+            Manage Coupons
+          </Link>
           <button
             onClick={() => setShowCreateModal(true)}
             className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"

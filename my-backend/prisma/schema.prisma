@@ -295,6 +295,11 @@ model Client {
   subscriptionAuditLogs   SubscriptionAuditLog[]
   subscriptionInvoices    SubscriptionInvoice[]
   
+  // Coupon System Relations
+  restricted_coupons      SubscriptionCoupon[]    @relation("RestrictedTenant")
+  coupon_redemptions      CouponRedemption[]
+  coupon_audit_logs       SubscriptionCouponAuditLog[]
+  
   // Role assignments for this client
   roleAssignments         ClientRoleAssignment[]
 
@@ -2465,6 +2470,12 @@ model User {
   unique_id           String?            @db.VarChar(50)
   business_level      Int                @default(1) // Business hierarchy level (L1-L10) for workflow approvals. Does NOT affect security.
   support_sessions    support_sessions[]
+  
+  // Coupon system relations
+  coupons_created     SubscriptionCoupon[] @relation("CouponCreator")
+  coupons_revoked     SubscriptionCoupon[] @relation("CouponRevoker")
+  coupon_redemptions  CouponRedemption[]
+  coupon_audit_logs   SubscriptionCouponAuditLog[]
 
   @@index([is_active], map: "idx_erp_users_is_active")
   @@index([legacy_id], map: "idx_erp_users_legacy_id")
@@ -2817,6 +2828,7 @@ model SubscriptionPlan {
   // Relations
   subscriptions     ClientSubscription[]
   scheduled_changes ClientSubscription[] @relation("ScheduledPlan")
+  coupons           SubscriptionCoupon[]
 
   @@index([is_active, is_public])
   @@index([sort_order])
@@ -2869,6 +2881,13 @@ model ClientSubscription {
   cancelled_at         DateTime?          @db.Timestamptz(6)
   cancellation_reason  String?            @db.Text
   
+  // Coupon activation fields
+  activation_source    String?            @default("LEGACY") @db.VarChar(50)
+  coupon_id            String?            @db.Uuid
+  plan_snapshot_json   Json?
+  started_at           DateTime?          @db.Timestamptz(6)
+  expires_at           DateTime?          @db.Timestamptz(6)
+  
   // Audit
   created_at           DateTime           @default(now()) @db.Timestamptz(6)
   updated_at           DateTime           @default(now()) @updatedAt @db.Timestamptz(6)
@@ -2879,10 +2898,15 @@ model ClientSubscription {
   scheduled_plan       SubscriptionPlan?  @relation("ScheduledPlan", fields: [scheduled_plan_id], references: [id])
   audit_logs           SubscriptionAuditLog[]
   invoices             SubscriptionInvoice[]
+  coupon_redemptions   CouponRedemption[]
+  coupon_audit_logs    SubscriptionCouponAuditLog[]
 
   @@index([plan_id])
   @@index([state])
   @@index([next_billing_date])
+  @@index([coupon_id])
+  @@index([activation_source])
+  @@index([expires_at])
   @@map("client_subscriptions")
 }
 
@@ -3594,4 +3618,170 @@ model JournalLine {
   @@index([journal_id])
   @@index([ledger_id])
   @@map("journal_lines")
+}
+
+// ============================================================================
+// COUPON-BASED SUBSCRIPTION ACTIVATION SYSTEM
+// ============================================================================
+
+/// Coupon status enum
+enum CouponStatus {
+  ACTIVE
+  EXPIRED
+  REVOKED
+  EXHAUSTED
+  
+  @@map("coupon_status")
+}
+
+/// Tenant restriction type enum
+enum TenantRestrictionType {
+  ANY
+  ONLY_NEW_TENANTS
+  SPECIFIC_TENANT
+  
+  @@map("tenant_restriction_type")
+}
+
+/// Subscription coupons - authorization tokens for subscription activation
+model SubscriptionCoupon {
+  id                     String                @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  
+  // Coupon code (unique, non-guessable)
+  code                   String                @unique @db.VarChar(50)
+  
+  // Plan binding (immutable after creation)
+  plan_id                Int
+  plan_snapshot_json     Json                  // Immutable snapshot of plan at creation time
+  
+  // Duration (derived from plan at creation)
+  duration_days          Int                   @default(30)
+  
+  // Validity rules
+  valid_from             DateTime              @default(now()) @db.Timestamptz(6)
+  valid_until            DateTime              @db.Timestamptz(6)
+  
+  // Usage constraints
+  max_activations        Int                   @default(1)
+  used_count             Int                   @default(0)
+  
+  // Tenant restrictions
+  tenant_restriction_type TenantRestrictionType @default(ANY)
+  restricted_tenant_id   String?               @db.Uuid
+  
+  // Status
+  status                 CouponStatus          @default(ACTIVE)
+  
+  // Internal notes
+  notes                  String?               @db.Text
+  sales_reference        String?               @db.VarChar(255)
+  invoice_reference      String?               @db.VarChar(255)
+  
+  // Audit
+  created_by             String                @db.Uuid
+  created_at             DateTime              @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime              @default(now()) @updatedAt @db.Timestamptz(6)
+  revoked_by             String?               @db.Uuid
+  revoked_at             DateTime?             @db.Timestamptz(6)
+  revocation_reason      String?               @db.Text
+  
+  // Relations
+  plan                   SubscriptionPlan      @relation(fields: [plan_id], references: [id], onDelete: Restrict)
+  creator                User                  @relation("CouponCreator", fields: [created_by], references: [id], onDelete: Restrict)
+  revoker                User?                 @relation("CouponRevoker", fields: [revoked_by], references: [id], onDelete: SetNull)
+  restricted_tenant      Client?               @relation("RestrictedTenant", fields: [restricted_tenant_id], references: [id], onDelete: SetNull)
+  redemptions            CouponRedemption[]
+  audit_logs             SubscriptionCouponAuditLog[]
+
+  @@index([code])
+  @@index([status])
+  @@index([plan_id])
+  @@index([valid_from, valid_until])
+  @@index([created_by])
+  @@index([created_at(sort: Desc)])
+  @@map("subscription_coupons")
+}
+
+/// Coupon redemptions - record of coupon redemptions by tenants
+model CouponRedemption {
+  id                      String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  
+  // Coupon reference
+  coupon_id               String              @db.Uuid
+  
+  // Tenant that redeemed
+  tenant_id               String              @db.Uuid
+  
+  // User who performed the activation
+  activated_by_user       String              @db.Uuid
+  
+  // Resulting subscription
+  subscription_id         Int?
+  
+  // Timestamps
+  activated_at            DateTime            @default(now()) @db.Timestamptz(6)
+  
+  // Subscription details (derived at redemption time)
+  subscription_started_at DateTime            @db.Timestamptz(6)
+  subscription_expires_at DateTime            @db.Timestamptz(6)
+  
+  // Snapshot of what was applied
+  applied_plan_snapshot   Json
+  
+  // Relations
+  coupon                  SubscriptionCoupon  @relation(fields: [coupon_id], references: [id], onDelete: Restrict)
+  tenant                  Client              @relation(fields: [tenant_id], references: [id], onDelete: Restrict)
+  activated_by            User                @relation(fields: [activated_by_user], references: [id], onDelete: Restrict)
+  subscription            ClientSubscription? @relation(fields: [subscription_id], references: [id], onDelete: SetNull)
+
+  @@unique([coupon_id, tenant_id])
+  @@index([coupon_id])
+  @@index([tenant_id])
+  @@index([activated_by_user])
+  @@index([subscription_id])
+  @@index([activated_at(sort: Desc)])
+  @@map("coupon_redemptions")
+}
+
+/// Subscription coupon audit logs - immutable audit trail
+model SubscriptionCouponAuditLog {
+  id                String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  
+  // Event type
+  event_type        String              @db.VarChar(50)
+  
+  // References
+  coupon_id         String?             @db.Uuid
+  tenant_id         String?             @db.Uuid
+  subscription_id   Int?
+  
+  // Actor
+  actor_user_id     String?             @db.Uuid
+  actor_role        String?             @db.VarChar(50)
+  
+  // Context
+  ip_address        String?             @db.Inet
+  user_agent        String?             @db.Text
+  
+  // Payload (complete snapshot of relevant data)
+  payload_snapshot  Json                @default("{}")
+  
+  // Metadata
+  notes             String?             @db.Text
+  
+  // Timestamp
+  created_at        DateTime            @default(now()) @db.Timestamptz(6)
+  
+  // Relations
+  coupon            SubscriptionCoupon? @relation(fields: [coupon_id], references: [id], onDelete: SetNull)
+  tenant            Client?             @relation(fields: [tenant_id], references: [id], onDelete: SetNull)
+  subscription      ClientSubscription? @relation(fields: [subscription_id], references: [id], onDelete: SetNull)
+  actor             User?               @relation(fields: [actor_user_id], references: [id], onDelete: SetNull)
+
+  @@index([event_type])
+  @@index([coupon_id])
+  @@index([tenant_id])
+  @@index([actor_user_id])
+  @@index([created_at(sort: Desc)])
+  @@map("subscription_coupon_audit_logs")
 }

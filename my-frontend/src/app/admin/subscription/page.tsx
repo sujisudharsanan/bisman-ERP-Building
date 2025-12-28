@@ -7,6 +7,7 @@
  * "Pay for freedom, not access" - All features visible, pay to remove limits.
  * 
  * Sections:
+ * 0. Coupon Activation (when no active subscription)
  * 1. Subscription Overview (sticky header)
  * 2. Usage Health Summary (3 cards)
  * 3. Feature Unlock Control Table (heart of the system)
@@ -50,11 +51,15 @@ import {
   X,
   Check,
   Info,
+  Ticket,
+  Gift,
+  Sparkles,
 } from 'lucide-react';
 import { Card, CardHeader, CardTitle, CardContent, CardDescription, CardFooter } from '@/components/ui/Card';
 import Button from '@/components/ui/Button';
 import Badge from '@/components/ui/Badge';
 import { Switch } from '@/components/ui/Switch';
+import Input from '@/components/ui/Input';
 
 // ============================================================================
 // TYPES
@@ -175,6 +180,67 @@ interface SubscriptionData {
 }
 
 // ============================================================================
+// COUPON ACTIVATION TYPES
+// ============================================================================
+
+interface CouponSubscriptionStatus {
+  ok: boolean;
+  hasSubscription: boolean;
+  isActive?: boolean;
+  status: string | null;
+  plan: {
+    id: number;
+    name: string;
+    description: string;
+    tier: string;
+    billing_cycle: string;
+  } | null;
+  planSnapshot?: Record<string, unknown>;
+  startedAt?: string;
+  expiresAt?: string;
+  remainingTime: {
+    days: number;
+    hours: number;
+    minutes: number;
+    totalHours: number;
+  } | null;
+  activationSource?: string;
+}
+
+interface CouponValidationResult {
+  ok: boolean;
+  valid: boolean;
+  plan?: {
+    id: number;
+    name: string;
+    description: string;
+    tier: string;
+    billing_cycle: string;
+    features?: Record<string, unknown>;
+  };
+  durationDays?: number;
+  validUntil?: string;
+  message?: string;
+  error?: string;
+}
+
+interface CouponRedemptionResult {
+  ok: boolean;
+  message: string;
+  subscription?: {
+    plan: string;
+    planCode: string;
+    startedAt: string;
+    expiresAt: string;
+    remainingTime: {
+      days: number;
+      hours: number;
+    };
+  };
+  error?: string;
+}
+
+// ============================================================================
 // CONSTANTS
 // ============================================================================
 
@@ -266,6 +332,357 @@ function formatCurrency(amount: number, currency = 'INR'): string {
 // ============================================================================
 // COMPONENTS
 // ============================================================================
+
+// Coupon Activation Section (when no active subscription)
+interface CouponActivationSectionProps {
+  subscriptionStatus: CouponSubscriptionStatus | null;
+  onActivationSuccess: () => void;
+}
+
+function CouponActivationSection({ subscriptionStatus, onActivationSuccess }: CouponActivationSectionProps) {
+  const [couponCode, setCouponCode] = useState('');
+  const [validating, setValidating] = useState(false);
+  const [redeeming, setRedeeming] = useState(false);
+  const [validationResult, setValidationResult] = useState<CouponValidationResult | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
+
+  const handleValidateCoupon = async () => {
+    if (!couponCode.trim()) {
+      setError('Please enter an activation code');
+      return;
+    }
+
+    setValidating(true);
+    setError(null);
+    setValidationResult(null);
+
+    try {
+      const response = await fetch('/api/subscriptions/validate-coupon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ code: couponCode.trim().toUpperCase() }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        setError(data.message || data.error || 'Invalid coupon code');
+        return;
+      }
+
+      setValidationResult(data);
+    } catch (err) {
+      console.error('Coupon validation failed:', err);
+      setError('Failed to validate coupon. Please try again.');
+    } finally {
+      setValidating(false);
+    }
+  };
+
+  const handleRedeemCoupon = async () => {
+    if (!validationResult?.valid) {
+      setError('Please validate the coupon first');
+      return;
+    }
+
+    setRedeeming(true);
+    setError(null);
+
+    try {
+      const response = await fetch('/api/subscriptions/redeem-coupon', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ code: couponCode.trim().toUpperCase() }),
+      });
+
+      const data: CouponRedemptionResult = await response.json();
+
+      if (!response.ok || !data.ok) {
+        setError(data.message || data.error || 'Failed to activate subscription');
+        return;
+      }
+
+      setSuccess(data.message);
+      setValidationResult(null);
+      setCouponCode('');
+      
+      // Notify parent to refresh data
+      setTimeout(() => {
+        onActivationSuccess();
+      }, 2000);
+    } catch (err) {
+      console.error('Coupon redemption failed:', err);
+      setError('Failed to activate subscription. Please try again.');
+    } finally {
+      setRedeeming(false);
+    }
+  };
+
+  const handleClear = () => {
+    setCouponCode('');
+    setValidationResult(null);
+    setError(null);
+    setSuccess(null);
+  };
+
+  // If there's an active subscription, show current status
+  if (subscriptionStatus?.hasSubscription && subscriptionStatus.isActive && subscriptionStatus.remainingTime && subscriptionStatus.expiresAt) {
+    const expiresAt = new Date(subscriptionStatus.expiresAt);
+    const isExpiringSoon = subscriptionStatus.remainingTime.days <= 7;
+    const planName = subscriptionStatus.plan?.name || 'Unknown Plan';
+    const activationSource = subscriptionStatus.activationSource;
+
+    return (
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="max-w-7xl mx-auto px-6 pt-6"
+      >
+        <Card className="border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20">
+          <CardContent className="py-4">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
+                  <CheckCircle className="w-6 h-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div>
+                  <h3 className="font-semibold text-green-900 dark:text-green-100">
+                    Active Subscription: {planName}
+                  </h3>
+                  <p className="text-sm text-green-700 dark:text-green-300">
+                    {activationSource === 'COUPON' ? (
+                      <>Activated via coupon</>
+                    ) : (
+                      <>Activated via {activationSource?.toLowerCase() || 'system'}</>
+                    )}
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className={`text-sm font-medium ${isExpiringSoon ? 'text-amber-600 dark:text-amber-400' : 'text-green-700 dark:text-green-300'}`}>
+                    {isExpiringSoon && <AlertTriangle className="w-4 h-4 inline mr-1" />}
+                    {subscriptionStatus.remainingTime.days} days, {subscriptionStatus.remainingTime.hours} hours remaining
+                  </p>
+                  <p className="text-xs text-green-600 dark:text-green-400">
+                    Expires: {expiresAt.toLocaleDateString()} at {expiresAt.toLocaleTimeString()}
+                  </p>
+                </div>
+                
+                {isExpiringSoon && (
+                  <Badge variant="warning" className="animate-pulse">
+                    Expiring Soon
+                  </Badge>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
+    );
+  }
+
+  // No active subscription - show activation form
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: -20 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="max-w-7xl mx-auto px-6 pt-6"
+    >
+      <Card className="border-amber-200 dark:border-amber-800 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-900/20 dark:to-orange-900/20">
+        <CardHeader>
+          <div className="flex items-center gap-3">
+            <div className="p-3 bg-amber-100 dark:bg-amber-900/50 rounded-xl">
+              <Ticket className="w-8 h-8 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div>
+              <CardTitle className="text-xl text-amber-900 dark:text-amber-100">
+                No Active Subscription
+              </CardTitle>
+              <CardDescription className="text-amber-700 dark:text-amber-300">
+                Enter your activation code to unlock your subscription
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        
+        <CardContent className="space-y-4">
+          {/* Success Message */}
+          {success && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-center gap-3 p-4 bg-green-100 dark:bg-green-900/30 border border-green-200 dark:border-green-800 rounded-lg"
+            >
+              <Sparkles className="w-5 h-5 text-green-600 dark:text-green-400" />
+              <div>
+                <p className="font-medium text-green-800 dark:text-green-200">{success}</p>
+                <p className="text-sm text-green-600 dark:text-green-400">Refreshing page...</p>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Error Message */}
+          {error && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="flex items-center gap-3 p-4 bg-red-100 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg"
+            >
+              <XCircle className="w-5 h-5 text-red-600 dark:text-red-400" />
+              <p className="text-red-800 dark:text-red-200">{error}</p>
+              <button
+                onClick={() => setError(null)}
+                className="ml-auto text-red-600 hover:text-red-800 dark:text-red-400"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </motion.div>
+          )}
+
+          {/* Coupon Input */}
+          <div className="flex gap-3">
+            <div className="flex-1">
+              <Input
+                value={couponCode}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                  setCouponCode(e.target.value.toUpperCase());
+                  setValidationResult(null);
+                  setError(null);
+                }}
+                placeholder="Enter activation code (e.g., BIS-XXXX-XXXX-XXXX)"
+                className="text-lg font-mono tracking-wider uppercase"
+                disabled={validating || redeeming || !!success}
+              />
+            </div>
+            {couponCode && !validationResult && (
+              <Button
+                onClick={handleValidateCoupon}
+                disabled={validating || !couponCode.trim()}
+                className="bg-amber-600 hover:bg-amber-700 text-white"
+              >
+                {validating ? (
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                ) : (
+                  <>
+                    <Eye className="w-4 h-4 mr-2" />
+                    Validate
+                  </>
+                )}
+              </Button>
+            )}
+            {couponCode && (
+              <Button variant="outline" onClick={handleClear} disabled={validating || redeeming}>
+                <X className="w-4 h-4" />
+              </Button>
+            )}
+          </div>
+
+          {/* Validation Result Preview */}
+          {validationResult?.valid && validationResult.plan && (
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="mt-4 p-4 bg-white dark:bg-gray-800 rounded-lg border border-green-200 dark:border-green-800 shadow-sm"
+            >
+              <div className="flex items-start gap-4">
+                <div className="p-2 bg-green-100 dark:bg-green-900/50 rounded-lg">
+                  <Gift className="w-6 h-6 text-green-600 dark:text-green-400" />
+                </div>
+                <div className="flex-1">
+                  <h4 className="font-semibold text-green-800 dark:text-green-200 flex items-center gap-2">
+                    <CheckCircle className="w-5 h-5" />
+                    Valid Coupon Code
+                  </h4>
+                  
+                  <div className="mt-3 grid grid-cols-2 gap-4 text-sm">
+                    <div>
+                      <p className="text-gray-500 dark:text-gray-400">Plan</p>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                        {validationResult.plan.name}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 dark:text-gray-400">Tier</p>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                        {validationResult.plan.tier}
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 dark:text-gray-400">Duration</p>
+                      <p className="font-medium text-gray-900 dark:text-gray-100">
+                        {validationResult.durationDays} days
+                      </p>
+                    </div>
+                    <div>
+                      <p className="text-gray-500 dark:text-gray-400">Billing Cycle</p>
+                      <p className="font-medium text-gray-900 dark:text-gray-100 capitalize">
+                        {validationResult.plan.billing_cycle?.toLowerCase() || 'N/A'}
+                      </p>
+                    </div>
+                    {validationResult.validUntil && (
+                      <div className="col-span-2">
+                        <p className="text-gray-500 dark:text-gray-400">Coupon Valid Until</p>
+                        <p className="font-medium text-gray-900 dark:text-gray-100">
+                          {new Date(validationResult.validUntil).toLocaleDateString()}
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {validationResult.plan.description && (
+                    <p className="mt-3 text-sm text-gray-600 dark:text-gray-300">
+                      {validationResult.plan.description}
+                    </p>
+                  )}
+
+                  {validationResult.message && (
+                    <p className="mt-3 text-sm text-green-700 dark:text-green-300 font-medium">
+                      {validationResult.message}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              <div className="mt-4 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <Button
+                  onClick={handleRedeemCoupon}
+                  disabled={redeeming}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white py-3"
+                >
+                  {redeeming ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 mr-2 animate-spin" />
+                      Activating Subscription...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Activate Subscription Now
+                    </>
+                  )}
+                </Button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* Help Text */}
+          <div className="flex items-start gap-2 text-sm text-amber-700 dark:text-amber-300">
+            <Info className="w-4 h-4 mt-0.5 flex-shrink-0" />
+            <p>
+              Activation codes are provided by your Bisman account manager. 
+              Contact support if you don&apos;t have a code or need assistance.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
+  );
+}
 
 // Subscription Overview Header (Sticky)
 function SubscriptionOverview({ overview }: { overview: SubscriptionData['overview'] }) {
@@ -1153,6 +1570,22 @@ export default function AdminSubscriptionPage() {
   const [unlockLoading, setUnlockLoading] = useState(false);
   const [spendLimits, setSpendLimits] = useState<SpendLimits | null>(null);
   const [blockedUsers, setBlockedUsers] = useState<BlockedUserSummary[]>([]);
+  const [subscriptionStatus, setSubscriptionStatus] = useState<CouponSubscriptionStatus | null>(null);
+
+  // Fetch coupon-based subscription status
+  const fetchSubscriptionStatus = useCallback(async () => {
+    try {
+      const response = await fetch('/api/subscriptions/my-subscription', {
+        credentials: 'include',
+      });
+      if (response.ok) {
+        const data = await response.json();
+        setSubscriptionStatus(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch subscription status:', err);
+    }
+  }, []);
 
   // Fetch main data
   const fetchData = useCallback(async () => {
@@ -1186,7 +1619,8 @@ export default function AdminSubscriptionPage() {
   useEffect(() => {
     fetchData();
     fetchSpendData();
-  }, [fetchData, fetchSpendData]);
+    fetchSubscriptionStatus();
+  }, [fetchData, fetchSpendData, fetchSubscriptionStatus]);
 
   // Scroll to section
   const scrollToSection = (sectionId: string) => {
@@ -1254,6 +1688,14 @@ export default function AdminSubscriptionPage() {
     }
   };
 
+  // Handler for successful coupon activation
+  const handleCouponActivationSuccess = useCallback(() => {
+    // Refresh all data after successful activation
+    fetchData();
+    fetchSpendData();
+    fetchSubscriptionStatus();
+  }, [fetchData, fetchSpendData, fetchSubscriptionStatus]);
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
@@ -1283,6 +1725,12 @@ export default function AdminSubscriptionPage() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+      {/* Coupon Activation Section */}
+      <CouponActivationSection
+        subscriptionStatus={subscriptionStatus}
+        onActivationSuccess={handleCouponActivationSuccess}
+      />
+
       {/* Sticky Overview Header */}
       <SubscriptionOverview overview={data.overview} />
 

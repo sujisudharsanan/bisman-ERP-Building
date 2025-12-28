@@ -1585,19 +1585,28 @@ try {
   const subscriptionRoutes = require('./routes/subscriptionRoutes')
   const superAdminSubscriptionRoutes = require('./routes/superAdminSubscription')
   const subscriptionControlRoutes = require('./routes/subscriptionControlRoutes')
+  const subscriptionCouponRoutes = require('./routes/subscriptionCouponRoutes')
+  const subscriptionRedemptionRoutes = require('./routes/subscriptionRedemptionRoutes')
   
   // Public subscription endpoints (pricing, plans) - no auth required for GET
   // Tenant subscription management - requires authentication
   app.use('/api/subscriptions', subscriptionRoutes)
   
+  // Client coupon redemption routes - requires CLIENT_ADMIN role
+  app.use('/api/subscriptions', subscriptionRedemptionRoutes)
+  
   // SuperAdmin subscription management console - requires SUPER_ADMIN role
   app.use('/api/super-admin/subscriptions', authenticate, adminIpAllowlist, superAdminSubscriptionRoutes)
+  
+  // SuperAdmin coupon management - requires SUPER_ADMIN role
+  app.use('/api/superadmin/coupons', subscriptionCouponRoutes)
   
   // SuperAdmin Subscription Control ("God Mode" page) - comprehensive plan management
   app.use('/api/subscription-control', authenticate, adminIpAllowlist, subscriptionControlRoutes)
   
   console.log('✅ Subscription Management routes loaded')
   console.log('✅ Subscription Control ("God Mode") routes loaded')
+  console.log('✅ Subscription Coupon routes loaded')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Subscription routes not loaded:', e && e.message)
