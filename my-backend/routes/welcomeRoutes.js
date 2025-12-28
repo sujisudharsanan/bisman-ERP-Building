@@ -44,108 +44,163 @@ router.get('/plans', authMiddleware, async (req, res) => {
     let plans = [];
     
     try {
-      // Try master_subscription_plans table first
+      // Fetch plans from master_subscription_plans with correct schema
       const dbPlans = await prisma.$queryRaw`
         SELECT 
           id,
           code,
           name,
           description,
-          price_monthly,
-          price_yearly,
-          currency,
-          max_users,
-          max_branches,
-          max_storage_gb,
-          trial_days,
-          is_active,
           is_popular,
-          features,
-          governance_rules
+          status,
+          sort_order,
+          monthly_spend_cap,
+          cfo_approval_threshold,
+          grace_period_days
         FROM master_subscription_plans
-        WHERE is_active = true
-        ORDER BY sort_order ASC, price_monthly ASC
+        WHERE status = 'active'
+        ORDER BY sort_order ASC
       `;
 
-      plans = dbPlans.map(p => ({
-        id: p.id?.toString() || p.code?.toLowerCase(),
-        code: p.code,
-        name: p.name,
-        description: p.description || '',
-        price_monthly: Number(p.price_monthly) || 0,
-        price_yearly: Number(p.price_yearly) || 0,
-        currency: p.currency || 'INR',
-        max_users: Number(p.max_users) || 5,
-        max_branches: Number(p.max_branches) || 1,
-        max_storage_gb: Number(p.max_storage_gb) || 5,
-        trial_days: Number(p.trial_days) || 14,
-        is_active: p.is_active !== false,
-        is_popular: p.is_popular === true,
-        features: Array.isArray(p.features) ? p.features : [],
-        approval_levels: p.governance_rules?.approval_depth || 1,
-        audit_retention_days: p.governance_rules?.audit_retention_days || 30,
-        support_tier: p.governance_rules?.support_tier || 'Email',
-      }));
+      // Define pricing and limits based on plan code
+      const planDefaults = {
+        'FREE': { price: 0, users: 3, branches: 1, storage: 1, trial: 0, approval: 1, audit: 7, support: 'Community' },
+        'BASIC': { price: 999, users: 10, branches: 2, storage: 5, trial: 14, approval: 2, audit: 30, support: 'Email' },
+        'STANDARD': { price: 2499, users: 25, branches: 5, storage: 25, trial: 14, approval: 3, audit: 90, support: 'Priority Email' },
+        'PREMIUM': { price: 4999, users: 50, branches: 10, storage: 100, trial: 14, approval: 4, audit: 180, support: '24/7 Chat' },
+        'ENTERPRISE': { price: 9999, users: -1, branches: -1, storage: 500, trial: 30, approval: 5, audit: 365, support: 'Dedicated Manager' },
+      };
+
+      const planFeatures = {
+        'FREE': ['3 Users', '1 Branch', 'Basic Reports', 'Community Support'],
+        'BASIC': ['10 Users', '2 Branches', 'Standard Reports', 'Email Support', 'Task Management'],
+        'STANDARD': ['25 Users', '5 Branches', 'Advanced Reports', 'Priority Support', 'Workflow Automation', 'API Access'],
+        'PREMIUM': ['50 Users', '10 Branches', 'Custom Reports', '24/7 Support', 'Advanced Workflows', 'Integrations', 'Audit Logs'],
+        'ENTERPRISE': ['Unlimited Users', 'Unlimited Branches', 'All Features', 'Dedicated Manager', 'Custom Integrations', 'SLA Guarantee', 'SSO/SAML'],
+      };
+
+      plans = dbPlans.map(p => {
+        const defaults = planDefaults[p.code] || planDefaults['BASIC'];
+        const features = planFeatures[p.code] || planFeatures['BASIC'];
+        
+        return {
+          id: p.id?.toString() || p.code?.toLowerCase(),
+          code: p.code,
+          name: p.name,
+          description: p.description || '',
+          price_monthly: defaults.price,
+          price_yearly: defaults.price * 10, // 2 months free for yearly
+          currency: 'INR',
+          max_users: defaults.users,
+          max_branches: defaults.branches,
+          max_storage_gb: defaults.storage,
+          trial_days: defaults.trial,
+          is_active: p.status === 'active',
+          is_popular: p.is_popular === true || p.code === 'STANDARD',
+          features: features,
+          approval_levels: defaults.approval,
+          audit_retention_days: defaults.audit,
+          support_tier: defaults.support,
+        };
+      });
     } catch (dbErr) {
       console.warn('[Welcome] Could not fetch plans from DB:', dbErr.message);
     }
 
-    // If no plans found, use defaults
+    // If no plans found, use defaults (5 plans matching our schema)
     if (plans.length === 0) {
       plans = [
         {
-          id: 'starter',
-          code: 'STARTER',
-          name: 'Starter',
-          description: 'Perfect for small teams getting started',
+          id: 'free',
+          code: 'FREE',
+          name: 'Free',
+          description: 'Get started with basic features. Perfect for trying out the platform.',
+          price_monthly: 0,
+          price_yearly: 0,
+          currency: 'INR',
+          max_users: 3,
+          max_branches: 1,
+          max_storage_gb: 1,
+          trial_days: 0,
+          is_active: true,
+          is_popular: false,
+          features: ['3 Users', '1 Branch', 'Basic Reports', 'Community Support'],
+          approval_levels: 1,
+          audit_retention_days: 7,
+          support_tier: 'Community',
+        },
+        {
+          id: 'basic',
+          code: 'BASIC',
+          name: 'Basic',
+          description: 'Essential features for small teams getting started.',
           price_monthly: 999,
           price_yearly: 9990,
           currency: 'INR',
-          max_users: 5,
-          max_branches: 1,
+          max_users: 10,
+          max_branches: 2,
           max_storage_gb: 5,
           trial_days: 14,
           is_active: true,
           is_popular: false,
-          features: ['Basic Reports', 'Email Support', '5 Users', '1 Branch'],
-          approval_levels: 1,
+          features: ['10 Users', '2 Branches', 'Standard Reports', 'Email Support', 'Task Management'],
+          approval_levels: 2,
           audit_retention_days: 30,
           support_tier: 'Email',
         },
         {
-          id: 'professional',
-          code: 'PROFESSIONAL',
-          name: 'Professional',
-          description: 'For growing businesses with advanced needs',
-          price_monthly: 2999,
-          price_yearly: 29990,
+          id: 'standard',
+          code: 'STANDARD',
+          name: 'Standard',
+          description: 'Comprehensive features for growing businesses. Best value.',
+          price_monthly: 2499,
+          price_yearly: 24990,
           currency: 'INR',
           max_users: 25,
           max_branches: 5,
-          max_storage_gb: 50,
+          max_storage_gb: 25,
           trial_days: 14,
           is_active: true,
           is_popular: true,
-          features: ['Advanced Reports', 'Priority Support', '25 Users', '5 Branches', 'API Access'],
+          features: ['25 Users', '5 Branches', 'Advanced Reports', 'Priority Support', 'Workflow Automation', 'API Access'],
           approval_levels: 3,
           audit_retention_days: 90,
+          support_tier: 'Priority Email',
+        },
+        {
+          id: 'premium',
+          code: 'PREMIUM',
+          name: 'Premium',
+          description: 'Advanced features with priority support. Ideal for established businesses.',
+          price_monthly: 4999,
+          price_yearly: 49990,
+          currency: 'INR',
+          max_users: 50,
+          max_branches: 10,
+          max_storage_gb: 100,
+          trial_days: 14,
+          is_active: true,
+          is_popular: false,
+          features: ['50 Users', '10 Branches', 'Custom Reports', '24/7 Support', 'Advanced Workflows', 'Integrations', 'Audit Logs'],
+          approval_levels: 4,
+          audit_retention_days: 180,
           support_tier: '24/7 Chat',
         },
         {
           id: 'enterprise',
           code: 'ENTERPRISE',
           name: 'Enterprise',
-          description: 'Full control for large organizations',
+          description: 'Unlimited features with dedicated support. For large organizations.',
           price_monthly: 9999,
           price_yearly: 99990,
           currency: 'INR',
           max_users: -1,
           max_branches: -1,
           max_storage_gb: 500,
-          trial_days: 14,
+          trial_days: 30,
           is_active: true,
           is_popular: false,
-          features: ['All Features', 'Dedicated Manager', 'Unlimited Users', 'Unlimited Branches', 'Custom Integrations', 'SLA Guarantee'],
+          features: ['Unlimited Users', 'Unlimited Branches', 'All Features', 'Dedicated Manager', 'Custom Integrations', 'SLA Guarantee', 'SSO/SAML'],
           approval_levels: 5,
           audit_retention_days: 365,
           support_tier: 'Dedicated Manager',

@@ -725,16 +725,10 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
     loadTasks();
   }, []);
 
-  // Load personalized greeting with pending tasks
+  // Load conversation or greeting when switching to Bey view
   useEffect(() => {
     if (user && activeView === 'bey' && messages.length === 0) {
-      loadGreeting();
-    }
-  }, [user, activeView]);
-
-  // Load previous conversation when switching to Bey
-  useEffect(() => {
-    if (user && activeView === 'bey' && !conversationId) {
+      // Try to load existing conversation, which falls back to greeting if none found
       loadLatestConversation();
     }
   }, [user, activeView]);
@@ -1036,9 +1030,35 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       
       if (response.ok) {
         const data = await response.json();
+        // Check if this is on the welcome page (first time setup)
+        const isWelcomePage = typeof window !== 'undefined' && window.location.pathname.includes('/welcome');
+        
+        let greetingText = data.greeting || 'Hello! How can I help you today?';
+        
+        // For welcome page, add Bey's introduction
+        if (isWelcomePage) {
+          const fullName = (user as any)?.name || (user as any)?.fullName || (user as any)?.organizationName || 'Admin';
+          greetingText = `Hi! I am Bey, your BISMAN AI Assistant!
+
+Here is what I can help you with:
+
+✅ Navigate BISMAN features
+✅ Answer questions about your ERP
+✅ Guide you through workflows
+✅ Help with reports and analytics
+
+Welcome, ${fullName}! 🎉
+
+Choose a subscription plan that fits your business needs:
+
+⭐ Each plan has different user limits
+⭐ More approval levels = better accountability
+⭐ You can upgrade anytime!`;
+        }
+        
         const greetingMessage: Message = {
           id: `bot-greeting-${Date.now()}`,
-          message: data.greeting || 'Hello! How can I help you today?',
+          message: greetingText,
           user_id: 'bey',
           create_at: Date.now(),
           isBot: true
@@ -1080,9 +1100,16 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
       // Only load if we're in Bey view
       if (activeView !== 'bey') return;
       
+      // Add timeout to prevent long delays
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 3000); // 3 second timeout
+      
       const response = await fetch('/api/chat/conversation/latest', {
-        credentials: 'include'
+        credentials: 'include',
+        signal: controller.signal
       });
+      
+      clearTimeout(timeoutId);
       
       if (response.ok) {
         const data = await response.json();
@@ -1096,13 +1123,18 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
           setMessages(beyMessages);
           console.log('[Chat] Loaded Bey conversation:', beyMessages.length, 'messages');
         } else {
-          // No conversation found, show empty
-          setMessages([]);
+          // No conversation found, load greeting as first message
           setConversationId(null);
+          loadGreeting();
         }
+      } else {
+        // API failed, load greeting as first message
+        loadGreeting();
       }
     } catch (error) {
       console.error('[Chat] Failed to load conversation:', error);
+      // On error, load greeting as first message
+      loadGreeting();
     }
   };
 
@@ -1589,12 +1621,11 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
         {/* Sidebar Header with Integrated Search */}
         <div className={`p-3 border-b border-gray-700/50 ${!isFullscreen ? 'rounded-tl-lg' : ''}`}>
           <div className="flex items-center gap-2 mb-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold text-sm">
-              B
-            </div>
-            <div className="flex-1 min-w-0">
-              <span className="text-white font-semibold text-sm">BISMAN ERP</span>
-            </div>
+            <img 
+              src="/brand/bisman-logo.svg" 
+              alt="BISMAN" 
+              className="w-8 h-8 rounded-lg"
+            />
             {/* Socket connection indicator */}
             <div 
               className={`w-2 h-2 rounded-full ${socketConnected ? 'bg-green-500' : 'bg-red-500'}`}
@@ -1646,9 +1677,11 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             }`}
           >
             <div className="relative flex-shrink-0">
-              <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
-                <Sparkles className="w-5 h-5" />
-              </div>
+              <img 
+                src="/brand/chat-bot-icon.png" 
+                alt="Bey" 
+                className="w-10 h-10 rounded-full object-cover"
+              />
               <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-[#2b2d42]"></div>
             </div>
             <div className="flex-1 text-left min-w-0">
@@ -1897,9 +1930,11 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
             {activeView === 'bey' && (
               <>
                 <div className="relative">
-                  <div className="w-10 h-10 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center text-white shadow-lg shadow-blue-500/20">
-                    <Sparkles className="w-5 h-5" />
-                  </div>
+                  <img 
+                    src="/brand/chat-bot-icon.png" 
+                    alt="Bey" 
+                    className="w-10 h-10 rounded-full object-cover"
+                  />
                   <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 rounded-full border-2 border-[#2b2d42]"></div>
                 </div>
                 <div>
@@ -2196,9 +2231,11 @@ export default function CleanChatInterface({ onClose }: CleanChatInterfaceProps 
               }`}>
                 {/* Bot Avatar - Only show for Bey assistant */}
                 {message.isBot && (
-                  <div className="w-6 h-6 rounded-full bg-gradient-to-br from-blue-500 to-purple-500 flex items-center justify-center text-white flex-shrink-0 mt-1">
-                    <Sparkles className="w-3 h-3" />
-                  </div>
+                  <img 
+                    src="/brand/chat-bot-icon.png" 
+                    alt="Bey" 
+                    className="w-6 h-6 rounded-full object-cover flex-shrink-0 mt-1"
+                  />
                 )}
                 
                 {/* Message Bubble */}

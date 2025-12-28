@@ -76,11 +76,13 @@ export default function ChatGuard() {
       '/auth/register',
       '/login',
       '/register',
+      '/welcome',
     ]);
     if (exactPublic.has(pathname)) return true;
     return (
       pathname.startsWith('/auth') ||
-      pathname.startsWith('/public')
+      pathname.startsWith('/public') ||
+      pathname.startsWith('/welcome')
     );
   }, [pathname]);
 
