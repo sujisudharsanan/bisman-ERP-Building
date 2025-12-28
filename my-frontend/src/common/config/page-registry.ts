@@ -2299,7 +2299,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     iconKey: "Users",
     module: 'admin',
     permissions: ['admin-dashboard'],
-    roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN'],
+    roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN'],
     status: 'active',
     showInSidebar: true,
     description: 'Manage client accounts and permissions',

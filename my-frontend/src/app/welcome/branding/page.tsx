@@ -135,10 +135,22 @@ export default function BrandingSetupPage() {
       });
 
       if (response.ok) {
-        // Clear session storage
+        const result = await response.json();
+        
+        // Clear plan selection from session storage
         sessionStorage.removeItem('selectedPlan');
-        // Redirect to dashboard
-        router.push('/dashboard');
+        
+        // Store brand data for the launching splash screen
+        sessionStorage.setItem('workspace_display_name', displayName.trim());
+        if (logoPreview) {
+          sessionStorage.setItem('workspace_logo_url', logoPreview);
+        }
+        
+        // Set flag to show subscription activation modal on admin dashboard
+        sessionStorage.setItem('workspace_just_setup', 'true');
+        
+        // Redirect to personalized launching splash screen
+        router.push('/welcome/launching');
       } else {
         const error = await response.json();
         alert(error.message || 'Failed to activate workspace');

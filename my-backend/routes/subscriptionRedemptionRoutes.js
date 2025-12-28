@@ -11,6 +11,7 @@ const express = require('express');
 const router = express.Router();
 const { authenticate, requireRole } = require('../middleware/auth');
 const couponService = require('../services/subscriptionCouponService');
+const { getPrisma } = require('../lib/prisma');
 
 // ============================================================================
 // MIDDLEWARE: Client Admin Only
@@ -169,6 +170,152 @@ router.get('/my-subscription', ...clientAdminOnly, async (req, res) => {
       ok: false,
       error: 'STATUS_FAILED',
       message: 'Failed to fetch subscription status',
+    });
+  }
+});
+
+/**
+ * POST /api/subscriptions/start-trial
+ * Start a free trial for the tenant (14 days with Basic plan features)
+ */
+router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    if (!prisma) {
+      return res.status(500).json({
+        ok: false,
+        error: 'DATABASE_ERROR',
+        message: 'Database connection not available',
+      });
+    }
+    
+    const tenantId = req.user.tenant_id;
+    const userId = req.user.id;
+
+    if (!tenantId) {
+      return res.status(400).json({
+        ok: false,
+        error: 'NO_TENANT',
+        message: 'No organization associated with your account',
+      });
+    }
+
+    // Check if already has active subscription or trial
+    const existingStatus = await couponService.getTenantSubscriptionStatus(tenantId);
+    if (existingStatus.hasActiveSubscription) {
+      return res.status(400).json({
+        ok: false,
+        error: 'ALREADY_SUBSCRIBED',
+        message: 'You already have an active subscription',
+      });
+    }
+
+    if (existingStatus.subscription?.status === 'trial') {
+      return res.status(400).json({
+        ok: false,
+        error: 'TRIAL_ACTIVE',
+        message: 'You already have an active trial',
+      });
+    }
+
+    // Check if trial was already used
+    // Valid enum values: TRIAL, ACTIVE, UPGRADING, DOWNGRADING, GRACE_PERIOD, SUSPENDED, CANCELLED
+    const previousTrial = await prisma.clientSubscription.findFirst({
+      where: {
+        client_id: tenantId,
+        state: { in: ['TRIAL', 'ACTIVE', 'GRACE_PERIOD', 'CANCELLED'] },
+      },
+    });
+
+    if (previousTrial) {
+      // If already has subscription or trial, don't allow new trial
+      if (previousTrial.state === 'TRIAL') {
+        return res.status(400).json({
+          ok: false,
+          error: 'TRIAL_ACTIVE',
+          message: 'You already have an active trial.',
+        });
+      }
+      if (previousTrial.state === 'ACTIVE') {
+        return res.status(400).json({
+          ok: false,
+          error: 'ALREADY_SUBSCRIBED',
+          message: 'You already have an active subscription.',
+        });
+      }
+      return res.status(400).json({
+        ok: false,
+        error: 'TRIAL_USED',
+        message: 'You have already used your free trial. Please enter an activation code to continue.',
+      });
+    }
+
+    // Get basic plan (or first available plan) for trial features
+    const basicPlan = await prisma.subscriptionPlan.findFirst({
+      where: { is_active: true },
+      orderBy: { tier: 'asc' },
+    });
+
+    if (!basicPlan) {
+      return res.status(500).json({
+        ok: false,
+        error: 'NO_PLAN',
+        message: 'No subscription plans available. Please contact support.',
+      });
+    }
+
+    const trialDays = 14;
+    const now = new Date();
+    const trialEnd = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
+
+    // Create trial subscription
+    await prisma.clientSubscription.create({
+      data: {
+        client_id: tenantId,
+        plan_id: basicPlan.id,
+        state: 'TRIAL',
+        trial_start_date: now,
+        trial_end_date: trialEnd,
+        started_at: now,
+        expires_at: trialEnd,
+        activation_source: 'TRIAL_MODAL',
+        is_active: true,
+      },
+    });
+
+    // Log the trial start
+    await prisma.subscriptionCouponAuditLog.create({
+      data: {
+        action: 'TRIAL_STARTED',
+        actor_id: req.user.id,
+        tenant_id: tenantId,
+        details: {
+          trialDays: trialDays,
+          expiresAt: trialEnd.toISOString(),
+          planId: basicPlan.id,
+          planName: basicPlan.name,
+        },
+        ip_address: req.ip || req.connection?.remoteAddress,
+      },
+    });
+
+    res.json({
+      ok: true,
+      message: `Your ${trialDays}-day free trial has started!`,
+      trial: {
+        status: 'trial',
+        daysRemaining: trialDays,
+        expiresAt: trialEnd.toISOString(),
+        features: basicPlan.features || {},
+        planName: basicPlan.name || 'Trial',
+      },
+    });
+  } catch (error) {
+    console.error('[RedemptionRoutes] Start trial error:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'TRIAL_START_FAILED',
+      message: 'Failed to start trial. Please try again.',
     });
   }
 });

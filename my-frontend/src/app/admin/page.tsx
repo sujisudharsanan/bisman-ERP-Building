@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { 
   TrendingUp, TrendingDown, AlertTriangle, CheckCircle, 
   DollarSign, Users, Truck, UserCheck, Settings, Bell,
@@ -8,6 +8,7 @@ import {
   BarChart3, PieChart, Activity, Clock, Target, Zap,
   AlertCircle, Calendar, Building2, RefreshCw
 } from 'lucide-react';
+import SubscriptionActivationModal from '@/components/subscription/SubscriptionActivationModal';
 
 // Types
 interface KPIData {
@@ -21,8 +22,8 @@ interface KPIData {
 
 interface GainLossItem {
   title: string;
-  impact: number;
   category: string;
+  impact: number;
   type: 'gain' | 'loss';
 }
 
@@ -169,6 +170,84 @@ function ProgressBar({ value, color, label }: { value: number; color: string; la
 export default function ClientDashboardPage() {
   const [dateRange, setDateRange] = useState<'today' | '7days' | 'month' | 'quarter'>('month');
   const [selectedBusiness, setSelectedBusiness] = useState('All Businesses');
+  const [showActivationModal, setShowActivationModal] = useState(false);
+  const [subscriptionChecked, setSubscriptionChecked] = useState(false);
+
+  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
+
+  // Check subscription status and show modal if needed
+  useEffect(() => {
+    const checkSubscriptionStatus = async () => {
+      try {
+        // Check subscription status from backend
+        const response = await fetch(`${API_BASE}/api/subscriptions/my-subscription`, {
+          credentials: 'include',
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          
+          // If has active subscription or trial, don't show modal
+          if (data.hasActiveSubscription || data.subscription?.status === 'trial' || data.subscription?.status === 'active') {
+            setSubscriptionChecked(true);
+            // Clear any dismissal tracking since subscription is now active
+            localStorage.removeItem('subscription_modal_dismissed_at');
+            return;
+          }
+        }
+
+        // Check if popup was recently dismissed (within 5 minutes)
+        const dismissedAt = localStorage.getItem('subscription_modal_dismissed_at');
+        if (dismissedAt) {
+          const dismissedTime = parseInt(dismissedAt, 10);
+          const now = Date.now();
+          const fiveMinutes = 5 * 60 * 1000;
+          
+          if (now - dismissedTime < fiveMinutes) {
+            // Was dismissed less than 5 minutes ago, don't show yet
+            setSubscriptionChecked(true);
+            
+            // Schedule to show after remaining time
+            const remainingTime = fiveMinutes - (now - dismissedTime);
+            setTimeout(() => {
+              setShowActivationModal(true);
+            }, remainingTime);
+            return;
+          }
+        }
+
+        // No active subscription and either never dismissed or 5+ mins passed - show modal
+        setShowActivationModal(true);
+        setSubscriptionChecked(true);
+        
+      } catch (error) {
+        console.error('Error checking subscription:', error);
+        setSubscriptionChecked(true);
+        
+        // On error, check dismissal time
+        const dismissedAt = localStorage.getItem('subscription_modal_dismissed_at');
+        if (!dismissedAt) {
+          setShowActivationModal(true);
+        }
+      }
+    };
+
+    checkSubscriptionStatus();
+  }, [API_BASE]);
+
+  const handleActivationSuccess = () => {
+    setShowActivationModal(false);
+    // Clear dismissal tracking since subscription is now active
+    localStorage.removeItem('subscription_modal_dismissed_at');
+    // Reload to refresh subscription status
+    window.location.reload();
+  };
+
+  const handleModalClose = () => {
+    // Store dismissal time so we can show again after 5 minutes
+    localStorage.setItem('subscription_modal_dismissed_at', Date.now().toString());
+    setShowActivationModal(false);
+  };
 
   const getHealthColor = (score: number) => {
     if (score >= 80) return 'text-emerald-500';
@@ -659,6 +738,13 @@ export default function ClientDashboardPage() {
           </div>
         </section>
       </main>
+
+      {/* Subscription Activation Modal */}
+      <SubscriptionActivationModal
+        isOpen={showActivationModal}
+        onClose={handleModalClose}
+        onActivated={handleActivationSuccess}
+      />
     </div>
   );
 }

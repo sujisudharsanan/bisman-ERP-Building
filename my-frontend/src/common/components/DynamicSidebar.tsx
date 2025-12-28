@@ -55,7 +55,18 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   
   // Cache permissions in sessionStorage for faster subsequent loads
-  const cacheKey = user?.id ? `sidebar_perms_${user.id}` : null;
+  // Version 2: Added to invalidate old cache with incorrect ADMIN permissions for Client Management
+  const cacheKey = user?.id ? `sidebar_perms_v2_${user.id}` : null;
+  
+  // Clear old cache keys on mount
+  useEffect(() => {
+    if (user?.id && typeof localStorage !== 'undefined') {
+      // Remove old cache key format
+      try {
+        localStorage.removeItem(`sidebar_perms_${user.id}`);
+      } catch (e) {}
+    }
+  }, [user?.id]);
 
   // Load lucide-react icons once on client to resolve registry icon keys (strings)
   useEffect(() => {
