@@ -55,15 +55,16 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
   
   // Cache permissions in sessionStorage for faster subsequent loads
-  // Version 2: Added to invalidate old cache with incorrect ADMIN permissions for Client Management
-  const cacheKey = user?.id ? `sidebar_perms_v2_${user.id}` : null;
+  // Version 3: Added to invalidate old cache - ADMIN now has role-based pages from backend
+  const cacheKey = user?.id ? `sidebar_perms_v3_${user.id}` : null;
   
   // Clear old cache keys on mount
   useEffect(() => {
     if (user?.id && typeof localStorage !== 'undefined') {
-      // Remove old cache key format
+      // Remove old cache key formats
       try {
         localStorage.removeItem(`sidebar_perms_${user.id}`);
+        localStorage.removeItem(`sidebar_perms_v2_${user.id}`);
       } catch (e) {}
     }
   }, [user?.id]);
