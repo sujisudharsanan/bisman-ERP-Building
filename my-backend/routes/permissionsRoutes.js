@@ -28,6 +28,14 @@ router.get('/', authMiddleware.authenticate, async (req, res) => {
       });
     }
 
+    // Role-based default pages mapping
+    const roleBasedPages = {
+      'SYSTEM_ADMIN': ['user-creation', 'user-management', 'permission-manager', 'roles-users-report', 'system-settings', 'backup-restore', 'system-health-dashboard', 'integration-settings', 'deployment-tools', 'fallback-recovery'],
+      'ADMIN': ['user-creation', 'user-management', 'system-flow', 'subscription', 'usage', 'settings', 'sla', 'rag-sources', 'task-approvals'],
+      'HR': ['user-creation', 'user-management', 'hr-policy'],
+      'HR_MANAGER': ['user-creation', 'user-management', 'hr-policy']
+    };
+
     // Handle both UUID and integer user IDs
     let userIdInt = parseInt(userId);
     
@@ -37,20 +45,26 @@ router.get('/', authMiddleware.authenticate, async (req, res) => {
       try {
         const user = await prisma.User.findUnique({
           where: { id: userId },
-          select: { legacy_id: true }
+          select: { legacy_id: true, role: true }
         });
         if (user?.legacy_id) {
           userIdInt = user.legacy_id;
           console.log(`[permissions] Found legacy_id: ${userIdInt}`);
         } else {
-          // No legacy_id - return empty permissions (user not in rbac_user_permissions)
-          console.log(`[permissions] No legacy_id found for UUID user, returning empty permissions`);
+          // No legacy_id - check role-based permissions
+          const userRole = user?.role?.toUpperCase() || '';
+          console.log(`[permissions] No legacy_id found for UUID user, checking role: ${userRole}`);
+          
+          const allowedPages = roleBasedPages[userRole] || [];
+          console.log(`[permissions] Role-based pages for ${userRole}:`, allowedPages);
+          
           return res.json({
             success: true,
             data: {
               userId: userId,
-              allowedPages: [],
-              cached: false
+              allowedPages: allowedPages,
+              cached: false,
+              source: 'role-based'
             },
             timestamp: new Date().toISOString()
           });
@@ -86,12 +100,36 @@ router.get('/', authMiddleware.authenticate, async (req, res) => {
 
     // Cache miss - query database
     console.log(`[permissions] Cache MISS for user ${userIdInt} - querying DB`);
+    
+    // Get user role first
+    const user = await prisma.User.findFirst({
+      where: { 
+        OR: [
+          { legacy_id: userIdInt },
+          { id: userId }
+        ]
+      },
+      select: { role: true }
+    });
+    
+    const userRole = user?.role?.toUpperCase() || '';
+    console.log(`[permissions] User role: ${userRole}`);
+    
+    // Get explicit page permissions from rbac_user_permissions
     const permissions = await prisma.rbac_user_permissions.findMany({
       where: { user_id: userIdInt },
       select: { page_key: true }
     });
 
-    const allowedPages = permissions.map(p => p.page_key);
+    let allowedPages = permissions.map(p => p.page_key);
+    
+    // For ADMIN, SYSTEM_ADMIN, HR, HR_MANAGER roles, add role-based default pages
+    // These roles have inherent permissions based on their role level
+    if (roleBasedPages[userRole]) {
+      const rolePagesSet = new Set([...allowedPages, ...roleBasedPages[userRole]]);
+      allowedPages = Array.from(rolePagesSet);
+      console.log(`[permissions] Added role-based pages for ${userRole}:`, roleBasedPages[userRole]);
+    }
 
     // ✅ PERFORMANCE: Store in cache (5 min TTL)
     cacheService.permissions.setByUser(userIdInt, allowedPages);
