@@ -54,9 +54,9 @@ export default function PaymentSummaryReportPage() {
   });
   const [dateTo, setDateTo] = useState(() => new Date().toISOString().split('T')[0]);
 
-  // Allowed roles
-  const allowedRoles = ['finance_controller', 'cfo', 'auditor', 'super_admin', 'admin'];
-  const hasAccess = user?.role && allowedRoles.includes(user.role);
+  // Allowed roles (case-insensitive check)
+  const allowedRoles = ['finance_controller', 'cfo', 'auditor', 'super_admin', 'admin', 'enterprise_admin', 'hub_incharge'];
+  const hasAccess = user?.role && allowedRoles.some(r => r.toLowerCase() === user.role?.toLowerCase());
 
   const fetchReportData = useCallback(async () => {
     setIsLoading(true);

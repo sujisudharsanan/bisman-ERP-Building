@@ -1737,12 +1737,32 @@ app.get('/api/me', async (req, res) => {
             productType: true,
             profile_pic_url: true,
             assignedModules: true,
+            tenant_id: true,  // Include tenant_id for logo fetch
           }
         });
       }
       console.log('📸 Database user profile_pic_url:', dbUser?.profile_pic_url || 'null');
     } catch (dbError) {
       console.warn('⚠️ Could not fetch user from database:', dbError.message);
+    }
+    
+    // Fetch tenant/client info for logo and branding
+    let tenantInfo = null;
+    try {
+      if (dbUser?.tenant_id || payload.tenant_id) {
+        const tenantId = dbUser?.tenant_id || payload.tenant_id;
+        // Try to get client/tenant info
+        tenantInfo = await prisma.client.findUnique({
+          where: { id: tenantId },
+          select: { id: true, name: true, trade_name: true, logo: true, settings: true }
+        });
+        // Check settings.logo.data if logo column is null (from welcome activation)
+        if (!tenantInfo?.logo && tenantInfo?.settings?.logo?.data) {
+          tenantInfo.logo = tenantInfo.settings.logo.data;
+        }
+      }
+    } catch (tenantError) {
+      console.warn('⚠️ Could not fetch tenant info:', tenantError.message);
     }
     
     // Shape a user object with database data if available, fallback to JWT
@@ -1763,6 +1783,10 @@ app.get('/api/me', async (req, res) => {
       productType: dbUser?.productType || payload.productType || null,
       assignedModules: dbUser?.assignedModules || [],
       userType: payload.userType || 'USER',
+      // Add tenant/client branding info
+      tenant_name: tenantInfo?.trade_name || tenantInfo?.name || null,
+      clientName: tenantInfo?.trade_name || tenantInfo?.name || null,
+      clientLogo: tenantInfo?.logo || null,
     }
     
     console.log('✅ /api/me returning user:', { 
@@ -1771,7 +1795,9 @@ app.get('/api/me', async (req, res) => {
       role: user.role, 
       roleName: user.roleName,
       userType: user.userType,
-      profile_pic_url: user.profile_pic_url
+      profile_pic_url: user.profile_pic_url,
+      clientName: user.clientName,
+      clientLogo: user.clientLogo ? '(logo present)' : null
     });
     return res.json({ ok: true, user })
   } catch (e) {
@@ -4515,11 +4541,13 @@ app.get('/api/roles', authenticate, async (req, res) => {
 app.get('/api/users', authenticate, requireRole(['ADMIN', 'SUPER_ADMIN']), async (req, res) => {
   try {
     let users = []
+    console.log('[/api/users] Request from user:', req.user?.email, 'role:', req.user?.role, 'tenant_id:', req.user?.tenant_id);
     
     // Try to fetch from database first
     try {
       // ✅ SECURITY FIX: Add tenant filter to prevent cross-tenant data access
       const whereClause = TenantGuard.getTenantFilter(req);
+      console.log('[/api/users] Where clause:', JSON.stringify(whereClause));
       
       const dbUsers = await prisma.user.findMany({
         where: whereClause, // ✅ SECURITY: Filter by tenant_id
@@ -4535,57 +4563,22 @@ app.get('/api/users', authenticate, requireRole(['ADMIN', 'SUPER_ADMIN']), async
           createdAt: 'desc'
         }
       })
+      console.log('[/api/users] Found', dbUsers.length, 'users');
       
       users = dbUsers.map(user => ({
         id: user.id,
         username: user.username || user.email.split('@')[0],
         email: user.email,
         roleName: user.role || 'USER',
+        role: user.role || 'USER',  // Add role field for frontend compatibility
         isActive: true, // Default to active
         createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
         lastLogin: null // TODO: Add last login tracking
       }))
-    } catch {
-      console.log('Database not available, using mock data')
-      // Fallback to mock data
-      users = [
-        {
-          id: 1,
-          username: 'superadmin',
-          email: 'suji@gmail.com',
-          roleName: 'SUPER_ADMIN',
-          isActive: true,
-          createdAt: '2024-01-01T00:00:00Z',
-          lastLogin: '2025-10-05T10:30:00Z'
-        },
-        {
-          id: 2,
-          username: 'admin',
-          email: 'admin@business.com',
-          roleName: 'ADMIN',
-          isActive: true,
-          createdAt: '2024-01-15T00:00:00Z',
-          lastLogin: '2025-10-04T15:20:00Z'
-        },
-        {
-          id: 3,
-          username: 'manager',
-          email: 'manager@business.com',
-          roleName: 'MANAGER',
-          isActive: true,
-          createdAt: '2024-02-01T00:00:00Z',
-          lastLogin: '2025-10-05T09:15:00Z'
-        },
-        {
-          id: 4,
-          username: 'staff',
-          email: 'staff@business.com',
-          roleName: 'STAFF',
-          isActive: true,
-          createdAt: '2024-03-01T00:00:00Z',
-          lastLogin: '2025-10-05T08:45:00Z'
-        }
-      ]
+    } catch (dbError) {
+      console.error('Database query failed in /api/users:', dbError.message)
+      // Return empty array instead of mock data - show real state
+      users = []
     }
     
     res.json({ 

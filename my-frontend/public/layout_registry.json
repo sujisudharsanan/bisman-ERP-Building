@@ -354,11 +354,12 @@
     {
       "id": "user-creation",
       "name": "Create New User",
-      "path": "/hr/user-creation",
-      "module": "hr",
+      "path": "/system/user-creation",
+      "module": "system",
       "status": "active",
       "description": "Two-stage user creation with KYC workflow - HR creates request and sends KYC link or creates user immediately",
       "order": 2,
+      "showInSidebar": true,
       "permissions": [
         "user-management",
         "hr-management"

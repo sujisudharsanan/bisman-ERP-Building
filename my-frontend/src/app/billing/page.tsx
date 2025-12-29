@@ -1,928 +1,853 @@
 'use client';
 
-/**
- * Billing Overview Dashboard
- * BISMAN ERP - Per-Tenant Billing Management
- *
- * Features:
- * - Current plan name, tier, price, features
- * - Billing cycle (monthly/annual), next billing date, trial expiry
- * - Current balance / next invoice amount
- * - Quick actions: Upgrade, Downgrade, Cancel, Update payment method
- */
-
-import React, { useState, useEffect, useCallback } from 'react';
-import Link from 'next/link';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
-import {
-  CreditCard,
-  Calendar,
-  DollarSign,
-  Package,
-  ArrowUpRight,
-  ArrowDownRight,
+import { 
+  CreditCard, 
+  TrendingUp, 
+  Calendar, 
+  CheckCircle, 
+  AlertCircle,
+  Download,
   Clock,
-  AlertTriangle,
-  CheckCircle,
-  XCircle,
-  FileText,
-  Settings,
-  TrendingUp,
+  DollarSign,
+  Users,
+  Database,
   Zap,
   Shield,
-  Users,
-  HardDrive,
-  Activity,
-  ChevronRight,
-  ExternalLink,
-  RefreshCw,
-  X,
   Star,
+  ChevronDown,
+  ChevronUp,
+  RefreshCw,
+  FileText,
+  Activity,
+  Award,
   Crown,
-  Building,
+  Sparkles,
+  BarChart3,
+  HardDrive,
+  Layers,
+  ListChecks,
+  UserCheck,
+  UserX,
+  Wallet,
+  Globe
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import api from '@/lib/api';
+import { useToast } from '@/components/ui/toast';
 
-// ============================================================================
-// TYPE DEFINITIONS
-// ============================================================================
+// Currency configuration
+const CURRENCIES = [
+  { code: 'INR', symbol: '₹', name: 'Indian Rupee' },
+  { code: 'USD', symbol: '$', name: 'US Dollar' },
+  { code: 'EUR', symbol: '€', name: 'Euro' },
+  { code: 'GBP', symbol: '£', name: 'British Pound' },
+  { code: 'AED', symbol: 'د.إ', name: 'UAE Dirham' },
+  { code: 'AUD', symbol: 'A$', name: 'Australian Dollar' },
+  { code: 'CAD', symbol: 'C$', name: 'Canadian Dollar' },
+  { code: 'SGD', symbol: 'S$', name: 'Singapore Dollar' },
+  { code: 'JPY', symbol: '¥', name: 'Japanese Yen' },
+];
 
-interface Plan {
-  id: string;
-  name: string;
-  tier: 'free' | 'starter' | 'pro' | 'enterprise';
-  price: number;
-  billingPeriod: 'monthly' | 'annual';
-  features: string[];
-  limits: {
-    users: number;
-    storage: number; // GB
-    apiCalls: number;
-  };
-}
+// Feature categories for better organization
+const FEATURE_CATEGORIES = {
+  core: { label: 'Core Features', icon: Zap, color: 'from-blue-500 to-cyan-500' },
+  security: { label: 'Security & Compliance', icon: Shield, color: 'from-green-500 to-emerald-500' },
+  analytics: { label: 'Analytics & Reports', icon: BarChart3, color: 'from-purple-500 to-pink-500' },
+  storage: { label: 'Storage & Limits', icon: Database, color: 'from-orange-500 to-red-500' },
+};
 
-interface BillingSummary {
-  plan: Plan;
-  status: 'active' | 'trialing' | 'past_due' | 'canceled' | 'unpaid';
-  trialEndsAt: string | null;
-  trialDaysLeft: number | null;
-  currentPeriodStart: string;
-  currentPeriodEnd: string;
-  nextBillingDate: string | null;
-  nextInvoiceAmount: number;
-  currentBalance: number;
-  paymentMethod: {
-    type: string;
-    last4: string;
-    expMonth: number;
-    expYear: number;
-    brand: string;
+interface SubscriptionData {
+  subscription: {
+    id: string;
+    plan_id: string;
+    state: string;
+    start_date: string;
+    end_date: string;
+    is_active: boolean;
+  } | null;
+  plan: {
+    id: string;
+    name: string;
+    display_name: string;
+    base_price: number;
+    currency: string;
+    billing_cycle: string;
+    features: Record<string, boolean | number | string>;
+    limits: Record<string, number | string>;
   } | null;
   usage: {
-    users: { used: number; limit: number };
-    storage: { used: number; limit: number };
-    apiCalls: { used: number; limit: number };
+    users: number;
+    storage_mb: number;
+    api_calls: number;
+    tasks_completed?: number;
+    amount_processed?: number;
+  } | null;
+  billing_history: Array<{
+    id: string;
+    amount: number;
+    currency: string;
+    status: string;
+    created_at: string;
+    description: string;
+  }>;
+}
+
+interface TenantData {
+  id: string;
+  name: string;
+  slug: string;
+  settings?: Record<string, unknown>;
+}
+
+interface UserRole {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  status: string;
+  is_active: boolean;
+  created_at: string;
+}
+
+interface ExchangeRates {
+  [key: string]: number;
+}
+
+const BillingPage = () => {
+  const router = useRouter();
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [loading, setLoading] = useState(true);
+  const [subscriptionData, setSubscriptionData] = useState<SubscriptionData | null>(null);
+  const [tenantData, setTenantData] = useState<TenantData | null>(null);
+  const [users, setUsers] = useState<UserRole[]>([]);
+  const [analyticsData, setAnalyticsData] = useState<Record<string, unknown> | null>(null);
+  const [selectedCurrency, setSelectedCurrency] = useState('INR');
+  const [exchangeRates, setExchangeRates] = useState<ExchangeRates>({});
+  const [ratesLoading, setRatesLoading] = useState(false);
+  const [showAllFeatures, setShowAllFeatures] = useState(false);
+  const [showBillingHistory, setShowBillingHistory] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+
+  // Handle upgrade plan - redirect to welcome page for plan selection
+  const handleUpgradePlan = () => {
+    router.push('/welcome');
   };
-}
 
-// ============================================================================
-// CONSTANTS
-// ============================================================================
+  // Fetch exchange rates from real API
+  const fetchExchangeRates = useCallback(async () => {
+    setRatesLoading(true);
+    try {
+      // Using exchangerate-api.com free tier
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/INR');
+      const data = await response.json();
+      if (data && data.rates) {
+        setExchangeRates(data.rates);
+      }
+    } catch (error) {
+      console.error('Failed to fetch exchange rates:', error);
+      // Fallback rates if API fails
+      setExchangeRates({
+        INR: 1,
+        USD: 0.012,
+        EUR: 0.011,
+        GBP: 0.0095,
+        AED: 0.044,
+        AUD: 0.018,
+        CAD: 0.016,
+        SGD: 0.016,
+        JPY: 1.79,
+      });
+    } finally {
+      setRatesLoading(false);
+    }
+  }, []);
 
-const PLAN_FEATURES: Record<string, string[]> = {
-  free: [
-    'Up to 3 users',
-    '1 GB storage',
-    '1,000 API calls/month',
-    'Basic support',
-    'Core modules',
-  ],
-  starter: [
-    'Up to 10 users',
-    '10 GB storage',
-    '10,000 API calls/month',
-    'Email support',
-    'All modules',
-    'Basic analytics',
-  ],
-  pro: [
-    'Up to 50 users',
-    '100 GB storage',
-    '100,000 API calls/month',
-    'Priority support',
-    'All modules',
-    'Advanced analytics',
-    'Custom branding',
-    'API access',
-  ],
-  enterprise: [
-    'Unlimited users',
-    '1 TB storage',
-    'Unlimited API calls',
-    '24/7 phone support',
-    'All modules',
-    'Enterprise analytics',
-    'White-labeling',
-    'Dedicated account manager',
-    'SLA guarantee',
-    'Custom integrations',
-  ],
-};
+  // Convert currency using real exchange rates
+  const convertCurrency = useCallback((amount: number, fromCurrency: string, toCurrency: string): number => {
+    if (fromCurrency === toCurrency) return amount;
+    
+    // All rates are relative to INR (base currency from API)
+    const fromRate = exchangeRates[fromCurrency] || 1;
+    const toRate = exchangeRates[toCurrency] || 1;
+    
+    // Convert: amount in fromCurrency → INR → toCurrency
+    const amountInINR = fromCurrency === 'INR' ? amount : amount / fromRate;
+    const convertedAmount = toCurrency === 'INR' ? amountInINR : amountInINR * toRate;
+    
+    return convertedAmount;
+  }, [exchangeRates]);
 
-const PLAN_COLORS: Record<string, string> = {
-  free: '#6b7280',
-  starter: '#3b82f6',
-  pro: '#8b5cf6',
-  enterprise: '#f59e0b',
-};
+  // Format currency with proper symbol
+  const formatCurrency = useCallback((amount: number, currencyCode: string = selectedCurrency): string => {
+    const currency = CURRENCIES.find(c => c.code === currencyCode);
+    const symbol = currency?.symbol || '₹';
+    
+    // Handle JPY differently (no decimals)
+    if (currencyCode === 'JPY') {
+      return `${symbol}${Math.round(amount).toLocaleString()}`;
+    }
+    
+    return `${symbol}${amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+  }, [selectedCurrency]);
 
-const PLAN_ICONS: Record<string, React.ElementType> = {
-  free: Package,
-  starter: Star,
-  pro: Zap,
-  enterprise: Crown,
-};
+  // Get display price in selected currency
+  const getDisplayPrice = useCallback((priceInINR: number): string => {
+    const converted = convertCurrency(priceInINR, 'INR', selectedCurrency);
+    return formatCurrency(converted, selectedCurrency);
+  }, [convertCurrency, formatCurrency, selectedCurrency]);
 
-// ============================================================================
-// HELPER FUNCTIONS
-// ============================================================================
+  // Fetch all data
+  const fetchData = useCallback(async () => {
+    setLoading(true);
+    try {
+      const [subResponse, tenantResponse, usersResponse, analyticsResponse] = await Promise.allSettled([
+        api.get('/subscriptions/my-subscription'),
+        api.get('/tenant/current'),
+        api.get('/users'),
+        api.get('/analytics/summary'),
+      ]);
 
-function formatCurrency(amount: number, currency = 'USD'): string {
-  return new Intl.NumberFormat('en-US', {
-    style: 'currency',
-    currency,
-  }).format(amount);
-}
+      if (subResponse.status === 'fulfilled') {
+        setSubscriptionData(subResponse.value.data);
+      }
+      if (tenantResponse.status === 'fulfilled') {
+        setTenantData(tenantResponse.value.data);
+      }
+      if (usersResponse.status === 'fulfilled') {
+        setUsers(usersResponse.value.data?.users || usersResponse.value.data || []);
+      }
+      if (analyticsResponse.status === 'fulfilled') {
+        setAnalyticsData(analyticsResponse.value.data);
+      }
+    } catch (error) {
+      console.error('Error fetching billing data:', error);
+      toast({ title: 'Failed to load billing information', variant: 'destructive' });
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric',
-  });
-}
+  // Initial data fetch
+  useEffect(() => {
+    fetchData();
+    fetchExchangeRates();
+  }, [fetchData, fetchExchangeRates]);
 
-function getDaysUntil(dateStr: string): number {
-  const date = new Date(dateStr);
-  const now = new Date();
-  return Math.ceil((date.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-}
+  // Refresh data
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await Promise.all([fetchData(), fetchExchangeRates()]);
+    setRefreshing(false);
+    toast({ title: 'Data refreshed', variant: 'success' });
+  };
 
-// ============================================================================
-// COMPONENTS
-// ============================================================================
+  // Calculate role usage stats
+  const roleStats = useMemo(() => {
+    const activeUsers = users.filter(u => u.is_active);
+    const pendingUsers = users.filter(u => !u.is_active || u.status === 'pending');
+    
+    const roleBreakdown: Record<string, { active: number; pending: number }> = {};
+    users.forEach(user => {
+      const role = user.role || 'Unknown';
+      if (!roleBreakdown[role]) {
+        roleBreakdown[role] = { active: 0, pending: 0 };
+      }
+      if (user.is_active && user.status !== 'pending') {
+        roleBreakdown[role].active++;
+      } else {
+        roleBreakdown[role].pending++;
+      }
+    });
 
-// Trial Banner
-function TrialBanner({ daysLeft, onUpgrade }: { daysLeft: number; onUpgrade: () => void }) {
-  const urgencyColor = daysLeft <= 3 ? 'bg-red-500' : daysLeft <= 7 ? 'bg-yellow-500' : 'bg-blue-500';
-  
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className={`${urgencyColor} text-white rounded-xl p-4 mb-6`}
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Clock className="w-6 h-6" />
-          <div>
-            <p className="font-semibold">
-              {daysLeft > 0
-                ? `Your trial ends in ${daysLeft} day${daysLeft !== 1 ? 's' : ''}`
-                : 'Your trial has expired'}
-            </p>
-            <p className="text-sm opacity-90">
-              Upgrade now to keep all your data and access premium features
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={onUpgrade}
-          className="px-4 py-2 bg-white text-gray-900 font-semibold rounded-lg hover:bg-gray-100 transition-colors"
-        >
-          Upgrade Now
-        </button>
-      </div>
-    </motion.div>
-  );
-}
+    return {
+      total: users.length,
+      active: activeUsers.length,
+      pending: pendingUsers.length,
+      breakdown: roleBreakdown,
+    };
+  }, [users]);
 
-// Payment Failed Banner
-function PaymentFailedBanner({ onUpdatePayment }: { onUpdatePayment: () => void }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: -20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 rounded-xl p-4 mb-6"
-    >
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <AlertTriangle className="w-6 h-6" />
-          <div>
-            <p className="font-semibold">Payment Failed</p>
-            <p className="text-sm">
-              Your last payment was unsuccessful. Please update your payment method to avoid service interruption.
-            </p>
-          </div>
-        </div>
-        <button
-          onClick={onUpdatePayment}
-          className="px-4 py-2 bg-red-600 text-white font-semibold rounded-lg hover:bg-red-700 transition-colors"
-        >
-          Update Payment
-        </button>
-      </div>
-    </motion.div>
-  );
-}
+  // Calculate usage statistics
+  const usageStats = useMemo(() => {
+    const usage = subscriptionData?.usage;
+    const limits = subscriptionData?.plan?.limits;
+    
+    return {
+      users: {
+        used: roleStats.total,
+        limit: Number(limits?.max_users) || 100,
+        percentage: Math.min(100, (roleStats.total / (Number(limits?.max_users) || 100)) * 100),
+      },
+      storage: {
+        used: usage?.storage_mb || 0,
+        limit: Number(limits?.storage_gb) * 1024 || 10240,
+        percentage: Math.min(100, ((usage?.storage_mb || 0) / (Number(limits?.storage_gb) * 1024 || 10240)) * 100),
+      },
+      tasks: {
+        completed: usage?.tasks_completed || (analyticsData as Record<string, number>)?.tasks_completed || 0,
+      },
+      amount: {
+        processed: usage?.amount_processed || (analyticsData as Record<string, number>)?.total_amount_processed || 0,
+      },
+      api: {
+        used: usage?.api_calls || 0,
+        limit: Number(limits?.api_calls_per_month) || 100000,
+      },
+    };
+  }, [subscriptionData, roleStats, analyticsData]);
 
-// Current Plan Card
-function CurrentPlanCard({ plan, status }: { plan: Plan; status: string }) {
-  const PlanIcon = PLAN_ICONS[plan.tier] || Package;
-  const planColor = PLAN_COLORS[plan.tier];
+  // Get plan tier info for styling
+  const getPlanTier = (planName: string | undefined) => {
+    const name = (planName || '').toLowerCase();
+    if (name.includes('enterprise') || name.includes('premium')) {
+      return { icon: Crown, color: 'from-amber-400 to-yellow-600', label: 'Enterprise', bg: 'bg-gradient-to-r from-amber-50 to-yellow-50' };
+    }
+    if (name.includes('professional') || name.includes('pro')) {
+      return { icon: Award, color: 'from-purple-500 to-indigo-600', label: 'Professional', bg: 'bg-gradient-to-r from-purple-50 to-indigo-50' };
+    }
+    if (name.includes('standard') || name.includes('growth')) {
+      return { icon: Star, color: 'from-blue-500 to-cyan-500', label: 'Standard', bg: 'bg-gradient-to-r from-blue-50 to-cyan-50' };
+    }
+    if (name.includes('trial')) {
+      return { icon: Sparkles, color: 'from-green-500 to-emerald-500', label: 'Trial', bg: 'bg-gradient-to-r from-green-50 to-emerald-50' };
+    }
+    return { icon: Zap, color: 'from-gray-500 to-slate-600', label: 'Basic', bg: 'bg-gradient-to-r from-gray-50 to-slate-50' };
+  };
 
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6"
-    >
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Current Plan</h2>
-        <span
-          className={`px-2 py-1 rounded-full text-xs font-medium ${
-            status === 'active'
-              ? 'bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400'
-              : status === 'trialing'
-              ? 'bg-blue-100 dark:bg-blue-900/30 text-blue-700 dark:text-blue-400'
-              : 'bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-400'
-          }`}
-        >
-          {status === 'trialing' ? 'Trial' : status.charAt(0).toUpperCase() + status.slice(1)}
-        </span>
-      </div>
+  const planTier = getPlanTier(subscriptionData?.plan?.name);
+  const PlanIcon = planTier.icon;
 
-      <div className="flex items-center gap-4 mb-6">
-        <div
-          className="w-16 h-16 rounded-xl flex items-center justify-center"
-          style={{ backgroundColor: `${planColor}15` }}
-        >
-          <PlanIcon className="w-8 h-8" style={{ color: planColor }} />
-        </div>
-        <div>
-          <h3 className="text-2xl font-bold text-gray-900 dark:text-white capitalize">
-            {plan.name}
-          </h3>
-          <p className="text-gray-500 dark:text-gray-400">
-            {formatCurrency(plan.price)}/{plan.billingPeriod === 'monthly' ? 'mo' : 'yr'}
-          </p>
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
+          <p className="text-slate-600 text-lg">Loading billing information...</p>
         </div>
       </div>
-
-      <div className="space-y-2">
-        {plan.features.slice(0, 5).map((feature, idx) => (
-          <div key={idx} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-            <CheckCircle className="w-4 h-4 text-green-500" />
-            {feature}
-          </div>
-        ))}
-        {plan.features.length > 5 && (
-          <p className="text-sm text-gray-500 dark:text-gray-400 pl-6">
-            +{plan.features.length - 5} more features
-          </p>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
-// Billing Info Card
-function BillingInfoCard({ summary }: { summary: BillingSummary }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.1 }}
-      className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6"
-    >
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Billing Information</h2>
-
-      <div className="space-y-4">
-        {/* Next Billing Date */}
-        <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-700/50">
-          <div className="flex items-center gap-3">
-            <Calendar className="w-5 h-5 text-blue-500" />
-            <span className="text-sm text-gray-600 dark:text-gray-400">Next Billing Date</span>
-          </div>
-          <span className="font-medium text-gray-900 dark:text-white">
-            {summary.nextBillingDate ? formatDate(summary.nextBillingDate) : 'N/A'}
-          </span>
-        </div>
-
-        {/* Next Invoice Amount */}
-        <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-700/50">
-          <div className="flex items-center gap-3">
-            <DollarSign className="w-5 h-5 text-green-500" />
-            <span className="text-sm text-gray-600 dark:text-gray-400">Next Invoice</span>
-          </div>
-          <span className="font-medium text-gray-900 dark:text-white">
-            {formatCurrency(summary.nextInvoiceAmount)}
-          </span>
-        </div>
-
-        {/* Current Balance */}
-        <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-700/50">
-          <div className="flex items-center gap-3">
-            <CreditCard className="w-5 h-5 text-violet-500" />
-            <span className="text-sm text-gray-600 dark:text-gray-400">Current Balance</span>
-          </div>
-          <span
-            className={`font-medium ${
-              summary.currentBalance < 0 ? 'text-green-600' : 'text-gray-900 dark:text-white'
-            }`}
-          >
-            {formatCurrency(Math.abs(summary.currentBalance))}
-            {summary.currentBalance < 0 && ' credit'}
-          </span>
-        </div>
-
-        {/* Billing Cycle */}
-        <div className="flex items-center justify-between p-3 rounded-lg bg-gray-50 dark:bg-slate-700/50">
-          <div className="flex items-center gap-3">
-            <RefreshCw className="w-5 h-5 text-orange-500" />
-            <span className="text-sm text-gray-600 dark:text-gray-400">Billing Cycle</span>
-          </div>
-          <span className="font-medium text-gray-900 dark:text-white capitalize">
-            {summary.plan.billingPeriod}
-          </span>
-        </div>
-
-        {/* Current Period */}
-        <div className="p-3 rounded-lg bg-gray-50 dark:bg-slate-700/50">
-          <div className="flex items-center gap-2 mb-2">
-            <Clock className="w-5 h-5 text-gray-500" />
-            <span className="text-sm text-gray-600 dark:text-gray-400">Current Period</span>
-          </div>
-          <p className="text-sm font-medium text-gray-900 dark:text-white pl-7">
-            {formatDate(summary.currentPeriodStart)} — {formatDate(summary.currentPeriodEnd)}
-          </p>
-        </div>
-      </div>
-    </motion.div>
-  );
-}
-
-// Payment Method Card
-function PaymentMethodCard({ paymentMethod }: { paymentMethod: BillingSummary['paymentMethod'] }) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.2 }}
-      className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6"
-    >
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Payment Method</h2>
-      </div>
-
-      {paymentMethod ? (
-        <div className="flex items-center gap-4 p-4 rounded-lg bg-gray-50 dark:bg-slate-700/50">
-          <div className="w-12 h-8 bg-gradient-to-r from-violet-500 to-purple-600 rounded flex items-center justify-center text-white text-xs font-bold">
-            {paymentMethod.brand.toUpperCase()}
-          </div>
-          <div>
-            <p className="font-medium text-gray-900 dark:text-white">
-              •••• •••• •••• {paymentMethod.last4}
-            </p>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Expires {paymentMethod.expMonth}/{paymentMethod.expYear}
-            </p>
-          </div>
-        </div>
-      ) : (
-        <div className="p-4 rounded-lg bg-yellow-50 dark:bg-yellow-900/20 border border-yellow-200 dark:border-yellow-800">
-          <div className="flex items-center gap-2 text-yellow-700 dark:text-yellow-400">
-            <AlertTriangle className="w-5 h-5" />
-            <span>No payment method on file</span>
-          </div>
-          <span
-            className="mt-2 inline-block text-sm text-yellow-700 dark:text-yellow-400"
-          >
-            Please contact support to add a payment method
-          </span>
-        </div>
-      )}
-    </motion.div>
-  );
-}
-
-// Usage Summary Card
-function UsageSummaryCard({ usage }: { usage: BillingSummary['usage'] }) {
-  const usageItems: Array<{
-    name: string;
-    icon: React.ElementType;
-    used: number;
-    limit: number;
-    unit?: string;
-    color: string;
-  }> = [
-    { name: 'Users', icon: Users, ...usage.users, color: '#8b5cf6' },
-    { name: 'Storage', icon: HardDrive, ...usage.storage, unit: 'GB', color: '#06b6d4' },
-    { name: 'API Calls', icon: Activity, ...usage.apiCalls, color: '#22c55e' },
-  ];
+    );
+  }
 
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.3 }}
-      className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6"
-    >
-      <div className="flex items-center justify-between mb-4">
-        <h2 className="text-lg font-semibold text-gray-900 dark:text-white">Usage This Period</h2>
-      </div>
-
-      <div className="space-y-4">
-        {usageItems.map((item) => {
-          const Icon = item.icon;
-          const percent = item.limit > 0 ? (item.used / item.limit) * 100 : 0;
-          const isWarning = percent >= 80;
-          const isCritical = percent >= 95;
-
-          return (
-            <div key={item.name}>
-              <div className="flex items-center justify-between mb-1">
-                <div className="flex items-center gap-2">
-                  <Icon className="w-4 h-4" style={{ color: item.color }} />
-                  <span className="text-sm text-gray-600 dark:text-gray-400">{item.name}</span>
-                </div>
-                <span className="text-sm font-medium text-gray-900 dark:text-white">
-                  {item.used.toLocaleString()}{item.unit ? ` ${item.unit}` : ''} / {item.limit === -1 ? '∞' : item.limit.toLocaleString()}{item.unit ? ` ${item.unit}` : ''}
-                </span>
-              </div>
-              <div className="h-2 bg-gray-200 dark:bg-slate-700 rounded-full overflow-hidden">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min(percent, 100)}%` }}
-                  transition={{ duration: 0.5 }}
-                  className={`h-full rounded-full ${
-                    isCritical ? 'bg-red-500' : isWarning ? 'bg-yellow-500' : ''
-                  }`}
-                  style={{ backgroundColor: !isCritical && !isWarning ? item.color : undefined }}
-                />
-              </div>
-              {isWarning && (
-                <p className={`text-xs mt-1 ${isCritical ? 'text-red-500' : 'text-yellow-500'}`}>
-                  {isCritical ? 'Limit almost reached!' : 'Approaching limit'}
-                </p>
-              )}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* Header with Plan Sticker */}
+        <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
+          {/* Title and Description */}
+          <div className="flex-1">
+            <div className="flex items-center gap-3 mb-2">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+                Billing & Subscription
+              </h1>
+              <button
+                onClick={handleRefresh}
+                disabled={refreshing}
+                className="p-2 rounded-full hover:bg-white/50 transition-colors"
+              >
+                <RefreshCw className={`w-5 h-5 text-slate-500 ${refreshing ? 'animate-spin' : ''}`} />
+              </button>
             </div>
-          );
-        })}
-      </div>
-    </motion.div>
-  );
-}
+            <p className="text-slate-600 max-w-2xl">
+              Complete transparency into your subscription, usage, and billing. Track your plan features, 
+              monitor usage, and manage your subscription with ease.
+            </p>
+          </div>
 
-// Quick Actions Card
-function QuickActionsCard({
-  onUpgrade,
-  onDowngrade,
-  onCancel,
-  currentTier,
-}: {
-  onUpgrade: () => void;
-  onDowngrade: () => void;
-  onCancel: () => void;
-  currentTier: string;
-}) {
-  return (
-    <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.4 }}
-      className="bg-white dark:bg-slate-800 rounded-xl border border-gray-200 dark:border-slate-700 p-6"
-    >
-      <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Quick Actions</h2>
-
-      <div className="grid grid-cols-2 gap-3">
-        {currentTier !== 'enterprise' && (
-          <button
-            onClick={onUpgrade}
-            className="flex items-center justify-center gap-2 p-3 rounded-lg bg-violet-600 hover:bg-violet-700 text-white font-medium transition-colors"
+          {/* Current Plan Sticker - Prominent Badge */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className={`${planTier.bg} border-2 border-white/50 shadow-xl rounded-2xl p-4 min-w-[280px]`}
           >
-            <ArrowUpRight className="w-4 h-4" />
-            Upgrade Plan
-          </button>
-        )}
-
-        {currentTier !== 'free' && (
-          <button
-            onClick={onDowngrade}
-            className="flex items-center justify-center gap-2 p-3 rounded-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 font-medium transition-colors"
-          >
-            <ArrowDownRight className="w-4 h-4" />
-            Downgrade
-          </button>
-        )}
-
-        <Link
-          href="/billing/invoices"
-          className="flex items-center justify-center gap-2 p-3 rounded-lg border border-gray-200 dark:border-slate-600 hover:bg-gray-50 dark:hover:bg-slate-700 text-gray-700 dark:text-gray-300 font-medium transition-colors"
-        >
-          <FileText className="w-4 h-4" />
-          View Invoices
-        </Link>
-
-        {currentTier !== 'free' && (
-          <button
-            onClick={onCancel}
-            className="flex items-center justify-center gap-2 p-3 rounded-lg border border-red-200 dark:border-red-800 hover:bg-red-50 dark:hover:bg-red-900/20 text-red-600 dark:text-red-400 font-medium transition-colors"
-          >
-            <XCircle className="w-4 h-4" />
-            Cancel Plan
-          </button>
-        )}
-      </div>
-    </motion.div>
-  );
-}
-
-// Upgrade Modal
-function UpgradeModal({
-  isOpen,
-  onClose,
-  currentTier,
-  onSelectPlan,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  currentTier: string;
-  onSelectPlan: (tier: string) => void;
-}) {
-  const plans = [
-    { tier: 'starter', name: 'Starter', price: 29, features: PLAN_FEATURES.starter },
-    { tier: 'pro', name: 'Pro', price: 79, features: PLAN_FEATURES.pro },
-    { tier: 'enterprise', name: 'Enterprise', price: 199, features: PLAN_FEATURES.enterprise },
-  ];
-
-  if (!isOpen) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.95 }}
-        animate={{ scale: 1 }}
-        exit={{ scale: 0.95 }}
-        className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-slate-700">
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Choose Your Plan</h2>
-          <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-slate-700">
-            <X className="w-5 h-5 text-gray-500" />
-          </button>
+            <div className="flex items-center gap-3">
+              <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${planTier.color} flex items-center justify-center shadow-lg`}>
+                <PlanIcon className="w-7 h-7 text-white" />
+              </div>
+              <div>
+                <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">Current Plan</p>
+                <h3 className={`text-xl font-bold bg-gradient-to-r ${planTier.color} bg-clip-text text-transparent`}>
+                  {subscriptionData?.plan?.display_name || subscriptionData?.plan?.name || 'No Plan'}
+                </h3>
+                <div className="flex items-center gap-2 mt-1">
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    subscriptionData?.subscription?.is_active 
+                      ? 'bg-green-100 text-green-700' 
+                      : 'bg-red-100 text-red-700'
+                  }`}>
+                    {subscriptionData?.subscription?.is_active ? 'Active' : 'Inactive'}
+                  </span>
+                  {subscriptionData?.subscription?.end_date && (
+                    <span className="text-xs text-slate-500">
+                      Expires: {new Date(subscriptionData.subscription.end_date).toLocaleDateString()}
+                    </span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </motion.div>
         </div>
 
-        <div className="p-6 overflow-y-auto">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {plans.map((plan) => {
-              const PlanIcon = PLAN_ICONS[plan.tier];
-              const planColor = PLAN_COLORS[plan.tier];
-              const isCurrent = plan.tier === currentTier;
-              const isUpgrade = plans.findIndex(p => p.tier === plan.tier) > plans.findIndex(p => p.tier === currentTier);
+        {/* Currency Selector */}
+        <div className="flex items-center gap-4 bg-white/70 backdrop-blur-sm rounded-xl p-4 shadow-sm border border-white/50">
+          <Globe className="w-5 h-5 text-slate-500" />
+          <span className="text-sm text-slate-600 font-medium">Display Currency:</span>
+          <select
+            value={selectedCurrency}
+            onChange={(e) => setSelectedCurrency(e.target.value)}
+            className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+          >
+            {CURRENCIES.map(currency => (
+              <option key={currency.code} value={currency.code}>
+                {currency.symbol} {currency.code} - {currency.name}
+              </option>
+            ))}
+          </select>
+          {ratesLoading && <RefreshCw className="w-4 h-4 text-indigo-500 animate-spin" />}
+          {!ratesLoading && exchangeRates.USD && (
+            <span className="text-xs text-slate-400 ml-2">
+              Live rates • 1 INR = {exchangeRates.USD?.toFixed(4)} USD
+            </span>
+          )}
+        </div>
 
-              return (
-                <div
-                  key={plan.tier}
-                  className={`rounded-xl border-2 p-6 ${
-                    isCurrent
-                      ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/20'
-                      : 'border-gray-200 dark:border-slate-700'
-                  }`}
-                >
-                  <div className="flex items-center gap-3 mb-4">
-                    <div
-                      className="w-10 h-10 rounded-lg flex items-center justify-center"
-                      style={{ backgroundColor: `${planColor}15` }}
-                    >
-                      <PlanIcon className="w-5 h-5" style={{ color: planColor }} />
+        {/* Hero Stats - Top Metrics */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Total Features Used */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.1 }}
+            className="bg-gradient-to-br from-indigo-500 to-purple-600 rounded-2xl p-6 text-white shadow-xl"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <Layers className="w-8 h-8 opacity-80" />
+              <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Features</span>
+            </div>
+            <div className="text-3xl font-bold mb-1">
+              {Object.values(subscriptionData?.plan?.features || {}).filter(v => v === true).length}
+            </div>
+            <p className="text-sm opacity-80">Active Features Enabled</p>
+          </motion.div>
+
+          {/* Storage / Database Usage */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+            className="bg-gradient-to-br from-emerald-500 to-teal-600 rounded-2xl p-6 text-white shadow-xl"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <HardDrive className="w-8 h-8 opacity-80" />
+              <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Storage</span>
+            </div>
+            <div className="text-3xl font-bold mb-1">
+              {(usageStats.storage.used / 1024).toFixed(2)} GB
+            </div>
+            <p className="text-sm opacity-80">
+              of {(usageStats.storage.limit / 1024).toFixed(0)} GB used
+            </p>
+            <div className="mt-2 h-2 bg-white/20 rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-white/80 rounded-full transition-all duration-500"
+                style={{ width: `${usageStats.storage.percentage}%` }}
+              />
+            </div>
+          </motion.div>
+
+          {/* Amount Processed */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="bg-gradient-to-br from-amber-500 to-orange-600 rounded-2xl p-6 text-white shadow-xl"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <Wallet className="w-8 h-8 opacity-80" />
+              <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Processed</span>
+            </div>
+            <div className="text-3xl font-bold mb-1">
+              {getDisplayPrice(usageStats.amount.processed)}
+            </div>
+            <p className="text-sm opacity-80">Total Amount Processed</p>
+          </motion.div>
+
+          {/* Tasks Completed */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.4 }}
+            className="bg-gradient-to-br from-pink-500 to-rose-600 rounded-2xl p-6 text-white shadow-xl"
+          >
+            <div className="flex items-center justify-between mb-4">
+              <ListChecks className="w-8 h-8 opacity-80" />
+              <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Tasks</span>
+            </div>
+            <div className="text-3xl font-bold mb-1">
+              {usageStats.tasks.completed.toLocaleString()}
+            </div>
+            <p className="text-sm opacity-80">Tasks Completed</p>
+          </motion.div>
+        </div>
+
+        {/* Main Content Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          
+          {/* Left Column - Plan & Pricing */}
+          <div className="lg:col-span-2 space-y-6">
+            
+            {/* Subscription Details Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 overflow-hidden"
+            >
+              <div className="p-6 border-b border-slate-100">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${planTier.color} flex items-center justify-center shadow-lg`}>
+                      <CreditCard className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900 dark:text-white">{plan.name}</h3>
-                      <p className="text-sm text-gray-500 dark:text-gray-400">
-                        ${plan.price}/month
-                      </p>
+                      <h2 className="text-xl font-semibold text-slate-800">Subscription Details</h2>
+                      <p className="text-sm text-slate-500">Your current plan and billing information</p>
                     </div>
                   </div>
-
-                  <ul className="space-y-2 mb-6">
-                    {plan.features.slice(0, 5).map((feature, idx) => (
-                      <li key={idx} className="flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400">
-                        <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-
-                  <button
-                    onClick={() => onSelectPlan(plan.tier)}
-                    disabled={isCurrent}
-                    className={`w-full py-2 rounded-lg font-medium transition-colors ${
-                      isCurrent
-                        ? 'bg-gray-200 dark:bg-slate-700 text-gray-500 cursor-not-allowed'
-                        : 'bg-violet-600 hover:bg-violet-700 text-white'
-                    }`}
-                  >
-                    {isCurrent ? 'Current Plan' : isUpgrade ? 'Upgrade' : 'Select'}
-                  </button>
+                  <div className="text-right">
+                    <div className="text-2xl font-bold text-slate-800">
+                      {getDisplayPrice(subscriptionData?.plan?.base_price || 0)}
+                    </div>
+                    <p className="text-sm text-slate-500">
+                      /{subscriptionData?.plan?.billing_cycle || 'month'}
+                    </p>
+                  </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      </motion.div>
-    </motion.div>
-  );
-}
+              </div>
 
-// Cancel Confirmation Modal
-function CancelModal({
-  isOpen,
-  onClose,
-  onConfirm,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: () => void;
-}) {
-  const [reason, setReason] = useState('');
+              <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="text-center p-4 bg-slate-50 rounded-xl">
+                  <Calendar className="w-6 h-6 text-indigo-500 mx-auto mb-2" />
+                  <p className="text-xs text-slate-500 mb-1">Start Date</p>
+                  <p className="font-semibold text-slate-700">
+                    {subscriptionData?.subscription?.start_date 
+                      ? new Date(subscriptionData.subscription.start_date).toLocaleDateString() 
+                      : 'N/A'}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-slate-50 rounded-xl">
+                  <Clock className="w-6 h-6 text-amber-500 mx-auto mb-2" />
+                  <p className="text-xs text-slate-500 mb-1">End Date</p>
+                  <p className="font-semibold text-slate-700">
+                    {subscriptionData?.subscription?.end_date 
+                      ? new Date(subscriptionData.subscription.end_date).toLocaleDateString() 
+                      : 'N/A'}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-slate-50 rounded-xl">
+                  <Activity className="w-6 h-6 text-green-500 mx-auto mb-2" />
+                  <p className="text-xs text-slate-500 mb-1">Status</p>
+                  <p className={`font-semibold ${subscriptionData?.subscription?.is_active ? 'text-green-600' : 'text-red-600'}`}>
+                    {subscriptionData?.subscription?.state || 'Unknown'}
+                  </p>
+                </div>
+                <div className="text-center p-4 bg-slate-50 rounded-xl">
+                  <DollarSign className="w-6 h-6 text-blue-500 mx-auto mb-2" />
+                  <p className="text-xs text-slate-500 mb-1">Billing Cycle</p>
+                  <p className="font-semibold text-slate-700 capitalize">
+                    {subscriptionData?.plan?.billing_cycle || 'Monthly'}
+                  </p>
+                </div>
+              </div>
+            </motion.div>
 
-  if (!isOpen) return null;
-
-  return (
-    <motion.div
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4"
-      onClick={onClose}
-    >
-      <motion.div
-        initial={{ scale: 0.95 }}
-        animate={{ scale: 1 }}
-        exit={{ scale: 0.95 }}
-        className="bg-white dark:bg-slate-800 rounded-xl shadow-2xl max-w-md w-full"
-        onClick={(e) => e.stopPropagation()}
-      >
-        <div className="p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-12 h-12 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-              <AlertTriangle className="w-6 h-6 text-red-500" />
-            </div>
-            <div>
-              <h2 className="text-xl font-semibold text-gray-900 dark:text-white">Cancel Subscription?</h2>
-              <p className="text-sm text-gray-500 dark:text-gray-400">This action cannot be undone</p>
-            </div>
-          </div>
-
-          <p className="text-gray-600 dark:text-gray-400 mb-4">
-            Are you sure you want to cancel your subscription? You&apos;ll lose access to premium features
-            at the end of your current billing period.
-          </p>
-
-          <div className="mb-4">
-            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-              Reason for cancellation (optional)
-            </label>
-            <textarea
-              value={reason}
-              onChange={(e) => setReason(e.target.value)}
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-white"
-              placeholder="Help us improve by sharing your feedback..."
-            />
-          </div>
-
-          <div className="flex gap-3">
-            <button
-              onClick={onClose}
-              className="flex-1 py-2 rounded-lg border border-gray-200 dark:border-slate-600 text-gray-700 dark:text-gray-300 font-medium hover:bg-gray-50 dark:hover:bg-slate-700"
+            {/* Features Section */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.1 }}
+              className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 overflow-hidden"
             >
-              Keep Plan
-            </button>
-            <button
-              onClick={onConfirm}
-              className="flex-1 py-2 rounded-lg bg-red-600 hover:bg-red-700 text-white font-medium"
+              <div 
+                className="p-6 border-b border-slate-100 cursor-pointer flex items-center justify-between"
+                onClick={() => setShowAllFeatures(!showAllFeatures)}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-purple-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                    <Zap className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-800">Plan Features</h2>
+                    <p className="text-sm text-slate-500">
+                      {Object.values(subscriptionData?.plan?.features || {}).filter(v => v === true).length} features enabled
+                    </p>
+                  </div>
+                </div>
+                {showAllFeatures ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+              </div>
+
+              <AnimatePresence>
+                {showAllFeatures && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-3">
+                      {Object.entries(subscriptionData?.plan?.features || {}).map(([key, value]) => (
+                        <div 
+                          key={key}
+                          className={`flex items-center gap-3 p-3 rounded-lg ${
+                            value === true ? 'bg-green-50' : value === false ? 'bg-slate-50' : 'bg-blue-50'
+                          }`}
+                        >
+                          {value === true ? (
+                            <CheckCircle className="w-5 h-5 text-green-500 flex-shrink-0" />
+                          ) : value === false ? (
+                            <AlertCircle className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                          ) : (
+                            <TrendingUp className="w-5 h-5 text-blue-500 flex-shrink-0" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-slate-700 truncate">
+                              {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                            </p>
+                            {typeof value !== 'boolean' && (
+                              <p className="text-xs text-slate-500">{String(value)}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+
+            {/* Billing History */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 overflow-hidden"
             >
-              Cancel Subscription
-            </button>
+              <div 
+                className="p-6 border-b border-slate-100 cursor-pointer flex items-center justify-between"
+                onClick={() => setShowBillingHistory(!showBillingHistory)}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+                    <FileText className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-800">Billing History</h2>
+                    <p className="text-sm text-slate-500">
+                      {subscriptionData?.billing_history?.length || 0} transactions
+                    </p>
+                  </div>
+                </div>
+                {showBillingHistory ? <ChevronUp className="w-5 h-5 text-slate-400" /> : <ChevronDown className="w-5 h-5 text-slate-400" />}
+              </div>
+
+              <AnimatePresence>
+                {showBillingHistory && (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="p-6">
+                      {subscriptionData?.billing_history && subscriptionData.billing_history.length > 0 ? (
+                        <div className="space-y-3">
+                          {subscriptionData.billing_history.map((item) => (
+                            <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                              <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
+                                  item.status === 'paid' ? 'bg-green-100' : 'bg-amber-100'
+                                }`}>
+                                  {item.status === 'paid' ? (
+                                    <CheckCircle className="w-5 h-5 text-green-600" />
+                                  ) : (
+                                    <Clock className="w-5 h-5 text-amber-600" />
+                                  )}
+                                </div>
+                                <div>
+                                  <p className="font-medium text-slate-700">{item.description}</p>
+                                  <p className="text-xs text-slate-500">
+                                    {new Date(item.created_at).toLocaleDateString()}
+                                  </p>
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                <p className="font-semibold text-slate-800">
+                                  {getDisplayPrice(item.amount)}
+                                </p>
+                                <p className={`text-xs font-medium ${
+                                  item.status === 'paid' ? 'text-green-600' : 'text-amber-600'
+                                }`}>
+                                  {item.status.toUpperCase()}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-center py-8 text-slate-500">
+                          <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                          <p>No billing history available</p>
+                        </div>
+                      )}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </motion.div>
+          </div>
+
+          {/* Right Column - Usage & Roles */}
+          <div className="space-y-6">
+            
+            {/* Role Usage Card */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+              className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 overflow-hidden"
+            >
+              <div className="p-6 border-b border-slate-100">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
+                    <Users className="w-6 h-6 text-white" />
+                  </div>
+                  <div>
+                    <h2 className="text-xl font-semibold text-slate-800">Role Usage</h2>
+                    <p className="text-sm text-slate-500">Team member status</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="p-6 space-y-4">
+                {/* Summary Stats */}
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="text-center p-3 bg-slate-50 rounded-xl">
+                    <Users className="w-5 h-5 text-slate-500 mx-auto mb-1" />
+                    <p className="text-2xl font-bold text-slate-800">{roleStats.total}</p>
+                    <p className="text-xs text-slate-500">Total</p>
+                  </div>
+                  <div className="text-center p-3 bg-green-50 rounded-xl">
+                    <UserCheck className="w-5 h-5 text-green-500 mx-auto mb-1" />
+                    <p className="text-2xl font-bold text-green-600">{roleStats.active}</p>
+                    <p className="text-xs text-slate-500">Active</p>
+                  </div>
+                  <div className="text-center p-3 bg-amber-50 rounded-xl">
+                    <UserX className="w-5 h-5 text-amber-500 mx-auto mb-1" />
+                    <p className="text-2xl font-bold text-amber-600">{roleStats.pending}</p>
+                    <p className="text-xs text-slate-500">Pending</p>
+                  </div>
+                </div>
+
+                {/* Usage Bar */}
+                <div className="space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-slate-600">Users Used</span>
+                    <span className="font-medium text-slate-700">
+                      {usageStats.users.used} / {usageStats.users.limit}
+                    </span>
+                  </div>
+                  <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        usageStats.users.percentage > 90 ? 'bg-red-500' :
+                        usageStats.users.percentage > 70 ? 'bg-amber-500' :
+                        'bg-gradient-to-r from-violet-500 to-purple-500'
+                      }`}
+                      style={{ width: `${usageStats.users.percentage}%` }}
+                    />
+                  </div>
+                </div>
+
+                {/* Role Breakdown */}
+                <div className="space-y-2 pt-2">
+                  <p className="text-sm font-medium text-slate-700">Role Breakdown</p>
+                  {Object.entries(roleStats.breakdown).map(([role, counts]) => (
+                    <div key={role} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
+                      <span className="text-sm text-slate-600 capitalize">
+                        {role.replace(/_/g, ' ')}
+                      </span>
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded">
+                          {counts.active} active
+                        </span>
+                        {counts.pending > 0 && (
+                          <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded">
+                            {counts.pending} pending
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </motion.div>
+
+            {/* Quick Actions */}
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6"
+            >
+              <h3 className="text-lg font-semibold text-slate-800 mb-4">Quick Actions</h3>
+              <div className="space-y-3">
+                <button 
+                  onClick={handleUpgradePlan}
+                  className="w-full flex items-center gap-3 p-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:opacity-90 transition-opacity"
+                >
+                  <TrendingUp className="w-5 h-5" />
+                  <span className="font-medium">Upgrade Plan</span>
+                </button>
+                <button className="w-full flex items-center gap-3 p-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors">
+                  <Download className="w-5 h-5" />
+                  <span className="font-medium">Download Invoice</span>
+                </button>
+                <button className="w-full flex items-center gap-3 p-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors">
+                  <CreditCard className="w-5 h-5" />
+                  <span className="font-medium">Update Payment Method</span>
+                </button>
+              </div>
+            </motion.div>
+
+            {/* Tenant Info */}
+            {tenantData && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.5 }}
+                className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6"
+              >
+                <h3 className="text-lg font-semibold text-slate-800 mb-4">Organization</h3>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                    <span className="text-sm text-slate-600">Name</span>
+                    <span className="font-medium text-slate-800">{tenantData.name}</span>
+                  </div>
+                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
+                    <span className="text-sm text-slate-600">Slug</span>
+                    <code className="text-sm bg-slate-200 px-2 py-0.5 rounded">{tenantData.slug}</code>
+                  </div>
+                </div>
+              </motion.div>
+            )}
           </div>
         </div>
-      </motion.div>
-    </motion.div>
-  );
-}
-
-// ============================================================================
-// MAIN COMPONENT
-// ============================================================================
-
-export default function BillingOverviewPage() {
-  const { user } = useAuth();
-  const [isLoading, setIsLoading] = useState(true);
-  const [billingSummary, setBillingSummary] = useState<BillingSummary | null>(null);
-  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
-  const [showCancelModal, setShowCancelModal] = useState(false);
-
-  const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
-
-  const fetchBillingSummary = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const response = await fetch(`${baseURL}/api/billing`, { credentials: 'include' });
-      if (response.ok) {
-        const data = await response.json();
-        setBillingSummary(data);
-      } else {
-        // Use demo data
-        generateDemoData();
-      }
-    } catch {
-      generateDemoData();
-    } finally {
-      setIsLoading(false);
-    }
-  }, [baseURL]);
-
-  const generateDemoData = () => {
-    const trialEnd = new Date(Date.now() + 10 * 24 * 60 * 60 * 1000);
-    setBillingSummary({
-      plan: {
-        id: 'pro',
-        name: 'Pro',
-        tier: 'pro',
-        price: 79,
-        billingPeriod: 'monthly',
-        features: PLAN_FEATURES.pro,
-        limits: { users: 50, storage: 100, apiCalls: 100000 },
-      },
-      status: 'trialing',
-      trialEndsAt: trialEnd.toISOString(),
-      trialDaysLeft: 10,
-      currentPeriodStart: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-      currentPeriodEnd: new Date(Date.now() + 10 * 24 * 60 * 60 * 1000).toISOString(),
-      nextBillingDate: trialEnd.toISOString(),
-      nextInvoiceAmount: 79,
-      currentBalance: 0,
-      paymentMethod: {
-        type: 'card',
-        last4: '4242',
-        expMonth: 12,
-        expYear: 2026,
-        brand: 'visa',
-      },
-      usage: {
-        users: { used: 12, limit: 50 },
-        storage: { used: 45, limit: 100 },
-        apiCalls: { used: 67500, limit: 100000 },
-      },
-    });
-  };
-
-  useEffect(() => {
-    fetchBillingSummary();
-  }, [fetchBillingSummary]);
-
-  const handleUpgrade = async (tier: string) => {
-    try {
-      const response = await fetch(`${baseURL}/api/billing/subscribe`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ planId: tier }),
-      });
-
-      if (response.ok) {
-        const data = await response.json();
-        if (data.checkoutUrl) {
-          window.location.href = data.checkoutUrl;
-        }
-      }
-    } catch (error) {
-      console.error('Upgrade failed:', error);
-    }
-    setShowUpgradeModal(false);
-  };
-
-  const handleCancel = async () => {
-    try {
-      await fetch(`${baseURL}/api/billing/cancel`, {
-        method: 'POST',
-        credentials: 'include',
-      });
-      fetchBillingSummary();
-    } catch (error) {
-      console.error('Cancel failed:', error);
-    }
-    setShowCancelModal(false);
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="inline-block animate-spin rounded-full h-8 w-8 border-b-2 border-violet-600"></div>
-          <p className="mt-4 text-gray-500 dark:text-gray-400">Loading billing information...</p>
-        </div>
-      </div>
-    );
-  }
-
-  if (!billingSummary) {
-    return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
-        <div className="text-center">
-          <CreditCard className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-          <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-            Billing Not Available
-          </h2>
-          <p className="text-gray-500 dark:text-gray-400">
-            Unable to load billing information. Please try again later.
-          </p>
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 p-6">
-      <div className="max-w-6xl mx-auto">
-        {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
-            <CreditCard className="w-7 h-7 text-violet-500" />
-            Billing Overview
-          </h1>
-          <p className="text-gray-500 dark:text-gray-400 mt-1">
-            Manage your subscription, payment methods, and billing preferences
-          </p>
-        </div>
-
-        {/* Trial Banner */}
-        {billingSummary.status === 'trialing' && billingSummary.trialDaysLeft !== null && (
-          <TrialBanner
-            daysLeft={billingSummary.trialDaysLeft}
-            onUpgrade={() => setShowUpgradeModal(true)}
-          />
-        )}
-
-        {/* Payment Failed Banner */}
-        {billingSummary.status === 'past_due' && (
-          <PaymentFailedBanner onUpdatePayment={() => alert('Please contact support to update your payment method')} />
-        )}
-
-        {/* Main Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <CurrentPlanCard plan={billingSummary.plan} status={billingSummary.status} />
-          <BillingInfoCard summary={billingSummary} />
-          <PaymentMethodCard paymentMethod={billingSummary.paymentMethod} />
-          <UsageSummaryCard usage={billingSummary.usage} />
-          <div className="lg:col-span-2">
-            <QuickActionsCard
-              onUpgrade={() => setShowUpgradeModal(true)}
-              onDowngrade={() => setShowUpgradeModal(true)}
-              onCancel={() => setShowCancelModal(true)}
-              currentTier={billingSummary.plan.tier}
-            />
-          </div>
-        </div>
-
-        {/* Modals */}
-        <AnimatePresence>
-          {showUpgradeModal && (
-            <UpgradeModal
-              isOpen={showUpgradeModal}
-              onClose={() => setShowUpgradeModal(false)}
-              currentTier={billingSummary.plan.tier}
-              onSelectPlan={handleUpgrade}
-            />
-          )}
-          {showCancelModal && (
-            <CancelModal
-              isOpen={showCancelModal}
-              onClose={() => setShowCancelModal(false)}
-              onConfirm={handleCancel}
-            />
-          )}
-        </AnimatePresence>
       </div>
     </div>
   );
-}
+};
+
+export default BillingPage;

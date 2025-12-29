@@ -269,7 +269,11 @@ router.get('/status', authMiddleware, async (req, res) => {
             subscriptionPlan: true,
             subscriptionStatus: true,
             onboarding_status: true,
-            settings: true 
+            settings: true,
+            // Include active subscription from client_subscriptions table
+            subscription: {
+              select: { state: true, is_active: true }
+            }
           }
         });
 
@@ -277,17 +281,33 @@ router.get('/status', authMiddleware, async (req, res) => {
           console.log('[Welcome] Found client:', client);
           tenantStatus = client.status;
           const settings = client.settings || {};
-          // Check if workspace setup is complete
-          // User needs setup if:
-          // 1. onboarding_status is 'pending' or null
-          // 2. OR no subscription plan selected (trial/none/null/free)
-          // 3. AND settings.onboarding_completed is not true
-          needsSetup = (settings.onboarding_completed !== true) && 
-                       (client.onboarding_status === 'pending' || 
-                        !client.subscriptionPlan || 
-                        client.subscriptionPlan === 'trial' || 
-                        client.subscriptionPlan === 'none' ||
-                        client.subscriptionPlan === 'free');
+          
+          // Check if client has an active subscription in client_subscriptions table
+          const hasActiveSubscription = client.subscription && 
+                                         client.subscription.is_active && 
+                                         ['ACTIVE', 'TRIAL'].includes(client.subscription.state);
+          
+          console.log('[Welcome] Active subscription check:', { 
+            hasSubscriptionRecord: !!client.subscription, 
+            hasActiveSubscription 
+          });
+          
+          // If client has active subscription (trial or paid), no setup needed
+          if (hasActiveSubscription) {
+            needsSetup = false;
+            console.log('[Welcome] Client has active subscription, no setup needed');
+          } else {
+            // Check if workspace setup is complete
+            // User needs setup if:
+            // 1. settings.onboarding_completed is not true
+            // 2. AND (onboarding_status is 'pending' OR no subscription plan)
+            needsSetup = (settings.onboarding_completed !== true) && 
+                         (client.onboarding_status === 'pending' || 
+                          !client.subscriptionPlan || 
+                          client.subscriptionPlan === 'trial' || 
+                          client.subscriptionPlan === 'none' ||
+                          client.subscriptionPlan === 'free');
+          }
           console.log('[Welcome] needsSetup:', needsSetup);
         }
       } else {

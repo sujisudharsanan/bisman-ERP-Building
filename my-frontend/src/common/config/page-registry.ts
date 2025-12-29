@@ -692,13 +692,13 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   {
     id: 'user-creation',
     name: 'Create New User',
-    path: '/hr/user-creation',
+    path: '/system/user-creation',
     iconKey: "UserPlus",
-    module: 'hr',
+    module: 'system',
     permissions: ['user-management', 'hr-management'],
   roles: ['SYSTEM_ADMIN', 'ADMIN', 'HR', 'HR_MANAGER'],
     status: 'active',
-    showInSidebar: false, // Integrated into User Settings page
+    showInSidebar: true,
     description: 'Two-stage user creation with KYC workflow - HR creates request and sends KYC link or creates user immediately',
     order: 2.5,
   },
@@ -1985,30 +1985,19 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 5,
     showInSidebar: false, // Hidden - payment requests are now created via Task form
   },
-  {
-    id: 'task-clarifications',
-    name: 'Task Clarifications',
-    path: '/tasks/clarifications',
-    iconKey: "HelpCircle",
-    module: 'common',
-    permissions: ['authenticated'],
-    roles: ['ALL'],
-    status: 'active',
-    description: 'View and respond to task clarification requests',
-    order: 6,
-  },
-  {
-    id: 'task-reviews',
-    name: 'Task Reviews',
-    path: '/tasks/reviews',
-    iconKey: "FileSearch",
-    module: 'common',
-    permissions: ['authenticated'],
-    roles: ['ALL'],
-    status: 'active',
-    description: 'View and manage post-completion task reviews',
-    order: 7,
-  },
+  // REMOVED: Task Clarifications and Task Reviews pages deleted
+  // {
+  //   id: 'task-clarifications',
+  //   name: 'Task Clarifications',
+  //   path: '/tasks/clarifications',
+  //   ...
+  // },
+  // {
+  //   id: 'task-reviews',
+  //   name: 'Task Reviews',
+  //   path: '/tasks/reviews',
+  //   ...
+  // },
   {
     id: 'approvals',
     name: 'Approvals',
@@ -2045,6 +2034,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     description: 'View task deadlines and schedule',
     order: 9,
+    showInSidebar: false, // Calendar is accessible from top bar
   },
   {
     id: 'dashboard',
@@ -2227,32 +2217,19 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'Platform analytics and insights',
     order: 14,
   },
-  {
-    id: 'admin-contracts',
-    name: 'Contracts & Agreements',
-    path: '/admin/contracts',
-    iconKey: "FileSignature",
-    module: 'admin',
-    permissions: ['admin-dashboard'],
-    roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN'],
-    status: 'active',
-    showInSidebar: true,
-    description: 'Manage agreements, renewals, and contract lifecycle',
-    order: 15,
-  },
-  {
-    id: 'admin-contracts-create',
-    name: 'Create Contract',
-    path: '/admin/contracts/create',
-    iconKey: "FilePlus",
-    module: 'admin',
-    permissions: ['admin-dashboard'],
-    roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN'],
-    status: 'active',
-    showInSidebar: false,
-    description: 'Create a new contract or agreement',
-    order: 16,
-  },
+  // REMOVED: Admin Contracts pages deleted
+  // {
+  //   id: 'admin-contracts',
+  //   name: 'Contracts & Agreements',
+  //   path: '/admin/contracts',
+  //   ...
+  // },
+  // {
+  //   id: 'admin-contracts-create',
+  //   name: 'Create Contract',
+  //   path: '/admin/contracts/create',
+  //   ...
+  // },
   {
     id: 'admin-users-create',
     name: 'Create User',
@@ -2410,29 +2387,17 @@ export function getPagesByModule(moduleId: string): PageMetadata[] {
     .sort((a, b) => (a.order || 0) - (b.order || 0));
 }
 
-// Add Contracts page to registry (Admin module)
-export const CONTRACTS_PAGE = {
-  id: 'contracts',
-  name: 'Contracts & Agreements',
-  path: '/admin/contracts',
-  iconKey: 'FileSignature',
-  module: 'admin',
-  permissions: ['contracts-management'],
-  roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN'],
-  status: 'active' as PageStatus,
-  showInSidebar: true,
-  description: 'Manage agreements, renewals, documents, and contract lifecycle',
-  order: 30,
-}
-
-// Note: Append this to PAGE_REGISTRY in the appropriate place using check-modules-consistency if needed.
+// REMOVED: Contracts page deleted
+// export const CONTRACTS_PAGE = { ... }
 
 /**
  * Get pages accessible by a user's permissions
  */
 export function getAccessiblePages(userPermissions: string[]): PageMetadata[] {
   return PAGE_REGISTRY.filter(page =>
-    page.permissions.some(perm => userPermissions.includes(perm))
+    page.permissions.some(perm => 
+      perm === 'authenticated' || userPermissions.includes(perm)
+    )
   );
 }
 

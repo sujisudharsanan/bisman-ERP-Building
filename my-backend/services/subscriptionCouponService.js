@@ -847,6 +847,8 @@ async function getTenantSubscriptionStatus(tenantId) {
   if (!subscription) {
     return {
       hasSubscription: false,
+      hasActiveSubscription: false,
+      subscription: null,
       status: null,
       plan: null,
       remainingTime: null,
@@ -854,11 +856,23 @@ async function getTenantSubscriptionStatus(tenantId) {
   }
   
   const remainingTime = calculateRemainingTime(subscription.expires_at);
+  const isActiveOrTrial = ['ACTIVE', 'TRIAL'].includes(subscription.state);
   
   return {
     hasSubscription: true,
+    hasActiveSubscription: isActiveOrTrial,
     isActive: subscription.state === 'ACTIVE',
-    status: subscription.state,
+    subscription: {
+      status: subscription.state.toLowerCase(), // Frontend expects lowercase
+      state: subscription.state,
+      plan: subscription.plan?.name || subscription.plan?.plan_code,
+      planCode: subscription.plan?.plan_code,
+      startedAt: subscription.started_at,
+      expiresAt: subscription.expires_at,
+      remainingTime,
+      activationSource: subscription.activation_source,
+    },
+    status: subscription.state.toLowerCase(),
     plan: subscription.plan,
     planSnapshot: subscription.plan_snapshot_json,
     startedAt: subscription.started_at,

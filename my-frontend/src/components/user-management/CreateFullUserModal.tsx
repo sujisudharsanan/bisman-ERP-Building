@@ -288,11 +288,12 @@ export function CreateFullUserModal({
       }
 
       // Create user with KYC data
-      const response = await fetch('/api/users', {
+      const response = await fetch('/api/system/users', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
+        credentials: 'include',
         body: JSON.stringify({
           ...formData,
           files: uploadedFiles,

@@ -190,7 +190,6 @@ router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
     }
     
     const tenantId = req.user.tenant_id;
-    const userId = req.user.id;
 
     if (!tenantId) {
       return res.status(400).json({
@@ -253,7 +252,7 @@ router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
     // Get basic plan (or first available plan) for trial features
     const basicPlan = await prisma.subscriptionPlan.findFirst({
       where: { is_active: true },
-      orderBy: { tier: 'asc' },
+      orderBy: { sort_order: 'asc' },
     });
 
     if (!basicPlan) {

@@ -377,19 +377,6 @@ export default function StandardLoginPage() {
             </div>
           </form>
 
-          {/* Sign Up Link */}
-          <div className="mt-6 pt-6 border-t border-slate-200 dark:border-slate-700 text-center">
-            <p className="text-sm text-slate-600 dark:text-slate-400">
-              Don't have an account?{' '}
-              <a 
-                href="/signup" 
-                className="text-violet-600 dark:text-violet-400 hover:underline font-semibold"
-              >
-                Start your free trial
-              </a>
-            </p>
-          </div>
-
           <div className="mt-6 text-xs text-slate-400 dark:text-slate-500 break-words">Not your computer? Use Private Browsing windows to sign in. Learn more about using Guest mode</div>
           </div>
         </div>
