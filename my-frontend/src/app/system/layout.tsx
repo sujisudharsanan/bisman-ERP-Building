@@ -11,7 +11,7 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { DockProvider } from '@/components/dock';
 
 /**
- * System Layout - Protected route for Super Admin and Enterprise Admin only
+ * System Layout - Protected route for Admin, Super Admin and Enterprise Admin
  * Contains system-level management pages like user management, permissions, etc.
  */
 export default function SystemLayout({ children }: { children: React.ReactNode }) {
@@ -19,7 +19,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
   return (
-    <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ENTERPRISE_ADMIN']}>
+    <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'SYSTEM_ADMIN', 'HR', 'HR_MANAGER']}>
       <ThemeProvider>
         <DockProvider>
           <RefreshProvider>
