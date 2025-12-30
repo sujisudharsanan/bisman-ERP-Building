@@ -4496,7 +4496,20 @@ app.get('/api/vendors/search', authenticate, async (req, res) => {
 // Roles endpoint for dropdowns
 app.get('/api/roles', authenticate, async (req, res) => {
   try {
+    // Roles that should only be visible to SUPER_ADMIN or ENTERPRISE_ADMIN
+    const restrictedRoles = ['SUPER_ADMIN', 'ENTERPRISE_ADMIN'];
+    const userRole = req.user?.role || req.user?.userType;
+    
+    // Build where clause - filter out restricted roles for non-super users
+    const whereClause = {};
+    if (!['SUPER_ADMIN', 'ENTERPRISE_ADMIN'].includes(userRole)) {
+      whereClause.name = {
+        notIn: restrictedRoles
+      };
+    }
+    
     const roles = await prisma.rbac_roles.findMany({
+      where: whereClause,
       select: {
         id: true,
         name: true,
@@ -4506,27 +4519,32 @@ app.get('/api/roles', authenticate, async (req, res) => {
       orderBy: { level: 'asc' }
     });
     
+    // Also filter out ADMIN role for ADMIN users (they shouldn't create other admins)
+    let filteredRoles = roles;
+    if (userRole === 'ADMIN') {
+      filteredRoles = roles.filter(r => r.name !== 'ADMIN');
+    }
+    
     res.json({
       success: true,
-      roles: roles.map(r => ({
+      roles: filteredRoles.map(r => ({
         id: String(r.id),
         name: r.name,
         displayName: r.display_name || r.name,
         level: r.level,
       })),
-      count: roles.length
+      count: filteredRoles.length
     });
   } catch (error) {
     console.error('[Roles] Error:', error.message);
     // Fallback to hardcoded roles if database fails
     const fallbackRoles = [
-      { id: '1', name: 'Hub Incharge', displayName: 'Hub Incharge', level: 5 },
-      { id: '2', name: 'Store Incharge', displayName: 'Store Incharge', level: 5 },
-      { id: '3', name: 'Branch Incharge', displayName: 'Branch Incharge', level: 5 },
-      { id: '4', name: 'Operations Manager', displayName: 'Operations Manager', level: 4 },
-      { id: '5', name: 'Finance Controller', displayName: 'Finance Controller', level: 4 },
-      { id: '6', name: 'HR Manager', displayName: 'HR Manager', level: 4 },
-      { id: '7', name: 'ADMIN', displayName: 'Administrator', level: 2 },
+      { id: '1', name: 'HUB_INCHARGE', displayName: 'Hub Incharge', level: 5 },
+      { id: '2', name: 'STORE_INCHARGE', displayName: 'Store Incharge', level: 5 },
+      { id: '3', name: 'BRANCH_INCHARGE', displayName: 'Branch Incharge', level: 5 },
+      { id: '4', name: 'OPERATIONS_MANAGER', displayName: 'Operations Manager', level: 4 },
+      { id: '5', name: 'FINANCE_CONTROLLER', displayName: 'Finance Controller', level: 4 },
+      { id: '6', name: 'HR_MANAGER', displayName: 'HR Manager', level: 3 },
     ];
     res.json({
       success: true,

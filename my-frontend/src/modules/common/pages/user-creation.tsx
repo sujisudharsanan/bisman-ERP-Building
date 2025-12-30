@@ -5,14 +5,26 @@ import { UserPlus, Users, ArrowLeft, Loader2 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { CreateFullUserModal } from '@/components/user-management/CreateFullUserModal';
 import type { UserRole, Branch } from '@/types/user-management';
+import { useAuth } from '@/contexts/AuthContext';
 
 export default function UserCreationPage() {
   const router = useRouter();
+  const { user } = useAuth();
   const [isModalOpen, setIsModalOpen] = useState(true);
   const [roles, setRoles] = useState<UserRole[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  // Determine redirect path based on user role
+  const getRedirectPath = () => {
+    const role = user?.role || user?.userType;
+    // SUPER_ADMIN goes to client management, others go to dashboard
+    if (role === 'SUPER_ADMIN') {
+      return '/system/user-management';
+    }
+    return '/dashboard';
+  };
 
   // Fetch roles and branches on mount
   useEffect(() => {
@@ -61,13 +73,13 @@ export default function UserCreationPage() {
     setIsModalOpen(false);
     // Optional: Show success message and redirect
     setTimeout(() => {
-      router.push('/system/user-management');
+      router.push(getRedirectPath());
     }, 1500);
   };
 
   const handleCancel = () => {
-    // Navigate back to user management
-    router.push('/system/user-management');
+    // Navigate back based on user role
+    router.push(getRedirectPath());
   };
 
   // Loading state
@@ -98,10 +110,10 @@ export default function UserCreationPage() {
             </h3>
             <p className="text-sm text-red-600 dark:text-red-400">{error}</p>
             <button
-              onClick={() => router.push('/system/user-management')}
+              onClick={() => router.push(getRedirectPath())}
               className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors"
             >
-              Back to User Management
+              Go Back
             </button>
           </div>
         </div>
@@ -114,11 +126,11 @@ export default function UserCreationPage() {
       {/* Header */}
       <div className="mb-6">
         <button
-          onClick={() => router.push('/system/user-management')}
+          onClick={() => router.push(getRedirectPath())}
           className="flex items-center space-x-2 text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 mb-4 transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
-          <span className="text-sm">Back to User Management</span>
+          <span className="text-sm">Go Back</span>
         </button>
 
         <div className="bg-white dark:bg-gray-800 rounded-lg shadow-sm p-6">
@@ -181,38 +193,40 @@ export default function UserCreationPage() {
         )}
       </div>
 
-      {/* Quick Actions */}
-      <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
-        <button
-          onClick={() => router.push('/system/user-management')}
-          className="flex items-center justify-center space-x-2 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-200 dark:border-gray-700"
-        >
-          <Users className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            View All Users
-          </span>
-        </button>
+      {/* Quick Actions - only show for SUPER_ADMIN */}
+      {user?.role === 'SUPER_ADMIN' && (
+        <div className="mt-6 grid grid-cols-1 md:grid-cols-3 gap-4">
+          <button
+            onClick={() => router.push('/system/user-management')}
+            className="flex items-center justify-center space-x-2 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-200 dark:border-gray-700"
+          >
+            <Users className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              View All Users
+            </span>
+          </button>
 
-        <button
-          onClick={() => router.push('/system/permission-manager')}
-          className="flex items-center justify-center space-x-2 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-200 dark:border-gray-700"
-        >
-          <Users className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            Manage Permissions
-          </span>
-        </button>
+          <button
+            onClick={() => router.push('/system/permission-manager')}
+            className="flex items-center justify-center space-x-2 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-200 dark:border-gray-700"
+          >
+            <Users className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              Manage Permissions
+            </span>
+          </button>
 
-        <button
-          onClick={() => router.push('/system/roles-users-report')}
-          className="flex items-center justify-center space-x-2 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-200 dark:border-gray-700"
-        >
-          <Users className="w-5 h-5 text-gray-600 dark:text-gray-400" />
-          <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
-            View Reports
-          </span>
-        </button>
-      </div>
+          <button
+            onClick={() => router.push('/system/roles-users-report')}
+            className="flex items-center justify-center space-x-2 p-4 bg-white dark:bg-gray-800 rounded-lg shadow-sm hover:shadow-md transition-shadow border border-gray-200 dark:border-gray-700"
+          >
+            <Users className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            <span className="text-sm font-medium text-gray-700 dark:text-gray-300">
+              View Reports
+            </span>
+          </button>
+        </div>
+      )}
     </div>
   );
 }

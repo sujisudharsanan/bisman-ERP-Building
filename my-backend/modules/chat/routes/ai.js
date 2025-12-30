@@ -111,10 +111,10 @@ const extractUser = async (req, res, next) => {
         }
       }
       
-      // Try users_enhanced or users table
+      // Try users_enhanced table (has UUID id)
       if (!userInfo) {
         const userQuery = await pool.query(
-          'SELECT id, username, role FROM users WHERE id = $1',
+          'SELECT id, username, role FROM users_enhanced WHERE id = $1',
           [userId]
         );
         if (userQuery.rows.length > 0) {

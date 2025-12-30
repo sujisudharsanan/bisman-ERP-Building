@@ -22,10 +22,6 @@ import {
   CheckCircle,
   AlertCircle,
   Loader2,
-  Building2,
-  Users,
-  BarChart3,
-  Shield,
   ArrowRight,
 } from 'lucide-react';
 
@@ -97,13 +93,6 @@ const TIMEZONES = [
   { value: 'Asia/Dubai', label: 'GST (Gulf Standard Time)' },
   { value: 'Asia/Tokyo', label: 'JST (Japan Standard Time)' },
   { value: 'Australia/Sydney', label: 'AEST (Australian Eastern Time)' },
-];
-
-const FEATURES = [
-  { icon: Building2, text: 'Complete ERP solution for your business' },
-  { icon: Users, text: 'Multi-user access with role-based permissions' },
-  { icon: BarChart3, text: 'Real-time analytics and reporting' },
-  { icon: Shield, text: 'Enterprise-grade security' },
 ];
 
 // ============================================================================
@@ -322,298 +311,291 @@ export default function SignupPage() {
   }
 
   return (
-    <div className="h-screen overflow-hidden bg-gradient-to-br from-violet-50 via-white to-purple-50 dark:from-slate-900 dark:via-slate-900 dark:to-slate-800 flex">
-      {/* Left Panel - Branding (Compact) */}
-      <div className="hidden lg:flex lg:w-[380px] xl:w-[420px] bg-gradient-to-br from-violet-600 to-purple-700 p-8 flex-col justify-between">
-        <div>
-          <Link href="/" className="inline-block">
-            <h1 className="text-2xl font-bold text-white">BISMAN ERP</h1>
-          </Link>
-          <p className="text-violet-200 text-sm mt-1">Enterprise Resource Planning</p>
-        </div>
-
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-2xl font-bold text-white mb-2">
-              Start your free trial
-            </h2>
-            <p className="text-violet-200 text-sm">
-              No credit card required. Full access to all features.
-            </p>
-          </div>
-
-          <div className="space-y-3">
-            {FEATURES.map((feature, idx) => {
-              const Icon = feature.icon;
-              return (
-                <div key={idx} className="flex items-center gap-3 text-white text-sm">
-                  <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                    <Icon className="w-4 h-4" />
-                  </div>
-                  <span>{feature.text}</span>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        <div className="text-violet-200 text-xs">
-          © {new Date().getFullYear()} BISMAN ERP. All rights reserved.
-        </div>
+    <div 
+      className="min-h-screen w-full relative"
+      style={{
+        backgroundImage: 'url(/brand/sighnup.svg)',
+        backgroundSize: 'cover',
+        backgroundPosition: 'center',
+        backgroundRepeat: 'no-repeat',
+      }}
+    >
+      {/* Logo in top-left corner */}
+      <div className="absolute top-6 left-6 z-20">
+        <img 
+          src="/brand/logo-2.svg" 
+          alt="BISMAN ERP" 
+          className="h-10 md:h-12 w-auto"
+        />
       </div>
-
-      {/* Right Panel - Compact Form */}
-      <div className="flex-1 flex items-center justify-center p-4 lg:p-6">
-        <div className="w-full max-w-xl">
-          {/* Mobile Logo */}
-          <div className="lg:hidden text-center mb-4">
-            <Link href="/" className="inline-block">
-              <h1 className="text-2xl font-bold text-violet-600 dark:text-violet-400">
-                BISMAN ERP
-              </h1>
-            </Link>
-            <p className="text-gray-600 dark:text-gray-400 text-sm mt-1">
-              Start your free trial
-            </p>
+      
+      {/* Right side - Form */}
+      <div className="min-h-screen w-full flex items-center justify-end p-4 md:p-6 lg:p-8">
+        <div className="w-full max-w-sm bg-white/95 dark:bg-slate-900/95 backdrop-blur-md rounded-xl shadow-2xl p-4 md:p-6 mr-0 lg:mr-8">
+          {/* Header */}
+          <div className="mb-4">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-white">
+              Create Your Organization
+            </h2>
           </div>
 
-          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-gray-200 dark:border-slate-700 p-5 lg:p-6">
-            <div className="flex items-center justify-between mb-4">
-              <div>
-                <h2 className="text-xl font-bold text-gray-900 dark:text-white">
-                  Create Your Organization
-                </h2>
-                <p className="text-gray-500 dark:text-gray-400 text-sm">
-                  Fill in the details to get started
-                </p>
-              </div>
+          {/* Error Banner */}
+          {error && (
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2">
+              <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
+              <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>
+            </div>
+          )}
+
+          <form onSubmit={handleSubmit} className="space-y-3">
+            {/* Organization Name */}
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Organization Name *
+            </label>
+            <input
+              type="text"
+              value={formData.orgName}
+              onChange={(e) => updateField('orgName', e.target.value)}
+              className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all ${
+                fieldErrors.orgName ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
+              }`}
+              placeholder="Enter your company name"
+            />
+            {fieldErrors.orgName && (
+              <p className="mt-1 text-xs text-red-600">{fieldErrors.orgName}</p>
+            )}
+          </div>
+
+          {/* Business Type */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Business Type *
+            </label>
+            <select
+              value={formData.businessType}
+              onChange={(e) => updateField('businessType', e.target.value)}
+              className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all ${
+                fieldErrors.businessType ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
+              }`}
+            >
+              <option value="">Select business type</option>
+              {BUSINESS_TYPES.map((type) => (
+                <option key={type} value={type}>{type}</option>
+              ))}
+            </select>
+            {fieldErrors.businessType && (
+              <p className="mt-1 text-xs text-red-600">{fieldErrors.businessType}</p>
+            )}
+          </div>
+
+          {/* Full Name + Email Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Full Name *
+              </label>
+              <input
+                type="text"
+                value={formData.fullName}
+                onChange={(e) => updateField('fullName', e.target.value)}
+                className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all ${
+                  fieldErrors.fullName ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
+                }`}
+                placeholder="Your full name"
+              />
+              {fieldErrors.fullName && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.fullName}</p>
+              )}
             </div>
 
-            {/* Error Banner */}
-            {error && (
-              <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2">
-                <AlertCircle className="w-4 h-4 text-red-600 flex-shrink-0" />
-                <p className="text-red-700 dark:text-red-400 text-sm">{error}</p>
-              </div>
-            )}
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Row 1: Organization Name + Business Type */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Organization Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.orgName}
-                    onChange={(e) => updateField('orgName', e.target.value)}
-                    className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent ${
-                      fieldErrors.orgName ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
-                    }`}
-                    placeholder="Enter organization name"
-                  />
-                  {fieldErrors.orgName && (
-                    <p className="mt-0.5 text-xs text-red-600">{fieldErrors.orgName}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Business Type *
-                  </label>
-                  <select
-                    value={formData.businessType}
-                    onChange={(e) => updateField('businessType', e.target.value)}
-                    className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent ${
-                      fieldErrors.businessType ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
-                    }`}
-                  >
-                    <option value="">Select type</option>
-                    {BUSINESS_TYPES.map((type) => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                  {fieldErrors.businessType && (
-                    <p className="mt-0.5 text-xs text-red-600">{fieldErrors.businessType}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Auto-detected location info */}
-              <p className="text-xs text-gray-500 dark:text-gray-400">
-                we have identified your country, time zone and state.
-              </p>
-
-              {/* Divider */}
-              <div className="border-t border-gray-200 dark:border-slate-700 pt-3">
-                <p className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide mb-3">
-                  Admin Account
-                </p>
-              </div>
-
-              {/* Row 3: Full Name + Email */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Full Name *
-                  </label>
-                  <input
-                    type="text"
-                    value={formData.fullName}
-                    onChange={(e) => updateField('fullName', e.target.value)}
-                    className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent ${
-                      fieldErrors.fullName ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
-                    }`}
-                    placeholder="Your full name"
-                  />
-                  {fieldErrors.fullName && (
-                    <p className="mt-0.5 text-xs text-red-600">{fieldErrors.fullName}</p>
-                  )}
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Email *
-                  </label>
-                  <input
-                    type="email"
-                    value={formData.email}
-                    onChange={(e) => updateField('email', e.target.value)}
-                    className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent ${
-                      fieldErrors.email ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
-                    }`}
-                    placeholder="admin@company.com"
-                  />
-                  {fieldErrors.email && (
-                    <p className="mt-0.5 text-xs text-red-600">{fieldErrors.email}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Row 4: Phone + Password */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Phone <span className="text-gray-400">(optional)</span>
-                  </label>
-                  <input
-                    type="tel"
-                    value={formData.phone}
-                    onChange={(e) => updateField('phone', e.target.value)}
-                    className="w-full px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent"
-                    placeholder="+91 98765 43210"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Password *
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showPassword ? 'text' : 'password'}
-                      value={formData.password}
-                      onChange={(e) => updateField('password', e.target.value)}
-                      className={`w-full px-3 py-2 pr-9 text-sm border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent ${
-                        fieldErrors.password ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
-                      }`}
-                      placeholder="Min 12 chars, Aa1@..."
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowPassword(!showPassword)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  {fieldErrors.password && (
-                    <p className="mt-0.5 text-xs text-red-600">{fieldErrors.password}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Row 5: Confirm Password */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div className="sm:col-start-2">
-                  <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
-                    Confirm Password *
-                  </label>
-                  <div className="relative">
-                    <input
-                      type={showConfirmPassword ? 'text' : 'password'}
-                      value={formData.confirmPassword}
-                      onChange={(e) => updateField('confirmPassword', e.target.value)}
-                      className={`w-full px-3 py-2 pr-9 text-sm border rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent ${
-                        fieldErrors.confirmPassword ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
-                      }`}
-                      placeholder="Re-enter password"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                    >
-                      {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  {fieldErrors.confirmPassword && (
-                    <p className="mt-0.5 text-xs text-red-600">{fieldErrors.confirmPassword}</p>
-                  )}
-                </div>
-              </div>
-
-              {/* Terms + Submit in one row */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pt-2 border-t border-gray-200 dark:border-slate-700">
-                <div className="flex items-start gap-2">
-                  <input
-                    type="checkbox"
-                    id="acceptedTerms"
-                    checked={formData.acceptedTerms}
-                    onChange={(e) => updateField('acceptedTerms', e.target.checked)}
-                    className="mt-0.5 w-4 h-4 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
-                  />
-                  <label htmlFor="acceptedTerms" className="text-xs text-gray-600 dark:text-gray-400">
-                    I agree to the{' '}
-                    <Link href="/terms" className="text-violet-600 hover:underline">Terms</Link>{' '}
-                    and{' '}
-                    <Link href="/privacy" className="text-violet-600 hover:underline">Privacy Policy</Link>
-                  </label>
-                </div>
-                {fieldErrors.acceptedTerms && (
-                  <p className="text-xs text-red-600">{fieldErrors.acceptedTerms}</p>
-                )}
-              </div>
-
-              {/* Submit Button */}
-              <button
-                type="submit"
-                disabled={isLoading}
-                className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-violet-600 hover:bg-violet-700 text-white font-medium rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-sm"
-              >
-                {isLoading ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Creating...
-                  </>
-                ) : (
-                  <>
-                    Create Organization
-                    <ArrowRight className="w-4 h-4" />
-                  </>
-                )}
-              </button>
-            </form>
-
-            {/* Login Link */}
-            <p className="text-center mt-4 text-gray-600 dark:text-gray-400 text-sm">
-              Already have an account?{' '}
-              <Link href="/auth/login" className="text-violet-600 hover:underline font-medium">
-                Sign in
-              </Link>
-            </p>
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Email *
+              </label>
+              <input
+                type="email"
+                value={formData.email}
+                onChange={(e) => updateField('email', e.target.value)}
+                className={`w-full px-3 py-2 text-sm border rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all ${
+                  fieldErrors.email ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
+                }`}
+                placeholder="admin@company.com"
+              />
+              {fieldErrors.email && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.email}</p>
+              )}
+            </div>
           </div>
+
+          {/* Phone with Country Code */}
+          <div>
+            <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+              Phone <span className="text-gray-400 text-xs">(optional)</span>
+            </label>
+            <div className="flex gap-2">
+              <select
+                value={formData.country}
+                onChange={(e) => updateField('country', e.target.value)}
+                className="w-20 px-2 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all"
+              >
+                {COUNTRIES.map((c) => (
+                  <option key={c.code} value={c.code}>{c.phoneCode}</option>
+                ))}
+              </select>
+              <input
+                type="tel"
+                value={formData.phone}
+                onChange={(e) => updateField('phone', e.target.value)}
+                className="flex-1 px-3 py-2 text-sm border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-yellow-500 focus:border-transparent transition-all"
+                placeholder="Phone number"
+              />
+            </div>
+          </div>
+
+          {/* Password + Confirm Password Row */}
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Password *
+              </label>
+              <div className="relative">
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={formData.password}
+                  onChange={(e) => updateField('password', e.target.value)}
+                  className={`w-full px-3 py-2 text-sm pr-10 border rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all ${
+                    fieldErrors.password ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
+                  }`}
+                  placeholder="Min 12 chars"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {fieldErrors.password && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.password}</p>
+              )}
+            </div>
+
+            <div>
+              <label className="block text-xs font-medium text-gray-700 dark:text-gray-300 mb-1">
+                Confirm Password *
+              </label>
+              <div className="relative">
+                <input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={formData.confirmPassword}
+                  onChange={(e) => updateField('confirmPassword', e.target.value)}
+                  className={`w-full px-3 py-2 text-sm pr-10 border rounded-lg bg-white dark:bg-slate-800 text-gray-900 dark:text-white focus:ring-2 focus:ring-violet-500 focus:border-transparent transition-all ${
+                    fieldErrors.confirmPassword ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
+                  }`}
+                  placeholder="Re-enter"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+              {fieldErrors.confirmPassword && (
+                <p className="mt-1 text-xs text-red-600">{fieldErrors.confirmPassword}</p>
+              )}
+            </div>
+          </div>
+
+          {/* Password Strength Indicator - Only shows when typing */}
+          {formData.password.length > 0 && (
+            <div className="space-y-1 p-2 bg-gray-50 dark:bg-slate-800 rounded-lg">
+              <p className="text-xs font-medium text-gray-600 dark:text-gray-400 mb-1">Password Requirements:</p>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-0.5">
+                <div className={`flex items-center gap-1 text-xs ${formData.password.length >= 12 ? 'text-green-600' : 'text-gray-400'}`}>
+                  <div className={`w-2.5 h-2.5 rounded-full flex items-center justify-center ${formData.password.length >= 12 ? 'bg-green-500' : 'bg-gray-300'}`}>
+                    {formData.password.length >= 12 && <CheckCircle className="w-2 h-2 text-white" />}
+                  </div>
+                  <span>12+ chars</span>
+                </div>
+                <div className={`flex items-center gap-1 text-xs ${/[A-Z]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                  <div className={`w-2.5 h-2.5 rounded-full flex items-center justify-center ${/[A-Z]/.test(formData.password) ? 'bg-green-500' : 'bg-gray-300'}`}>
+                    {/[A-Z]/.test(formData.password) && <CheckCircle className="w-2 h-2 text-white" />}
+                  </div>
+                  <span>Uppercase</span>
+                </div>
+                <div className={`flex items-center gap-1 text-xs ${/[a-z]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                  <div className={`w-2.5 h-2.5 rounded-full flex items-center justify-center ${/[a-z]/.test(formData.password) ? 'bg-green-500' : 'bg-gray-300'}`}>
+                    {/[a-z]/.test(formData.password) && <CheckCircle className="w-2 h-2 text-white" />}
+                  </div>
+                  <span>Lowercase</span>
+                </div>
+                <div className={`flex items-center gap-1 text-xs ${/[0-9]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                  <div className={`w-2.5 h-2.5 rounded-full flex items-center justify-center ${/[0-9]/.test(formData.password) ? 'bg-green-500' : 'bg-gray-300'}`}>
+                    {/[0-9]/.test(formData.password) && <CheckCircle className="w-2 h-2 text-white" />}
+                  </div>
+                  <span>Number</span>
+                </div>
+                <div className={`flex items-center gap-1 text-xs ${/[!@#$%^&*(),.?":{}|<>]/.test(formData.password) ? 'text-green-600' : 'text-gray-400'}`}>
+                  <div className={`w-2.5 h-2.5 rounded-full flex items-center justify-center ${/[!@#$%^&*(),.?":{}|<>]/.test(formData.password) ? 'bg-green-500' : 'bg-gray-300'}`}>
+                    {/[!@#$%^&*(),.?":{}|<>]/.test(formData.password) && <CheckCircle className="w-2 h-2 text-white" />}
+                  </div>
+                  <span>Special char</span>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Terms Checkbox */}
+          <div className="flex items-start gap-2">
+            <input
+              type="checkbox"
+              id="acceptedTerms"
+              checked={formData.acceptedTerms}
+              onChange={(e) => updateField('acceptedTerms', e.target.checked)}
+              className="mt-0.5 w-3.5 h-3.5 text-violet-600 border-gray-300 rounded focus:ring-violet-500"
+            />
+            <label htmlFor="acceptedTerms" className="text-xs text-gray-600 dark:text-gray-400">
+              I agree to the{' '}
+              <Link href="/terms" className="text-yellow-600 hover:underline">Terms</Link>{' '}
+              and{' '}
+              <Link href="/privacy" className="text-yellow-600 hover:underline">Privacy Policy</Link>
+            </label>
+          </div>
+          {fieldErrors.acceptedTerms && (
+            <p className="text-xs text-red-600">{fieldErrors.acceptedTerms}</p>
+          )}
+
+          {/* Submit Button */}
+          <button
+            type="submit"
+            disabled={isLoading}
+            className="w-full flex items-center justify-center gap-2 px-4 py-2.5 bg-yellow-500 hover:bg-yellow-600 text-gray-900 font-semibold rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl text-sm"
+          >
+            {isLoading ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Creating...
+              </>
+            ) : (
+              <>
+                Create Organization
+                <ArrowRight className="w-4 h-4" />
+              </>
+            )}
+          </button>
+        </form>
+
+        {/* Login Link */}
+        <p className="text-center mt-4 text-xs text-gray-600 dark:text-gray-400">
+          Already have an account?{' '}
+          <Link href="/auth/login" className="text-yellow-600 hover:text-yellow-700 hover:underline font-semibold">
+            Sign in
+          </Link>
+        </p>
         </div>
       </div>
     </div>

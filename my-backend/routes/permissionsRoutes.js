@@ -31,9 +31,9 @@ router.get('/', authMiddleware.authenticate, async (req, res) => {
     // Role-based default pages mapping
     const roleBasedPages = {
       'SYSTEM_ADMIN': ['user-creation', 'user-management', 'permission-manager', 'roles-users-report', 'system-settings', 'backup-restore', 'system-health-dashboard', 'integration-settings', 'deployment-tools', 'fallback-recovery'],
-      'ADMIN': ['user-creation', 'user-management', 'system-flow', 'subscription', 'usage', 'settings', 'sla', 'rag-sources', 'task-approvals'],
-      'HR': ['user-creation', 'user-management', 'hr-policy'],
-      'HR_MANAGER': ['user-creation', 'user-management', 'hr-policy']
+      'ADMIN': ['user-creation', 'system-flow', 'subscription', 'usage', 'settings', 'sla', 'rag-sources', 'task-approvals'],
+      'HR': ['user-creation', 'hr-policy'],
+      'HR_MANAGER': ['user-creation', 'hr-policy']
     };
 
     // Handle both UUID and integer user IDs

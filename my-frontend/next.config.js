@@ -42,6 +42,7 @@ let nextConfig = {
 
     // Always proxy /api/* requests to backend (handles CORS automatically)
     if (BACKEND_URL) {
+      // eslint-disable-next-line no-console
       console.log('[next.config.js] Proxying /api/* to:', BACKEND_URL);
       rules.push(
         { source: '/api/:path*', destination: `${BACKEND_URL}/api/:path*` },
@@ -135,14 +136,17 @@ let nextConfig = {
 
 // Enable bundle analyzer when ANALYZE=1
 if (process.env.ANALYZE === '1') {
-  try {
-    const withBundleAnalyzer = require('@next/bundle-analyzer')({ enabled: true });
-    nextConfig = withBundleAnalyzer(nextConfig);
-    // eslint-disable-next-line no-console
-    console.log('[next.config] Bundle analyzer enabled');
-  } catch (e) {
-    console.warn('[next.config] Bundle analyzer not installed:', e.message);
-  }
+  (async () => {
+    try {
+      const { default: bundleAnalyzer } = await import('@next/bundle-analyzer');
+      const withBundleAnalyzer = bundleAnalyzer({ enabled: true });
+      nextConfig = withBundleAnalyzer(nextConfig);
+      // eslint-disable-next-line no-console
+      console.log('[next.config] Bundle analyzer enabled');
+    } catch (e) {
+      console.warn('[next.config] Bundle analyzer not installed:', e.message);
+    }
+  })();
 }
 
-module.exports = nextConfig;
+export default nextConfig;

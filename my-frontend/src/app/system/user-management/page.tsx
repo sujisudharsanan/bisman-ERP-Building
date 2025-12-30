@@ -126,13 +126,6 @@ export default function ClientManagementPage() {
             </svg>
             Refresh
           </button>
-          <Link href="/clients/create" className="inline-flex items-center px-3 py-2 bg-blue-600 text-white rounded-md text-sm hover:bg-blue-700">
-            <svg className="w-4 h-4 mr-2" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-              <line x1="12" y1="5" x2="12" y2="19" />
-              <line x1="5" y1="12" x2="19" y2="12" />
-            </svg>
-            Create New Client
-          </Link>
         </div>
 
         {isEditOpen && editClient && (
