@@ -4277,7 +4277,7 @@ app.get('/api/users/search', authenticate, async (req, res) => {
         profile_pic_url: true,
         first_name: true,
         last_name: true,
-        mobile: true,
+        phone: true,
         is_active: true,
         profile_data: true,
       },
@@ -4350,8 +4350,8 @@ app.get('/api/users/search', authenticate, async (req, res) => {
         fullName: user.first_name && user.last_name 
           ? `${user.first_name} ${user.last_name}` 
           : (user.username || user.email?.split('@')[0] || ''),
-        phone: user.mobile || '',
-        mobile: user.mobile || '',
+        phone: user.phone || '',
+        mobile: user.phone || '',
         role: user.role || 'USER',
         roleName: user.role || 'USER',
         role_level: roleLevel,

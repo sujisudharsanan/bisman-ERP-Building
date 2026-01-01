@@ -112,9 +112,11 @@ export default function UserSettingsPage() {
       if (res.ok) {
         const data = await res.json();
         setUsersList(data.users || data || []);
+      } else {
+        console.error('[UserSettings] Failed to fetch users:', res.status);
       }
     } catch (err) {
-      console.error('Failed to fetch users:', err);
+      console.error('[UserSettings] Failed to fetch users:', err);
     } finally {
       setUsersLoading(false);
     }
