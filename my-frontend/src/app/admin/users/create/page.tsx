@@ -27,6 +27,7 @@ import {
 import { useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
 import Link from 'next/link';
+import AddBranchDrawer from '@/components/branch-management/AddBranchDrawer';
 
 // ============================================================================
 // TYPES
@@ -222,6 +223,7 @@ export default function CreateUserPage() {
   const [users, setUsers] = useState<{ id: string; name: string; email: string }[]>([]);
   const [usageLimits, setUsageLimits] = useState<UsageLimits | null>(null);
   const [loadingData, setLoadingData] = useState(true);
+  const [showAddBranchDrawer, setShowAddBranchDrawer] = useState(false);
 
   // Form data
   const [formData, setFormData] = useState<FormData>({
@@ -935,23 +937,33 @@ export default function CreateUserPage() {
               <label className="block text-sm font-medium text-gray-700 mb-1">
                 Primary Branch *
               </label>
-              <select
-                name="primaryBranchId"
-                value={formData.primaryBranchId}
-                onChange={handleInputChange}
-                className={`w-full px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
-                  errors.primaryBranchId ? 'border-red-500' : 'border-gray-300'
-                }`}
-              >
-                <option value="">Select Primary Branch</option>
-                {branches
-                  .filter((b) => b.isActive)
-                  .map((branch) => (
-                    <option key={branch.id} value={branch.id}>
-                      {branch.name} ({branch.code})
-                    </option>
-                  ))}
-              </select>
+              <div className="flex items-center gap-2">
+                <select
+                  name="primaryBranchId"
+                  value={formData.primaryBranchId}
+                  onChange={handleInputChange}
+                  className={`flex-1 px-4 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 ${
+                    errors.primaryBranchId ? 'border-red-500' : 'border-gray-300'
+                  }`}
+                >
+                  <option value="">Select Primary Branch</option>
+                  {branches
+                    .filter((b) => b.isActive)
+                    .map((branch) => (
+                      <option key={branch.id} value={branch.id}>
+                        {branch.name} ({branch.code})
+                      </option>
+                    ))}
+                </select>
+                <button
+                  type="button"
+                  onClick={() => setShowAddBranchDrawer(true)}
+                  className="flex items-center gap-1.5 px-3 py-2 h-[42px] text-sm font-medium text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50 transition-colors whitespace-nowrap"
+                >
+                  <FiPlus className="w-4 h-4" />
+                  Add Branch
+                </button>
+              </div>
               {errors.primaryBranchId && (
                 <p className="mt-1 text-sm text-red-600 flex items-center gap-1">
                   <FiAlertCircle className="w-4 h-4" />
@@ -1057,6 +1069,20 @@ export default function CreateUserPage() {
           </div>
         </form>
       </div>
+
+      {/* Add Branch Drawer */}
+      <AddBranchDrawer
+        isOpen={showAddBranchDrawer}
+        onClose={() => setShowAddBranchDrawer(false)}
+        onSuccess={(newBranch) => {
+          // Add new branch to list and auto-select it
+          setBranches((prev) => [
+            ...prev,
+            { id: newBranch.id, name: newBranch.name, code: newBranch.code, isActive: true },
+          ]);
+          setFormData((prev) => ({ ...prev, primaryBranchId: newBranch.id }));
+        }}
+      />
     </div>
   );
 }

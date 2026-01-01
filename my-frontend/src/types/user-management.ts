@@ -207,9 +207,10 @@ export interface CreateUserData {
   about_me?: string;
   communication_address?: string;
   permanent_address?: string;
-  city?: string;
-  state?: string;
   country?: string;
+  state?: string;
+  district?: string;
+  city?: string;
   postal_code?: string;
   aadhaar_number?: string;
   license_number?: string;
@@ -443,9 +444,10 @@ export interface KycFormData {
   // Address
   communication_address?: string;
   permanent_address?: string;
-  city?: string;
-  state?: string;
   country?: string;
+  state?: string;
+  district?: string;
+  city?: string;
   postal_code?: string;
   
   // Identity

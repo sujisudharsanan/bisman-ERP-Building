@@ -1289,10 +1289,11 @@ model UserAddress {
   type       AddressType
   line1      String      @db.VarChar(255)
   line2      String?     @db.VarChar(255)
-  city       String      @db.VarChar(100)
-  state      String      @db.VarChar(100)
-  postalCode String      @map("postal_code") @db.VarChar(20)
   country    String      @default("India") @db.VarChar(100)
+  state      String      @db.VarChar(100)
+  district   String?     @db.VarChar(100)
+  city       String      @db.VarChar(100)
+  postalCode String      @map("postal_code") @db.VarChar(20)
   isDefault  Boolean     @default(false) @map("is_default")
   createdAt  DateTime    @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt  DateTime    @updatedAt @map("updated_at") @db.Timestamp(6)
@@ -1409,8 +1410,30 @@ model Branch {
   addressLine2 String?      @map("address_line2") @db.VarChar(255)
   city         String       @db.VarChar(100)
   state        String       @db.VarChar(100)
+  district     String?      @db.VarChar(100)
   postalCode   String       @map("postal_code") @db.VarChar(20)
   country      String       @default("India") @db.VarChar(100)
+  
+  // Building & Property Details
+  buildingType    String?   @default("owned") @map("building_type") @db.VarChar(50)
+  areaSquareFeet  Decimal?  @map("area_square_feet") @db.Decimal(12, 2)
+  
+  // Agreement & Lease Details
+  agreementType          String?   @map("agreement_type") @db.VarChar(50)
+  agreementStartDate     DateTime? @map("agreement_start_date") @db.Date
+  agreementEndDate       DateTime? @map("agreement_end_date") @db.Date
+  monthlyRent            Decimal?  @map("monthly_rent") @db.Decimal(12, 2)
+  securityDeposit        Decimal?  @map("security_deposit") @db.Decimal(12, 2)
+  rentEscalationPercent  Decimal?  @map("rent_escalation_percent") @db.Decimal(5, 2)
+  noticePeriodDays       Int?      @map("notice_period_days")
+  autoRenew              Boolean   @default(false) @map("auto_renew")
+  agreementReminderDays  Int?      @map("agreement_reminder_days")
+  
+  // Owner/Landlord Details (for rented/leased)
+  panHolderName  String?   @map("pan_holder_name") @db.VarChar(255)
+  panNumber      String?   @map("pan_number") @db.VarChar(20)
+  gstNumber      String?   @map("gst_number") @db.VarChar(20)
+  
   isActive     Boolean      @default(true) @map("is_active")
   createdAt    DateTime     @default(now()) @map("created_at") @db.Timestamp(6)
   updatedAt    DateTime     @updatedAt @map("updated_at") @db.Timestamp(6)

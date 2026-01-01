@@ -3,26 +3,13 @@
 import React, { useMemo, useState, useEffect } from "react";
 import { useAuth } from "@/common/hooks/useAuth";
 import { useRouter } from 'next/navigation';
-import { getIcon } from "@/components/layout/BaseSidebar";
 import { getRoleDisplayName } from '@/utils/roleDisplay';
+import { useSubscriptionLimits } from '@/hooks/useSubscriptionLimits';
+import { CreateFullUserModal } from '@/components/user-management';
 import {
-  Settings,
-  Bell,
-  Globe,
-  Moon,
-  Sun,
-  Monitor,
-  User as UserIcon,
-  Upload,
-  Trash2,
   Key,
-  HelpCircle,
-  Shield,
   UserPlus,
   Users,
-  Lock,
-  Smartphone,
-  Eye,
   Edit2,
   ToggleLeft,
   ToggleRight,
@@ -30,20 +17,14 @@ import {
   Search,
   X,
   Check,
+  Crown,
 } from "lucide-react";
-import { uploadFiles } from "@/lib/attachments";
-import ThemeSelector from "@/components/ThemeSelector";
 
 type Msg = { type: "success" | "error"; text: string } | null;
 
 export default function UserSettingsPage() {
-  const { user, refreshUser } = useAuth();
+  const { user } = useAuth();
   const router = useRouter();
-
-  // Left-nav tabs
-  const [activeTab, setActiveTab] = useState<"profile" | "preferences" | "security" | "users" | "help">(
-    "profile"
-  );
 
   // Check if user has admin permissions
   const isAdmin = useMemo(() => {
@@ -57,12 +38,22 @@ export default function UserSettingsPage() {
     return ['SUPER_ADMIN', 'ENTERPRISE_ADMIN'].includes(role);
   }, [user]);
 
+  // Create user modal state
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+
+  // Subscription limits for admin view
+  const { 
+    canCreateUser,
+    usagePercentage,
+    remainingSlots,
+    activeUsers,
+    maxUsers,
+    planName,
+    refresh: refreshSubscription,
+  } = useSubscriptionLimits();
+
   // Roles that only super admins can assign
   const SUPER_ADMIN_ONLY_ROLES = ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'SUPER ADMIN', 'ENTERPRISE ADMIN'];
-
-  // Profile state
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [avatarFile, setAvatarFile] = useState<File | null>(null);
 
   // User Management state
   interface ManagedUser {
@@ -74,6 +65,8 @@ export default function UserSettingsPage() {
     created_at?: string;
     firstName?: string;
     lastName?: string;
+    phone?: string;
+    mobile?: string;
     reporting_authority_id?: string;
     branch_id?: string;
   }
@@ -94,6 +87,9 @@ export default function UserSettingsPage() {
     id: string;
     username: string;
     email: string;
+    first_name: string;
+    last_name: string;
+    phone: string;
     role: string;
     is_active: boolean;
     reporting_authority_id?: string;
@@ -106,11 +102,11 @@ export default function UserSettingsPage() {
   // Available branches
   const [availableBranches, setAvailableBranches] = useState<{ id: string; name: string }[]>([]);
 
-  // Fetch users list (include inactive for admin management)
+  // Fetch users list (include inactive for admin management, include_self to show all users including current admin)
   const fetchUsers = async () => {
     setUsersLoading(true);
     try {
-      const res = await fetch(`/api/users/search?q=${encodeURIComponent(usersSearchQuery)}&limit=100&include_inactive=true`, {
+      const res = await fetch(`/api/users/search?q=${encodeURIComponent(usersSearchQuery)}&limit=100&include_inactive=true&include_self=true`, {
         credentials: 'include',
       });
       if (res.ok) {
@@ -204,15 +200,15 @@ export default function UserSettingsPage() {
     }
   };
 
-  // Load users when tab changes to users
+  // Load users on mount for admins
   useEffect(() => {
-    if (activeTab === 'users' && isAdmin) {
+    if (isAdmin) {
       fetchUsers();
       fetchRoles();
       fetchManagers();
       fetchBranches();
     }
-  }, [activeTab, isAdmin, isSuperAdmin]);
+  }, [isAdmin, isSuperAdmin]);
 
   // Handle role update
   const handleRoleUpdate = async (userId: string, newRole: string) => {
@@ -272,6 +268,9 @@ export default function UserSettingsPage() {
       id: user.id,
       username: user.username,
       email: user.email,
+      first_name: user.firstName || '',
+      last_name: user.lastName || '',
+      phone: user.phone || user.mobile || '',
       role: user.role,
       is_active: user.is_active,
       reporting_authority_id: user.reporting_authority_id ? String(user.reporting_authority_id) : '',
@@ -287,6 +286,9 @@ export default function UserSettingsPage() {
     setActionLoading(editUserData.id);
     try {
       console.log('[EditUser] Saving user:', editUserData.id, {
+        first_name: editUserData.first_name,
+        last_name: editUserData.last_name,
+        phone: editUserData.phone,
         role: editUserData.role,
         reporting_authority_id: editUserData.reporting_authority_id,
         branch_id: editUserData.branch_id,
@@ -297,6 +299,9 @@ export default function UserSettingsPage() {
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
         body: JSON.stringify({
+          first_name: editUserData.first_name || null,
+          last_name: editUserData.last_name || null,
+          phone: editUserData.phone || null,
           role: editUserData.role,
           reporting_authority_id: editUserData.reporting_authority_id || null,
           branch_id: editUserData.branch_id || null,
@@ -346,248 +351,16 @@ export default function UserSettingsPage() {
     }
   };
 
-  // Preferences state
-  const [settings, setSettings] = useState({
-    theme: "system",
-    language: "en",
-    emailNotifications: true,
-    pushNotifications: false,
-    weeklyDigest: true,
-    timezone: "UTC",
-    dateFormat: "MM/DD/YYYY",
-    timeFormat: "12h",
-  });
-
-  const [saving, setSaving] = useState(false);
+  // Message state for notifications
   const [message, setMessage] = useState<Msg>(null);
-  const [uploading, setUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-
-  const displayInitial = useMemo(() => {
-    const base = String(
-      (user as any)?.name || (user as any)?.fullName || (user as any)?.username || "U"
-    )
-      .trim()
-      .charAt(0)
-      .toUpperCase();
-    return base || "U";
-  }, [user]);
-
-  // Load profile picture from server
-  const loadProfilePicture = async () => {
-    try {
-      const response = await fetch("/api/upload/profile-pic", {
-        method: "GET",
-        credentials: "include",
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        console.log('Loaded profile picture:', result); // Debug log
-        
-        if (result.success && result.profile_pic_url) {
-          // Convert to secure URL format
-          const secureUrl = result.profile_pic_url.replace('/uploads/', '/api/secure-files/');
-          console.log('Setting avatar preview to:', secureUrl); // Debug log
-          setAvatarPreview(secureUrl);
-        } else {
-          console.log('No profile picture URL in response'); // Debug log
-          setAvatarPreview(null);
-        }
-      } else {
-        console.log('Response not OK:', response.status); // Debug log
-      }
-    } catch (error) {
-      // Could not load profile picture - continue without it
-      console.error('Failed to load profile picture:', error);
-    }
-  };
-
-  // Load existing profile picture on mount
-  useEffect(() => {
-    loadProfilePicture();
-  }, []);
-
-  const handleAvatarChange = (file: File | null) => {
-    setAvatarFile(file);
-    if (file) {
-      const url = URL.createObjectURL(file);
-      setAvatarPreview(url);
-    } else {
-      setAvatarPreview(null);
-    }
-  };
-
-  // Upload avatar immediately when selected
-  const uploadAvatar = async (file: File) => {
-    setUploading(true);
-    setUploadProgress(0);
-    setMessage(null);
-    
-    try {
-      const formData = new FormData();
-      formData.append('profile_pic', file);
-
-      console.log('Starting upload...'); // Debug log
-
-      // Simulate progress (since fetch doesn't support upload progress natively)
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          if (prev >= 90) {
-            clearInterval(progressInterval);
-            return prev;
-          }
-          return prev + 10;
-        });
-      }, 100);
-
-      const uploadRes = await fetch("/api/upload/profile-pic", {
-        method: "POST",
-        credentials: "include",
-        body: formData,
-      });
-
-      clearInterval(progressInterval);
-      setUploadProgress(95);
-
-      console.log('Upload response status:', uploadRes.status); // Debug log
-
-      if (!uploadRes.ok) {
-        const errorData = await uploadRes.json();
-        console.error('Upload error:', errorData); // Debug log
-        throw new Error(errorData.message || 'Photo upload failed');
-      }
-
-      const uploadResult = await uploadRes.json();
-      console.log('Upload result:', uploadResult); // Debug log
-      
-      setUploadProgress(100);
-      
-      // Clear the file state
-      setAvatarFile(null);
-      
-      // Reload the profile picture from server to get the persisted URL
-      await loadProfilePicture();
-      
-      // Refresh the auth context so the new photo appears everywhere
-      if (refreshUser) {
-        await refreshUser();
-        console.log('Auth context refreshed - new photo will appear in navbar/sidebar'); // Debug log
-      }
-      
-      setMessage({ type: "success", text: "Profile picture uploaded successfully!" });
-    } catch (e) {
-      const errorMsg = e instanceof Error ? e.message : "Upload failed";
-      console.error('Upload error:', e); // Debug log
-      setMessage({ type: "error", text: errorMsg });
-      // Revert to previous state on error
-      setAvatarPreview(null);
-      setAvatarFile(null);
-    } finally {
-      setUploading(false);
-      setTimeout(() => setUploadProgress(0), 1000);
-    }
-  };
-
-  const removeAvatar = async () => {
-    try {
-      await fetch("/api/user/profile/avatar", { method: "DELETE", credentials: "include" });
-      // Clear local state
-      setAvatarFile(null);
-      setAvatarPreview(null);
-      setMessage({ type: "success", text: "Profile picture removed" });
-    } catch {
-      setMessage({ type: "error", text: "Remove failed" });
-    }
-  };
-
-  const savePreferences = async () => {
-    setSaving(true);
-    setMessage(null);
-    try {
-      const res = await fetch("/api/user/settings", {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        credentials: "include",
-        body: JSON.stringify(settings),
-      });
-      setMessage({ type: res.ok ? "success" : "error", text: res.ok ? "Saved" : "Save failed" });
-    } catch {
-      setMessage({ type: "error", text: "Request failed" });
-    } finally {
-      setSaving(false);
-    }
-  };
 
   return (
     <div className="space-y-6">
-      {/* Tabs at Top */}
+      {/* Main Content Container */}
       <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800">
-        <div className="border-b border-gray-200 dark:border-gray-700">
-          <nav className="flex -mb-px">
-            <button
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors border-b-2 ${
-                activeTab === "profile"
-                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                  : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600"
-              }`}
-              onClick={() => setActiveTab("profile")}
-            >
-              <UserIcon className="w-4 h-4" />
-              <span>Profile</span>
-            </button>
-            <button
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors border-b-2 ${
-                activeTab === "preferences"
-                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                  : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600"
-              }`}
-              onClick={() => setActiveTab("preferences")}
-            >
-              <Settings className="w-4 h-4" />
-              <span>Additional Settings</span>
-            </button>
-            <button
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors border-b-2 ${
-                activeTab === "security"
-                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                  : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600"
-              }`}
-              onClick={() => setActiveTab("security")}
-            >
-              <Shield className="w-4 h-4" />
-              <span>Trust & Security</span>
-            </button>
-            {isAdmin && (
-              <button
-                className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors border-b-2 ${
-                  activeTab === "users"
-                    ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                    : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600"
-                }`}
-                onClick={() => setActiveTab("users")}
-              >
-                <UserPlus className="w-4 h-4" />
-                <span>User Management</span>
-              </button>
-            )}
-            <button
-              className={`flex items-center gap-2 px-6 py-4 text-sm font-medium transition-colors border-b-2 ${
-                activeTab === "help"
-                  ? "border-blue-600 text-blue-600 dark:text-blue-400"
-                  : "border-transparent text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-gray-200 hover:border-gray-300 dark:hover:border-gray-600"
-              }`}
-              onClick={() => setActiveTab("help")}
-            >
-              <HelpCircle className="w-4 h-4" />
-              <span>Help & Support</span>
-            </button>
-          </nav>
-        </div>
-
         {/* Messages */}
         {message && (
-          <div className="p-4">
+          <div className="p-4 border-b border-gray-200 dark:border-gray-700">
             <div
               className={`p-3 rounded-lg text-sm ${
                 message.type === "success"
@@ -600,691 +373,470 @@ export default function UserSettingsPage() {
           </div>
         )}
 
-        {/* Tab Content */}
+        {/* Content */}
         <div className="p-6">
-          {activeTab === "profile" && (
-              <div className="space-y-6">
-                {/* Profile Summary with Avatar */}
-                <div className="flex items-start gap-6">
-                  <div className="flex-shrink-0">
-                    <div className="w-32 h-32 rounded-full bg-gray-200 dark:bg-gray-800 flex items-center justify-center overflow-hidden text-gray-700 dark:text-gray-300 text-4xl">
-                      {avatarPreview ? (
-                        // eslint-disable-next-line @next/next/no-img-element
-                        <img src={avatarPreview} alt="avatar" className="w-full h-full object-cover" />
-                      ) : (
-                        <span>{displayInitial}</span>
-                      )}
+          {isAdmin ? (
+            <div className="space-y-6">
+              {/* Subscription Overview Strip */}
+              <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 border border-blue-100 dark:border-blue-800">
+                {/* Header Row */}
+                <div className="flex items-center justify-between mb-5">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-600 rounded-xl flex items-center justify-center">
+                      <Users className="w-6 h-6 text-white" />
                     </div>
-                    <div className="mt-4 flex flex-col gap-2">
-                      <label className={`inline-flex items-center justify-center px-2.5 py-1.5 rounded-md text-xs ${uploading ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 cursor-pointer'} text-white transition-colors`} title={uploading ? 'Uploading...' : 'Upload Photo'}>
-                        <Upload className="w-3.5 h-3.5 mr-1.5" />
-                        <span>Upload</span>
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/jpg,image/png,image/gif,image/webp"
-                          className="hidden"
-                          disabled={uploading}
-                          onChange={async (e) => {
-                            const f = e.target.files?.[0] || null;
-                            if (f) {
-                              // Validate file type
-                              const validTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/gif', 'image/webp'];
-                              if (!validTypes.includes(f.type)) {
-                                setMessage({ type: "error", text: "Please upload a valid image file (JPEG, PNG, GIF, WebP)" });
-                                return;
-                              }
-                              // Validate file size (max 2MB)
-                              if (f.size > 2 * 1024 * 1024) {
-                                setMessage({ type: "error", text: "File size must be less than 2MB" });
-                                return;
-                              }
-                              // Show preview immediately
-                              handleAvatarChange(f);
-                              // Upload immediately
-                              await uploadAvatar(f);
-                            }
-                            // Clear the input so the same file can be selected again
-                            e.target.value = '';
-                          }}
-                        />
-                      </label>
-                      
-                      {/* Progress bar */}
-                      {uploading && (
-                        <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2 overflow-hidden">
-                          <div 
-                            className="bg-blue-600 h-2 transition-all duration-300 ease-out"
-                            style={{ width: `${uploadProgress}%` }}
-                          />
-                        </div>
-                      )}
-                      
-                      {avatarPreview && !uploading && (
-                        <button
-                          onClick={removeAvatar}
-                          className="inline-flex items-center justify-center px-2.5 py-1.5 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-md text-xs"
-                          title="Remove Photo"
-                        >
-                          <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-                          <span>Remove</span>
-                        </button>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex-1">
-                    <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-2">
-                      {(user as any)?.name || (user as any)?.fullName || user?.email || 'User'}
-                    </h2>
-                    <p className="text-sm text-gray-600 dark:text-gray-400">{user?.email}</p>
-                    <p className="text-xs text-gray-500 dark:text-gray-500 mt-1">
-                      {getRoleDisplayName((user as any)?.roleName || (user as any)?.role)}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Forgot Password */}
-                <div className="bg-gray-50 dark:bg-gray-800/50 rounded-xl p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Forgot Password</h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    If you've forgotten your password, please contact your administrator or use the password reset link sent to your email.
-                  </p>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={async () => {
-                        try {
-                          const res = await fetch("/api/auth/forgot-password", {
-                            method: "POST",
-                            headers: { "Content-Type": "application/json" },
-                            credentials: "include",
-                            body: JSON.stringify({ email: user?.email }),
-                          });
-                          setMessage({ 
-                            type: res.ok ? "success" : "error", 
-                            text: res.ok ? "Password reset link sent to your email" : "Failed to send reset link" 
-                          });
-                        } catch {
-                          setMessage({ type: "error", text: "Request failed" });
-                        }
-                      }}
-                      className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
-                    >
-                      <Key className="w-4 h-4" />
-                      <span>Send Reset Link</span>
-                    </button>
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "preferences" && (
-              <div className="space-y-6">
-                {/* Color Theme Selector */}
-                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Color Theme</h2>
-                  <ThemeSelector variant="grid" />
-                </div>
-
-                {/* Appearance */}
-                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Display Mode</h2>
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                    {[
-                      { value: "light", label: "Light", icon: 'Sun' },
-                      { value: "dark", label: "Dark", icon: 'Moon' },
-                      { value: "system", label: "System", icon: 'Monitor' },
-                    ].map(({ value, label, icon: Icon }) => (
-                      <button
-                        key={value}
-                        onClick={() => setSettings({ ...settings, theme: value })}
-                        className={`flex flex-col items-center justify-center p-4 rounded-lg border-2 transition-all ${
-                          settings.theme === value
-                            ? "border-blue-600 bg-blue-50 dark:bg-blue-900/20"
-                            : "border-gray-200 dark:border-gray-700 hover:border-gray-300 dark:hover:border-gray-600"
-                        }`}
-                      >
-                        {(() => {
-                          const IconComp = getIcon(Icon);
-                          return (
-                            <IconComp
-                              className={`w-6 h-6 mb-2 ${
-                                settings.theme === value
-                                  ? "text-blue-600 dark:text-blue-400"
-                                  : "text-gray-600 dark:text-gray-400"
-                              }`}
-                            />
-                          );
-                        })()}
-                        <span
-                          className={`text-sm font-medium ${
-                            settings.theme === value
-                              ? "text-blue-600 dark:text-blue-400"
-                              : "text-gray-700 dark:text-gray-300"
-                          }`}
-                        >
-                          {label}
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-gray-100">
+                        User Management
+                      </h2>
+                      <div className="flex items-center gap-3 text-sm text-gray-600 dark:text-gray-400">
+                        <span className="flex items-center gap-1">
+                          <Crown className="w-3.5 h-3.5 text-amber-500" />
+                          <span className="font-medium">{planName || 'Free Plan'}</span>
                         </span>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Notifications */}
-                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Notifications</h2>
-                  <div className="space-y-4">
-                    {[
-                      { key: "emailNotifications", label: "Email notifications", desc: "Receive updates via email" },
-                      { key: "pushNotifications", label: "Push notifications", desc: "Enable browser notifications" },
-                      { key: "weeklyDigest", label: "Weekly summary", desc: "Get a weekly overview" },
-                    ].map(({ key, label, desc }) => (
-                      <div
-                        key={key}
-                        className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-800 last:border-0"
-                      >
-                        <div>
-                          <div className="font-medium text-gray-900 dark:text-gray-100">{label}</div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400">{desc}</div>
-                        </div>
-                        <button
-                          onClick={() =>
-                            setSettings({
-                              ...settings,
-                              [key]: !settings[key as keyof typeof settings],
-                            })
-                          }
-                          className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors ${
-                            settings[key as keyof typeof settings]
-                              ? "bg-blue-600"
-                              : "bg-gray-300 dark:bg-gray-700"
-                          }`}
-                        >
-                          <span
-                            className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${
-                              settings[key as keyof typeof settings]
-                                ? "translate-x-6"
-                                : "translate-x-1"
-                            }`}
-                          />
-                        </button>
+                        <span className="text-gray-300 dark:text-gray-600">•</span>
+                        <span>Renewal: Active</span>
                       </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Language & Region */}
-                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                  <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">Language & Region</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Language</label>
-                      <select
-                        value={settings.language}
-                        onChange={(e) => setSettings({ ...settings, language: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                      >
-                        <option value="en">English</option>
-                        <option value="es">Spanish</option>
-                        <option value="fr">French</option>
-                        <option value="de">German</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Timezone</label>
-                      <select
-                        value={settings.timezone}
-                        onChange={(e) => setSettings({ ...settings, timezone: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                      >
-                        <option value="UTC">UTC</option>
-                        <option value="America/New_York">Eastern Time</option>
-                        <option value="America/Chicago">Central Time</option>
-                        <option value="America/Los_Angeles">Pacific Time</option>
-                        <option value="Europe/London">London</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Date format</label>
-                      <select
-                        value={settings.dateFormat}
-                        onChange={(e) => setSettings({ ...settings, dateFormat: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                      >
-                        <option value="MM/DD/YYYY">MM/DD/YYYY</option>
-                        <option value="DD/MM/YYYY">DD/MM/YYYY</option>
-                        <option value="YYYY-MM-DD">YYYY-MM-DD</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Time format</label>
-                      <select
-                        value={settings.timeFormat}
-                        onChange={(e) => setSettings({ ...settings, timeFormat: e.target.value })}
-                        className="w-full px-4 py-2 border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                      >
-                        <option value="12h">12-hour</option>
-                        <option value="24h">24-hour</option>
-                      </select>
                     </div>
                   </div>
-                </div>
-
-                <div>
                   <button
-                    onClick={savePreferences}
-                    disabled={saving}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 text-white rounded-lg"
+                    onClick={() => setShowCreateUserModal(true)}
+                    disabled={!canCreateUser}
+                    className="flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed text-white text-sm font-medium rounded-lg transition-colors"
                   >
-                    <Settings className="w-4 h-4" />
-                    <span>{saving ? "Saving..." : "Save Preferences"}</span>
+                    <UserPlus className="w-4 h-4" />
+                    Create User
                   </button>
                 </div>
-              </div>
-            )}
 
-            {activeTab === "security" && (
-              <div className="space-y-6">
-                {/* Security Overview */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-6 border border-blue-100 dark:border-blue-800">
+                {/* Resource Usage Breakdown */}
+                <div className="bg-white/70 dark:bg-gray-800/70 rounded-lg p-4 space-y-4">
+                  {/* Users Resource */}
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-blue-600 rounded-full flex items-center justify-center">
-                      <Shield className="w-6 h-6 text-white" />
+                    <div className="w-24 text-sm font-medium text-gray-700 dark:text-gray-300">
+                      Users
                     </div>
-                    <div>
-                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        Trust & Security
-                      </h2>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Manage your account security, privacy settings, and trusted devices
-                      </p>
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3">
+                        <div className="flex-1 h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                          <div 
+                            className={`h-full rounded-full transition-all ${
+                              usagePercentage >= 90 ? 'bg-red-500' : 
+                              usagePercentage >= 75 ? 'bg-amber-500' : 'bg-blue-500'
+                            }`}
+                            style={{ width: `${Math.min(usagePercentage || 0, 100)}%` }}
+                          />
+                        </div>
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100 min-w-[80px]">
+                          {activeUsers} / {maxUsers || '∞'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-sm text-gray-500 dark:text-gray-400 min-w-[140px] text-right">
+                      {remainingSlots === 'unlimited' 
+                        ? 'Unlimited (Fair use)' 
+                        : `Can create ${remainingSlots} more`
+                      }
                     </div>
                   </div>
                 </div>
+              </div>
 
-                {/* Password & Authentication */}
+              {/* Subscription Utilization Charts */}
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                {/* Plan vs Usage Chart */}
                 <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                    <Lock className="w-5 h-5 text-blue-600" />
-                    Password & Authentication
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+                    Plan vs Usage
                   </h3>
-                  <div className="space-y-4">
-                    <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
-                      <div>
-                        <div className="font-medium text-gray-900 dark:text-gray-100">Change Password</div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Update your account password</div>
+                  <div className="flex items-center justify-center">
+                    <div className="relative w-32 h-32">
+                      {/* Circular Progress */}
+                      <svg className="w-32 h-32 transform -rotate-90">
+                        <circle
+                          cx="64"
+                          cy="64"
+                          r="56"
+                          stroke="currentColor"
+                          strokeWidth="12"
+                          fill="none"
+                          className="text-gray-200 dark:text-gray-700"
+                        />
+                        <circle
+                          cx="64"
+                          cy="64"
+                          r="56"
+                          stroke="currentColor"
+                          strokeWidth="12"
+                          fill="none"
+                          strokeLinecap="round"
+                          strokeDasharray={`${(usagePercentage || 0) * 3.52} 352`}
+                          className={`${
+                            usagePercentage >= 90 ? 'text-red-500' : 
+                            usagePercentage >= 75 ? 'text-amber-500' : 'text-blue-500'
+                          }`}
+                        />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center">
+                        <span className="text-2xl font-bold text-gray-900 dark:text-gray-100">
+                          {Math.round(usagePercentage || 0)}%
+                        </span>
+                        <span className="text-xs text-gray-500 dark:text-gray-400">Used</span>
                       </div>
-                      <button
-                        onClick={() => router.push('/settings/security')}
-                        className="px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg text-sm font-medium transition-colors"
-                      >
-                        Update
-                      </button>
                     </div>
-                    <div className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700">
-                      <div>
-                        <div className="font-medium text-gray-900 dark:text-gray-100">Two-Factor Authentication</div>
-                        <div className="text-sm text-gray-600 dark:text-gray-400">Add an extra layer of security</div>
-                      </div>
-                      <span className="px-3 py-1 bg-yellow-100 dark:bg-yellow-900/20 text-yellow-800 dark:text-yellow-200 text-xs font-medium rounded-full">
-                        Coming Soon
+                  </div>
+                  <div className="mt-4 space-y-2">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                        <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                        Active Users
+                      </span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">{activeUsers}</span>
+                    </div>
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
+                        <span className="w-3 h-3 rounded-full bg-gray-300 dark:bg-gray-600"></span>
+                        Available Slots
+                      </span>
+                      <span className="font-medium text-gray-900 dark:text-gray-100">
+                        {remainingSlots === 'unlimited' ? '∞' : remainingSlots}
                       </span>
                     </div>
                   </div>
                 </div>
 
-                {/* Active Sessions */}
+                {/* Resource Allocation */}
                 <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                    <Smartphone className="w-5 h-5 text-green-600" />
-                    Active Sessions & Devices
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+                    Resource Allocation
                   </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    View and manage your logged-in devices and sessions.
-                  </p>
-                  <button
-                    onClick={() => router.push('/settings/sessions')}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    <Smartphone className="w-4 h-4" />
-                    Manage Sessions
-                  </button>
-                </div>
-
-                {/* Privacy Settings */}
-                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
-                    <Eye className="w-5 h-5 text-purple-600" />
-                    Privacy Settings
-                  </h3>
-                  <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">
-                    Control your data visibility and privacy preferences.
-                  </p>
-                  <button
-                    onClick={() => router.push('/settings/privacy')}
-                    className="inline-flex items-center gap-2 px-4 py-2 bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 text-gray-900 dark:text-gray-100 rounded-lg text-sm font-medium transition-colors"
-                  >
-                    <Eye className="w-4 h-4" />
-                    Privacy Settings
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {activeTab === "users" && isAdmin && (
-              <div className="space-y-6">
-                {/* User Management Overview */}
-                <div className="bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20 rounded-xl p-6 border border-green-100 dark:border-green-800">
-                  <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 bg-green-600 rounded-full flex items-center justify-center">
-                      <Users className="w-6 h-6 text-white" />
-                    </div>
+                  <div className="space-y-4">
+                    {/* User Slots Bar */}
                     <div>
-                      <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        User Management
-                      </h2>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        Create and manage user accounts for your organization
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Quick Actions */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {/* Create New User */}
-                  <button
-                    onClick={() => router.push('/hr/user-creation')}
-                    className="flex items-start gap-4 p-6 bg-blue-600 hover:bg-blue-700 text-white rounded-xl transition-colors text-left"
-                  >
-                    <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <UserPlus className="w-6 h-6" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg mb-1">Create New User</h3>
-                      <p className="text-sm text-blue-100">
-                        Register a new user with complete profile and access settings
-                      </p>
-                    </div>
-                  </button>
-
-                  {/* Manage All Users */}
-                  <button
-                    onClick={() => router.push('/super-admin/system/user-management')}
-                    className="flex items-start gap-4 p-6 bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800 rounded-xl transition-colors text-left"
-                  >
-                    <div className="w-12 h-12 bg-gray-100 dark:bg-gray-800 rounded-lg flex items-center justify-center flex-shrink-0">
-                      <Users className="w-6 h-6 text-gray-700 dark:text-gray-300" />
-                    </div>
-                    <div>
-                      <h3 className="font-semibold text-lg mb-1 text-gray-900 dark:text-gray-100">Manage All Users</h3>
-                      <p className="text-sm text-gray-600 dark:text-gray-400">
-                        View, edit, and manage all user accounts
-                      </p>
-                    </div>
-                  </button>
-                </div>
-
-                {/* Users List with Actions */}
-                <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800">
-                  <div className="p-4 border-b border-gray-200 dark:border-gray-700">
-                    <div className="flex items-center justify-between gap-4">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
-                        All Users
-                      </h3>
-                      <div className="flex items-center gap-2">
-                        <div className="relative">
-                          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                          <input
-                            type="text"
-                            placeholder="Search users..."
-                            value={usersSearchQuery}
-                            onChange={(e) => setUsersSearchQuery(e.target.value)}
-                            onKeyDown={(e) => e.key === 'Enter' && fetchUsers()}
-                            className="pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-                          />
-                        </div>
-                        <button
-                          onClick={fetchUsers}
-                          disabled={usersLoading}
-                          className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
-                          title="Refresh"
+                      <div className="flex items-center justify-between text-xs text-gray-600 dark:text-gray-400 mb-1">
+                        <span>User Slots</span>
+                        <span>{activeUsers}/{maxUsers || '∞'}</span>
+                      </div>
+                      <div className="h-8 bg-gray-100 dark:bg-gray-800 rounded-lg overflow-hidden flex">
+                        <div 
+                          className="h-full bg-gradient-to-r from-blue-400 to-blue-600 flex items-center justify-end pr-2"
+                          style={{ width: `${Math.min(usagePercentage || 0, 100)}%` }}
                         >
-                          <RefreshCw className={`w-4 h-4 ${usersLoading ? 'animate-spin' : ''}`} />
-                        </button>
+                          {usagePercentage >= 20 && (
+                            <span className="text-xs text-white font-medium">{activeUsers}</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Plan Capacity Indicator */}
+                    <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Crown className="w-4 h-4 text-amber-500" />
+                        <span className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {planName || 'Free Plan'}
+                        </span>
+                      </div>
+                      <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="bg-white dark:bg-gray-700 rounded p-2 text-center">
+                          <div className="text-lg font-bold text-blue-600 dark:text-blue-400">{maxUsers || '∞'}</div>
+                          <div className="text-gray-500 dark:text-gray-400">Max Users</div>
+                        </div>
+                        <div className="bg-white dark:bg-gray-700 rounded p-2 text-center">
+                          <div className="text-lg font-bold text-green-600 dark:text-green-400">
+                            {remainingSlots === 'unlimited' ? '∞' : remainingSlots}
+                          </div>
+                          <div className="text-gray-500 dark:text-gray-400">Available</div>
+                        </div>
                       </div>
                     </div>
                   </div>
-
-                  {usersLoading ? (
-                    <div className="p-8 text-center">
-                      <RefreshCw className="w-8 h-8 text-gray-400 animate-spin mx-auto mb-2" />
-                      <p className="text-sm text-gray-500 dark:text-gray-400">Loading users...</p>
-                    </div>
-                  ) : usersList.length === 0 ? (
-                    <div className="p-8 text-center">
-                      <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
-                      <p className="text-gray-500 dark:text-gray-400">No users found</p>
-                    </div>
-                  ) : (
-                    <div className="overflow-x-auto">
-                      <table className="w-full">
-                        <thead>
-                          <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                            <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
-                            <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
-                            <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
-                            <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
-                          </tr>
-                        </thead>
-                        <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
-                          {usersList.map((u) => (
-                            <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
-                              <td className="px-4 py-3">
-                                <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-medium text-gray-600 dark:text-gray-300">
-                                    {(u.username || u.email || 'U').charAt(0).toUpperCase()}
-                                  </div>
-                                  <div>
-                                    <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">
-                                      {u.username || 'No username'}
-                                    </div>
-                                    <div className="text-xs text-gray-500 dark:text-gray-400">
-                                      {u.email}
-                                    </div>
-                                  </div>
-                                </div>
-                              </td>
-                              <td className="px-4 py-3">
-                                {editingUserId === u.id ? (
-                                  <div className="flex items-center gap-2">
-                                    <select
-                                      value={editingRole}
-                                      onChange={(e) => setEditingRole(e.target.value)}
-                                      className="text-sm px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
-                                    >
-                                      {availableRoles.map((r) => (
-                                        <option key={r.id} value={r.name}>{r.name}</option>
-                                      ))}
-                                    </select>
-                                    <button
-                                      onClick={() => handleRoleUpdate(u.id, editingRole)}
-                                      disabled={actionLoading === u.id}
-                                      className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
-                                      title="Save"
-                                    >
-                                      <Check className="w-4 h-4" />
-                                    </button>
-                                    <button
-                                      onClick={() => setEditingUserId(null)}
-                                      className="p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
-                                      title="Cancel"
-                                    >
-                                      <X className="w-4 h-4" />
-                                    </button>
-                                  </div>
-                                ) : (
-                                  <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
-                                    {u.role || 'No Role'}
-                                  </span>
-                                )}
-                              </td>
-                              <td className="px-4 py-3">
-                                <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
-                                  u.is_active 
-                                    ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
-                                    : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
-                                }`}>
-                                  {u.is_active ? 'Active' : 'Disabled'}
-                                </span>
-                              </td>
-                              <td className="px-4 py-3">
-                                <div className="flex items-center justify-end gap-1">
-                                  {/* Edit User - Opens Modal */}
-                                  <button
-                                    onClick={() => handleOpenEditModal(u)}
-                                    disabled={actionLoading === u.id}
-                                    className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors disabled:opacity-50"
-                                    title="Edit User"
-                                  >
-                                    <Edit2 className="w-4 h-4" />
-                                  </button>
-
-                                  {/* Toggle Active Status */}
-                                  <button
-                                    onClick={() => handleToggleActive(u.id, u.is_active)}
-                                    disabled={actionLoading === u.id}
-                                    className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
-                                      u.is_active
-                                        ? 'text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20'
-                                        : 'text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
-                                    }`}
-                                    title={u.is_active ? 'Disable User' : 'Enable User'}
-                                  >
-                                    {u.is_active ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
-                                  </button>
-
-                                  {/* Password Reset */}
-                                  <button
-                                    onClick={() => handlePasswordReset(u.id, u.email)}
-                                    disabled={actionLoading === u.id}
-                                    className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors disabled:opacity-50"
-                                    title="Reset Password"
-                                  >
-                                    <Key className="w-4 h-4" />
-                                  </button>
-                                </div>
-                              </td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  )}
                 </div>
 
-                {/* Additional User Management Links */}
+                {/* Plan Comparison */}
                 <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                    More Options
+                  <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-4">
+                    Plan Comparison
                   </h3>
                   <div className="space-y-3">
-                    <a
-                      href="/system/permission-manager"
-                      className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 -mx-2 px-2 rounded transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Key className="w-5 h-5 text-orange-600" />
-                        <div>
-                          <div className="font-medium text-gray-900 dark:text-gray-100">Permission Manager</div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400">Manage user permissions and access</div>
+                    {/* Current Plan Highlight */}
+                    <div className={`rounded-lg p-3 border-2 ${
+                      (planName || 'Free').toLowerCase().includes('enterprise') 
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20' 
+                        : (planName || 'Free').toLowerCase().includes('pro') 
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
+                          : 'border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-800/50'
+                    }`}>
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Crown className={`w-4 h-4 ${
+                            (planName || 'Free').toLowerCase().includes('enterprise') 
+                              ? 'text-purple-500' 
+                              : (planName || 'Free').toLowerCase().includes('pro') 
+                                ? 'text-blue-500'
+                                : 'text-gray-400'
+                          }`} />
+                          <span className="font-medium text-gray-900 dark:text-gray-100">
+                            {planName || 'Free Plan'}
+                          </span>
+                        </div>
+                        <span className="text-xs px-2 py-1 bg-green-100 dark:bg-green-900/30 text-green-700 dark:text-green-400 rounded-full">
+                          Current
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Usage Trend Indicator */}
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800/50 rounded-lg">
+                      <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                        usagePercentage >= 90 ? 'bg-red-100 dark:bg-red-900/30' :
+                        usagePercentage >= 75 ? 'bg-amber-100 dark:bg-amber-900/30' :
+                        'bg-green-100 dark:bg-green-900/30'
+                      }`}>
+                        {usagePercentage >= 90 ? (
+                          <span className="text-lg">⚠️</span>
+                        ) : usagePercentage >= 75 ? (
+                          <span className="text-lg">📊</span>
+                        ) : (
+                          <span className="text-lg">✓</span>
+                        )}
+                      </div>
+                      <div>
+                        <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
+                          {usagePercentage >= 90 ? 'Near Limit' :
+                           usagePercentage >= 75 ? 'Growing Usage' :
+                           'Healthy Usage'}
+                        </div>
+                        <div className="text-xs text-gray-500 dark:text-gray-400">
+                          {usagePercentage >= 90 
+                            ? 'Consider upgrading your plan'
+                            : usagePercentage >= 75 
+                              ? 'Monitor your usage closely'
+                              : 'Plenty of capacity available'
+                          }
                         </div>
                       </div>
-                      <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </a>
-                    <a
-                      href="/system/roles-users-report"
-                      className="flex items-center justify-between py-3 hover:bg-gray-50 dark:hover:bg-gray-800 -mx-2 px-2 rounded transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Users className="w-5 h-5 text-blue-600" />
-                        <div>
-                          <div className="font-medium text-gray-900 dark:text-gray-100">Roles & Users Report</div>
-                          <div className="text-sm text-gray-600 dark:text-gray-400">View all roles and assigned users</div>
-                        </div>
-                      </div>
-                      <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    </a>
+                    </div>
                   </div>
                 </div>
               </div>
-            )}
 
-            {activeTab === "help" && (
-              <div className="space-y-6">
-                <div className="text-center py-12">
-                  <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
-                    <HelpCircle className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+              {/* Users List with Actions */}
+              <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800">
+                <div className="p-4 border-b border-gray-200 dark:border-gray-700">
+                  <div className="flex items-center justify-between gap-4">
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
+                      All Users
+                    </h3>
+                    <div className="flex items-center gap-2">
+                      <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                        <input
+                          type="text"
+                          placeholder="Search users..."
+                          value={usersSearchQuery}
+                          onChange={(e) => setUsersSearchQuery(e.target.value)}
+                          onKeyDown={(e) => e.key === 'Enter' && fetchUsers()}
+                          className="pl-9 pr-4 py-2 text-sm border border-gray-300 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+                        />
+                      </div>
+                      <button
+                        onClick={fetchUsers}
+                        disabled={usersLoading}
+                        className="p-2 text-gray-600 dark:text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
+                        title="Refresh"
+                      >
+                        <RefreshCw className={`w-4 h-4 ${usersLoading ? 'animate-spin' : ''}`} />
+                      </button>
+                    </div>
                   </div>
-                  <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
-                    Need Help?
-                  </h2>
-                  <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
-                    Get support for any issues or questions you have about the BISMAN ERP system.
-                  </p>
-                  <button
-                    onClick={() => router.push('/common/help-support')}
-                    className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-base font-medium transition-colors"
+                </div>
+
+                {usersLoading ? (
+                  <div className="p-8 text-center">
+                    <RefreshCw className="w-8 h-8 text-gray-400 animate-spin mx-auto mb-2" />
+                    <p className="text-sm text-gray-500 dark:text-gray-400">Loading users...</p>
+                  </div>
+                ) : usersList.length === 0 ? (
+                  <div className="p-8 text-center">
+                    <Users className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-3" />
+                    <p className="text-gray-500 dark:text-gray-400">No users found. Click refresh to load users.</p>
+                    <button
+                      onClick={fetchUsers}
+                      className="mt-4 px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg"
+                    >
+                      Load Users
+                    </button>
+                  </div>
+                ) : (
+                  <div className="overflow-x-auto">
+                    <table className="w-full">
+                      <thead>
+                        <tr className="border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                          <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">User</th>
+                          <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Role</th>
+                          <th className="text-left px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                          <th className="text-right px-4 py-3 text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                        {usersList.map((u) => (
+                          <tr key={u.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                            <td className="px-4 py-3">
+                              <div className="flex items-center gap-3">
+                                <div className="w-8 h-8 rounded-full bg-gray-200 dark:bg-gray-700 flex items-center justify-center text-sm font-medium text-gray-600 dark:text-gray-300">
+                                  {(u.username || u.email || 'U').charAt(0).toUpperCase()}
+                                </div>
+                                <div>
+                                  <div className="font-medium text-gray-900 dark:text-gray-100 text-sm">
+                                    {u.username || 'No username'}
+                                  </div>
+                                  <div className="text-xs text-gray-500 dark:text-gray-400">
+                                    {u.email}
+                                  </div>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-4 py-3">
+                              {editingUserId === u.id ? (
+                                <div className="flex items-center gap-2">
+                                  <select
+                                    value={editingRole}
+                                    onChange={(e) => setEditingRole(e.target.value)}
+                                    className="text-sm px-2 py-1 border border-gray-300 dark:border-gray-600 rounded bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100"
+                                  >
+                                    {availableRoles.map((r) => (
+                                      <option key={r.id} value={r.name}>{r.name}</option>
+                                    ))}
+                                  </select>
+                                  <button
+                                    onClick={() => handleRoleUpdate(u.id, editingRole)}
+                                    disabled={actionLoading === u.id}
+                                    className="p-1 text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20 rounded"
+                                    title="Save"
+                                  >
+                                    <Check className="w-4 h-4" />
+                                  </button>
+                                  <button
+                                    onClick={() => setEditingUserId(null)}
+                                    className="p-1 text-gray-400 hover:bg-gray-100 dark:hover:bg-gray-800 rounded"
+                                    title="Cancel"
+                                  >
+                                    <X className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200">
+                                  {u.role || 'No Role'}
+                                </span>
+                              )}
+                            </td>
+                            <td className="px-4 py-3">
+                              <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                u.is_active
+                                  ? 'bg-green-100 dark:bg-green-900/30 text-green-800 dark:text-green-200'
+                                  : 'bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200'
+                              }`}>
+                                {u.is_active ? 'Active' : 'Disabled'}
+                              </span>
+                            </td>
+                            <td className="px-4 py-3">
+                              <div className="flex items-center justify-end gap-1">
+                                {/* Edit User - Opens Modal */}
+                                <button
+                                  onClick={() => handleOpenEditModal(u)}
+                                  disabled={actionLoading === u.id}
+                                  className="p-2 text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Edit User"
+                                >
+                                  <Edit2 className="w-4 h-4" />
+                                </button>
+
+                                {/* Toggle Active Status */}
+                                <button
+                                  onClick={() => handleToggleActive(u.id, u.is_active)}
+                                  disabled={actionLoading === u.id}
+                                  className={`p-2 rounded-lg transition-colors disabled:opacity-50 ${
+                                    u.is_active
+                                      ? 'text-orange-600 hover:bg-orange-50 dark:hover:bg-orange-900/20'
+                                      : 'text-green-600 hover:bg-green-50 dark:hover:bg-green-900/20'
+                                  }`}
+                                  title={u.is_active ? 'Disable User' : 'Enable User'}
+                                >
+                                  {u.is_active ? <ToggleRight className="w-4 h-4" /> : <ToggleLeft className="w-4 h-4" />}
+                                </button>
+
+                                {/* Password Reset */}
+                                <button
+                                  onClick={() => handlePasswordReset(u.id, u.email)}
+                                  disabled={actionLoading === u.id}
+                                  className="p-2 text-purple-600 hover:bg-purple-50 dark:hover:bg-purple-900/20 rounded-lg transition-colors disabled:opacity-50"
+                                  title="Reset Password"
+                                >
+                                  <Key className="w-4 h-4" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+              </div>
+
+              {/* More Options Links */}
+              <div className="bg-white dark:bg-gray-900 rounded-xl shadow-sm border border-gray-200 dark:border-gray-800 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
+                  More Options
+                </h3>
+                <div className="space-y-3">
+                  <a
+                    href="/system/permission-manager"
+                    className="flex items-center justify-between py-3 border-b border-gray-200 dark:border-gray-700 hover:bg-gray-50 dark:hover:bg-gray-800 -mx-2 px-2 rounded transition-colors"
                   >
-                    <HelpCircle className="w-5 h-5" />
-                    <span>Go to Help & Support Center</span>
-                  </button>
-                </div>
-
-                {/* Quick Links */}
-                <div className="border-t border-gray-200 dark:border-gray-700 pt-6">
-                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4">
-                    Quick Links
-                  </h3>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <a
-                      href="/common/help-support"
-                      className="flex items-start gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    >
-                      <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <HelpCircle className="w-5 h-5 text-blue-600 dark:text-blue-400" />
-                      </div>
+                    <div className="flex items-center gap-3">
+                      <Key className="w-5 h-5 text-orange-600" />
                       <div>
-                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1">
-                          Create Ticket
-                        </h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          Submit a support ticket for technical issues
-                        </p>
+                        <div className="font-medium text-gray-900 dark:text-gray-100">Permission Manager</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">Manage user permissions and access</div>
                       </div>
-                    </a>
-                    <a
-                      href="/common/help-support"
-                      className="flex items-start gap-3 p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-800 transition-colors"
-                    >
-                      <div className="w-10 h-10 bg-green-100 dark:bg-green-900/20 rounded-lg flex items-center justify-center flex-shrink-0">
-                        <Settings className="w-5 h-5 text-green-600 dark:text-green-400" />
-                      </div>
+                    </div>
+                    <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </a>
+                  <a
+                    href="/system/roles-users-report"
+                    className="flex items-center justify-between py-3 hover:bg-gray-50 dark:hover:bg-gray-800 -mx-2 px-2 rounded transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <Users className="w-5 h-5 text-blue-600" />
                       <div>
-                        <h4 className="font-medium text-gray-900 dark:text-gray-100 mb-1">
-                          My Tickets
-                        </h4>
-                        <p className="text-sm text-gray-600 dark:text-gray-400">
-                          View and track your support requests
-                        </p>
+                        <div className="font-medium text-gray-900 dark:text-gray-100">Roles & Users Report</div>
+                        <div className="text-sm text-gray-600 dark:text-gray-400">View all roles and assigned users</div>
                       </div>
-                    </a>
-                  </div>
+                    </div>
+                    <svg className="w-5 h-5 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                    </svg>
+                  </a>
                 </div>
               </div>
-            )}
+            </div>
+          ) : (
+            <div className="text-center py-12">
+              <div className="w-20 h-20 bg-blue-100 dark:bg-blue-900/20 rounded-full flex items-center justify-center mx-auto mb-6">
+                <Users className="w-10 h-10 text-blue-600 dark:text-blue-400" />
+              </div>
+              <h2 className="text-2xl font-bold text-gray-900 dark:text-gray-100 mb-3">
+                Access Restricted
+              </h2>
+              <p className="text-gray-600 dark:text-gray-400 mb-8 max-w-md mx-auto">
+                You don&apos;t have permission to access user management. Please contact your administrator if you need access.
+              </p>
+            </div>
+          )}
         </div>
       </div>
 
@@ -1334,6 +886,48 @@ export default function UserSettingsPage() {
                 />
               </div>
 
+              {/* First Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  First Name
+                </label>
+                <input
+                  type="text"
+                  value={editUserData.first_name}
+                  onChange={(e) => setEditUserData({ ...editUserData, first_name: e.target.value })}
+                  placeholder="Enter first name"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Last Name */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Last Name
+                </label>
+                <input
+                  type="text"
+                  value={editUserData.last_name}
+                  onChange={(e) => setEditUserData({ ...editUserData, last_name: e.target.value })}
+                  placeholder="Enter last name"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
+              {/* Phone/Mobile */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                  Phone / Mobile
+                </label>
+                <input
+                  type="tel"
+                  value={editUserData.phone}
+                  onChange={(e) => setEditUserData({ ...editUserData, phone: e.target.value })}
+                  placeholder="Enter phone number"
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                />
+              </div>
+
               {/* Role */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
@@ -1361,21 +955,14 @@ export default function UserSettingsPage() {
                   onChange={(e) => setEditUserData({ ...editUserData, reporting_authority_id: e.target.value })}
                   className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
-                  <option value="">Select Reporting Authority</option>
-                  {availableManagers
-                    .filter(m => m.id !== editUserData.id) // Exclude the user being edited
-                    .map((m) => (
-                      <option key={m.id} value={m.id}>
-                        {m.name} {m.role ? `(${m.role})` : ''}
-                      </option>
-                    ))}
+                  <option value="">No Reporting Authority</option>
+                  {availableManagers.map((m) => (
+                    <option key={m.id} value={m.id}>{m.name} ({m.role})</option>
+                  ))}
                 </select>
-                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                  The manager/supervisor this user reports to
-                </p>
               </div>
 
-              {/* Branch Selection */}
+              {/* Branch */}
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
                   Branch
@@ -1408,6 +995,24 @@ export default function UserSettingsPage() {
                   Use the toggle button in the users list to change status
                 </p>
               </div>
+
+              {/* Password Reset */}
+              <div className="bg-gray-50 dark:bg-gray-800/50 rounded-lg p-3">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Password Reset
+                </label>
+                <button
+                  onClick={() => handlePasswordReset(editUserData.id, editUserData.email)}
+                  disabled={actionLoading === editUserData.id}
+                  className="w-full px-3 py-2 text-sm font-medium text-purple-700 dark:text-purple-300 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors disabled:opacity-50 flex items-center justify-center gap-2"
+                >
+                  <Key className="w-4 h-4" />
+                  Send Password Reset Link
+                </button>
+                <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                  An email will be sent to {editUserData.email}
+                </p>
+              </div>
             </div>
 
             <div className="flex justify-end gap-3 mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
@@ -1435,6 +1040,17 @@ export default function UserSettingsPage() {
           </div>
         </div>
       )}
+
+      {/* Create User Modal */}
+      <CreateFullUserModal
+        isOpen={showCreateUserModal}
+        onClose={() => setShowCreateUserModal(false)}
+        onSuccess={() => {
+          setShowCreateUserModal(false);
+          fetchUsers();
+          refreshSubscription();
+        }}
+      />
     </div>
   );
 }

@@ -29,7 +29,7 @@ const SYSTEM_PAGES = [
   { key: 'common', name: 'Common Module', module: 'common' },
   { key: 'common-about-me', name: 'About Me (Common)', module: 'common' },
   { key: 'common-help-center', name: 'Help Center', module: 'common' },
-  { key: 'common-user-settings', name: 'User Settings', module: 'common' },
+  { key: 'common-user-settings', name: 'User Management', module: 'common' },
   { key: 'common-payment-request', name: 'Payment Request', module: 'common' },
   { key: 'dashboard', name: 'Dashboard', module: 'common' },
   

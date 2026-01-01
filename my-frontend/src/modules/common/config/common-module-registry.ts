@@ -122,10 +122,10 @@ export const COMMON_PAGES: CommonPageMetadata[] = [
   // Settings Pages
   {
     id: 'common-user-settings',
-    name: 'User Settings',
+    name: 'User Management',
     path: '/common/user-settings',
     icon: Settings,
-    description: 'Customize your preferences and settings',
+    description: 'Manage users and monitor subscription usage',
     category: 'settings',
     order: 8,
     isActive: true,

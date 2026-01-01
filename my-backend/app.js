@@ -4277,6 +4277,7 @@ app.get('/api/users/search', authenticate, async (req, res) => {
         profile_pic_url: true,
         first_name: true,
         last_name: true,
+        mobile: true,
         is_active: true,
         profile_data: true,
       },
@@ -4349,6 +4350,8 @@ app.get('/api/users/search', authenticate, async (req, res) => {
         fullName: user.first_name && user.last_name 
           ? `${user.first_name} ${user.last_name}` 
           : (user.username || user.email?.split('@')[0] || ''),
+        phone: user.mobile || '',
+        mobile: user.mobile || '',
         role: user.role || 'USER',
         roleName: user.role || 'USER',
         role_level: roleLevel,
@@ -4379,7 +4382,6 @@ app.get('/api/users/search', authenticate, async (req, res) => {
 app.get('/api/branches', authenticate, async (req, res) => {
   try {
     const tenantId = req.user.tenant_id || req.user.tenantId;
-    
     const whereClause = {
       isActive: true
     };
@@ -4395,7 +4397,32 @@ app.get('/api/branches', authenticate, async (req, res) => {
         id: true,
         branchCode: true,
         branchName: true,
+        addressLine1: true,
+        addressLine2: true,
         city: true,
+        state: true,
+        district: true,
+        postalCode: true,
+        country: true,
+        isActive: true,
+        createdAt: true,
+        // Building & Property Details
+        buildingType: true,
+        areaSquareFeet: true,
+        // Agreement & Lease Details
+        agreementType: true,
+        agreementStartDate: true,
+        agreementEndDate: true,
+        monthlyRent: true,
+        securityDeposit: true,
+        rentEscalationPercent: true,
+        noticePeriodDays: true,
+        autoRenew: true,
+        agreementReminderDays: true,
+        // Owner/Landlord Details
+        panHolderName: true,
+        panNumber: true,
+        gstNumber: true,
       },
       orderBy: { branchName: 'asc' }
     });
@@ -4406,7 +4433,30 @@ app.get('/api/branches', authenticate, async (req, res) => {
         id: String(b.id),
         code: b.branchCode,
         name: b.branchName,
+        address: b.addressLine1,
+        district: b.district || b.addressLine2 || '',
         city: b.city,
+        state: b.state,
+        pincode: b.postalCode,
+        country: b.country,
+        isActive: b.isActive,
+        buildingType: b.buildingType || 'owned',
+        areaSquareFeet: b.areaSquareFeet ? Number(b.areaSquareFeet) : null,
+        // Agreement Details
+        agreementType: b.agreementType || '',
+        agreementStartDate: b.agreementStartDate ? b.agreementStartDate.toISOString().split('T')[0] : '',
+        agreementEndDate: b.agreementEndDate ? b.agreementEndDate.toISOString().split('T')[0] : '',
+        monthlyRent: b.monthlyRent ? Number(b.monthlyRent) : null,
+        securityDeposit: b.securityDeposit ? Number(b.securityDeposit) : null,
+        rentEscalationPercent: b.rentEscalationPercent ? Number(b.rentEscalationPercent) : null,
+        noticePeriodDays: b.noticePeriodDays || null,
+        autoRenew: b.autoRenew || false,
+        agreementReminderDays: b.agreementReminderDays || null,
+        // Owner Details
+        panHolderName: b.panHolderName || '',
+        panNumber: b.panNumber || '',
+        gstNumber: b.gstNumber || '',
+        createdAt: b.createdAt,
       })),
       count: branches.length
     });
@@ -4417,6 +4467,219 @@ app.get('/api/branches', authenticate, async (req, res) => {
       branches: [],
       count: 0,
       message: 'Branches unavailable'
+    });
+  }
+});
+
+// Create new branch
+app.post('/api/branches', authenticate, async (req, res) => {
+  try {
+    const tenantId = req.user.tenant_id || req.user.tenantId;
+    const {
+      name,
+      code,
+      address,
+      city,
+      state,
+      district,
+      pincode,
+      areaSquareFeet,
+      buildingType,
+      isActive = true,
+      // Agreement details
+      agreementType,
+      agreementStartDate,
+      agreementEndDate,
+      monthlyRent,
+      rentEscalationPercent,
+      securityDeposit,
+      noticePeriodDays,
+      autoRenew,
+      agreementReminderDays,
+      // PAN details
+      panHolderName,
+      panNumber,
+      gstNumber,
+    } = req.body;
+
+    // Validation
+    if (!name || !code || !address || !city || !state || !pincode) {
+      return res.status(400).json({
+        success: false,
+        error: 'Missing required fields: name, code, address, city, state, pincode'
+      });
+    }
+
+    // Check for duplicate branch code
+    const existingBranch = await prisma.branch.findFirst({
+      where: {
+        branchCode: code,
+        ...(tenantId ? { tenantId } : {})
+      }
+    });
+
+    if (existingBranch) {
+      return res.status(400).json({
+        success: false,
+        error: 'Branch code already exists'
+      });
+    }
+
+    // Create branch with all fields
+    const branch = await prisma.branch.create({
+      data: {
+        tenantId: tenantId || null,
+        branchCode: code,
+        branchName: name,
+        addressLine1: address,
+        addressLine2: district || null,
+        city,
+        state,
+        district: district || null,
+        postalCode: pincode,
+        country: 'India',
+        isActive: isActive !== false,
+        // Building & Property Details
+        buildingType: buildingType || 'owned',
+        areaSquareFeet: areaSquareFeet ? parseFloat(areaSquareFeet) : null,
+        // Agreement & Lease Details
+        agreementType: agreementType || null,
+        agreementStartDate: agreementStartDate ? new Date(agreementStartDate) : null,
+        agreementEndDate: agreementEndDate ? new Date(agreementEndDate) : null,
+        monthlyRent: monthlyRent ? parseFloat(monthlyRent) : null,
+        securityDeposit: securityDeposit ? parseFloat(securityDeposit) : null,
+        rentEscalationPercent: rentEscalationPercent ? parseFloat(rentEscalationPercent) : null,
+        noticePeriodDays: noticePeriodDays ? parseInt(noticePeriodDays) : null,
+        autoRenew: autoRenew || false,
+        agreementReminderDays: agreementReminderDays ? parseInt(agreementReminderDays) : null,
+        // Owner/Landlord Details
+        panHolderName: panHolderName || null,
+        panNumber: panNumber || null,
+        gstNumber: gstNumber || null,
+      }
+    });
+
+    console.log('[Branches] Created branch:', branch.branchName);
+
+    res.status(201).json({
+      success: true,
+      branch: {
+        id: String(branch.id),
+        code: branch.branchCode,
+        name: branch.branchName,
+        city: branch.city,
+        isActive: branch.isActive,
+      },
+      message: 'Branch created successfully'
+    });
+  } catch (error) {
+    console.error('[Branches] Create error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to create branch'
+    });
+  }
+});
+
+// Update branch
+app.put('/api/branches/:id', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user.tenant_id || req.user.tenantId;
+    const {
+      name,
+      code,
+      address,
+      city,
+      state,
+      district,
+      pincode,
+      isActive,
+      // Building & Property Details
+      buildingType,
+      areaSquareFeet,
+      // Agreement & Lease Details
+      agreementType,
+      agreementStartDate,
+      agreementEndDate,
+      monthlyRent,
+      securityDeposit,
+      rentEscalationPercent,
+      noticePeriodDays,
+      autoRenew,
+      agreementReminderDays,
+      // Owner/Landlord Details
+      panHolderName,
+      panNumber,
+      gstNumber,
+    } = req.body;
+
+    // Find existing branch
+    const existingBranch = await prisma.branch.findFirst({
+      where: {
+        id: parseInt(id),
+        ...(tenantId ? { tenantId } : {})
+      }
+    });
+
+    if (!existingBranch) {
+      return res.status(404).json({
+        success: false,
+        error: 'Branch not found'
+      });
+    }
+
+    // Update branch with all fields
+    const branch = await prisma.branch.update({
+      where: { id: parseInt(id) },
+      data: {
+        branchCode: code || existingBranch.branchCode,
+        branchName: name || existingBranch.branchName,
+        addressLine1: address || existingBranch.addressLine1,
+        addressLine2: district !== undefined ? district : existingBranch.addressLine2,
+        city: city || existingBranch.city,
+        state: state || existingBranch.state,
+        district: district !== undefined ? district : existingBranch.district,
+        postalCode: pincode || existingBranch.postalCode,
+        isActive: isActive !== undefined ? isActive : existingBranch.isActive,
+        // Building & Property Details
+        buildingType: buildingType !== undefined ? buildingType : existingBranch.buildingType,
+        areaSquareFeet: areaSquareFeet !== undefined && areaSquareFeet !== '' ? parseFloat(areaSquareFeet) : existingBranch.areaSquareFeet,
+        // Agreement & Lease Details
+        agreementType: agreementType !== undefined ? agreementType : existingBranch.agreementType,
+        agreementStartDate: agreementStartDate !== undefined ? (agreementStartDate ? new Date(agreementStartDate) : null) : existingBranch.agreementStartDate,
+        agreementEndDate: agreementEndDate !== undefined ? (agreementEndDate ? new Date(agreementEndDate) : null) : existingBranch.agreementEndDate,
+        monthlyRent: monthlyRent !== undefined && monthlyRent !== '' ? parseFloat(monthlyRent) : existingBranch.monthlyRent,
+        securityDeposit: securityDeposit !== undefined && securityDeposit !== '' ? parseFloat(securityDeposit) : existingBranch.securityDeposit,
+        rentEscalationPercent: rentEscalationPercent !== undefined && rentEscalationPercent !== '' ? parseFloat(rentEscalationPercent) : existingBranch.rentEscalationPercent,
+        noticePeriodDays: noticePeriodDays !== undefined && noticePeriodDays !== '' ? parseInt(noticePeriodDays) : existingBranch.noticePeriodDays,
+        autoRenew: autoRenew !== undefined ? autoRenew : existingBranch.autoRenew,
+        agreementReminderDays: agreementReminderDays !== undefined && agreementReminderDays !== '' ? parseInt(agreementReminderDays) : existingBranch.agreementReminderDays,
+        // Owner/Landlord Details
+        panHolderName: panHolderName !== undefined ? panHolderName : existingBranch.panHolderName,
+        panNumber: panNumber !== undefined ? panNumber : existingBranch.panNumber,
+        gstNumber: gstNumber !== undefined ? gstNumber : existingBranch.gstNumber,
+      }
+    });
+
+    console.log('[Branches] Updated branch:', branch.branchName);
+
+    res.json({
+      success: true,
+      branch: {
+        id: String(branch.id),
+        code: branch.branchCode,
+        name: branch.branchName,
+        city: branch.city,
+        isActive: branch.isActive,
+      },
+      message: 'Branch updated successfully'
+    });
+  } catch (error) {
+    console.error('[Branches] Update error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to update branch'
     });
   }
 });

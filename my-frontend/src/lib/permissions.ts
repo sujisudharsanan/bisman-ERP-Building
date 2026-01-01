@@ -7,6 +7,10 @@ export const PERMISSIONS = {
   AUDIT_VIEW: 'audit.view',
   SETTINGS_MANAGE: 'settings.manage',
   APIKEY_MANAGE: 'apikey.manage',
+  // Branch permissions
+  BRANCH_CREATE: 'branch.create',
+  BRANCH_EDIT: 'branch.edit',
+  BRANCH_VIEW: 'branch.view',
   // Enterprise-wide permissions (visible only to SUPER/ENTERPRISE admins)
   ENTERPRISE_DASHBOARD_VIEW: 'enterprise.dashboard.view',
   ENTERPRISE_SUPERADMINS_MANAGE: 'enterprise.superadmins.manage',

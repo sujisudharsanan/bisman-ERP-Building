@@ -473,21 +473,25 @@ export function KycForm({ invitation, token, onSuccess }: KycFormProps) {
                 />
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    City *
+                    Country *
                   </label>
-                  <input
-                    type="text"
-                    value={formData.city || ''}
-                    onChange={(e) => handleInputChange('city', e.target.value)}
+                  <select
+                    value={formData.country || ''}
+                    onChange={(e) => handleInputChange('country', e.target.value)}
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.city ? 'border-red-300' : 'border-gray-300'
+                      errors.country ? 'border-red-300' : 'border-gray-300'
                     }`}
-                  />
-                  {errors.city && (
-                    <p className="text-red-600 text-sm mt-1">{errors.city}</p>
+                  >
+                    <option value="">Select country</option>
+                    <option value="IN">India</option>
+                    <option value="US">United States</option>
+                    <option value="UK">United Kingdom</option>
+                  </select>
+                  {errors.country && (
+                    <p className="text-red-600 text-sm mt-1">{errors.country}</p>
                   )}
                 </div>
 
@@ -510,25 +514,36 @@ export function KycForm({ invitation, token, onSuccess }: KycFormProps) {
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Country *
+                    District
                   </label>
-                  <select
-                    value={formData.country || ''}
-                    onChange={(e) => handleInputChange('country', e.target.value)}
-                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.country ? 'border-red-300' : 'border-gray-300'
-                    }`}
-                  >
-                    <option value="">Select country</option>
-                    <option value="IN">India</option>
-                    <option value="US">United States</option>
-                    <option value="UK">United Kingdom</option>
-                  </select>
-                  {errors.country && (
-                    <p className="text-red-600 text-sm mt-1">{errors.country}</p>
-                  )}
+                  <input
+                    type="text"
+                    value={formData.district || ''}
+                    onChange={(e) => handleInputChange('district', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter district"
+                  />
                 </div>
 
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    City *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.city || ''}
+                    onChange={(e) => handleInputChange('city', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.city ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {errors.city && (
+                    <p className="text-red-600 text-sm mt-1">{errors.city}</p>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
                     Postal Code

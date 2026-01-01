@@ -692,32 +692,16 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
 
   const profilePicUrl = getProfilePicUrl();
 
-  // Check if current page is a dashboard or user settings - hide profile on these pages
-  const hideProfileInSidebar = pathname === '/hub-incharge' || 
-                          pathname === '/super-admin' || 
-                          pathname === '/admin' || 
-                          pathname === '/enterprise-admin/dashboard' ||
-                          pathname === '/admin' ||
-                          pathname === '/enterprise-admin' ||
-                          pathname === '/cfo-dashboard' ||
-                          pathname === '/dashboard' ||
-                          pathname === '/common/about-me' ||
-                          pathname?.startsWith('/user-settings') ||
-                          pathname?.startsWith('/common/user-settings');
-
-  // Check if user has access to about-me page
-  const hasAboutMeAccess = useMemo(() => {
-    // Enterprise Admin always has access
-    const isEnterprise = user?.role === 'ENTERPRISE_ADMIN' || user?.roleName === 'ENTERPRISE_ADMIN';
-    if (isEnterprise) return true;
-    // Check if about-me page is in allowed pages
-    return userAllowedPages.includes('about-me') || userAllowedPages.includes('common-about-me');
-  }, [user?.role, user?.roleName, userAllowedPages]);
+  // Only hide profile on the about-me page itself (to avoid redundancy)
+  // Also hide for non-admin users since they already see their profile on the right panel
+  const userRole = (user?.role || user?.roleName || '').toString().toUpperCase().replace(/\s+/g, '_');
+  const isAdminUser = ['SUPER_ADMIN', 'ADMIN', 'ENTERPRISE_ADMIN', 'SYSTEM_ADMIN'].includes(userRole);
+  const hideProfileInSidebar = pathname === '/common/about-me' || !isAdminUser;
 
   return (
     <div className={`py-3 ${className}`}>
-      {/* User Profile Section - Only show if user has access to about-me page and not collapsed */}
-      {!collapsed && user && !hideProfileInSidebar && hasAboutMeAccess && (
+      {/* Admin Profile Section - Always show above Dashboard with name and role */}
+      {!collapsed && user && !hideProfileInSidebar && (
         <div className="px-2 mb-3">
           <div 
             className="flex items-center gap-2 p-1.5 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
@@ -754,7 +738,7 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
                   : user?.email?.split('@')[0] || 'User'}
               </p>
               <p className="text-xs text-gray-500 dark:text-gray-400 truncate">
-                {user?.roleName?.replace(/_/g, ' ') || user?.role?.replace(/_/g, ' ') || 'User'}
+                {getRoleDisplayName(user?.roleName || user?.role)}
               </p>
             </div>
           </div>

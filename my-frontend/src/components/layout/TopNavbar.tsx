@@ -73,7 +73,7 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ showThemeToggle = false, fixed = 
       if (segments.length === 0) {
         setCurrentPageName('Dashboard');
       } else if (path.includes('/common/user-settings')) {
-        setCurrentPageName('User Settings');
+        setCurrentPageName('User Management');
       } else if (path.includes('/common/help-support')) {
         setCurrentPageName('Help & Support');
       } else {

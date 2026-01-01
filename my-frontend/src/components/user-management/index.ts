@@ -4,6 +4,28 @@
 // Database monitoring component
 export { TopNavDbIndicator } from './TopNavDbIndicator';
 
+// Subscription and Usage Components
+export { UsageMeter } from './UsageMeter';
+export type { UsageMeterProps } from './UsageMeter';
+
+export { SubscriptionOverview } from './SubscriptionOverview';
+export type { 
+  SubscriptionOverviewProps, 
+  SubscriptionInfo, 
+  ResourceUsage, 
+  PendingIndicators 
+} from './SubscriptionOverview';
+
+export { UserKPIs } from './UserKPIs';
+export type { UserKPIsProps, UserKPIData } from './UserKPIs';
+
+export { UsageAnalytics } from './UsageAnalytics';
+export type { 
+  UsageAnalyticsProps, 
+  ResourceData, 
+  UserContributionData 
+} from './UsageAnalytics';
+
 // User invitation and creation components  
 export { InviteUserModal } from './InviteUserModal';
 export { CreateFullUserModal } from './CreateFullUserModal';

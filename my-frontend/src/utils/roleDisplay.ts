@@ -215,13 +215,38 @@ export function getRoleDisplayInfo(roleKey: string | null | undefined, authority
  * Get display name for a role key.
  * Simple helper for cases where only the display name is needed.
  * 
- * @param roleKey - The internal role key
+ * @param roleKey - The internal role key or numeric role ID
  * @returns The user-friendly display name
  */
-export function getRoleDisplayName(roleKey: string | null | undefined): string {
+export function getRoleDisplayName(roleKey: string | number | null | undefined): string {
   if (!roleKey) return 'Staff';
-  const normalizedKey = roleKey.toUpperCase().replace(/\s+/g, '_').replace(/-/g, '_');
-  return ROLE_DISPLAY_MAP[normalizedKey]?.displayName || roleKey;
+  
+  // Handle numeric role IDs - map to authority level labels
+  if (typeof roleKey === 'number' || !isNaN(Number(roleKey))) {
+    const numericLevel = Number(roleKey);
+    // If it's a small number (1-10), it's likely a role ID, not an authority level
+    // Map common role IDs to display names
+    const roleIdMap: Record<number, string> = {
+      1: 'Super Admin',
+      2: 'Admin',
+      3: 'Manager',
+      4: 'Branch Manager',
+      5: 'Staff',
+      6: 'Viewer',
+      7: 'Accountant',
+      8: 'HR Executive',
+      9: 'Store In-Charge',
+      10: 'Hub In-Charge',
+    };
+    if (numericLevel >= 1 && numericLevel <= 10 && roleIdMap[numericLevel]) {
+      return roleIdMap[numericLevel];
+    }
+    // If it's a larger number, treat it as authority level
+    return getLevelLabel(numericLevel) || 'Staff';
+  }
+  
+  const normalizedKey = String(roleKey).toUpperCase().replace(/\s+/g, '_').replace(/-/g, '_');
+  return ROLE_DISPLAY_MAP[normalizedKey]?.displayName || String(roleKey).replace(/_/g, ' ');
 }
 
 /**

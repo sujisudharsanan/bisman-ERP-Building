@@ -15,7 +15,7 @@ const MASTER_MODULES = [
       { id: 'about-me', name: 'About Me', path: '/common/about-me' },
       { id: 'change-password', name: 'Change Password', path: '/common/change-password' },
       { id: 'help-center', name: 'Help Center', path: '/common/help-center' },
-      { id: 'user-settings', name: 'User Settings', path: '/common/user-settings' },
+      { id: 'user-settings', name: 'User Management', path: '/common/user-settings' },
       { id: 'payment-request', name: 'Payment Request', path: '/common/payment-request' },
       { id: 'payment-requests-create', name: 'Create Payment Request', path: '/common/payment-requests/create' },
       { id: 'root-calendar', name: 'Calendar (Root)', path: '/calendar' },
@@ -98,7 +98,7 @@ const MASTER_MODULES = [
       { id: 'compliance-dashboard', name: 'Compliance Dashboard Alt', path: '/compliance/compliance-dashboard' },
       { id: 'legal', name: 'Legal Dashboard', path: '/legal' },
       { id: 'legal-cases', name: 'Legal Case Management', path: '/compliance/legal-case-management' },
-      { id: 'legal-agreements', name: 'Agreements & Contracts', path: '/compliance/agreements' },
+      { id: 'admin-branches', name: 'Branches', path: '/admin/branches' },
     ],
   },
   {

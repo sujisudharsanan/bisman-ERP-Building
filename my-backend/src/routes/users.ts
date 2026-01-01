@@ -129,6 +129,49 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
 });
 
 /**
+ * Get subscription info for UI
+ * GET /api/system/users/subscription-info
+ * 
+ * IMPORTANT: This route MUST be defined BEFORE /:id to avoid being matched as a user ID
+ * 
+ * Returns current subscription limits for displaying in Admin UI.
+ * Used to show/disable "Add User" button based on capacity.
+ */
+router.get('/subscription-info', authMiddleware, async (req: Request, res: Response) => {
+  try {
+    const currentUser = (req as Request & { user?: { tenant_id: string } }).user;
+    const tenantId = currentUser?.tenant_id;
+
+    if (!tenantId) {
+      // No tenant context - return unlimited (for enterprise admin)
+      return res.json({
+        success: true,
+        data: {
+          has_subscription: false,
+          can_create_user: true,
+          can_activate_user: true,
+          message: 'No tenant context - unlimited access'
+        }
+      });
+    }
+
+    const subscriptionInfo = await getSubscriptionInfoForUI(tenantId);
+
+    res.json({
+      success: true,
+      data: subscriptionInfo
+    });
+  } catch (error: unknown) {
+    const err = error as Error;
+    console.error('Get subscription info error:', err);
+    res.status(500).json({
+      error: 'Failed to get subscription info',
+      details: err.message,
+    });
+  }
+});
+
+/**
  * Get user by ID
  * GET /api/system/users/:id
  */
@@ -201,6 +244,7 @@ router.post('/', authMiddleware, checkUserCreationLimit(), async (req: Request, 
       email,
       password,
       role,
+      role_ids, // Array of role names from frontend
       productType = 'BUSINESS_ERP',
       tenant_id,
       super_admin_id,
@@ -210,16 +254,33 @@ router.post('/', authMiddleware, checkUserCreationLimit(), async (req: Request, 
       first_name,
       last_name,
       mobile,
+      phone, // Accept phone as alias for mobile
     } = req.body;
 
     // Use provided tenant_id/super_admin_id or inherit from current user
     const finalTenantId = tenant_id || currentUserTenantId || null;
     const finalSuperAdminId = super_admin_id || currentUserSuperAdminId || null;
 
+    // Generate username from first_name + last_name if not provided
+    const generateUsername = () => {
+      if (first_name && last_name) {
+        const base = `${first_name}_${last_name}`.toLowerCase().replace(/[^a-z0-9_]/g, '');
+        const randomSuffix = Math.random().toString(36).substring(2, 6);
+        return `${base}_${randomSuffix}`;
+      } else if (email) {
+        return email.split('@')[0];
+      }
+      return `user_${Date.now()}`;
+    };
+
+    const finalUsername = username || generateUsername();
+    const finalPhone = mobile || phone || null;
+    const finalRole = role || (role_ids && role_ids.length > 0 ? role_ids[0] : 'USER');
+
     // Validation
-    if (!username || !email || !password) {
+    if (!email || !password) {
       return res.status(400).json({
-        error: 'Username, email, and password are required',
+        error: 'Email and password are required',
       });
     }
 
@@ -279,10 +340,10 @@ router.post('/', authMiddleware, checkUserCreationLimit(), async (req: Request, 
     const newUser = await prisma.user.create({
       data: {
         id: uuidv4(),
-        username,
+        username: finalUsername,
         email,
         password_hash: hashedPassword,
-        role: role || 'USER',
+        role: finalRole,
         product_type: productType,
         tenant_id: finalTenantId,
         super_admin_id: finalSuperAdminId,
@@ -291,7 +352,7 @@ router.post('/', authMiddleware, checkUserCreationLimit(), async (req: Request, 
         page_permissions: pagePermissions || null,
         first_name: first_name || null,
         last_name: last_name || null,
-        phone: mobile || null,
+        phone: finalPhone,
         is_active: true,
       },
       select: {
@@ -385,12 +446,18 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
       pagePermissions,
       reporting_authority_id,
       branch_id,
+      first_name,
+      last_name,
+      phone,
     } = req.body;
 
     // Build update data
     const updateData: Record<string, unknown> = {};
 
     if (username !== undefined) updateData.username = username;
+    if (first_name !== undefined) updateData.first_name = first_name;
+    if (last_name !== undefined) updateData.last_name = last_name;
+    if (phone !== undefined) updateData.mobile = phone; // phone maps to mobile in database
     if (email !== undefined) {
       // Email validation
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -767,47 +834,6 @@ router.put('/:id/status', authMiddleware, checkUserActivationLimit(), async (req
     console.error('Update user status error:', err);
     res.status(500).json({
       error: 'Failed to update user status',
-      details: err.message,
-    });
-  }
-});
-
-/**
- * Get subscription info for UI
- * GET /api/system/users/subscription-info
- * 
- * Returns current subscription limits for displaying in Admin UI.
- * Used to show/disable "Add User" button based on capacity.
- */
-router.get('/subscription-info', authMiddleware, async (req: Request, res: Response) => {
-  try {
-    const currentUser = (req as Request & { user?: { tenant_id: string } }).user;
-    const tenantId = currentUser?.tenant_id;
-
-    if (!tenantId) {
-      // No tenant context - return unlimited (for enterprise admin)
-      return res.json({
-        success: true,
-        data: {
-          has_subscription: false,
-          can_create_user: true,
-          can_activate_user: true,
-          message: 'No tenant context - unlimited access'
-        }
-      });
-    }
-
-    const subscriptionInfo = await getSubscriptionInfoForUI(tenantId);
-
-    res.json({
-      success: true,
-      data: subscriptionInfo
-    });
-  } catch (error: unknown) {
-    const err = error as Error;
-    console.error('Get subscription info error:', err);
-    res.status(500).json({
-      error: 'Failed to get subscription info',
       details: err.message,
     });
   }

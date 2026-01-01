@@ -359,7 +359,7 @@
       "status": "active",
       "description": "Two-stage user creation with KYC workflow - HR creates request and sends KYC link or creates user immediately",
       "order": 2,
-      "showInSidebar": true,
+      "showInSidebar": false,
       "permissions": [
         "user-management",
         "hr-management"
@@ -1870,11 +1870,11 @@
     },
     {
       "id": "common-user-settings",
-      "name": "User Settings",
+      "name": "User Management",
       "path": "/common/user-settings",
       "module": "common",
       "status": "active",
-      "description": "Customize your preferences and settings",
+      "description": "Manage users, roles, and subscription usage",
       "order": 4,
       "permissions": [
         "authenticated"
@@ -2159,15 +2159,16 @@
       ]
     },
     {
-      "id": "admin-contracts",
-      "name": "Contracts & Agreements",
-      "path": "/admin/contracts",
+      "id": "admin-branches",
+      "name": "Branches",
+      "path": "/admin/branches",
       "module": "admin",
       "status": "active",
-      "description": "Manage agreements, renewals, and contract lifecycle",
-      "order": 15,
+      "description": "Branch details, agreements, compliance & financial exposure",
+      "order": 14,
       "permissions": [
-        "admin-dashboard"
+        "admin-dashboard",
+        "branch-view"
       ],
       "roles": [
         "SUPER_ADMIN",

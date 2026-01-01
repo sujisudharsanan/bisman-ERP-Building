@@ -2,15 +2,15 @@ import SuperAdminLayout from '@/common/layouts/superadmin-layout';
 import UserSettingsPage from '@/modules/common/pages/user-settings';
 
 export const metadata = {
-  title: 'User Settings | BISMAN ERP',
-  description: 'Manage your profile, preferences, and account settings',
+  title: 'User Management | BISMAN ERP',
+  description: 'Manage users and monitor subscription usage',
 };
 
 export default function UserSettingsRoute() {
   return (
     <SuperAdminLayout
-      title="User Settings"
-      description="Manage your profile and preferences"
+      title="User Management"
+      description="Manage users and subscription"
     >
       <UserSettingsPage />
     </SuperAdminLayout>

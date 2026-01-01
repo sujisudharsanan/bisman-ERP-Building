@@ -6,6 +6,7 @@ import ConnectedCard from './ConnectedCard';
 import { dashboardConnections } from '@/config/dashboardConnections';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { useAuth } from '@/hooks/useAuth';
+import { getRoleDisplayName } from '@/utils/roleDisplay';
 import { 
   ClipboardList, 
   Clock, 
@@ -334,7 +335,7 @@ const RightPanel: React.FC<RightPanelProps> = ({
               : user?.email?.split('@')[0] || 'User'}
           </h3>
           <p className="text-xs text-muted truncate">
-            {user?.roleName?.replace(/_/g, ' ') || user?.role?.replace(/_/g, ' ') || 'User'}
+            {getRoleDisplayName(user?.roleName || user?.role)}
           </p>
         </div>
         <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center flex-shrink-0 ml-2 overflow-hidden relative">

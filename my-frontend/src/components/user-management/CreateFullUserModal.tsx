@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
   X, User, Mail, Phone, Save, Plus, Trash2, Upload, 
   FileText, Building, Shield, GraduationCap, Users,
@@ -21,21 +21,45 @@ interface CreateFullUserModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSuccess: () => void;
-  roles: UserRole[];
-  branches: Branch[];
+  roles?: UserRole[];
+  branches?: Branch[];
 }
 
 export function CreateFullUserModal({ 
   isOpen, 
   onClose, 
   onSuccess, 
-  roles, 
-  branches 
+  roles: propRoles, 
+  branches: propBranches 
 }: CreateFullUserModalProps) {
   const [currentStep, setCurrentStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSensitiveFields, setShowSensitiveFields] = useState(false);
+
+  // Internal state for roles and branches if not provided as props
+  const [internalRoles, setInternalRoles] = useState<UserRole[]>([]);
+  const [internalBranches, setInternalBranches] = useState<Branch[]>([]);
+
+  // Use props if provided, otherwise use internal state
+  const roles = propRoles || internalRoles;
+  const branches = propBranches || internalBranches;
+
+  // Fetch roles and branches if not provided as props
+  useEffect(() => {
+    if (isOpen && !propRoles) {
+      fetch('/api/roles', { credentials: 'include' })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setInternalRoles(data.roles || data || []))
+        .catch(() => setInternalRoles([]));
+    }
+    if (isOpen && !propBranches) {
+      fetch('/api/branches', { credentials: 'include' })
+        .then(res => res.ok ? res.json() : [])
+        .then(data => setInternalBranches(data.branches || data || []))
+        .catch(() => setInternalBranches([]));
+    }
+  }, [isOpen, propRoles, propBranches]);
 
   // Subscription limit check
   const { 
@@ -71,9 +95,10 @@ export function CreateFullUserModal({
     about_me: '',
     communication_address: '',
     permanent_address: '',
-    city: '',
-    state: '',
     country: '',
+    state: '',
+    district: '',
+    city: '',
     postal_code: '',
     aadhaar_number: '',
     license_number: '',
@@ -453,30 +478,6 @@ export function CreateFullUserModal({
                   <p className="text-red-600 text-sm mt-1">{errors.confirm_password}</p>
                 )}
               </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Designation
-                </label>
-                <input
-                  type="text"
-                  value={formData.designation || ''}
-                  onChange={(e) => handleInputChange('designation', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Department
-                </label>
-                <input
-                  type="text"
-                  value={formData.department || ''}
-                  onChange={(e) => handleInputChange('department', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
-              </div>
             </div>
 
             <div>
@@ -681,18 +682,22 @@ export function CreateFullUserModal({
               <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    City *
+                    Country *
                   </label>
-                  <input
-                    type="text"
-                    value={formData.city || ''}
-                    onChange={(e) => handleInputChange('city', e.target.value)}
+                  <select
+                    value={formData.country || ''}
+                    onChange={(e) => handleInputChange('country', e.target.value)}
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.city ? 'border-red-300' : 'border-gray-300'
+                      errors.country ? 'border-red-300' : 'border-gray-300'
                     }`}
-                  />
-                  {errors.city && (
-                    <p className="text-red-600 text-sm mt-1">{errors.city}</p>
+                  >
+                    <option value="">Select country</option>
+                    <option value="India">India</option>
+                    <option value="United States">United States</option>
+                    <option value="United Kingdom">United Kingdom</option>
+                  </select>
+                  {errors.country && (
+                    <p className="text-red-600 text-sm mt-1">{errors.country}</p>
                   )}
                 </div>
 
@@ -715,36 +720,51 @@ export function CreateFullUserModal({
 
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Country *
+                    District *
                   </label>
-                  <select
-                    value={formData.country || ''}
-                    onChange={(e) => handleInputChange('country', e.target.value)}
+                  <input
+                    type="text"
+                    value={formData.district || ''}
+                    onChange={(e) => handleInputChange('district', e.target.value)}
                     className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                      errors.country ? 'border-red-300' : 'border-gray-300'
+                      errors.district ? 'border-red-300' : 'border-gray-300'
                     }`}
-                  >
-                    <option value="">Select country</option>
-                    <option value="IN">India</option>
-                    <option value="US">United States</option>
-                    <option value="UK">United Kingdom</option>
-                  </select>
-                  {errors.country && (
-                    <p className="text-red-600 text-sm mt-1">{errors.country}</p>
+                  />
+                  {errors.district && (
+                    <p className="text-red-600 text-sm mt-1">{errors.district}</p>
                   )}
                 </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Postal Code
-                </label>
-                <input
-                  type="text"
-                  value={formData.postal_code || ''}
-                  onChange={(e) => handleInputChange('postal_code', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                />
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    City *
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.city || ''}
+                    onChange={(e) => handleInputChange('city', e.target.value)}
+                    className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.city ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  {errors.city && (
+                    <p className="text-red-600 text-sm mt-1">{errors.city}</p>
+                  )}
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Postal Code
+                  </label>
+                  <input
+                    type="text"
+                    value={formData.postal_code || ''}
+                    onChange={(e) => handleInputChange('postal_code', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
               </div>
             </div>
           </div>
