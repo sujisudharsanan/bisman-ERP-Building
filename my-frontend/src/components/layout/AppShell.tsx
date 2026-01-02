@@ -38,6 +38,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       '/get-started',     // ✅ Added: Get started redirect page - no shell
       '/login',           // ✅ Added: Login page - no shell
       '/welcome',         // ✅ Added: Welcome/subscription selection page - no shell (mandatory gate)
+      '/approvals',       // ✅ Added: Uses DashboardLayout
       '/super-admin',
       '/enterprise-admin',
       '/enterprise',

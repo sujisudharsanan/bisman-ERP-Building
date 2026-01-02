@@ -49,7 +49,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
   return (
     <ErrorBoundary>
       <div
-        className="bg-gray-50 dark:bg-gray-900 min-h-screen flex flex-col theme-transition"
+        className="min-h-screen flex flex-col theme-transition"
         style={{ ['--sidebar-width' as any]: sidebarOpen ? '13rem' : '3.5rem' }}
       >
         {/* Top Navbar - Fixed at top */}
@@ -66,8 +66,7 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
 
           {/* Main Content - Use CSS variable for consistent margin */}
           <main 
-            className="flex-1 overflow-auto transition-all duration-300 p-6"
-            style={{ marginLeft: 'var(--sidebar-width)' }}
+            className="flex-1 overflow-auto transition-all duration-300 ml-52"
           >
             <ErrorBoundary fallback={
               <div className="p-8 text-center">

@@ -41,7 +41,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
                   width: sidebarOpen ? 'calc(100% - 13rem)' : 'calc(100% - 3.5rem)'
                 }}
               >
-                <div className="p-3 sm:p-4 lg:p-4 w-full max-w-full overflow-x-hidden">
+                <div className="p-2 sm:p-3 lg:py-3 lg:pr-3 lg:pl-1 w-full max-w-full overflow-x-hidden">
                   {children}
                 </div>
               </main>

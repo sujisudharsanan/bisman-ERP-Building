@@ -244,7 +244,18 @@ export default function OverviewTab({ tenantId, onDeploySuccess }: OverviewTabPr
   const formatDate = (dateStr: string | null) => {
     if (!dateStr) return '—';
     try {
-      return new Date(dateStr).toLocaleString();
+      // Handle git date format like "2026-01-01 23:22:40 +0530"
+      const date = new Date(dateStr);
+      if (isNaN(date.getTime())) {
+        // Try parsing git format manually
+        const cleanDate = dateStr.replace(/\s+[+-]\d{4}$/, '');
+        const parsed = new Date(cleanDate);
+        if (!isNaN(parsed.getTime())) {
+          return parsed.toLocaleString();
+        }
+        return dateStr;
+      }
+      return date.toLocaleString();
     } catch {
       return dateStr;
     }
@@ -311,9 +322,14 @@ export default function OverviewTab({ tenantId, onDeploySuccess }: OverviewTabPr
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Current Version</div>
-          <div className="text-xl font-semibold text-gray-900 dark:text-gray-100">
-            {status.currentVersion || '—'}
+          <div className="text-xl font-semibold text-gray-900 dark:text-gray-100 font-mono">
+            {status.currentVersion || status.git?.shortCommit || '—'}
           </div>
+          {status.git?.branch && (
+            <div className="text-xs text-blue-600 dark:text-blue-400 mt-1">
+              📌 {status.git.branch}
+            </div>
+          )}
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Environment</div>
@@ -326,16 +342,77 @@ export default function OverviewTab({ tenantId, onDeploySuccess }: OverviewTabPr
           <div className="text-sm font-medium text-gray-900 dark:text-gray-100">
             {formatDate(status.lastDeploymentTime)}
           </div>
+          {status.deployedBy && (
+            <div className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              by {status.deployedBy}
+            </div>
+          )}
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Deployment Status</div>
-          <StatusBadge status={status.lastDeploymentStatus} />
+          {status.lastDeploymentStatus ? (
+            <StatusBadge status={status.lastDeploymentStatus} />
+          ) : (
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 text-sm font-medium rounded-full border bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 border-gray-300 dark:border-gray-600">
+              <Clock className="w-4 h-4" />
+              NOT DEPLOYED
+            </span>
+          )}
         </div>
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
           <div className="text-sm text-gray-500 dark:text-gray-400 mb-2">Health Status</div>
           <StatusBadge status={status.healthStatus} />
         </div>
       </div>
+
+      {/* Git Information Section */}
+      {status.git && (
+        <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-4 flex items-center gap-2">
+            <span>🔗</span> Git Repository Status
+          </h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">Branch</div>
+              <div className="font-medium text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                <span className="text-blue-600 dark:text-blue-400">⎇</span>
+                {status.git.branch}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">Latest Commit</div>
+              <div className="font-mono text-sm text-gray-900 dark:text-gray-100">
+                {status.git.shortCommit}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">Author</div>
+              <div className="font-medium text-gray-900 dark:text-gray-100">
+                {status.git.author}
+              </div>
+            </div>
+            <div className="md:col-span-2 lg:col-span-3">
+              <div className="text-sm text-gray-500 dark:text-gray-400">Commit Message</div>
+              <div className="text-gray-900 dark:text-gray-100 truncate">
+                {status.git.message}
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-gray-500 dark:text-gray-400">Commit Date</div>
+              <div className="text-sm text-gray-900 dark:text-gray-100">
+                {formatDate(status.git.date)}
+              </div>
+            </div>
+            {status.git.hasUncommittedChanges && (
+              <div className="md:col-span-2">
+                <div className="inline-flex items-center gap-2 px-3 py-1 bg-yellow-100 dark:bg-yellow-900/30 text-yellow-700 dark:text-yellow-300 rounded-full text-sm">
+                  ⚠️ Uncommitted changes detected
+                </div>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Actions Section */}
       <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6">

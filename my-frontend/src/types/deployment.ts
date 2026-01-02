@@ -19,6 +19,22 @@ export interface DeploymentStatus {
   buildId: string | null;
   commit: string | null;
   deployedBy: string | null;
+  
+  // Git information from backend
+  git?: {
+    branch: string;
+    commit: string;
+    shortCommit: string;
+    message: string;
+    author: string;
+    date: string;
+    hasUncommittedChanges: boolean;
+  } | null;
+  
+  // System info
+  uptime?: number;
+  nodeVersion?: string;
+  serverTime?: string;
 }
 
 /**

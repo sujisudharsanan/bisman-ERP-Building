@@ -485,9 +485,9 @@ export default function AdminApprovalsPage() {
   
   return (
     <DashboardLayout role={user?.roleName || user?.role || 'ADMIN'}>
-      <div className="h-full flex flex-col bg-gray-50 dark:bg-slate-900">
+      <div className="h-full flex flex-col bg-white dark:bg-slate-800">
         {/* Header */}
-        <div className="flex-shrink-0 px-6 py-4 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700">
+        <div className="flex-shrink-0 px-4 py-4 border-b border-gray-200 dark:border-slate-700">
           <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
             {/* Title & Description */}
             <div>

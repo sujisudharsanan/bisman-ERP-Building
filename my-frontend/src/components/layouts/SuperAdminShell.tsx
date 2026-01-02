@@ -39,11 +39,9 @@ const HeaderLogo: React.FC = () => {
 };
 
 export default function SuperAdminShell({ title = 'Retail Client Management', children }: SuperAdminShellProps) {
-  return (
-    <RefreshProvider>
-      <SuperAdminShellInner title={title}>{children}</SuperAdminShellInner>
-    </RefreshProvider>
-  );
+  // The app layout at /app/super-admin/layout.tsx already provides sidebar/navbar
+  // So we just pass through children to avoid double layouts
+  return <>{children}</>;
 }
 
 function SuperAdminShellInner({ title = 'Retail Client Management', children }: SuperAdminShellProps) {
@@ -176,8 +174,8 @@ function SuperAdminShellInner({ title = 'Retail Client Management', children }: 
       </aside>
 
       {/* Main content */}
-      <main className="content-under-navbar lg:pl-52 flex-1 w-full">
-        <div className="w-full p-3 sm:p-4">{children}</div>
+      <main className="content-under-navbar lg:ml-52 flex-1 w-full">
+        <div className="w-full py-3 pr-3 pl-1 sm:py-3 sm:pr-4 sm:pl-1">{children}</div>
       </main>
     </div>
   );

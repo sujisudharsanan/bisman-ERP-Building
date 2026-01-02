@@ -97,37 +97,9 @@ export default function SuperAdminLayout({
   };
 
   return (
-  <div
-    className="min-h-screen bg-gray-50 dark:bg-slate-900 flex flex-col"
-    style={{ ['--sidebar-width' as any]: '13rem' }}
-  >
-  {/* Standard top navbar for common pages */}
-  <TopNavbar showThemeToggle fixed />
-      
-      {/* Use unified Sidebar component */}
-      <Sidebar isOpen={true} />
-
-    {/* Main Content - offset for fixed navbar via global variable */}
-  <main className="lg:pl-52 content-under-navbar flex-1 w-full">
-        {/* Page Header (Mobile) */}
-        {(title || description) && (
-  <div className="md:hidden bg-white dark:bg-gray-900 border-b border-gray-200 dark:border-gray-800 px-4 py-3 sticky sticky-below-navbar z-30">
-            <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">
-              {title}
-            </h1>
-            {description && (
-        <p className="text-[13px] text-gray-600 dark:text-gray-400 mt-1">
-                {description}
-              </p>
-            )}
-          </div>
-        )}
-
-        {/* Content Area */}
-  <div className="p-3 sm:p-4 lg:p-4 w-full">
-          {children}
-        </div>
-      </main>
-    </div>
+    <>
+      {/* Just render children - the app layout handles sidebar/navbar/margins */}
+      {children}
+    </>
   );
 }

@@ -157,7 +157,7 @@ export default function DeploymentCenter() {
       title="Deployment Center"
       description="Manage builds, backups, and post-deployment health for all environments"
     >
-      <div className="space-y-6">
+      <div className="space-y-4">
         {/* Page Header */}
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -185,7 +185,7 @@ export default function DeploymentCenter() {
                     key={tab.id}
                     onClick={() => handleTabChange(tab.id)}
                     className={`
-                      flex items-center gap-2 px-6 py-4 text-sm font-medium whitespace-nowrap border-b-2 transition-colors
+                      flex items-center gap-2 px-6 py-3 text-sm font-medium whitespace-nowrap border-b-2 transition-colors
                       ${
                         isActive
                           ? 'border-blue-600 text-blue-600 dark:border-blue-400 dark:text-blue-400'
@@ -202,7 +202,7 @@ export default function DeploymentCenter() {
           </div>
 
           {/* Tab Content */}
-          <div className="p-6">{renderTabContent()}</div>
+          <div className="p-4">{renderTabContent()}</div>
         </div>
       </div>
     </SuperAdminLayout>
