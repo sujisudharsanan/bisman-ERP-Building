@@ -73,6 +73,11 @@ interface SubscriptionPlan {
   sort_order: number;
   is_popular: boolean;
   color_code: string;
+  price_monthly: number;
+  price_yearly: number;
+  max_users: number;
+  max_branches: number;
+  max_storage_gb: number;
   monthly_spend_cap: number | null;
   auto_block_on_cap: boolean;
   cfo_approval_threshold: number | null;
@@ -230,9 +235,23 @@ export default function SubscriptionControlPage() {
 
   // UI states
   const [expandedCategories, setExpandedCategories] = useState<Set<string>>(new Set());
+  const [expandedBreakdownCategories, setExpandedBreakdownCategories] = useState<Set<string>>(new Set());
   const [showCloneModal, setShowCloneModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'features' | 'governance' | 'infra'>('features');
+
+  // Toggle category expansion in breakdown section
+  const toggleBreakdownCategory = (category: string) => {
+    setExpandedBreakdownCategories(prev => {
+      const next = new Set(prev);
+      if (next.has(category)) {
+        next.delete(category);
+      } else {
+        next.add(category);
+      }
+      return next;
+    });
+  };
 
   // Get selected plan
   const selectedPlan = useMemo(() => {
@@ -254,7 +273,7 @@ export default function SubscriptionControlPage() {
 
   // Calculate category statistics
   const categoryStats = useMemo(() => {
-    const stats: Record<string, { total: number; hardLocked: number; softLocked: number; unlimited: number; totalUnlockValue: number }> = {};
+    const stats: Record<string, { total: number; hardLocked: number; softLocked: number; unlimited: number; totalUnlockValue: number; totalApprovalValue: number }> = {};
     
     Object.entries(featuresByCategory).forEach(([category, features]) => {
       stats[category] = {
@@ -263,6 +282,7 @@ export default function SubscriptionControlPage() {
         softLocked: features.filter(f => f.lock_mode === 'soft').length,
         unlimited: features.filter(f => f.free_limit === -1).length,
         totalUnlockValue: features.reduce((sum, f) => sum + (f.unlock_price || 0), 0),
+        totalApprovalValue: features.reduce((sum, f) => sum + (f.approval_threshold || 0), 0),
       };
     });
     
@@ -679,60 +699,61 @@ export default function SubscriptionControlPage() {
   // ============================================================================
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] gap-4">
-      {/* Header */}
-      <div className="flex items-center justify-between flex-shrink-0">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-purple-100 dark:bg-purple-900/30 rounded-lg">
-            <Shield className="w-6 h-6 text-purple-600" />
+    <div className="flex flex-col h-[calc(100vh-6rem)] gap-3">
+      {/* Compact Header - Stats Bar + Actions */}
+      <div className="flex items-center justify-between flex-shrink-0 px-3 py-2 bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800">
+        <div className="flex items-center gap-4 text-xs">
+          <div className="flex items-center gap-1">
+            <span className="font-bold text-indigo-600">{globalStats.total}</span>
+            <span className="text-gray-500">features</span>
           </div>
-          <div>
-            <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">
-              Subscription Control
-            </h1>
-            <p className="text-sm text-gray-500 dark:text-gray-400">
-              Master control panel for all subscription plans, limits, and pricing
-            </p>
+          <div className="flex items-center gap-1">
+            <span className="font-bold text-purple-600">{globalStats.categoryCount}</span>
+            <span className="text-gray-500">categories</span>
+          </div>
+          <div className="flex items-center gap-1" title="Unlimited">
+            <span className="text-green-600">{globalStats.unlimited}∞</span>
+          </div>
+          <div className="flex items-center gap-1" title="Limited">
+            <span className="text-blue-600">{globalStats.limited}⚡</span>
+          </div>
+          <div className="flex items-center gap-1" title="Soft Locked">
+            <span className="text-yellow-600">{globalStats.softLocked}⚠</span>
+          </div>
+          <div className="flex items-center gap-1" title="Hard Locked">
+            <span className="text-red-600">{globalStats.hardLocked}🔒</span>
+          </div>
+          <div className="flex items-center gap-1 pl-2 border-l border-gray-300">
+            <span className="font-bold text-emerald-600">₹{globalStats.totalUnlockValue.toLocaleString()}</span>
+            <span className="text-gray-500">unlock</span>
           </div>
         </div>
         <div className="flex items-center gap-2">
-          <button
-            onClick={() => {
-              loadPlans();
-              loadFeatures();
-              loadInfraRates();
-            }}
-            className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:bg-gray-100 rounded-lg"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Refresh
-          </button>
           <Link
             href="/super-admin/subscriptions/coupons"
-            className="flex items-center gap-2 px-4 py-2 bg-amber-600 text-white rounded-lg hover:bg-amber-700"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-amber-600 text-white rounded-md hover:bg-amber-700"
           >
-            <Ticket className="w-4 h-4" />
-            Manage Coupons
+            <Ticket className="w-3.5 h-3.5" />
+            Coupons
           </Link>
           <button
             onClick={() => setShowCreateModal(true)}
-            className="flex items-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-purple-600 text-white rounded-md hover:bg-purple-700"
           >
-            <Plus className="w-4 h-4" />
-            Create Plan
+            <Plus className="w-3.5 h-3.5" />
+            New Plan
           </button>
         </div>
       </div>
 
       {/* Split Pane Layout */}
-      <div className="flex gap-4 flex-1 overflow-hidden">
+      <div className="flex gap-3 flex-1 overflow-hidden">
         {/* LEFT PANEL - Plan Selector */}
-        <div className="w-72 flex-shrink-0 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
-          <div className="p-3 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
-            <h2 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
-              <Settings className="w-4 h-4" />
+        <div className="w-64 flex-shrink-0 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden flex flex-col">
+          <div className="px-3 py-2 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800">
+            <h2 className="text-sm font-medium text-gray-700 dark:text-gray-200 flex items-center gap-2">
               Plans
-              <span className="text-xs font-normal text-gray-500 ml-auto">{plans.length} total</span>
+              <span className="text-[10px] font-normal text-gray-400 ml-auto">{plans.length}</span>
             </h2>
           </div>
           <div className="flex-1 overflow-y-auto p-2 space-y-1">
@@ -768,17 +789,46 @@ export default function SubscriptionControlPage() {
                           </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <Users className="w-3 h-3" />
-                        {plan.active_tenant_count} tenants
-                        <span className={`px-1.5 py-0.5 rounded text-[9px] ${
-                          plan.status === 'active'
-                            ? 'bg-green-100 text-green-700'
-                            : plan.status === 'inactive'
-                            ? 'bg-gray-100 text-gray-600'
-                            : 'bg-red-100 text-red-700'
-                        }`}>
-                          {plan.status}
+                      {/* Stats boxes row */}
+                      <div className="flex flex-wrap items-center gap-1 mt-1">
+                        <span className="text-[9px] px-1.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 rounded" title="Features">
+                          {plan.feature_count || 95} features
+                        </span>
+                        <span className="text-[9px] px-1.5 py-0.5 bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded" title="Categories">
+                          18 cat
+                        </span>
+                        <span className="text-[9px] px-1.5 py-0.5 bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300 rounded" title="Unlimited">
+                          {plan.unlimited_count || 0}∞
+                        </span>
+                        <span className="text-[9px] px-1.5 py-0.5 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 rounded" title="Soft Locked">
+                          {plan.soft_locked_count || 48}⚡
+                        </span>
+                        <span className="text-[9px] px-1.5 py-0.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300 rounded" title="Warning">
+                          {plan.warning_count || 50}⚠
+                        </span>
+                        <span className="text-[9px] px-1.5 py-0.5 bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 rounded" title="Hard Locked">
+                          {plan.hard_locked_count || 17}🔒
+                        </span>
+                        <span className="text-[9px] px-1.5 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 rounded font-medium" title="Total Unlock Value">
+                          ₹{(plan.total_unlock_value || 6975).toLocaleString('en-IN')}
+                        </span>
+                      </div>
+                      <div className="flex items-center justify-between text-xs mt-1">
+                        <div className="flex items-center gap-2 text-gray-500">
+                          <Users className="w-3 h-3" />
+                          {plan.active_tenant_count} tenants
+                          <span className={`px-1.5 py-0.5 rounded text-[9px] ${
+                            plan.status === 'active'
+                              ? 'bg-green-100 text-green-700'
+                              : plan.status === 'inactive'
+                              ? 'bg-gray-100 text-gray-600'
+                              : 'bg-red-100 text-red-700'
+                          }`}>
+                            {plan.status}
+                          </span>
+                        </div>
+                        <span className="font-semibold text-green-600">
+                          {plan.price_monthly === 0 ? 'Free' : `₹${plan.price_monthly?.toLocaleString('en-IN')}`}
                         </span>
                       </div>
                     </div>
@@ -898,67 +948,271 @@ export default function SubscriptionControlPage() {
                   </div>
                 ) : activeTab === 'features' ? (
                   /* FEATURE CONTROLS TAB */
-                  <div className="space-y-4">
-                    {/* Feature Statistics Summary */}
-                    <div className="p-4 rounded-xl bg-gradient-to-br from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20 border border-indigo-100 dark:border-indigo-800">
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-3">
-                        <BarChart3 className="w-5 h-5 text-indigo-600" />
-                        Feature Statistics for {selectedPlan?.name || 'Plan'}
-                      </h3>
-                      <div className="grid grid-cols-8 gap-3">
-                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center shadow-sm">
-                          <div className="text-2xl font-bold text-indigo-600">{globalStats.total}</div>
-                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Total Features</div>
-                        </div>
-                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center shadow-sm">
-                          <div className="text-2xl font-bold text-purple-600">{globalStats.categoryCount}</div>
-                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Categories</div>
-                        </div>
-                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center shadow-sm">
-                          <div className="text-2xl font-bold text-green-600">{globalStats.unlimited}</div>
-                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Unlimited</div>
-                        </div>
-                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center shadow-sm">
-                          <div className="text-2xl font-bold text-blue-600">{globalStats.limited}</div>
-                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Limited</div>
-                        </div>
-                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center shadow-sm">
-                          <div className="text-2xl font-bold text-yellow-600">{globalStats.softLocked}</div>
-                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Soft Locked</div>
-                        </div>
-                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center shadow-sm">
-                          <div className="text-2xl font-bold text-red-600">{globalStats.hardLocked}</div>
-                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Hard Locked</div>
-                        </div>
-                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center shadow-sm">
-                          <div className="text-2xl font-bold text-gray-600">{globalStats.blocked}</div>
-                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Blocked (0)</div>
-                        </div>
-                        <div className="bg-white/80 dark:bg-gray-800/80 rounded-lg p-3 text-center shadow-sm">
-                          <div className="text-2xl font-bold text-emerald-600">₹{globalStats.totalUnlockValue.toLocaleString()}</div>
-                          <div className="text-[10px] text-gray-500 uppercase tracking-wide">Unlock Value</div>
-                        </div>
-                      </div>
+                  <div className="space-y-3">
                       
-                      {/* Category Breakdown Mini Cards */}
-                      <div className="mt-3 pt-3 border-t border-indigo-100 dark:border-indigo-700">
-                        <div className="text-xs font-medium text-gray-500 mb-2">Category Breakdown:</div>
-                        <div className="flex flex-wrap gap-2">
-                          {Object.entries(categoryStats).map(([category, stats]) => (
-                            <div 
-                              key={category} 
-                              className="flex items-center gap-2 px-2 py-1 bg-white/60 dark:bg-gray-800/60 rounded-md text-xs border border-gray-200 dark:border-gray-700"
-                            >
-                              {CATEGORY_ICONS[category]}
-                              <span className="font-medium">{CATEGORY_LABELS[category]?.split(' ').slice(1).join(' ') || category}</span>
-                              <span className="text-gray-400">|</span>
-                              <span className="text-green-600">{stats.unlimited}∞</span>
-                              <span className="text-yellow-600">{stats.softLocked}⚠</span>
-                              <span className="text-red-600">{stats.hardLocked}🔒</span>
-                            </div>
-                          ))}
+                    {/* Category Breakdown Table */}
+                    <div>
+                      <div className="text-xs font-medium text-gray-500 mb-2">Category Breakdown: <span className="font-normal text-gray-400">(Set values and click Apply to update all features in that category. Amounts are divided equally among features.)</span></div>
+                        {/* Category Header Row with Controls */}
+                        <div className="overflow-x-auto">
+                          <table className="w-full text-xs">
+                            <thead>
+                              <tr className="bg-gray-100 dark:bg-gray-800">
+                                <th className="text-left px-2 py-1.5 font-medium text-gray-600 dark:text-gray-300">Category</th>
+                                <th className="text-center px-2 py-1.5 font-medium text-gray-600 dark:text-gray-300 w-14 cursor-help" title="Current status: ∞ Unlimited (no limit) | ⚠ Soft Lock (can unlock by paying) | 🔒 Hard Lock (completely blocked)">
+                                  <span className="border-b border-dashed border-gray-400">Stats</span>
+                                </th>
+                                <th className="text-center px-2 py-1.5 font-medium text-gray-600 dark:text-gray-300 w-16 cursor-help" title="How many times can users use this feature for FREE before being asked to pay? Use -1 for unlimited free usage.">
+                                  <span className="border-b border-dashed border-gray-400">Free</span>
+                                </th>
+                                <th className="text-center px-2 py-1.5 font-medium text-gray-600 dark:text-gray-300 w-16 cursor-help" title="How often does the free limit reset? Monthly = resets every month, Daily = resets daily, Lifetime = never resets">
+                                  <span className="border-b border-dashed border-gray-400">Period</span>
+                                </th>
+                                <th className="text-center px-2 py-1.5 font-medium text-gray-600 dark:text-gray-300 w-28 cursor-help" title="TOTAL amount to unlock this category. This will be DIVIDED equally among all features. E.g., ₹500 for 5 features = ₹100 per feature">
+                                  <span className="border-b border-dashed border-gray-400">Unlock ₹</span>
+                                </th>
+                                <th className="text-center px-2 py-1.5 font-medium text-gray-600 dark:text-gray-300 w-28 cursor-help" title="TOTAL threshold requiring manager approval. Will be DIVIDED among features. E.g., ₹1000 for 5 features = ₹200 threshold per feature">
+                                  <span className="border-b border-dashed border-gray-400">Approval ₹</span>
+                                </th>
+                                <th className="text-center px-2 py-1.5 font-medium text-gray-600 dark:text-gray-300 w-20 cursor-help" title="None = Feature always available | Soft = Blocked but can pay to unlock | Hard = Completely blocked, cannot unlock">
+                                  <span className="border-b border-dashed border-gray-400">Lock</span>
+                                </th>
+                                <th className="text-center px-2 py-1.5 font-medium text-gray-600 dark:text-gray-300 w-14 cursor-help" title="Click to apply these settings to ALL features in this category">
+                                  <span className="border-b border-dashed border-gray-400">Apply</span>
+                                </th>
+                              </tr>
+                            </thead>
+                            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                              {Object.entries(categoryStats).map(([category, stats]) => (
+                                <React.Fragment key={category}>
+                                <tr data-category-row={category} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                  <td className="px-2 py-1.5">
+                                    <button
+                                      onClick={() => {
+                                        setExpandedBreakdownCategories(prev => {
+                                          const newSet = new Set(prev);
+                                          if (newSet.has(category)) {
+                                            newSet.delete(category);
+                                          } else {
+                                            newSet.add(category);
+                                          }
+                                          return newSet;
+                                        });
+                                      }}
+                                      className="flex items-center gap-1.5 w-full text-left hover:text-blue-600 transition"
+                                      title="Click to expand/collapse features"
+                                    >
+                                      <ChevronRight className={`w-3 h-3 transition-transform ${expandedBreakdownCategories.has(category) ? 'rotate-90' : ''}`} />
+                                      {CATEGORY_ICONS[category]}
+                                      <span className="font-medium">{CATEGORY_LABELS[category]?.split(' ').slice(1).join(' ') || category}</span>
+                                      <span className="text-[10px] text-gray-400">({planFeatures.filter(f => f.category === category).length})</span>
+                                    </button>
+                                  </td>
+                                  <td className="px-2 py-1.5 text-center">
+                                    <div className="flex items-center justify-center gap-1">
+                                      <span className="text-green-600" title="Unlimited - No restrictions">{stats.unlimited}∞</span>
+                                      <span className="text-yellow-600" title="Soft Locked - Can pay to unlock">{stats.softLocked}⚠</span>
+                                      <span className="text-red-600" title="Hard Locked - Completely blocked">{stats.hardLocked}🔒</span>
+                                    </div>
+                                  </td>
+                                  <td className="px-1 py-1">
+                                    <input
+                                      type="number"
+                                      placeholder="-1"
+                                      className="w-full px-1.5 py-1 text-xs border rounded text-center bg-white dark:bg-gray-800"
+                                      data-category={category}
+                                      data-field="free_limit"
+                                    />
+                                  </td>
+                                  <td className="px-1 py-1">
+                                    <select 
+                                      className="w-full px-1 py-1 text-xs border rounded bg-white dark:bg-gray-800"
+                                      data-category={category}
+                                      data-field="limit_period"
+                                    >
+                                      <option value="">--</option>
+                                      <option value="monthly">Monthly</option>
+                                      <option value="daily">Daily</option>
+                                      <option value="yearly">Yearly</option>
+                                      <option value="lifetime">Lifetime</option>
+                                    </select>
+                                  </td>
+                                  <td className="px-1 py-1">
+                                    <div className="flex items-center gap-1">
+                                      <input
+                                        type="number"
+                                        placeholder={String(stats.totalUnlockValue || 0)}
+                                        className="w-16 px-2 py-1.5 text-sm border rounded text-center bg-white dark:bg-gray-800"
+                                        data-category={category}
+                                        data-field="unlock_price"
+                                      />
+                                      {stats.totalUnlockValue > 0 && (
+                                        <span className="text-[10px] text-green-600 whitespace-nowrap font-medium" title="Current total from features">
+                                          ₹{stats.totalUnlockValue}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-1 py-1">
+                                    <div className="flex items-center gap-1">
+                                      <input
+                                        type="number"
+                                        placeholder={String(stats.totalApprovalValue || 0)}
+                                        className="w-16 px-2 py-1.5 text-sm border rounded text-center bg-white dark:bg-gray-800"
+                                        data-category={category}
+                                        data-field="approval_threshold"
+                                      />
+                                      {stats.totalApprovalValue > 0 && (
+                                        <span className="text-[10px] text-amber-600 whitespace-nowrap font-medium" title="Current total from features">
+                                          ₹{stats.totalApprovalValue}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td className="px-1 py-1">
+                                    <select 
+                                      className="w-full px-1 py-1 text-xs border rounded bg-white dark:bg-gray-800"
+                                      data-category={category}
+                                      data-field="lock_mode"
+                                    >
+                                      <option value="">--</option>
+                                      <option value="none">None</option>
+                                      <option value="soft">Soft</option>
+                                      <option value="hard">Hard</option>
+                                    </select>
+                                  </td>
+                                  <td className="px-1 py-1 text-center">
+                                    <button
+                                      onClick={() => {
+                                        // Get values from the row inputs using the data-category-row attribute
+                                        const row = document.querySelector(`tr[data-category-row="${category}"]`);
+                                        if (!row) {
+                                          console.error(`Could not find row for category: ${category}`);
+                                          return;
+                                        }
+                                        
+                                        const freeLimit = (row.querySelector('input[data-field="free_limit"]') as HTMLInputElement)?.value;
+                                        const period = (row.querySelector('select[data-field="limit_period"]') as HTMLSelectElement)?.value;
+                                        const unlockPrice = (row.querySelector('input[data-field="unlock_price"]') as HTMLInputElement)?.value;
+                                        const approvalThreshold = (row.querySelector('input[data-field="approval_threshold"]') as HTMLInputElement)?.value;
+                                        const lockMode = (row.querySelector('select[data-field="lock_mode"]') as HTMLSelectElement)?.value;
+                                        
+                                        console.log(`[Apply] Category: ${category}`, { freeLimit, period, unlockPrice, approvalThreshold, lockMode });
+                                        
+                                        // Get all features in this category
+                                        const categoryFeatures = planFeatures.filter(f => f.category === category);
+                                        const featureCount = categoryFeatures.length;
+                                        
+                                        if (featureCount === 0) {
+                                          console.warn(`No features found for category: ${category}`);
+                                          return;
+                                        }
+                                        
+                                        // Calculate per-feature amounts by dividing totals
+                                        const totalUnlockPrice = unlockPrice !== '' ? parseFloat(unlockPrice) || 0 : null;
+                                        const totalApprovalThreshold = approvalThreshold !== '' ? parseFloat(approvalThreshold) || 0 : null;
+                                        
+                                        // Divide amounts by number of features (round to 2 decimal places)
+                                        const perFeatureUnlockPrice = totalUnlockPrice !== null && featureCount > 0 
+                                          ? Math.round((totalUnlockPrice / featureCount) * 100) / 100 
+                                          : null;
+                                        const perFeatureApprovalThreshold = totalApprovalThreshold !== null && featureCount > 0 
+                                          ? Math.round((totalApprovalThreshold / featureCount) * 100) / 100 
+                                          : null;
+                                        
+                                        console.log(`[Apply] Dividing: ₹${totalUnlockPrice} / ${featureCount} = ₹${perFeatureUnlockPrice} per feature`);
+                                        
+                                        // Apply to all features in this category
+                                        let updatedCount = 0;
+                                        categoryFeatures.forEach(feature => {
+                                          const updates: Partial<PlanFeatureControl> = {};
+                                          if (freeLimit !== '' && freeLimit !== undefined) updates.free_limit = parseInt(freeLimit) || -1;
+                                          if (period && period !== '') updates.limit_period = period as any;
+                                          if (perFeatureUnlockPrice !== null) updates.unlock_price = perFeatureUnlockPrice;
+                                          if (perFeatureApprovalThreshold !== null) updates.approval_threshold = perFeatureApprovalThreshold;
+                                          if (lockMode && lockMode !== '') updates.lock_mode = lockMode as any;
+                                          
+                                          if (Object.keys(updates).length > 0) {
+                                            updateFeature(feature.feature_code, updates);
+                                            updatedCount++;
+                                          }
+                                        });
+                                        
+                                        // Show confirmation
+                                        console.log(`[Apply] Updated ${updatedCount} features in ${CATEGORY_LABELS[category] || category}`);
+                                        // Expand the category to show updated features
+                                        setExpandedBreakdownCategories(prev => new Set([...prev, category]));
+                                      }}
+                                      className="px-2 py-1 text-xs bg-blue-600 text-white rounded hover:bg-blue-700 transition"
+                                      title={`Apply to all ${(categoryStats[category]?.unlimited || 0) + (categoryStats[category]?.softLocked || 0) + (categoryStats[category]?.hardLocked || 0)} features in ${CATEGORY_LABELS[category] || category}`}
+                                    >
+                                      Apply
+                                    </button>
+                                  </td>
+                                </tr>
+                                {/* Expandable Features List */}
+                                {expandedBreakdownCategories.has(category) && (
+                                  <tr>
+                                    <td colSpan={8} className="p-0">
+                                      <div className="bg-gray-50 dark:bg-gray-900 border-t border-b border-gray-200 dark:border-gray-700">
+                                        <table className="w-full text-xs">
+                                          <thead>
+                                            <tr className="bg-gray-100 dark:bg-gray-800 text-[9px]">
+                                              <td className="px-3 py-1 font-medium text-gray-500">Feature Name</td>
+                                              <td className="px-2 py-1 text-center font-medium text-gray-500 w-16">Free Limit</td>
+                                              <td className="px-2 py-1 text-center font-medium text-gray-500 w-16">Period</td>
+                                              <td className="px-2 py-1 text-center font-medium text-gray-500 w-16">Unlock ₹</td>
+                                              <td className="px-2 py-1 text-center font-medium text-gray-500 w-20">Approval ₹</td>
+                                              <td className="px-2 py-1 text-center font-medium text-gray-500 w-16">Lock</td>
+                                            </tr>
+                                          </thead>
+                                          <tbody>
+                                            {planFeatures.filter(f => f.category === category).map(feature => (
+                                              <tr key={feature.feature_code} className="border-t border-gray-100 dark:border-gray-800 hover:bg-white dark:hover:bg-gray-800">
+                                                <td className="px-3 py-1.5">
+                                                  <span className="text-gray-700 dark:text-gray-300">{feature.feature_name}</span>
+                                                  <span className="text-gray-400 text-[9px] ml-1">({feature.feature_code})</span>
+                                                </td>
+                                                <td className="px-2 py-1.5 text-center">
+                                                  <span className={feature.free_limit === -1 ? 'text-green-600' : 'text-gray-600'}>
+                                                    {feature.free_limit === -1 ? '∞' : feature.free_limit}
+                                                  </span>
+                                                </td>
+                                                <td className="px-2 py-1.5 text-center text-gray-500">
+                                                  {feature.limit_period?.charAt(0).toUpperCase() + feature.limit_period?.slice(1, 3) || '-'}
+                                                </td>
+                                                <td className="px-2 py-1.5 text-center">
+                                                  <span className={feature.unlock_price > 0 ? 'text-green-600 font-medium' : 'text-gray-400'}>
+                                                    {feature.unlock_price > 0 ? `₹${feature.unlock_price}` : '-'}
+                                                  </span>
+                                                </td>
+                                                <td className="px-2 py-1.5 text-center">
+                                                  <span className={feature.approval_threshold ? 'text-amber-600' : 'text-gray-400'}>
+                                                    {feature.approval_threshold ? `₹${feature.approval_threshold}` : '-'}
+                                                  </span>
+                                                </td>
+                                                <td className="px-2 py-1.5 text-center">
+                                                  <span className={`px-1.5 py-0.5 rounded text-[9px] ${
+                                                    feature.lock_mode === 'hard' ? 'bg-red-100 text-red-700' :
+                                                    feature.lock_mode === 'soft' ? 'bg-yellow-100 text-yellow-700' :
+                                                    'bg-green-100 text-green-700'
+                                                  }`}>
+                                                    {feature.lock_mode === 'hard' ? '🔒' : feature.lock_mode === 'soft' ? '⚠' : '∞'}
+                                                  </span>
+                                                </td>
+                                              </tr>
+                                            ))}
+                                          </tbody>
+                                        </table>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                )}
+                                </React.Fragment>
+                              ))}
+                            </tbody>
+                          </table>
                         </div>
-                      </div>
                     </div>
 
                     {/* Validation Sidebar */}
@@ -1187,6 +1441,107 @@ export default function SubscriptionControlPage() {
                 ) : activeTab === 'governance' ? (
                   /* GOVERNANCE RULES TAB */
                   <div className="space-y-6">
+                    {/* Plan Pricing */}
+                    <div className="border rounded-lg p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
+                        <CreditCard className="w-5 h-5 text-green-600" />
+                        Plan Pricing
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Monthly Price
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500 font-medium">₹</span>
+                            <input
+                              type="number"
+                              value={editingPlan?.price_monthly || 0}
+                              onChange={e => updatePlanSettings({
+                                price_monthly: parseFloat(e.target.value) || 0
+                              })}
+                              placeholder="0"
+                              className="flex-1 px-3 py-2 border rounded-lg text-lg font-semibold"
+                            />
+                            <span className="text-gray-500 text-sm">/month</span>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Yearly Price
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500 font-medium">₹</span>
+                            <input
+                              type="number"
+                              value={editingPlan?.price_yearly || 0}
+                              onChange={e => updatePlanSettings({
+                                price_yearly: parseFloat(e.target.value) || 0
+                              })}
+                              placeholder="0"
+                              className="flex-1 px-3 py-2 border rounded-lg text-lg font-semibold"
+                            />
+                            <span className="text-gray-500 text-sm">/year</span>
+                          </div>
+                          <p className="text-xs text-green-600 mt-1">
+                            {editingPlan?.price_monthly && editingPlan?.price_yearly ? 
+                              `Save ₹${((editingPlan.price_monthly * 12) - editingPlan.price_yearly).toLocaleString('en-IN')} per year` : ''}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Plan Limits */}
+                    <div className="border rounded-lg p-4">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
+                        <Users className="w-5 h-5 text-blue-600" />
+                        Plan Limits
+                      </h3>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Max Users
+                          </label>
+                          <input
+                            type="number"
+                            value={editingPlan?.max_users || 5}
+                            onChange={e => updatePlanSettings({
+                              max_users: parseInt(e.target.value) || 5
+                            })}
+                            className="w-full px-3 py-2 border rounded-lg"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Use 9999 for unlimited</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Max Branches
+                          </label>
+                          <input
+                            type="number"
+                            value={editingPlan?.max_branches || 1}
+                            onChange={e => updatePlanSettings({
+                              max_branches: parseInt(e.target.value) || 1
+                            })}
+                            className="w-full px-3 py-2 border rounded-lg"
+                          />
+                          <p className="text-xs text-gray-500 mt-1">Use 9999 for unlimited</p>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Max Storage (GB)
+                          </label>
+                          <input
+                            type="number"
+                            value={editingPlan?.max_storage_gb || 5}
+                            onChange={e => updatePlanSettings({
+                              max_storage_gb: parseInt(e.target.value) || 5
+                            })}
+                            className="w-full px-3 py-2 border rounded-lg"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
                     {/* Financial Governance */}
                     <div className="border rounded-lg p-4">
                       <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">

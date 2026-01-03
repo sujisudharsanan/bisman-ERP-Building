@@ -12,6 +12,9 @@ const {
   getAvailableActions
 } = require('../services/taskStateMachine');
 
+// Feature enforcement middleware
+const { enforceUsage } = require('../middleware/microUnlockEnforcer');
+
 // Helper to get socket.io instance (will be set by app.js)
 let io = null;
 function setIO(socketIO) {
@@ -249,7 +252,7 @@ router.get('/:id', authenticateUser, async (req, res) => {
  * POST /api/tasks
  * Create new task
  */
-router.post('/', authenticateUser, async (req, res) => {
+router.post('/', authenticateUser, enforceUsage('task_creation'), async (req, res) => {
   try {
     const { title, description, priority, due_date, tags } = req.body;
     const { id: userId, userType, name } = req.user;
@@ -295,7 +298,7 @@ router.post('/', authenticateUser, async (req, res) => {
  * POST /api/tasks/:id/transition
  * Perform state transition
  */
-router.post('/:id/transition', authenticateUser, async (req, res) => {
+router.post('/:id/transition', authenticateUser, enforceUsage('task_approval'), async (req, res) => {
   try {
     const { id } = req.params;
     const { action, comment } = req.body;

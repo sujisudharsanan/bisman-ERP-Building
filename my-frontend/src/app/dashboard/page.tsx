@@ -20,6 +20,7 @@ import DashboardLayout from '@/components/layout/DashboardLayout';
 import KanbanColumn from '@/components/dashboard/KanbanColumn';
 import RightPanel from '@/components/dashboard/RightPanel';
 import { TaskFormV2 } from '@/components/tasks/v2/TaskFormV2';
+import { FeatureGate } from '@/components/subscription/FeatureGate';
 import { useAuth } from '@/hooks/useAuth';
 import { useTaskAPI } from '@/hooks/useTaskAPI';
 import { useKanbanTasks, taskKeys } from '@/hooks/useTasks';
@@ -500,20 +501,22 @@ export default function UnifiedDashboardPage() {
       
       {/* Task Creation Modal */}
       {showTaskForm && config.allowTaskCreation && (
-        <TaskFormV2
-          mode="create"
-          onCancel={() => setShowTaskForm(false)}
-          onSubmit={async (data) => {
-            await createTask(data);
-            setShowTaskForm(false);
-            // Invalidate all kanban queries (both view modes) and refetch current view
-            queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
-            refetchKanban();
-            // Switch to "My Requests" to show the newly created task
-            setViewMode('my-requests');
-          }}
-          isLoading={taskCreating}
-        />
+        <FeatureGate feature="task_creation" showLoading={false}>
+          <TaskFormV2
+            mode="create"
+            onCancel={() => setShowTaskForm(false)}
+            onSubmit={async (data) => {
+              await createTask(data);
+              setShowTaskForm(false);
+              // Invalidate all kanban queries (both view modes) and refetch current view
+              queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
+              refetchKanban();
+              // Switch to "My Requests" to show the newly created task
+              setViewMode('my-requests');
+            }}
+            isLoading={taskCreating}
+          />
+        </FeatureGate>
       )}
     </DashboardLayout>
   );

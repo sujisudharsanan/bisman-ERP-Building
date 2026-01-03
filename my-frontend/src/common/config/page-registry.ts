@@ -1890,6 +1890,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     permissions: ['authenticated'],
     roles: ['BRANCH INCHARGE', 'BRANCH_INCHARGE', 'HUB INCHARGE', 'HUB_INCHARGE', 'STORE INCHARGE', 'STORE_INCHARGE', 'ADMIN', 'MANAGER'],
     status: 'active',
+    showInSidebar: false, // Hidden from sidebar
     description: 'Review and approve tasks',
     order: 10,
   },
@@ -2001,7 +2002,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   // },
   {
     id: 'approvals',
-    name: 'Approvals',
+    name: 'Task Management',
     path: '/approvals',
     iconKey: "CheckCircle",
     module: 'common',
@@ -2066,7 +2067,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   // ==================== BILLING PAGES ====================
   {
     id: 'billing-overview',
-    name: 'Billing Overview',
+    name: 'Subscription',
     path: '/billing',
     iconKey: "CreditCard",
     module: 'billing',
@@ -2176,7 +2177,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     permissions: ['admin-dashboard', 'authenticated'],
     roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN'],
     status: 'active',
-    showInSidebar: true,
+    showInSidebar: false, // Hidden from admin sidebar
     description: 'Manage and approve pending tasks across your organization',
     order: 14,
   },

@@ -69,98 +69,7 @@ interface SubscriptionPlan {
   support_tier?: string;
 }
 
-const FALLBACK_PLANS: SubscriptionPlan[] = [
-  {
-    id: 'free',
-    code: 'FREE',
-    name: 'Free',
-    description: 'For startups & testing',
-    price_monthly: 0,
-    currency: 'INR',
-    max_users: 3,
-    max_branches: 1,
-    max_storage_gb: 1,
-    trial_days: 0,
-    features: ['Basic Reports', 'Email Support'],
-    is_popular: false,
-    is_active: true,
-    approval_levels: 1,
-    audit_retention_days: 30,
-    support_tier: 'Email',
-  },
-  {
-    id: 'basic',
-    code: 'BASIC',
-    name: 'Basic',
-    description: 'Essential features for small teams',
-    price_monthly: 999,
-    currency: 'INR',
-    max_users: 10,
-    max_branches: 2,
-    max_storage_gb: 10,
-    trial_days: 14,
-    features: ['Standard Reports', 'Email Support'],
-    is_popular: false,
-    is_active: true,
-    approval_levels: 2,
-    audit_retention_days: 60,
-    support_tier: 'Email',
-  },
-  {
-    id: 'standard',
-    code: 'STANDARD',
-    name: 'Standard',
-    description: 'Best value for growing businesses',
-    price_monthly: 2499,
-    currency: 'INR',
-    max_users: 25,
-    max_branches: 5,
-    max_storage_gb: 50,
-    trial_days: 14,
-    features: ['Advanced Reports', 'Priority Support'],
-    is_popular: true,
-    is_active: true,
-    approval_levels: 3,
-    audit_retention_days: 90,
-    support_tier: 'Priority',
-  },
-  {
-    id: 'premium',
-    code: 'PREMIUM',
-    name: 'Premium',
-    description: 'Advanced features with priority support',
-    price_monthly: 4999,
-    currency: 'INR',
-    max_users: 50,
-    max_branches: 10,
-    max_storage_gb: 100,
-    trial_days: 14,
-    features: ['Custom Reports', '24/7 Support'],
-    is_popular: false,
-    is_active: true,
-    approval_levels: 4,
-    audit_retention_days: 180,
-    support_tier: '24/7 Chat',
-  },
-  {
-    id: 'enterprise',
-    code: 'ENTERPRISE',
-    name: 'Enterprise',
-    description: 'Unlimited features with dedicated support',
-    price_monthly: 9999,
-    currency: 'INR',
-    max_users: -1,
-    max_branches: -1,
-    max_storage_gb: 500,
-    trial_days: 30,
-    features: ['All Features', 'Dedicated Manager', 'SLA'],
-    is_popular: false,
-    is_active: true,
-    approval_levels: 5,
-    audit_retention_days: 365,
-    support_tier: 'Dedicated',
-  },
-];
+// No hardcoded fallback - prices are managed by Super Admin in the database
 
 function formatCurrency(amount: number): string {
   if (amount === 0) return 'Free';
@@ -411,6 +320,7 @@ export default function WelcomePage() {
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [selectedPlan, setSelectedPlan] = useState<SubscriptionPlan | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [isActivating, setIsActivating] = useState(false);
   const [organizationName, setOrganizationName] = useState('Your Organization');
   const [showCompareModal, setShowCompareModal] = useState(false);
@@ -425,15 +335,16 @@ export default function WelcomePage() {
           if (data.plans && data.plans.length > 0) {
             setPlans(data.plans);
             if (data.organizationName) setOrganizationName(data.organizationName);
+            setLoadError(null);
           } else {
-            setPlans(FALLBACK_PLANS);
+            setLoadError('No subscription plans available. Please contact your administrator.');
           }
         } else {
-          setPlans(FALLBACK_PLANS);
+          setLoadError('Failed to load subscription plans. Please try again later.');
         }
       } catch (err) {
         console.error('Failed to fetch plans:', err);
-        setPlans(FALLBACK_PLANS);
+        setLoadError('Unable to connect to the server. Please check your connection.');
       } finally {
         setIsLoading(false);
       }
@@ -458,12 +369,38 @@ export default function WelcomePage() {
     }
   };
 
+  const handleRetry = () => {
+    setIsLoading(true);
+    setLoadError(null);
+    window.location.reload();
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
         <div className="text-center">
           <Loader2 className="w-10 h-10 text-blue-600 dark:text-blue-400 animate-spin mx-auto mb-4" />
           <p className="text-blue-600 dark:text-blue-400">Loading workspace setup...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (loadError) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-yellow-50 via-white to-yellow-100 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
+        <div className="text-center max-w-md p-8 bg-white dark:bg-slate-800 rounded-xl shadow-lg">
+          <div className="w-16 h-16 bg-red-100 dark:bg-red-900/30 rounded-full flex items-center justify-center mx-auto mb-4">
+            <X className="w-8 h-8 text-red-600 dark:text-red-400" />
+          </div>
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white mb-2">Unable to Load Plans</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">{loadError}</p>
+          <button
+            onClick={handleRetry}
+            className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            Try Again
+          </button>
         </div>
       </div>
     );

@@ -214,10 +214,12 @@ const BillingPage = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
+      // Use skipGlobalError to prevent toast spam - these endpoints may return 400/404
+      // for users without tenant context, which is expected behavior
       const [subResponse, usersResponse, analyticsResponse] = await Promise.allSettled([
-        api.get('/api/subscriptions/current'),
-        api.get('/api/users'),
-        api.get('/api/analytics/summary'),
+        api.get('/api/subscriptions/current', { skipGlobalError: true } as any),
+        api.get('/api/users', { skipGlobalError: true } as any),
+        api.get('/api/analytics/summary', { skipGlobalError: true } as any),
       ]);
 
       if (subResponse.status === 'fulfilled') {
@@ -380,18 +382,20 @@ const BillingPage = () => {
               </div>
               <div>
                 <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">Current Plan</p>
-                <h3 className={`text-xl font-bold bg-gradient-to-r ${planTier.color} bg-clip-text text-transparent`}>
-                  {subscriptionData?.plan?.display_name || subscriptionData?.plan?.name || 'No Plan'}
+                <h3 className={`text-lg md:text-xl font-extrabold text-slate-900`}>
+                  {subscriptionData?.plan?.display_name || subscriptionData?.plan?.name || 'Free Plan'}
                 </h3>
-                <div className="flex items-center gap-2 mt-1">
-                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                    subscriptionData?.subscription?.is_active 
-                      ? 'bg-green-100 text-green-700' 
-                      : 'bg-red-100 text-red-700'
-                  }`}>
-                    {subscriptionData?.subscription?.is_active ? 'Active' : 'Inactive'}
+                <p className="text-sm text-slate-500 mt-1">
+                  {subscriptionData?.subscription?.is_active
+                    ? 'Your active subscription and billing status.'
+                    : 'Basic features included. Upgrade to unlock more.'
+                  }
+                </p>
+                <div className="flex items-center gap-2 mt-3">
+                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
+                    Active
                   </span>
-                  {subscriptionData?.subscription?.end_date && (
+                  {subscriptionData?.subscription?.end_date && subscriptionData?.subscription?.is_active && (
                     <span className="text-xs text-slate-500">
                       Expires: {new Date(subscriptionData.subscription.end_date).toLocaleDateString()}
                     </span>
@@ -402,24 +406,27 @@ const BillingPage = () => {
           </motion.div>
         </div>
 
-        {/* Currency Selector */}
+        {/* Currency Selector - Sleek Custom Dropdown */}
         <div className="flex items-center gap-4 bg-white/70 backdrop-blur-sm rounded-xl p-4 shadow-sm border border-white/50">
           <Globe className="w-5 h-5 text-slate-500" />
           <span className="text-sm text-slate-600 font-medium">Display Currency:</span>
-          <select
-            value={selectedCurrency}
-            onChange={(e) => setSelectedCurrency(e.target.value)}
-            className="px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm font-medium focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-          >
-            {CURRENCIES.map(currency => (
-              <option key={currency.code} value={currency.code}>
-                {currency.symbol} {currency.code} - {currency.name}
-              </option>
-            ))}
-          </select>
+          <div className="relative">
+            <select
+              value={selectedCurrency}
+              onChange={(e) => setSelectedCurrency(e.target.value)}
+              className="appearance-none pl-4 pr-10 py-2 bg-gradient-to-r from-slate-50 to-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-pointer hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all shadow-sm"
+            >
+              {CURRENCIES.map(currency => (
+                <option key={currency.code} value={currency.code}>
+                  {currency.symbol} {currency.code} - {currency.name}
+                </option>
+              ))}
+            </select>
+            <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400 pointer-events-none" />
+          </div>
           {ratesLoading && <RefreshCw className="w-4 h-4 text-indigo-500 animate-spin" />}
           {!ratesLoading && exchangeRates.USD && (
-            <span className="text-xs text-slate-400 ml-2">
+            <span className="text-xs text-slate-400 ml-2 bg-slate-100 px-2 py-1 rounded-full">
               Live rates • 1 INR = {exchangeRates.USD?.toFixed(4)} USD
             </span>
           )}
@@ -438,10 +445,12 @@ const BillingPage = () => {
               <Layers className="w-8 h-8 opacity-80" />
               <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Features</span>
             </div>
-            <div className="text-3xl font-bold mb-1">
-              {Object.values(subscriptionData?.plan?.features || {}).filter(v => v === true).length}
+            <div className="text-center">
+              <div className="text-4xl font-bold mb-1">
+                {Object.values(subscriptionData?.plan?.features || {}).filter(v => v === true).length}
+              </div>
+              <p className="text-sm opacity-80">Active Features Enabled</p>
             </div>
-            <p className="text-sm opacity-80">Active Features Enabled</p>
           </motion.div>
 
           {/* Storage / Database Usage */}
@@ -455,13 +464,15 @@ const BillingPage = () => {
               <HardDrive className="w-8 h-8 opacity-80" />
               <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Storage</span>
             </div>
-            <div className="text-3xl font-bold mb-1">
-              {(usageStats.storage.used / 1024).toFixed(2)} GB
+            <div className="text-center">
+              <div className="text-4xl font-bold mb-1">
+                {(usageStats.storage.used / 1024).toFixed(2)} GB
+              </div>
+              <p className="text-sm opacity-80">
+                of {(usageStats.storage.limit / 1024).toFixed(0)} GB used
+              </p>
             </div>
-            <p className="text-sm opacity-80">
-              of {(usageStats.storage.limit / 1024).toFixed(0)} GB used
-            </p>
-            <div className="mt-2 h-2 bg-white/20 rounded-full overflow-hidden">
+            <div className="mt-3 h-2 bg-white/20 rounded-full overflow-hidden">
               <div 
                 className="h-full bg-white/80 rounded-full transition-all duration-500"
                 style={{ width: `${usageStats.storage.percentage}%` }}
@@ -480,10 +491,12 @@ const BillingPage = () => {
               <Wallet className="w-8 h-8 opacity-80" />
               <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Processed</span>
             </div>
-            <div className="text-3xl font-bold mb-1">
-              {getDisplayPrice(usageStats.amount.processed)}
+            <div className="text-center">
+              <div className="text-4xl font-bold mb-1">
+                {getDisplayPrice(usageStats.amount.processed)}
+              </div>
+              <p className="text-sm opacity-80">Total Amount Processed</p>
             </div>
-            <p className="text-sm opacity-80">Total Amount Processed</p>
           </motion.div>
 
           {/* Tasks Completed */}
@@ -497,10 +510,12 @@ const BillingPage = () => {
               <ListChecks className="w-8 h-8 opacity-80" />
               <span className="text-xs bg-white/20 px-2 py-1 rounded-full">Tasks</span>
             </div>
-            <div className="text-3xl font-bold mb-1">
-              {usageStats.tasks.completed.toLocaleString()}
+            <div className="text-center">
+              <div className="text-4xl font-bold mb-1">
+                {usageStats.tasks.completed.toLocaleString()}
+              </div>
+              <p className="text-sm opacity-80">Tasks Completed</p>
             </div>
-            <p className="text-sm opacity-80">Tasks Completed</p>
           </motion.div>
         </div>
 

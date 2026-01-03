@@ -6,6 +6,9 @@ const prisma = new PrismaClient();
 const { protectBusinessLevel, logBusinessLevelChange, getBusinessLevelInfo } = require('../middleware/businessLevelProtection');
 const { validatePassword, generateSecurePassword } = require('../lib/passwordValidator');
 
+// Feature enforcement middleware
+const { enforceUsage } = require('../middleware/microUnlockEnforcer');
+
 const requireEnterpriseAdmin = (req, res, next) => {
   const userRole = (req.user?.role || '').toUpperCase();
   if (userRole !== 'ENTERPRISE_ADMIN') {
@@ -369,7 +372,7 @@ router.put('/bulk/update', requireEnterpriseAdmin, async (req, res) => {
 });
 
 // Bulk import users from CSV
-router.post('/bulk/import', requireEnterpriseAdmin, async (req, res) => {
+router.post('/bulk/import', requireEnterpriseAdmin, enforceUsage('user_creation'), async (req, res) => {
   try {
     const { users } = req.body;
 

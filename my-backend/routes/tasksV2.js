@@ -15,6 +15,7 @@ const taskController = require('../controllers/taskControllerV2');
 // Middleware
 const { authenticate: authenticateToken } = require('../middleware/auth');
 const { taskCreationLimiter, uploadLimiter } = require('../middleware/advancedRateLimiter');
+const { enforceUsage } = require('../middleware/microUnlockEnforcer');
 
 // Configure multer for file uploads
 const storage = multer.diskStorage({
@@ -98,7 +99,7 @@ router.get('/:id', authenticateToken, taskController.getTaskById);
  * @desc    Create new task
  * @access  Private
  */
-router.post('/', taskCreationLimiter, authenticateToken, taskController.createTask);
+router.post('/', taskCreationLimiter, authenticateToken, enforceUsage('task_creation'), taskController.createTask);
 
 /**
  * @route   PUT /api/v2/tasks/:id
@@ -119,7 +120,7 @@ router.patch('/:id/status', authenticateToken, taskController.updateTaskStatus);
  * @desc    Maker-Checker state transition (START_WORK, SUBMIT_FOR_REVIEW, APPROVE, REJECT)
  * @access  Private
  */
-router.post('/:id/transition', authenticateToken, taskController.transitionTaskStatus);
+router.post('/:id/transition', authenticateToken, enforceUsage('task_approval'), taskController.transitionTaskStatus);
 
 /**
  * @route   GET /api/v2/tasks/:id/audit
@@ -180,6 +181,7 @@ router.post(
   '/:id/attachments',
   uploadLimiter,
   authenticateToken,
+  enforceUsage('task_attachments'),
   upload.single('file'),
   taskController.uploadTaskAttachment
 );

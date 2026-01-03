@@ -10,9 +10,10 @@
 
 const express = require('express');
 const router = express.Router();
-const { authenticate, setTenantContext, requireRole } = require('../../middleware/auth');
-const analyticsService = require('../../services/analytics/analyticsService');
-const prisma = require('../../lib/prisma');
+const { authenticate, requireRole } = require('../middleware/auth');
+const { setTenantContext } = require('../middleware/tenantContext');
+const analyticsService = require('../services/analytics/analyticsService');
+const prisma = require('../lib/prisma');
 
 // All routes require authentication
 router.use(authenticate);

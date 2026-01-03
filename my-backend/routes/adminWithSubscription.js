@@ -20,6 +20,9 @@ const {
 } = require('../services/adminCreation/adminWithSubscriptionService');
 const { getPrisma } = require('../lib/prisma');
 
+// Feature enforcement middleware
+const { enforceUsage } = require('../middleware/microUnlockEnforcer');
+
 // ============================================================================
 // MIDDLEWARE
 // ============================================================================
@@ -145,7 +148,7 @@ router.post('/validate', async (req, res) => {
  * - timezone: string (defaults to 'Asia/Kolkata')
  * - currency: string (defaults to 'INR')
  */
-router.post('/create', ...superAdminOnly, async (req, res) => {
+router.post('/create', ...superAdminOnly, enforceUsage('user_creation'), async (req, res) => {
   try {
     const {
       adminName,

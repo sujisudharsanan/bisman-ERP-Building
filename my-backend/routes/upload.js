@@ -7,10 +7,13 @@ const TenantGuard = require('../middleware/tenantGuard');
 const path = require('path');
 const fs = require('fs');
 
+// Feature enforcement middleware
+const { enforceUsage } = require('../middleware/microUnlockEnforcer');
+
 const prisma = getPrisma();
 
 // POST /api/upload/profile-pic
-router.post('/profile-pic', authenticate, (req, res) => {
+router.post('/profile-pic', authenticate, enforceUsage('file_upload'), (req, res) => {
   // Apply multer middleware first, then handle the upload
   upload.single('profile_pic')(req, res, async (err) => {
     if (err) {

@@ -165,6 +165,11 @@ router.get('/plans', ...superAdminOnly, async (req, res) => {
       ok: true,
       plans: plans.map(p => ({
         ...p,
+        price_monthly: p.price_monthly ? parseFloat(p.price_monthly) : 0,
+        price_yearly: p.price_yearly ? parseFloat(p.price_yearly) : 0,
+        max_users: parseInt(p.max_users || 5),
+        max_branches: parseInt(p.max_branches || 1),
+        max_storage_gb: parseInt(p.max_storage_gb || 5),
         monthly_spend_cap: p.monthly_spend_cap ? parseFloat(p.monthly_spend_cap) : null,
         cfo_approval_threshold: p.cfo_approval_threshold ? parseFloat(p.cfo_approval_threshold) : null,
         active_tenant_count: parseInt(p.active_tenant_count || 0)
@@ -334,6 +339,11 @@ router.put('/plans/:id', ...superAdminOnly, async (req, res) => {
       sort_order,
       is_popular,
       color_code,
+      price_monthly,
+      price_yearly,
+      max_users,
+      max_branches,
+      max_storage_gb,
       monthly_spend_cap,
       auto_block_on_cap,
       cfo_approval_threshold,
@@ -353,7 +363,7 @@ router.put('/plans/:id', ...superAdminOnly, async (req, res) => {
 
     const oldPlan = oldPlans[0];
 
-    // Update plan
+    // Update plan with pricing fields
     await prisma.$executeRaw`
       UPDATE master_subscription_plans SET
         name = COALESCE(${name}, name),
@@ -362,6 +372,11 @@ router.put('/plans/:id', ...superAdminOnly, async (req, res) => {
         sort_order = COALESCE(${sort_order}, sort_order),
         is_popular = COALESCE(${is_popular}, is_popular),
         color_code = COALESCE(${color_code}, color_code),
+        price_monthly = COALESCE(${price_monthly !== undefined ? parseFloat(price_monthly) : null}, price_monthly),
+        price_yearly = COALESCE(${price_yearly !== undefined ? parseFloat(price_yearly) : null}, price_yearly),
+        max_users = COALESCE(${max_users !== undefined ? parseInt(max_users) : null}, max_users),
+        max_branches = COALESCE(${max_branches !== undefined ? parseInt(max_branches) : null}, max_branches),
+        max_storage_gb = COALESCE(${max_storage_gb !== undefined ? parseInt(max_storage_gb) : null}, max_storage_gb),
         monthly_spend_cap = ${monthly_spend_cap},
         auto_block_on_cap = COALESCE(${auto_block_on_cap}, auto_block_on_cap),
         cfo_approval_threshold = ${cfo_approval_threshold},
@@ -370,6 +385,19 @@ router.put('/plans/:id', ...superAdminOnly, async (req, res) => {
         read_only_after_grace = COALESCE(${read_only_after_grace}, read_only_after_grace),
         updated_by = ${req.user?.id || null}
       WHERE id = ${planId}
+    `;
+
+    // Also sync with subscription_plans table (for welcome page)
+    const planCode = oldPlan.code;
+    await prisma.$executeRaw`
+      UPDATE subscription_plans SET
+        price_monthly = COALESCE(${price_monthly !== undefined ? parseFloat(price_monthly) : null}, price_monthly),
+        price_yearly = COALESCE(${price_yearly !== undefined ? parseFloat(price_yearly) : null}, price_yearly),
+        max_users = COALESCE(${max_users !== undefined ? parseInt(max_users) : null}, max_users),
+        max_branches = COALESCE(${max_branches !== undefined ? parseInt(max_branches) : null}, max_branches),
+        max_storage_gb = COALESCE(${max_storage_gb !== undefined ? parseInt(max_storage_gb) : null}, max_storage_gb),
+        updated_at = NOW()
+      WHERE plan_code = ${planCode}
     `;
 
     const updatedPlan = await prisma.$queryRaw`

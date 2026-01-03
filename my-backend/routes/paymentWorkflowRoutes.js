@@ -31,6 +31,9 @@ const {
   canUserSendBack
 } = require('../services/PaymentWorkflowService');
 
+// Feature enforcement middleware
+const { enforceUsage } = require('../middleware/microUnlockEnforcer');
+
 // ============================================================================
 // MIDDLEWARE
 // ============================================================================
@@ -248,7 +251,7 @@ router.get('/:id', async (req, res) => {
  * POST /api/payment-workflow/:id/submit
  * Submit a draft payment request for approval
  */
-router.post('/:id/submit', async (req, res) => {
+router.post('/:id/submit', enforceUsage('payment_request_creation'), async (req, res) => {
   try {
     const { id } = req.params;
     
@@ -303,7 +306,7 @@ router.post('/:id/submit', async (req, res) => {
  * POST /api/payment-workflow/:id/approve
  * Approve current stage
  */
-router.post('/:id/approve', async (req, res) => {
+router.post('/:id/approve', enforceUsage('payment_approval'), async (req, res) => {
   try {
     const { id } = req.params;
     const { comment, voucherNumber, bankTransactionId, bankName, paymentMode } = req.body;
@@ -577,7 +580,7 @@ router.post('/:id/accounting-entry', async (req, res) => {
  * POST /api/payment-workflow/:id/execute-payment
  * Banker executes payment
  */
-router.post('/:id/execute-payment', async (req, res) => {
+router.post('/:id/execute-payment', enforceUsage('bank_transfer_execution'), async (req, res) => {
   try {
     const { id } = req.params;
     const { bankTransactionId, bankName, paymentMode, note } = req.body;
