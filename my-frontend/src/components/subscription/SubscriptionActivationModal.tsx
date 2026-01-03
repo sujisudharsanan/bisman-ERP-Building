@@ -53,6 +53,7 @@ export default function SubscriptionActivationModal({
   const [error, setError] = useState<string | null>(null);
   const [showSuccess, setShowSuccess] = useState(false);
   const [activatedPlan, setActivatedPlan] = useState<string | null>(null);
+  const [hasActiveSubscription, setHasActiveSubscription] = useState(false);
   const [brandData, setBrandData] = useState<{ displayName: string; logoUrl: string | null }>({
     displayName: '',
     logoUrl: null,
@@ -121,7 +122,12 @@ export default function SubscriptionActivationModal({
         });
       } else {
         setValidation({ valid: false });
-        setError(data.message || 'Invalid coupon code');
+        const errorMessage = data.message || 'Invalid coupon code';
+        setError(errorMessage);
+        // Check if user already has an active subscription
+        if (errorMessage.toLowerCase().includes('already have an active subscription')) {
+          setHasActiveSubscription(true);
+        }
       }
     } catch (err) {
       console.error('Validation error:', err);
@@ -412,14 +418,17 @@ export default function SubscriptionActivationModal({
                   )}
                 </div>
 
-                {/* Divider */}
-                <div className="flex items-center gap-4">
-                  <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-                  <span className="text-sm text-gray-500 dark:text-gray-400">or</span>
-                  <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
-                </div>
+                {/* Divider - only show if no active subscription */}
+                {!hasActiveSubscription && (
+                  <div className="flex items-center gap-4">
+                    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                    <span className="text-sm text-gray-500 dark:text-gray-400">or</span>
+                    <div className="flex-1 h-px bg-gray-200 dark:bg-gray-700" />
+                  </div>
+                )}
 
-                {/* Trial Section */}
+                {/* Trial Section - only show if no active subscription */}
+                {!hasActiveSubscription && (
                 <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-900/20 dark:to-indigo-900/20 rounded-xl p-5 border border-blue-100 dark:border-blue-800">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -461,6 +470,7 @@ export default function SubscriptionActivationModal({
                     ))}
                   </div>
                 </div>
+                )}
               </div>
             </div>
           )}
