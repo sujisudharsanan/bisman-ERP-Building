@@ -24,8 +24,6 @@ import {
   Sparkles,
 } from 'lucide-react';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_BASE || 'http://localhost:5000';
-
 interface SelectedPlan {
   id: string;
   code: string;
@@ -128,7 +126,7 @@ export default function BrandingSetupPage() {
         formData.append('logo', logoFile);
       }
 
-      const response = await fetch(`${API_BASE}/api/welcome/activate`, {
+      const response = await fetch('/api/welcome/activate', {
         method: 'POST',
         credentials: 'include',
         body: formData,
