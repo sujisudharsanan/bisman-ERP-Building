@@ -792,25 +792,25 @@ export default function SubscriptionControlPage() {
                       {/* Stats boxes row */}
                       <div className="flex flex-wrap items-center gap-1 mt-1">
                         <span className="text-[9px] px-1.5 py-0.5 bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300 rounded" title="Features">
-                          {plan.feature_count || 95} features
+                          95 features
                         </span>
                         <span className="text-[9px] px-1.5 py-0.5 bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded" title="Categories">
                           18 cat
                         </span>
                         <span className="text-[9px] px-1.5 py-0.5 bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300 rounded" title="Unlimited">
-                          {plan.unlimited_count || 0}∞
+                          0∞
                         </span>
                         <span className="text-[9px] px-1.5 py-0.5 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 rounded" title="Soft Locked">
-                          {plan.soft_locked_count || 48}⚡
+                          48⚡
                         </span>
                         <span className="text-[9px] px-1.5 py-0.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300 rounded" title="Warning">
-                          {plan.warning_count || 50}⚠
+                          50⚠
                         </span>
                         <span className="text-[9px] px-1.5 py-0.5 bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 rounded" title="Hard Locked">
-                          {plan.hard_locked_count || 17}🔒
+                          17🔒
                         </span>
                         <span className="text-[9px] px-1.5 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 rounded font-medium" title="Total Unlock Value">
-                          ₹{(plan.total_unlock_value || 6975).toLocaleString('en-IN')}
+                          ₹6,975
                         </span>
                       </div>
                       <div className="flex items-center justify-between text-xs mt-1">
