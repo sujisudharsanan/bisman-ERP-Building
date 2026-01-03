@@ -574,7 +574,7 @@ export default function SystemHealthDashboardPage() {
       // Build services from implementationFeatures
       const servicesData: ServiceStatus[] = (healthData.implementationFeatures || []).map((feature: { name: string; status: string; implemented?: boolean }) => ({
         name: feature.name,
-        status: feature.implemented ? 'healthy' : (feature.status === 'warning' ? 'warning' : 'healthy'),
+        status: feature.implemented ? 'operational' : (feature.status === 'warning' ? 'degraded' : 'operational') as 'operational' | 'degraded' | 'down',
         latency: Math.floor(Math.random() * 50) + 10,
         uptime: 0.999,
         lastCheck: new Date().toISOString()
