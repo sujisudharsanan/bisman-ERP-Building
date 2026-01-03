@@ -134,9 +134,9 @@ export default function BrandingSetupPage() {
         body: formData,
       });
 
-      if (response.ok) {
-        const result = await response.json();
-        
+      const result = await response.json();
+      
+      if (response.ok && result.success) {
         // Clear plan selection from session storage
         sessionStorage.removeItem('selectedPlan');
         
@@ -152,12 +152,12 @@ export default function BrandingSetupPage() {
         // Redirect to personalized launching splash screen
         router.push('/welcome/launching');
       } else {
-        const error = await response.json();
-        alert(error.message || 'Failed to activate workspace');
+        console.error('Activation failed:', result);
+        alert(result.error || result.message || 'Failed to activate workspace. Please try again.');
       }
     } catch (err) {
       console.error('Activation error:', err);
-      alert('Failed to activate workspace. Please try again.');
+      alert('Network error. Please check your connection and try again.');
     } finally {
       setIsSubmitting(false);
     }

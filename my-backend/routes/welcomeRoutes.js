@@ -442,27 +442,17 @@ router.post('/activate', authMiddleware, upload.single('logo'), async (req, res)
       try {
         const tradeName = (displayName && displayName.trim()) ? displayName.trim() : existingClient?.name || 'Organization';
         
-        // Disable triggers temporarily and update
-        await prisma.$executeRawUnsafe(`
-          SET session_replication_role = replica;
-          UPDATE clients SET
-            "subscriptionPlan" = $1,
-            "subscriptionStatus" = 'trial',
-            onboarding_status = 'completed',
-            trial_start_date = NOW(),
-            trial_end_date = $2,
-            status = 'Active',
-            trade_name = $3,
-            updated_at = NOW()
-          WHERE id = $4::uuid;
-          SET session_replication_role = DEFAULT;
-        `, planCode.toLowerCase(), trialEndsAt, tradeName, tenantIdValue);
-        console.log('[Welcome] Client updated successfully via raw SQL (triggers disabled)');
+        // Update client fields one by one to avoid trigger issues
+        await prisma.$executeRawUnsafe(
+          `UPDATE clients SET "subscriptionPlan" = $1, "subscriptionStatus" = 'trial', onboarding_status = 'completed', trial_start_date = NOW(), trial_end_date = $2, status = 'Active', trade_name = $3, updated_at = NOW() WHERE id = $4::uuid`,
+          planCode.toLowerCase(), trialEndsAt, tradeName, tenantIdValue
+        );
+        console.log('[Welcome] Client updated successfully via raw SQL');
         
       } catch (rawErr1) {
-        console.warn('[Welcome] Raw SQL with trigger disable failed:', rawErr1.message);
+        console.warn('[Welcome] Raw SQL update failed:', rawErr1.message);
         
-        // Try individual field updates
+        // Try individual field updates as fallback
         try {
           await prisma.$executeRawUnsafe(
             `UPDATE clients SET "subscriptionPlan" = $1 WHERE id = $2::uuid`,
@@ -568,7 +558,12 @@ router.post('/activate', authMiddleware, upload.single('logo'), async (req, res)
     });
   } catch (error) {
     console.error('[Welcome] Activate error:', error);
-    res.status(500).json({ success: false, error: 'Failed to activate workspace' });
+    console.error('[Welcome] Error stack:', error.stack);
+    res.status(500).json({ 
+      success: false, 
+      error: 'Failed to activate workspace',
+      details: process.env.NODE_ENV !== 'production' ? error.message : undefined
+    });
   }
 });
 

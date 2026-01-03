@@ -1967,7 +1967,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     iconKey: "Users",
     module: 'common',
     permissions: ['authenticated'],
-    roles: ['ALL'],
+    roles: ['ADMIN', 'ENTERPRISE_ADMIN', 'BRANCH_INCHARGE', 'HUB_INCHARGE', 'STORE_INCHARGE'],
     status: 'active',
     description: 'Manage users and monitor subscription usage',
     order: 4,

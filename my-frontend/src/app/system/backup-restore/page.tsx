@@ -1237,14 +1237,14 @@ export default function BackupRestorePage() {
     fetchActivities();
   };
 
-  // Filter backups based on active tab
-  const filteredBackups = backups.filter((backup) => {
+  // Filter backups based on active tab (with safety check)
+  const filteredBackups = (backups || []).filter((backup) => {
     if (activeTab === 'failed') return backup.status === 'failed';
     if (activeTab === 'this-org') return backup.orgName === 'BISMAN Corp' || !backup.orgId;
     return true;
   });
 
-  const lastBackup = backups.length > 0 ? backups[0] : null;
+  const lastBackup = (backups || []).length > 0 ? backups[0] : null;
 
   return (
     <div className="w-full">
@@ -1348,8 +1348,8 @@ export default function BackupRestorePage() {
             <div className="border-b border-gray-200">
               <div className="flex items-center gap-1 p-1">
                 {[
-                  { key: 'all' as TabType, label: 'All Backups', count: backups.length },
-                  { key: 'this-org' as TabType, label: 'This Org', count: backups.filter(b => b.orgName === 'BISMAN Corp' || !b.orgId).length },
+                  { key: 'all' as TabType, label: 'All Backups', count: (backups || []).length },
+                  { key: 'this-org' as TabType, label: 'This Org', count: (backups || []).filter(b => b.orgName === 'BISMAN Corp' || !b.orgId).length },
                   { key: 'failed' as TabType, label: 'Failed', count: stats.failed },
                 ].map((tab) => (
                   <button

@@ -248,6 +248,80 @@ router.get('/', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN']), 
 });
 
 /**
+ * GET /api/backup/activity-log
+ * Get backup/restore activity log
+ * NOTE: This must be BEFORE /:id to avoid route conflict
+ */
+router.get('/activity-log', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMIN', 'ADMIN']), async (req, res) => {
+  try {
+    const { limit = 100, offset = 0 } = req.query;
+    const manifest = await readManifest();
+    
+    // Build activity log from backups and restores
+    const activities = [];
+    
+    for (const backup of (manifest.backups || [])) {
+      activities.push({
+        id: `act-${backup.id}`,
+        type: 'backup',
+        action: backup.triggerType === 'manual' ? 'Manual Backup' : 'Scheduled Backup',
+        backupType: backup.type,
+        timestamp: backup.timestamp,
+        status: backup.status,
+        user: backup.triggeredBy,
+        details: backup.description || `${backup.type} backup`,
+        size: backup.size,
+        duration: backup.duration,
+        errorMessage: backup.errorMessage,
+      });
+
+      // Add restore activities
+      for (const restore of (backup.restores || [])) {
+        activities.push({
+          id: `act-${restore.id}`,
+          type: 'restore',
+          action: `Restore to ${restore.targetEnv}`,
+          backupType: restore.restoreType,
+          timestamp: restore.timestamp,
+          status: restore.status,
+          user: restore.initiatedBy,
+          details: `Restore from backup ${backup.id}`,
+          backupId: backup.id,
+          errorMessage: restore.errorMessage,
+        });
+      }
+    }
+
+    // Sort by timestamp descending
+    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
+
+    // Paginate
+    const paginatedActivities = activities.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
+
+    res.json({
+      success: true,
+      logs: paginatedActivities,
+      data: {
+        activities: paginatedActivities,
+        pagination: {
+          total: activities.length,
+          limit: parseInt(limit),
+          offset: parseInt(offset),
+          hasMore: parseInt(offset) + parseInt(limit) < activities.length,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('[BackupAPI] Error getting activity log:', error);
+    res.status(500).json({
+      success: false,
+      error: 'Failed to get activity log',
+      message: error.message,
+    });
+  }
+});
+
+/**
  * GET /api/backup/:id
  * Get single backup details
  */
@@ -541,78 +615,6 @@ router.get('/schedules/list', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SU
     res.status(500).json({
       success: false,
       error: 'Failed to get schedules',
-      message: error.message,
-    });
-  }
-});
-
-/**
- * GET /api/backup/activity-log
- * Get backup/restore activity log
- */
-router.get('/activity-log', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN']), async (req, res) => {
-  try {
-    const { limit = 100, offset = 0 } = req.query;
-    const manifest = await readManifest();
-    
-    // Build activity log from backups and restores
-    const activities = [];
-    
-    for (const backup of (manifest.backups || [])) {
-      activities.push({
-        id: `act-${backup.id}`,
-        type: 'backup',
-        action: backup.triggerType === 'manual' ? 'Manual Backup' : 'Scheduled Backup',
-        backupType: backup.type,
-        timestamp: backup.timestamp,
-        status: backup.status,
-        user: backup.triggeredBy,
-        details: backup.description || `${backup.type} backup`,
-        size: backup.size,
-        duration: backup.duration,
-        errorMessage: backup.errorMessage,
-      });
-
-      // Add restore activities
-      for (const restore of (backup.restores || [])) {
-        activities.push({
-          id: `act-${restore.id}`,
-          type: 'restore',
-          action: `Restore to ${restore.targetEnv}`,
-          backupType: restore.restoreType,
-          timestamp: restore.timestamp,
-          status: restore.status,
-          user: restore.initiatedBy,
-          details: `Restore from backup ${backup.id}`,
-          backupId: backup.id,
-          errorMessage: restore.errorMessage,
-        });
-      }
-    }
-
-    // Sort by timestamp descending
-    activities.sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp));
-
-    // Paginate
-    const paginatedActivities = activities.slice(parseInt(offset), parseInt(offset) + parseInt(limit));
-
-    res.json({
-      success: true,
-      data: {
-        activities: paginatedActivities,
-        pagination: {
-          total: activities.length,
-          limit: parseInt(limit),
-          offset: parseInt(offset),
-          hasMore: parseInt(offset) + parseInt(limit) < activities.length,
-        },
-      },
-    });
-  } catch (error) {
-    console.error('[BackupAPI] Error getting activity log:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to get activity log',
       message: error.message,
     });
   }

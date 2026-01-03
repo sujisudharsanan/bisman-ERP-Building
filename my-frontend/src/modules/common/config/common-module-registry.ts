@@ -131,6 +131,7 @@ export const COMMON_PAGES: CommonPageMetadata[] = [
     isActive: true,
     requiresAuth: true,
     autoRegister: true,
+    roles: ['ADMIN', 'ENTERPRISE_ADMIN', 'BRANCH_INCHARGE', 'HUB_INCHARGE', 'STORE_INCHARGE'],
   },
   
   // Financial Pages - Hidden from sidebar (now integrated into Task form)

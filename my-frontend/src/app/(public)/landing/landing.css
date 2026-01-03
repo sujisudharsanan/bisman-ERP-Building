@@ -96,6 +96,7 @@
   color: var(--contrast-color);
   background: var(--accent-color);
   font-size: 13px;
+  font-family: 'Open Sans', system-ui, -apple-system, sans-serif;
   padding: 6px 20px;
   margin: 0 0 0 30px;
   border-radius: 50px;
