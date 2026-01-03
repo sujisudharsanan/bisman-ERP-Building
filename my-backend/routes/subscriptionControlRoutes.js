@@ -349,7 +349,12 @@ router.put('/plans/:id', ...superAdminOnly, async (req, res) => {
       cfo_approval_threshold,
       invoice_cycle_days,
       grace_period_days,
-      read_only_after_grace
+      read_only_after_grace,
+      // Trial settings
+      trial_enabled,
+      trial_days,
+      trial_features_limited,
+      require_payment_method
     } = req.body;
 
     // Get current plan for audit
@@ -363,7 +368,7 @@ router.put('/plans/:id', ...superAdminOnly, async (req, res) => {
 
     const oldPlan = oldPlans[0];
 
-    // Update plan with pricing fields
+    // Update plan with pricing and trial fields
     await prisma.$executeRaw`
       UPDATE master_subscription_plans SET
         name = COALESCE(${name}, name),
@@ -383,6 +388,10 @@ router.put('/plans/:id', ...superAdminOnly, async (req, res) => {
         invoice_cycle_days = COALESCE(${invoice_cycle_days}, invoice_cycle_days),
         grace_period_days = COALESCE(${grace_period_days}, grace_period_days),
         read_only_after_grace = COALESCE(${read_only_after_grace}, read_only_after_grace),
+        trial_enabled = COALESCE(${trial_enabled}, trial_enabled),
+        trial_days = COALESCE(${trial_days !== undefined ? parseInt(trial_days) : null}, trial_days),
+        trial_features_limited = COALESCE(${trial_features_limited}, trial_features_limited),
+        require_payment_method = COALESCE(${require_payment_method}, require_payment_method),
         updated_by = ${req.user?.id || null}
       WHERE id = ${planId}
     `;

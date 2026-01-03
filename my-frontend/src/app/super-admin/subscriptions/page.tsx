@@ -87,6 +87,11 @@ interface SubscriptionPlan {
   active_tenant_count: number;
   created_at: string;
   updated_at: string;
+  // Trial settings
+  trial_enabled: boolean;
+  trial_days: number;
+  trial_features_limited: boolean;
+  require_payment_method: boolean;
 }
 
 interface FeatureDefinition {
@@ -238,7 +243,7 @@ export default function SubscriptionControlPage() {
   const [expandedBreakdownCategories, setExpandedBreakdownCategories] = useState<Set<string>>(new Set());
   const [showCloneModal, setShowCloneModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'features' | 'governance' | 'infra'>('features');
+  const [activeTab, setActiveTab] = useState<'features' | 'governance' | 'infra' | 'trial'>('features');
 
   // Toggle category expansion in breakdown section
   const toggleBreakdownCategory = (category: string) => {
@@ -923,6 +928,7 @@ export default function SubscriptionControlPage() {
                     { key: 'features', label: 'Feature Controls', icon: <Settings className="w-4 h-4" /> },
                     { key: 'governance', label: 'Governance Rules', icon: <Shield className="w-4 h-4" /> },
                     { key: 'infra', label: 'Infrastructure', icon: <Server className="w-4 h-4" /> },
+                    { key: 'trial', label: 'Trial Settings', icon: <Clock className="w-4 h-4" /> },
                   ].map(tab => (
                     <button
                       key={tab.key}
@@ -1640,7 +1646,7 @@ export default function SubscriptionControlPage() {
                       </div>
                     </div>
                   </div>
-                ) : (
+                ) : activeTab === 'infra' ? (
                   /* INFRASTRUCTURE TAB */
                   <div className="space-y-6">
                     <div className="border rounded-lg overflow-hidden">
@@ -1719,6 +1725,128 @@ export default function SubscriptionControlPage() {
                         </div>
                       </div>
                     )}
+                  </div>
+                ) : (
+                  /* TRIAL SETTINGS TAB */
+                  <div className="space-y-6">
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-b">
+                        <h3 className="font-semibold flex items-center gap-2">
+                          <Clock className="w-5 h-5 text-purple-600" />
+                          Trial Configuration
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Configure trial period settings for this plan. Clients without a coupon code will start a trial.
+                        </p>
+                      </div>
+                      <div className="p-4 space-y-6">
+                        {/* Trial Enable Toggle */}
+                        <div className="flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-800 rounded-lg">
+                          <div>
+                            <div className="font-medium">Enable Trial Period</div>
+                            <div className="text-sm text-gray-500">Allow users to try this plan before paying</div>
+                          </div>
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={editingPlan?.trial_enabled ?? true}
+                              onChange={e => updatePlanSettings({ trial_enabled: e.target.checked })}
+                              className="sr-only peer"
+                            />
+                            <div className="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full rtl:peer-checked:after:-translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:start-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-600"></div>
+                          </label>
+                        </div>
+
+                        {/* Trial Days */}
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="p-4 border rounded-lg">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Trial Duration (Days)
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <input
+                                type="number"
+                                min="1"
+                                max="90"
+                                value={editingPlan?.trial_days ?? 14}
+                                onChange={e => updatePlanSettings({ trial_days: parseInt(e.target.value) || 14 })}
+                                className="w-24 px-3 py-2 border rounded-lg text-center text-lg font-bold"
+                              />
+                              <span className="text-gray-500">days</span>
+                            </div>
+                            <p className="text-xs text-gray-500 mt-2">
+                              Common: 7, 14, 30 days
+                            </p>
+                          </div>
+
+                          <div className="p-4 border rounded-lg">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                              Quick Presets
+                            </label>
+                            <div className="flex flex-wrap gap-2">
+                              {[7, 14, 21, 30, 60].map(days => (
+                                <button
+                                  key={days}
+                                  onClick={() => updatePlanSettings({ trial_days: days })}
+                                  className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+                                    editingPlan?.trial_days === days
+                                      ? 'bg-purple-600 text-white'
+                                      : 'bg-gray-100 text-gray-700 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300'
+                                  }`}
+                                >
+                                  {days} days
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Additional Trial Options */}
+                        <div className="space-y-4">
+                          <h4 className="font-medium text-gray-700 dark:text-gray-300">Additional Options</h4>
+                          
+                          <label className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                            <input
+                              type="checkbox"
+                              checked={editingPlan?.trial_features_limited ?? false}
+                              onChange={e => updatePlanSettings({ trial_features_limited: e.target.checked })}
+                              className="w-5 h-5 text-purple-600 rounded"
+                            />
+                            <div>
+                              <div className="font-medium">Limited Features During Trial</div>
+                              <div className="text-sm text-gray-500">Restrict some premium features during trial period</div>
+                            </div>
+                          </label>
+
+                          <label className="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700 transition">
+                            <input
+                              type="checkbox"
+                              checked={editingPlan?.require_payment_method ?? false}
+                              onChange={e => updatePlanSettings({ require_payment_method: e.target.checked })}
+                              className="w-5 h-5 text-purple-600 rounded"
+                            />
+                            <div>
+                              <div className="font-medium">Require Payment Method for Trial</div>
+                              <div className="text-sm text-gray-500">Users must add payment method to start trial (auto-charges after trial ends)</div>
+                            </div>
+                          </label>
+                        </div>
+
+                        {/* Trial Info Box */}
+                        <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                          <h4 className="font-medium text-blue-800 dark:text-blue-300 flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4" />
+                            How Trial Works
+                          </h4>
+                          <ul className="mt-2 text-sm text-blue-700 dark:text-blue-400 space-y-1">
+                            <li>• When a client selects this plan, they will be asked for a coupon code</li>
+                            <li>• <strong>With valid coupon:</strong> Subscription starts immediately (coupon discount applied)</li>
+                            <li>• <strong>Without coupon:</strong> Trial period starts for {editingPlan?.trial_days ?? 14} days</li>
+                            <li>• After trial ends, client must pay to continue using the plan</li>
+                          </ul>
+                        </div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

@@ -325,6 +325,12 @@ export default function WelcomePage() {
   const [organizationName, setOrganizationName] = useState('Your Organization');
   const [showCompareModal, setShowCompareModal] = useState(false);
   const [showWelcomeChat, setShowWelcomeChat] = useState(true);
+  // Coupon modal state
+  const [showCouponModal, setShowCouponModal] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponValidating, setCouponValidating] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponValid, setCouponValid] = useState<{ discount: number; type: 'percentage' | 'fixed' } | null>(null);
 
   useEffect(() => {
     const fetchPlans = async () => {
@@ -356,7 +362,74 @@ export default function WelcomePage() {
 
   const handleContinue = () => {
     if (!selectedPlan) return;
+    // If it's a paid plan, show coupon modal first
+    if (selectedPlan.price_monthly > 0) {
+      setShowCouponModal(true);
+      setCouponCode('');
+      setCouponError(null);
+      setCouponValid(null);
+      return;
+    }
+    // Free plan - continue directly
     sessionStorage.setItem('selectedPlan', JSON.stringify(selectedPlan));
+    router.push('/welcome/branding');
+  };
+
+  const handleValidateCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError('Please enter a coupon code');
+      return;
+    }
+    setCouponValidating(true);
+    setCouponError(null);
+    try {
+      const response = await fetch(`${API_BASE}/api/welcome/validate-coupon`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ code: couponCode.trim().toUpperCase(), planCode: selectedPlan?.code })
+      });
+      const data = await response.json();
+      if (data.ok && data.valid) {
+        setCouponValid({ discount: data.discount, type: data.type });
+        setCouponError(null);
+      } else {
+        setCouponError(data.error || 'Invalid coupon code');
+        setCouponValid(null);
+      }
+    } catch {
+      setCouponError('Failed to validate coupon. Please try again.');
+    } finally {
+      setCouponValidating(false);
+    }
+  };
+
+  const handleProceedWithCoupon = () => {
+    if (!selectedPlan) return;
+    // Store plan and coupon info, then proceed
+    sessionStorage.setItem('selectedPlan', JSON.stringify({
+      ...selectedPlan,
+      couponCode: couponValid ? couponCode.trim().toUpperCase() : null,
+      couponDiscount: couponValid?.discount || 0,
+      couponType: couponValid?.type || null,
+      startAsTrial: !couponValid // If no valid coupon, start as trial
+    }));
+    setShowCouponModal(false);
+    router.push('/welcome/branding');
+  };
+
+  const handleStartTrial = () => {
+    if (!selectedPlan) return;
+    // Start trial without coupon
+    sessionStorage.setItem('selectedPlan', JSON.stringify({
+      ...selectedPlan,
+      couponCode: null,
+      couponDiscount: 0,
+      couponType: null,
+      startAsTrial: true,
+      trialDays: selectedPlan.trial_days || 14
+    }));
+    setShowCouponModal(false);
     router.push('/welcome/branding');
   };
 
@@ -509,6 +582,126 @@ export default function WelcomePage() {
         </div>
       )}
       <ComparePlansModal plans={plans} isOpen={showCompareModal} onClose={() => setShowCompareModal(false)} />
+
+      {/* Coupon Code Modal */}
+      {showCouponModal && selectedPlan && (
+        <div className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl w-full max-w-md mx-4 overflow-hidden">
+            {/* Header */}
+            <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-6 text-white">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h2 className="text-xl font-bold">Complete Your Selection</h2>
+                  <p className="text-purple-100 text-sm mt-1">{selectedPlan.name} Plan - {formatCurrency(selectedPlan.price_monthly)}/month</p>
+                </div>
+                <button
+                  onClick={() => setShowCouponModal(false)}
+                  className="p-2 hover:bg-white/20 rounded-lg transition"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+            </div>
+
+            {/* Content */}
+            <div className="p-6 space-y-6">
+              {/* Coupon Input */}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                  Have a Coupon Code?
+                </label>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={couponCode}
+                    onChange={(e) => {
+                      setCouponCode(e.target.value.toUpperCase());
+                      setCouponError(null);
+                      setCouponValid(null);
+                    }}
+                    placeholder="Enter coupon code"
+                    className="flex-1 px-4 py-3 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-purple-500 focus:border-transparent uppercase"
+                  />
+                  <button
+                    onClick={handleValidateCoupon}
+                    disabled={couponValidating || !couponCode.trim()}
+                    className="px-4 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 disabled:bg-gray-300 disabled:cursor-not-allowed transition flex items-center gap-2"
+                  >
+                    {couponValidating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Check className="w-4 h-4" />}
+                    Apply
+                  </button>
+                </div>
+                {couponError && (
+                  <p className="mt-2 text-sm text-red-600 dark:text-red-400 flex items-center gap-1">
+                    <X className="w-4 h-4" /> {couponError}
+                  </p>
+                )}
+                {couponValid && (
+                  <p className="mt-2 text-sm text-green-600 dark:text-green-400 flex items-center gap-1">
+                    <CheckCircle className="w-4 h-4" /> 
+                    Coupon applied! {couponValid.type === 'percentage' ? `${couponValid.discount}% off` : `₹${couponValid.discount} off`}
+                  </p>
+                )}
+              </div>
+
+              {/* Divider */}
+              <div className="flex items-center gap-4">
+                <div className="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
+                <span className="text-gray-500 text-sm">OR</span>
+                <div className="flex-1 border-t border-gray-200 dark:border-gray-700"></div>
+              </div>
+
+              {/* Trial Option */}
+              <div className="bg-gradient-to-br from-blue-50 to-purple-50 dark:from-blue-900/20 dark:to-purple-900/20 rounded-xl p-4 border border-blue-200 dark:border-blue-800">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center flex-shrink-0">
+                    <Clock className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900 dark:text-white">Start Free Trial</h3>
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
+                      Try {selectedPlan.name} plan free for <strong>{selectedPlan.trial_days || 14} days</strong>. 
+                      No payment required now. You can add payment later to continue.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="space-y-3">
+                {couponValid ? (
+                  <button
+                    onClick={handleProceedWithCoupon}
+                    className="w-full py-3 px-4 bg-green-600 text-white rounded-lg font-semibold hover:bg-green-700 transition flex items-center justify-center gap-2"
+                  >
+                    <Zap className="w-5 h-5" />
+                    Start Subscription Now
+                    <span className="text-green-200 text-sm">
+                      ({couponValid.type === 'percentage' 
+                        ? formatCurrency(selectedPlan.price_monthly * (1 - couponValid.discount / 100))
+                        : formatCurrency(Math.max(0, selectedPlan.price_monthly - couponValid.discount))}/mo)
+                    </span>
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleStartTrial}
+                    className="w-full py-3 px-4 bg-blue-600 text-white rounded-lg font-semibold hover:bg-blue-700 transition flex items-center justify-center gap-2"
+                  >
+                    <Clock className="w-5 h-5" />
+                    Start {selectedPlan.trial_days || 14}-Day Free Trial
+                  </button>
+                )}
+                <button
+                  onClick={() => setShowCouponModal(false)}
+                  className="w-full py-3 px-4 bg-gray-100 dark:bg-slate-700 text-gray-700 dark:text-gray-300 rounded-lg font-medium hover:bg-gray-200 dark:hover:bg-slate-600 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

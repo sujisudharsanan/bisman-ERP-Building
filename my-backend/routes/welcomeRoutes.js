@@ -506,4 +506,86 @@ router.post('/activate', authMiddleware, upload.single('logo'), async (req, res)
   }
 });
 
+// ============================================================================
+// POST /api/welcome/validate-coupon  
+// Validate a coupon code during welcome flow (before full tenant setup)
+// ============================================================================
+router.post('/validate-coupon', authMiddleware, async (req, res) => {
+  try {
+    const { code, planCode } = req.body;
+
+    if (!code || code.trim().length < 3) {
+      return res.status(400).json({
+        ok: false,
+        valid: false,
+        error: 'Please enter a valid coupon code'
+      });
+    }
+
+    const normalizedCode = code.trim().toUpperCase();
+
+    // Check if coupon exists and is valid
+    const couponResults = await prisma.$queryRaw`
+      SELECT 
+        c.*,
+        p.plan_code,
+        p.name as plan_name
+      FROM subscription_coupons c
+      LEFT JOIN subscription_plans p ON p.id = c.plan_id
+      WHERE c.code = ${normalizedCode}
+        AND c.status = 'ACTIVE'
+        AND c.valid_from <= NOW()
+        AND c.valid_until > NOW()
+        AND c.used_count < c.max_activations
+      LIMIT 1
+    `;
+
+    if (!couponResults || couponResults.length === 0) {
+      return res.json({
+        ok: true,
+        valid: false,
+        error: 'Invalid or expired coupon code'
+      });
+    }
+
+    const coupon = couponResults[0];
+
+    // Check if coupon is for a specific plan
+    if (coupon.plan_code && planCode && coupon.plan_code !== planCode) {
+      return res.json({
+        ok: true,
+        valid: false,
+        error: `This coupon is only valid for the ${coupon.plan_name} plan`
+      });
+    }
+
+    // Get discount info from plan_snapshot_json if available
+    const planSnapshot = coupon.plan_snapshot_json || {};
+    const discountValue = planSnapshot.discount_value || 100; // Default 100% for activation coupons
+    const discountType = planSnapshot.discount_type || 'percentage';
+
+    // Coupon is valid
+    res.json({
+      ok: true,
+      valid: true,
+      discount: discountValue,
+      type: discountType, // 'percentage' or 'fixed'
+      planCode: coupon.plan_code,
+      planName: coupon.plan_name,
+      durationDays: coupon.duration_days,
+      message: discountType === 'fixed' 
+        ? `₹${discountValue} off applied!`
+        : `${discountValue}% discount applied!`
+    });
+
+  } catch (error) {
+    console.error('[Welcome] Validate coupon error:', error);
+    res.status(500).json({
+      ok: false,
+      valid: false,
+      error: 'Failed to validate coupon'
+    });
+  }
+});
+
 module.exports = router;
