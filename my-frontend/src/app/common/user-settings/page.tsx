@@ -1,4 +1,3 @@
-import SuperAdminLayout from '@/common/layouts/superadmin-layout';
 import UserSettingsPage from '@/modules/common/pages/user-settings';
 
 export const metadata = {
@@ -7,12 +6,5 @@ export const metadata = {
 };
 
 export default function UserSettingsRoute() {
-  return (
-    <SuperAdminLayout
-      title="User Management"
-      description="Manage users and subscription"
-    >
-      <UserSettingsPage />
-    </SuperAdminLayout>
-  );
+  return <UserSettingsPage />;
 }
