@@ -260,7 +260,7 @@ export const ROLE_DEFAULT_PAGES: RoleDefaultPages[] = [
     description: 'Branch operations management',
     defaultPages: [
       'dashboard',
-      'common-user-settings',
+      'billing-overview',
       'common-task-approvals',
       'operations/inventory-management',
       'operations/stock-management',
@@ -272,7 +272,7 @@ export const ROLE_DEFAULT_PAGES: RoleDefaultPages[] = [
     description: 'Branch operations management (space format)',
     defaultPages: [
       'dashboard',
-      'common-user-settings',
+      'billing-overview',
       'common-task-approvals',
       'operations/inventory-management',
       'operations/stock-management',

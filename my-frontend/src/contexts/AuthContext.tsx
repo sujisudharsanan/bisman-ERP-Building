@@ -16,11 +16,12 @@ import { API_BASE } from '@/config/api';
 
 // Common module pages that are always accessible without assignment
 // Removed per request: security-settings, notifications, messages, documentation, help-center
+// User settings merged into billing page
 const COMMON_MODULE_PATHS = [
   '/common/about-me',
   '/common/change-password',
-  '/common/user-settings',
   '/common/payment-request',
+  '/billing', // Billing page includes user management
   '/chat', // Chat is accessible to all
 ];
 

@@ -1869,21 +1869,6 @@
       ]
     },
     {
-      "id": "common-user-settings",
-      "name": "User Management",
-      "path": "/common/user-settings",
-      "module": "common",
-      "status": "active",
-      "description": "Manage users, roles, and subscription usage",
-      "order": 4,
-      "permissions": [
-        "authenticated"
-      ],
-      "roles": [
-        "ALL"
-      ]
-    },
-    {
       "id": "common-payment-request",
       "name": "Payment Request",
       "path": "/common/payment-request",

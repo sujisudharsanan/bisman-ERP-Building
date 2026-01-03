@@ -119,19 +119,19 @@ export const COMMON_PAGES: CommonPageMetadata[] = [
   autoRegister: false,
   },
   
-  // Settings Pages
-  {
-    id: 'common-user-settings',
-    name: 'User Management',
-    path: '/common/user-settings',
-    icon: Settings,
-    description: 'Manage users and monitor subscription usage',
-    category: 'settings',
-    order: 8,
-    isActive: true,
-    requiresAuth: true,
-    autoRegister: true,
-  },
+  // Settings Pages - User Settings removed, functionality merged into Billing page
+  // {
+  //   id: 'common-user-settings',
+  //   name: 'User Management',
+  //   path: '/common/user-settings',
+  //   icon: Settings,
+  //   description: 'Manage users and monitor subscription usage',
+  //   category: 'settings',
+  //   order: 8,
+  //   isActive: true,
+  //   requiresAuth: true,
+  //   autoRegister: true,
+  // },
   
   // Financial Pages - Hidden from sidebar (now integrated into Task form)
   // {

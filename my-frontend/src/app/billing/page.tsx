@@ -32,11 +32,14 @@ import {
   UserCheck,
   UserX,
   Wallet,
-  Globe
+  Globe,
+  UserPlus
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import api from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
+import { CreateFullUserModal } from '@/components/user-management';
+import { useSubscriptionLimits } from '@/hooks/useSubscriptionLimits';
 
 // Currency configuration
 const CURRENCIES = [
@@ -131,6 +134,13 @@ const BillingPage = () => {
   const [showAllFeatures, setShowAllFeatures] = useState(false);
   const [showBillingHistory, setShowBillingHistory] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+
+  // Subscription limits for user creation
+  const { 
+    canCreateUser,
+    refresh: refreshSubscription,
+  } = useSubscriptionLimits();
 
   // Handle upgrade plan - redirect to welcome page for plan selection
   const handleUpgradePlan = () => {
@@ -204,18 +214,18 @@ const BillingPage = () => {
   const fetchData = useCallback(async () => {
     setLoading(true);
     try {
-      const [subResponse, tenantResponse, usersResponse, analyticsResponse] = await Promise.allSettled([
-        api.get('/subscriptions/my-subscription'),
-        api.get('/tenant/current'),
-        api.get('/users'),
-        api.get('/analytics/summary'),
+      const [subResponse, usersResponse, analyticsResponse] = await Promise.allSettled([
+        api.get('/api/subscriptions/current'),
+        api.get('/api/users'),
+        api.get('/api/analytics/summary'),
       ]);
 
       if (subResponse.status === 'fulfilled') {
         setSubscriptionData(subResponse.value.data);
-      }
-      if (tenantResponse.status === 'fulfilled') {
-        setTenantData(tenantResponse.value.data);
+        // Also set tenant data from subscription response if available
+        if (subResponse.value.data?.client) {
+          setTenantData(subResponse.value.data.client);
+        }
       }
       if (usersResponse.status === 'fulfilled') {
         setUsers(usersResponse.value.data?.users || usersResponse.value.data || []);
@@ -491,6 +501,247 @@ const BillingPage = () => {
               {usageStats.tasks.completed.toLocaleString()}
             </div>
             <p className="text-sm opacity-80">Tasks Completed</p>
+          </motion.div>
+        </div>
+
+        {/* Subscription Utilization Charts */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {/* Plan vs Usage Chart - Circular Progress */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.5 }}
+            className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
+                <BarChart3 className="w-5 h-5 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-800">Plan vs Usage</h3>
+            </div>
+            <div className="flex items-center justify-center py-4">
+              <div className="relative w-36 h-36">
+                {/* Circular Progress */}
+                <svg className="w-36 h-36 transform -rotate-90">
+                  <circle
+                    cx="72"
+                    cy="72"
+                    r="60"
+                    stroke="currentColor"
+                    strokeWidth="12"
+                    fill="none"
+                    className="text-slate-200"
+                  />
+                  <circle
+                    cx="72"
+                    cy="72"
+                    r="60"
+                    stroke="currentColor"
+                    strokeWidth="12"
+                    fill="none"
+                    strokeLinecap="round"
+                    strokeDasharray={`${(usageStats.users.percentage || 0) * 3.77} 377`}
+                    className={`transition-all duration-1000 ${
+                      usageStats.users.percentage >= 90 ? 'text-red-500' : 
+                      usageStats.users.percentage >= 75 ? 'text-amber-500' : 'text-blue-500'
+                    }`}
+                  />
+                </svg>
+                <div className="absolute inset-0 flex flex-col items-center justify-center">
+                  <span className="text-3xl font-bold text-slate-800">
+                    {Math.round(usageStats.users.percentage || 0)}%
+                  </span>
+                  <span className="text-sm text-slate-500">Utilized</span>
+                </div>
+              </div>
+            </div>
+            <div className="space-y-2 mt-2">
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-slate-600">
+                  <span className="w-3 h-3 rounded-full bg-blue-500"></span>
+                  Active Users
+                </span>
+                <span className="font-semibold text-slate-800">{roleStats.active}</span>
+              </div>
+              <div className="flex items-center justify-between text-sm">
+                <span className="flex items-center gap-2 text-slate-600">
+                  <span className="w-3 h-3 rounded-full bg-slate-300"></span>
+                  Available Slots
+                </span>
+                <span className="font-semibold text-slate-800">
+                  {usageStats.users.limit - usageStats.users.used}
+                </span>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Resource Allocation - Bar Chart */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
+                <Layers className="w-5 h-5 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-800">Resource Allocation</h3>
+            </div>
+            <div className="space-y-4">
+              {/* User Slots Bar */}
+              <div>
+                <div className="flex items-center justify-between text-xs text-slate-600 mb-1">
+                  <span>User Slots</span>
+                  <span>{usageStats.users.used}/{usageStats.users.limit}</span>
+                </div>
+                <div className="h-8 bg-slate-100 rounded-lg overflow-hidden flex">
+                  <div 
+                    className="h-full bg-gradient-to-r from-blue-400 to-blue-600 flex items-center justify-end pr-2 transition-all duration-500"
+                    style={{ width: `${Math.min(usageStats.users.percentage || 0, 100)}%` }}
+                  >
+                    {usageStats.users.percentage >= 20 && (
+                      <span className="text-xs text-white font-medium">{usageStats.users.used}</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Storage Bar */}
+              <div>
+                <div className="flex items-center justify-between text-xs text-slate-600 mb-1">
+                  <span>Storage</span>
+                  <span>{(usageStats.storage.used / 1024).toFixed(1)} GB / {(usageStats.storage.limit / 1024).toFixed(0)} GB</span>
+                </div>
+                <div className="h-8 bg-slate-100 rounded-lg overflow-hidden flex">
+                  <div 
+                    className="h-full bg-gradient-to-r from-emerald-400 to-teal-600 flex items-center justify-end pr-2 transition-all duration-500"
+                    style={{ width: `${Math.min(usageStats.storage.percentage || 0, 100)}%` }}
+                  >
+                    {usageStats.storage.percentage >= 20 && (
+                      <span className="text-xs text-white font-medium">{(usageStats.storage.used / 1024).toFixed(1)}GB</span>
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              {/* Plan Capacity Indicator */}
+              <div className="bg-slate-50 rounded-lg p-3 mt-2">
+                <div className="flex items-center gap-2 mb-2">
+                  <Crown className="w-4 h-4 text-amber-500" />
+                  <span className="text-sm font-medium text-slate-800">
+                    {subscriptionData?.plan?.display_name || subscriptionData?.plan?.name || 'Free Plan'}
+                  </span>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs">
+                  <div className="bg-white rounded p-2 text-center shadow-sm">
+                    <div className="text-lg font-bold text-blue-600">{usageStats.users.limit}</div>
+                    <div className="text-slate-500">Max Users</div>
+                  </div>
+                  <div className="bg-white rounded p-2 text-center shadow-sm">
+                    <div className="text-lg font-bold text-green-600">
+                      {usageStats.users.limit - usageStats.users.used}
+                    </div>
+                    <div className="text-slate-500">Available</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </motion.div>
+
+          {/* Usage Health & Trend */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.7 }}
+            className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6"
+          >
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg">
+                <Activity className="w-5 h-5 text-white" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-800">Usage Health</h3>
+            </div>
+            <div className="space-y-4">
+              {/* Current Plan Highlight */}
+              <div className={`rounded-xl p-4 border-2 ${
+                (subscriptionData?.plan?.name || '').toLowerCase().includes('enterprise') 
+                  ? 'border-purple-500 bg-purple-50' 
+                  : (subscriptionData?.plan?.name || '').toLowerCase().includes('pro') 
+                    ? 'border-blue-500 bg-blue-50'
+                    : 'border-slate-300 bg-slate-50'
+              }`}>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <PlanIcon className={`w-5 h-5 ${
+                      (subscriptionData?.plan?.name || '').toLowerCase().includes('enterprise') 
+                        ? 'text-purple-500' 
+                        : (subscriptionData?.plan?.name || '').toLowerCase().includes('pro') 
+                          ? 'text-blue-500'
+                          : 'text-slate-400'
+                    }`} />
+                    <span className="font-semibold text-slate-800">
+                      {subscriptionData?.plan?.display_name || subscriptionData?.plan?.name || 'Free Plan'}
+                    </span>
+                  </div>
+                  <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">
+                    Active
+                  </span>
+                </div>
+              </div>
+
+              {/* Usage Trend Indicator */}
+              <div className={`flex items-center gap-3 p-4 rounded-xl ${
+                usageStats.users.percentage >= 90 ? 'bg-red-50' :
+                usageStats.users.percentage >= 75 ? 'bg-amber-50' :
+                'bg-green-50'
+              }`}>
+                <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
+                  usageStats.users.percentage >= 90 ? 'bg-red-100' :
+                  usageStats.users.percentage >= 75 ? 'bg-amber-100' :
+                  'bg-green-100'
+                }`}>
+                  {usageStats.users.percentage >= 90 ? (
+                    <AlertCircle className="w-6 h-6 text-red-600" />
+                  ) : usageStats.users.percentage >= 75 ? (
+                    <TrendingUp className="w-6 h-6 text-amber-600" />
+                  ) : (
+                    <CheckCircle className="w-6 h-6 text-green-600" />
+                  )}
+                </div>
+                <div>
+                  <div className={`text-sm font-semibold ${
+                    usageStats.users.percentage >= 90 ? 'text-red-700' :
+                    usageStats.users.percentage >= 75 ? 'text-amber-700' :
+                    'text-green-700'
+                  }`}>
+                    {usageStats.users.percentage >= 90 ? 'Near Limit' :
+                     usageStats.users.percentage >= 75 ? 'Growing Usage' :
+                     'Healthy Usage'}
+                  </div>
+                  <div className="text-xs text-slate-600">
+                    {usageStats.users.percentage >= 90 
+                      ? 'Consider upgrading your plan'
+                      : usageStats.users.percentage >= 75 
+                        ? 'Monitor your usage closely'
+                        : 'Plenty of capacity available'
+                    }
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Stats */}
+              <div className="grid grid-cols-2 gap-3">
+                <div className="bg-slate-50 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold text-indigo-600">{roleStats.active}</div>
+                  <div className="text-xs text-slate-500">Active Users</div>
+                </div>
+                <div className="bg-slate-50 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold text-amber-600">{roleStats.pending}</div>
+                  <div className="text-xs text-slate-500">Pending Users</div>
+                </div>
+              </div>
+            </div>
           </motion.div>
         </div>
 
@@ -805,6 +1056,18 @@ const BillingPage = () => {
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Quick Actions</h3>
               <div className="space-y-3">
                 <button 
+                  onClick={() => setShowCreateUserModal(true)}
+                  disabled={!canCreateUser}
+                  className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
+                    canCreateUser 
+                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:opacity-90' 
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  <UserPlus className="w-5 h-5" />
+                  <span className="font-medium">Create User</span>
+                </button>
+                <button 
                   onClick={handleUpgradePlan}
                   className="w-full flex items-center gap-3 p-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:opacity-90 transition-opacity"
                 >
@@ -846,6 +1109,18 @@ const BillingPage = () => {
           </div>
         </div>
       </div>
+
+      {/* Create User Modal */}
+      <CreateFullUserModal
+        isOpen={showCreateUserModal}
+        onClose={() => setShowCreateUserModal(false)}
+        onSuccess={() => {
+          setShowCreateUserModal(false);
+          fetchData();
+          refreshSubscription();
+          toast({ title: 'User created successfully', variant: 'success' });
+        }}
+      />
     </div>
   );
 };

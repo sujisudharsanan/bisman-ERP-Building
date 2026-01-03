@@ -111,9 +111,9 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
       { id: 'inventory', label: 'Inventory', href: '/dashboard/inventory', icon: 'Package' },
       { id: 'sales', label: 'Sales', href: '/dashboard/sales', icon: 'TrendingUp' },
       { id: 'approvals', label: 'Approvals', href: '/common/task-approvals', icon: 'FileCheck' },
-      { id: 'settings', label: 'User Management', href: '/common/user-settings', icon: 'Users' },
+      { id: 'billing', label: 'Billing & Users', href: '/billing', icon: 'CreditCard' },
     ],
-    allowedPages: ['/dashboard', '/dashboard/*', '/common/*'],
+    allowedPages: ['/dashboard', '/dashboard/*', '/common/*', '/billing'],
   },
 
   HUB_INCHARGE: {
@@ -127,9 +127,9 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
       { id: 'inventory', label: 'Inventory', href: '/dashboard/inventory', icon: 'Package' },
       { id: 'sales', label: 'Sales', href: '/dashboard/sales', icon: 'TrendingUp' },
       { id: 'approvals', label: 'Approvals', href: '/common/task-approvals', icon: 'FileCheck' },
-      { id: 'settings', label: 'User Management', href: '/common/user-settings', icon: 'Users' },
+      { id: 'billing', label: 'Billing & Users', href: '/billing', icon: 'CreditCard' },
     ],
-    allowedPages: ['/dashboard', '/dashboard/*', '/common/*'],
+    allowedPages: ['/dashboard', '/dashboard/*', '/common/*', '/billing'],
   },
 
   STORE_INCHARGE: {
@@ -141,9 +141,9 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
       { id: 'tasks', label: 'My Tasks', href: '/dashboard/tasks', icon: 'CheckSquare' },
       { id: 'inventory', label: 'Inventory', href: '/dashboard/inventory', icon: 'Package' },
       { id: 'sales', label: 'Sales', href: '/dashboard/sales', icon: 'TrendingUp' },
-      { id: 'settings', label: 'User Management', href: '/common/user-settings', icon: 'Users' },
+      { id: 'billing', label: 'Billing & Users', href: '/billing', icon: 'CreditCard' },
     ],
-    allowedPages: ['/dashboard', '/dashboard/*', '/common/*'],
+    allowedPages: ['/dashboard', '/dashboard/*', '/common/*', '/billing'],
   },
 
   CFO: {
