@@ -566,7 +566,7 @@ export default function SystemHealthDashboardPage() {
         network: {
           bytesIn: 0,
           bytesOut: 0,
-          requestsPerSecond: 0
+          latency: 0
         }
       }
       setSystem(systemData)
