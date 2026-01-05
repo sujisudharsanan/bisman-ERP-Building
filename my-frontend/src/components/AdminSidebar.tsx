@@ -47,7 +47,7 @@ export default function AdminSidebar({ user }: { user: SessionUser | null }) {
         </button>
       </div>
       <nav className="space-y-1">
-  {ITEMS.filter((it) => !it.permission || can(user as any, it.permission)).map((it) => (
+  {ITEMS.filter((it) => !it.permission || can(user as any, it.permission.key)).map((it) => (
           <Link
             key={it.href}
             href={it.href}
