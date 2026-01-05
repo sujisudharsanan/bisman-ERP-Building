@@ -770,17 +770,15 @@ router.get('/task-approval', async (req, res) => {
     const { status, page = 1, limit = 50 } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
     
-    // Determine user role
+    // Determine user role from users_enhanced
     const userRoleResult = await prisma.$queryRaw`
       SELECT 
         u.id,
-        u.full_name,
+        CONCAT(u.first_name, ' ', u.last_name) as full_name,
         COALESCE(u.business_level, 10) as business_level,
-        r.name as role_name
-      FROM users u
-      LEFT JOIN user_roles ur ON u.id = ur.user_id AND ur.is_primary = true
-      LEFT JOIN roles r ON ur.role_id = r.id
-      WHERE u.id = ${req.userId}::uuid AND u.deleted_at IS NULL
+        u.role as role_name
+      FROM users_enhanced u
+      WHERE u.id = ${req.userId}::uuid AND u.is_active = true
     `;
     
     if (!userRoleResult || userRoleResult.length === 0) {

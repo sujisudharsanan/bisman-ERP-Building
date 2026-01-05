@@ -38,7 +38,7 @@ async function generateAndSaveDailyReport() {
     // Get list of active tenants
     const tenants = await prisma.$queryRawUnsafe(`
       SELECT DISTINCT tenant_id 
-      FROM users 
+      FROM users_enhanced 
       WHERE is_active = true 
       AND tenant_id IS NOT NULL
     `);

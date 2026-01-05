@@ -199,9 +199,8 @@ router.get('/team', requireInternalPermission('view:audit_logs'), async (req, re
         u.is_active,
         u.created_at,
         u.profile_pic_url
-      FROM users u
-      WHERE u.module_id IS NULL 
-        AND u.tenant_id IS NULL
+      FROM users_enhanced u
+      WHERE u.tenant_id IS NULL
         AND u.role IN ('BISMAN_FINANCE', 'BISMAN_BILLING', 'BISMAN_SUPPORT', 
                        'BISMAN_ENGINEERING', 'BISMAN_CUSTOMER_CARE')
       ORDER BY u.created_at DESC
@@ -837,7 +836,7 @@ router.get('/system-health', requireInternalPermission('view:system_health'), as
     const [dbStats, recentErrors] = await Promise.all([
       prisma.$queryRaw`
         SELECT 
-          (SELECT COUNT(*)::int FROM users WHERE is_active = true) as active_users,
+          (SELECT COUNT(*)::int FROM users_enhanced WHERE is_active = true) as active_users,
           (SELECT COUNT(*)::int FROM clients WHERE status = 'Active') as active_clients,
           (SELECT COUNT(*)::int FROM modules WHERE is_active = true) as active_modules,
           (SELECT COUNT(*)::int FROM audit_logs WHERE created_at > NOW() - INTERVAL '1 hour') as logs_last_hour

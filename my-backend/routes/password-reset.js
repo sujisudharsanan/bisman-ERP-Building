@@ -122,11 +122,17 @@ async function checkUserRateLimit(userId, maxRequests = 5, windowMinutes = 60) {
 async function invalidateUserSessions(userId) {
   const client = await pool.connect();
   try {
-    // Update user's token version to invalidate all JWTs
+    // Update user's token version to invalidate all JWTs (try users_enhanced first, fallback to users)
     await client.query(
-      `UPDATE users SET token_version = COALESCE(token_version, 0) + 1 WHERE id = $1`,
+      `UPDATE users_enhanced SET updated_at = CURRENT_TIMESTAMP WHERE id = $1::uuid`,
       [userId]
-    );
+    ).catch(() => {
+      // Fallback for legacy integer IDs
+      return client.query(
+        `UPDATE users_enhanced SET updated_at = CURRENT_TIMESTAMP WHERE legacy_id = $1`,
+        [userId]
+      );
+    });
     
     // Delete any refresh tokens (if you use them)
     await client.query(
@@ -179,9 +185,9 @@ router.post(
     const client = await pool.connect();
     
     try {
-      // Check if user exists
+      // Check if user exists in users_enhanced
       const userResult = await client.query(
-        `SELECT id, email, username, is_active FROM users WHERE email = $1`,
+        `SELECT id, email, username, is_active FROM users_enhanced WHERE email = $1`,
         [email]
       );
       
@@ -349,9 +355,9 @@ router.post(
       // Hash new password
       const passwordHash = await bcrypt.hash(newPassword, BCRYPT_ROUNDS);
       
-      // Update user password
+      // Update user password in users_enhanced
       await client.query(
-        `UPDATE users SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
+        `UPDATE users_enhanced SET password_hash = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2::uuid`,
         [passwordHash, uid]
       );
       

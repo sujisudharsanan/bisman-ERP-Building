@@ -1659,72 +1659,189 @@ Your 14-day trial has started. The admin can login immediately.`;
             </div>
           </div>
 
-          {/* Document Upload Section */}
+          {/* Document Upload Section - Improved with Category Selection First */}
           <div className="border rounded-lg p-4">
             <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2 mb-4">
-              <FileText className="w-4 h-4" /> Upload Documents
+              <FileText className="w-4 h-4" /> Upload Documents & Certificates
             </h3>
             
-            {/* Drag & Drop Zone */}
-            <div 
-              onDragEnter={handleDrag}
-              onDragLeave={handleDrag}
-              onDragOver={handleDrag}
-              onDrop={handleDrop}
-              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
-                dragActive ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600'
-              }`}
-            >
-              <Upload className="w-12 h-12 mx-auto text-gray-400 mb-4" />
-              <p className="text-gray-600 dark:text-gray-400 mb-2">Drag & drop files here, or click to browse</p>
-              <input type="file" multiple onChange={handleFileSelect} className="hidden" id="file-upload" />
-              <label htmlFor="file-upload" className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700">
-                <Upload className="w-4 h-4 mr-2" /> Select Files
+            {/* Step 1: Select Document Type First */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                1. Select Document Type <span className="text-red-500">*</span>
               </label>
-              <p className="text-xs text-gray-500 mt-2">Supported: PDF, JPG, PNG, DOC, DOCX (Max 10MB each)</p>
+              <select 
+                id="doc-category-select"
+                className="w-full border rounded-lg p-3 text-sm bg-white dark:bg-gray-800 dark:border-gray-600"
+                defaultValue=""
+              >
+                <option value="" disabled>-- Choose document type --</option>
+                <optgroup label="🏢 Business Certificates">
+                  <option value="GST_CERT">GST Certificate (GSTIN)</option>
+                  <option value="PAN_CARD">PAN Card</option>
+                  <option value="TAN_CERT">TAN Certificate</option>
+                  <option value="INCORPORATION">Certificate of Incorporation (COI)</option>
+                  <option value="CIN_CERT">CIN Certificate</option>
+                  <option value="MSME_UDYAM">MSME / Udyam Certificate</option>
+                  <option value="IEC_CERT">Import Export Code (IEC)</option>
+                  <option value="FSSAI_LICENSE">FSSAI License</option>
+                  <option value="SHOP_LICENSE">Shop & Establishment License</option>
+                  <option value="TRADE_LICENSE">Trade License</option>
+                </optgroup>
+                <optgroup label="💼 Compliance Documents">
+                  <option value="PF_REGISTRATION">PF Registration</option>
+                  <option value="ESI_REGISTRATION">ESI Registration</option>
+                  <option value="PROFESSIONAL_TAX">Professional Tax Certificate</option>
+                  <option value="DRUG_LICENSE">Drug License</option>
+                </optgroup>
+                <optgroup label="🏦 Financial Documents">
+                  <option value="BANK_STATEMENT">Bank Statement</option>
+                  <option value="CANCELLED_CHEQUE">Cancelled Cheque</option>
+                  <option value="BANK_MANDATE">Bank Mandate Form</option>
+                </optgroup>
+                <optgroup label="📋 Legal Documents">
+                  <option value="CONTRACT">Contract / Agreement</option>
+                  <option value="MOA">Memorandum of Association (MOA)</option>
+                  <option value="AOA">Articles of Association (AOA)</option>
+                  <option value="PARTNERSHIP_DEED">Partnership Deed</option>
+                  <option value="BOARD_RESOLUTION">Board Resolution</option>
+                </optgroup>
+                <optgroup label="📍 Address & Identity">
+                  <option value="ADDRESS_PROOF">Address Proof</option>
+                  <option value="UTILITY_BILL">Utility Bill</option>
+                  <option value="RENT_AGREEMENT">Rent Agreement</option>
+                </optgroup>
+                <optgroup label="📎 Other">
+                  <option value="OTHER">Other Document</option>
+                </optgroup>
+              </select>
             </div>
 
-            {/* Document Categories */}
-            <div className="mt-4 p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-              <p className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Document Categories:</p>
-              <div className="flex flex-wrap gap-2">
-                {['GST Certificate', 'PAN Card', 'Incorporation Cert', 'Bank Statement', 'Address Proof', 'Contract', 'License', 'Other'].map(cat => (
-                  <span key={cat} className="px-2 py-1 bg-white dark:bg-gray-700 border rounded text-xs">{cat}</span>
-                ))}
+            {/* Step 2: Upload File */}
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                2. Upload File
+              </label>
+              <div 
+                onDragEnter={handleDrag}
+                onDragLeave={handleDrag}
+                onDragOver={handleDrag}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setDragActive(false);
+                  const category = (document.getElementById('doc-category-select') as HTMLSelectElement)?.value || 'OTHER';
+                  if (!category) {
+                    alert('Please select a document type first');
+                    return;
+                  }
+                  const files = Array.from(e.dataTransfer?.files || []);
+                  const newDocs = files.map(f => ({ name: f.name, type: f.type, size: f.size, category, file: f }));
+                  setUploadedDocs([...uploadedDocs, ...newDocs]);
+                }}
+                className={`border-2 border-dashed rounded-lg p-6 text-center transition-colors ${
+                  dragActive ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' : 'border-gray-300 dark:border-gray-600'
+                }`}
+              >
+                <Upload className="w-8 h-8 mx-auto text-gray-400 mb-2" />
+                <p className="text-gray-600 dark:text-gray-400 text-sm mb-2">Drag & drop file here</p>
+                <input 
+                  type="file" 
+                  onChange={(e) => {
+                    const category = (document.getElementById('doc-category-select') as HTMLSelectElement)?.value || 'OTHER';
+                    if (!category) {
+                      alert('Please select a document type first');
+                      return;
+                    }
+                    const files = Array.from(e.target.files || []);
+                    const newDocs = files.map(f => ({ name: f.name, type: f.type, size: f.size, category, file: f }));
+                    setUploadedDocs([...uploadedDocs, ...newDocs]);
+                    e.target.value = '';
+                  }} 
+                  className="hidden" 
+                  id="file-upload-categorized" 
+                  accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+                />
+                <label htmlFor="file-upload-categorized" className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg cursor-pointer hover:bg-blue-700 text-sm">
+                  <Upload className="w-4 h-4 mr-2" /> Browse Files
+                </label>
+                <p className="text-xs text-gray-500 mt-2">PDF, JPG, PNG, DOC, DOCX (Max 10MB)</p>
               </div>
             </div>
 
-            {/* Uploaded Files List */}
+            {/* Uploaded Documents - Organized by Category */}
             {uploadedDocs.length > 0 && (
-              <div className="mt-4 space-y-2">
-                <h4 className="font-medium text-gray-700 dark:text-gray-300">Uploaded Files ({uploadedDocs.length})</h4>
-                {uploadedDocs.map((doc, idx) => (
-                  <div key={idx} className="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-800 rounded-lg">
-                    <div className="flex items-center gap-3">
-                      <FileText className="w-5 h-5 text-blue-600" />
-                      <div>
-                        <p className="font-medium text-sm">{doc.name}</p>
-                        <p className="text-xs text-gray-500">{(doc.size / 1024).toFixed(1)} KB</p>
+              <div className="mt-6 space-y-4">
+                <h4 className="font-medium text-gray-800 dark:text-gray-200 flex items-center gap-2">
+                  <Shield className="w-4 h-4 text-green-600" /> Uploaded Documents ({uploadedDocs.length})
+                </h4>
+                
+                {/* Group by category */}
+                {(() => {
+                  const grouped = uploadedDocs.reduce((acc, doc, idx) => {
+                    const cat = doc.category || 'OTHER';
+                    if (!acc[cat]) acc[cat] = [];
+                    acc[cat].push({ ...doc, originalIndex: idx });
+                    return acc;
+                  }, {} as Record<string, Array<typeof uploadedDocs[0] & { originalIndex: number }>>);
+                  
+                  const categoryLabels: Record<string, string> = {
+                    GST_CERT: '🏢 GST Certificate',
+                    PAN_CARD: '🏢 PAN Card',
+                    TAN_CERT: '🏢 TAN Certificate',
+                    INCORPORATION: '🏢 Certificate of Incorporation',
+                    CIN_CERT: '🏢 CIN Certificate',
+                    MSME_UDYAM: '🏢 MSME / Udyam',
+                    IEC_CERT: '🏢 Import Export Code',
+                    FSSAI_LICENSE: '🏢 FSSAI License',
+                    SHOP_LICENSE: '🏢 Shop License',
+                    TRADE_LICENSE: '🏢 Trade License',
+                    PF_REGISTRATION: '💼 PF Registration',
+                    ESI_REGISTRATION: '💼 ESI Registration',
+                    PROFESSIONAL_TAX: '💼 Professional Tax',
+                    DRUG_LICENSE: '💼 Drug License',
+                    BANK_STATEMENT: '🏦 Bank Statement',
+                    CANCELLED_CHEQUE: '🏦 Cancelled Cheque',
+                    BANK_MANDATE: '🏦 Bank Mandate',
+                    CONTRACT: '📋 Contract',
+                    MOA: '📋 MOA',
+                    AOA: '📋 AOA',
+                    PARTNERSHIP_DEED: '📋 Partnership Deed',
+                    BOARD_RESOLUTION: '📋 Board Resolution',
+                    ADDRESS_PROOF: '📍 Address Proof',
+                    UTILITY_BILL: '📍 Utility Bill',
+                    RENT_AGREEMENT: '📍 Rent Agreement',
+                    OTHER: '📎 Other',
+                  };
+                  
+                  return Object.entries(grouped).map(([cat, docs]) => (
+                    <div key={cat} className="border rounded-lg overflow-hidden">
+                      <div className="bg-gray-100 dark:bg-gray-700 px-3 py-2 font-medium text-sm">
+                        {categoryLabels[cat] || cat}
+                      </div>
+                      <div className="divide-y dark:divide-gray-700">
+                        {docs.map((doc) => (
+                          <div key={doc.originalIndex} className="flex items-center justify-between p-3 hover:bg-gray-50 dark:hover:bg-gray-800">
+                            <div className="flex items-center gap-3">
+                              <FileText className="w-5 h-5 text-blue-600" />
+                              <div>
+                                <p className="font-medium text-sm text-gray-800 dark:text-gray-200">{doc.name}</p>
+                                <p className="text-xs text-gray-500">{(doc.size / 1024).toFixed(1)} KB</p>
+                              </div>
+                            </div>
+                            <button 
+                              onClick={() => removeDoc(doc.originalIndex)} 
+                              className="p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded"
+                              title="Remove document"
+                            >
+                              <X className="w-4 h-4" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <select value={doc.category} onChange={(e) => updateDocCategory(idx, e.target.value)} className="text-sm border rounded p-1">
-                        <option value="GENERAL">General</option>
-                        <option value="GST_CERT">GST Certificate</option>
-                        <option value="PAN_CARD">PAN Card</option>
-                        <option value="INCORPORATION">Incorporation Cert</option>
-                        <option value="TAX">Tax Document</option>
-                        <option value="BANK">Bank Details</option>
-                        <option value="ADDRESS_PROOF">Address Proof</option>
-                        <option value="CONTRACT">Contract</option>
-                        <option value="LICENSE">License</option>
-                      </select>
-                      <button onClick={() => removeDoc(idx)} className="p-1 text-red-500 hover:bg-red-50 rounded">
-                        <X className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </div>
-                ))}
+                  ));
+                })()}
               </div>
             )}
           </div>

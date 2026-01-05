@@ -192,6 +192,8 @@ router.post('/clients', authMiddleware, async (req, res) => {
             tenant_id: created.id,
             super_admin_id: sid,
             profile_pic_url: adminUser.profile_pic_url || null,
+            business_level: 1,    // Default L1 for tenant admin
+            reports_to: null,      // Top-level admin has no manager
           },
         });
       } catch (userErr) {

@@ -54,7 +54,7 @@ router.get('/user-growth', requireEnterpriseAdmin, async (req, res) => {
       SELECT 
         TO_CHAR(created_at, 'YYYY-MM') as month,
         COUNT(*) as count
-      FROM users
+      FROM users_enhanced
       WHERE created_at >= NOW() - INTERVAL '${months} months'
       GROUP BY TO_CHAR(created_at, 'YYYY-MM')
       ORDER BY month

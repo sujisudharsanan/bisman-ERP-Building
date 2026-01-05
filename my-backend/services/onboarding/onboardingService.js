@@ -277,6 +277,8 @@ async function createTenant(params) {
     });
 
     // 3. Create admin user in users_enhanced table
+    // NOTE: Using direct tx.user.create within transaction context
+    // business_level = 1 (default), reports_to = null (top-level admin)
     const adminUser = await tx.user.create({
       data: {
         id: adminUserId,
@@ -292,6 +294,8 @@ async function createTenant(params) {
         tenant_id: clientId,
         super_admin_id: superAdmin.id,
         product_type: 'BUSINESS_ERP',
+        business_level: 1,    // Default L1 for tenant admin
+        reports_to: null,      // Top-level admin has no manager
         preferences: {
           mustChangePassword: mustChangePassword,
           theme: 'light',
