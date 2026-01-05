@@ -50,7 +50,7 @@ function EditProfileModal({ user, isOpen, onClose, onUpdate }: EditProfileModalP
     mobile_phone: user.mobile_phone || '',
     employee_id: user.employee_id || '',
     external_id: user.external_id || '',
-    manager_id: user.manager_id || '',
+    reports_to: user.reports_to || '', // CANONICAL: Use reports_to instead of manager_id
     designation: user.designation || '',
     department: user.department || '',
     language: user.language || 'en',
@@ -205,8 +205,8 @@ function EditProfileModal({ user, isOpen, onClose, onUpdate }: EditProfileModalP
                 </label>
                 <input
                   type="text"
-                  value={formData.manager_id}
-                  onChange={(e) => setFormData(prev => ({ ...prev, manager_id: e.target.value }))}
+                  value={formData.reports_to}
+                  onChange={(e) => setFormData(prev => ({ ...prev, reports_to: e.target.value }))}
                   className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
                   placeholder="Manager User ID"
                 />
