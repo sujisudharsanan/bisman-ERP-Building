@@ -392,7 +392,9 @@ if (process.env.DEBUG_CORS === '1') {
   })
 }
 
-app.use(express.json())
+// Increase body parser limits for file uploads (logo, documents as base64)
+app.use(express.json({ limit: '50mb' }))
+app.use(express.urlencoded({ limit: '50mb', extended: true }))
 // Parse cookies early so downstream routers (e.g., /api/privileges) can access auth cookies
 app.use(cookieParser())
 
