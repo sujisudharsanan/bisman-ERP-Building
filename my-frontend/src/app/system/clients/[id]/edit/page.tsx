@@ -167,8 +167,13 @@ export default function EditClientPage() {
           documents: ent.documents || c.documents || [],
           kyc_documents: ent.kyc_documents || [],
           
-          // Admin users (empty for edit - users managed separately)
-          admin_users: [],
+          // Admin users - load from API response
+          admin_users: (c.admin_users || []).map((u: any) => ({
+            email: u.email || '',
+            name: u.name || '',
+            role: u.role || 'Admin',
+            password: '', // Don't show existing password
+          })),
           
           // Pass full settings for logo initialization
           settings: c.settings,

@@ -275,14 +275,26 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
     if (mode === 'edit' && initial) {
       // Check for logo in settings.logo.data or settings.logo (from welcome activation)
       const settings = (initial as any)?.settings;
-      const logoData = settings?.logo?.data || settings?.logo;
+      console.log('[ClientForm] Edit mode - settings:', settings);
+      
+      // Try multiple possible logo locations
+      const logoData = settings?.logo?.data || settings?.logo || settings?.company_logo;
+      console.log('[ClientForm] Logo data found:', logoData ? 'yes' : 'no', typeof logoData);
+      
       if (logoData && typeof logoData === 'string') {
         setLogoPreview(logoData);
+        console.log('[ClientForm] Logo preview set');
       }
       
       // Initialize display_name in form if available
-      if (initial.display_name && !form.display_name) {
+      if (initial.display_name) {
         setForm(prev => ({ ...prev, display_name: initial.display_name }));
+      }
+      
+      // Initialize admin_users in form if available
+      if (initial.admin_users && Array.isArray(initial.admin_users) && initial.admin_users.length > 0) {
+        setForm(prev => ({ ...prev, admin_users: initial.admin_users as any }));
+        console.log('[ClientForm] Admin users loaded:', initial.admin_users.length);
       }
     }
   }, [mode, initial]);

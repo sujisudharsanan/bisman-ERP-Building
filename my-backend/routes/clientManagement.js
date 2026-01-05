@@ -217,7 +217,37 @@ router.get('/clients/:id', authMiddleware, async (req, res) => {
     const isSuperAdminRole = role === 'SUPER_ADMIN';
     const ownsClient = user?.super_admin_id === client.super_admin_id || user?.id === client.super_admin_id;
     if (!allowed || (!isPlatformAdmin(role) && !isSuperAdminRole && !ownsClient)) return res.status(403).json({ error: 'Forbidden' });
-    res.json({ success: true, data: client });
+    
+    // Fetch admin users associated with this client (tenant_id = client.id)
+    const adminUsers = await prisma.user.findMany({
+      where: { 
+        tenant_id: clientId,
+        is_active: true,
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        first_name: true,
+        last_name: true,
+        role: true,
+        created_at: true,
+      },
+      orderBy: { created_at: 'asc' },
+    });
+    
+    res.json({ 
+      success: true, 
+      data: {
+        ...client,
+        admin_users: adminUsers.map(u => ({
+          email: u.email,
+          name: u.first_name && u.last_name ? `${u.first_name} ${u.last_name}` : u.username || u.email.split('@')[0],
+          role: u.role || 'Admin',
+          id: u.id,
+        })),
+      },
+    });
   } catch (e) { res.status(500).json({ error: 'Failed to fetch client', details: e.message }); }
 });
 
