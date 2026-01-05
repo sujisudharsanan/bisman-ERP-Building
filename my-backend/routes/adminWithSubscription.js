@@ -5,6 +5,8 @@
  * These routes are used by SUPER_ADMIN and ENTERPRISE_ADMIN to create new
  * organizations (tenants) with their admin users.
  * 
+ * SECURITY FIX P1-4: validateBusinessLevelOnCreate middleware applied
+ * 
  * @module routes/adminWithSubscription
  */
 
@@ -19,6 +21,7 @@ const {
   checkEmailExists,
 } = require('../services/adminCreation/adminWithSubscriptionService');
 const { getPrisma } = require('../lib/prisma');
+const { validateBusinessLevelOnCreate } = require('../middleware/businessLevelProtection');
 
 // Feature enforcement middleware
 const { enforceUsage } = require('../middleware/microUnlockEnforcer');
@@ -148,7 +151,7 @@ router.post('/validate', async (req, res) => {
  * - timezone: string (defaults to 'Asia/Kolkata')
  * - currency: string (defaults to 'INR')
  */
-router.post('/create', ...superAdminOnly, enforceUsage('user_creation'), async (req, res) => {
+router.post('/create', ...superAdminOnly, validateBusinessLevelOnCreate(), enforceUsage('user_creation'), async (req, res) => {
   try {
     const {
       adminName,

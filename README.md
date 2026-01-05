@@ -94,6 +94,26 @@ Design note
 Security
 - Do not commit secrets or credentials to the repo. Use environment variables or a secret manager for DB credentials and Sentry/OTel keys.
 
+## 🔒 User Model Lock (IMPORTANT)
+
+The user model is **LOCKED** to prevent data integrity issues. All user creation, update, and deletion MUST go through the canonical `UserService`.
+
+**Read the lock documentation before modifying any user-related code:**
+- 📄 **[docs/USER_MODEL_LOCK.md](docs/USER_MODEL_LOCK.md)** — Required reading for all developers
+
+**Key Rules:**
+- ❌ **NEVER** use `prisma.user.create()` directly — Use `UserService.createUser()`
+- ❌ **NEVER** use `prisma.user.update()` directly — Use `UserService.updateUser()`
+- ❌ **NEVER** use `manager_id` or `reporting_manager_id` — Use `reports_to` (UUID)
+- ✅ **ALWAYS** include `business_level` when creating users (1-10 scale)
+- ✅ **ALWAYS** assign roles via `rbac_user_roles` junction table
+
+**CI Enforcement:**
+The CI pipeline runs `scripts/ci/user-model-guard.sh` which will **FAIL THE BUILD** if forbidden patterns are detected.
+
+**Tests:**
+Run `npx jest tests/userService.enforcement.test.js` to validate UserService rules.
+
 Contact / Next steps
 - If you'd like, I can wire `pm2 save` into the start flow, or add a systemd unit instead of pm2 startup helpers. I can also add CI job steps to build artifacts and publish a deployable tarball.
 

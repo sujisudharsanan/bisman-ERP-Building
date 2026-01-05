@@ -52,7 +52,12 @@ export interface User {
   // Employee Information
   employee_id?: string;
   external_id?: string; // External system ID
-  manager_id?: string; // Reporting manager user ID
+  
+  // CANONICAL hierarchy fields - see USER_MODEL_LOCK.md
+  // V-003 FIX: Use reports_to (UUID) instead of deprecated manager_id
+  reports_to?: string;       // Direct manager UUID - CANONICAL
+  business_level?: number;   // Business hierarchy level 1-10 - CANONICAL
+  // DEPRECATED — see USER_MODEL_LOCK.md: manager_id removed
   
   // Contact Information
   phone?: string;
@@ -98,7 +103,7 @@ export interface User {
   
   // Organization Details
   status: UserStatus;
-  role_id?: string;
+  // DEPRECATED — see USER_MODEL_LOCK.md: role_id removed, use roles[] instead
   branch_id?: string;
   designation?: string;
   department?: string;
@@ -199,6 +204,10 @@ export interface CreateUserData {
   branch_id?: string;
   role_ids: string[];
   status: UserStatus;
+  
+  // Hierarchy fields (CANONICAL - from PRINCIPAL_SYSTEMS_AUDIT)
+  business_level?: number;  // Business hierarchy level 1-10
+  reports_to?: string;      // Manager's UUID
 
   // KYC data
   personal_email?: string;

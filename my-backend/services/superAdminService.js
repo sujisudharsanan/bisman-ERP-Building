@@ -1,6 +1,8 @@
 // Super Admin Service - Database control operations
+// CANONICAL: All user lifecycle operations MUST delegate to UserService
 const { getPrisma } = require('../lib/prisma')
 const bcrypt = require('bcryptjs')
+const UserService = require('./userService')
 
 const prisma = getPrisma()
 
@@ -67,35 +69,68 @@ class SuperAdminService {
     }
   }
 
-  async createUser(userData, _adminUserId, _adminUsername) {
+  /**
+   * Create User - DELEGATES TO CANONICAL UserService
+   * @deprecated Direct implementation removed. All logic now in UserService.
+   */
+  async createUser(userData, adminUserId, _adminUsername, tenantId = null) {
     try {
-      const hashedPassword = await bcrypt.hash(userData.password, 10)
+      // CANONICAL: Delegate to UserService (single source of truth)
+      // Previous P0-2, P1-4, P1-5 security checks are now in UserService
+      console.log('[SuperAdminService] createUser delegating to UserService');
       
-      const newUser = await prisma.user.create({
-        data: {
+      // Get admin user for context
+      const adminUser = await prisma.user.findUnique({
+        where: { id: adminUserId },
+        select: { legacy_id: true, role: true }
+      });
+      
+      const isEnterpriseAdmin = adminUser?.role === 'ENTERPRISE_ADMIN';
+      
+      const newUser = await UserService.createUser(
+        {
           username: userData.username,
           email: userData.email,
-          password_hash: hashedPassword,
+          password: userData.password,
           role: userData.role || 'USER',
+          business_level: userData.business_level,
+          reports_to: userData.reports_to,
+          tenant_id: tenantId,
+          first_name: userData.first_name,
+          last_name: userData.last_name,
+          phone: userData.phone,
         },
-        select: {
-          id: true,
-          username: true,
-          email: true,
-          role: true,
-          createdAt: true,
+        {
+          adminUserId,
+          isEnterpriseAdmin,
+          assignedByLegacyId: adminUser?.legacy_id,
         }
-      })
+      );
 
-      return newUser
+      return newUser;
     } catch (error) {
-      console.error('Error creating user:', error)
-      throw new Error('Failed to create user')
+      console.error('[SuperAdminService] createUser error:', error.message);
+      throw error;
     }
   }
 
-  async updateUser(userId, userData, _adminUserId, _adminUsername) {
+  /**
+   * Update User - DELEGATES TO CANONICAL UserService
+   * @deprecated Direct implementation removed. All logic now in UserService.
+   */
+  async updateUser(userId, userData, adminUserId, _adminUsername) {
     try {
+      // CANONICAL: Delegate to UserService
+      console.log('[SuperAdminService] updateUser delegating to UserService');
+      
+      // Get admin user for context
+      const adminUser = await prisma.user.findUnique({
+        where: { id: adminUserId },
+        select: { legacy_id: true, role: true }
+      });
+      
+      const isEnterpriseAdmin = adminUser?.role === 'ENTERPRISE_ADMIN';
+
       // ✅ SECURITY: Explicitly filter out business_level - must be changed via Enterprise Admin routes
       // This prevents accidental or malicious business_level changes via Super Admin API
       const { business_level: _bl, ...safeUserData } = userData;
@@ -103,55 +138,86 @@ class SuperAdminService {
         console.warn(`[SuperAdminService] business_level change blocked for user ${userId} - use Enterprise Admin route`);
       }
       
-      const updateData = {
-        username: safeUserData.username,
-        email: safeUserData.email,
-        role: safeUserData.role,
-        updatedAt: new Date(),
-      }
-
-      if (safeUserData.password) {
-        updateData.password_hash = await bcrypt.hash(safeUserData.password, 10)
-      }
-
-      const updatedUser = await prisma.user.update({
-        where: { id: userId },
-        data: updateData,
-        select: {
-          id: true,
-          username: true,
-          email: true,
-          role: true,
-          updatedAt: true,
+      // CANONICAL: Delegate to UserService
+      const updatedUser = await UserService.updateUser(
+        userId,
+        {
+          username: safeUserData.username,
+          email: safeUserData.email,
+          role: safeUserData.role,
+          password: safeUserData.password,
+          reports_to: safeUserData.reports_to,
+          first_name: safeUserData.first_name,
+          last_name: safeUserData.last_name,
+          phone: safeUserData.phone,
+        },
+        {
+          adminUserId,
+          isEnterpriseAdmin,
+          assignedByLegacyId: adminUser?.legacy_id,
         }
-      })
+      );
 
-      return updatedUser
+      return updatedUser;
     } catch (error) {
-      console.error('Error updating user:', error)
-      throw new Error('Failed to update user')
+      console.error('[SuperAdminService] updateUser error:', error.message);
+      throw error;
     }
   }
 
-  async deleteUser(userId, _adminUserId, _adminUsername) {
+  /**
+   * Delete User - DELEGATES TO CANONICAL UserService
+   */
+  async deleteUser(userId, adminUserId, _adminUsername) {
     try {
-      const user = await prisma.user.findUnique({
+      // CANONICAL: Delegate to UserService
+      console.log('[SuperAdminService] deleteUser delegating to UserService');
+      
+      // Get admin user for context
+      const adminUser = await prisma.user.findUnique({
+        where: { id: adminUserId },
+        select: { legacy_id: true, role: true, business_level: true }
+      });
+      
+      // Additional hierarchy check before deletion
+      const targetUser = await prisma.user.findUnique({
         where: { id: userId },
-        select: { username: true, email: true }
-      })
+        select: { business_level: true, role: true }
+      });
 
-      if (!user) {
-        throw new Error('User not found')
+      if (!targetUser) {
+        throw new Error('User not found');
       }
 
-      await prisma.user.delete({
-        where: { id: userId }
-      })
+      // SECURITY FIX: Hierarchy validation - cannot delete users with equal or higher level
+      const adminLevel = adminUser?.business_level || 1;
+      const targetLevel = targetUser.business_level || 1;
+      const isEnterpriseAdmin = adminUser?.role === 'ENTERPRISE_ADMIN';
+      
+      // ENTERPRISE_ADMIN can delete anyone except other ENTERPRISE_ADMINs
+      if (!isEnterpriseAdmin) {
+        if (targetLevel >= adminLevel) {
+          console.warn(`[DeleteUser] BLOCKED: Admin L${adminLevel} attempted to delete L${targetLevel} user`);
+          throw new Error('HIERARCHY_VIOLATION: Cannot delete users with equal or higher business level');
+        }
+      }
+      
+      // Prevent deletion of ENTERPRISE_ADMIN accounts
+      if (targetUser.role === 'ENTERPRISE_ADMIN') {
+        throw new Error('PROTECTED_USER: Cannot delete Enterprise Admin accounts');
+      }
 
-      return { success: true, message: 'User deleted successfully' }
+      await UserService.deleteUser(userId, {
+        adminUserId,
+        assignedByLegacyId: adminUser?.legacy_id,
+      });
+
+      return { success: true, message: 'User deleted successfully' };
     } catch (error) {
-      console.error('Error deleting user:', error)
-      throw new Error('Failed to delete user')
+      console.error('[SuperAdminService] deleteUser error:', error.message);
+      throw error.message?.includes('HIERARCHY') || error.message?.includes('PROTECTED') 
+        ? error 
+        : new Error('Failed to delete user');
     }
   }
 

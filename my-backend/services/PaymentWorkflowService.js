@@ -104,13 +104,14 @@ const AMOUNT_THRESHOLD = 5000;
 
 /**
  * Get user's reporting manager
+ * CANONICAL: Uses reports_to column (manager_id is DEPRECATED)
  */
 async function getUserManager(userId) {
   const user = await prisma.$queryRaw`
-    SELECT manager_id, reports_to FROM users WHERE id = ${userId}::uuid AND deleted_at IS NULL
+    SELECT reports_to FROM users_enhanced WHERE id = ${userId}::uuid AND is_active = true
   `;
   if (!user || user.length === 0) return null;
-  return user[0].manager_id || user[0].reports_to || null;
+  return user[0].reports_to || null;
 }
 
 /**

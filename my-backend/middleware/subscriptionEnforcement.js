@@ -231,15 +231,18 @@ async function checkFeatureAccess(tenantId, featureCode, _options = {}) {
       reset_at: null,
     };
   } catch (error) {
-    console.error('[SubscriptionEnforcement] Check access error:', error);
-    // Fail open for now (can be changed to fail closed for stricter enforcement)
+    // SECURITY FIX P1: FAIL-CLOSED - deny access on any error
+    const sanitizedError = error?.message?.substring(0, 200) || 'Unknown error';
+    console.error(`[SECURITY][FAIL_CLOSED] Feature access check FAILED - feature: ${featureCode}, tenant: ${tenantId || 'null'}, error: ${sanitizedError}`);
+    
     return {
-      allowed: true,
-      decision: 'allowed',
-      reason: 'check_error',
+      allowed: false,
+      decision: 'denied',
+      reason: 'FEATURE_ACCESS_CHECK_FAILED',
       current_usage: 0,
-      usage_limit: -1,
+      usage_limit: 0,
       unlock_price: 0,
+      error_context: 'Subscription verification failed. Contact support if this persists.',
     };
   }
 }
@@ -334,7 +337,7 @@ function matchRouteToFeature(method, path) {
  */
 function subscriptionEnforcement(options = {}) {
   const {
-    failMode = 'open', // 'open' = allow on error, 'closed' = block on error
+    failMode = 'closed', // 'closed' = block on error (SECURITY FIX: changed from 'open')
     logAll = false,    // Log all decisions, not just blocks
     bypassRoles = ['SUPER_ADMIN', 'SYSTEM_ADMIN'], // Roles that bypass enforcement
   } = options;
@@ -352,8 +355,25 @@ function subscriptionEnforcement(options = {}) {
 
     // Get tenant ID
     const tenantId = req.user.clientId || req.user.client_id || req.headers['x-tenant-id'];
+    
+    // SECURITY FIX P0-1: Null-tenant bypass BLOCKED
+    // tenantId === null MUST NOT disable enforcement for tenant-scoped features
+    // Only explicitly global operations (bypass roles above) are allowed
     if (!tenantId) {
-      return next(); // No tenant context, skip enforcement
+      // Match route to see if this is a feature that requires tenant context
+      const featureCode = matchRouteToFeature(req.method, req.path);
+      if (featureCode) {
+        // This is a subscription-controlled feature but no tenant - BLOCK
+        console.warn(`[SECURITY] P0-1: Blocked null-tenant access to ${req.method} ${req.path} (feature: ${featureCode})`);
+        return res.status(403).json({
+          ok: false,
+          error: 'Tenant context required',
+          code: 'NULL_TENANT_BLOCKED',
+          message: 'This operation requires a valid tenant context. Contact support if you believe this is an error.',
+        });
+      }
+      // No feature mapping - allow (truly public route)
+      return next();
     }
 
     // Match route to feature

@@ -79,29 +79,146 @@ export default function ClientManagementPage() {
     alert('Client updated successfully');
   }
 
-  function getClientFormInitial(client: Client) {
+  function getClientFormInitial(c: Client) {
+    // Extract enterprise settings (where most detailed data is stored)
+    const ent = c.settings?.enterprise || {};
+    const addresses = ent.addresses || c.addresses || [];
+    const contacts = ent.contacts || c.contact_persons || [];
+    const primaryAddr = addresses.find((a: any) => a.type === 'registered' || a.primary) || addresses[0] || {};
+    const primaryContact = contacts.find((ct: any) => ct.primary) || contacts[0] || {};
+    const secondaryContact = contacts.find((ct: any) => !ct.primary) || contacts[1] || {};
+    const registrations = ent.registrations || {};
+    
     return {
-      legal_name: client.legal_name || client.name || '',
-      trade_name: client.trade_name || '',
-      client_type: client.client_type || client.settings?.enterprise?.client_type || 'Not Registered',
-      erp_registration_type: client.settings?.enterprise?.meta?.erp_registration_type || 'registered',
-      tax_id: client.tax_id || '',
-      client_code: client.client_code || client.client_id || '',
-      registration_number: client.registration_number || '',
-      industry: client.industry || '',
-      business_size: client.business_size || '',
-      sales_representative: client.sales_representative || '',
-      primary_address: client.primary_address || { line1: '', line2: '', city: '', state: '', country: '', pincode: '' },
-      primary_contact: client.primary_contact || { name: '', role: '', phone: '', phone_code: '+91', email: '' },
-      secondary_contact: client.secondary_contact || { name: '', role: '', phone: '', phone_code: '+91', email: '' },
-      currency: client.currency || client.settings?.currency || 'INR',
-      country_code: client.country_code || client.settings?.country_code || 'IN',
-      timezone: client.timezone || client.settings?.timezone || 'Asia/Kolkata',
-      status: client.status || 'Active',
-      bank_details: client.bank_details || { account_name: '', bank_name: '', branch: '', account_number: '', swift: '', ifsc: '', iban: '' },
-      compliance: client.compliance || { risk_category: 'Low', aml_status: 'Pending', verification_date: '', approved_by: '', blacklist: false },
-      operational: client.operational || { service_area: '', category: '', preferred_delivery: '', sla: '' },
-      user_access: client.user_access || { username: '', role: 'Client', modules: [] },
+      // Basic Info
+      legal_name: ent.legal_name || c.legal_name || c.name || '',
+      trade_name: ent.trade_name || c.trade_name || '',
+      client_type: ent.client_type || c.client_type || 'Not Registered',
+      erp_registration_type: ent.meta?.erp_registration_type || c.settings?.meta?.erp_registration_type || 'registered',
+      tax_id: ent.tax_id || c.tax_id || '',
+      client_code: ent.client_code || c.client_code || c.client_id || '',
+      public_code: ent.public_code || c.public_code || '',
+      registration_number: ent.registration_number || c.registration_number || '',
+      business_size: ent.business_size || c.business_size || '',
+      industry: ent.industry || c.industry || '',
+      status: ent.status || c.status || 'Active',
+      
+      // Address
+      primary_address: {
+        line1: primaryAddr.line1 || '',
+        line2: primaryAddr.line2 || '',
+        city: primaryAddr.city || '',
+        state: primaryAddr.state || '',
+        country: primaryAddr.country || '',
+        pincode: primaryAddr.pincode || primaryAddr.postal_code || '',
+      },
+      
+      // Contacts
+      primary_contact: {
+        name: primaryContact.name || '',
+        role: primaryContact.role || primaryContact.designation || '',
+        phone: primaryContact.phone || primaryContact.mobile || '',
+        phone_code: primaryContact.phone_code || '+91',
+        email: primaryContact.email || '',
+      },
+      secondary_contact: {
+        name: secondaryContact.name || '',
+        role: secondaryContact.role || secondaryContact.designation || '',
+        phone: secondaryContact.phone || secondaryContact.mobile || '',
+        phone_code: secondaryContact.phone_code || '+91',
+        email: secondaryContact.email || '',
+      },
+      
+      // Financial
+      currency: c.settings?.currency || ent.currency || 'INR',
+      payment_terms: ent.payment_terms || ent.financial_details?.payment_terms || 'Net 30',
+      credit_limit: ent.credit_limit || ent.financial_details?.credit_limit || '',
+      billing_cycle: ent.billing_cycle || 'Monthly',
+      bank_details: {
+        account_name: (ent.bank_details || c.bank_details)?.account_name || '',
+        bank_name: (ent.bank_details || c.bank_details)?.bank_name || '',
+        branch: (ent.bank_details || c.bank_details)?.branch || '',
+        account_number: (ent.bank_details || c.bank_details)?.account_number || '',
+        swift: (ent.bank_details || c.bank_details)?.swift || '',
+        ifsc: (ent.bank_details || c.bank_details)?.ifsc || '',
+        iban: (ent.bank_details || c.bank_details)?.iban || '',
+      },
+      
+      // Operational
+      operational: {
+        service_area: (ent.operational || c.operational)?.service_area || '',
+        category: (ent.operational || c.operational)?.category || '',
+        preferred_delivery: (ent.operational || c.operational)?.preferred_delivery || '',
+        sla: (ent.operational || c.operational)?.sla || '',
+      },
+      
+      // Compliance / Risk
+      compliance: {
+        risk_category: (ent.risk || c.risk)?.level || 'Low',
+        aml_status: ent.compliance?.aml_status || 'Pending',
+        verification_date: ent.compliance?.verification_date || '',
+        approved_by: ent.compliance?.approved_by || '',
+        blacklist: ent.compliance?.blacklist || false,
+        kyc_status: ent.compliance?.kyc_status || 'UNVERIFIED',
+        risk_score: (ent.risk || c.risk)?.score || 0,
+      },
+      
+      // Sales & Segmentation
+      sales_representative: ent.sales_representative || c.sales_representative || '',
+      sales_team: ent.sales_team || [],
+      segment: ent.segment || 'SMB',
+      tier: ent.tier || 'Bronze',
+      lifecycle_stage: ent.lifecycle_stage || c.onboarding_status || 'trial',
+      source_channel: ent.source_channel || '',
+      tags: ent.tags || [],
+      
+      // Settings
+      country_code: c.settings?.country_code || 'IN',
+      timezone: c.timezone || c.settings?.timezone || 'Asia/Kolkata',
+      locale: c.settings?.locale || 'en-IN',
+      date_format: c.settings?.date_format || 'DD/MM/YYYY',
+      
+      // Branding
+      display_name: c.settings?.display_name || c.trade_name || '',
+      theme_primary_color: c.settings?.theme_primary_color || '#6366f1',
+      theme_secondary_color: c.settings?.theme_secondary_color || '#8b5cf6',
+      
+      // Registrations (Indian business registrations)
+      registrations: {
+        gstin: registrations.gstin || ent.tax_id || c.tax_id || '',
+        pan: registrations.pan || '',
+        tan: registrations.tan || '',
+        cin: registrations.cin || '',
+        llpin: registrations.llpin || '',
+        udyam: registrations.udyam || '',
+        iec: registrations.iec || c.import_export_code || '',
+        fssai: registrations.fssai || '',
+        drug_license: registrations.drug_license || '',
+        shop_license: registrations.shop_license || '',
+        trade_license: registrations.trade_license || '',
+        professional_tax: registrations.professional_tax || '',
+        pf_number: registrations.pf_number || '',
+        esi_number: registrations.esi_number || '',
+        other_registrations: registrations.other_registrations || [],
+      },
+      
+      // Subscription
+      subscription_plan: c.subscriptionPlan || 'starter',
+      subscription_start: c.trial_start_date ? new Date(c.trial_start_date).toISOString().split('T')[0] : '',
+      subscription_end: c.trial_end_date ? new Date(c.trial_end_date).toISOString().split('T')[0] : '',
+      max_users: c.settings?.max_users || 5,
+      storage_limit_gb: c.settings?.storage_limit_gb || 5,
+      enabled_modules: c.modules_enabled || [],
+      
+      // Documents
+      documents: ent.documents || c.documents || [],
+      kyc_documents: ent.kyc_documents || [],
+      
+      // User access
+      user_access: c.user_access || { username: '', role: 'Client', modules: [] },
+      
+      // Pass full settings for logo initialization
+      settings: c.settings,
     };
   }
 

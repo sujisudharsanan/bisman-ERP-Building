@@ -6,6 +6,138 @@ const rbacMiddleware = require('../middleware/rbac');
 const { getPrisma } = require('../lib/prisma');
 const cacheService = require('../services/cacheService'); // ✅ Cache service
 
+// Role-based default pages mapping (moved to top-level for reuse)
+const roleBasedPages = {
+  'SYSTEM_ADMIN': ['user-creation', 'user-management', 'permission-manager', 'roles-users-report', 'system-settings', 'backup-restore', 'system-health-dashboard', 'integration-settings', 'deployment-tools', 'fallback-recovery'],
+  'ADMIN': ['user-creation', 'system-flow', 'subscription', 'usage', 'settings', 'sla', 'rag-sources', 'task-approvals'],
+  'HR': ['user-creation', 'hr-policy'],
+  'HR_MANAGER': ['user-creation', 'hr-policy'],
+  'SUPER_ADMIN': ['*'], // Platform super admin gets all
+  'ENTERPRISE_ADMIN': ['*'] // Enterprise admin gets all
+};
+
+// GET /api/permissions/me - Get current authenticated user's permissions
+// Security fix PM-01: Frontend must fetch from this endpoint, not use hardcoded maps
+router.get('/me', authMiddleware.authenticate, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    if (!prisma) {
+      return res.status(500).json({
+        success: false,
+        error: { message: 'Database not available', code: 'DB_ERROR' },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const user = req.user;
+    if (!user || !user.id) {
+      return res.status(401).json({
+        success: false,
+        error: { message: 'Not authenticated', code: 'UNAUTHORIZED' },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    const userId = user.id;
+    const userRole = (user.role || '').toUpperCase();
+    const businessLevel = user.business_level || 1;
+
+    // ✅ Check cache first
+    const cacheKey = `me::${userId}`;
+    const cached = cacheService.permissions?.getByUser?.(cacheKey);
+    if (cached) {
+      console.log(`[permissions/me] Cache HIT for user ${userId}`);
+      return res.json({
+        success: true,
+        data: {
+          userId,
+          role: userRole,
+          business_level: businessLevel,
+          tenant_id: user.tenant_id || null,
+          allowedPages: cached.allowedPages,
+          permissions: cached.permissions,
+          cached: true
+        },
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Get RBAC permissions from database
+    let allowedPages = [];
+    const permissions = {};
+
+    // 1. Get explicit page permissions from rbac_user_permissions
+    const userIdInt = user.legacy_id || (typeof userId === 'number' ? userId : null);
+    if (userIdInt) {
+      const pagePerms = await prisma.rbac_user_permissions.findMany({
+        where: { user_id: userIdInt },
+        select: { page_key: true }
+      });
+      allowedPages = pagePerms.map(p => p.page_key);
+    }
+
+    // 2. Get role-based RBAC permissions
+    const roleRecord = await prisma.rbac_roles.findFirst({
+      where: { name: { equals: userRole, mode: 'insensitive' } },
+      select: { id: true }
+    });
+
+    if (roleRecord) {
+      const rolePerms = await prisma.rbac_permissions.findMany({
+        where: { role_id: roleRecord.id, granted: true },
+        include: {
+          rbac_routes: { select: { route_key: true, module_name: true } },
+          rbac_actions: { select: { action_key: true } }
+        }
+      });
+
+      // Build permissions object: { module: { action: [routes] } }
+      for (const perm of rolePerms) {
+        const module = perm.rbac_routes?.module_name || 'general';
+        const action = perm.rbac_actions?.action_key || 'view';
+        const route = perm.rbac_routes?.route_key || '';
+        
+        if (!permissions[module]) permissions[module] = {};
+        if (!permissions[module][action]) permissions[module][action] = [];
+        if (route) permissions[module][action].push(route);
+      }
+    }
+
+    // 3. Add role-based default pages
+    if (roleBasedPages[userRole]) {
+      const rolePagesSet = new Set([...allowedPages, ...roleBasedPages[userRole]]);
+      allowedPages = Array.from(rolePagesSet);
+    }
+
+    // ✅ Cache the result (5 min TTL)
+    if (cacheService.permissions?.setByUser) {
+      cacheService.permissions.setByUser(cacheKey, { allowedPages, permissions });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        userId,
+        role: userRole,
+        business_level: businessLevel,
+        tenant_id: user.tenant_id || null,
+        allowedPages,
+        permissions,
+        cached: false
+      },
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (error) {
+    console.error('[permissions/me] Error:', error);
+    res.status(500).json({
+      success: false,
+      error: { message: 'Failed to fetch permissions', code: 'PERMISSIONS_ERROR' },
+      timestamp: new Date().toISOString()
+    });
+  }
+});
+
 // GET /api/permissions - Get user's allowed pages (with caching)
 router.get('/', authMiddleware.authenticate, async (req, res) => {
   try {

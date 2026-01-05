@@ -1,10 +1,13 @@
 const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
-const bcrypt = require('bcryptjs');
 const prisma = new PrismaClient();
 const { protectBusinessLevel, logBusinessLevelChange, getBusinessLevelInfo } = require('../middleware/businessLevelProtection');
 const { validatePassword, generateSecurePassword } = require('../lib/passwordValidator');
+
+// CANONICAL: Import UserService for all user lifecycle operations
+// See docs/USER_MODEL_LOCK.md for architecture rules
+const UserService = require('../services/userService');
 
 // Feature enforcement middleware
 const { enforceUsage } = require('../middleware/microUnlockEnforcer');
@@ -233,10 +236,16 @@ router.put('/:userId', requireEnterpriseAdmin, protectBusinessLevel({ enforceHie
       }
     }
 
-    const updatedUser = await prisma.user.update({
-      where: { id: userId },
-      data: updateData
-    });
+    // CANONICAL: Delegate to UserService for all user updates
+    // See docs/USER_MODEL_LOCK.md - Direct prisma.user.update is PROHIBITED
+    const updatedUser = await UserService.updateUser(
+      userId,
+      updateData,
+      {
+        adminUserId: req.user?.id,
+        isEnterpriseAdmin: true,
+      }
+    );
 
     // Log business level change if it was modified
     if (updateData.business_level !== undefined && updateData.business_level !== oldBusinessLevel) {
@@ -287,9 +296,10 @@ router.delete('/:userId', requireEnterpriseAdmin, async (req, res) => {
   try {
     const userId = parseInt(req.params.userId);
 
-    await prisma.user.update({
-      where: { id: userId },
-      data: { is_active: false }
+    // CANONICAL: Delegate to UserService for all user lifecycle operations
+    // See docs/USER_MODEL_LOCK.md - Direct prisma.user.update is PROHIBITED
+    await UserService.deleteUser(String(userId), {
+      adminUserId: req.user?.id,
     });
 
     // Log activity
@@ -372,6 +382,7 @@ router.put('/bulk/update', requireEnterpriseAdmin, async (req, res) => {
 });
 
 // Bulk import users from CSV
+// SECURITY FIX P1-4: business_level validation is handled inline for each user
 router.post('/bulk/import', requireEnterpriseAdmin, enforceUsage('user_creation'), async (req, res) => {
   try {
     const { users } = req.body;
@@ -379,6 +390,15 @@ router.post('/bulk/import', requireEnterpriseAdmin, enforceUsage('user_creation'
     if (!users || !Array.isArray(users)) {
       return res.status(400).json({ ok: false, error: 'Invalid import data' });
     }
+
+    // SECURITY FIX P1-5: Get admin's business_level for hierarchy enforcement
+    const adminId = req.user?.id;
+    const adminUser = await prisma.user.findUnique({
+      where: { id: adminId },
+      select: { business_level: true, user_type: true }
+    });
+    const adminLevel = adminUser?.business_level || 1;
+    const isEnterpriseAdmin = (req.user?.role || '').toUpperCase() === 'ENTERPRISE_ADMIN';
 
     const results = {
       success: 0,
@@ -388,7 +408,28 @@ router.post('/bulk/import', requireEnterpriseAdmin, enforceUsage('user_creation'
 
     for (const userData of users) {
       try {
-        const { name, email, role, organizationId, password } = userData;
+        const { name, email, role, organizationId, password, business_level: requestedLevel } = userData;
+
+        // SECURITY FIX P1-4: Validate and enforce business_level
+        const parsedLevel = parseInt(requestedLevel) || 1;
+        if (parsedLevel < 1 || parsedLevel > 10) {
+          results.failed++;
+          results.errors.push({ email, error: 'business_level must be between 1 and 10' });
+          continue;
+        }
+        
+        // SECURITY FIX P1-5: Hierarchy enforcement (except for Enterprise Admin)
+        if (!isEnterpriseAdmin && parsedLevel > adminLevel) {
+          results.failed++;
+          results.errors.push({ 
+            email, 
+            error: `Cannot create user with business_level L${parsedLevel} - your level is L${adminLevel}` 
+          });
+          console.warn(`[SECURITY] P1-5: Bulk import blocked - L${adminLevel} admin tried to create L${parsedLevel} user`);
+          continue;
+        }
+        
+        const safeBusinessLevel = isEnterpriseAdmin ? parsedLevel : Math.min(parsedLevel, adminLevel);
 
         // Check if user already exists
         const existing = await prisma.user.findUnique({
@@ -417,20 +458,23 @@ router.post('/bulk/import', requireEnterpriseAdmin, enforceUsage('user_creation'
           }
         }
 
-        // Hash password
-        const hashedPassword = await bcrypt.hash(finalPassword, 12);
-
-        // Create user
-        await prisma.user.create({
-          data: {
+        // CANONICAL: Delegate to UserService for all user creation
+        // See docs/USER_MODEL_LOCK.md - Direct prisma.user.create is PROHIBITED
+        await UserService.createUser(
+          {
             username: name,
             email,
-            password: hashedPassword,
+            password: finalPassword, // UserService handles hashing
             role: role || 'USER',
-            client_id: parseInt(organizationId),
-            is_active: true
+            business_level: safeBusinessLevel,
+            tenant_id: organizationId ? String(organizationId) : undefined,
+          },
+          {
+            adminUserId: adminId,
+            isEnterpriseAdmin,
+            skipSubscriptionCheck: false, // Enforce subscription limits
           }
-        });
+        );
 
         results.success++;
       } catch (error) {

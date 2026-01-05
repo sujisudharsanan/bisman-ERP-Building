@@ -4,6 +4,7 @@ const router = express.Router()
 const superAdminController = require('../controllers/superAdminController')
 const { requirePermission, requireRole } = require('../middleware/rbacAuth')
 const { authenticate } = require('../middleware/auth')
+const { validateBusinessLevelOnCreate, protectBusinessLevel } = require('../middleware/businessLevelProtection')
 
 // Apply authentication to all super admin routes
 router.use(authenticate)
@@ -16,8 +17,10 @@ router.get('/activity', requireSuperAdmin, superAdminController.getRecentActivit
 
 // =============== USER MANAGEMENT ===============
 router.get('/users', requireSuperAdmin, superAdminController.getUsers)
-router.post('/users', requireSuperAdmin, superAdminController.createUser)
-router.put('/users/:userId', requireSuperAdmin, superAdminController.updateUser)
+// SECURITY FIX P1-4: Apply validateBusinessLevelOnCreate middleware
+router.post('/users', requireSuperAdmin, validateBusinessLevelOnCreate(), superAdminController.createUser)
+// SECURITY FIX P1-4: Apply protectBusinessLevel on updates
+router.put('/users/:userId', requireSuperAdmin, protectBusinessLevel(), superAdminController.updateUser)
 router.delete('/users/:userId', requireSuperAdmin, superAdminController.deleteUser)
 
 // =============== ROLE MANAGEMENT ===============

@@ -2,12 +2,15 @@
  * User Management API Routes
  * Handles CRUD operations for users
  * 
+ * ARCHITECTURE: All user lifecycle operations MUST delegate to UserService
+ * See docs/USER_MODEL_LOCK.md for enforcement rules
+ * 
  * Routes:
  * - GET    /api/system/users           - List users with filters
  * - GET    /api/system/users/:id       - Get user details
- * - POST   /api/system/users           - Create new user
- * - PUT    /api/system/users/:id       - Update user
- * - DELETE /api/system/users/:id       - Delete user
+ * - POST   /api/system/users           - Create new user (via UserService)
+ * - PUT    /api/system/users/:id       - Update user (via UserService)
+ * - DELETE /api/system/users/:id       - Delete user (via UserService)
  * - GET    /api/system/users/export    - Export users to CSV/Excel
  * - PUT    /api/system/users/:id/status - Update user status
  * - GET    /api/system/users/subscription-info - Get subscription limits for UI
@@ -23,6 +26,10 @@ import {
   checkUserActivationLimit,
   getSubscriptionInfoForUI 
 } from '../middleware/subscriptionEnforcement';
+
+// CANONICAL: Import UserService for all user lifecycle operations
+// eslint-disable-next-line @typescript-eslint/no-require-imports
+const UserService = require('../../services/userService');
 
 // Type definitions
 interface AuthenticatedUser {
@@ -245,6 +252,9 @@ router.post('/', authMiddleware, checkUserCreationLimit(), async (req: Request, 
       password,
       role,
       role_ids, // Array of role names from frontend
+      // CANONICAL hierarchy fields - see USER_MODEL_LOCK.md
+      business_level,  // V-001 FIX: Extract from frontend, pass to UserService
+      reports_to,      // V-002 FIX: Extract from frontend, pass to UserService
       productType = 'BUSINESS_ERP',
       tenant_id,
       super_admin_id,
@@ -330,61 +340,38 @@ router.post('/', authMiddleware, checkUserCreationLimit(), async (req: Request, 
       });
     }
 
-    // Hash password
-    const hashedPassword = await bcrypt.hash(password, 10);
-
-    // Generate UUID for the new user
-    const { v4: uuidv4 } = await import('uuid');
-
-    // Create user
-    const newUser = await prisma.user.create({
-      data: {
-        id: uuidv4(),
+    // CANONICAL: Delegate to UserService for all user creation
+    // See docs/USER_MODEL_LOCK.md - Direct prisma.user.create is PROHIBITED
+    const newUser = await UserService.createUser(
+      {
         username: finalUsername,
         email,
-        password_hash: hashedPassword,
+        password, // UserService handles hashing
         role: finalRole,
-        product_type: productType,
+        // MULTI-ROLE FIX: Pass role_ids array for multiple role assignment
+        role_ids: role_ids || undefined,
+        // V-001 FIX: Pass frontend business_level (UserService validates 1-10 range)
+        business_level: business_level !== undefined ? business_level : undefined,
+        // V-002 FIX: Pass frontend reports_to (UserService validates existence & cycles)
+        reports_to: reports_to || undefined,
         tenant_id: finalTenantId,
         super_admin_id: finalSuperAdminId,
-        profile_pic_url: profile_pic_url || null,
-        assigned_modules: assignedModules || null,
-        page_permissions: pagePermissions || null,
-        first_name: first_name || null,
-        last_name: last_name || null,
-        phone: finalPhone,
-        is_active: true,
+        first_name: first_name || undefined,
+        last_name: last_name || undefined,
+        phone: finalPhone || undefined,
+        product_type: productType,
+        profile_pic_url: profile_pic_url || undefined,
+        assigned_modules: assignedModules || undefined,
+        page_permissions: pagePermissions || undefined,
       },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        role: true,
-        product_type: true,
-        created_at: true,
-        first_name: true,
-        last_name: true,
-      },
-    });
+      {
+        adminUserId: currentUserId,
+        isEnterpriseAdmin: currentUserRole === 'ENTERPRISE_ADMIN',
+        skipSubscriptionCheck: false,
+      }
+    );
 
-    // Create audit log (non-blocking - don't fail user creation if audit fails)
-    try {
-      await prisma.auditLog.create({
-        data: {
-          user_id: typeof currentUserId === 'string' ? parseInt(currentUserId) || null : currentUserId,
-          action: 'CREATE_USER',
-          table_name: 'users_enhanced',
-          new_values: {
-            id: newUser.id,
-            username: newUser.username,
-            email: newUser.email,
-            role: newUser.role,
-          },
-        },
-      });
-    } catch (auditError) {
-      console.error('Audit log creation failed (non-blocking):', auditError);
-    }
+    // Audit log is handled by UserService
 
     res.status(201).json({
       success: true,
@@ -438,13 +425,17 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
       email,
       password,
       role,
+      role_ids, // MULTI-ROLE FIX: Array of role names for multiple role assignment
       productType,
       tenant_id,
       super_admin_id,
       profile_pic_url,
       assignedModules,
       pagePermissions,
-      reporting_authority_id,
+      // CANONICAL hierarchy fields - see USER_MODEL_LOCK.md
+      business_level,  // V-001 FIX: Use canonical field
+      reports_to,      // V-002 FIX: Use canonical field (replaces reporting_authority_id)
+      // DEPRECATED — see USER_MODEL_LOCK.md: reporting_authority_id removed
       branch_id,
       first_name,
       last_name,
@@ -513,20 +504,28 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
     // Only admins can change roles and product types
   if (CORE_ROLES.includes(currentUserRole)) {
       if (role !== undefined) updateData.role = role;
+      // MULTI-ROLE FIX: Pass role_ids array for multiple role assignment
+      if (role_ids !== undefined && Array.isArray(role_ids)) updateData.role_ids = role_ids;
       if (productType !== undefined) updateData.product_type = productType;
       if (tenant_id !== undefined) updateData.tenant_id = tenant_id;
       if (super_admin_id !== undefined) updateData.super_admin_id = super_admin_id;
       if (assignedModules !== undefined) updateData.assigned_modules = assignedModules;
       if (pagePermissions !== undefined) updateData.page_permissions = pagePermissions;
       
-      // Handle reporting authority and branch (store in profile_data JSON)
+      // V-001 FIX: Use canonical business_level field (UserService validates 1-10)
+      if (business_level !== undefined) {
+        updateData.business_level = business_level;
+      }
+      
+      // V-002 FIX: Use canonical reports_to field (UserService validates existence & cycles)
+      // DEPRECATED: reporting_authority_id — see USER_MODEL_LOCK.md
+      if (reports_to !== undefined) {
+        updateData.reports_to = reports_to || null;
+      }
+      
+      // Handle branch (store in profile_data JSON for legacy compatibility)
       const existingProfileData = ((existingUser as Record<string, unknown>).profile_data || {}) as Record<string, unknown>;
       let profileDataUpdated = false;
-      
-      if (reporting_authority_id !== undefined) {
-        existingProfileData.reporting_authority_id = reporting_authority_id || null;
-        profileDataUpdated = true;
-      }
       
       if (branch_id !== undefined) {
         existingProfileData.branch_id = branch_id || null;
@@ -540,19 +539,16 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
 
     if (profile_pic_url !== undefined) updateData.profile_pic_url = profile_pic_url;
 
-    // Update user using the actual UUID from the existing user
-    const updatedUser = await prisma.user.update({
-      where: { id: existingUser.id },
-      data: updateData,
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        role: true,
-        product_type: true,
-        updated_at: true,
-      },
-    });
+    // CANONICAL: Delegate to UserService for all user updates
+    // See docs/USER_MODEL_LOCK.md - Direct prisma.user.update is PROHIBITED
+    const updatedUser = await UserService.updateUser(
+      existingUser.id,
+      updateData,
+      {
+        adminUserId: currentUserId,
+        isEnterpriseAdmin: currentUserRole === 'ENTERPRISE_ADMIN',
+      }
+    );
     
     // Handle branch assignment if provided
     if (branch_id !== undefined && CORE_ROLES.includes(currentUserRole)) {

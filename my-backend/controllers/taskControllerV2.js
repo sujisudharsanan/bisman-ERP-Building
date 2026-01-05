@@ -550,6 +550,7 @@ const createTask = async (req, res) => {
     
     // ============================================
     // HIERARCHY CHECK: Subordinates cannot assign to superiors
+    // SECURITY FIX P0-3: FAIL CLOSED - reject on hierarchy check failure
     // ============================================
     if (assigneeId && !skipHierarchyCheck) {
       try {
@@ -572,8 +573,14 @@ const createTask = async (req, res) => {
           });
         }
       } catch (hierarchyError) {
-        console.warn('[TaskController] Hierarchy check failed, allowing task creation:', hierarchyError.message);
-        // Continue with task creation if hierarchy check fails (graceful degradation)
+        // SECURITY FIX P0-3: FAIL CLOSED - do NOT allow task creation if hierarchy check fails
+        console.error('[SECURITY] P0-3: Hierarchy check FAILED - blocking task creation:', hierarchyError.message);
+        return res.status(500).json({
+          success: false,
+          error: 'Unable to verify assignment hierarchy',
+          code: 'HIERARCHY_CHECK_FAILED',
+          message: 'Task assignment blocked due to hierarchy verification failure. Please try again or contact support.',
+        });
       }
     }
     

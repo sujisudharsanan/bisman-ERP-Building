@@ -2,7 +2,7 @@
 import React, { useState, useCallback, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import API_BASE from '@/config/api';
-import { RefreshCw, Upload, X, FileText, Building2, Globe, CreditCard, Users, Shield, Calendar, Eye, EyeOff, Wand2 } from 'lucide-react';
+import { RefreshCw, Upload, X, FileText, Building2, Globe, CreditCard, Users, Shield, Calendar, Eye, EyeOff, Wand2, Ticket, Play, CheckCircle, Loader2 } from 'lucide-react';
 
 // International country data with phone codes and currency
 const COUNTRIES = [
@@ -212,9 +212,25 @@ const defaultValues: ClientFormValues = {
   admin_users: [{ email: '', name: '', role: 'Admin', password: '' }],
 };
 
+// Deep merge function to properly merge nested objects
+function deepMerge(target: any, source: any): any {
+  const result = { ...target };
+  for (const key of Object.keys(source)) {
+    if (source[key] !== undefined && source[key] !== null) {
+      if (typeof source[key] === 'object' && !Array.isArray(source[key]) && typeof target[key] === 'object' && !Array.isArray(target[key])) {
+        result[key] = deepMerge(target[key], source[key]);
+      } else {
+        result[key] = source[key];
+      }
+    }
+  }
+  return result;
+}
+
 export default function ClientForm({ initial, mode, clientId, onSuccess }: ClientFormProps) {
   const { user } = useAuth();
-  const [form, setForm] = useState<ClientFormValues>({ ...defaultValues, ...(initial || {}) });
+  // Deep merge to ensure nested objects like compliance, bank_details, etc. are properly merged
+  const [form, setForm] = useState<ClientFormValues>(() => deepMerge(defaultValues, initial || {}));
   const [creatingAdmin, setCreatingAdmin] = useState<boolean>(mode === 'create');
   const [adminUser, setAdminUser] = useState<{ email: string; username?: string; password?: string }>({ email: '' });
   const [loading, setLoading] = useState(false);
@@ -244,6 +260,32 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
   const [subscriptionPlans, setSubscriptionPlans] = useState<DynamicPlan[]>([]);
   const [plansLoading, setPlansLoading] = useState(true);
   const [plansError, setPlansError] = useState<string | null>(null);
+  
+  // Coupon code and trial state - for paid plans activation
+  const [showCouponInput, setShowCouponInput] = useState(false);
+  const [couponCode, setCouponCode] = useState('');
+  const [couponValidating, setCouponValidating] = useState(false);
+  const [couponError, setCouponError] = useState<string | null>(null);
+  const [couponValid, setCouponValid] = useState<{ valid: boolean; plan?: any; durationDays?: number } | null>(null);
+  const [startingTrial, setStartingTrial] = useState(false);
+  const [trialActivated, setTrialActivated] = useState(false);
+
+  // Initialize logo preview and display name from existing client data (edit mode)
+  useEffect(() => {
+    if (mode === 'edit' && initial) {
+      // Check for logo in settings.logo.data or settings.logo (from welcome activation)
+      const settings = (initial as any)?.settings;
+      const logoData = settings?.logo?.data || settings?.logo;
+      if (logoData && typeof logoData === 'string') {
+        setLogoPreview(logoData);
+      }
+      
+      // Initialize display_name in form if available
+      if (initial.display_name && !form.display_name) {
+        setForm(prev => ({ ...prev, display_name: initial.display_name }));
+      }
+    }
+  }, [mode, initial]);
 
   // Fetch subscription plans from API
   useEffect(() => {
@@ -385,7 +427,7 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
     }
   };
 
-  // Handle plan change - auto-update limits
+  // Handle plan change - auto-update limits and show coupon input for paid plans
   const handlePlanChange = (planId: string) => {
     const plan = subscriptionPlans.find(p => p.id === planId);
     if (plan) {
@@ -394,7 +436,93 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
         subscription_plan: planId,
         max_users: typeof plan.users === 'number' ? plan.users : 999,
         storage_limit_gb: parseInt(plan.storage) || 500,
+        trial_days: plan.trialDays || 14,
       });
+      
+      // Show coupon input for paid plans (price > 0), hide for free plans
+      const isFreeOrTrial = planId === 'free' || planId === 'trial' || plan.price === 0;
+      setShowCouponInput(!isFreeOrTrial);
+      
+      // Reset coupon state when changing plans
+      setCouponCode('');
+      setCouponError(null);
+      setCouponValid(null);
+      setTrialActivated(false);
+    }
+  };
+
+  // Validate coupon code
+  const validateCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError('Please enter a coupon code');
+      return;
+    }
+    
+    setCouponValidating(true);
+    setCouponError(null);
+    setCouponValid(null);
+    
+    try {
+      const response = await fetch(`${API_BASE}/api/subscriptions/validate-coupon`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ code: couponCode.trim().toUpperCase() }),
+      });
+      
+      const data = await response.json();
+      
+      if (data.ok && data.valid) {
+        setCouponValid({
+          valid: true,
+          plan: data.plan,
+          durationDays: data.durationDays,
+        });
+        setCouponError(null);
+      } else {
+        setCouponError(data.message || 'Invalid coupon code');
+        setCouponValid(null);
+      }
+    } catch (error) {
+      console.error('Coupon validation error:', error);
+      setCouponError('Failed to validate coupon. Please try again.');
+      setCouponValid(null);
+    } finally {
+      setCouponValidating(false);
+    }
+  };
+
+  // Start trial for the selected plan
+  const startTrial = async () => {
+    const selectedPlan = subscriptionPlans.find(p => p.id === form.subscription_plan);
+    if (!selectedPlan) return;
+    
+    setStartingTrial(true);
+    
+    try {
+      // Calculate trial end date based on plan's trial days
+      const trialDays = selectedPlan.trialDays || 14;
+      const trialEndDate = new Date();
+      trialEndDate.setDate(trialEndDate.getDate() + trialDays);
+      
+      // Update form with trial settings
+      setForm(prev => ({
+        ...prev,
+        lifecycle_stage: 'trial',
+        trial_days: trialDays,
+        subscription_start: new Date().toISOString().split('T')[0],
+        subscription_end: trialEndDate.toISOString().split('T')[0],
+      }));
+      
+      setTrialActivated(true);
+      
+      // Show success message
+      alert(`Trial activated! You have ${trialDays} days to try ${selectedPlan.name}. Trial ends on ${trialEndDate.toLocaleDateString()}.`);
+    } catch (error) {
+      console.error('Start trial error:', error);
+      alert('Failed to start trial. Please try again.');
+    } finally {
+      setStartingTrial(false);
     }
   };
 
@@ -593,7 +721,9 @@ Your 14-day trial has started. The admin can login immediately.`;
     isSubmittingRef.current = true;
     setLoading(true);
     try {
-      const body: any = { ...form, name: form.legal_name || form.trade_name };
+      // Create body from form, excluding internal fields that shouldn't be sent to backend
+      const { settings, ...formWithoutSettings } = form as any;
+      const body: any = { ...formWithoutSettings, name: form.legal_name || form.trade_name };
       
       // Generate unique client code if not provided (timestamp + random)
       if (!body.client_code) {
@@ -629,6 +759,30 @@ Your 14-day trial has started. The admin can login immediately.`;
         size_bytes: d.size,
         category: d.category,
       }));
+      
+      // Include logo as base64 if uploaded
+      if (logoFile) {
+        // Convert logo file to base64 data URL
+        const logoBase64 = await new Promise<string>((resolve, reject) => {
+          const reader = new FileReader();
+          reader.onload = () => resolve(reader.result as string);
+          reader.onerror = reject;
+          reader.readAsDataURL(logoFile);
+        });
+        body.logo = {
+          data: logoBase64,
+          filename: logoFile.name,
+          size: logoFile.size,
+        };
+      } else if (logoPreview && !logoFile) {
+        // If there's a preview but no new file, preserve existing logo
+        body.logo = { data: logoPreview };
+      }
+      
+      // Include display name for branding
+      if (form.display_name) {
+        body.display_name = form.display_name;
+      }
       // Flatten some meta that backend will store inside enterprise meta
       body.meta = {
         public_code: form.public_code || undefined,
@@ -641,8 +795,8 @@ Your 14-day trial has started. The admin can login immediately.`;
         source_channel: form.source_channel,
         tags: form.tags,
         sales_team: form.sales_team,
-        kyc_status: form.compliance.kyc_status,
-        risk_score: form.compliance.risk_score,
+        kyc_status: form.compliance?.kyc_status,
+        risk_score: form.compliance?.risk_score,
         kyc_documents: form.kyc_documents,
       };
       const sid = (user as any)?.super_admin_id ?? (user as any)?.superAdminId ?? (((user as any)?.role === 'SUPER_ADMIN' || (user as any)?.roleName === 'SUPER_ADMIN') ? (user as any)?.id : undefined);
@@ -1054,6 +1208,109 @@ Your 14-day trial has started. The admin can login immediately.`;
               </div>
             ) : null}
           </div>
+
+          {/* Coupon Code Input - Shows for paid plans */}
+          {showCouponInput && form.subscription_plan && form.subscription_plan !== 'free' && form.subscription_plan !== 'trial' && (
+            <div className="border rounded-lg p-4 bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/20 dark:to-indigo-900/20">
+              <h3 className="font-semibold text-gray-800 dark:text-gray-200 flex items-center gap-2 mb-4">
+                <Ticket className="w-4 h-4" /> Coupon Code & Trial
+              </h3>
+              
+              {/* Trial Activated Banner */}
+              {trialActivated && (
+                <div className="mb-4 p-3 bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-lg flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
+                  <span className="text-green-800 dark:text-green-200 font-medium">
+                    Trial activated! {form.trial_days} days trial period started.
+                  </span>
+                </div>
+              )}
+              
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* Coupon Code Section */}
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Have a coupon code? Enter it to activate your subscription
+                  </label>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={couponCode}
+                      onChange={(e) => {
+                        setCouponCode(e.target.value.toUpperCase());
+                        setCouponError(null);
+                        setCouponValid(null);
+                      }}
+                      placeholder="Enter coupon code (e.g., BIS-PROF-1M-XXXX)"
+                      className="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 uppercase"
+                    />
+                    <button
+                      type="button"
+                      onClick={validateCoupon}
+                      disabled={couponValidating || !couponCode.trim()}
+                      className="px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+                    >
+                      {couponValidating ? (
+                        <Loader2 className="w-4 h-4 animate-spin" />
+                      ) : (
+                        <CheckCircle className="w-4 h-4" />
+                      )}
+                      Validate
+                    </button>
+                  </div>
+                  
+                  {/* Coupon Validation Result */}
+                  {couponError && (
+                    <p className="text-sm text-red-600 dark:text-red-400">❌ {couponError}</p>
+                  )}
+                  {couponValid && couponValid.valid && (
+                    <div className="p-3 bg-green-100 dark:bg-green-900/30 border border-green-300 dark:border-green-700 rounded-lg">
+                      <p className="text-sm text-green-800 dark:text-green-200">
+                        ✓ Valid coupon! Activates <strong>{couponValid.plan?.name}</strong> for {couponValid.durationDays} days
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                {/* Start Trial Section */}
+                <div className="space-y-3">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300">
+                    Or start a free trial to explore the plan
+                  </label>
+                  <div className="p-4 border border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800">
+                    <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">
+                      Start a <strong>{form.trial_days || 14}-day free trial</strong> of the selected plan. 
+                      No coupon required. Trial days will be counted.
+                    </p>
+                    <button
+                      type="button"
+                      onClick={startTrial}
+                      disabled={startingTrial || trialActivated}
+                      className={`w-full px-4 py-3 rounded-lg font-medium flex items-center justify-center gap-2 ${
+                        trialActivated 
+                          ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 cursor-not-allowed'
+                          : 'bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white'
+                      }`}
+                    >
+                      {startingTrial ? (
+                        <Loader2 className="w-5 h-5 animate-spin" />
+                      ) : trialActivated ? (
+                        <CheckCircle className="w-5 h-5" />
+                      ) : (
+                        <Play className="w-5 h-5" />
+                      )}
+                      {trialActivated ? 'Trial Activated' : 'Start Free Trial'}
+                    </button>
+                    {trialActivated && form.subscription_end && (
+                      <p className="text-xs text-center text-gray-500 mt-2">
+                        Trial ends: {new Date(form.subscription_end).toLocaleDateString()}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Billing Details */}
           <div className="border rounded-lg p-4 space-y-4">

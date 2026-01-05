@@ -9,7 +9,8 @@ import {
   checkAIHealth,
   enhanceNLPWithAI,
   generateAIReply,
-  generateClarifyingQuestionWithAI
+  generateClarifyingQuestionWithAI,
+  buildClarifyingQuestion
 } from './aiIntegration';
 
 const prisma = new PrismaClient();
@@ -31,6 +32,46 @@ interface NLPAnalysis {
   confidence: number;
   unknownTerms: string[];
   keywords: string[];
+  spellCorrections?: Array<{ original: string; corrected: string }>;
+}
+
+interface KnowledgeBaseEntry {
+  id: number;
+  intent: string;
+  keywords: string[];
+  response_template: string;
+  reply_template: string;
+  required_permissions?: string[];
+  requires_rbac?: boolean;
+  requires_confirmation?: boolean;
+  active: boolean;
+}
+
+interface UserListItem {
+  username: string;
+  email: string;
+}
+
+interface UserSearchResult {
+  users: UserListItem[];
+  searchTerm: string;
+  error?: string;
+}
+
+interface Entity {
+  type: string;
+  value: string;
+  confidence: number;
+}
+
+// Type guard for user search result
+function isUserSearchResult(data: unknown): data is UserSearchResult {
+  return (
+    data !== null &&
+    typeof data === 'object' &&
+    'users' in data &&
+    Array.isArray((data as UserSearchResult).users)
+  );
 }
 
 interface BotReply {
@@ -38,7 +79,7 @@ interface BotReply {
   type: 'standard' | 'clarifying' | 'suggestion' | 'error' | 'permission_denied';
   confidence: number;
   requiresConfirmation: boolean;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 interface Config {
@@ -72,30 +113,33 @@ const AI_CHECK_INTERVAL = 60000; // Check every minute
 
 export async function loadConfig(): Promise<Config> {
   try {
-    const configRows = await prisma.$queryRaw<Array<{ key: string; value: any }>>`
+    const configRows = await prisma.$queryRaw<Array<{ key: string; value: unknown }>>`
       SELECT key, value FROM bot_config
     `;
     
     configRows.forEach(row => {
-      const value = typeof row.value === 'string' ? parseFloat(row.value) : row.value;
+      const rawValue = row.value;
+      const numValue = typeof rawValue === 'string' ? parseFloat(rawValue) : (typeof rawValue === 'number' ? rawValue : NaN);
+      const boolValue = rawValue === 'true' || rawValue === true;
+      
       switch (row.key) {
         case 'confidence_threshold_high':
-          config.confidenceHighThreshold = value;
+          if (!isNaN(numValue)) config.confidenceHighThreshold = numValue;
           break;
         case 'confidence_threshold_low':
-          config.confidenceLowThreshold = value;
+          if (!isNaN(numValue)) config.confidenceLowThreshold = numValue;
           break;
         case 'auto_promote_threshold':
-          config.autoPromoteThreshold = value;
+          if (!isNaN(numValue)) config.autoPromoteThreshold = numValue;
           break;
         case 'auto_promote_enabled':
-          config.autoPromoteEnabled = value === 'true' || value === true;
+          config.autoPromoteEnabled = boolValue;
           break;
         case 'learning_enabled':
-          config.learningEnabled = value === 'true' || value === true;
+          config.learningEnabled = boolValue;
           break;
         case 'rbac_enabled':
-          config.rbacEnabled = value === 'true' || value === true;
+          config.rbacEnabled = boolValue;
           break;
       }
     });
@@ -273,7 +317,7 @@ async function performKeywordMatching(lowerText: string): Promise<{
     if (dbKnowledge && dbKnowledge.length > 0) {
       knowledgeBase = [...dbKnowledge, ...builtInIntents];
     }
-  } catch (error) {
+  } catch {
     // Table doesn't exist or query failed, use built-in intents
     console.log('[Copilate] Using built-in intents (knowledge_base table not available)');
   }
@@ -501,7 +545,7 @@ async function generateClarifyingQuestion(analysis: NLPAnalysis, messageId: stri
   // Try AI-generated clarifying question for more natural conversation
   if (config.aiEnabled && aiServerAvailable && analysis.unknownTerms.length > 0) {
     try {
-      const spellCorrections = (analysis as any).spellCorrections || [];
+      const spellCorrections = analysis.spellCorrections || [];
       const aiQuestion = await generateClarifyingQuestionWithAI(
         analysis.unknownTerms.join(', '),
         analysis.unknownTerms,
@@ -523,7 +567,7 @@ async function generateClarifyingQuestion(analysis: NLPAnalysis, messageId: stri
           candidateReplyOffered: true // Signal that user can save their clarification
         }
       };
-    } catch (error) {
+    } catch {
       console.error('[Copilate] AI clarifying question failed, using fallback');
     }
   }
@@ -531,9 +575,7 @@ async function generateClarifyingQuestion(analysis: NLPAnalysis, messageId: stri
   // Fallback: Use programmatic question builder
   if (analysis.unknownTerms.length > 0) {
     const term = analysis.unknownTerms[0];
-    const spellCorrections = (analysis as any).spellCorrections || [];
-    const { buildClarifyingQuestion } = require('./aiIntegration');
-    
+    const spellCorrections = analysis.spellCorrections || [];
     const question = buildClarifyingQuestion(term, spellCorrections);
     
     return {
@@ -646,16 +688,19 @@ async function generateConfidentReply(analysis: NLPAnalysis, userId: string): Pr
     // Fallback for built-in intents
     let fallbackText = "I'm here to help!";
     if (analysis.intent === 'search_user' || analysis.intent === 'find_user') {
-      if (userData && userData.users && userData.users.length > 0) {
-        const userList = userData.users.map((u: any) => `• ${u.username} (${u.email})`).join('\n');
+      if (isUserSearchResult(userData) && userData.users.length > 0) {
+        const userList = userData.users.map((u: UserListItem) => `• ${u.username} (${u.email})`).join('\n');
         fallbackText = `I found ${userData.users.length} user(s) matching "${userData.searchTerm}":\n\n${userList}`;
-      } else if (userData && userData.error) {
+      } else if (isUserSearchResult(userData) && userData.error) {
         fallbackText = userData.error;
+      } else if (isUserSearchResult(userData)) {
+        fallbackText = `I couldn't find any users matching "${userData.searchTerm || 'your search'}"`;
       } else {
-        fallbackText = `I couldn't find any users matching "${userData?.searchTerm || 'your search'}"`;
+        fallbackText = "I couldn't find any users matching your search.";
       }
     } else if (analysis.intent === 'greeting') {
-      fallbackText = userData && userData[0] ? `Hello ${userData[0].username}! How can I help you today?` : "Hello! How can I assist you?";
+      const userArr = userData as Array<{ username: string }> | null;
+      fallbackText = userArr && userArr[0] ? `Hello ${userArr[0].username}! How can I help you today?` : "Hello! How can I assist you?";
     } else if (analysis.intent === 'help') {
       fallbackText = "I can help you with:\n• Find users (e.g., 'find admin')\n• Show pending tasks\n• Show dashboard\n• And more!";
     }
@@ -755,8 +800,8 @@ async function generateConfidentReply(analysis: NLPAnalysis, userId: string): Pr
   };
 }
 
-async function getKnowledgeBase(intent: string): Promise<any> {
-  const result = await prisma.$queryRaw<Array<any>>`
+async function getKnowledgeBase(intent: string): Promise<KnowledgeBaseEntry | null> {
+  const result = await prisma.$queryRaw<Array<KnowledgeBaseEntry>>`
     SELECT * FROM knowledge_base
     WHERE intent = ${intent} AND active = true
     LIMIT 1
@@ -779,8 +824,14 @@ async function checkPermissions(userId: string, requiredPermissions: string[]): 
  * Fetch user-specific data based on intent
  * Used for generating personalized AI replies
  */
-async function fetchUserData(intent: string, userId: string, entities?: any[]): Promise<any> {
+async function fetchUserData(intent: string, userId: string, entities?: Entity[]): Promise<unknown> {
   try {
+    // SECURITY FIX: Get user's tenant for cross-tenant isolation
+    const userResult = await prisma.$queryRaw<Array<{ client_id: string }>>`
+      SELECT client_id FROM users WHERE id = ${userId}::uuid LIMIT 1
+    `;
+    const tenantId = userResult[0]?.client_id;
+
     switch (intent) {
       case 'show_pending_tasks':
         return await prisma.$queryRaw`
@@ -813,7 +864,7 @@ async function fetchUserData(intent: string, userId: string, entities?: any[]): 
         `;
       
       case 'search_user':
-      case 'find_user':
+      case 'find_user': {
         // Extract name from entities
         const nameEntity = entities?.find(e => e.type === 'name' || e.type === 'person' || e.type === 'query');
         if (!nameEntity) {
@@ -821,15 +872,17 @@ async function fetchUserData(intent: string, userId: string, entities?: any[]): 
         }
         
         const searchTerm = `%${nameEntity.value}%`;
+        // SECURITY FIX: Add tenant isolation to user search
         const users = await prisma.$queryRaw`
           SELECT id, username, email, created_at
           FROM users
-          WHERE username ILIKE ${searchTerm}
-             OR email ILIKE ${searchTerm}
+          WHERE (username ILIKE ${searchTerm} OR email ILIKE ${searchTerm})
+            AND (${tenantId}::uuid IS NULL OR client_id = ${tenantId}::uuid)
           LIMIT 10
         `;
         
         return { users, searchTerm: nameEntity.value };
+      }
       
       default:
         return null;
@@ -918,8 +971,8 @@ export async function voteOnCandidate(
 
 async function autoPromoteCandidate(candidateId: string): Promise<void> {
   // Get candidate details
-  const candidate = await prisma.$queryRaw<Array<any>>`
-    SELECT c.*, u.term
+  const candidate = await prisma.$queryRaw<Array<{ suggested_text: string; term: string; votes: number }>>`
+    SELECT c.suggested_text, u.term, c.votes
     FROM candidate_responses c
     JOIN unknown_terms u ON c.term_id = u.id
     WHERE c.id = ${candidateId}::uuid
@@ -962,7 +1015,7 @@ async function autoPromoteCandidate(candidateId: string): Promise<void> {
 async function logAudit(
   userId: string,
   action: string,
-  meta: Record<string, any>
+  meta: Record<string, unknown>
 ): Promise<void> {
   await prisma.$queryRaw`
     INSERT INTO audit_logs (user_id, action, meta)

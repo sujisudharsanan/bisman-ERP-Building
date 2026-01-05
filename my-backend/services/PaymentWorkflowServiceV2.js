@@ -319,22 +319,19 @@ function validateAmountRules(toStatus, requestedAmount, approvedAmount) {
 
 /**
  * Get user info with authority level
+ * CANONICAL: Uses users_enhanced table and reports_to column
  */
 async function getUserInfo(userId) {
   const result = await prisma.$queryRaw`
     SELECT 
       u.id,
-      u.full_name,
+      CONCAT(u.first_name, ' ', u.last_name) as full_name,
       u.email,
-      COALESCE(u.business_level, 10) as business_level,
-      r.name as role_name,
-      r.level as role_level,
-      u.manager_id,
+      COALESCE(u.business_level, 1) as business_level,
+      u.role as role_name,
       u.reports_to
-    FROM users u
-    LEFT JOIN user_roles ur ON u.id = ur.user_id AND ur.is_primary = true
-    LEFT JOIN roles r ON ur.role_id = r.id
-    WHERE u.id = ${userId}::uuid AND u.deleted_at IS NULL
+    FROM users_enhanced u
+    WHERE u.id = ${userId}::uuid AND u.is_active = true
   `;
   return result.length > 0 ? result[0] : null;
 }

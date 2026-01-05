@@ -1,6 +1,7 @@
 /**
  * Task Service
  * Handles task creation, retrieval, and management
+ * SECURITY FIX TN-03: All queries now include tenant_id filter
  */
 
 import pool from '../../config/database';
@@ -8,32 +9,36 @@ import pool from '../../config/database';
 export interface Task {
   id: number;
   user_id: number;
+  tenant_id?: string; // Added for multi-tenant isolation
   description: string;
   due_date?: Date;
   status: 'pending' | 'in_progress' | 'completed' | 'cancelled';
   priority: 'low' | 'medium' | 'high' | 'urgent';
   source: 'chat' | 'manual' | 'system';
-  metadata?: any;
+  metadata?: Record<string, unknown>;
   created_at: Date;
   updated_at: Date;
 }
 
 export interface CreateTaskInput {
   userId: number;
+  tenantId?: string; // Required for multi-tenant isolation
   description: string;
   dueDate?: Date;
   priority?: 'low' | 'medium' | 'high' | 'urgent';
   source?: 'chat' | 'manual' | 'system';
-  metadata?: any;
+  metadata?: Record<string, unknown>;
 }
 
 export class TaskService {
   /**
    * Create a new task
+   * SECURITY: Requires tenantId for proper tenant isolation
    */
   async createTask(input: CreateTaskInput): Promise<Task> {
     const {
       userId,
+      tenantId,
       description,
       dueDate,
       priority = 'medium',
@@ -44,7 +49,8 @@ export class TaskService {
     try {
       const query = `
         INSERT INTO tasks (
-          user_id, 
+          user_id,
+          tenant_id,
           description, 
           due_date, 
           status, 
@@ -54,12 +60,13 @@ export class TaskService {
           created_at,
           updated_at
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW())
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, NOW(), NOW())
         RETURNING *
       `;
 
       const values = [
         userId,
+        tenantId || null,
         description,
         dueDate || null,
         'pending',
@@ -78,12 +85,15 @@ export class TaskService {
 
   /**
    * Get pending tasks for a user
+   * SECURITY FIX TN-03: Added tenantId filter
    */
-  async getPendingTasks(userId: number, limit: number = 10): Promise<Task[]> {
+  async getPendingTasks(userId: number, tenantId?: string, limit: number = 10): Promise<Task[]> {
     try {
+      // SECURITY: Filter by tenant_id to prevent cross-tenant data access
       const query = `
         SELECT * FROM tasks
         WHERE user_id = $1 
+        AND ($2::uuid IS NULL OR tenant_id = $2)
         AND status IN ('pending', 'in_progress')
         ORDER BY 
           CASE priority
@@ -94,10 +104,10 @@ export class TaskService {
           END,
           due_date ASC NULLS LAST,
           created_at DESC
-        LIMIT $2
+        LIMIT $3
       `;
 
-      const result = await pool.query(query, [userId, limit]);
+      const result = await pool.query(query, [userId, tenantId || null, limit]);
       return result.rows.map(this.mapRowToTask);
     } catch (error) {
       console.error('Error fetching pending tasks:', error);
@@ -107,9 +117,11 @@ export class TaskService {
 
   /**
    * Get all tasks for a user
+   * SECURITY FIX TN-03: Added tenantId filter
    */
   async getUserTasks(
     userId: number,
+    tenantId?: string,
     filters?: {
       status?: Task['status'];
       priority?: Task['priority'];
@@ -119,9 +131,10 @@ export class TaskService {
     }
   ): Promise<Task[]> {
     try {
-      let query = 'SELECT * FROM tasks WHERE user_id = $1';
-      const values: any[] = [userId];
-      let paramIndex = 2;
+      // SECURITY FIX TN-03: Include tenant_id filter from the start
+      let query = 'SELECT * FROM tasks WHERE user_id = $1 AND ($2::uuid IS NULL OR tenant_id = $2)';
+      const values: (string | number | Date | null)[] = [userId, tenantId || null];
+      let paramIndex = 3;
 
       if (filters?.status) {
         query += ` AND status = $${paramIndex}`;
@@ -164,11 +177,13 @@ export class TaskService {
 
   /**
    * Get task by ID
+   * SECURITY FIX TN-03: Added tenantId filter
    */
-  async getTaskById(taskId: number, userId: number): Promise<Task | null> {
+  async getTaskById(taskId: number, userId: number, tenantId?: string): Promise<Task | null> {
     try {
-      const query = 'SELECT * FROM tasks WHERE id = $1 AND user_id = $2';
-      const result = await pool.query(query, [taskId, userId]);
+      // SECURITY: Filter by tenant_id
+      const query = 'SELECT * FROM tasks WHERE id = $1 AND user_id = $2 AND ($3::uuid IS NULL OR tenant_id = $3)';
+      const result = await pool.query(query, [taskId, userId, tenantId || null]);
 
       if (result.rows.length === 0) {
         return null;
@@ -183,21 +198,24 @@ export class TaskService {
 
   /**
    * Update task status
+   * SECURITY FIX TN-03: Added tenantId filter
    */
   async updateTaskStatus(
     taskId: number,
     userId: number,
-    status: Task['status']
+    status: Task['status'],
+    tenantId?: string
   ): Promise<Task | null> {
     try {
+      // SECURITY: Filter by tenant_id
       const query = `
         UPDATE tasks
         SET status = $1, updated_at = NOW()
-        WHERE id = $2 AND user_id = $3
+        WHERE id = $2 AND user_id = $3 AND ($4::uuid IS NULL OR tenant_id = $4)
         RETURNING *
       `;
 
-      const result = await pool.query(query, [status, taskId, userId]);
+      const result = await pool.query(query, [status, taskId, userId, tenantId || null]);
 
       if (result.rows.length === 0) {
         return null;
@@ -212,6 +230,7 @@ export class TaskService {
 
   /**
    * Update task
+   * SECURITY FIX TN-03: Added tenantId filter
    */
   async updateTask(
     taskId: number,
@@ -221,12 +240,13 @@ export class TaskService {
       due_date: Date;
       status: Task['status'];
       priority: Task['priority'];
-      metadata: any;
-    }>
+      metadata: Record<string, unknown>;
+    }>,
+    tenantId?: string
   ): Promise<Task | null> {
     try {
       const fields: string[] = [];
-      const values: any[] = [];
+      const values: (string | number | Date | null)[] = [];
       let paramIndex = 1;
 
       if (updates.description !== undefined) {
@@ -264,12 +284,13 @@ export class TaskService {
       }
 
       fields.push(`updated_at = NOW()`);
-      values.push(taskId, userId);
+      values.push(taskId, userId, tenantId || null);
 
+      // SECURITY FIX TN-03: Include tenant_id in WHERE clause
       const query = `
         UPDATE tasks
         SET ${fields.join(', ')}
-        WHERE id = $${paramIndex} AND user_id = $${paramIndex + 1}
+        WHERE id = $${paramIndex} AND user_id = $${paramIndex + 1} AND ($${paramIndex + 2}::uuid IS NULL OR tenant_id = $${paramIndex + 2})
         RETURNING *
       `;
 
@@ -288,11 +309,13 @@ export class TaskService {
 
   /**
    * Delete task
+   * SECURITY FIX TN-03: Added tenantId filter
    */
-  async deleteTask(taskId: number, userId: number): Promise<boolean> {
+  async deleteTask(taskId: number, userId: number, tenantId?: string): Promise<boolean> {
     try {
-      const query = 'DELETE FROM tasks WHERE id = $1 AND user_id = $2';
-      const result = await pool.query(query, [taskId, userId]);
+      // SECURITY: Filter by tenant_id
+      const query = 'DELETE FROM tasks WHERE id = $1 AND user_id = $2 AND ($3::uuid IS NULL OR tenant_id = $3)';
+      const result = await pool.query(query, [taskId, userId, tenantId || null]);
       return result.rowCount ? result.rowCount > 0 : false;
     } catch (error) {
       console.error('Error deleting task:', error);
@@ -302,18 +325,21 @@ export class TaskService {
 
   /**
    * Get overdue tasks
+   * SECURITY FIX TN-03: Added tenantId filter
    */
-  async getOverdueTasks(userId: number): Promise<Task[]> {
+  async getOverdueTasks(userId: number, tenantId?: string): Promise<Task[]> {
     try {
+      // SECURITY: Filter by tenant_id
       const query = `
         SELECT * FROM tasks
         WHERE user_id = $1 
+        AND ($2::uuid IS NULL OR tenant_id = $2)
         AND status IN ('pending', 'in_progress')
         AND due_date < NOW()
         ORDER BY due_date ASC
       `;
 
-      const result = await pool.query(query, [userId]);
+      const result = await pool.query(query, [userId, tenantId || null]);
       return result.rows.map(this.mapRowToTask);
     } catch (error) {
       console.error('Error fetching overdue tasks:', error);
@@ -323,18 +349,21 @@ export class TaskService {
 
   /**
    * Get tasks due today
+   * SECURITY FIX TN-03: Added tenantId filter
    */
-  async getTasksDueToday(userId: number): Promise<Task[]> {
+  async getTasksDueToday(userId: number, tenantId?: string): Promise<Task[]> {
     try {
+      // SECURITY: Filter by tenant_id
       const query = `
         SELECT * FROM tasks
         WHERE user_id = $1 
+        AND ($2::uuid IS NULL OR tenant_id = $2)
         AND status IN ('pending', 'in_progress')
         AND DATE(due_date) = DATE(NOW())
         ORDER BY due_date ASC
       `;
 
-      const result = await pool.query(query, [userId]);
+      const result = await pool.query(query, [userId, tenantId || null]);
       return result.rows.map(this.mapRowToTask);
     } catch (error) {
       console.error('Error fetching tasks due today:', error);
@@ -344,8 +373,9 @@ export class TaskService {
 
   /**
    * Get task statistics
+   * SECURITY FIX TN-03: Added tenantId filter
    */
-  async getTaskStats(userId: number): Promise<{
+  async getTaskStats(userId: number, tenantId?: string): Promise<{
     total: number;
     pending: number;
     inProgress: number;
@@ -354,6 +384,7 @@ export class TaskService {
     dueToday: number;
   }> {
     try {
+      // SECURITY: Filter by tenant_id
       const statsQuery = `
         SELECT 
           COUNT(*) as total,
@@ -363,10 +394,10 @@ export class TaskService {
           COUNT(*) FILTER (WHERE status IN ('pending', 'in_progress') AND due_date < NOW()) as overdue,
           COUNT(*) FILTER (WHERE status IN ('pending', 'in_progress') AND DATE(due_date) = DATE(NOW())) as due_today
         FROM tasks
-        WHERE user_id = $1
+        WHERE user_id = $1 AND ($2::uuid IS NULL OR tenant_id = $2)
       `;
 
-      const result = await pool.query(statsQuery, [userId]);
+      const result = await pool.query(statsQuery, [userId, tenantId || null]);
       const row = result.rows[0];
 
       return {
@@ -386,29 +417,32 @@ export class TaskService {
   /**
    * Map database row to Task object
    */
-  private mapRowToTask(row: any): Task {
+  private mapRowToTask(row: Record<string, unknown>): Task {
     return {
-      id: row.id,
-      user_id: row.user_id,
-      description: row.description,
-      due_date: row.due_date,
-      status: row.status,
-      priority: row.priority,
-      source: row.source,
-      metadata: row.metadata ? JSON.parse(row.metadata) : null,
-      created_at: row.created_at,
-      updated_at: row.updated_at,
+      id: row.id as number,
+      user_id: row.user_id as number,
+      tenant_id: row.tenant_id as string | undefined,
+      description: row.description as string,
+      due_date: row.due_date as Date | undefined,
+      status: row.status as Task['status'],
+      priority: row.priority as Task['priority'],
+      source: row.source as Task['source'],
+      metadata: row.metadata ? JSON.parse(row.metadata as string) : null,
+      created_at: row.created_at as Date,
+      updated_at: row.updated_at as Date,
     };
   }
 
   /**
    * Ensure tasks table exists
+   * SECURITY FIX TN-03: Added tenant_id column for multi-tenant isolation
    */
   async ensureTableExists(): Promise<void> {
     const createTableQuery = `
       CREATE TABLE IF NOT EXISTS tasks (
         id SERIAL PRIMARY KEY,
         user_id INTEGER NOT NULL,
+        tenant_id UUID,
         description TEXT NOT NULL,
         due_date TIMESTAMP,
         status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'in_progress', 'completed', 'cancelled')),
@@ -420,6 +454,7 @@ export class TaskService {
       );
 
       CREATE INDEX IF NOT EXISTS idx_tasks_user_id ON tasks(user_id);
+      CREATE INDEX IF NOT EXISTS idx_tasks_tenant_id ON tasks(tenant_id);
       CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
       CREATE INDEX IF NOT EXISTS idx_tasks_due_date ON tasks(due_date);
       CREATE INDEX IF NOT EXISTS idx_tasks_priority ON tasks(priority);
@@ -427,7 +462,20 @@ export class TaskService {
 
     try {
       await pool.query(createTableQuery);
-      console.log('Tasks table ready');
+      
+      // Add tenant_id column if table already exists without it
+      await pool.query(`
+        DO $$ 
+        BEGIN
+          IF NOT EXISTS (SELECT 1 FROM information_schema.columns 
+                        WHERE table_name = 'tasks' AND column_name = 'tenant_id') THEN
+            ALTER TABLE tasks ADD COLUMN tenant_id UUID;
+            CREATE INDEX IF NOT EXISTS idx_tasks_tenant_id ON tasks(tenant_id);
+          END IF;
+        END $$;
+      `);
+      
+      console.log('Tasks table ready with tenant isolation');
     } catch (error) {
       console.error('Error creating tasks table:', error);
     }

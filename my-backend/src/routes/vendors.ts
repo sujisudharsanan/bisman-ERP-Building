@@ -428,10 +428,15 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
 router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
+    const authReq = req as AuthenticatedRequest;
+    const tenantId = authReq.user?.tenant_id;
 
+    // SECURITY FIX: Add tenant isolation filter
     const vendors = await prisma.$queryRaw`
       SELECT * FROM non_privileged_users 
-      WHERE id = ${id}::uuid AND deleted_at IS NULL
+      WHERE id = ${id}::uuid 
+        AND deleted_at IS NULL
+        AND (${tenantId}::text IS NULL OR tenant_id = ${tenantId}::uuid)
     `;
 
     const vendor = (vendors as VendorRecord[])[0];
@@ -653,7 +658,9 @@ router.post('/', authMiddleware, vendorDocFields, async (req: Request, res: Resp
  */
 router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
-    const userId = (req as AuthenticatedRequest).user?.id;
+    const authReq = req as AuthenticatedRequest;
+    const userId = authReq.user?.id;
+    const tenantId = authReq.user?.tenant_id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -661,9 +668,12 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
     const { id } = req.params;
     const updates = req.body;
 
-    // Check if vendor exists
+    // SECURITY FIX: Check if vendor exists AND belongs to tenant
     const existingVendors = await prisma.$queryRaw`
-      SELECT * FROM non_privileged_users WHERE id = ${id}::uuid AND deleted_at IS NULL
+      SELECT * FROM non_privileged_users 
+      WHERE id = ${id}::uuid 
+        AND deleted_at IS NULL
+        AND (${tenantId}::text IS NULL OR tenant_id = ${tenantId}::uuid)
     `;
 
     if ((existingVendors as VendorRecord[]).length === 0) {

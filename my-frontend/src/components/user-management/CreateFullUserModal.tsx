@@ -87,6 +87,10 @@ export function CreateFullUserModal({
     branch_id: '',
     role_ids: [],
     status: 'active',
+    
+    // Business hierarchy (CANONICAL - from PRINCIPAL_SYSTEMS_AUDIT)
+    business_level: 1,  // Default to entry level
+    reports_to: undefined, // Manager UUID
 
     // KYC data
     personal_email: '',
@@ -525,6 +529,52 @@ export function CreateFullUserModal({
               {errors.role_ids && (
                 <p className="text-red-600 text-sm mt-1">{errors.role_ids}</p>
               )}
+            </div>
+
+            {/* Business Hierarchy Section - CANONICAL from PRINCIPAL_SYSTEMS_AUDIT */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-200">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Business Level (1-10)
+                  <span className="ml-1 text-xs text-gray-500" title="Determines approval hierarchy position">
+                    ⓘ
+                  </span>
+                </label>
+                <select
+                  value={formData.business_level || 1}
+                  onChange={(e) => handleInputChange('business_level', parseInt(e.target.value))}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(level => (
+                    <option key={level} value={level}>
+                      Level {level} {level === 1 ? '(Entry)' : level === 10 ? '(Executive)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Higher levels can approve requests from lower levels
+                </p>
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Reports To (Manager)
+                </label>
+                <select
+                  value={formData.reports_to || ''}
+                  onChange={(e) => handleInputChange('reports_to', e.target.value || undefined)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="">No direct manager</option>
+                  {/* Manager options will be populated dynamically */}
+                </select>
+                <p className="text-xs text-gray-500 mt-1">
+                  Defines the approval chain for this user&apos;s requests
+                </p>
+                {errors.reports_to && (
+                  <p className="text-red-600 text-sm mt-1">{errors.reports_to}</p>
+                )}
+              </div>
             </div>
 
             <div>

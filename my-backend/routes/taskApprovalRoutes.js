@@ -888,8 +888,9 @@ router.post('/:instanceId/request-rework', async (req, res) => {
     }
 
     // Check if user is a reviewer/superior of the task creator
+    // CANONICAL: Use users_enhanced table and reports_to column
     const creatorQuery = `
-      SELECT u.reports_to FROM users u WHERE u.id = '${instance.initiated_by}'::uuid
+      SELECT u.reports_to FROM users_enhanced u WHERE u.id = '${instance.initiated_by}'::uuid
     `;
     const creatorInfo = await prisma.$queryRawUnsafe(creatorQuery);
     

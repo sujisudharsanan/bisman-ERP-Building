@@ -62,8 +62,8 @@ export function useSubscriptionLimits(): UseSubscriptionLimitsResult {
         console.warn('[useSubscriptionLimits] Failed to fetch limits:', response.status);
         setLimits({
           has_subscription: false,
-          can_create_user: true,
-          can_activate_user: true,
+          can_create_user: false,
+          can_activate_user: false,
         });
         return;
       }
@@ -73,20 +73,21 @@ export function useSubscriptionLimits(): UseSubscriptionLimitsResult {
       if (data.success) {
         setLimits(data.data);
       } else {
+        // SECURITY FIX: Fail-closed on API error response
         setLimits({
           has_subscription: false,
-          can_create_user: true,
-          can_activate_user: true,
+          can_create_user: false,
+          can_activate_user: false,
         });
       }
     } catch (err) {
       console.error('[useSubscriptionLimits] Error:', err);
       setError(err instanceof Error ? err.message : 'Failed to fetch subscription limits');
-      // Default to allowing action on error
+      // SECURITY FIX: Fail-closed - deny action on error instead of allowing
       setLimits({
         has_subscription: false,
-        can_create_user: true,
-        can_activate_user: true,
+        can_create_user: false,
+        can_activate_user: false,
       });
     } finally {
       setLoading(false);

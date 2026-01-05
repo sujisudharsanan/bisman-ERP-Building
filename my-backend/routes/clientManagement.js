@@ -227,6 +227,7 @@ router.patch('/clients/:id', authMiddleware, async (req, res) => {
     const user = req.user;
     const clientId = String(req.params.id);
     console.log('[PATCH client] clientId:', clientId, 'user:', { id: user?.id, role: user?.role, super_admin_id: user?.super_admin_id });
+    console.log('[PATCH client] body keys:', Object.keys(req.body || {}));
     const existing = await prisma.client.findUnique({ where: { id: clientId } });
     if (!existing) return res.status(404).json({ error: 'Client not found' });
     console.log('[PATCH client] existing.super_admin_id:', existing.super_admin_id);
@@ -277,9 +278,43 @@ router.patch('/clients/:id', authMiddleware, async (req, res) => {
       risk: b.risk ?? e0.risk,
       status: b.status ?? e0.status,
     };
-    const updated = await prisma.client.update({ where: { id: clientId }, data: { settings: { enterprise } } });
+    
+    // Build the settings object with logo and display_name support
+    const existingSettings = existing.settings || {};
+    const newSettings = {
+      ...existingSettings,
+      enterprise,
+    };
+    
+    // Handle logo upload (base64 data URL from frontend)
+    if (b.logo && b.logo.data) {
+      newSettings.logo = {
+        data: b.logo.data,
+        filename: b.logo.filename || 'logo',
+        size: b.logo.size || 0,
+        uploadedAt: new Date().toISOString(),
+      };
+      console.log('[PATCH client] Logo uploaded for client:', clientId);
+    }
+    
+    // Handle display name for branding
+    if (b.display_name !== undefined) {
+      newSettings.display_name = b.display_name;
+    }
+    
+    const updated = await prisma.client.update({ 
+      where: { id: clientId }, 
+      data: { 
+        settings: newSettings,
+        // Also update trade_name if display_name is provided (for backward compatibility)
+        ...(b.display_name ? { trade_name: b.display_name } : {}),
+      } 
+    });
     res.json({ success: true, data: updated });
-  } catch (e) { res.status(500).json({ error: 'Failed to update client', details: e.message }); }
+  } catch (e) { 
+    console.error('[PATCH client] Error:', e.message, e.stack);
+    res.status(500).json({ error: 'Failed to update client', details: e.message }); 
+  }
 });
 
 router.get('/clients/:id/permissions', authMiddleware, async (req, res) => {

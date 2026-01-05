@@ -2492,7 +2492,12 @@ model User {
   theme_preference    String?            @default("bisman-default") @db.VarChar(50)
   unique_id           String?            @db.VarChar(50)
   business_level      Int                @default(1) // Business hierarchy level (L1-L10) for workflow approvals. Does NOT affect security.
+  reports_to          String?            @db.Uuid    // CANONICAL: Direct manager UUID. Self-reference blocked by DB constraint.
   support_sessions    support_sessions[]
+  
+  // Self-referential relation for reporting hierarchy
+  manager             User?              @relation("ReportsTo", fields: [reports_to], references: [id], onDelete: SetNull)
+  direct_reports      User[]             @relation("ReportsTo")
   
   // Coupon system relations
   coupons_created     SubscriptionCoupon[] @relation("CouponCreator")
@@ -2507,6 +2512,7 @@ model User {
   @@index([username], map: "idx_erp_users_username")
   @@index([unique_id], map: "idx_users_enhanced_unique_id")
   @@index([business_level], map: "idx_users_enhanced_business_level")
+  @@index([reports_to], map: "idx_users_enhanced_reports_to")
   @@map("users_enhanced")
 }
 
@@ -2827,6 +2833,7 @@ model SubscriptionPlan {
   max_storage_gb    Int      @default(5)
   max_branches      Int      @default(1)
   max_api_calls_day Int      @default(0)
+  trial_days        Int      @default(14)
   
   // Feature flags
   feature_flags     Json     @default("{}")

@@ -1,4 +1,28 @@
-export const PERMISSIONS = {
+/**
+ * SECURITY FIX PM-03: Consolidated permissions module
+ * 
+ * This file provides backward compatibility for legacy imports.
+ * The authoritative RBAC configuration is in @/common/rbac/rolePermissions.ts
+ * 
+ * IMPORTANT: For new code, use:
+ * - usePermissions() hook from @/common/hooks/usePermissions for runtime permissions
+ * - hasPermission() from @/common/rbac/rolePermissions for role-based checks
+ * 
+ * This file will be deprecated in a future release.
+ */
+
+// Re-export from the authoritative source
+export {
+  PERMISSIONS,
+  ROLE_PERMISSIONS,
+  hasPermission,
+  type RoleType,
+  type Permission,
+  type RolePermissions,
+} from '@/common/rbac/rolePermissions';
+
+// Legacy exports for backward compatibility
+export const PERMISSIONS_LEGACY = {
   ORGANIZATION_READ: 'organization.read',
   ORGANIZATION_WRITE: 'organization.write',
   USER_MANAGE: 'user.manage',
@@ -28,43 +52,6 @@ export const PERMISSIONS = {
 
 export type RoleKey = 'SYSTEM_ADMIN' | 'ENTERPRISE_ADMIN' | 'ORG_ADMIN' | 'ORG_USER' | 'ADMIN' | 'SUPER_ADMIN';
 
-const ROLE_PERMISSIONS: Record<RoleKey, string[]> = {
-  SYSTEM_ADMIN: Object.values(PERMISSIONS),
-  ADMIN: Object.values(PERMISSIONS),
-  SUPER_ADMIN: Object.values(PERMISSIONS), // legacy compatibility
-  ENTERPRISE_ADMIN: [
-    PERMISSIONS.ORGANIZATION_READ,
-    PERMISSIONS.ORGANIZATION_WRITE,
-    PERMISSIONS.USER_MANAGE,
-    PERMISSIONS.MODULE_TOGGLE,
-    PERMISSIONS.BILLING_VIEW,
-    PERMISSIONS.AUDIT_VIEW,
-    PERMISSIONS.SETTINGS_MANAGE,
-    PERMISSIONS.APIKEY_MANAGE,
-    // Enterprise
-    PERMISSIONS.ENTERPRISE_DASHBOARD_VIEW,
-    PERMISSIONS.ENTERPRISE_SUPERADMINS_MANAGE,
-    PERMISSIONS.ENTERPRISE_ORGANIZATIONS_READ,
-    PERMISSIONS.ENTERPRISE_MODULES_MANAGE,
-    PERMISSIONS.ENTERPRISE_BILLING_VIEW,
-    PERMISSIONS.ENTERPRISE_AUDIT_VIEW,
-    PERMISSIONS.ENTERPRISE_INTEGRATIONS_MANAGE,
-    PERMISSIONS.ENTERPRISE_SUPPORT_VIEW,
-    PERMISSIONS.ENTERPRISE_AI_MANAGE,
-    PERMISSIONS.ENTERPRISE_REPORTS_VIEW,
-    PERMISSIONS.ENTERPRISE_SETTINGS_MANAGE,
-    PERMISSIONS.ENTERPRISE_NOTIFICATIONS_MANAGE,
-  ],
-  ORG_ADMIN: [
-    PERMISSIONS.ORGANIZATION_READ,
-    PERMISSIONS.USER_MANAGE,
-    PERMISSIONS.MODULE_TOGGLE,
-    PERMISSIONS.BILLING_VIEW,
-    PERMISSIONS.AUDIT_VIEW,
-  ],
-  ORG_USER: [PERMISSIONS.ORGANIZATION_READ],
-};
-
 export interface SessionUser {
   id: string;
   email: string;
@@ -72,19 +59,60 @@ export interface SessionUser {
   memberships?: Array<{ organizationId: string; role: RoleKey }>;
 }
 
-export function hasPermission(user: SessionUser | null | undefined, permission: string, orgId?: string) {
+/**
+ * @deprecated Use hasPermission from @/common/rbac/rolePermissions instead
+ * This function is kept for backward compatibility with legacy code.
+ */
+export function can(user: SessionUser | null | undefined, permission: string, orgId?: string) {
   if (!user) return false;
-  if (user.roles?.includes('SYSTEM_ADMIN') || user.roles?.includes('ADMIN') || user.roles?.includes('SUPER_ADMIN')) return true;
+  // SECURITY FIX: Removed blanket ADMIN bypass - now admins use ROLE_PERMISSIONS like other roles
+  // SYSTEM_ADMIN and SUPER_ADMIN still have full access as they are platform-level roles
+  if (user.roles?.includes('SYSTEM_ADMIN') || user.roles?.includes('SUPER_ADMIN')) return true;
+  
+  // Check if permission is granted by any of user's roles
   const granted = new Set<string>();
-  (user.roles || []).forEach((r) => ROLE_PERMISSIONS[r].forEach((p) => granted.add(p)));
+  const rolePermissionMap: Record<RoleKey, string[]> = {
+    SYSTEM_ADMIN: Object.values(PERMISSIONS_LEGACY),
+    ADMIN: Object.values(PERMISSIONS_LEGACY),
+    SUPER_ADMIN: Object.values(PERMISSIONS_LEGACY),
+    ENTERPRISE_ADMIN: [
+      PERMISSIONS_LEGACY.ORGANIZATION_READ,
+      PERMISSIONS_LEGACY.ORGANIZATION_WRITE,
+      PERMISSIONS_LEGACY.USER_MANAGE,
+      PERMISSIONS_LEGACY.MODULE_TOGGLE,
+      PERMISSIONS_LEGACY.BILLING_VIEW,
+      PERMISSIONS_LEGACY.AUDIT_VIEW,
+      PERMISSIONS_LEGACY.SETTINGS_MANAGE,
+      PERMISSIONS_LEGACY.APIKEY_MANAGE,
+      PERMISSIONS_LEGACY.ENTERPRISE_DASHBOARD_VIEW,
+      PERMISSIONS_LEGACY.ENTERPRISE_SUPERADMINS_MANAGE,
+      PERMISSIONS_LEGACY.ENTERPRISE_ORGANIZATIONS_READ,
+      PERMISSIONS_LEGACY.ENTERPRISE_MODULES_MANAGE,
+      PERMISSIONS_LEGACY.ENTERPRISE_BILLING_VIEW,
+      PERMISSIONS_LEGACY.ENTERPRISE_AUDIT_VIEW,
+      PERMISSIONS_LEGACY.ENTERPRISE_INTEGRATIONS_MANAGE,
+      PERMISSIONS_LEGACY.ENTERPRISE_SUPPORT_VIEW,
+      PERMISSIONS_LEGACY.ENTERPRISE_AI_MANAGE,
+      PERMISSIONS_LEGACY.ENTERPRISE_REPORTS_VIEW,
+      PERMISSIONS_LEGACY.ENTERPRISE_SETTINGS_MANAGE,
+      PERMISSIONS_LEGACY.ENTERPRISE_NOTIFICATIONS_MANAGE,
+    ],
+    ORG_ADMIN: [
+      PERMISSIONS_LEGACY.ORGANIZATION_READ,
+      PERMISSIONS_LEGACY.USER_MANAGE,
+      PERMISSIONS_LEGACY.MODULE_TOGGLE,
+      PERMISSIONS_LEGACY.BILLING_VIEW,
+      PERMISSIONS_LEGACY.AUDIT_VIEW,
+    ],
+    ORG_USER: [PERMISSIONS_LEGACY.ORGANIZATION_READ],
+  };
+  
+  (user.roles || []).forEach((r) => rolePermissionMap[r]?.forEach((p) => granted.add(p)));
   if (!granted.has(permission)) return false;
+  
   // If org-scoped, require membership
   if (orgId) {
     return !!user.memberships?.some((m) => m.organizationId === orgId);
   }
   return true;
-}
-
-export function can(user: SessionUser | null | undefined, permission: string, orgId?: string) {
-  return hasPermission(user, permission, orgId);
 }

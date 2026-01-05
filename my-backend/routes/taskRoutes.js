@@ -1,5 +1,9 @@
 // Task Workflow API Routes
 // Handles CRUD operations, transitions, history, and realtime updates
+// 
+// ⚠️ SECURITY NOTICE (P0-3): V1 task assignment has been DISABLED
+// All task creation with assignee_id is BLOCKED in this file.
+// Use V2 API (/api/v2/tasks) which has centralized hierarchy enforcement.
 
 const express = require('express');
 const router = express.Router();
@@ -14,6 +18,13 @@ const {
 
 // Feature enforcement middleware
 const { enforceUsage } = require('../middleware/microUnlockEnforcer');
+
+// SECURITY FIX P0-3: V1 task routes are DEPRECATED
+// Hierarchy check imported but V1 assignment routes are now BLOCKED
+const taskRequestService = require('../services/taskRequestService');
+
+// SECURITY FIX P0-3: Global block flag for V1 task assignment
+const V1_TASK_ASSIGNMENT_BLOCKED = true;
 
 // Helper to get socket.io instance (will be set by app.js)
 let io = null;
@@ -251,14 +262,52 @@ router.get('/:id', authenticateUser, async (req, res) => {
 /**
  * POST /api/tasks
  * Create new task
+ * 
+ * ⚠️ SECURITY FIX P0-3: V1 task assignment is BLOCKED
+ * Tasks with assignee_id will be rejected. Use V2 API.
  */
 router.post('/', authenticateUser, enforceUsage('task_creation'), async (req, res) => {
   try {
-    const { title, description, priority, due_date, tags } = req.body;
+    const { title, description, priority, due_date, tags, assignee_id } = req.body;
     const { id: userId, userType, name } = req.user;
 
     if (!title) {
       return res.status(400).json({ error: 'Title is required' });
+    }
+
+    // SECURITY FIX P0-3: V1 task assignment is COMPLETELY BLOCKED
+    // This ensures hierarchy enforcement cannot be bypassed via legacy API
+    if (V1_TASK_ASSIGNMENT_BLOCKED && assignee_id) {
+      console.warn(`[SECURITY] P0-3: V1 task assignment BLOCKED - user ${userId} tried to assign task to ${assignee_id}`);
+      return res.status(403).json({
+        ok: false,
+        error: 'V1 task assignment is disabled',
+        code: 'V1_ASSIGNMENT_BLOCKED',
+        message: 'Task assignment via V1 API is disabled for security. Use the V2 API (/api/v2/tasks) which has proper hierarchy enforcement.',
+        suggestion: 'Create task without assignee_id, or migrate to V2 API',
+      });
+    }
+
+    // LEGACY: Hierarchy check kept for reference but will never execute due to block above
+    if (assignee_id) {
+      try {
+        const hierarchyCheck = await taskRequestService.checkAssignmentHierarchy(userId, assignee_id);
+        if (hierarchyCheck.requiresRequest) {
+          return res.status(403).json({
+            error: 'Request-based workflow required',
+            code: 'HIERARCHY_REQUIRES_REQUEST',
+            message: hierarchyCheck.reason,
+            details: {
+              creatorLevel: hierarchyCheck.creatorLevel,
+              assigneeLevel: hierarchyCheck.assigneeLevel
+            }
+          });
+        }
+      } catch (hierarchyError) {
+        console.warn('[TaskRoutes V1] Hierarchy check failed:', hierarchyError.message);
+        // Fail-closed: reject if hierarchy check fails
+        return res.status(500).json({ error: 'Unable to verify assignment hierarchy' });
+      }
     }
 
     const result = await prisma.$queryRaw`

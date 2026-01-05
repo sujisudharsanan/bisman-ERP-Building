@@ -4335,7 +4335,8 @@ app.get('/api/users/search', authenticate, async (req, res) => {
     const results = users.map(user => {
       const normalizedRole = (user.role || '').toUpperCase().replace(/\s+/g, '_');
       const roleLevel = roleLevelMap[normalizedRole] || 1;
-      // Extract reporting_authority_id and branch_id from profile_data
+      // LEGACY FALLBACK: Extract reporting_authority_id from profile_data for old clients
+      // CANONICAL: Use reports_to column directly — see USER_MODEL_LOCK.md
       const profileData = user.profile_data || {};
       const reportingAuthorityId = profileData.reporting_authority_id || profileData.reportingAuthorityId || null;
       // Extract branch_id from userBranchMap using legacy_id, fallback to profile_data
@@ -4357,7 +4358,11 @@ app.get('/api/users/search', authenticate, async (req, res) => {
         role_level: roleLevel,
         profilePic: user.profile_pic_url || null,
         is_active: user.is_active ?? true,
-        reporting_authority_id: reportingAuthorityId,
+        // CANONICAL hierarchy fields — see USER_MODEL_LOCK.md
+        reports_to: user.reports_to || null,
+        business_level: user.business_level || 1,
+        // DEPRECATED: reporting_authority_id — kept for legacy client compatibility
+        reporting_authority_id: user.reports_to || reportingAuthorityId,
         branch_id: branchId,
       };
     });

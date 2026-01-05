@@ -181,6 +181,9 @@ const resolveUserIdToLegacy = async (rawId, dbClient = null) => {
 
 /**
  * Create a new task
+ * 
+ * ⚠️ SECURITY FIX P0-3: Task assignment with assigneeId is BLOCKED in this controller
+ * Use V2 API for task assignment which has proper hierarchy enforcement
  */
 exports.createTask = async (req, res) => {
   const client = await getDbPool().connect();
@@ -202,6 +205,20 @@ exports.createTask = async (req, res) => {
       departmentId,
       status = 'OPEN'
     } = req.body;
+    
+    // SECURITY FIX P0-3: Block task creation with assigneeId
+    // This prevents hierarchy bypass via the legacy API
+    if (rawAssigneeId) {
+      console.warn(`[SECURITY] P0-3: taskController.createTask BLOCKED - user ${req.user?.id} tried to assign task to ${rawAssigneeId}`);
+      await client.query('ROLLBACK');
+      return res.status(403).json({
+        success: false,
+        error: 'Task assignment via this API is disabled',
+        code: 'V1_ASSIGNMENT_BLOCKED',
+        message: 'Task assignment via legacy API is disabled for security. Use the V2 API (/api/v2/tasks) which has proper hierarchy enforcement.',
+        suggestion: 'Create task without assigneeId, or migrate to V2 API',
+      });
+    }
     
     // Helper function to resolve user ID (handles UUID, integer, or string integer)
     const resolveUserId = async (rawId) => {
