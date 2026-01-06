@@ -183,19 +183,26 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
         }).catch(() => {}); // Don't block on audit logging
 
         // Get assigned modules with page permissions
-        const moduleAssignments = await prisma.moduleAssignment.findMany({
-          where: { super_admin_id: superAdmin.id },
-          include: { module: true }
-        });
+        let moduleAssignments = [];
+        try {
+          moduleAssignments = await prisma.module_assignments.findMany({
+            where: { super_admin_id: superAdmin.id },
+            include: { modules: true }
+          });
+        } catch (e) {
+          console.warn('[auth.routes] Module assignments lookup failed:', e.message);
+        }
 
-        const assignedModules = moduleAssignments.map(ma => ma.module.module_name);
+        const assignedModules = moduleAssignments.map(ma => ma.modules?.module_name).filter(Boolean);
         
         // Build pagePermissions object: { moduleName: [pageIds] }
         const pagePermissions = {};
         moduleAssignments.forEach(ma => {
-          const moduleName = ma.module.module_name;
-          const pages = ma.page_permissions || [];
-          pagePermissions[moduleName] = pages;
+          const moduleName = ma.modules?.module_name;
+          if (moduleName) {
+            const pages = ma.page_permissions || [];
+            pagePermissions[moduleName] = pages;
+          }
         });
 
         authData = {
@@ -564,12 +571,17 @@ router.get('/me/permissions', async (req, res) => {
       }
 
       // Fetch module assignments with pages
-      const moduleAssignments = await prisma.moduleAssignment.findMany({
-        where: { super_admin_id: superAdmin.id },
-        include: { module: true }
-      });
+      let moduleAssignments = [];
+      try {
+        moduleAssignments = await prisma.module_assignments.findMany({
+          where: { super_admin_id: superAdmin.id },
+          include: { modules: true }
+        });
+      } catch (e) {
+        console.warn('[me/permissions] Module assignments lookup failed:', e.message);
+      }
 
-      const assignedModules = moduleAssignments.map(ma => ma.module?.module_name).filter(Boolean);
+      const assignedModules = moduleAssignments.map(ma => ma.modules?.module_name).filter(Boolean);
       
       // Build page permissions from assigned modules
       // For Super Admin, we grant all pages within assigned modules
@@ -577,7 +589,7 @@ router.get('/me/permissions', async (req, res) => {
       const allPages = [];
       
       for (const ma of moduleAssignments) {
-        const moduleName = ma.module?.module_name;
+        const moduleName = ma.modules?.module_name;
         if (!moduleName) continue;
         
         // Get all pages for this module from master_module_pages
@@ -771,11 +783,16 @@ router.get('/me', async (req, res) => {
       });
 
       if (user) {
-        const moduleAssignments = await prisma.moduleAssignment.findMany({
-          where: { super_admin_id: user.id },
-          include: { module: true }
-        });
-        user.assignedModules = moduleAssignments.map(ma => ma.module.module_name);
+        let moduleAssignments = [];
+        try {
+          moduleAssignments = await prisma.module_assignments.findMany({
+            where: { super_admin_id: user.id },
+            include: { modules: true }
+          });
+        } catch (e) {
+          console.warn('[auth/me] Module assignments lookup failed:', e.message);
+        }
+        user.assignedModules = moduleAssignments.map(ma => ma.modules?.module_name).filter(Boolean);
         user.role = 'SUPER_ADMIN';
         user.userType = 'SUPER_ADMIN';
       }

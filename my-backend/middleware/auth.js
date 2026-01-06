@@ -91,11 +91,16 @@ async function authenticate(req, res, next) {
           }
         })
         if (user) {
-          const moduleAssignments = await prisma.moduleAssignment.findMany({
-            where: { super_admin_id: user.id },
-            include: { module: true }
-          })
-          user.assignedModules = moduleAssignments.map(ma => ma.module.module_name)
+          let moduleAssignments = [];
+          try {
+            moduleAssignments = await prisma.module_assignments.findMany({
+              where: { super_admin_id: user.id },
+              include: { modules: true }
+            });
+          } catch (e) {
+            console.warn('[authenticate] Module assignments lookup failed:', e.message);
+          }
+          user.assignedModules = moduleAssignments.map(ma => ma.modules?.module_name).filter(Boolean);
           user.role = 'SUPER_ADMIN'
           user.roleName = 'SUPER_ADMIN'
           user.userType = 'SUPER_ADMIN'
