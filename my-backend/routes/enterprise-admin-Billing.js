@@ -27,12 +27,12 @@ router.get('/overview', requireEnterpriseAdmin, async (req, res) => {
 
     // Get client counts and subscription data
     const [totalClients, clientsByStatus, clientsByPlan, subscriptions] = await Promise.all([
-      prisma.client.count(),
-      prisma.client.groupBy({
+      prisma.clients.count(),
+      prisma.clients.groupBy({
         by: ['subscriptionStatus'],
         _count: { id: true }
       }),
-      prisma.client.groupBy({
+      prisma.clients.groupBy({
         by: ['subscriptionPlan'],
         _count: { id: true }
       }),
@@ -141,7 +141,7 @@ router.get('/revenue-trends', requireEnterpriseAdmin, async (req, res) => {
       });
 
       // Calculate MRR at end of this month (clients active at that time)
-      const activeAtMonth = await prisma.client.count({
+      const activeAtMonth = await prisma.clients.count({
         where: {
           created_at: { lte: monthEnd },
           subscriptionStatus: 'active'
@@ -179,12 +179,12 @@ router.get('/subscription-analytics', requireEnterpriseAdmin, async (req, res) =
   try {
     const [byStatus, byPlan, byState, recentChanges, trialConversions] = await Promise.all([
       // Client subscription status distribution
-      prisma.client.groupBy({
+      prisma.clients.groupBy({
         by: ['subscriptionStatus'],
         _count: { id: true }
       }),
       // Client plan distribution
-      prisma.client.groupBy({
+      prisma.clients.groupBy({
         by: ['subscriptionPlan'],
         _count: { id: true }
       }),
@@ -221,7 +221,7 @@ router.get('/subscription-analytics', requireEnterpriseAdmin, async (req, res) =
       prisma.clientSubscription.count({
         where: { cancelled_at: { gte: thirtyDaysAgo } }
       }),
-      prisma.client.count({
+      prisma.clients.count({
         where: { 
           subscriptionStatus: 'active',
           created_at: { lte: thirtyDaysAgo }

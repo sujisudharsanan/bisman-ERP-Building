@@ -37,7 +37,7 @@ router.get('/profile', async (req, res) => {
 
     // Create billing profile if doesn't exist
     if (!billingProfile) {
-      const client = await prisma.client.findUnique({
+      const client = await prisma.clients.findUnique({
         where: { id: tenantId },
         select: { name: true, subscriptionPlan: true, trial_start_date: true, trial_end_date: true }
       });
@@ -158,7 +158,7 @@ router.get('/summary', async (req, res) => {
       where: { clientId: tenantId }
     });
 
-    const client = await prisma.client.findUnique({
+    const client = await prisma.clients.findUnique({
       where: { id: tenantId },
       select: {
         name: true,
@@ -335,7 +335,7 @@ router.post('/payment-methods/setup', async (req, res) => {
 
     // Create Stripe customer if needed
     if (!billingProfile?.stripeCustomerId) {
-      const client = await prisma.client.findUnique({
+      const client = await prisma.clients.findUnique({
         where: { id: tenantId }
       });
 
@@ -838,7 +838,7 @@ router.get('/trial', async (req, res) => {
       return res.status(400).json({ error: 'Tenant ID required' });
     }
 
-    const client = await prisma.client.findUnique({
+    const client = await prisma.clients.findUnique({
       where: { id: tenantId },
       select: {
         trial_start_date: true,

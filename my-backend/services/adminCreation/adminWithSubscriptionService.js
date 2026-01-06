@@ -432,7 +432,7 @@ async function generateClientCode(organizationName) {
   const year = new Date().getFullYear().toString().slice(-2);
   
   // Find the last sequence number for this prefix
-  const lastClient = await prisma.client.findFirst({
+  const lastClient = await prisma.clients.findFirst({
     where: {
       client_code: { startsWith: `${prefix}${year}` },
     },

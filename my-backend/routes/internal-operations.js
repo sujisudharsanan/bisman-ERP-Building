@@ -399,7 +399,7 @@ router.post('/support-session', requireInternalPermission('request:support_acces
 
   try {
     // Verify client exists
-    const client = await prisma.client.findUnique({
+    const client = await prisma.clients.findUnique({
       where: { id: clientId },
       select: { id: true, name: true, client_code: true }
     });
@@ -640,7 +640,7 @@ router.get('/customers', requireInternalPermission('view:customer_readonly'), as
     }
 
     const [clients, total] = await Promise.all([
-      prisma.client.findMany({
+      prisma.clients.findMany({
         where: whereClause,
         select: {
           id: true,
@@ -657,7 +657,7 @@ router.get('/customers', requireInternalPermission('view:customer_readonly'), as
         skip: (parseInt(page) - 1) * parseInt(limit),
         take: parseInt(limit)
       }),
-      prisma.client.count({ where: whereClause })
+      prisma.clients.count({ where: whereClause })
     ]);
 
     await logInternalAction(req.user.id, 'VIEW_CUSTOMERS', {
@@ -701,7 +701,7 @@ router.get('/customers/:clientId', requireInternalPermission('view:customer_read
 
     const hasSupportAccess = activeSession && activeSession.length > 0;
 
-    const client = await prisma.client.findUnique({
+    const client = await prisma.clients.findUnique({
       where: { id: clientId },
       include: {
         users: hasSupportAccess ? {
@@ -758,7 +758,7 @@ router.get('/billing/overview', requireInternalPermission('view:billing'), async
 
   try {
     const [activeSubscriptions, revenueStats] = await Promise.all([
-      prisma.client.groupBy({
+      prisma.clients.groupBy({
         by: ['subscriptionPlan', 'subscriptionStatus'],
         _count: { id: true }
       }),

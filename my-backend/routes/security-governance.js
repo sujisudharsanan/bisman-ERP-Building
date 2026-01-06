@@ -31,7 +31,7 @@ router.get('/overview', async (req, res) => {
     const [totalUsers, activeModules, activeClients, recentDenials, recentViolations, auditLogCount] = await Promise.all([
       prisma.user.count({ where: { isActive: true, ...scopeFilter } }),
       prisma.module.count({ where: { isActive: true } }),
-      prisma.client.count({ where: { isActive: true } }),
+      prisma.clients.count({ where: { isActive: true } }),
       prisma.auditLog.count({ where: { action: { contains: 'DENIED' }, createdAt: { gte: last24h }, ...scopeFilter } }).catch(() => 0),
       prisma.securityViolation?.count({ where: { createdAt: { gte: last7d }, ...scopeFilter } }).catch(() => 0),
       prisma.auditLog.count({ where: { createdAt: { gte: last7d }, ...scopeFilter } }).catch(() => 0)

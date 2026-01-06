@@ -45,35 +45,9 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
     let assignedRoleIds = null; // null means no filter (show all)
     const assignedRoleNames = []; // Store role names for matching when IDs don't work
     if (req.user?.userType === 'SUPER_ADMIN' || (req.user?.role || '').toUpperCase() === 'SUPER_ADMIN') {
-      console.log('[RolesUsersReport] SUPER_ADMIN access - checking role assignments');
-      const superAdminId = parseInt(String(req.user.id), 10);
-      console.log('[RolesUsersReport] Super Admin user.id:', req.user.id, '(parsed:', superAdminId, ') email:', req.user.email);
-      try {
-        // Get role assignments made by ENTERPRISE_ADMIN for this SUPER_ADMIN
-        const roleAssignments = await prisma.adminRoleAssignment.findMany({
-          where: {
-            assignee_type: 'SUPER_ADMIN',
-            assignee_id: superAdminId, // ✅ FIX: Ensure integer type
-            is_active: true
-          },
-          select: { role_id: true }
-        });
-        
-        console.log('[RolesUsersReport] Found role assignments:', roleAssignments);
-        
-        if (roleAssignments.length > 0) {
-          assignedRoleIds = roleAssignments.map(ra => ra.role_id);
-          console.log('[RolesUsersReport] SUPER_ADMIN has', assignedRoleIds.length, 'assigned role IDs:', assignedRoleIds);
-        } else {
-          // No explicit assignments - restrict to empty (no roles shown)
-          assignedRoleIds = [];
-          console.log('[RolesUsersReport] SUPER_ADMIN has NO role assignments - showing empty');
-        }
-      } catch (err) {
-        console.warn('[RolesUsersReport] Error checking role assignments:', err.message);
-        // On error, restrict to empty for security
-        assignedRoleIds = [];
-      }
+      console.log('[RolesUsersReport] SUPER_ADMIN access - showing all roles (SUPER_ADMIN has full access)');
+      // SUPER_ADMIN should see all roles - they manage clients and their role assignments
+      assignedRoleIds = null; // null means no filter (show all)
     }
     
     // Try to fetch from rbac_roles table first

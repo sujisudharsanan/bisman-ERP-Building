@@ -23,7 +23,7 @@ router.get('/stats', requireEnterpriseAdmin, async (req, res) => {
     const [superAdminsCount, modulesCount, clientsCount, recentActivity] = await Promise.all([
       prisma.super_admins.count({ where: { is_active: true } }),
       prisma.module.count({ where: { is_active: true } }),
-      prisma.client.count({ where: { is_active: true } }),
+      prisma.clients.count({ where: { is_active: true } }),
       prisma.recent_activity.count({
         where: {
           created_at: {

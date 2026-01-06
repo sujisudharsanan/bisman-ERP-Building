@@ -305,7 +305,7 @@ const tenantIsolation = async (req, res, next) => {
     
     if (requestedTenantId) {
       // Verify super admin owns this client
-      const client = await prisma.client.findFirst({
+      const client = await prisma.clients.findFirst({
         where: {
           id: requestedTenantId,
           super_admin_id: req.user.super_admin_id

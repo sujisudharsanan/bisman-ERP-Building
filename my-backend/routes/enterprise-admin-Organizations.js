@@ -39,7 +39,7 @@ router.get('/', requireEnterpriseAdmin, async (req, res) => {
     };
 
     const [clients, total] = await Promise.all([
-      prisma.client.findMany({
+      prisma.clients.findMany({
         where,
         skip,
         take: limit,
@@ -59,7 +59,7 @@ router.get('/', requireEnterpriseAdmin, async (req, res) => {
           }
         }
       }),
-      prisma.client.count({ where })
+      prisma.clients.count({ where })
     ]);
 
     const formatted = clients.map(client => ({
@@ -100,7 +100,7 @@ router.get('/', requireEnterpriseAdmin, async (req, res) => {
 // ====================
 router.get('/:id', requireEnterpriseAdmin, async (req, res) => {
   try {
-    const client = await prisma.client.findUnique({
+    const client = await prisma.clients.findUnique({
       where: { id: req.params.id },
       include: {
         superAdmin: {
@@ -171,7 +171,7 @@ router.patch('/:id', requireEnterpriseAdmin, async (req, res) => {
   try {
     const { name, subscriptionPlan, subscriptionStatus, isActive, settings } = req.body;
 
-    const updated = await prisma.client.update({
+    const updated = await prisma.clients.update({
       where: { id: req.params.id },
       data: {
         ...(name && { name }),
@@ -220,7 +220,7 @@ router.patch('/:id', requireEnterpriseAdmin, async (req, res) => {
 // ====================
 router.post('/:id/toggle-status', requireEnterpriseAdmin, async (req, res) => {
   try {
-    const client = await prisma.client.findUnique({
+    const client = await prisma.clients.findUnique({
       where: { id: req.params.id }
     });
 
@@ -231,7 +231,7 @@ router.post('/:id/toggle-status', requireEnterpriseAdmin, async (req, res) => {
       });
     }
 
-    const updated = await prisma.client.update({
+    const updated = await prisma.clients.update({
       where: { id: req.params.id },
       data: {
         is_active: !client.is_active,

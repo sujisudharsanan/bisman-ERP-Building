@@ -451,9 +451,9 @@ export default function RolesUsersReportPage() {
   }
 
   return (
-    <div className="flex flex-col h-full gap-4 w-full">
+    <div className="flex flex-col gap-4 w-full" style={{ height: 'calc(100vh - 8rem)' }}>
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between flex-shrink-0">
         <div>
           <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Module Management</h1>
           <p className="text-sm text-gray-500 dark:text-gray-400">
@@ -471,7 +471,7 @@ export default function RolesUsersReportPage() {
       </div>
 
       {/* Main 3-Column Grid */}
-      <div className="flex-1 overflow-hidden">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <div className="grid grid-cols-3 gap-4 h-full">
           {/* Column 1: Clients */}
           <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">

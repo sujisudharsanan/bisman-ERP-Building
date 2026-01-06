@@ -252,7 +252,7 @@ router.get('/organizations', ...superAdminOnly, async (req, res) => {
     }
 
     const [organizations, total] = await Promise.all([
-      prisma.client.findMany({
+      prisma.clients.findMany({
         where,
         skip,
         take: limit,
@@ -268,7 +268,7 @@ router.get('/organizations', ...superAdminOnly, async (req, res) => {
           },
         },
       }),
-      prisma.client.count({ where }),
+      prisma.clients.count({ where }),
     ]);
 
     // Get user counts separately (since User is not directly related)
@@ -325,7 +325,7 @@ router.get('/organizations/:orgId', ...superAdminOnly, async (req, res) => {
     const prisma = getPrisma();
     const { orgId } = req.params;
 
-    const organization = await prisma.client.findUnique({
+    const organization = await prisma.clients.findUnique({
       where: { id: orgId },
       include: {
         subscription: {
@@ -452,7 +452,7 @@ router.post('/organizations/:orgId/toggle-status', ...superAdminOnly, async (req
     const { orgId } = req.params;
     const { isActive, reason } = req.body;
 
-    const organization = await prisma.client.findUnique({
+    const organization = await prisma.clients.findUnique({
       where: { id: orgId },
       include: { subscription: true },
     });
@@ -463,7 +463,7 @@ router.post('/organizations/:orgId/toggle-status', ...superAdminOnly, async (req
 
     // Update organization and subscription status
     const updates = await prisma.$transaction([
-      prisma.client.update({
+      prisma.clients.update({
         where: { id: orgId },
         data: { 
           is_active: isActive,

@@ -148,7 +148,7 @@ async function checkEmailExists(email) {
  * Check if company name is already taken
  */
 async function checkCompanyExists(companyName) {
-  const client = await prisma.client.findFirst({
+  const client = await prisma.clients.findFirst({
     where: { 
       name: { equals: companyName, mode: 'insensitive' }
     }
@@ -532,7 +532,7 @@ async function resendWelcomeEmail(clientId, email) {
   }
 
   // Get client info
-  const client = await prisma.client.findUnique({
+  const client = await prisma.clients.findUnique({
     where: { id: clientId }
   });
 
@@ -574,7 +574,7 @@ async function resendWelcomeEmail(clientId, email) {
  * Get provisioning status for a client
  */
 async function getProvisioningStatus(clientId) {
-  const client = await prisma.client.findUnique({
+  const client = await prisma.clients.findUnique({
     where: { id: clientId }
   });
 

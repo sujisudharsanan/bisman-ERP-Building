@@ -30,7 +30,7 @@ router.get('/filter-options', requireEnterpriseAdmin, async (req, res) => {
     });
 
     // Get all clients for filter
-    const clients = await prisma.client.findMany({
+    const clients = await prisma.clients.findMany({
       select: { id: true, business_name: true },
       orderBy: { business_name: 'asc' },
       take: 100

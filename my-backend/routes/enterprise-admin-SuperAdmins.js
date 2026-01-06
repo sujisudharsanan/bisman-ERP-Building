@@ -111,7 +111,7 @@ router.get('/:adminId', requireEnterpriseAdmin, async (req, res) => {
         orderBy: { created_at: 'desc' },
         take: 50
       }),
-      prisma.client.count({
+      prisma.clients.count({
         where: {
           super_admin_id: adminId
         }
@@ -173,7 +173,7 @@ router.get('/:adminId/clients', requireEnterpriseAdmin, async (req, res) => {
     }
 
     // Get all clients for this super admin
-    const clients = await prisma.client.findMany({
+    const clients = await prisma.clients.findMany({
       where: { super_admin_id: adminId },
       select: {
         id: true,

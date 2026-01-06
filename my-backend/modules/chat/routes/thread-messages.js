@@ -39,7 +39,7 @@ router.get('/threads', async (req, res) => {
     const userId = getChatUserId(req);
 
     // Get threads where user is a member or creator
-    const threads = await prisma.thread.findMany({
+    const threads = await prisma.threads.findMany({
       where: {
         OR: [
           { createdById: userId },
@@ -135,7 +135,7 @@ router.get('/threads/:threadId', async (req, res) => {
     const { threadId } = req.params;
     const userId = getChatUserId(req);
 
-    const thread = await prisma.thread.findFirst({
+    const thread = await prisma.threads.findFirst({
       where: {
         id: threadId,
         OR: [
@@ -197,7 +197,7 @@ router.post('/threads', async (req, res) => {
     const userId = getChatUserId(req);
 
     // Create thread with creator as member
-    const thread = await prisma.thread.create({
+    const thread = await prisma.threads.create({
       data: {
         id: uuidv4(),
         title: title || 'New Chat',
@@ -257,7 +257,7 @@ router.put('/threads/:threadId', async (req, res) => {
     const userId = getChatUserId(req);
 
     // Check ownership
-    const existing = await prisma.thread.findFirst({
+    const existing = await prisma.threads.findFirst({
       where: { id: threadId, createdById: userId }
     });
 
@@ -268,7 +268,7 @@ router.put('/threads/:threadId', async (req, res) => {
       });
     }
 
-    const thread = await prisma.thread.update({
+    const thread = await prisma.threads.update({
       where: { id: threadId },
       data: { title }
     });
@@ -296,7 +296,7 @@ router.delete('/threads/:threadId', async (req, res) => {
     const userId = getChatUserId(req);
 
     // Check ownership
-    const existing = await prisma.thread.findFirst({
+    const existing = await prisma.threads.findFirst({
       where: { id: threadId, createdById: userId }
     });
 
@@ -307,7 +307,7 @@ router.delete('/threads/:threadId', async (req, res) => {
       });
     }
 
-    await prisma.thread.delete({
+    await prisma.threads.delete({
       where: { id: threadId }
     });
 
@@ -335,7 +335,7 @@ router.post('/threads/:threadId/members', async (req, res) => {
     const userId = getChatUserId(req);
 
     // Check ownership or membership
-    const existing = await prisma.thread.findFirst({
+    const existing = await prisma.threads.findFirst({
       where: {
         id: threadId,
         OR: [
@@ -358,7 +358,7 @@ router.post('/threads/:threadId/members', async (req, res) => {
       skipDuplicates: true
     });
 
-    const thread = await prisma.thread.findUnique({
+    const thread = await prisma.threads.findUnique({
       where: { id: threadId },
       include: {
         members: {
@@ -395,7 +395,7 @@ router.delete('/threads/:threadId/members/:memberId', async (req, res) => {
     const userId = getChatUserId(req);
 
     // Check ownership
-    const existing = await prisma.thread.findFirst({
+    const existing = await prisma.threads.findFirst({
       where: { id: threadId, createdById: userId }
     });
 
@@ -504,7 +504,7 @@ router.post('/threads/:threadId/messages', async (req, res) => {
             // Get unread count for this user in this thread
             let unreadCount = 0;
             try {
-              unreadCount = await prisma.message.count({
+              unreadCount = await prisma.thread_messages.count({
                 where: {
                   threadId,
                   senderId: { not: member.userId },
@@ -805,7 +805,7 @@ router.get('/sync', async (req, res) => {
     const limit = Math.min(parseInt(limitParam) || 100, 500);
 
     // Get all threads the user is a member of
-    const userThreads = await prisma.thread.findMany({
+    const userThreads = await prisma.threads.findMany({
       where: {
         OR: [
           { createdById: userId },
@@ -879,7 +879,7 @@ router.get('/sync', async (req, res) => {
     
     const updatedThreads = await Promise.all(
       affectedThreadIds.map(async (threadId) => {
-        const thread = await prisma.thread.findUnique({
+        const thread = await prisma.threads.findUnique({
           where: { id: threadId },
           include: {
             members: {
@@ -978,7 +978,7 @@ router.get('/sync/initial', async (req, res) => {
     const messagesPerThread = Math.min(parseInt(req.query.messages_per_thread) || 20, 50);
 
     // Get all threads for user with members
-    const threads = await prisma.thread.findMany({
+    const threads = await prisma.threads.findMany({
       where: {
         OR: [
           { createdById: userId },

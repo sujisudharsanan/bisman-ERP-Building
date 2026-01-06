@@ -384,7 +384,7 @@ router.get('/tenants/list', ...superAdminOnly, async (req, res) => {
       ];
     }
 
-    const tenants = await prisma.client.findMany({
+    const tenants = await prisma.clients.findMany({
       where,
       take: 50,
       orderBy: { name: 'asc' },

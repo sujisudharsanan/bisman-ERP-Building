@@ -13,7 +13,7 @@ const prisma = new PrismaClient();
 async function main() {
   const reg = JSON.parse(fs.readFileSync(path.join(__dirname, '..', 'registry', 'modules.json'), 'utf-8'));
   const regMap = new Map(reg.map(m => [m.module_name, m]));
-  const db = await prisma.module.findMany({ orderBy: { module_name: 'asc' } });
+  const db = await prisma.modules.findMany({ orderBy: { module_name: 'asc' } });
 
   const missingInDb = [];
   for (const m of reg) {

@@ -1668,7 +1668,7 @@ app.get('/api/health', (req, res) => {
 // Optional detailed DB health
 app.get('/health', async (req, res) => {
   try {
-    const count = await prisma.user.count()
+    const count = await prisma.users_enhanced.count()
     res.json({ status: 'ok', users: count })
   } catch (e) {
     res.status(500).json({ error: e && e.message ? e.message : 'db error' })
@@ -1722,7 +1722,7 @@ app.get('/api/me', async (req, res) => {
           dbUser.username = dbUser.name;
           dbUser.role = 'SUPER_ADMIN';
           // Get assigned modules
-          const moduleAssignments = await prisma.moduleAssignment.findMany({
+          const moduleAssignments = await prisma.module_assignments.findMany({
             where: { super_admin_id: dbUser.id },
             include: { module: true }
           });
@@ -2128,16 +2128,16 @@ app.get('/api/enterprise-admin/master-modules', authenticate, requireRole(['ENTE
       console.log('[master-modules] Assigned modules:', req.user.assignedModules);
       
       // Get module IDs from module assignments
-      const moduleAssignments = await prisma.moduleAssignment.findMany({
+      const moduleAssignments = await prisma.module_assignments.findMany({
         where: { super_admin_id: req.user.id },
-        include: { module: true }
+        include: { modules: true }
       });
       
       const assignedModuleIds = moduleAssignments.map(ma => ma.module_id);
       console.log('[master-modules] Assigned module IDs:', assignedModuleIds);
       
       // Fetch assigned modules OR always-accessible modules
-      dbModules = await prisma.module.findMany({
+      dbModules = await prisma.modules.findMany({
         where: {
           OR: [
             { id: { in: assignedModuleIds } },
@@ -2152,7 +2152,7 @@ app.get('/api/enterprise-admin/master-modules', authenticate, requireRole(['ENTE
     } else {
       // Enterprise Admin and Admin can see all modules
       console.log('[master-modules] Admin/Enterprise Admin access - showing all modules');
-      dbModules = await prisma.module.findMany({
+      dbModules = await prisma.modules.findMany({
         orderBy: {
           id: 'asc'
         }
@@ -2755,7 +2755,7 @@ app.delete('/api/enterprise-admin/super-admins/:id', authenticate, requireRole('
     }
 
     // Delete all module assignments first (cascade)
-    await prisma.moduleAssignment.deleteMany({
+    await prisma.module_assignments.deleteMany({
       where: { super_admin_id: superAdminId }
     });
 
@@ -2826,7 +2826,7 @@ app.post('/api/enterprise-admin/super-admins/:id/assign-module', authenticate, r
     console.log('✅ Super admin found:', superAdmin.name);
 
     // Verify module exists
-    const module = await prisma.module.findUnique({
+    const module = await prisma.modules.findUnique({
       where: { id: moduleIdInt }
     });
 
@@ -2844,7 +2844,7 @@ app.post('/api/enterprise-admin/super-admins/:id/assign-module', authenticate, r
     const tenantId = TenantGuard.getTenantId(req);
 
     // Check if assignment already exists
-    const existingAssignment = await prisma.moduleAssignment.findFirst({
+    const existingAssignment = await prisma.module_assignments.findFirst({
       where: {
         super_admin_id: superAdminId,
         module_id: moduleIdInt,
@@ -2858,7 +2858,7 @@ app.post('/api/enterprise-admin/super-admins/:id/assign-module', authenticate, r
     if (existingAssignment) {
       // UPDATE existing page permissions for this module grouping
       console.log('📝 Updating page permissions...');
-      assignment = await prisma.moduleAssignment.update({
+      assignment = await prisma.module_assignments.update({
         where: { id: existingAssignment.id },
         data: {
           assigned_at: new Date(),
@@ -2880,7 +2880,7 @@ app.post('/api/enterprise-admin/super-admins/:id/assign-module', authenticate, r
     } else {
       // CREATE new record to store page permissions (grouped by module)
       console.log('➕ Creating page permissions record...');
-      assignment = await prisma.moduleAssignment.create({
+      assignment = await prisma.module_assignments.create({
         data: {
           super_admin_id: superAdminId,
           module_id: moduleIdInt,
@@ -2955,7 +2955,7 @@ app.post('/api/enterprise-admin/super-admins/:id/unassign-module', authenticate,
     const tenantId = TenantGuard.getTenantId(req);
 
     // Find the assignment
-    const assignment = await prisma.moduleAssignment.findFirst({
+    const assignment = await prisma.module_assignments.findFirst({
       where: {
         super_admin_id: superAdminId,
         module_id: moduleIdInt,
@@ -2974,7 +2974,7 @@ app.post('/api/enterprise-admin/super-admins/:id/unassign-module', authenticate,
     }
 
     // Delete the page permissions record (module will show as "no-access")
-    await prisma.moduleAssignment.delete({
+    await prisma.module_assignments.delete({
       where: { id: assignment.id }
     });
 
@@ -3624,8 +3624,8 @@ app.get('/api/enterprise-admin/dashboard/stats', authenticate, requireRole('ENTE
     // Get counts from database
     const [superAdminCount, moduleCount, clientCount] = await Promise.all([
       prisma.super_admins.count({ where: { is_active: true } }),
-      prisma.module.count({ where: { is_active: true } }),
-      prisma.client.count()
+      prisma.modules.count({ where: { is_active: true } }),
+      prisma.clients.count()
     ]);
 
     res.json({

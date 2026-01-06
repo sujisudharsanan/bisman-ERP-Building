@@ -309,7 +309,7 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
         let tenantInfo = null;
         if (regularUser.tenant_id && prisma) {
           try {
-            tenantInfo = await prisma.client.findUnique({
+            tenantInfo = await prisma.clients.findUnique({
               where: { id: regularUser.tenant_id },
               select: { 
                 id: true, 
@@ -820,7 +820,7 @@ router.get('/me', async (req, res) => {
         // Fetch client branding info for splash screen
         if (user.tenant_id) {
           try {
-            const client = await prisma.client.findUnique({
+            const client = await prisma.clients.findUnique({
               where: { id: user.tenant_id },
               select: {
                 name: true,

@@ -29,11 +29,11 @@ router.get('/dashboard', async (req, res) => {
     });
 
     // Count clients by product type
-    const businessClients = await prisma.client.count({
+    const businessClients = await prisma.clients.count({
       where: { productType: 'BUSINESS_ERP', is_active: true }
     });
 
-    const pumpClients = await prisma.client.count({
+    const pumpClients = await prisma.clients.count({
       where: { productType: 'PUMP_ERP', is_active: true }
     });
 
@@ -64,7 +64,7 @@ router.get('/dashboard', async (req, res) => {
     });
 
     // Get recent clients
-    const recentClients = await prisma.client.findMany({
+    const recentClients = await prisma.clients.findMany({
       take: 5,
       orderBy: { created_at: 'desc' },
       include: {
@@ -553,7 +553,7 @@ router.get('/clients', async (req, res) => {
     if (productType) where.productType = productType;
     if (superAdminId) where.super_admin_id = parseInt(superAdminId);
 
-    const clients = await prisma.client.findMany({
+    const clients = await prisma.clients.findMany({
       where,
       include: {
         superAdmin: {
