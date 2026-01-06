@@ -14,7 +14,7 @@
 const express = require('express');
 const router = express.Router();
 const { getPrisma } = require('../lib/prisma');
-const { authenticateToken } = require('../middleware/auth');
+const { authenticate } = require('../middleware/auth');
 const { superAdminOnly } = require('../middleware/superAdminAuth');
 
 // ============================================================================
@@ -339,7 +339,7 @@ router.get('/:id', async (req, res) => {
  * POST /api/subscription-plans
  * Create a new subscription plan (SuperAdmin only)
  */
-router.post('/', authenticateToken, superAdminOnly, async (req, res) => {
+router.post('/', authenticate, superAdminOnly, async (req, res) => {
   try {
     const prisma = getPrisma();
     const {
@@ -420,7 +420,7 @@ router.post('/', authenticateToken, superAdminOnly, async (req, res) => {
  * PATCH /api/subscription-plans/:id
  * Update a subscription plan (SuperAdmin only)
  */
-router.patch('/:id', authenticateToken, superAdminOnly, async (req, res) => {
+router.patch('/:id', authenticate, superAdminOnly, async (req, res) => {
   try {
     const { id } = req.params;
     const prisma = getPrisma();
@@ -517,7 +517,7 @@ router.patch('/:id', authenticateToken, superAdminOnly, async (req, res) => {
  * DELETE /api/subscription-plans/:id
  * Delete a subscription plan (SuperAdmin only, custom plans only)
  */
-router.delete('/:id', authenticateToken, superAdminOnly, async (req, res) => {
+router.delete('/:id', authenticate, superAdminOnly, async (req, res) => {
   try {
     const { id } = req.params;
     const prisma = getPrisma();
@@ -579,7 +579,7 @@ router.delete('/:id', authenticateToken, superAdminOnly, async (req, res) => {
  * POST /api/subscription-plans/:id/toggle-status
  * Toggle plan active/inactive status (SuperAdmin only)
  */
-router.post('/:id/toggle-status', authenticateToken, superAdminOnly, async (req, res) => {
+router.post('/:id/toggle-status', authenticate, superAdminOnly, async (req, res) => {
   try {
     const { id } = req.params;
     const { isActive } = req.body;

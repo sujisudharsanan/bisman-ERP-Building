@@ -41,10 +41,10 @@ router.get('/tenants/count', async (req, res) => {
     }
 
     const [total, active, pending, suspended] = await Promise.all([
-      prisma.client.count(),
-      prisma.client.count({ where: { is_active: true, status: 'Active' } }),
-      prisma.client.count({ where: { onboarding_status: 'pending' } }),
-      prisma.client.count({ where: { is_active: false } }),
+      prisma.clients.count(),
+      prisma.clients.count({ where: { is_active: true, status: 'Active' } }),
+      prisma.clients.count({ where: { onboarding_status: 'pending' } }),
+      prisma.clients.count({ where: { is_active: false } }),
     ]);
 
     // Count new clients this month
@@ -52,7 +52,7 @@ router.get('/tenants/count', async (req, res) => {
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
     
-    const newThisMonth = await prisma.client.count({
+    const newThisMonth = await prisma.clients.count({
       where: { created_at: { gte: startOfMonth } }
     });
 
@@ -88,7 +88,7 @@ router.get('/tenants/trend', async (req, res) => {
     startDate.setDate(startDate.getDate() - days);
     startDate.setHours(0, 0, 0, 0);
 
-    const clients = await prisma.client.findMany({
+    const clients = await prisma.clients.findMany({
       select: {
         created_at: true,
         is_active: true
@@ -141,7 +141,7 @@ router.get('/tenants', async (req, res) => {
     if (status === 'pending') where.onboarding_status = 'pending';
     if (status === 'suspended') where.is_active = false;
 
-    const clients = await prisma.client.findMany({
+    const clients = await prisma.clients.findMany({
       where,
       take: parseInt(limit, 10),
       select: {
@@ -173,7 +173,7 @@ router.get('/tenants', async (req, res) => {
 router.get('/billing/mrr', async (req, res) => {
   try {
     // Calculate MRR based on active subscriptions
-    const clients = await prisma.client.findMany({
+    const clients = await prisma.clients.findMany({
       where: { is_active: true },
       select: { subscriptionPlan: true }
     });
@@ -205,7 +205,7 @@ router.get('/billing/revenue', async (req, res) => {
     const exists = await tableExists('payment_records');
     if (!exists) {
       // Fallback: estimate from MRR * months
-      const clients = await prisma.client.count({ where: { is_active: true } });
+      const clients = await prisma.clients.count({ where: { is_active: true } });
       const estimatedRevenue = clients * 999 * 6; // 6 months average
       return res.json({ success: true, data: { revenue: estimatedRevenue } });
     }
@@ -228,8 +228,8 @@ router.get('/billing/churn', async (req, res) => {
   try {
     // Calculate churn rate based on inactive clients
     const [total, inactive] = await Promise.all([
-      prisma.client.count(),
-      prisma.client.count({ where: { is_active: false } })
+      prisma.clients.count(),
+      prisma.clients.count({ where: { is_active: false } })
     ]);
 
     const churnRate = total > 0 ? ((inactive / total) * 100).toFixed(1) : 0;
@@ -243,7 +243,7 @@ router.get('/billing/churn', async (req, res) => {
 router.get('/billing/subscriptions', async (req, res) => {
   try {
     // Get subscription breakdown
-    const clients = await prisma.client.groupBy({
+    const clients = await prisma.clients.groupBy({
       by: ['subscriptionPlan'],
       _count: true,
       where: { is_active: true }
@@ -271,7 +271,7 @@ router.get('/billing/trend', async (req, res) => {
 
   try {
     // Get actual client count for revenue estimation
-    const clients = await prisma.client.findMany({
+    const clients = await prisma.clients.findMany({
       select: { created_at: true, subscriptionPlan: true, is_active: true }
     });
 
@@ -398,11 +398,11 @@ router.get('/security/2fa-stats', async (req, res) => {
       return res.json({ success: true, data: { adoptionRate: 0, enabled: 0, total: 0 } });
     }
 
-    const total = await prisma.user.count();
+    const total = await prisma.users_enhanced.count();
     
     // Check if mfa_enabled column exists on clients
-    const clientsWithMfa = await prisma.client.count({ where: { mfa_enabled: true } });
-    const totalClients = await prisma.client.count();
+    const clientsWithMfa = await prisma.clients.count({ where: { mfa_enabled: true } });
+    const totalClients = await prisma.clients.count();
     
     const adoptionRate = totalClients > 0 ? ((clientsWithMfa / totalClients) * 100).toFixed(1) : 0;
 
@@ -447,7 +447,7 @@ router.get('/security/failed-logins', async (req, res) => {
       return res.json({ success: true, data: { count: 0 } });
     }
 
-    const usersWithFailedAttempts = await prisma.user.count({
+    const usersWithFailedAttempts = await prisma.users_enhanced.count({
       where: { login_attempts: { gt: 0 } }
     });
 
@@ -466,7 +466,7 @@ router.get('/security/failed-logins/trend', async (req, res) => {
       return res.json({ success: true, data: [] });
     }
 
-    const logs = await prisma.auditLog.findMany({
+    const logs = await prisma.audit_logs.findMany({
       where: {
         action: { in: ['LOGIN_FAILED', 'login_failed', 'FAILED_LOGIN'] },
         created_at: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) }
@@ -500,7 +500,7 @@ router.get('/security/failed-logins/trend', async (req, res) => {
 router.get('/security/alerts', async (req, res) => {
   try {
     // Check for locked accounts
-    const lockedUsers = await prisma.user.findMany({
+    const lockedUsers = await prisma.users_enhanced.findMany({
       where: { locked_until: { gt: new Date() } },
       select: { id: true, email: true, username: true, locked_until: true, login_attempts: true },
       take: 10
@@ -528,15 +528,15 @@ router.get('/security/alerts', async (req, res) => {
 router.get('/users/stats', async (req, res) => {
   try {
     const [total, active, admins] = await Promise.all([
-      prisma.user.count(),
-      prisma.user.count({ where: { is_active: true } }),
-      prisma.user.count({ where: { role: { in: ['ADMIN', 'SUPER_ADMIN', 'admin', 'super_admin'] } } }),
+      prisma.users_enhanced.count(),
+      prisma.users_enhanced.count({ where: { is_active: true } }),
+      prisma.users_enhanced.count({ where: { role: { in: ['ADMIN', 'SUPER_ADMIN', 'admin', 'super_admin'] } } }),
     ]);
 
     // Get recent logins from audit logs
     let recentLogins = 0;
     try {
-      recentLogins = await prisma.auditLog.count({
+      recentLogins = await prisma.audit_logs.count({
         where: {
           action: { in: ['LOGIN', 'login', 'LOGIN_SUCCESS'] },
           created_at: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) }
@@ -547,7 +547,7 @@ router.get('/users/stats', async (req, res) => {
     }
 
     // Group by role
-    const byRole = await prisma.user.groupBy({
+    const byRole = await prisma.users_enhanced.groupBy({
       by: ['role'],
       _count: true
     });
@@ -618,11 +618,11 @@ router.get('/audit/count', async (req, res) => {
     }
 
     const [total, today, thisWeek] = await Promise.all([
-      prisma.auditLog.count(),
-      prisma.auditLog.count({
+      prisma.audit_logs.count(),
+      prisma.audit_logs.count({
         where: { created_at: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } },
       }),
-      prisma.auditLog.count({
+      prisma.audit_logs.count({
         where: { created_at: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } },
       }),
     ]);
@@ -646,7 +646,7 @@ router.get('/audit', async (req, res) => {
     const where = {};
     if (action) where.action = action;
 
-    const logs = await prisma.auditLog.findMany({
+    const logs = await prisma.audit_logs.findMany({
       where,
       take: parseInt(limit, 10),
       orderBy: { created_at: 'desc' },
@@ -683,7 +683,7 @@ router.get('/audit/actions', async (req, res) => {
     }
 
     // Get action breakdown
-    const actions = await prisma.auditLog.groupBy({
+    const actions = await prisma.audit_logs.groupBy({
       by: ['action'],
       _count: true,
       orderBy: { _count: { action: 'desc' } },
@@ -749,18 +749,18 @@ router.get('/kpis', async (req, res) => {
       auditLogsToday,
       clientsWithMfa
     ] = await Promise.all([
-      prisma.client.count().catch(() => 0),
-      prisma.client.count({ where: { is_active: true } }).catch(() => 0),
-      prisma.client.count({ where: { onboarding_status: 'pending' } }).catch(() => 0),
-      prisma.user.count().catch(() => 0),
-      prisma.user.count({ where: { is_active: true } }).catch(() => 0),
+      prisma.clients.count().catch(() => 0),
+      prisma.clients.count({ where: { is_active: true } }).catch(() => 0),
+      prisma.clients.count({ where: { onboarding_status: 'pending' } }).catch(() => 0),
+      prisma.users_enhanced.count().catch(() => 0),
+      prisma.users_enhanced.count({ where: { is_active: true } }).catch(() => 0),
       prisma.user_sessions.count({ where: { expires: { gt: new Date() } } }).catch(() => 0),
-      prisma.auditLog.count({ where: { created_at: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } }).catch(() => 0),
-      prisma.client.count({ where: { mfa_enabled: true } }).catch(() => 0)
+      prisma.audit_logs.count({ where: { created_at: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } } }).catch(() => 0),
+      prisma.clients.count({ where: { mfa_enabled: true } }).catch(() => 0)
     ]);
 
     // Calculate MRR
-    const clients = await prisma.client.findMany({
+    const clients = await prisma.clients.findMany({
       where: { is_active: true },
       select: { subscriptionPlan: true }
     }).catch(() => []);
@@ -782,12 +782,12 @@ router.get('/kpis', async (req, res) => {
     const startOfMonth = new Date();
     startOfMonth.setDate(1);
     startOfMonth.setHours(0, 0, 0, 0);
-    const newTenantsThisMonth = await prisma.client.count({
+    const newTenantsThisMonth = await prisma.clients.count({
       where: { created_at: { gte: startOfMonth } }
     }).catch(() => 0);
 
     // Get recent logins (last 7 days)
-    const recentLogins = await prisma.user.count({
+    const recentLogins = await prisma.users_enhanced.count({
       where: { last_login: { gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000) } }
     }).catch(() => 0);
 
@@ -856,7 +856,7 @@ router.get('/activity/recent', async (req, res) => {
   const { limit = 10 } = req.query;
 
   try {
-    const activities = await prisma.auditLog.findMany({
+    const activities = await prisma.audit_logs.findMany({
       take: parseInt(limit, 10),
       orderBy: { created_at: 'desc' },
       include: {

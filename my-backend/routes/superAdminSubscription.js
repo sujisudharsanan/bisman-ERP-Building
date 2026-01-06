@@ -43,24 +43,24 @@ router.get('/metrics', ...superAdminOnly, async (req, res) => {
     const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     // Get total tenants (active subscriptions)
-    const totalTenants = await prisma.clientSubscription.count({
+    const totalTenants = await prisma.client_subscriptions.count({
       where: { state: { in: ['ACTIVE', 'TRIAL'] } },
     });
 
     // Get active subscriptions (non-trial)
-    const activeSubscriptions = await prisma.clientSubscription.count({
+    const activeSubscriptions = await prisma.client_subscriptions.count({
       where: { state: 'ACTIVE' },
     });
 
     // Get tenants by plan
-    const tenantsByPlan = await prisma.clientSubscription.groupBy({
+    const tenantsByPlan = await prisma.client_subscriptions.groupBy({
       by: ['plan_id'],
       where: { state: { in: ['ACTIVE', 'TRIAL'] } },
       _count: { id: true },
     });
 
     // Map plan IDs to plan codes
-    const plans = await prisma.subscriptionPlan.findMany({
+    const plans = await prisma.subscription_plans.findMany({
       select: { id: true, plan_code: true, name: true },
     });
     const planMap = new Map(plans.map(p => [p.id, p]));
@@ -73,7 +73,7 @@ router.get('/metrics', ...superAdminOnly, async (req, res) => {
     }));
 
     // Get monthly recurring revenue (sum of all active monthly subscriptions)
-    const activeWithPricing = await prisma.clientSubscription.findMany({
+    const activeWithPricing = await prisma.client_subscriptions.findMany({
       where: { state: 'ACTIVE' },
       include: { plan: { select: { price_monthly: true } } },
     });
@@ -81,7 +81,7 @@ router.get('/metrics', ...superAdminOnly, async (req, res) => {
       sum + parseFloat(sub.plan?.price_monthly || 0), 0);
 
     // Get trial conversions (last 30 days)
-    const recentConversions = await prisma.clientSubscription.count({
+    const recentConversions = await prisma.client_subscriptions.count({
       where: {
         state: 'ACTIVE',
         trial_converted: true,
@@ -90,7 +90,7 @@ router.get('/metrics', ...superAdminOnly, async (req, res) => {
     });
 
     // Get expiring trials (next 7 days)
-    const expiringTrials = await prisma.clientSubscription.findMany({
+    const expiringTrials = await prisma.client_subscriptions.findMany({
       where: {
         state: 'TRIAL',
         trial_end_date: {
@@ -105,7 +105,7 @@ router.get('/metrics', ...superAdminOnly, async (req, res) => {
     });
 
     // Get recent activities from audit logs
-    const recentActivities = await prisma.subscriptionAuditLog.findMany({
+    const recentActivities = await prisma.subscription_audit_log.findMany({
       where: { created_at: { gte: thirtyDaysAgo } },
       orderBy: { created_at: 'desc' },
       take: 20,
@@ -119,7 +119,7 @@ router.get('/metrics', ...superAdminOnly, async (req, res) => {
     });
 
     // Get churn rate (cancellations in last 30 days)
-    const cancellations = await prisma.clientSubscription.count({
+    const cancellations = await prisma.client_subscriptions.count({
       where: {
         state: 'CANCELLED',
         updated_at: { gte: thirtyDaysAgo },
@@ -128,7 +128,7 @@ router.get('/metrics', ...superAdminOnly, async (req, res) => {
     const churnRate = totalTenants > 0 ? (cancellations / totalTenants * 100).toFixed(2) : 0;
 
     // Get pending renewals
-    const pendingRenewals = await prisma.clientSubscription.count({
+    const pendingRenewals = await prisma.client_subscriptions.count({
       where: {
         state: 'ACTIVE',
         current_period_end: {
@@ -186,13 +186,8 @@ router.get('/plans', ...superAdminOnly, async (req, res) => {
   try {
     const prisma = getPrisma();
 
-    const plans = await prisma.subscriptionPlan.findMany({
+    const plans = await prisma.subscription_plans.findMany({
       orderBy: { sort_order: 'asc' },
-      include: {
-        _count: {
-          select: { subscriptions: true },
-        },
-      },
     });
 
     res.json({
@@ -201,7 +196,7 @@ router.get('/plans', ...superAdminOnly, async (req, res) => {
         ...p,
         price_monthly: parseFloat(p.price_monthly),
         price_yearly: parseFloat(p.price_yearly),
-        subscriber_count: p._count.subscriptions,
+        subscriber_count: 0,
         limits: PLAN_LIMITS[p.plan_code] || {},
       })),
     });
@@ -314,7 +309,7 @@ router.put('/plans/:id', ...superAdminOnly, async (req, res) => {
     delete updateData.created_at;
     delete updateData.created_by;
 
-    const oldPlan = await prisma.subscriptionPlan.findUnique({
+    const oldPlan = await prisma.subscription_plans.findUnique({
       where: { id: planId },
     });
 
@@ -347,7 +342,7 @@ router.put('/plans/:id', ...superAdminOnly, async (req, res) => {
     });
 
     // Invalidate all caches for subscribers of this plan
-    const subscribers = await prisma.clientSubscription.findMany({
+    const subscribers = await prisma.client_subscriptions.findMany({
       where: { plan_id: planId },
       select: { client_id: true },
     });
@@ -376,7 +371,7 @@ router.patch('/plans/:id/toggle', ...superAdminOnly, async (req, res) => {
     const prisma = getPrisma();
     const planId = parseInt(req.params.id);
 
-    const plan = await prisma.subscriptionPlan.findUnique({
+    const plan = await prisma.subscription_plans.findUnique({
       where: { id: planId },
     });
 
@@ -384,7 +379,7 @@ router.patch('/plans/:id/toggle', ...superAdminOnly, async (req, res) => {
       return res.status(404).json({ ok: false, error: 'Plan not found' });
     }
 
-    const updated = await prisma.subscriptionPlan.update({
+    const updated = await prisma.subscription_plans.update({
       where: { id: planId },
       data: { is_active: !plan.is_active },
     });
@@ -435,7 +430,7 @@ router.get('/tenants', ...superAdminOnly, async (req, res) => {
     }
 
     const [subscriptions, total] = await Promise.all([
-      prisma.clientSubscription.findMany({
+      prisma.client_subscriptions.findMany({
         where,
         include: {
           plan: true,
@@ -452,7 +447,7 @@ router.get('/tenants', ...superAdminOnly, async (req, res) => {
         skip: (parseInt(page) - 1) * parseInt(limit),
         take: parseInt(limit),
       }),
-      prisma.clientSubscription.count({ where }),
+      prisma.client_subscriptions.count({ where }),
     ]);
 
     res.json({
@@ -487,14 +482,14 @@ router.get('/tenants/:clientId', ...superAdminOnly, async (req, res) => {
     const clientId = parseInt(req.params.clientId);
 
     const [subscription, client, overrides, billingOverrides, auditLogs] = await Promise.all([
-      prisma.clientSubscription.findUnique({
+      prisma.client_subscriptions.findUnique({
         where: { client_id: clientId },
         include: {
           plan: true,
           scheduled_plan: true,
         },
       }),
-      prisma.client.findUnique({
+      prisma.clients.findUnique({
         where: { id: clientId },
         select: {
           id: true,
@@ -504,13 +499,13 @@ router.get('/tenants/:clientId', ...superAdminOnly, async (req, res) => {
           created_at: true,
         },
       }),
-      prisma.clientFeatureOverride.findMany({
+      prisma.client_feature_overrides.findMany({
         where: { client_id: clientId },
       }),
-      prisma.billingOverride.findMany({
+      prisma.billing_overrides.findMany({
         where: { client_id: clientId, is_active: true },
       }),
-      prisma.subscriptionAuditLog.findMany({
+      prisma.subscription_audit_log.findMany({
         where: { client_id: clientId },
         orderBy: { created_at: 'desc' },
         take: 20,
@@ -579,7 +574,7 @@ router.post('/tenants/:clientId/force-upgrade', ...superAdminOnly, async (req, r
     const clientId = parseInt(req.params.clientId);
     const { plan_code, reason } = req.body;
 
-    const subscription = await prisma.clientSubscription.findUnique({
+    const subscription = await prisma.client_subscriptions.findUnique({
       where: { client_id: clientId },
     });
 
@@ -618,7 +613,7 @@ router.post('/tenants/:clientId/force-downgrade', ...superAdminOnly, async (req,
     const clientId = parseInt(req.params.clientId);
     const { plan_code, reason } = req.body;
 
-    const subscription = await prisma.clientSubscription.findUnique({
+    const subscription = await prisma.client_subscriptions.findUnique({
       where: { client_id: clientId },
       include: { plan: true },
     });
@@ -627,7 +622,7 @@ router.post('/tenants/:clientId/force-downgrade', ...superAdminOnly, async (req,
       return res.status(404).json({ ok: false, error: 'No subscription found' });
     }
 
-    const newPlan = await prisma.subscriptionPlan.findUnique({
+    const newPlan = await prisma.subscription_plans.findUnique({
       where: { plan_code },
     });
 
@@ -694,7 +689,7 @@ router.post('/tenants/:clientId/extend-trial', ...superAdminOnly, async (req, re
       return res.status(400).json({ ok: false, error: 'Days must be at least 1' });
     }
 
-    const subscription = await prisma.clientSubscription.findUnique({
+    const subscription = await prisma.client_subscriptions.findUnique({
       where: { client_id: clientId },
     });
 
@@ -768,7 +763,7 @@ router.post('/tenants/:clientId/reactivate', ...superAdminOnly, async (req, res)
     const clientId = parseInt(req.params.clientId);
     const { reason } = req.body;
 
-    const subscription = await prisma.clientSubscription.findUnique({
+    const subscription = await prisma.client_subscriptions.findUnique({
       where: { client_id: clientId },
     });
 
@@ -806,7 +801,7 @@ router.post('/tenants/:clientId/suspend', ...superAdminOnly, async (req, res) =>
     const clientId = parseInt(req.params.clientId);
     const { reason } = req.body;
 
-    const subscription = await prisma.clientSubscription.findUnique({
+    const subscription = await prisma.client_subscriptions.findUnique({
       where: { client_id: clientId },
     });
 
@@ -938,7 +933,7 @@ router.delete('/tenants/:clientId/features/:flagCode', ...superAdminOnly, async 
     const clientId = parseInt(req.params.clientId);
     const flagCode = req.params.flagCode;
 
-    await prisma.clientFeatureOverride.delete({
+    await prisma.client_feature_overrides.delete({
       where: {
         client_id_flag_code: { client_id: clientId, flag_code: flagCode },
       },
@@ -1040,7 +1035,7 @@ router.delete('/tenants/:clientId/billing-override/:id', ...superAdminOnly, asyn
     const prisma = getPrisma();
     const overrideId = parseInt(req.params.id);
 
-    await prisma.billingOverride.update({
+    await prisma.billing_overrides.update({
       where: { id: overrideId },
       data: { is_active: false },
     });
@@ -1084,7 +1079,7 @@ router.get('/audit-logs', ...superAdminOnly, async (req, res) => {
     if (end_date) where.created_at = { ...where.created_at, lte: new Date(end_date) };
 
     const [logs, total] = await Promise.all([
-      prisma.subscriptionAuditLog.findMany({
+      prisma.subscription_audit_log.findMany({
         where,
         orderBy: { created_at: 'desc' },
         skip: (parseInt(page) - 1) * parseInt(limit),
@@ -1095,7 +1090,7 @@ router.get('/audit-logs', ...superAdminOnly, async (req, res) => {
           },
         },
       }),
-      prisma.subscriptionAuditLog.count({ where }),
+      prisma.subscription_audit_log.count({ where }),
     ]);
 
     res.json({
@@ -1135,24 +1130,24 @@ router.get('/stats', ...superAdminOnly, async (req, res) => {
       mrr,
     ] = await Promise.all([
       // Total active subscriptions
-      prisma.clientSubscription.count({
+      prisma.client_subscriptions.count({
         where: { is_active: true },
       }),
       
       // Subscriptions by state
-      prisma.clientSubscription.groupBy({
+      prisma.client_subscriptions.groupBy({
         by: ['state'],
         _count: true,
       }),
       
       // Subscriptions by plan
-      prisma.clientSubscription.groupBy({
+      prisma.client_subscriptions.groupBy({
         by: ['plan_id'],
         _count: true,
       }),
       
       // Recent subscription changes (last 7 days)
-      prisma.subscriptionAuditLog.count({
+      prisma.subscription_audit_log.count({
         where: {
           created_at: {
             gte: new Date(Date.now() - 7 * 24 * 60 * 60 * 1000),
@@ -1162,7 +1157,7 @@ router.get('/stats', ...superAdminOnly, async (req, res) => {
       }),
       
       // Trial conversions (last 30 days)
-      prisma.clientSubscription.count({
+      prisma.client_subscriptions.count({
         where: {
           trial_converted: true,
           state_changed_at: {
@@ -1188,7 +1183,7 @@ router.get('/stats', ...superAdminOnly, async (req, res) => {
     ]);
 
     // Get plan names for the breakdown
-    const plans = await prisma.subscriptionPlan.findMany({
+    const plans = await prisma.subscription_plans.findMany({
       select: { id: true, plan_code: true, name: true },
     });
     const planMap = Object.fromEntries(plans.map(p => [p.id, p]));
