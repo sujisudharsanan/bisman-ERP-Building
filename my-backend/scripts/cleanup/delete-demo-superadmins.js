@@ -12,7 +12,7 @@ async function deleteDemoSuperAdmins() {
     console.log('🔍 Searching for demo super admin accounts to delete...\n');
 
     // Find the super admins
-    const superAdminsToDelete = await prisma.superAdmin.findMany({
+    const superAdminsToDelete = await prisma.super_admins.findMany({
       where: {
         email: {
           in: emailsToDelete
@@ -49,7 +49,7 @@ async function deleteDemoSuperAdmins() {
     for (const admin of superAdminsToDelete) {
       console.log(`Deleting ${admin.name} (${admin.email})...`);
       
-      await prisma.superAdmin.delete({
+      await prisma.super_admins.delete({
         where: {
           id: admin.id
         }

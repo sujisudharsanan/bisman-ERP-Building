@@ -20,11 +20,11 @@ router.use(requireEnterpriseAdmin);
 router.get('/dashboard', async (req, res) => {
   try {
     // Count super admins by product type
-    const businessSuperAdmins = await prisma.superAdmin.count({
+    const businessSuperAdmins = await prisma.super_admins.count({
       where: { productType: 'BUSINESS_ERP', is_active: true }
     });
 
-    const pumpSuperAdmins = await prisma.superAdmin.count({
+    const pumpSuperAdmins = await prisma.super_admins.count({
       where: { productType: 'PUMP_ERP', is_active: true }
     });
 
@@ -50,7 +50,7 @@ router.get('/dashboard', async (req, res) => {
     });
 
     // Get recent super admins
-    const recentSuperAdmins = await prisma.superAdmin.findMany({
+    const recentSuperAdmins = await prisma.super_admins.findMany({
       take: 5,
       orderBy: { created_at: 'desc' },
       select: {
@@ -121,7 +121,7 @@ router.get('/super-admins', async (req, res) => {
     if (productType) where.productType = productType;
     if (isActive !== undefined) where.is_active = isActive === 'true';
 
-    const superAdmins = await prisma.superAdmin.findMany({
+    const superAdmins = await prisma.super_admins.findMany({
       where,
       include: {
         clients: {
@@ -195,7 +195,7 @@ router.get('/super-admins', async (req, res) => {
  */
 router.get('/super-admins/:id', async (req, res) => {
   try {
-    const superAdmin = await prisma.superAdmin.findUnique({
+    const superAdmin = await prisma.super_admins.findUnique({
       where: { id: parseInt(req.params.id) },
       include: {
         clients: {
@@ -258,7 +258,7 @@ router.post('/super-admins', async (req, res) => {
     }
 
     // Check if email already exists
-    const existingSuperAdmin = await prisma.superAdmin.findUnique({
+    const existingSuperAdmin = await prisma.super_admins.findUnique({
       where: { email }
     });
 
@@ -273,7 +273,7 @@ router.post('/super-admins', async (req, res) => {
     const hashedPassword = bcrypt.hashSync(password, 10);
 
     // Create super admin
-    const superAdmin = await prisma.superAdmin.create({
+    const superAdmin = await prisma.super_admins.create({
       data: {
         name,
         email,
@@ -303,7 +303,7 @@ router.post('/super-admins', async (req, res) => {
     }
 
     // Fetch created super admin with modules
-    const createdSuperAdmin = await prisma.superAdmin.findUnique({
+    const createdSuperAdmin = await prisma.super_admins.findUnique({
       where: { id: superAdmin.id },
       include: {
         moduleAssignments: {
@@ -345,7 +345,7 @@ router.patch('/super-admins/:id', async (req, res) => {
     if (is_active !== undefined) updateData.is_active = is_active;
     if (password) updateData.password_hash = bcrypt.hashSync(password, 10);
 
-    const superAdmin = await prisma.superAdmin.update({
+    const superAdmin = await prisma.super_admins.update({
       where: { id: parseInt(req.params.id) },
       data: updateData,
       include: {
@@ -386,7 +386,7 @@ router.patch('/super-admins/:id', async (req, res) => {
 router.delete('/super-admins/:id', async (req, res) => {
   try {
     // Soft delete
-    const superAdmin = await prisma.superAdmin.update({
+    const superAdmin = await prisma.super_admins.update({
       where: { id: parseInt(req.params.id) },
       data: { is_active: false }
     });
@@ -436,7 +436,7 @@ router.post('/super-admins/:id/assign-modules', async (req, res) => {
     }
 
     // Get super admin to check productType
-    const superAdmin = await prisma.superAdmin.findUnique({
+    const superAdmin = await prisma.super_admins.findUnique({
       where: { id: superAdminId }
     });
 
@@ -476,7 +476,7 @@ router.post('/super-admins/:id/assign-modules', async (req, res) => {
     }
 
     // Fetch updated super admin with modules
-    const updatedSuperAdmin = await prisma.superAdmin.findUnique({
+    const updatedSuperAdmin = await prisma.super_admins.findUnique({
       where: { id: superAdminId },
       include: {
         moduleAssignments: {

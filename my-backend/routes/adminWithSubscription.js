@@ -243,7 +243,7 @@ router.get('/organizations', ...superAdminOnly, async (req, res) => {
     const userRole = (req.user?.role || '').toUpperCase();
     if (userRole === 'SUPER_ADMIN') {
       // Get super admin's ID from user record
-      const superAdmin = await prisma.superAdmin.findFirst({
+      const superAdmin = await prisma.super_admins.findFirst({
         where: { email: req.user.email },
       });
       if (superAdmin) {

@@ -7,7 +7,7 @@ async function checkEnterpriseAdmin() {
   try {
     console.log('🔍 Checking enterprise admin...\n');
     
-    const admin = await prisma.enterpriseAdmin.findUnique({
+    const admin = await prisma.enterprise_admins.findUnique({
       where: { email: 'enterprise@bisman.erp' }
     });
     
@@ -31,7 +31,7 @@ async function checkEnterpriseAdmin() {
         console.log('\n💡 Creating/updating with correct password...');
         const hashedPassword = bcrypt.hashSync(testPassword, 10);
         
-        await prisma.enterpriseAdmin.update({
+        await prisma.enterprise_admins.update({
           where: { id: admin.id },
           data: { password: hashedPassword }
         });
@@ -48,7 +48,7 @@ async function checkEnterpriseAdmin() {
       }
       const hashedPassword = bcrypt.hashSync(enterprisePassword, 10);
       
-      const newAdmin = await prisma.enterpriseAdmin.create({
+      const newAdmin = await prisma.enterprise_admins.create({
         data: {
           email: 'enterprise@bisman.erp',
           password: hashedPassword,

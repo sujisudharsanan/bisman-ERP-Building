@@ -3,7 +3,7 @@ const prisma = new PrismaClient();
 
 async function checkBusinessSuperAdmin() {
   try {
-    const superAdmin = await prisma.superAdmin.findFirst({
+    const superAdmin = await prisma.super_admins.findFirst({
       where: {
         email: 'business_superadmin@bisman.demo'
       },

@@ -22,7 +22,7 @@ async function setupEverything() {
   try {
     // Step 1: Create Super Admin
     console.log('Step 1: Creating Super Admin...');
-    const superAdmin = await prisma.superAdmin.upsert({
+    const superAdmin = await prisma.super_admins.upsert({
       where: { email: 'business_superadmin@bisman.demo' },
       update: {},
       create: {

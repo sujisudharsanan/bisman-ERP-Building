@@ -37,7 +37,7 @@ router.get('/filter-options', requireEnterpriseAdmin, async (req, res) => {
     });
 
     // Get all super admins for filter
-    const superAdmins = await prisma.superAdmin.findMany({
+    const superAdmins = await prisma.super_admins.findMany({
       select: { id: true, name: true, email: true },
       orderBy: { name: 'asc' }
     });
@@ -116,7 +116,7 @@ router.get('/', requireEnterpriseAdmin, async (req, res) => {
 
     if (superAdminId && superAdminId !== 'all') {
       // Get super admin details
-      const superAdmin = await prisma.superAdmin.findUnique({
+      const superAdmin = await prisma.super_admins.findUnique({
         where: { id: superAdminId },
         select: { email: true, name: true }
       });

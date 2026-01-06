@@ -29,7 +29,7 @@ const authenticateMultiTenant = async (req, res, next) => {
     
     // Check if this is an Enterprise Admin (from enterprise_admins table)
     if (decoded.userType === 'ENTERPRISE_ADMIN') {
-      const enterpriseAdmin = await prisma.enterpriseAdmin.findUnique({
+      const enterpriseAdmin = await prisma.enterprise_admins.findUnique({
         where: { id: decoded.id },
         select: {
           id: true,
@@ -66,7 +66,7 @@ const authenticateMultiTenant = async (req, res, next) => {
 
     // Check if this is a Super Admin (from super_admins table)
     if (decoded.userType === 'SUPER_ADMIN') {
-      const superAdmin = await prisma.superAdmin.findUnique({
+      const superAdmin = await prisma.super_admins.findUnique({
         where: { id: decoded.id },
         select: {
           id: true,

@@ -6,14 +6,14 @@ async function checkSetup() {
   
   try {
     // Check for super admin
-    const superAdmin = await prisma.superAdmin.findFirst({
+    const superAdmin = await prisma.super_admins.findFirst({
       where: { email: 'super_admin@bisman.erp' }
     });
     
     if (!superAdmin) {
       console.log('❌ No Super Admin found with email: super_admin@bisman.erp');
       console.log('   Available Super Admins:');
-      const allSuperAdmins = await prisma.superAdmin.findMany({
+      const allSuperAdmins = await prisma.super_admins.findMany({
         select: { id: true, email: true, name: true }
       });
       allSuperAdmins.forEach(sa => {

@@ -144,7 +144,7 @@ async function checkEmailExists(email) {
   }
 
   // Check in SuperAdmin table
-  const existingSuperAdmin = await prisma.superAdmin.findFirst({
+  const existingSuperAdmin = await prisma.super_admins.findFirst({
     where: { email: { equals: email, mode: 'insensitive' } },
   });
 

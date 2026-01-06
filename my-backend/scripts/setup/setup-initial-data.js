@@ -7,7 +7,7 @@ async function setupInitialData() {
   
   try {
     // Create Super Admin
-    const superAdmin = await prisma.superAdmin.upsert({
+    const superAdmin = await prisma.super_admins.upsert({
       where: { email: 'business_superadmin@bisman.demo' },
       update: {},
       create: {

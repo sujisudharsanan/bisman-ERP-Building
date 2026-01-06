@@ -82,7 +82,7 @@ async function main() {
       },
     });
 
-    const petrolSuperAdmin = await prisma.superAdmin.upsert({
+    const petrolSuperAdmin = await prisma.super_admins.upsert({
       where: { email: 'rajesh@petrolpump.com' },
       update: {},
       create: {
@@ -140,7 +140,7 @@ async function main() {
       },
     });
 
-    const logisticsSuperAdmin = await prisma.superAdmin.upsert({
+    const logisticsSuperAdmin = await prisma.super_admins.upsert({
       where: { email: 'amit@abclogistics.com' },
       update: {},
       create: {
@@ -259,11 +259,11 @@ async function main() {
     // =====================================================
     console.log('🔍 Verifying module assignments...');
 
-    const petrolModules = await prisma.superAdminModule.count({
+    const petrolModules = await prisma.super_adminsModule.count({
       where: { super_admin_id: petrolSuperAdmin.id },
     });
 
-    const logisticsModules = await prisma.superAdminModule.count({
+    const logisticsModules = await prisma.super_adminsModule.count({
       where: { super_admin_id: logisticsSuperAdmin.id },
     });
 

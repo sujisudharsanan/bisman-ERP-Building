@@ -28,10 +28,10 @@ async function simpleSetup() {
     if (!client) {
       console.log('No client found. Creating one...');
       // Find or create enterprise admin first
-      let enterpriseAdmin = await prisma.enterpriseAdmin.findFirst();
+      let enterpriseAdmin = await prisma.enterprise_admins.findFirst();
       if (!enterpriseAdmin) {
         console.log('Creating Enterprise Admin record...');
-        enterpriseAdmin = await prisma.enterpriseAdmin.create({
+        enterpriseAdmin = await prisma.enterprise_admins.create({
           data: {
             name: 'Enterprise Admin',
             email: 'admin@bisman.erp',
@@ -43,7 +43,7 @@ async function simpleSetup() {
       }
       
       // Create super admin
-      const superAdmin = await prisma.superAdmin.create({
+      const superAdmin = await prisma.super_admins.create({
         data: {
           name: 'Super Admin',
           email: 'superadmin@bisman.demo',

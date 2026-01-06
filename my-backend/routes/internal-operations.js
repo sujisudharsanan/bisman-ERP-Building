@@ -207,7 +207,7 @@ router.get('/team', requireInternalPermission('view:audit_logs'), async (req, re
     `;
 
     // Also include enterprise admins
-    const enterpriseAdmins = await prisma.enterpriseAdmin.findMany({
+    const enterpriseAdmins = await prisma.enterprise_admins.findMany({
       select: {
         id: true,
         name: true,

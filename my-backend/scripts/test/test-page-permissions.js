@@ -3,7 +3,7 @@ const prisma = new PrismaClient();
 
 async function test() {
   try {
-    const superAdmins = await prisma.superAdmin.findMany({
+    const superAdmins = await prisma.super_admins.findMany({
       where: {
         email: 'test_business@bisman.demo'
       },

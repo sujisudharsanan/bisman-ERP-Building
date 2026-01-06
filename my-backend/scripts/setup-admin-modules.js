@@ -75,7 +75,7 @@ async function ensurePermissions() {
 
 async function ensureAssignments() {
   // For each SuperAdmin, ensure assignment of both modules
-  const superAdmins = await prisma.superAdmin.findMany({ select: { id: true } });
+  const superAdmins = await prisma.super_admins.findMany({ select: { id: true } });
   const mods = await prisma.module.findMany({ where: { module_name: { in: MODULES.map(x=>x.module_name) } } });
   const modBySlug = new Map(mods.map(m => [m.module_name, m]));
   let created = 0;

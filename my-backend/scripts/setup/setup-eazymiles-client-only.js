@@ -7,7 +7,7 @@ async function main() {
   console.log('🚀 Setting up Eazymiles Client (Admin User Only)...\n');
 
   // Get Enterprise Admin and Super Admin
-  const enterpriseAdmin = await prisma.enterpriseAdmin.findFirst({
+  const enterpriseAdmin = await prisma.enterprise_admins.findFirst({
     orderBy: { id: 'asc' }
   });
 
@@ -16,7 +16,7 @@ async function main() {
     return;
   }
 
-  const superAdmin = await prisma.superAdmin.findFirst({
+  const superAdmin = await prisma.super_admins.findFirst({
     where: { created_by: enterpriseAdmin.id },
     orderBy: { id: 'asc' }
   });

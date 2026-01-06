@@ -11,7 +11,7 @@ async function main() {
     const hashedPassword = await bcrypt.hash('enterprise123', 10);
 
     // Create or update Enterprise Admin in the enterpriseAdmin table
-    const enterpriseAdmin = await prisma.enterpriseAdmin.upsert({
+    const enterpriseAdmin = await prisma.enterprise_admins.upsert({
       where: { email: 'enterprise@bisman.erp' },
       update: {
         password: hashedPassword,
@@ -36,7 +36,7 @@ async function main() {
     console.log('✅ Active:', enterpriseAdmin.is_active);
     
     // Verify the user was created in the correct table
-    const verifyUser = await prisma.enterpriseAdmin.findUnique({
+    const verifyUser = await prisma.enterprise_admins.findUnique({
       where: { email: 'enterprise@bisman.erp' }
     });
     

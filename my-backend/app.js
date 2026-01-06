@@ -1694,7 +1694,7 @@ app.get('/api/me', async (req, res) => {
     let dbUser = null;
     try {
       if (payload.userType === 'ENTERPRISE_ADMIN') {
-        dbUser = await prisma.enterpriseAdmin.findUnique({
+        dbUser = await prisma.enterprise_admins.findUnique({
           where: { id: payload.id },
           select: {
             id: true,
@@ -1708,7 +1708,7 @@ app.get('/api/me', async (req, res) => {
           dbUser.role = 'ENTERPRISE_ADMIN';
         }
       } else if (payload.userType === 'SUPER_ADMIN') {
-        dbUser = await prisma.superAdmin.findUnique({
+        dbUser = await prisma.super_admins.findUnique({
           where: { id: payload.id },
           select: {
             id: true,
@@ -2207,7 +2207,7 @@ app.get('/api/enterprise-admin/super-admins', authenticate, requireRole('ENTERPR
   console.log('🔵 User:', req.user);
   try {
     // Fetch from super_admins table with module assignments
-    const superAdmins = await prisma.superAdmin.findMany({
+    const superAdmins = await prisma.super_admins.findMany({
       include: {
         moduleAssignments: {
           include: {
@@ -2339,7 +2339,7 @@ app.get('/api/auth/me/permissions', authenticate, async (req, res) => {
     if (req.user.role === 'SUPER_ADMIN') {
       // Look up by email since super_admins table has different IDs than users table
       const userEmail = req.user.email;
-      const superAdmin = await prisma.superAdmin.findFirst({
+      const superAdmin = await prisma.super_admins.findFirst({
         where: { email: userEmail },
         include: {
           moduleAssignments: {
@@ -2670,7 +2670,7 @@ app.post('/api/enterprise-admin/super-admins', authenticate, requireRole('ENTERP
     }
 
     // Check if username already exists
-    const existingUsername = await prisma.superAdmin.findUnique({
+    const existingUsername = await prisma.super_admins.findUnique({
       where: { username }
     });
 
@@ -2682,7 +2682,7 @@ app.post('/api/enterprise-admin/super-admins', authenticate, requireRole('ENTERP
     }
 
     // Check if email already exists
-    const existingEmail = await prisma.superAdmin.findUnique({
+    const existingEmail = await prisma.super_admins.findUnique({
       where: { email }
     });
 
@@ -2697,7 +2697,7 @@ app.post('/api/enterprise-admin/super-admins', authenticate, requireRole('ENTERP
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create Super Admin
-    const newSuperAdmin = await prisma.superAdmin.create({
+    const newSuperAdmin = await prisma.super_admins.create({
       data: {
         username,
         email,
@@ -2743,7 +2743,7 @@ app.delete('/api/enterprise-admin/super-admins/:id', authenticate, requireRole('
     }
 
     // Check if Super Admin exists
-    const superAdmin = await prisma.superAdmin.findUnique({
+    const superAdmin = await prisma.super_admins.findUnique({
       where: { id: superAdminId }
     });
 
@@ -2760,7 +2760,7 @@ app.delete('/api/enterprise-admin/super-admins/:id', authenticate, requireRole('
     });
 
     // Delete the Super Admin
-    await prisma.superAdmin.delete({
+    await prisma.super_admins.delete({
       where: { id: superAdminId }
     });
 
@@ -2811,7 +2811,7 @@ app.post('/api/enterprise-admin/super-admins/:id/assign-module', authenticate, r
     const moduleIdInt = parseInt(moduleId);
 
     // Verify super admin exists
-    const superAdmin = await prisma.superAdmin.findUnique({
+    const superAdmin = await prisma.super_admins.findUnique({
       where: { id: superAdminId }
     });
 
@@ -3018,7 +3018,7 @@ app.post('/api/enterprise-admin/super-admins/:id/assign-roles', authenticate, re
     const enterpriseAdminId = req.user.id;
 
     // Verify super admin exists
-    const superAdmin = await prisma.superAdmin.findUnique({
+    const superAdmin = await prisma.super_admins.findUnique({
       where: { id: superAdminId }
     });
 
@@ -3623,7 +3623,7 @@ app.get('/api/enterprise-admin/dashboard/stats', authenticate, requireRole('ENTE
   try {
     // Get counts from database
     const [superAdminCount, moduleCount, clientCount] = await Promise.all([
-      prisma.superAdmin.count({ where: { is_active: true } }),
+      prisma.super_admins.count({ where: { is_active: true } }),
       prisma.module.count({ where: { is_active: true } }),
       prisma.client.count()
     ]);
@@ -3650,7 +3650,7 @@ app.get('/api/enterprise-admin/dashboard/stats', authenticate, requireRole('ENTE
 // Super Admin Distribution
 app.get('/api/enterprise-admin/dashboard/super-admin-distribution', authenticate, requireRole('ENTERPRISE_ADMIN'), async (req, res) => {
   try {
-    const superAdmins = await prisma.superAdmin.findMany({
+    const superAdmins = await prisma.super_admins.findMany({
       where: { is_active: true },
       select: { productType: true }
     });

@@ -68,10 +68,47 @@
     "**/.next": true,
     "**/node_modules": true,
     "**/dist": true,
-    "**/build": true
-  }
+    "**/build": true,
+    "**/.git": true,
+    "**/backups": true,
+    "**/*.sql": true,
+    "**/logs": true,
+    "**/uploads": true
+  },
 
-  ,
+  // CRITICAL: Exclude large directories from file watching (fixes VS Code slowness)
+  "files.watcherExclude": {
+    "**/.git/objects/**": true,
+    "**/.git/subtree-cache/**": true,
+    "**/node_modules/**": true,
+    "**/.next/**": true,
+    "**/dist/**": true,
+    "**/build/**": true,
+    "**/backups/**": true,
+    "**/logs/**": true,
+    "**/uploads/**": true,
+    "**/.prisma/**": true,
+    "**/coverage/**": true
+  },
+
+  // Exclude from search to speed up Find in Files
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/.next": true,
+    "**/dist": true,
+    "**/build": true,
+    "**/.git": true,
+    "**/backups": true,
+    "**/*.sql": true,
+    "**/logs": true,
+    "**/coverage": true,
+    "**/.prisma": true,
+    "**/package-lock.json": true
+  },
+
+  // Limit file size for features to prevent memory issues
+  "search.followSymlinks": false,
+  
   "files.associations": {
     "*.pcss": "css",
     "*.postcss": "css",

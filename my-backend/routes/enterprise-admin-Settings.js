@@ -312,7 +312,7 @@ router.get('/overview', requireEnterpriseAdmin, async (req, res) => {
         apiKeysActive: 5
       },
       usage: {
-        totalOrganizations: await prisma.superAdmin.count(),
+        totalOrganizations: await prisma.super_admins.count(),
         totalUsers: await prisma.user.count(),
         storageUsed: '1.2 TB / 5 TB',
         apiCallsToday: 45230

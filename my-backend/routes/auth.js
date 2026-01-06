@@ -76,7 +76,7 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
     if (prisma) {
       try {
         enterpriseAdmin = await withTimeout(
-          prisma.enterpriseAdmin.findUnique({ where: { email } }),
+          prisma.enterprise_admins.findUnique({ where: { email } }),
           3000 // 3 second timeout
         );
       } catch (e) {
@@ -152,7 +152,7 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
     if (prisma) {
       try {
         superAdmin = await withTimeout(
-          prisma.superAdmin.findUnique({ where: { email } }),
+          prisma.super_admins.findUnique({ where: { email } }),
           3000 // 3 second timeout
         );
       } catch (e) {
@@ -549,7 +549,7 @@ router.get('/me/permissions', async (req, res) => {
     
     // Handle SUPER_ADMIN
     if (decoded.userType === 'SUPER_ADMIN') {
-      const superAdmin = await prisma.superAdmin.findUnique({
+      const superAdmin = await prisma.super_admins.findUnique({
         where: { id: decoded.id },
         select: {
           id: true,
@@ -637,7 +637,7 @@ router.get('/me/permissions', async (req, res) => {
     
     // Handle ENTERPRISE_ADMIN
     if (decoded.userType === 'ENTERPRISE_ADMIN') {
-      const enterpriseAdmin = await prisma.enterpriseAdmin.findUnique({
+      const enterpriseAdmin = await prisma.enterprise_admins.findUnique({
         where: { id: decoded.id },
         select: {
           id: true,
@@ -741,7 +741,7 @@ router.get('/me', async (req, res) => {
     let user = null;
 
     if (decoded.userType === 'ENTERPRISE_ADMIN') {
-      user = await prisma.enterpriseAdmin.findUnique({
+      user = await prisma.enterprise_admins.findUnique({
         where: { id: decoded.id },
         select: {
           id: true,
@@ -758,7 +758,7 @@ router.get('/me', async (req, res) => {
         user.userType = 'ENTERPRISE_ADMIN';
       }
     } else if (decoded.userType === 'SUPER_ADMIN') {
-      user = await prisma.superAdmin.findUnique({
+      user = await prisma.super_admins.findUnique({
         where: { id: decoded.id },
         select: {
           id: true,

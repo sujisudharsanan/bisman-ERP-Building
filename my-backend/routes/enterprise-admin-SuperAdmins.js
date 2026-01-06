@@ -29,7 +29,7 @@ router.get('/', async (req, res) => {
     const skip = (page - 1) * limit;
 
     const [superAdmins, total] = await Promise.all([
-      prisma.superAdmin.findMany({
+      prisma.super_admins.findMany({
         skip,
         take: limit,
         orderBy: { created_at: 'desc' },
@@ -43,7 +43,7 @@ router.get('/', async (req, res) => {
           updated_at: true
         }
       }),
-      prisma.superAdmin.count()
+      prisma.super_admins.count()
     ]);
 
     console.log(`🔵 Found ${superAdmins.length} super admins`);
@@ -91,7 +91,7 @@ router.get('/:adminId', requireEnterpriseAdmin, async (req, res) => {
     const adminId = parseInt(req.params.adminId);
 
     const [admin, auditLogs, clients] = await Promise.all([
-      prisma.superAdmin.findUnique({
+      prisma.super_admins.findUnique({
         where: { id: adminId },
         include: {
           enterpriseAdmin: {
@@ -163,7 +163,7 @@ router.get('/:adminId/clients', requireEnterpriseAdmin, async (req, res) => {
     const adminId = parseInt(req.params.adminId);
 
     // Verify super admin exists
-    const superAdmin = await prisma.superAdmin.findUnique({
+    const superAdmin = await prisma.super_admins.findUnique({
       where: { id: adminId },
       select: { id: true, name: true }
     });
@@ -257,7 +257,7 @@ router.post('/', requireEnterpriseAdmin, async (req, res) => {
     }
 
     // Check if super admin already exists
-    const existing = await prisma.superAdmin.findUnique({
+    const existing = await prisma.super_admins.findUnique({
       where: { email }
     });
 
@@ -272,7 +272,7 @@ router.post('/', requireEnterpriseAdmin, async (req, res) => {
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Create super admin with correct schema fields
-    const newAdmin = await prisma.superAdmin.create({
+    const newAdmin = await prisma.super_admins.create({
       data: {
         name,
         email,
@@ -315,7 +315,7 @@ router.put('/:adminId', requireEnterpriseAdmin, async (req, res) => {
     if (status) updateData.is_active = status === 'active';
     if (typeof mfaEnabled === 'boolean') updateData.mfa_enabled = mfaEnabled;
 
-    const updatedAdmin = await prisma.superAdmin.update({
+    const updatedAdmin = await prisma.super_admins.update({
       where: { id: adminId },
       data: updateData
     });
@@ -354,7 +354,7 @@ router.delete('/:adminId', requireEnterpriseAdmin, async (req, res) => {
   try {
     const adminId = parseInt(req.params.adminId);
 
-    await prisma.superAdmin.update({
+    await prisma.super_admins.update({
       where: { id: adminId },
       data: { is_active: false }
     });
@@ -385,7 +385,7 @@ router.post('/:adminId/mfa-reset', requireEnterpriseAdmin, async (req, res) => {
   try {
     const adminId = parseInt(req.params.adminId);
 
-    await prisma.superAdmin.update({
+    await prisma.super_admins.update({
       where: { id: adminId },
       data: { 
         mfa_enabled: false,
@@ -504,10 +504,10 @@ router.put('/roles/mapping', requireEnterpriseAdmin, async (req, res) => {
 router.get('/stats/overview', requireEnterpriseAdmin, async (req, res) => {
   try {
     const [total, active, withMFA, byRole] = await Promise.all([
-      prisma.superAdmin.count(),
-      prisma.superAdmin.count({ where: { is_active: true } }),
-      prisma.superAdmin.count({ where: { mfa_enabled: true } }),
-      prisma.superAdmin.groupBy({
+      prisma.super_admins.count(),
+      prisma.super_admins.count({ where: { is_active: true } }),
+      prisma.super_admins.count({ where: { mfa_enabled: true } }),
+      prisma.super_admins.groupBy({
         by: ['role'],
         _count: { id: true }
       })
@@ -548,7 +548,7 @@ router.post('/:id/reset-password', requireEnterpriseAdmin, async (req, res) => {
     }
 
     // Check if super admin exists
-    const superAdmin = await prisma.superAdmin.findUnique({
+    const superAdmin = await prisma.super_admins.findUnique({
       where: { id: adminId }
     });
 
@@ -561,7 +561,7 @@ router.post('/:id/reset-password', requireEnterpriseAdmin, async (req, res) => {
     const hashedPassword = await bcrypt.hash(newPassword, salt);
 
     // Update the password
-    await prisma.superAdmin.update({
+    await prisma.super_admins.update({
       where: { id: adminId },
       data: { 
         password_hash: hashedPassword,

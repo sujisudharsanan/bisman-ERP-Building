@@ -9,7 +9,7 @@ async function main() {
   console.log('📡 DATABASE_URL:', process.env.DATABASE_URL?.substring(0, 50) + '...');
 
   // Get existing super admin and client
-  const superAdmin = await prisma.superAdmin.findFirst({
+  const superAdmin = await prisma.super_admins.findFirst({
     orderBy: { id: 'asc' }
   });
 

@@ -22,5 +22,5 @@
     "swc": false
   },
   "include": ["apps/**/*","libs/**/*","apps/*/src/**/*","apps/*/index.ts","my-backend/**/*"],
-  "exclude": ["node_modules","dist","backup/**","audit-report/**","security-report*/**","security_remediation*/**"]
+  "exclude": ["node_modules","dist","backup/**","backups/**","audit-report/**","security-report*/**","security_remediation*/**","**/*.sql","**/logs/**","**/uploads/**","**/.next/**","**/coverage/**"]
 }

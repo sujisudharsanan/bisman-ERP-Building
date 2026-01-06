@@ -9,7 +9,7 @@ async function setupEazymilesClient() {
     console.log('='.repeat(80) + '\n');
 
     // 1. Get Enterprise Admin
-    const enterpriseAdmin = await prisma.enterpriseAdmin.findFirst();
+    const enterpriseAdmin = await prisma.enterprise_admins.findFirst();
     if (!enterpriseAdmin) {
       console.error('❌ Enterprise Admin not found!');
       return;
@@ -17,10 +17,10 @@ async function setupEazymilesClient() {
     console.log(`✅ Enterprise Admin: ${enterpriseAdmin.email}`);
 
     // 2. Get or Create Super Admin
-    let superAdmin = await prisma.superAdmin.findFirst();
+    let superAdmin = await prisma.super_admins.findFirst();
     if (!superAdmin) {
       console.log('Creating Super Admin...');
-      superAdmin = await prisma.superAdmin.create({
+      superAdmin = await prisma.super_admins.create({
         data: {
           name: 'Super Admin',
           email: 'superadmin@bisman.demo',

@@ -21,7 +21,7 @@ router.get('/system-overview', requireEnterpriseAdmin, async (req, res) => {
       totalModules,
       activeModuleAssignments
     ] = await Promise.all([
-      prisma.superAdmin.count({ where: { is_active: true } }),
+      prisma.super_admins.count({ where: { is_active: true } }),
       prisma.client.count({ where: { is_active: true } }),
       prisma.user.count(),
       prisma.module.count({ where: { is_active: true } }),

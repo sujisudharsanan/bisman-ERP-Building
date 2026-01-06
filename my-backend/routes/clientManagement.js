@@ -15,11 +15,11 @@ router.post('/super-admins', authMiddleware, async (req, res) => {
     if (!isPlatformAdmin(user?.role)) return res.status(403).json({ error: 'Platform admin only' });
     const { name, email, password, productType = 'BUSINESS_ERP', enterprise_admin_id = 1 } = req.body;
     if (!name || !email || !password) return res.status(400).json({ error: 'name, email, password required' });
-    const exists = await prisma.superAdmin.findUnique({ where: { email } });
+    const exists = await prisma.super_admins.findUnique({ where: { email } });
     if (exists) return res.status(400).json({ error: 'SuperAdmin email already exists' });
     const bcrypt = require('bcryptjs');
     const hashed = await bcrypt.hash(password, 10);
-    const created = await prisma.superAdmin.create({ data: { name, email, password: hashed, productType, created_by: enterprise_admin_id } });
+    const created = await prisma.super_admins.create({ data: { name, email, password: hashed, productType, created_by: enterprise_admin_id } });
     res.status(201).json({ success: true, data: created });
   } catch (e) {
     res.status(500).json({ error: 'Failed to create SuperAdmin', details: e.message });

@@ -17,7 +17,7 @@ async function setupRailway() {
     console.log('Step 1: Creating Super Admin...');
     const hashedPassword = await bcrypt.hash('Admin@123', 10);
     
-    const superAdmin = await prisma.superAdmin.upsert({
+    const superAdmin = await prisma.super_admins.upsert({
       where: { email: 'admin@bisman.com' },
       update: {},
       create: {

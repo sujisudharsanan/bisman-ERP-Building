@@ -31,7 +31,7 @@ async function main() {
   }
   
   console.log("\n=== SUPER ADMINS SUMMARY ===\n");
-  const superAdmins = await prisma.superAdmin.findMany({
+  const superAdmins = await prisma.super_admins.findMany({
     include: { moduleAssignments: { include: { module: true } } }
   });
   

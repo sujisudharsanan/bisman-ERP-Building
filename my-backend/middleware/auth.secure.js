@@ -215,9 +215,9 @@ async function authenticate(req, res, next) {
   try {
     // Check by userType if available
     if (payload.userType === 'ENTERPRISE_ADMIN') {
-      user = await prisma.enterpriseAdmin.findUnique({ where: { id: payload.id } })
+      user = await prisma.enterprise_admins.findUnique({ where: { id: payload.id } })
     } else if (payload.userType === 'SUPER_ADMIN') {
-      user = await prisma.superAdmin.findUnique({ where: { id: payload.id } })
+      user = await prisma.super_admins.findUnique({ where: { id: payload.id } })
     } else {
       // Regular user
       user = await prisma.user.findUnique({ where: { id: payload.id } })

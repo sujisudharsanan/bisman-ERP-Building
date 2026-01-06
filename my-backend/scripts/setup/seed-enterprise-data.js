@@ -43,7 +43,7 @@ async function main() {
   }
 
   // 2. Get Enterprise Admin
-  const enterpriseAdmin = await prisma.enterpriseAdmin.findFirst({
+  const enterpriseAdmin = await prisma.enterprise_admins.findFirst({
     where: { email: 'enterprise@bisman.erp' }
   });
 
@@ -88,7 +88,7 @@ async function main() {
       });
 
       // Create SuperAdmin entry
-      const superAdmin = await prisma.superAdmin.upsert({
+      const superAdmin = await prisma.super_admins.upsert({
         where: { email: sa.email },
         update: {
           businessName: sa.businessName,
@@ -158,7 +158,7 @@ async function main() {
   console.log('\n✨ Enterprise data seed complete!');
   console.log('\n📊 Summary:');
   const moduleCount = await prisma.module.count();
-  const superAdminCount = await prisma.superAdmin.count();
+  const superAdminCount = await prisma.super_admins.count();
   const assignmentCount = await prisma.moduleAssignment.count();
   
   console.log(`   Modules: ${moduleCount}`);

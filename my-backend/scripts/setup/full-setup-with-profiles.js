@@ -16,7 +16,7 @@ async function fullSetup() {
       
       // Create Enterprise Admin
       console.log('Creating Enterprise Admin...');
-      const enterpriseAdmin = await prisma.enterpriseAdmin.create({
+      const enterpriseAdmin = await prisma.enterprise_admins.create({
         data: {
           name: 'Enterprise Admin',
           email: 'admin@bisman.erp',
@@ -28,7 +28,7 @@ async function fullSetup() {
       
       // Create Super Admin
       console.log('Creating Super Admin...');
-      const superAdmin = await prisma.superAdmin.create({
+      const superAdmin = await prisma.super_admins.create({
         data: {
           name: 'Super Admin',
           email: 'superadmin@bisman.demo',

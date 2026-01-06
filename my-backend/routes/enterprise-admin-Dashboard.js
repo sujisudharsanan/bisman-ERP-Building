@@ -21,7 +21,7 @@ const requireEnterpriseAdmin = (req, res, next) => {
 router.get('/stats', requireEnterpriseAdmin, async (req, res) => {
   try {
     const [superAdminsCount, modulesCount, clientsCount, recentActivity] = await Promise.all([
-      prisma.superAdmin.count({ where: { is_active: true } }),
+      prisma.super_admins.count({ where: { is_active: true } }),
       prisma.module.count({ where: { is_active: true } }),
       prisma.client.count({ where: { is_active: true } }),
       prisma.recent_activity.count({
@@ -65,7 +65,7 @@ router.get('/stats', requireEnterpriseAdmin, async (req, res) => {
 // ====================
 router.get('/super-admin-distribution', requireEnterpriseAdmin, async (req, res) => {
   try {
-    const distribution = await prisma.superAdmin.groupBy({
+    const distribution = await prisma.super_admins.groupBy({
       by: ['productType'],
       where: { is_active: true },
       _count: { id: true }

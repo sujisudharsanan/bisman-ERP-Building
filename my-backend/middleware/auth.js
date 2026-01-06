@@ -61,7 +61,7 @@ async function authenticate(req, res, next) {
       // Check userType from JWT to determine which table to query
       if (payload.userType === 'ENTERPRISE_ADMIN') {
         console.log('[authenticate] Looking up Enterprise Admin with id:', subjectId)
-        user = await prisma.enterpriseAdmin.findUnique({ 
+        user = await prisma.enterprise_admins.findUnique({ 
           where: { id: subjectId },
           select: {
             id: true,
@@ -79,7 +79,7 @@ async function authenticate(req, res, next) {
         }
       } else if (payload.userType === 'SUPER_ADMIN') {
         console.log('[authenticate] Looking up Super Admin with id:', subjectId)
-        user = await prisma.superAdmin.findUnique({ 
+        user = await prisma.super_admins.findUnique({ 
           where: { id: subjectId },
           select: {
             id: true,

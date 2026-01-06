@@ -6,11 +6,11 @@ async function verify() {
 
   try {
     // Check Enterprise Admin
-    const enterpriseAdmin = await prisma.enterpriseAdmin.findFirst();
+    const enterpriseAdmin = await prisma.enterprise_admins.findFirst();
     console.log('✅ Enterprise Admin:', enterpriseAdmin?.email || 'NOT FOUND');
 
     // Check Super Admin
-    const superAdmin = await prisma.superAdmin.findFirst();
+    const superAdmin = await prisma.super_admins.findFirst();
     console.log('✅ Super Admin:', superAdmin?.email || 'NOT FOUND');
 
     // Check Eazymiles Client

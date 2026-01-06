@@ -13,7 +13,7 @@ async function seedMultiTenantData() {
     
     const enterpriseAdminPassword = bcrypt.hashSync('enterprise123', 10);
     
-    const enterpriseAdmin = await prisma.enterpriseAdmin.upsert({
+    const enterpriseAdmin = await prisma.enterprise_admins.upsert({
       where: { email: 'enterprise@bisman.erp' },
       update: {},
       create: {
@@ -74,7 +74,7 @@ async function seedMultiTenantData() {
     const superAdminPassword = bcrypt.hashSync('Super@123', 10);
     
     // Business ERP Super Admin
-    const businessSuperAdmin = await prisma.superAdmin.upsert({
+    const businessSuperAdmin = await prisma.super_admins.upsert({
       where: { email: 'business_superadmin@bisman.demo' },
       update: {},
       create: {
@@ -90,7 +90,7 @@ async function seedMultiTenantData() {
     console.log(`   ✅ Business Super Admin: ${businessSuperAdmin.email}`);
 
     // Pump ERP Super Admin
-    const pumpSuperAdmin = await prisma.superAdmin.upsert({
+    const pumpSuperAdmin = await prisma.super_admins.upsert({
       where: { email: 'pump_superadmin@bisman.demo' },
       update: {},
       create: {
