@@ -31,6 +31,8 @@ const PUBLIC_ROUTES = [
   '/onboard',
   '/onboard/check-email',
   '/onboard/check-company',
+  '/subscriptions/plans',         // Public pricing page
+  '/subscription-plans',          // Alternative plans endpoint
 ];
 
 /**

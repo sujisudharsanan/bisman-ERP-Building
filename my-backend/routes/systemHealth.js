@@ -27,7 +27,7 @@ const { authenticate } = require('../middleware/auth');
 let rateLimit;
 try {
   rateLimit = require('express-rate-limit');
-} catch (e) {
+} catch {
   console.warn('[system-health] express-rate-limit not available, proceeding without rate limiter');
   rateLimit = () => (req, res, next) => next();
 }
@@ -137,7 +137,7 @@ async function getDatabaseMetrics(prisma) {
         AND calls > 10
       `;
       slowQueriesCount = parseInt(slowQueries[0]?.count || 0);
-    } catch (err) {
+    } catch {
       // pg_stat_statements extension not installed
       console.log('pg_stat_statements not available');
     }
@@ -423,7 +423,7 @@ async function getImplementationStatus(prisma, redisClient) {
   try {
     await prisma.$queryRaw`SELECT 1 FROM pg_stat_statements LIMIT 1`;
     slowQueryStatus = 'implemented';
-  } catch (err) {
+  } catch (_err) {
     slowQueryStatus = 'in_progress';
   }
 
@@ -577,76 +577,6 @@ function getMetricStatus(value, threshold, inverted = false) {
   }
 }
 
-/**
- * Generate time series data from actual database metrics or in-memory buffer
- */
-async function generateTimeSeries(prisma, metricName, currentValue, hours = 24) {
-  const series = [];
-  const now = Date.now();
-  
-  try {
-    // Try to get historical data from system_health_metrics table
-    const startTime = new Date(now - hours * 3600000);
-    const metrics = await prisma.systemHealthMetric.findMany({
-      where: {
-        metric_name: metricName,
-        recorded_at: { gte: startTime }
-      },
-      orderBy: { recorded_at: 'asc' },
-      take: hours
-    });
-
-    if (metrics.length > 0) {
-      // Use actual historical data
-      metrics.forEach(m => {
-        const hoursAgo = Math.round((now - m.recorded_at.getTime()) / 3600000);
-        series.push({
-          timestamp: m.recorded_at.toISOString(),
-          value: parseFloat(m.metric_value),
-          label: hoursAgo === 0 ? 'now' : `${hoursAgo}h ago`
-        });
-      });
-      
-      // Add current value if not recent enough
-      if (series.length === 0 || (now - new Date(series[series.length - 1].timestamp).getTime()) > 3600000) {
-        series.push({
-          timestamp: new Date().toISOString(),
-          value: currentValue,
-          label: 'now'
-        });
-      }
-      
-      return series;
-    }
-  } catch (e) {
-    // Table might not exist yet, fall through to in-memory fallback
-  }
-
-  // Fallback: Use in-memory buffer or generate from current value
-  const buffer = metricName.includes('latency') ? latencyHistory : 
-                 metricName.includes('error') ? errorRateHistory : [];
-  
-  if (buffer.length > 0) {
-    buffer.forEach((item, idx) => {
-      const hoursAgo = buffer.length - idx - 1;
-      series.push({
-        timestamp: item.timestamp,
-        value: item.value,
-        label: hoursAgo === 0 ? 'now' : `${hoursAgo}h ago`
-      });
-    });
-  } else {
-    // Generate minimal series from current value only (no fake historical data)
-    series.push({
-      timestamp: new Date().toISOString(),
-      value: currentValue,
-      label: 'now'
-    });
-  }
-  
-  return series;
-}
-
 // In-memory ring buffers for short historical persistence (resets on restart)
 const latencyHistory = [];
 const errorRateHistory = [];
@@ -696,7 +626,7 @@ router.get('/', async (req, res) => {
       });
       latencySeries = recentSamples.map(s => ({ timestamp: s.collected_at.toISOString(), value: s.latencyMs })).reverse();
       errorRateSeries = recentSamples.map(s => ({ timestamp: s.collected_at.toISOString(), value: s.errorRatePct })).reverse();
-    } catch (e) {
+    } catch {
       // Fallback to in-memory ring buffers
       pushHistory(latencyHistory, dbMetrics.latency);
       pushHistory(errorRateHistory, 0.12);
@@ -795,7 +725,7 @@ router.get('/', async (req, res) => {
       if (io && io.engine) {
         activeUsers = io.engine.clientsCount || 0;
       }
-    } catch (e) {
+    } catch {
       // Socket.IO not available
     }
     
@@ -809,7 +739,7 @@ router.get('/', async (req, res) => {
           AND user_id IS NOT NULL
         `;
         activeUsers = parseInt(activeUsersResult[0]?.count || 0);
-      } catch (e) {
+      } catch {
         activeUsers = 0;
       }
     }
@@ -821,7 +751,7 @@ router.get('/', async (req, res) => {
         where: { status: { in: ['pending', 'processing'] } }
       }).catch(() => 0);
       queueLength = pendingJobs;
-    } catch (e) {
+    } catch {
       queueLength = 0;
     }
 
@@ -1004,9 +934,9 @@ router.patch('/settings', async (req, res) => {
     };
     systemConfig = { ...systemConfig, ...merged };
     res.json({ source: 'database', settings: merged, message: 'Settings updated' });
-  } catch (err) {
-    console.error('Failed to update system health settings:', err);
-    res.status(500).json({ error: 'Failed to update settings', message: err.message });
+  } catch (_err) {
+    console.error('Failed to update system health settings:', _err);
+    res.status(500).json({ error: 'Failed to update settings', message: _err.message });
   }
 });
 
@@ -1090,7 +1020,7 @@ router.post('/backup', async (req, res) => {
     // Check if script exists
     try {
       await fs.access(scriptPath, fs.constants.X_OK);
-    } catch (accessError) {
+    } catch {
       return res.status(404).json({
         error: 'Backup script not found',
         message: 'The database backup script is not available or not executable',
@@ -1141,7 +1071,7 @@ router.post('/backup/verify', async (req, res) => {
         const stat = await fs.stat(fullPath);
         fileSize = stat.size;
         fileOk = stat.size > 0;
-      } catch (e) {
+      } catch {
         fileOk = false;
       }
     }
@@ -1172,7 +1102,7 @@ router.post('/health-check', async (req, res) => {
     // Check if script exists
     try {
       await fs.access(scriptPath, fs.constants.X_OK);
-    } catch (accessError) {
+    } catch {
       return res.status(404).json({
         error: 'Health check script not found',
         message: 'The database health check script is not available or not executable',
@@ -1222,7 +1152,7 @@ router.post('/index-audit', async (req, res) => {
     // Check if script exists
     try {
       await fs.access(scriptPath, fs.constants.R_OK);
-    } catch (accessError) {
+    } catch {
       return res.status(404).json({
         error: 'Index audit script not found',
         message: 'The database index audit script is not available',
@@ -1258,7 +1188,7 @@ router.post('/index-audit', async (req, res) => {
     const savedConfig = JSON.parse(configData);
     systemConfig = { ...systemConfig, ...savedConfig };
     console.log('[System Health] Loaded saved configuration');
-  } catch (error) {
+  } catch {
     console.log('[System Health] No saved configuration found, using defaults');
   }
 })();

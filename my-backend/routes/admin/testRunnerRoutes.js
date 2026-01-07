@@ -101,7 +101,7 @@ function parseJestOutput(jsonOutput) {
         }))
       }))
     };
-  } catch (error) {
+  } catch {
     return {
       success: false,
       error: 'Failed to parse test output',

@@ -33,14 +33,6 @@ try {
   console.warn('[securityMonitorRoutes] Security alerting not available:', e.message);
 }
 
-// Import security monitor if available
-let securityMonitor = null;
-try {
-  securityMonitor = require('../../cron/securityMonitor');
-} catch (e) {
-  console.warn('[securityMonitorRoutes] Security monitor not available:', e.message);
-}
-
 // ============================================================================
 // METRICS STORAGE (In-memory for now, could be Redis-backed)
 // ============================================================================
@@ -103,7 +95,7 @@ setInterval(() => {
 // METRIC RECORDING FUNCTIONS (called by middleware)
 // ============================================================================
 
-function recordFailedAuth(ip, email) {
+function recordFailedAuth(_ip, _email) {
   metricsStore.failedAuthAttempts++;
   
   // Check if we should alert
@@ -112,15 +104,15 @@ function recordFailedAuth(ip, email) {
   }
 }
 
-function recordSuccessfulAuth(userId) {
+function recordSuccessfulAuth(_userId) {
   metricsStore.successfulAuthAttempts++;
 }
 
-function recordRateLimitHit(ip, endpoint) {
+function recordRateLimitHit(_ip, _endpoint) {
   metricsStore.rateLimitHits++;
 }
 
-function recordRbacDenial(userId, resource, action) {
+function recordRbacDenial(_userId, _resource, _action) {
   metricsStore.rbacDenials++;
 }
 

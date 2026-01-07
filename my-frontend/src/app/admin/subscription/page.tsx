@@ -1562,6 +1562,41 @@ function BillingHistoryTable({ invoices }: { invoices: Invoice[] }) {
 // MAIN PAGE COMPONENT
 // ============================================================================
 
+// ============================================================================
+// BASIC SUBSCRIPTION TYPES (for fallback UI)
+// ============================================================================
+
+interface BasicSubscription {
+  has_subscription: boolean;
+  subscription?: {
+    id: number;
+    state: string;
+    plan: {
+      code: string;
+      name: string;
+      price_monthly: number;
+      price_yearly: number;
+    };
+    billing_cycle: string;
+    current_period_end: string;
+    usage: {
+      users: { current: number; limit: number };
+      storage: { current_bytes: number; limit_gb: number };
+    };
+  };
+}
+
+interface AvailablePlan {
+  id: number;
+  plan_code: string;
+  name: string;
+  price_monthly: number;
+  price_yearly: number;
+  max_users: number;
+  max_storage_gb: number;
+  is_popular?: boolean;
+}
+
 export default function AdminSubscriptionPage() {
   const [data, setData] = useState<SubscriptionData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -1571,6 +1606,55 @@ export default function AdminSubscriptionPage() {
   const [spendLimits, setSpendLimits] = useState<SpendLimits | null>(null);
   const [blockedUsers, setBlockedUsers] = useState<BlockedUserSummary[]>([]);
   const [subscriptionStatus, setSubscriptionStatus] = useState<CouponSubscriptionStatus | null>(null);
+  
+  // Basic subscription fallback state
+  const [basicSubscription, setBasicSubscription] = useState<BasicSubscription | null>(null);
+  const [availablePlans, setAvailablePlans] = useState<AvailablePlan[]>([]);
+
+  // Fetch basic subscription info (for fallback)
+  const fetchBasicSubscription = useCallback(async () => {
+    try {
+      const [subResponse, plansResponse] = await Promise.all([
+        fetch('/api/subscriptions/my-subscription', { credentials: 'include' }),
+        fetch('/api/subscriptions/plans', { credentials: 'include' }),
+      ]);
+      
+      if (subResponse.ok) {
+        const subData = await subResponse.json();
+        if (subData.ok) {
+          // Transform coupon subscription status to BasicSubscription format
+          setBasicSubscription({
+            has_subscription: subData.hasSubscription || false,
+            subscription: subData.plan ? {
+              id: subData.plan.id,
+              state: subData.status || 'ACTIVE',
+              plan: {
+                code: subData.plan.tier || subData.plan.name?.toUpperCase(),
+                name: subData.plan.name,
+                price_monthly: 0, // Not available in coupon status
+                price_yearly: 0,
+              },
+              billing_cycle: subData.plan.billing_cycle || 'MONTHLY',
+              current_period_end: subData.expiresAt || '',
+              usage: {
+                users: { current: 0, limit: 999 },
+                storage: { current_bytes: 0, limit_gb: 100 },
+              },
+            } : undefined,
+          });
+        }
+      }
+      
+      if (plansResponse.ok) {
+        const plansData = await plansResponse.json();
+        if (plansData.ok && plansData.plans) {
+          setAvailablePlans(plansData.plans);
+        }
+      }
+    } catch (err) {
+      console.error('Failed to fetch basic subscription info:', err);
+    }
+  }, []);
 
   // Fetch coupon-based subscription status
   const fetchSubscriptionStatus = useCallback(async () => {
@@ -1620,7 +1704,8 @@ export default function AdminSubscriptionPage() {
     fetchData();
     fetchSpendData();
     fetchSubscriptionStatus();
-  }, [fetchData, fetchSpendData, fetchSubscriptionStatus]);
+    fetchBasicSubscription(); // Also fetch basic subscription as fallback
+  }, [fetchData, fetchSpendData, fetchSubscriptionStatus, fetchBasicSubscription]);
 
   // Scroll to section
   const scrollToSection = (sectionId: string) => {
@@ -1707,17 +1792,195 @@ export default function AdminSubscriptionPage() {
     );
   }
 
+  // Show fallback UI with basic subscription info and upgrade options if micro-unlock fails
   if (error || !data) {
+    // Determine the current subscription from either basicSubscription or subscriptionStatus
+    const hasActiveSubscription = basicSubscription?.has_subscription || 
+      (subscriptionStatus?.hasSubscription && subscriptionStatus?.isActive);
+    const currentPlanName = basicSubscription?.subscription?.plan?.name || 
+      subscriptionStatus?.plan?.name || null;
+    const currentPlanCode = basicSubscription?.subscription?.plan?.code || 
+      subscriptionStatus?.plan?.tier?.toUpperCase() || null;
+    const subscriptionState = basicSubscription?.subscription?.state || 
+      subscriptionStatus?.status?.toUpperCase() || 'UNKNOWN';
+    const expiresAt = basicSubscription?.subscription?.current_period_end || 
+      subscriptionStatus?.expiresAt || null;
+    const remainingTime = subscriptionStatus?.remainingTime;
+
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="text-center">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-          <p className="text-gray-900 dark:text-gray-100 font-medium">Failed to load subscription data</p>
-          <p className="text-gray-500 text-sm mt-1">{error}</p>
-          <Button onClick={fetchData} className="mt-4">
-            <RefreshCw className="w-4 h-4 mr-2" />
-            Retry
-          </Button>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="max-w-7xl mx-auto px-6 py-8">
+          {/* Page Header */}
+          <div className="mb-8">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <Package className="w-7 h-7 text-blue-600" />
+              Subscription Management
+            </h1>
+            <p className="text-gray-500 mt-1">Manage your subscription and view available plans</p>
+          </div>
+
+          {/* Current Subscription Card */}
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <CreditCard className="w-5 h-5 text-blue-600" />
+                Current Subscription
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {hasActiveSubscription && currentPlanName ? (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-2xl font-bold text-gray-900 dark:text-white">
+                        {currentPlanName}
+                      </p>
+                      <p className="text-gray-500 text-sm">
+                        {subscriptionStatus?.activationSource === 'COUPON' 
+                          ? 'Activated via coupon' 
+                          : 'Active subscription'}
+                      </p>
+                    </div>
+                    <Badge variant={subscriptionState === 'ACTIVE' || subscriptionState === 'TRIAL' ? 'success' : 'warning'}>
+                      {subscriptionState}
+                    </Badge>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-4 border-t">
+                    {remainingTime && (
+                      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                        <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                          <Clock className="w-4 h-4" />
+                          Time Remaining
+                        </div>
+                        <p className="text-xl font-semibold text-green-600">
+                          {remainingTime.days}d {remainingTime.hours}h
+                        </p>
+                      </div>
+                    )}
+                    
+                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                      <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                        <Shield className="w-4 h-4" />
+                        Plan Tier
+                      </div>
+                      <p className="text-xl font-semibold">
+                        {currentPlanCode || currentPlanName}
+                      </p>
+                    </div>
+                    
+                    <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                      <div className="flex items-center gap-2 text-gray-500 text-sm mb-1">
+                        <Calendar className="w-4 h-4" />
+                        Expires On
+                      </div>
+                      <p className="text-xl font-semibold">
+                        {expiresAt 
+                          ? new Date(expiresAt).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+                          : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <AlertCircle className="w-12 h-12 text-amber-500 mx-auto mb-4" />
+                  <p className="text-gray-900 dark:text-white font-medium">No Active Subscription</p>
+                  <p className="text-gray-500 text-sm mt-1">Choose a plan below to get started</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Available Plans */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Zap className="w-5 h-5 text-amber-500" />
+                Available Plans
+              </CardTitle>
+              <CardDescription>Upgrade or change your subscription plan</CardDescription>
+            </CardHeader>
+            <CardContent>
+              {availablePlans.length > 0 ? (
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4">
+                  {availablePlans.map((plan) => {
+                    const isCurrentPlan = currentPlanCode === plan.plan_code || 
+                      currentPlanName?.toUpperCase() === plan.name.toUpperCase();
+                    return (
+                      <motion.div
+                        key={plan.id}
+                        whileHover={{ scale: 1.02 }}
+                        className={`relative border rounded-xl p-5 ${
+                          plan.is_popular 
+                            ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                            : 'border-gray-200 dark:border-gray-700'
+                        } ${isCurrentPlan ? 'ring-2 ring-green-500' : ''}`}
+                      >
+                        {plan.is_popular && (
+                          <Badge className="absolute -top-2 right-2 bg-blue-600">Popular</Badge>
+                        )}
+                        {isCurrentPlan && (
+                          <Badge className="absolute -top-2 left-2 bg-green-600">Current Plan</Badge>
+                        )}
+                        
+                        <h3 className="text-lg font-semibold text-gray-900 dark:text-white mt-2">
+                          {plan.name}
+                        </h3>
+                        
+                        <div className="mt-3">
+                          <span className="text-2xl font-bold text-gray-900 dark:text-white">
+                            ₹{plan.price_monthly}
+                          </span>
+                          <span className="text-gray-500 text-sm">/month</span>
+                        </div>
+                        
+                        <ul className="mt-4 space-y-2 text-sm text-gray-600 dark:text-gray-300">
+                          <li className="flex items-center gap-2">
+                            <Users className="w-4 h-4 text-blue-500" />
+                            Up to {plan.max_users === 9999 ? 'Unlimited' : plan.max_users} users
+                          </li>
+                          <li className="flex items-center gap-2">
+                            <HardDrive className="w-4 h-4 text-blue-500" />
+                            {plan.max_storage_gb}GB storage
+                          </li>
+                        </ul>
+                        
+                        <Button
+                          className="w-full mt-4"
+                          variant={isCurrentPlan ? 'secondary' : (plan.is_popular ? 'default' : 'outline')}
+                          disabled={isCurrentPlan}
+                        >
+                          {isCurrentPlan ? 'Current Plan' : (plan.price_monthly === 0 ? 'Get Started Free' : 'Upgrade')}
+                        </Button>
+                      </motion.div>
+                    );
+                  })}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Package className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                  <p className="text-gray-500">Loading available plans...</p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+
+          {/* Coupon Activation */}
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Gift className="w-5 h-5 text-purple-500" />
+                Have an Activation Code?
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <CouponActivationSection
+                subscriptionStatus={subscriptionStatus}
+                onActivationSuccess={handleCouponActivationSuccess}
+              />
+            </CardContent>
+          </Card>
         </div>
       </div>
     );

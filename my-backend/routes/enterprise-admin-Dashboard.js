@@ -223,7 +223,7 @@ router.get('/module-usage-trends', getPrisma, requireEnterpriseAdmin, async (req
         TO_CHAR(assigned_at, 'Mon') as month,
         COUNT(DISTINCT super_admin_id) as users
       FROM module_assignments
-      WHERE assigned_at >= NOW() - INTERVAL '6 months'
+      WHERE assigned_at >= NOW() - MAKE_INTERVAL(months => ${months})
       GROUP BY DATE_TRUNC('month', assigned_at), TO_CHAR(assigned_at, 'Mon')
       ORDER BY DATE_TRUNC('month', assigned_at)
     `.catch(() => []);

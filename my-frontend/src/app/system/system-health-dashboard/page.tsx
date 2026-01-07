@@ -524,9 +524,9 @@ export default function SystemHealthDashboardPage() {
       // Build status from systemInfo
       const statusData: HealthStatus = {
         status: 'healthy',
-        uptime: healthData.systemInfo?.uptimeSeconds || 0,
+        uptime: 0,
         uptimeFormatted: healthData.systemInfo?.uptime || 'Unknown',
-        environment: healthData.systemInfo?.environment || 'development',
+        environment: 'production',
         version: healthData.systemInfo?.nodeVersion || 'Unknown',
         timestamp: new Date().toISOString()
       }
@@ -535,11 +535,13 @@ export default function SystemHealthDashboardPage() {
       // Build metrics from metricsSummary
       const latencyMetric = healthData.metricsSummary?.find((m: { name: string }) => m.name === 'Avg API Latency')
       const errorRateMetric = healthData.metricsSummary?.find((m: { name: string }) => m.name === 'Error Rate')
+      const activeUsersMetric = healthData.metricsSummary?.find((m: { name: string }) => m.name === 'Active Users')
+      const queueLengthMetric = healthData.metricsSummary?.find((m: { name: string }) => m.name === 'Queue Length')
       const metricsData: Metrics = {
-        activeUsers: healthData.activeUsers || 0,
+        activeUsers: activeUsersMetric?.value || 0,
         apiResponseTime: latencyMetric?.value || 0,
         errorRate: errorRateMetric?.value || 0,
-        queueLength: healthData.queueLength || 0,
+        queueLength: queueLengthMetric?.value || 0,
         requestsPerMinute: 0
       }
       setMetrics(metricsData)
