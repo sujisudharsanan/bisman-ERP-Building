@@ -780,7 +780,50 @@ router.get('/', async (req, res) => {
     const uptimeSeconds = systemMetrics.uptime;
     const days = Math.floor(uptimeSeconds / 86400);
     const hours = Math.floor((uptimeSeconds % 86400) / 3600);
-    const uptimeFormatted = `${days} days ${hours} hours`;
+    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
+    const uptimeFormatted = days > 0 
+      ? `${days} days ${hours} hours`
+      : hours > 0 
+        ? `${hours} hours ${minutes} minutes`
+        : `${minutes} minutes`;
+
+    // Get active users from Socket.IO and recent sessions
+    let activeUsers = 0;
+    try {
+      // First try Socket.IO connections
+      const io = req.app.get('io') || global.io;
+      if (io && io.engine) {
+        activeUsers = io.engine.clientsCount || 0;
+      }
+    } catch (e) {
+      // Socket.IO not available
+    }
+    
+    // If no Socket.IO connections, count from audit_logs (last 15 minutes)
+    if (activeUsers === 0) {
+      try {
+        const activeUsersResult = await prisma.$queryRaw`
+          SELECT COUNT(DISTINCT user_id) as count 
+          FROM audit_logs 
+          WHERE created_at > NOW() - INTERVAL '15 minutes'
+          AND user_id IS NOT NULL
+        `;
+        activeUsers = parseInt(activeUsersResult[0]?.count || 0);
+      } catch (e) {
+        activeUsers = 0;
+      }
+    }
+
+    // Get queue length from job queue table
+    let queueLength = 0;
+    try {
+      const pendingJobs = await prisma.jobQueue.count({
+        where: { status: { in: ['pending', 'processing'] } }
+      }).catch(() => 0);
+      queueLength = pendingJobs;
+    } catch (e) {
+      queueLength = 0;
+    }
 
     // Build response
     const response = {
@@ -789,12 +832,17 @@ router.get('/', async (req, res) => {
       latencySeries,
       errorRateSeries,
       alerts,
+      activeUsers,
+      queueLength,
       systemInfo: {
         uptime: uptimeFormatted,
+        uptimeSeconds: Math.floor(uptimeSeconds),
         lastBackup: backupStatus.lastBackup,
         backupLocation: backupStatus.backupLocation,
         nodeVersion: process.version,
         databaseSize: dbMetrics.databaseSize,
+        connectionCount: dbMetrics.connectionCount,
+        environment: process.env.NODE_ENV || 'development',
       },
     };
 

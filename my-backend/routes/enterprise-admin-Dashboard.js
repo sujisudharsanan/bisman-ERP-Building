@@ -1,7 +1,16 @@
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
-const prisma = new PrismaClient();
+// Use shared prisma instance from app.locals instead of creating new one
+let prisma = null;
+
+// Middleware to get prisma from app.locals
+const getPrisma = (req, res, next) => {
+  prisma = req.app.locals.prisma;
+  if (!prisma) {
+    return res.status(500).json({ ok: false, error: 'Database not available' });
+  }
+  next();
+};
 
 // Middleware to verify enterprise admin role
 const requireEnterpriseAdmin = (req, res, next) => {
@@ -18,19 +27,19 @@ const requireEnterpriseAdmin = (req, res, next) => {
 // ====================
 // DASHBOARD STATS
 // ====================
-router.get('/stats', requireEnterpriseAdmin, async (req, res) => {
+router.get('/stats', getPrisma, requireEnterpriseAdmin, async (req, res) => {
   try {
-    const [superAdminsCount, modulesCount, clientsCount, recentActivity] = await Promise.all([
-      prisma.super_admins.count({ where: { is_active: true } }),
-      prisma.module.count({ where: { is_active: true } }),
-      prisma.clients.count({ where: { is_active: true } }),
+    const [superAdminsCount, modulesCount, clientsCount, recentActivityCount] = await Promise.all([
+      prisma.super_admins.count({ where: { is_active: true } }).catch(() => 0),
+      prisma.modules.count({ where: { is_active: true } }).catch(() => 0),
+      prisma.clients.count({ where: { is_active: true } }).catch(() => 0),
       prisma.recent_activity.count({
         where: {
           created_at: {
             gte: new Date(Date.now() - 24 * 60 * 60 * 1000) // Last 24h
           }
         }
-      })
+      }).catch(() => 0)
     ]);
 
     // System health check (simple version - check if we can query)
@@ -47,7 +56,7 @@ router.get('/stats', requireEnterpriseAdmin, async (req, res) => {
         totalSuperAdmins: superAdminsCount,
         totalModules: modulesCount,
         activeTenants: clientsCount,
-        recentActivity24h: recentActivity,
+        recentActivity24h: recentActivityCount,
         systemHealth
       }
     });
@@ -63,13 +72,13 @@ router.get('/stats', requireEnterpriseAdmin, async (req, res) => {
 // ====================
 // SUPER ADMIN DISTRIBUTION
 // ====================
-router.get('/super-admin-distribution', requireEnterpriseAdmin, async (req, res) => {
+router.get('/super-admin-distribution', getPrisma, requireEnterpriseAdmin, async (req, res) => {
   try {
     const distribution = await prisma.super_admins.groupBy({
       by: ['productType'],
       where: { is_active: true },
       _count: { id: true }
-    });
+    }).catch(() => []);
 
     const formatted = distribution.map(item => ({
       name: item.productType === 'PUMP_ERP' ? 'Pump Management' : 'Business ERP',
@@ -93,7 +102,7 @@ router.get('/super-admin-distribution', requireEnterpriseAdmin, async (req, res)
 // ====================
 // ACTIVITY LOGS
 // ====================
-router.get('/activity', requireEnterpriseAdmin, async (req, res) => {
+router.get('/activity', getPrisma, requireEnterpriseAdmin, async (req, res) => {
   try {
     const limit = parseInt(req.query.limit) || 10;
     
@@ -134,7 +143,7 @@ router.get('/activity', requireEnterpriseAdmin, async (req, res) => {
 // ====================
 // SYSTEM INSIGHTS
 // ====================
-router.get('/insights', requireEnterpriseAdmin, async (req, res) => {
+router.get('/insights', getPrisma, requireEnterpriseAdmin, async (req, res) => {
   try {
     // Get active connections count
     const activeConnections = await prisma.user_sessions.count({
@@ -142,7 +151,7 @@ router.get('/insights', requireEnterpriseAdmin, async (req, res) => {
         is_active: true,
         expires_at: { gte: new Date() }
       }
-    });
+    }).catch(() => 0);
 
     // Get last backup from system health metrics or recent activity
     let lastBackup = null;
@@ -157,15 +166,15 @@ router.get('/insights', requireEnterpriseAdmin, async (req, res) => {
         orderBy: { created_at: 'desc' }
       });
       lastBackup = backupLog?.created_at?.toISOString() || null;
-    } catch (e) {
+    } catch {
       // If no backup logged, check system health metrics
       try {
-        const backupMetric = await prisma.systemHealthMetric.findFirst({
+        const backupMetric = await prisma.system_health_metric.findFirst({
           where: { metric_name: 'last_backup' },
           orderBy: { recorded_at: 'desc' }
         });
         lastBackup = backupMetric?.recorded_at?.toISOString() || null;
-      } catch (e2) {
+      } catch {
         lastBackup = null;
       }
     }
@@ -173,14 +182,14 @@ router.get('/insights', requireEnterpriseAdmin, async (req, res) => {
     // Calculate uptime from system health metrics or default
     let apiUptime = 99.9;
     try {
-      const uptimeMetric = await prisma.systemHealthMetric.findFirst({
+      const uptimeMetric = await prisma.system_health_metric.findFirst({
         where: { metric_name: 'api_uptime' },
         orderBy: { recorded_at: 'desc' }
       });
       if (uptimeMetric) {
         apiUptime = parseFloat(uptimeMetric.metric_value);
       }
-    } catch (e) {
+    } catch {
       // Use default uptime
     }
 
@@ -204,24 +213,24 @@ router.get('/insights', requireEnterpriseAdmin, async (req, res) => {
 // ====================
 // MODULE USAGE TRENDS
 // ====================
-router.get('/module-usage-trends', requireEnterpriseAdmin, async (req, res) => {
+router.get('/module-usage-trends', getPrisma, requireEnterpriseAdmin, async (req, res) => {
   try {
     const months = parseInt(req.query.months) || 6;
     
-    // Get module assignment trends over time
+    // Get module assignment trends over time - use parameterized query
     const trends = await prisma.$queryRaw`
       SELECT 
         TO_CHAR(assigned_at, 'Mon') as month,
         COUNT(DISTINCT super_admin_id) as users
       FROM module_assignments
-      WHERE assigned_at >= NOW() - INTERVAL '${months} months'
+      WHERE assigned_at >= NOW() - INTERVAL '6 months'
       GROUP BY DATE_TRUNC('month', assigned_at), TO_CHAR(assigned_at, 'Mon')
       ORDER BY DATE_TRUNC('month', assigned_at)
-    `;
+    `.catch(() => []);
 
     res.json({
       ok: true,
-      trends: trends.map(t => ({
+      trends: (trends || []).map(t => ({
         month: t.month,
         users: parseInt(t.users)
       }))

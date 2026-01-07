@@ -27,8 +27,49 @@ const TEST_FILES = {
   calls: 'tests/calls.test.js',
 };
 
+// Expected test counts (for display when not yet run)
+const EXPECTED_TESTS = {
+  redis: { name: 'Redis Permission Cache', totalTests: 10 },
+  rls: { name: 'Row-Level Security (RLS)', totalTests: 9 },
+  tenantIsolation: { name: 'Tenant Isolation', totalTests: 30 },
+  rbac: { name: 'RBAC Middleware', totalTests: 5 },
+  calls: { name: 'API Calls Security', totalTests: 5 },
+};
+
 // Store test results in memory (for demo - use Redis/DB in production)
 const testResults = new Map();
+
+// Try to load persisted results on startup
+const fs = require('fs');
+const RESULTS_FILE = path.join(__dirname, '..', '..', 'data', 'test-results.json');
+try {
+  if (fs.existsSync(RESULTS_FILE)) {
+    const data = JSON.parse(fs.readFileSync(RESULTS_FILE, 'utf8'));
+    for (const [key, value] of Object.entries(data)) {
+      testResults.set(key, value);
+    }
+    console.log('[TestRunner] Loaded persisted test results');
+  }
+} catch (e) {
+  console.warn('[TestRunner] Could not load persisted results:', e.message);
+}
+
+// Persist results helper
+function persistResults() {
+  try {
+    const dir = path.dirname(RESULTS_FILE);
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
+    const data = {};
+    for (const [key, value] of testResults.entries()) {
+      data[key] = value;
+    }
+    fs.writeFileSync(RESULTS_FILE, JSON.stringify(data, null, 2));
+  } catch (e) {
+    console.warn('[TestRunner] Could not persist results:', e.message);
+  }
+}
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -233,6 +274,7 @@ router.post('/:testId/run', async (req, res) => {
   try {
     const result = await runJestTest(TEST_FILES[testId]);
     testResults.set(testId, result);
+    persistResults(); // Persist after each test run
     res.json(result);
   } catch (error) {
     res.status(500).json({
@@ -285,6 +327,9 @@ router.post('/run-all', async (req, res) => {
     }
   }
   
+  // Persist all results after running all tests
+  persistResults();
+  
   // Calculate summary
   const summary = {
     totalSuites: results.length,
@@ -309,18 +354,34 @@ router.get('/summary/all', (req, res) => {
   
   for (const [testId, testFile] of Object.entries(TEST_FILES)) {
     const result = testResults.get(testId);
+    const expected = EXPECTED_TESTS[testId] || { name: testId, totalTests: 0 };
+    
     if (result) {
-      results.push({ testId, testFile, ...result });
+      results.push({ 
+        testId, 
+        testFile, 
+        name: expected.name,
+        expectedTests: expected.totalTests,
+        ...result 
+      });
     } else {
       results.push({
         testId,
         testFile,
-        status: 'not_run'
+        name: expected.name,
+        status: 'not_run',
+        numTotalTests: expected.totalTests,
+        numPassedTests: 0,
+        numFailedTests: 0,
+        expectedTests: expected.totalTests
       });
     }
   }
   
   const ranTests = results.filter(r => r.status !== 'not_run');
+  
+  // Calculate totals using expected counts for not-run tests
+  const totalExpectedTests = results.reduce((sum, r) => sum + (r.expectedTests || r.numTotalTests || 0), 0);
   
   const summary = {
     totalSuites: results.length,
@@ -329,7 +390,7 @@ router.get('/summary/all', (req, res) => {
     failedSuites: ranTests.filter(r => !r.success && !r.skipped).length,
     skippedSuites: ranTests.filter(r => r.skipped).length,
     notRunSuites: results.filter(r => r.status === 'not_run').length,
-    totalTests: ranTests.reduce((sum, r) => sum + (r.numTotalTests || 0), 0),
+    totalTests: totalExpectedTests,
     passedTests: ranTests.reduce((sum, r) => sum + (r.numPassedTests || 0), 0),
     failedTests: ranTests.reduce((sum, r) => sum + (r.numFailedTests || 0), 0),
     lastUpdate: ranTests.length > 0 

@@ -111,6 +111,33 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
       return roleName !== 'SUPER_ADMIN' && roleName !== 'ENTERPRISE_ADMIN';
     });
     
+    // ✅ Deduplicate roles by normalized name (prefer UPPERCASE canonical versions)
+    {
+      const beforeDedup = roles.length;
+      const roleMap = new Map();
+      for (const role of roles) {
+        // Normalize key: uppercase and replace spaces with underscores
+        const normalizedKey = String(role.name).toUpperCase().replace(/[\s]+/g, '_');
+        const existing = roleMap.get(normalizedKey);
+        if (!existing) {
+          roleMap.set(normalizedKey, role);
+        } else {
+          // Prefer the UPPERCASE version (canonical system roles)
+          // Check if current role is all uppercase with underscores
+          const isCurrentCanonical = /^[A-Z_]+$/.test(role.name);
+          const isExistingCanonical = /^[A-Z_]+$/.test(existing.name);
+          if (isCurrentCanonical && !isExistingCanonical) {
+            roleMap.set(normalizedKey, role); // Replace with canonical
+          }
+          // If both are canonical or both are non-canonical, keep the first one
+        }
+      }
+      roles = Array.from(roleMap.values());
+      if (beforeDedup !== roles.length) {
+        console.log(`[RolesUsersReport] Deduplicated roles from ${beforeDedup} to ${roles.length} (removed duplicate casing variants)`);
+      }
+    }
+    
     // ✅ SECURITY FIX: Filter roles for SUPER_ADMIN based on their assignments
     if (assignedRoleIds !== null) {
       const beforeCount = roles.length;
