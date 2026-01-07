@@ -62,61 +62,23 @@ interface Plan {
   color: string;
   bgGradient: string;
   borderColor: string;
-  popular?: boolean;
-  features: string[];
-  limits: {
-    users: number;
-    storage: string;
-    apiCalls: string;
-    integrations: number;
-  };
-  cta: string;
-  ctaNote?: string;
-}
-
-const PLANS: Plan[] = [
-  {
-    id: 'STARTER',
-    name: 'Starter',
-    tagline: 'For small businesses getting started',
-    monthlyPrice: 2999,
-    yearlyPrice: 28790, // 20% off: 2999 * 12 * 0.8
-    priceLabel: '₹2,999/month',
-    icon: Star,
-    color: '#3b82f6', // blue-500
-    bgGradient: 'from-blue-50 to-blue-100',
-    borderColor: 'border-blue-200',
-    features: [
-      'Up to 5 users',
-      'Basic inventory management',
-      'Standard reports',
-      'Email support (48hr response)',
-      'Mobile app access',
-      '5GB storage',
-      'Basic integrations',
-    ],
-    limits: {
-      users: 5,
-      storage: '5 GB',
-      apiCalls: '10,000/month',
-      integrations: 2,
-    },
-    cta: 'Start Free Trial',
-    ctaNote: 'No credit card required',
-  },
-  {
-    id: 'PROFESSIONAL',
-    name: 'Professional',
-    tagline: 'For growing businesses with more needs',
-    monthlyPrice: 9999,
-    yearlyPrice: 95990, // 20% off
-    priceLabel: '₹9,999/month',
-    icon: Zap,
-    color: '#8b5cf6', // violet-500
-    bgGradient: 'from-violet-50 to-violet-100',
-    borderColor: 'border-violet-200',
-    popular: true,
-    features: [
+  interface Plan {
+    id: number;
+    plan_code: string;
+    name: string;
+    description?: string;
+    short_description?: string;
+    price_monthly: number;
+    price_yearly: number;
+    currency: string;
+    max_users: number;
+    max_storage_gb: number;
+    max_branches: number;
+    is_popular?: boolean;
+    is_enterprise?: boolean;
+    cta_text?: string;
+  }
+  const PLANS: Plan[] = []; // Placeholder for dynamic fetching
       'Up to 25 users',
       'Advanced inventory & warehouse',
       'Custom reports & dashboards',
@@ -692,106 +654,55 @@ function CTASection() {
 // ============================================================================
 
 export default function PricingPage() {
-  const [isYearly, setIsYearly] = useState(false);
-  const [currentPlan, setCurrentPlan] = useState<string | undefined>();
-  const [isLoading, setIsLoading] = useState(true);
-  const { user } = useAuth();
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Fetch current subscription if user is logged in
   useEffect(() => {
-    async function fetchCurrentPlan() {
-      if (!user) {
-        setIsLoading(false);
-        return;
-      }
-
-      try {
-        const response = await fetch('/api/subscriptions/current', {
-          credentials: 'include',
-        });
-        if (response.ok) {
-          const data = await response.json();
-          setCurrentPlan(data.plan?.toUpperCase());
-        }
-      } catch {
-        // Ignore errors - user may not have a subscription
-      } finally {
-        setIsLoading(false);
-      }
-    }
-
-    fetchCurrentPlan();
-  }, [user]);
-
-  const handlePlanSelect = useCallback(async (planId: string) => {
-    if (planId === 'ENTERPRISE') {
-      // Redirect to contact sales
-      window.location.href = '/contact-sales';
-      return;
-    }
-
-    if (!user) {
-      // Redirect to signup with plan preselected
-      window.location.href = `/signup?plan=${planId.toLowerCase()}`;
-      return;
-    }
-
-    // User is logged in - redirect to upgrade flow
-    window.location.href = `/billing/upgrade?plan=${planId.toLowerCase()}`;
-  }, [user]);
+    fetch('/api/subscriptions/plans')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.ok && data.plans) setPlans(data.plans);
+        else setError('Unable to load plans');
+      })
+      .catch(() => setError('Unable to load plans'))
+      .finally(() => setLoading(false));
+  }, []);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Hero Section */}
-      <section className="bg-gradient-to-b from-violet-50 to-white py-16 lg:py-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-          >
-            <h1 className="text-4xl lg:text-5xl font-bold text-gray-900 mb-4">
-              Simple, Transparent Pricing
-            </h1>
-            <p className="text-xl text-gray-600 max-w-2xl mx-auto mb-8">
-              Choose the perfect plan for your business. No credit card required.
-            </p>
-          </motion.div>
-
-          {/* Billing Toggle */}
-          <BillingToggle isYearly={isYearly} onToggle={() => setIsYearly(!isYearly)} />
-
-          {/* Plan Cards */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
-            {PLANS.map((plan, idx) => (
-              <motion.div
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4">
+      <div className="max-w-6xl mx-auto">
+        <h1 className="text-3xl font-bold text-center mb-2 text-gray-900 dark:text-white">Choose Your Plan</h1>
+        <p className="text-center text-gray-600 dark:text-gray-300 mb-10">Select a plan to get started with BISMAN ERP</p>
+        {loading ? (
+          <div className="flex justify-center items-center h-40">
+            <span className="text-lg text-gray-500">Loading...</span>
+          </div>
+        ) : error ? (
+          <div className="text-center text-red-500">{error}</div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
+            {plans.map((plan) => (
+              <div
                 key={plan.id}
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: idx * 0.1 }}
+                className={`rounded-xl border-2 p-6 bg-white dark:bg-gray-800 shadow-md flex flex-col items-center ${plan.is_popular ? 'ring-2 ring-violet-500' : ''}`}
               >
-                <PlanCard
-                  plan={plan}
-                  isYearly={isYearly}
-                  currentPlan={currentPlan}
-                  onSelect={handlePlanSelect}
-                />
-              </motion.div>
+                <div className="mb-2 text-xl font-bold text-gray-900 dark:text-white">{plan.name}</div>
+                <div className="mb-2 text-2xl font-extrabold text-indigo-700 dark:text-indigo-300">
+                  {plan.price_monthly === 0 ? 'Free' : `₹${plan.price_monthly}/month`}
+                </div>
+                <div className="mb-2 text-gray-700 dark:text-gray-300 text-center text-sm min-h-[48px]">
+                  {plan.short_description || plan.description}
+                </div>
+                <div className="flex-1" />
+                <button className={`mt-4 w-full py-2 rounded-lg font-semibold transition-colors ${plan.price_monthly === 0 ? 'bg-gray-800 text-white hover:bg-gray-900' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
+                  {plan.cta_text || (plan.price_monthly === 0 ? 'Start Free' : 'Select Plan')}
+                </button>
+              </div>
             ))}
           </div>
-        </div>
-      </section>
-
-      {/* Feature Comparison */}
-      <FeatureComparison />
-
-      {/* FAQ Section */}
-      <FAQSection />
-
-      {/* Trust Section */}
-      <TrustSection />
-
-      {/* CTA Section */}
-      <CTASection />
+        )}
+      </div>
     </div>
   );
 }
