@@ -67,11 +67,11 @@ const PLAN_ICONS: Record<string, React.ElementType> = {
 };
 
 const PLAN_COLORS: Record<string, string> = {
-  FREE: 'from-gray-100 to-gray-200 border-gray-300',
-  STARTER: 'from-blue-50 to-blue-100 border-blue-300',
-  PROFESSIONAL: 'from-violet-50 to-violet-100 border-violet-300',
-  BUSINESS: 'from-amber-50 to-amber-100 border-amber-300',
-  ENTERPRISE: 'from-emerald-50 to-emerald-100 border-emerald-300',
+  FREE: 'from-gray-100 to-gray-200 border-gray-300 dark:from-gray-700 dark:to-gray-800 dark:border-gray-600',
+  STARTER: 'from-blue-50 to-blue-100 border-blue-300 dark:from-blue-900/50 dark:to-blue-800/50 dark:border-blue-700',
+  PROFESSIONAL: 'from-violet-50 to-violet-100 border-violet-300 dark:from-violet-900/50 dark:to-violet-800/50 dark:border-violet-700',
+  BUSINESS: 'from-amber-50 to-amber-100 border-amber-300 dark:from-amber-900/50 dark:to-amber-800/50 dark:border-amber-700',
+  ENTERPRISE: 'from-emerald-50 to-emerald-100 border-emerald-300 dark:from-emerald-900/50 dark:to-emerald-800/50 dark:border-emerald-700',
 };
 
 export default function SubscriptionChooser({
@@ -350,34 +350,34 @@ export default function SubscriptionChooser({
                         )}
 
                         <div className="flex items-center gap-3 mb-4">
-                          <div className="p-2 rounded-lg bg-white/50">
-                            <Icon className="w-6 h-6 text-gray-700" />
+                          <div className="p-2 rounded-lg bg-white/50 dark:bg-white/10">
+                            <Icon className="w-6 h-6 text-gray-700 dark:text-gray-200" />
                           </div>
-                          <h3 className="font-bold text-lg text-gray-800">{plan.name}</h3>
+                          <h3 className="font-bold text-lg text-gray-800 dark:text-white">{plan.name}</h3>
                         </div>
 
                         <div className="mb-4">
-                          <span className="text-3xl font-bold text-gray-900">
+                          <span className="text-3xl font-bold text-gray-900 dark:text-white">
                             {formatPrice(plan.price_monthly, plan.currency)}
                           </span>
-                          {!isFree && <span className="text-gray-600">/month</span>}
+                          {!isFree && <span className="text-gray-600 dark:text-gray-300">/month</span>}
                         </div>
 
-                        <p className="text-sm text-gray-600 mb-4">
+                        <p className="text-sm text-gray-600 dark:text-gray-300 mb-4">
                           {plan.short_description || plan.description || 'Get started with this plan'}
                         </p>
 
                         <ul className="space-y-2 mb-6 text-sm">
-                          <li className="flex items-center gap-2 text-gray-700">
-                            <Check className="w-4 h-4 text-green-600" />
+                          <li className="flex items-center gap-2 text-gray-700 dark:text-gray-200">
+                            <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
                             {plan.max_users === -1 ? 'Unlimited' : plan.max_users} users
                           </li>
-                          <li className="flex items-center gap-2 text-gray-700">
-                            <Check className="w-4 h-4 text-green-600" />
+                          <li className="flex items-center gap-2 text-gray-700 dark:text-gray-200">
+                            <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
                             {plan.max_storage_gb === -1 ? 'Unlimited' : plan.max_storage_gb} GB storage
                           </li>
-                          <li className="flex items-center gap-2 text-gray-700">
-                            <Check className="w-4 h-4 text-green-600" />
+                          <li className="flex items-center gap-2 text-gray-700 dark:text-gray-200">
+                            <Check className="w-4 h-4 text-green-600 dark:text-green-400" />
                             {plan.max_branches === -1 ? 'Unlimited' : plan.max_branches} branch{plan.max_branches !== 1 ? 'es' : ''}
                           </li>
                         </ul>
