@@ -85,7 +85,7 @@ router.get('/pricing-page', async (req, res) => {
   try {
     const prisma = getPrisma();
 
-    const plans = await prisma.subscriptionPlan.findMany({
+    const plans = await prisma.subscription_plans.findMany({
       where: { is_active: true, is_public: true },
       orderBy: { sort_order: 'asc' },
     });

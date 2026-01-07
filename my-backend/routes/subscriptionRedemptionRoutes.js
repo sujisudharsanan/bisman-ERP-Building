@@ -303,7 +303,7 @@ router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
     }
 
     // Get basic plan (or first available plan) for trial features
-    const basicPlan = await prisma.subscriptionPlan.findFirst({
+    const basicPlan = await prisma.subscription_plans.findFirst({
       where: { is_active: true },
       orderBy: { sort_order: 'asc' },
     });
@@ -408,7 +408,7 @@ router.post('/activate-free', ...clientAdminOnly, async (req, res) => {
     }
 
     // Get the FREE plan
-    const freePlan = await prisma.subscriptionPlan.findFirst({
+    const freePlan = await prisma.subscription_plans.findFirst({
       where: { 
         is_active: true,
         OR: [
