@@ -128,7 +128,7 @@ export interface ClientFormValues {
   enabled_modules: string[];
   storage_limit_gb: number;
   // Admin user
-  admin_users: Array<{ email: string; name: string; role: string; password?: string; confirmPassword?: string }>;
+  admin_users: Array<{ email: string; name: string; role: string; password?: string; confirmPassword?: string; id?: number; hasPassword?: boolean }>;
 }
 
 export interface ClientFormProps {
@@ -581,7 +581,7 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
   const addAdminUser = () => {
     setForm({
       ...form,
-      admin_users: [...form.admin_users, { email: '', name: '', role: 'User', password: '' }]
+      admin_users: [...form.admin_users, { email: '', name: '', role: 'Admin', password: '' }]
     });
   };
 
@@ -1886,15 +1886,9 @@ Your 14-day trial has started. The admin can login immediately.`;
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
-                    <select 
-                      value={adminU.role} 
-                      onChange={(e) => updateAdminUser(idx, 'role', e.target.value)} 
-                      className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-700"
-                    >
-                      <option>Admin</option>
-                      <option>Manager</option>
-                      <option>User</option>
-                    </select>
+                    <div className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-gray-100 dark:bg-gray-600 text-gray-700 dark:text-gray-300">
+                      Admin
+                    </div>
                   </div>
                   {idx > 0 && registrationMode === 'permanent' && (
                     <div className="flex items-end">
@@ -1907,12 +1901,12 @@ Your 14-day trial has started. The admin can login immediately.`;
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      Password {mode === 'create' ? '*' : ''}
+                      Password {mode === 'create' && !adminU.id ? '*' : ''}
                     </label>
                     <div className="relative">
                       <input 
                         type={showPasswords[idx] ? 'text' : 'password'}
-                        placeholder={mode === 'edit' ? '(leave blank to keep)' : 'Min 8 characters'}
+                        placeholder={adminU.id ? '(leave blank to keep current)' : 'Min 8 characters'}
                         value={adminU.password || ''} 
                         onChange={(e) => updateAdminUser(idx, 'password', e.target.value)} 
                         className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 pr-10 bg-white dark:bg-gray-700" 
@@ -1925,6 +1919,18 @@ Your 14-day trial has started. The admin can login immediately.`;
                         {showPasswords[idx] ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                       </button>
                     </div>
+                    {adminU.id && adminU.hasPassword && (
+                      <p className="text-xs text-green-600 dark:text-green-400 mt-1 flex items-center gap-1">
+                        <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                        Password is set. Leave blank to keep current password.
+                      </p>
+                    )}
+                    {adminU.id && !adminU.hasPassword && (
+                      <p className="text-xs text-amber-600 dark:text-amber-400 mt-1 flex items-center gap-1">
+                        <span className="w-2 h-2 bg-amber-500 rounded-full"></span>
+                        No password set. Enter a password for this user.
+                      </p>
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">

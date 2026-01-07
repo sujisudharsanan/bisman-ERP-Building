@@ -1,5 +1,4 @@
 const jwt = require('jsonwebtoken')
-const { PrismaClient } = require('@prisma/client')
 const { isJtiRevoked } = require('../lib/tokenStore')
 
 const { getPrisma } = require('../lib/prisma')
@@ -114,7 +113,7 @@ async function authenticate(req, res, next) {
           if (isUUID) {
             try {
               user = await prisma.user.findUnique({ where: { id: subjectId } })
-            } catch (e) {
+            } catch {
               console.log('[authenticate] User not found in users_enhanced')
             }
           }

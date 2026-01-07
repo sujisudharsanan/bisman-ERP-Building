@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { FiUsers, FiPackage, FiGrid, FiShield, FiRefreshCw } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
+import ClientManagementTabs from "@/components/common/ClientManagementTabs";
 // Note: Layout is provided by /app/system/layout.tsx
 
 // Types
@@ -451,36 +452,39 @@ export default function RolesUsersReportPage() {
   }
 
   return (
-    <div className="flex flex-col gap-4 w-full" style={{ height: 'calc(100vh - 8rem)' }}>
+    <div className="flex flex-col w-full overflow-hidden" style={{ height: 'calc(100vh - 5rem)' }}>
+      {/* Navigation Tabs */}
+      <ClientManagementTabs />
+      
       {/* Header */}
-      <div className="flex items-center justify-between flex-shrink-0">
+      <div className="flex items-center justify-between flex-shrink-0 mb-2">
         <div>
-          <h1 className="text-xl font-bold text-gray-900 dark:text-gray-100">Module Management</h1>
-          <p className="text-sm text-gray-500 dark:text-gray-400">
+          <h1 className="text-lg font-bold text-gray-900 dark:text-gray-100">Module Management</h1>
+          <p className="text-xs text-gray-500 dark:text-gray-400">
             Assign roles and pages to clients/admins
           </p>
         </div>
         <button
           onClick={() => loadData(true)}
           disabled={isDataRefreshing}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
+          className="flex items-center gap-2 px-3 py-1.5 text-sm bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50"
         >
-          <FiRefreshCw className={isDataRefreshing ? 'animate-spin' : ''} />
+          <FiRefreshCw className={isDataRefreshing ? 'animate-spin' : ''} size={14} />
           Refresh
         </button>
       </div>
 
-      {/* Main 3-Column Grid */}
-      <div className="flex-1 min-h-0 overflow-hidden">
-        <div className="grid grid-cols-3 gap-4 h-full">
+      {/* Main 3-Column Grid - takes 45% of remaining space */}
+      <div className="flex-[45] min-h-0 overflow-hidden">
+        <div className="grid grid-cols-3 gap-2 h-full">
           {/* Column 1: Clients */}
-          <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
-            <div className="text-sm font-semibold mb-2 flex items-center gap-2">
+          <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-2 flex flex-col h-full overflow-hidden">
+            <div className="text-sm font-semibold mb-1 flex items-center gap-2 flex-shrink-0">
               <FiUsers className="text-green-600" />
               Clients
               <span className="text-xs font-normal text-gray-500">{clients.length}</span>
             </div>
-            <div className="space-y-1 max-h-[520px] overflow-y-auto">
+            <div className="space-y-1 flex-1 overflow-y-auto min-h-0">
               {clients.length === 0 ? (
                 <div className="text-xs text-gray-500 text-center py-4">No clients found</div>
               ) : (
@@ -521,8 +525,8 @@ export default function RolesUsersReportPage() {
           </div>
 
           {/* Column 2: Roles */}
-          <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
-            <div className="text-sm font-semibold mb-2 flex items-center gap-2">
+          <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3 flex flex-col h-full overflow-hidden">
+            <div className="text-sm font-semibold mb-2 flex items-center gap-2 flex-shrink-0">
               <FiShield className="text-purple-600" />
               Roles
               <span className="text-xs font-normal text-gray-500">
@@ -532,7 +536,7 @@ export default function RolesUsersReportPage() {
             
             {/* Action buttons for role assignment */}
             {selectedClientId && allRoles.length > 0 && (
-              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                 <button
                   onClick={() => setAssignedRoleIds(allRoles.map(r => r.id))}
                   className="text-[10px] px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200"
@@ -565,7 +569,7 @@ export default function RolesUsersReportPage() {
               </div>
             )}
             
-            <div className="space-y-1 max-h-[480px] overflow-y-auto">
+            <div className="space-y-1 flex-1 overflow-y-auto min-h-0">
               {!selectedClientId ? (
                 <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
                   ⚠️ Select a Client to assign roles
@@ -643,8 +647,8 @@ export default function RolesUsersReportPage() {
           </div>
 
           {/* Column 3: Pages */}
-          <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
-            <div className="text-sm font-semibold mb-1 flex items-center justify-between">
+          <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3 flex flex-col h-full overflow-hidden">
+            <div className="text-sm font-semibold mb-1 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2">
                 <FiGrid className="text-blue-600" />
                 Pages
@@ -665,13 +669,13 @@ export default function RolesUsersReportPage() {
               )}
             </div>
 
-            <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-2 italic">
+            <div className="text-[10px] text-gray-500 dark:text-gray-400 mb-2 italic flex-shrink-0">
               Check pages to grant access to this role.
             </div>
 
             {/* Action buttons */}
             {selectedRoleId && rolePages.length > 0 && (
-              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700">
+              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                 <button
                   onClick={handleSelectAllRolePages}
                   className="text-[10px] px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
@@ -699,7 +703,7 @@ export default function RolesUsersReportPage() {
               </div>
             )}
 
-            <div className="space-y-1 max-h-[480px] overflow-y-auto">
+            <div className="space-y-1 flex-1 overflow-y-auto min-h-0">
               {!selectedRoleId ? (
                 <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
                   ⚠️ Select a Role from Column 2 to see pages
@@ -756,10 +760,10 @@ export default function RolesUsersReportPage() {
         </div>
       </div>
 
-      {/* Bottom Section: All Roles Overview */}
-      <div className="flex-shrink-0 rounded-lg border bg-white/40 dark:bg-gray-900/30 p-4">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-4">
+      {/* Bottom Section: All Roles Overview - takes 55% of remaining space */}
+      <div className="flex-[55] min-h-0 rounded-lg border bg-white/40 dark:bg-gray-900/30 p-2 flex flex-col overflow-hidden">
+        <div className="flex items-center justify-between mb-2 flex-shrink-0">
+          <div className="flex items-center gap-3">
             <div className="text-sm font-semibold flex items-center gap-2">
               <FiShield className="text-purple-600" />
               All Roles Overview
@@ -796,7 +800,8 @@ export default function RolesUsersReportPage() {
           </div>
         </div>
 
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
+        <div className="flex-1 overflow-y-auto min-h-0">
+          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
           {allRoles.map(role => {
             const isSelected = selectedRoleId === role.id;
             const userCount = role.userCount || role.users?.length || 0;
@@ -836,7 +841,7 @@ export default function RolesUsersReportPage() {
                       setSelectedRoleId(role.id);
                     }
                   }}
-                  className={`w-full text-left rounded-md border px-3 py-2 text-xs cursor-pointer transition hover:ring-2 ${
+                  className={`w-full text-left rounded-md border px-2 py-1.5 text-xs cursor-pointer transition hover:ring-2 ${
                     isSelected
                       ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-300"
                       : isAssigned
@@ -845,16 +850,16 @@ export default function RolesUsersReportPage() {
                   }`}
                 >
                   <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-1">
                       {isAssigned ? (
-                        <span className="text-green-600">✓</span>
+                        <span className="text-green-600 text-[10px]">✓</span>
                       ) : (
-                        <span className="text-red-500">✗</span>
+                        <span className="text-red-500 text-[10px]">✗</span>
                       )}
-                      <span className="font-medium truncate">{role.display_name || role.name}</span>
+                      <span className="font-medium truncate text-[11px]">{role.display_name || role.name}</span>
                     </div>
                     {role.level !== undefined && (
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                      <span className={`text-[8px] px-1 py-0.5 rounded-full font-bold ${
                         role.level >= 9 
                           ? 'bg-purple-100 text-purple-700'
                           : role.level >= 7
@@ -869,14 +874,15 @@ export default function RolesUsersReportPage() {
                       </span>
                     )}
                   </div>
-                  <div className="text-[10px] text-gray-500 flex items-center gap-1 mt-1">
-                    <FiUsers className="w-3 h-3" />
-                    {userCount} users
+                  <div className="text-[9px] text-gray-500 flex items-center gap-1">
+                    <FiUsers className="w-2.5 h-2.5" />
+                    {userCount}
                   </div>
                 </button>
               </div>
             );
           })}
+          </div>
         </div>
       </div>
     </div>

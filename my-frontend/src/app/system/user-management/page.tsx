@@ -63,8 +63,21 @@ export default function ClientManagementPage() {
     fetchClients();
   }, []);
 
-  function openEdit(c: Client) {
-    setEditClient(c);
+  async function openEdit(c: Client) {
+    // Fetch full client data including admin_users
+    try {
+      const res = await fetch(`${API_BASE}/api/system/clients/${c.id}`, { credentials: 'include' });
+      const json = await res.json();
+      if (res.ok && json.data) {
+        setEditClient(json.data);
+      } else {
+        // Fallback to list data if fetch fails
+        setEditClient(c);
+      }
+    } catch (e) {
+      console.error('Failed to fetch client details:', e);
+      setEditClient(c);
+    }
     setIsEditOpen(true);
   }
 
@@ -216,6 +229,15 @@ export default function ClientManagementPage() {
       
       // User access
       user_access: c.user_access || { username: '', role: 'Client', modules: [] },
+      
+      // Admin users - load from API response
+      admin_users: (c.admin_users || []).map((u: any) => ({
+        email: u.email || '',
+        name: u.name || '',
+        role: u.role || 'Admin',
+        password: '', // Don't show existing password
+        id: u.id,
+      })),
       
       // Pass full settings for logo initialization
       settings: c.settings,

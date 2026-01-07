@@ -8,7 +8,7 @@ import {
   BarChart3, PieChart, Activity, Clock, Target, Zap,
   AlertCircle, Calendar, Building2, RefreshCw
 } from 'lucide-react';
-import SubscriptionActivationModal from '@/components/subscription/SubscriptionActivationModal';
+import SubscriptionChooser from '@/components/subscription/SubscriptionChooser';
 
 // Types
 interface KPIData {
@@ -739,8 +739,8 @@ export default function ClientDashboardPage() {
         </section>
       </main>
 
-      {/* Subscription Activation Modal */}
-      <SubscriptionActivationModal
+      {/* Subscription Chooser - Full Page Overlay */}
+      <SubscriptionChooser
         isOpen={showActivationModal}
         onClose={handleModalClose}
         onActivated={handleActivationSuccess}

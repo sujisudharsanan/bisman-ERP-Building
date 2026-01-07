@@ -83,7 +83,7 @@ router.post('/clients', authMiddleware, async (req, res) => {
     const {
       name,
       productType = 'BUSINESS_ERP',
-      subscriptionPlan = 'free',
+      subscriptionPlan = 'none', // Default to 'none' - user must choose a plan
       super_admin_id,
   saveAsDraft,
   adminUser,
@@ -220,11 +220,12 @@ router.get('/clients/:id', authMiddleware, async (req, res) => {
     const ownsClient = user?.super_admin_id === client.super_admin_id || user?.id === client.super_admin_id;
     if (!allowed || (!isPlatformAdmin(role) && !isSuperAdminRole && !ownsClient)) return res.status(403).json({ error: 'Forbidden' });
     
-    // Fetch admin users associated with this client (tenant_id = client.id)
+    // Fetch only ADMIN role users associated with this client (tenant_id = client.id)
     const adminUsers = await prisma.user.findMany({
       where: { 
         tenant_id: clientId,
         is_active: true,
+        role: 'ADMIN',  // Only show ADMIN role users
       },
       select: {
         id: true,
@@ -234,6 +235,7 @@ router.get('/clients/:id', authMiddleware, async (req, res) => {
         last_name: true,
         role: true,
         created_at: true,
+        password_hash: true,  // To check if password exists
       },
       orderBy: { created_at: 'asc' },
     });
@@ -247,6 +249,8 @@ router.get('/clients/:id', authMiddleware, async (req, res) => {
           name: u.first_name && u.last_name ? `${u.first_name} ${u.last_name}` : u.username || u.email.split('@')[0],
           role: u.role || 'Admin',
           id: u.id,
+          hasPassword: !!(u.password_hash && u.password_hash.length > 0),  // Indicate if password exists
+          isExisting: true,  // Mark as existing user
         })),
       },
     });
@@ -334,6 +338,77 @@ router.patch('/clients/:id', authMiddleware, async (req, res) => {
       newSettings.display_name = b.display_name;
     }
     
+    // Handle admin users - create new users or update existing
+    const adminUserResults = [];
+    if (b.admin_users && Array.isArray(b.admin_users)) {
+      const bcrypt = require('bcryptjs');
+      console.log('[PATCH client] Processing admin_users:', b.admin_users.length);
+      for (const adminUser of b.admin_users) {
+        if (!adminUser.email || !adminUser.email.includes('@')) {
+          console.log('[PATCH client] Skipping invalid admin user:', adminUser.email);
+          continue;
+        }
+        
+        try {
+          // Check if user already exists
+          const existingUser = await prisma.user.findUnique({ 
+            where: { email: adminUser.email },
+            select: { id: true, tenant_id: true, email: true, username: true }
+          });
+          
+          if (existingUser) {
+            // User exists - check if they belong to this client
+            if (existingUser.tenant_id === clientId) {
+              // Update existing user if password provided
+              if (adminUser.password && adminUser.password.length >= 6) {
+                const hashed = await bcrypt.hash(adminUser.password, 10);
+                await prisma.user.update({
+                  where: { id: existingUser.id },
+                  data: { 
+                    password_hash: hashed,
+                    username: adminUser.name || existingUser.username,
+                  }
+                });
+                console.log('[PATCH client] Updated existing admin user:', adminUser.email);
+              }
+              adminUserResults.push({ email: adminUser.email, status: 'existing', updated: !!adminUser.password });
+            } else {
+              // User exists but belongs to another client
+              console.log('[PATCH client] User exists in different tenant:', adminUser.email);
+              adminUserResults.push({ email: adminUser.email, status: 'conflict', error: 'Email already in use by another client' });
+            }
+          } else {
+            // Create new user
+            if (!adminUser.password || adminUser.password.length < 6) {
+              console.log('[PATCH client] Skipping new user without password:', adminUser.email);
+              adminUserResults.push({ email: adminUser.email, status: 'skipped', error: 'Password required for new users' });
+              continue;
+            }
+            
+            const username = adminUser.name || adminUser.email.split('@')[0];
+            const hashed = await bcrypt.hash(adminUser.password, 10);
+            
+            const newUser = await prisma.user.create({
+              data: {
+                tenant_id: clientId,
+                username: username,
+                email: adminUser.email,
+                password_hash: hashed,
+                role: 'ADMIN',
+                status: 'active',
+                is_active: true,
+              }
+            });
+            console.log('[PATCH client] Created new admin user:', adminUser.email, 'id:', newUser.id);
+            adminUserResults.push({ email: adminUser.email, status: 'created', userId: newUser.id });
+          }
+        } catch (userErr) {
+          console.error('[PATCH client] Error processing admin user:', adminUser.email, userErr.message);
+          adminUserResults.push({ email: adminUser.email, status: 'error', error: userErr.message });
+        }
+      }
+    }
+    
     const updated = await prisma.clients.update({ 
       where: { id: clientId }, 
       data: { 
@@ -342,7 +417,7 @@ router.patch('/clients/:id', authMiddleware, async (req, res) => {
         ...(b.display_name ? { trade_name: b.display_name } : {}),
       } 
     });
-    res.json({ success: true, data: updated });
+    res.json({ success: true, data: updated, adminUsers: adminUserResults });
   } catch (e) { 
     console.error('[PATCH client] Error:', e.message, e.stack);
     res.status(500).json({ error: 'Failed to update client', details: e.message }); 

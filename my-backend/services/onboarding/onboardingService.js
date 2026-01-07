@@ -19,7 +19,7 @@ const prisma = getPrisma();
 let redis = null;
 try {
   redis = require('../../lib/redisClient');
-} catch (e) {
+} catch {
   console.warn('[Onboarding] Redis not available');
 }
 // Optional email service - may not be configured in dev
@@ -37,11 +37,9 @@ const TRIAL_PERIOD_DAYS = 14;
 // Idempotency cache TTL (24 hours)
 const IDEMPOTENCY_TTL = 24 * 60 * 60;
 
-// Default subscription plan code
-const DEFAULT_SUBSCRIPTION_PLAN = 'BASIC';
-
-// Default roles for new tenants
-const DEFAULT_ROLES = [
+// Default roles for new tenants (reserved for future RBAC implementation)
+// eslint-disable-next-line no-unused-vars
+const _DEFAULT_ROLES = [
   {
     name: 'admin',
     display_name: 'Administrator',
@@ -80,7 +78,8 @@ const DEFAULT_ROLES = [
   }
 ];
 
-// Default tenant settings
+// Default tenant settings (reserved for future use)
+// eslint-disable-next-line no-unused-vars
 const DEFAULT_SETTINGS = {
   timezone: 'UTC',
   dateFormat: 'YYYY-MM-DD',
@@ -148,7 +147,7 @@ async function checkEmailExists(email) {
  * Check if company name is already taken
  */
 async function checkCompanyExists(companyName) {
-  const client = await prisma.clients.findFirst({
+  const client = await prisma.client.findFirst({
     where: { 
       name: { equals: companyName, mode: 'insensitive' }
     }
@@ -170,8 +169,9 @@ function generateTemporaryPassword(length = 12) {
 }
 
 /**
- * Generate tenant slug from company name
+ * Generate tenant slug from company name (reserved for future use)
  */
+// eslint-disable-next-line no-unused-vars
 function generateTenantSlug(companyName) {
   return companyName
     .toLowerCase()
@@ -532,7 +532,7 @@ async function resendWelcomeEmail(clientId, email) {
   }
 
   // Get client info
-  const client = await prisma.clients.findUnique({
+  const client = await prisma.client.findUnique({
     where: { id: clientId }
   });
 
@@ -574,7 +574,7 @@ async function resendWelcomeEmail(clientId, email) {
  * Get provisioning status for a client
  */
 async function getProvisioningStatus(clientId) {
-  const client = await prisma.clients.findUnique({
+  const client = await prisma.client.findUnique({
     where: { id: clientId }
   });
 
@@ -630,5 +630,6 @@ module.exports = {
   createTenant,
   sendWelcomeEmail,
   resendWelcomeEmail,
-  getProvisioningStatus
+  getProvisioningStatus,
+  enqueueProvisioningJobs
 };

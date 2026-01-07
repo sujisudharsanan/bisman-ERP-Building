@@ -13,6 +13,13 @@ function getPrisma() {
     if (!connecting) {
       connecting = client.$connect().catch(() => {});
     }
+    
+    // Create alias for 'user' -> 'users_enhanced' for backward compatibility
+    // The schema uses 'users_enhanced' but code references 'user'
+    if (client.users_enhanced && !client.user) {
+      client.user = client.users_enhanced;
+    }
+    
     prismaInstance = client;
     // Expose globally to avoid duplicate clients in dev/HMR
     globalThis.prisma = prismaInstance;

@@ -1,7 +1,6 @@
 // Super Admin Service - Database control operations
 // CANONICAL: All user lifecycle operations MUST delegate to UserService
 const { getPrisma } = require('../lib/prisma')
-const bcrypt = require('bcryptjs')
 const UserService = require('./userService')
 
 const prisma = getPrisma()

@@ -2,7 +2,7 @@
 const express = require('express')
 const router = express.Router()
 const superAdminController = require('../controllers/superAdminController')
-const { requirePermission, requireRole } = require('../middleware/rbacAuth')
+const { requireRole } = require('../middleware/rbacAuth')
 const { authenticate } = require('../middleware/auth')
 const { validateBusinessLevelOnCreate, protectBusinessLevel } = require('../middleware/businessLevelProtection')
 
@@ -35,7 +35,7 @@ router.get('/roles', requireSuperAdmin, async (req, res) => {
 		try {
 			const r = await prisma.$queryRaw`SELECT id, name, created_at, updated_at FROM roles ORDER BY name ASC LIMIT 200`
 			return res.json({ success: true, data: r })
-		} catch (e) {
+		} catch {
 			const roles = await prisma.user.findMany({
 				select: { role: true },
 				distinct: ['role']

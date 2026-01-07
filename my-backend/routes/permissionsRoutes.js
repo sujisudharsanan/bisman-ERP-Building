@@ -304,7 +304,7 @@ router.post('/update',
         });
       }
 
-      const { roleId, userId, allowedPages } = req.body;
+      const { userId, allowedPages } = req.body;
 
       if (!userId || !Array.isArray(allowedPages)) {
         return res.status(400).json({

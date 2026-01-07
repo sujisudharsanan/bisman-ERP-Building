@@ -23,6 +23,59 @@ const clientAdminOnly = [
 ];
 
 // ============================================================================
+// PUBLIC ENDPOINTS (Authenticated users only)
+// ============================================================================
+
+/**
+ * GET /api/subscriptions/plans
+ * Get available subscription plans for clients to choose from
+ */
+router.get('/plans', authenticate, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    
+    const plans = await prisma.subscription_plans.findMany({
+      where: {
+        is_active: true,
+      },
+      orderBy: [
+        { price_monthly: 'asc' },
+        { name: 'asc' },
+      ],
+      select: {
+        id: true,
+        plan_code: true,
+        name: true,
+        description: true,
+        short_description: true,
+        price_monthly: true,
+        price_yearly: true,
+        currency: true,
+        max_users: true,
+        max_storage_gb: true,
+        max_branches: true,
+        is_popular: true,
+        is_enterprise: true,
+        cta_text: true,
+        features: true,
+      },
+    });
+
+    return res.json({
+      ok: true,
+      plans,
+    });
+  } catch (error) {
+    console.error('Fetch plans error:', error);
+    return res.status(500).json({
+      ok: false,
+      error: 'FETCH_ERROR',
+      message: 'Failed to fetch subscription plans',
+    });
+  }
+});
+
+// ============================================================================
 // REDEMPTION ENDPOINTS
 // ============================================================================
 
@@ -315,6 +368,132 @@ router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
       ok: false,
       error: 'TRIAL_START_FAILED',
       message: 'Failed to start trial. Please try again.',
+    });
+  }
+});
+
+/**
+ * POST /api/subscriptions/activate-free
+ * Activate the free plan for the tenant (permanent, with limitations)
+ */
+router.post('/activate-free', ...clientAdminOnly, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    if (!prisma) {
+      return res.status(500).json({
+        ok: false,
+        error: 'DATABASE_ERROR',
+        message: 'Database connection not available',
+      });
+    }
+    
+    const tenantId = req.user.tenant_id;
+
+    if (!tenantId) {
+      return res.status(400).json({
+        ok: false,
+        error: 'NO_TENANT',
+        message: 'No organization associated with your account',
+      });
+    }
+
+    // Check if already has active subscription
+    const existingStatus = await couponService.getTenantSubscriptionStatus(tenantId);
+    if (existingStatus.hasActiveSubscription && existingStatus.subscription?.status !== 'none') {
+      return res.status(400).json({
+        ok: false,
+        error: 'ALREADY_SUBSCRIBED',
+        message: 'You already have an active subscription',
+      });
+    }
+
+    // Get the FREE plan
+    const freePlan = await prisma.subscriptionPlan.findFirst({
+      where: { 
+        is_active: true,
+        OR: [
+          { plan_code: 'FREE' },
+          { plan_code: 'free' },
+          { name: { contains: 'Free', mode: 'insensitive' } },
+          { price_monthly: 0 }
+        ]
+      },
+      orderBy: { sort_order: 'asc' },
+    });
+
+    if (!freePlan) {
+      return res.status(500).json({
+        ok: false,
+        error: 'NO_FREE_PLAN',
+        message: 'Free plan is not available. Please contact support.',
+      });
+    }
+
+    const now = new Date();
+
+    // Delete any existing subscription (pending/none)
+    await prisma.clientSubscription.deleteMany({
+      where: { client_id: tenantId },
+    });
+
+    // Create free subscription (no expiration)
+    await prisma.clientSubscription.create({
+      data: {
+        client_id: tenantId,
+        plan_id: freePlan.id,
+        state: 'ACTIVE',
+        started_at: now,
+        expires_at: null, // Free plan doesn't expire
+        activation_source: 'FREE_PLAN_SELECTION',
+        is_active: true,
+      },
+    });
+
+    // Update client's subscription info
+    await prisma.clients.update({
+      where: { id: tenantId },
+      data: {
+        subscriptionPlan: 'free',
+        subscriptionStatus: 'active',
+      },
+    });
+
+    // Log the activation
+    await prisma.subscriptionCouponAuditLog.create({
+      data: {
+        action: 'FREE_PLAN_ACTIVATED',
+        actor_id: req.user.id,
+        tenant_id: tenantId,
+        details: {
+          planId: freePlan.id,
+          planName: freePlan.name,
+          maxUsers: freePlan.max_users,
+          maxStorageGb: freePlan.max_storage_gb,
+        },
+        ip_address: req.ip || req.connection?.remoteAddress,
+      },
+    });
+
+    res.json({
+      ok: true,
+      message: `Free plan activated successfully!`,
+      subscription: {
+        status: 'active',
+        planName: freePlan.name,
+        planCode: freePlan.plan_code || 'FREE',
+        limits: {
+          maxUsers: freePlan.max_users,
+          maxStorageGb: freePlan.max_storage_gb,
+          maxBranches: freePlan.max_branches,
+        },
+      },
+    });
+  } catch (error) {
+    console.error('[RedemptionRoutes] Activate free plan error:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'ACTIVATION_FAILED',
+      message: 'Failed to activate free plan. Please try again.',
     });
   }
 });

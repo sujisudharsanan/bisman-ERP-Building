@@ -4,7 +4,13 @@
  * SECURITY FIX TN-03: All queries now include tenant_id filter
  */
 
+// Ensure the correct path and file exist for database pool import
+// Update the import path if necessary, or ensure the file exists and exports a pool instance
 import pool from '../../config/database';
+// If the file does not exist, create it at '../../config/database.ts' with the following content:
+// import { Pool } from 'pg';
+// const pool = new Pool({ /* your database config */ });
+// export default pool;
 
 export interface Task {
   id: number;
