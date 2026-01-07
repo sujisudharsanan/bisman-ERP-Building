@@ -62,43 +62,20 @@ interface Plan {
   color: string;
   bgGradient: string;
   borderColor: string;
-  interface Plan {
-    id: number;
-    plan_code: string;
-    name: string;
-    description?: string;
-    short_description?: string;
-    price_monthly: number;
-    price_yearly: number;
-    currency: string;
-    max_users: number;
-    max_storage_gb: number;
-    max_branches: number;
-    is_popular?: boolean;
-    is_enterprise?: boolean;
-    cta_text?: string;
-  }
-  const PLANS: Plan[] = []; // Placeholder for dynamic fetching
-      'Up to 25 users',
-      'Advanced inventory & warehouse',
-      'Custom reports & dashboards',
-      'Priority email support (24hr)',
-      'Advanced mobile features',
-      '25GB storage',
-      'All standard integrations',
-      'Maker-Checker workflow',
-      'Custom roles & permissions',
-      'Audit trail',
-    ],
-    limits: {
-      users: 25,
-      storage: '25 GB',
-      apiCalls: '50,000/month',
-      integrations: 10,
-    },
-    cta: 'Start Free Trial',
-    ctaNote: 'No credit card required',
-  },
+  features: string[];
+  limits: {
+    users: number;
+    storage: string;
+    apiCalls: string;
+    integrations: number;
+  };
+  cta: string;
+  ctaNote?: string;
+  popular?: boolean;
+}
+
+// PLANS array definition
+const PLANS: Plan[] = [
   {
     id: 'BUSINESS',
     name: 'Business',
@@ -657,6 +634,10 @@ export default function PricingPage() {
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [selecting, setSelecting] = useState(false);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [apiError, setApiError] = useState<string | null>(null);
 
   useEffect(() => {
     fetch('/api/subscriptions/plans')
@@ -669,11 +650,37 @@ export default function PricingPage() {
       .finally(() => setLoading(false));
   }, []);
 
+  const handleSelectPlan = async (planId: string) => {
+    setSelecting(true);
+    setSelectedPlanId(planId);
+    setApiError(null);
+    setSuccessMsg(null);
+    try {
+      const res = await fetch('/api/subscriptions/start-trial', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ planId }),
+      });
+      const data = await res.json();
+      if (res.ok && data.ok) {
+        setSuccessMsg('Trial started! Check your email for next steps.');
+      } else {
+        setApiError(data.error || 'Could not start trial.');
+      }
+    } catch (e) {
+      setApiError('Could not start trial.');
+    } finally {
+      setSelecting(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-12 px-4">
       <div className="max-w-6xl mx-auto">
         <h1 className="text-3xl font-bold text-center mb-2 text-gray-900 dark:text-white">Choose Your Plan</h1>
         <p className="text-center text-gray-600 dark:text-gray-300 mb-10">Select a plan to get started with BISMAN ERP</p>
+        {successMsg && <div className="text-center text-green-600 mb-4">{successMsg}</div>}
+        {apiError && <div className="text-center text-red-500 mb-4">{apiError}</div>}
         {loading ? (
           <div className="flex justify-center items-center h-40">
             <span className="text-lg text-gray-500">Loading...</span>
@@ -685,18 +692,24 @@ export default function PricingPage() {
             {plans.map((plan) => (
               <div
                 key={plan.id}
-                className={`rounded-xl border-2 p-6 bg-white dark:bg-gray-800 shadow-md flex flex-col items-center ${plan.is_popular ? 'ring-2 ring-violet-500' : ''}`}
+                className={`rounded-xl border-2 border-gray-200 dark:border-gray-700 p-6 bg-white dark:bg-gray-800 shadow-md flex flex-col items-center ${plan.popular ? 'ring-2 ring-violet-500' : ''}`}
               >
                 <div className="mb-2 text-xl font-bold text-gray-900 dark:text-white">{plan.name}</div>
-                <div className="mb-2 text-2xl font-extrabold text-indigo-700 dark:text-indigo-300">
-                  {plan.price_monthly === 0 ? 'Free' : `₹${plan.price_monthly}/month`}
+                <div className="mb-2 text-2xl font-extrabold text-indigo-600 dark:text-indigo-400">
+                  {plan.monthlyPrice === 0 ? 'Free' : `₹${plan.monthlyPrice}/month`}
                 </div>
-                <div className="mb-2 text-gray-700 dark:text-gray-300 text-center text-sm min-h-[48px]">
-                  {plan.short_description || plan.description}
+                <div className="mb-2 text-gray-600 dark:text-gray-300 text-center text-sm min-h-[48px]">
+                  {plan.tagline}
                 </div>
                 <div className="flex-1" />
-                <button className={`mt-4 w-full py-2 rounded-lg font-semibold transition-colors ${plan.price_monthly === 0 ? 'bg-gray-800 text-white hover:bg-gray-900' : 'bg-indigo-600 text-white hover:bg-indigo-700'}`}>
-                  {plan.cta_text || (plan.price_monthly === 0 ? 'Start Free' : 'Select Plan')}
+                <button
+                  className={`mt-4 w-full py-2 rounded-lg font-semibold transition-colors ${plan.monthlyPrice === 0 ? 'bg-emerald-600 text-white hover:bg-emerald-700 dark:bg-emerald-500 dark:hover:bg-emerald-600' : 'bg-indigo-600 text-white hover:bg-indigo-700 dark:bg-indigo-500 dark:hover:bg-indigo-600'}`}
+                  onClick={() => handleSelectPlan(plan.id)}
+                  disabled={selectedPlanId === plan.id && selecting}
+                >
+                  {selectedPlanId === plan.id && selecting
+                    ? 'Processing...'
+                    : plan.cta || (plan.monthlyPrice === 0 ? 'Start Free' : 'Select Plan')}
                 </button>
               </div>
             ))}
