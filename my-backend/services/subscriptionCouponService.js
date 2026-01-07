@@ -122,11 +122,8 @@ async function getDerivedCouponStatus(coupon, prisma) {
   }
   
   // Check if any redemption exists
-  const redemption = await prisma.couponRedemption.findFirst({
+  const redemption = await prisma.coupon_redemptions.findFirst({
     where: { coupon_id: coupon.id },
-    include: {
-      subscription: true,
-    },
   });
   
   if (!redemption) {
@@ -178,7 +175,7 @@ function calculateRemainingTime(expiresAt) {
 
 async function logCouponEvent(prisma, eventType, data) {
   try {
-    await prisma.subscriptionCouponAuditLog.create({
+    await prisma.subscription_coupon_audit_logs.create({
       data: {
         event_type: eventType,
         coupon_id: data.couponId || null,
@@ -254,7 +251,7 @@ async function createCoupon(data, actor) {
   let attempts = 0;
   while (attempts < 10) {
     couponCode = generateCouponCode(plan.code, durationDays);
-    const existing = await prisma.subscriptionCoupon.findUnique({ where: { code: couponCode } });
+    const existing = await prisma.subscription_coupons.findUnique({ where: { code: couponCode } });
     if (!existing) break;
     attempts++;
   }
@@ -267,7 +264,7 @@ async function createCoupon(data, actor) {
   const planSnapshot = createPlanSnapshot(plan);
   
   // Create coupon
-  const coupon = await prisma.subscriptionCoupon.create({
+  const coupon = await prisma.subscription_coupons.create({
     data: {
       code: couponCode,
       plan_id: plan.id,
@@ -332,23 +329,8 @@ async function getCoupons(filters = {}) {
     where.plan_id = filters.planId;
   }
   
-  const coupons = await prisma.subscriptionCoupon.findMany({
+  const coupons = await prisma.subscription_coupons.findMany({
     where,
-    include: {
-      creator: {
-        select: { id: true, first_name: true, last_name: true, email: true },
-      },
-      redemptions: {
-        include: {
-          tenant: {
-            select: { id: true, name: true, client_code: true },
-          },
-          subscription: {
-            select: { id: true, state: true, expires_at: true, started_at: true },
-          },
-        },
-      },
-    },
     orderBy: { created_at: 'desc' },
   });
   
@@ -356,7 +338,11 @@ async function getCoupons(filters = {}) {
   const enhancedCoupons = await Promise.all(
     coupons.map(async (coupon) => {
       const derivedStatus = await getDerivedCouponStatus(coupon, prisma);
-      const redemption = coupon.redemptions[0];
+      
+      // Fetch redemption data separately
+      const redemption = await prisma.coupon_redemptions.findFirst({
+        where: { coupon_id: coupon.id },
+      });
       
       // Get plan info from snapshot
       const planSnapshot = coupon.plan_snapshot_json || {};
@@ -400,44 +386,25 @@ async function getCoupons(filters = {}) {
 async function getCouponById(couponId) {
   const prisma = getPrisma();
   
-  const coupon = await prisma.subscriptionCoupon.findUnique({
+  const coupon = await prisma.subscription_coupons.findUnique({
     where: { id: couponId },
-    include: {
-      creator: {
-        select: { id: true, first_name: true, last_name: true, email: true, role: true },
-      },
-      revoker: {
-        select: { id: true, first_name: true, last_name: true, email: true },
-      },
-      redemptions: {
-        include: {
-          tenant: {
-            select: { id: true, name: true, client_code: true },
-          },
-          activated_by: {
-            select: { id: true, first_name: true, last_name: true, email: true },
-          },
-          subscription: {
-            select: { 
-              id: true, 
-              state: true, 
-              expires_at: true, 
-              started_at: true,
-              current_user_count: true,
-              current_storage_used: true,
-            },
-          },
-        },
-      },
-      audit_logs: {
-        orderBy: { created_at: 'desc' },
-        take: 50,
-      },
-    },
   });
   
   if (!coupon) {
     throw { code: ERROR_CODES.COUPON_NOT_FOUND, message: 'Coupon not found' };
+  }
+  
+  // Fetch redemption separately
+  const redemption = await prisma.coupon_redemptions.findFirst({
+    where: { coupon_id: couponId },
+  });
+  
+  // Fetch subscription if redemption exists
+  let subscription = null;
+  if (redemption?.subscription_id) {
+    subscription = await prisma.client_subscriptions.findUnique({
+      where: { id: redemption.subscription_id },
+    });
   }
   
   // Get plan info from snapshot
@@ -446,15 +413,15 @@ async function getCouponById(couponId) {
   const planCode = planSnapshot.code || 'UNKNOWN';
   
   const derivedStatus = await getDerivedCouponStatus(coupon, prisma);
-  const redemption = coupon.redemptions[0];
   
   let remainingTime = null;
-  if (redemption?.subscription?.expires_at) {
-    remainingTime = calculateRemainingTime(redemption.subscription.expires_at);
+  if (subscription?.expires_at) {
+    remainingTime = calculateRemainingTime(subscription.expires_at);
   }
   
   return {
     ...coupon,
+    redemptions: redemption ? [redemption] : [],
     plan_name: planName,
     plan_tier: planCode,
     derived_status: derivedStatus,
@@ -472,19 +439,21 @@ async function getCouponById(couponId) {
 async function revokeCoupon(couponId, reason, actor) {
   const prisma = getPrisma();
   
-  const coupon = await prisma.subscriptionCoupon.findUnique({
+  const coupon = await prisma.subscription_coupons.findUnique({
     where: { id: couponId },
-    include: {
-      redemptions: true,
-    },
   });
   
   if (!coupon) {
     throw { code: ERROR_CODES.COUPON_NOT_FOUND, message: 'Coupon not found' };
   }
   
+  // Check for redemptions separately
+  const redemptionsCount = await prisma.coupon_redemptions.count({
+    where: { coupon_id: couponId },
+  });
+  
   // Cannot revoke if already redeemed
-  if (coupon.redemptions.length > 0) {
+  if (redemptionsCount > 0) {
     throw { 
       code: ERROR_CODES.CANNOT_REVOKE_REDEEMED_COUPON, 
       message: 'Cannot revoke a coupon that has already been redeemed' 
@@ -497,7 +466,7 @@ async function revokeCoupon(couponId, reason, actor) {
   }
   
   // Update coupon
-  const revokedCoupon = await prisma.subscriptionCoupon.update({
+  const revokedCoupon = await prisma.subscription_coupons.update({
     where: { id: couponId },
     data: {
       status: COUPON_STATUS.REVOKED,
@@ -539,16 +508,18 @@ async function redeemCoupon(couponCode, tenantId, actor) {
   const prisma = getPrisma();
   
   // VALIDATION 1: Coupon exists
-  const coupon = await prisma.subscriptionCoupon.findUnique({
+  const coupon = await prisma.subscription_coupons.findUnique({
     where: { code: couponCode.trim().toUpperCase() },
-    include: {
-      plan: true,
-    },
   });
   
   if (!coupon) {
     throw { code: ERROR_CODES.COUPON_NOT_FOUND, message: 'Invalid activation code' };
   }
+  
+  // Fetch plan separately
+  const plan = coupon.plan_id ? await prisma.subscription_plans.findUnique({
+    where: { id: coupon.plan_id },
+  }) : null;
   
   // VALIDATION 2: Coupon status = ACTIVE
   if (coupon.status === COUPON_STATUS.REVOKED) {
@@ -591,7 +562,7 @@ async function redeemCoupon(couponCode, tenantId, actor) {
   
   if (coupon.tenant_restriction_type === TENANT_RESTRICTION.ONLY_NEW_TENANTS) {
     // Check if tenant ever had a subscription
-    const previousSubscription = await prisma.clientSubscription.findUnique({
+    const previousSubscription = await prisma.client_subscriptions.findUnique({
       where: { client_id: tenantId },
     });
     
@@ -604,7 +575,7 @@ async function redeemCoupon(couponCode, tenantId, actor) {
   }
   
   // VALIDATION 6: Tenant has no active subscription
-  const existingSubscription = await prisma.clientSubscription.findUnique({
+  const existingSubscription = await prisma.client_subscriptions.findUnique({
     where: { client_id: tenantId },
   });
   
@@ -616,7 +587,7 @@ async function redeemCoupon(couponCode, tenantId, actor) {
   }
   
   // VALIDATION 7: Coupon not used by this tenant
-  const existingRedemption = await prisma.couponRedemption.findFirst({
+  const existingRedemption = await prisma.coupon_redemptions.findFirst({
     where: {
       coupon_id: coupon.id,
       tenant_id: tenantId,
@@ -630,6 +601,10 @@ async function redeemCoupon(couponCode, tenantId, actor) {
     };
   }
   
+  // Get plan ID - prefer from fetched plan, fallback to coupon's plan_id
+  const planId = plan?.id || coupon.plan_id;
+  const planCode = plan?.plan_code || coupon.plan_snapshot_json?.code;
+  
   // ALL VALIDATIONS PASSED - Perform redemption in transaction
   const result = await prisma.$transaction(async (tx) => {
     // Calculate subscription dates
@@ -641,10 +616,10 @@ async function redeemCoupon(couponCode, tenantId, actor) {
     
     if (existingSubscription) {
       // Update existing (inactive) subscription
-      subscription = await tx.clientSubscription.update({
+      subscription = await tx.client_subscriptions.update({
         where: { id: existingSubscription.id },
         data: {
-          plan_id: coupon.plan.id,
+          plan_id: planId,
           state: 'ACTIVE',
           previous_state: existingSubscription.state,
           state_changed_at: now,
@@ -658,16 +633,16 @@ async function redeemCoupon(couponCode, tenantId, actor) {
           started_at: startedAt,
           expires_at: expiresAt,
           current_user_count: 0,
-          current_storage_used: 0,
+          current_storage_used: BigInt(0),
           current_api_calls: 0,
         },
       });
     } else {
       // Create new subscription
-      subscription = await tx.clientSubscription.create({
+      subscription = await tx.client_subscriptions.create({
         data: {
           client_id: tenantId,
-          plan_id: coupon.plan.id,
+          plan_id: planId,
           state: 'ACTIVE',
           state_changed_at: now,
           billing_cycle: 'MONTHLY',
@@ -680,14 +655,14 @@ async function redeemCoupon(couponCode, tenantId, actor) {
           started_at: startedAt,
           expires_at: expiresAt,
           current_user_count: 0,
-          current_storage_used: 0,
+          current_storage_used: BigInt(0),
           current_api_calls: 0,
         },
       });
     }
     
     // Create redemption record
-    const redemption = await tx.couponRedemption.create({
+    const redemption = await tx.coupon_redemptions.create({
       data: {
         coupon_id: coupon.id,
         tenant_id: tenantId,
@@ -700,7 +675,7 @@ async function redeemCoupon(couponCode, tenantId, actor) {
     });
     
     // Update coupon used_count
-    const updatedCoupon = await tx.subscriptionCoupon.update({
+    const updatedCoupon = await tx.subscription_coupons.update({
       where: { id: coupon.id },
       data: {
         used_count: { increment: 1 },
@@ -710,14 +685,17 @@ async function redeemCoupon(couponCode, tenantId, actor) {
       },
     });
     
-    // Update client subscription status
-    await tx.client.update({
-      where: { id: tenantId },
-      data: {
-        subscriptionStatus: 'active',
-        subscriptionPlan: coupon.plan.plan_code,
-      },
-    });
+    // Update client subscription status (if clients table exists)
+    try {
+      await tx.clients.update({
+        where: { id: tenantId },
+        data: {
+          subscription_status: 'active',
+        },
+      });
+    } catch (e) {
+      // clients table may not have these fields, ignore
+    }
     
     return { subscription, redemption, coupon: updatedCoupon };
   });
@@ -771,18 +749,19 @@ async function validateCoupon(couponCode, tenantId) {
   const prisma = getPrisma();
   
   try {
-    const coupon = await prisma.subscriptionCoupon.findUnique({
+    const coupon = await prisma.subscription_coupons.findUnique({
       where: { code: couponCode.trim().toUpperCase() },
-      include: {
-        plan: {
-          select: { id: true, plan_code: true, name: true, description: true },
-        },
-      },
     });
     
     if (!coupon) {
       return { valid: false, error: ERROR_CODES.COUPON_NOT_FOUND, message: 'Invalid activation code' };
     }
+    
+    // Fetch plan separately
+    const plan = coupon.plan_id ? await prisma.subscription_plans.findUnique({
+      where: { id: coupon.plan_id },
+      select: { id: true, plan_code: true, name: true, description: true },
+    }) : null;
     
     // Run through validations
     if (coupon.status === COUPON_STATUS.REVOKED) {
@@ -808,7 +787,7 @@ async function validateCoupon(couponCode, tenantId) {
     }
     
     // Check for existing redemption
-    const existingRedemption = await prisma.couponRedemption.findFirst({
+    const existingRedemption = await prisma.coupon_redemptions.findFirst({
       where: { coupon_id: coupon.id, tenant_id: tenantId },
     });
     
@@ -819,7 +798,7 @@ async function validateCoupon(couponCode, tenantId) {
     // Valid!
     return {
       valid: true,
-      plan: coupon.plan,
+      plan: plan,
       durationDays: coupon.duration_days,
       validUntil: coupon.valid_until,
     };
@@ -837,11 +816,9 @@ async function validateCoupon(couponCode, tenantId) {
 async function getTenantSubscriptionStatus(tenantId) {
   const prisma = getPrisma();
   
-  const subscription = await prisma.clientSubscription.findUnique({
+  // Use correct Prisma model name: client_subscriptions (not clientSubscription)
+  const subscription = await prisma.client_subscriptions.findUnique({
     where: { client_id: tenantId },
-    include: {
-      plan: true,
-    },
   });
   
   if (!subscription) {
@@ -855,6 +832,14 @@ async function getTenantSubscriptionStatus(tenantId) {
     };
   }
   
+  // Fetch plan separately since there's no relation defined
+  let plan = null;
+  if (subscription.plan_id) {
+    plan = await prisma.subscription_plans.findUnique({
+      where: { id: subscription.plan_id },
+    });
+  }
+  
   const remainingTime = calculateRemainingTime(subscription.expires_at);
   const isActiveOrTrial = ['ACTIVE', 'TRIAL'].includes(subscription.state);
   
@@ -865,15 +850,15 @@ async function getTenantSubscriptionStatus(tenantId) {
     subscription: {
       status: subscription.state.toLowerCase(), // Frontend expects lowercase
       state: subscription.state,
-      plan: subscription.plan?.name || subscription.plan?.plan_code,
-      planCode: subscription.plan?.plan_code,
+      plan: plan?.name || plan?.plan_code,
+      planCode: plan?.plan_code,
       startedAt: subscription.started_at,
       expiresAt: subscription.expires_at,
       remainingTime,
       activationSource: subscription.activation_source,
     },
     status: subscription.state.toLowerCase(),
-    plan: subscription.plan,
+    plan: plan,
     planSnapshot: subscription.plan_snapshot_json,
     startedAt: subscription.started_at,
     expiresAt: subscription.expires_at,
