@@ -274,7 +274,7 @@ async function checkPlanLimits(clientId, limitType, additionalUsage = 0) {
   }
 
   // Get subscription and plan
-  const subscription = await prisma.clientSubscription.findUnique({
+  const subscription = await prisma.client_subscriptions.findUnique({
     where: { client_id: clientId },
     include: { plan: true },
   });

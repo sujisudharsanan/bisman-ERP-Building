@@ -470,7 +470,7 @@ router.post('/organizations/:orgId/toggle-status', ...superAdminOnly, async (req
           updated_at: new Date(),
         },
       }),
-      organization.subscription ? prisma.clientSubscription.update({
+      organization.subscription ? prisma.client_subscriptions.update({
         where: { id: organization.subscription.id },
         data: { 
           is_active: isActive,
@@ -524,7 +524,7 @@ router.patch('/organizations/:orgId/subscription', ...superAdminOnly, async (req
     }
 
     // Get current subscription
-    const subscription = await prisma.clientSubscription.findUnique({
+    const subscription = await prisma.client_subscriptions.findUnique({
       where: { client_id: orgId },
       include: { plan: true },
     });
@@ -584,7 +584,7 @@ router.patch('/organizations/:orgId/subscription', ...superAdminOnly, async (req
 
       // After immediate upgrade, set back to ACTIVE
       if (isUpgrade) {
-        await prisma.clientSubscription.update({
+        await prisma.client_subscriptions.update({
           where: { id: subscription.id },
           data: { state: 'ACTIVE' },
         });

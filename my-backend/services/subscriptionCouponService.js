@@ -603,7 +603,6 @@ async function redeemCoupon(couponCode, tenantId, actor) {
   
   // Get plan ID - prefer from fetched plan, fallback to coupon's plan_id
   const planId = plan?.id || coupon.plan_id;
-  const planCode = plan?.plan_code || coupon.plan_snapshot_json?.code;
   
   // ALL VALIDATIONS PASSED - Perform redemption in transaction
   const result = await prisma.$transaction(async (tx) => {
@@ -693,7 +692,7 @@ async function redeemCoupon(couponCode, tenantId, actor) {
           subscription_status: 'active',
         },
       });
-    } catch (e) {
+    } catch {
       // clients table may not have these fields, ignore
     }
     

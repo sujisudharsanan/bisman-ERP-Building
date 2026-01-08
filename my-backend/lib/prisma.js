@@ -27,10 +27,10 @@ function getPrisma() {
     // Ensure graceful shutdown
     if (!process.listenerCount('beforeExit')) {
       process.on('beforeExit', () => {
-        try { prismaInstance?.$disconnect(); } catch {}
+        try { prismaInstance?.$disconnect(); } catch { /* ignore disconnect errors */ }
       });
     }
-  } catch (e) {
+  } catch {
     // Prisma client not generated or package not installed; operate without DB
     prismaInstance = null;
   }

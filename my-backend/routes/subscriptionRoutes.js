@@ -326,7 +326,7 @@ router.post('/upgrade', authenticate, async (req, res) => {
     const prisma = getPrisma();
     
     // Get current subscription
-    const subscription = await prisma.clientSubscription.findUnique({
+    const subscription = await prisma.client_subscriptions.findUnique({
       where: { client_id: clientId },
       include: { plan: true },
     });
@@ -387,7 +387,7 @@ router.post('/downgrade', authenticate, async (req, res) => {
 
     const prisma = getPrisma();
     
-    const subscription = await prisma.clientSubscription.findUnique({
+    const subscription = await prisma.client_subscriptions.findUnique({
       where: { client_id: clientId },
     });
 
@@ -444,7 +444,7 @@ router.post('/cancel', authenticate, async (req, res) => {
 
     const prisma = getPrisma();
     
-    const subscription = await prisma.clientSubscription.findUnique({
+    const subscription = await prisma.client_subscriptions.findUnique({
       where: { client_id: clientId },
     });
 
@@ -536,7 +536,7 @@ router.get('/usage', authenticate, async (req, res) => {
     const clientId = req.user.clientId || req.user.client_id;
     const prisma = getPrisma();
 
-    const subscription = await prisma.clientSubscription.findUnique({
+    const subscription = await prisma.client_subscriptions.findUnique({
       where: { client_id: clientId },
       include: { plan: true },
     });

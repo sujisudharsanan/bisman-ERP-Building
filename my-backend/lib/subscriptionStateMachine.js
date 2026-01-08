@@ -147,7 +147,7 @@ class SubscriptionStateMachine {
    */
   async load() {
     const prisma = getPrisma();
-    this.subscription = await prisma.clientSubscription.findUnique({
+    this.subscription = await prisma.client_subscriptions.findUnique({
       where: { id: this.subscriptionId },
       include: {
         plan: true,
@@ -384,7 +384,7 @@ class SubscriptionService {
     }
 
     // Check for existing subscription
-    const existing = await prisma.clientSubscription.findUnique({
+    const existing = await prisma.client_subscriptions.findUnique({
       where: { client_id: clientId },
     });
 
@@ -442,7 +442,7 @@ class SubscriptionService {
     const prisma = getPrisma();
     const { actorType = 'system', actorId = null, reason = null } = options;
 
-    const subscription = await prisma.clientSubscription.findUnique({
+    const subscription = await prisma.client_subscriptions.findUnique({
       where: { id: subscriptionId },
       include: { plan: true },
     });
@@ -518,7 +518,7 @@ class SubscriptionService {
     const prisma = getPrisma();
     const { actorType = 'system', actorId = null, reason = null } = options;
 
-    const subscription = await prisma.clientSubscription.findUnique({
+    const subscription = await prisma.client_subscriptions.findUnique({
       where: { id: subscriptionId },
       include: { plan: true },
     });
@@ -694,7 +694,7 @@ class SubscriptionService {
   async getSubscription(clientId) {
     const prisma = getPrisma();
     
-    const subscription = await prisma.clientSubscription.findUnique({
+    const subscription = await prisma.client_subscriptions.findUnique({
       where: { client_id: clientId },
       include: {
         plan: true,

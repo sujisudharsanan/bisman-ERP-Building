@@ -4,7 +4,7 @@
  * Provides middleware for Super Admin only routes
  */
 
-const { authenticate, requireRole } = require('./auth');
+const { authenticate } = require('./auth');
 
 /**
  * Middleware that checks if the user is a Super Admin

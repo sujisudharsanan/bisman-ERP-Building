@@ -36,7 +36,7 @@ router.get('/overview', requireEnterpriseAdmin, async (req, res) => {
         by: ['subscriptionPlan'],
         _count: { id: true }
       }),
-      prisma.clientSubscription.findMany({
+      prisma.client_subscriptions.findMany({
         where: { is_active: true },
         include: { plan: true }
       })
@@ -121,7 +121,7 @@ router.get('/revenue-trends', requireEnterpriseAdmin, async (req, res) => {
       });
 
       // Get new subscriptions for this month
-      const newSubscriptions = await prisma.clientSubscription.count({
+      const newSubscriptions = await prisma.client_subscriptions.count({
         where: {
           created_at: {
             gte: monthStart,
@@ -131,7 +131,7 @@ router.get('/revenue-trends', requireEnterpriseAdmin, async (req, res) => {
       });
 
       // Get churned subscriptions (cancelled) this month
-      const churned = await prisma.clientSubscription.count({
+      const churned = await prisma.client_subscriptions.count({
         where: {
           cancelled_at: {
             gte: monthStart,
@@ -189,7 +189,7 @@ router.get('/subscription-analytics', requireEnterpriseAdmin, async (req, res) =
         _count: { id: true }
       }),
       // Detailed subscription state distribution
-      prisma.clientSubscription.groupBy({
+      prisma.client_subscriptions.groupBy({
         by: ['state'],
         _count: { id: true }
       }),
@@ -200,13 +200,13 @@ router.get('/subscription-analytics', requireEnterpriseAdmin, async (req, res) =
         include: { client: { select: { name: true } } }
       }),
       // Trial conversions
-      prisma.clientSubscription.count({
+      prisma.client_subscriptions.count({
         where: { trial_converted: true }
       })
     ]);
 
     // Get total trials
-    const totalTrials = await prisma.clientSubscription.count({
+    const totalTrials = await prisma.client_subscriptions.count({
       where: { 
         OR: [
           { state: 'TRIAL' },
@@ -218,7 +218,7 @@ router.get('/subscription-analytics', requireEnterpriseAdmin, async (req, res) =
     // Calculate churn rate (last 30 days)
     const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000);
     const [cancelledLast30, activeLast30] = await Promise.all([
-      prisma.clientSubscription.count({
+      prisma.client_subscriptions.count({
         where: { cancelled_at: { gte: thirtyDaysAgo } }
       }),
       prisma.clients.count({

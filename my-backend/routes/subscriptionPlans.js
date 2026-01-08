@@ -171,7 +171,7 @@ async function getTenantCountForPlan(prisma, planCode) {
     });
     
     if (plan) {
-      const count = await prisma.clientSubscription.count({
+      const count = await prisma.client_subscriptions.count({
         where: {
           plan_id: plan.id,
           state: { in: ['ACTIVE', 'TRIAL'] },

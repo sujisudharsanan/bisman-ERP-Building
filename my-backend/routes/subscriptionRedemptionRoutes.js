@@ -272,7 +272,7 @@ router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
 
     // Check if trial was already used
     // Valid enum values: TRIAL, ACTIVE, UPGRADING, DOWNGRADING, GRACE_PERIOD, SUSPENDED, CANCELLED
-    const previousTrial = await prisma.clientSubscription.findFirst({
+    const previousTrial = await prisma.client_subscriptions.findFirst({
       where: {
         client_id: tenantId,
         state: { in: ['TRIAL', 'ACTIVE', 'GRACE_PERIOD', 'CANCELLED'] },
@@ -321,7 +321,7 @@ router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
     const trialEnd = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
 
     // Create trial subscription
-    await prisma.clientSubscription.create({
+    await prisma.client_subscriptions.create({
       data: {
         client_id: tenantId,
         plan_id: basicPlan.id,
@@ -432,12 +432,12 @@ router.post('/activate-free', ...clientAdminOnly, async (req, res) => {
     const now = new Date();
 
     // Delete any existing subscription (pending/none)
-    await prisma.clientSubscription.deleteMany({
+    await prisma.client_subscriptions.deleteMany({
       where: { client_id: tenantId },
     });
 
     // Create free subscription (no expiration)
-    await prisma.clientSubscription.create({
+    await prisma.client_subscriptions.create({
       data: {
         client_id: tenantId,
         plan_id: freePlan.id,

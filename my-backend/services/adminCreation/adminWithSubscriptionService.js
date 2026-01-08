@@ -522,7 +522,7 @@ async function getAvailablePlans() {
 async function checkSubscriptionLimits(clientId) {
   const prisma = getPrisma();
   
-  const subscription = await prisma.clientSubscription.findUnique({
+  const subscription = await prisma.client_subscriptions.findUnique({
     where: { client_id: clientId },
     include: { plan: true },
   });

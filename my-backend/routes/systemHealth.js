@@ -423,7 +423,7 @@ async function getImplementationStatus(prisma, redisClient) {
   try {
     await prisma.$queryRaw`SELECT 1 FROM pg_stat_statements LIMIT 1`;
     slowQueryStatus = 'implemented';
-  } catch (_err) {
+  } catch {
     slowQueryStatus = 'in_progress';
   }
 
@@ -934,9 +934,9 @@ router.patch('/settings', async (req, res) => {
     };
     systemConfig = { ...systemConfig, ...merged };
     res.json({ source: 'database', settings: merged, message: 'Settings updated' });
-  } catch (_err) {
-    console.error('Failed to update system health settings:', _err);
-    res.status(500).json({ error: 'Failed to update settings', message: _err.message });
+  } catch (err) {
+    console.error('Failed to update system health settings:', err);
+    res.status(500).json({ error: 'Failed to update settings', message: err.message });
   }
 });
 
