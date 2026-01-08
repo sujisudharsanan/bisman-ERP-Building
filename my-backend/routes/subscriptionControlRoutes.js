@@ -1182,4 +1182,427 @@ router.post('/validate-plan', ...superAdminOnly, async (req, res) => {
   }
 });
 
+// ============================================================================
+// CUSTOM PLAN TENANT CONFIGURATIONS
+// ============================================================================
+
+/**
+ * GET /api/subscription-control/custom/tenants
+ * List all tenants with their custom plan configuration status
+ */
+router.get('/custom/tenants', ...superAdminOnly, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const { search, status } = req.query;
+
+    let whereClause = 'WHERE 1=1';
+    if (search) {
+      whereClause += ` AND (c.name ILIKE '%${search}%' OR c.client_code ILIKE '%${search}%')`;
+    }
+
+    const tenants = await prisma.$queryRawUnsafe(`
+      SELECT 
+        c.id as tenant_id,
+        c.name as tenant_name,
+        c.client_code,
+        c.email,
+        c.created_at as tenant_created_at,
+        ctpc.id as config_id,
+        ctpc.status as config_status,
+        ctpc.price_monthly,
+        ctpc.price_yearly,
+        ctpc.max_users,
+        ctpc.max_branches,
+        ctpc.max_storage_gb,
+        ctpc.trial_enabled,
+        ctpc.trial_days,
+        ctpc.effective_from,
+        ctpc.updated_at as config_updated_at
+      FROM clients c
+      LEFT JOIN custom_tenant_plan_configurations ctpc ON ctpc.tenant_id = c.id
+      ${whereClause}
+      ${status ? `AND ctpc.status = '${status}'` : ''}
+      ORDER BY c.name
+    `);
+
+    res.json({
+      ok: true,
+      tenants: tenants || []
+    });
+  } catch (error) {
+    console.error('[SubscriptionControl] Custom tenants list error:', error);
+    res.status(500).json({ ok: false, error: 'Failed to fetch tenants' });
+  }
+});
+
+/**
+ * GET /api/subscription-control/custom/tenants/:tenantId
+ * Get custom plan configuration for a specific tenant
+ */
+router.get('/custom/tenants/:tenantId', ...superAdminOnly, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const { tenantId } = req.params;
+
+    // Get tenant info
+    const tenants = await prisma.$queryRaw`
+      SELECT id, name, client_code, email FROM clients WHERE id = ${tenantId}::uuid
+    `;
+
+    if (!tenants || tenants.length === 0) {
+      return res.status(404).json({ ok: false, error: 'Tenant not found' });
+    }
+
+    const tenant = tenants[0];
+
+    // Get custom configuration if exists
+    const configs = await prisma.$queryRaw`
+      SELECT * FROM custom_tenant_plan_configurations WHERE tenant_id = ${tenantId}::uuid
+    `;
+
+    // Get feature controls if exists
+    const features = await prisma.$queryRaw`
+      SELECT 
+        ctfc.*,
+        mfd.feature_name,
+        mfd.category,
+        mfd.description as feature_description
+      FROM custom_tenant_feature_controls ctfc
+      JOIN master_feature_definitions mfd ON mfd.feature_code = ctfc.feature_code
+      WHERE ctfc.tenant_id = ${tenantId}::uuid
+      ORDER BY mfd.category, mfd.sort_order
+    `;
+
+    // Get all available features for selection
+    const allFeatures = await prisma.$queryRaw`
+      SELECT 
+        feature_code, feature_name, description, category, icon, sort_order
+      FROM master_feature_definitions
+      WHERE is_active = TRUE
+      ORDER BY category, sort_order
+    `;
+
+    res.json({
+      ok: true,
+      tenant,
+      config: configs && configs.length > 0 ? configs[0] : null,
+      features: features || [],
+      availableFeatures: allFeatures || []
+    });
+  } catch (error) {
+    console.error('[SubscriptionControl] Get custom tenant config error:', error);
+    res.status(500).json({ ok: false, error: 'Failed to fetch tenant configuration' });
+  }
+});
+
+/**
+ * POST /api/subscription-control/custom/tenants/:tenantId
+ * Create or update custom plan configuration for a tenant
+ */
+router.post('/custom/tenants/:tenantId', ...superAdminOnly, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const { tenantId } = req.params;
+    const {
+      price_monthly = 0,
+      price_yearly = 0,
+      override_pricing = false,
+      pricing_notes = '',
+      max_users = 10,
+      max_branches = 3,
+      max_storage_gb = 50,
+      governance_rules = {},
+      trial_enabled = false,
+      trial_days = 0,
+      billing_cycle = 'monthly',
+      billing_day = 1,
+      internal_notes = '',
+      status = 'draft'
+    } = req.body;
+
+    // Check if tenant exists
+    const tenants = await prisma.$queryRaw`
+      SELECT id FROM clients WHERE id = ${tenantId}::uuid
+    `;
+
+    if (!tenants || tenants.length === 0) {
+      return res.status(404).json({ ok: false, error: 'Tenant not found' });
+    }
+
+    // Check if config already exists
+    const existingConfig = await prisma.$queryRaw`
+      SELECT id FROM custom_tenant_plan_configurations WHERE tenant_id = ${tenantId}::uuid
+    `;
+
+    let result;
+    const userId = req.user?.id || 0;
+    const userEmail = req.user?.email || '';
+
+    if (existingConfig && existingConfig.length > 0) {
+      // Update existing config
+      result = await prisma.$executeRaw`
+        UPDATE custom_tenant_plan_configurations SET
+          price_monthly = ${price_monthly},
+          price_yearly = ${price_yearly},
+          override_pricing = ${override_pricing},
+          pricing_notes = ${pricing_notes},
+          max_users = ${max_users},
+          max_branches = ${max_branches},
+          max_storage_gb = ${max_storage_gb},
+          governance_rules = ${JSON.stringify(governance_rules)}::jsonb,
+          trial_enabled = ${trial_enabled},
+          trial_days = ${trial_days},
+          billing_cycle = ${billing_cycle},
+          billing_day = ${billing_day},
+          internal_notes = ${internal_notes},
+          status = ${status}::custom_plan_status,
+          updated_by = ${userId},
+          updated_by_email = ${userEmail},
+          updated_at = NOW()
+        WHERE tenant_id = ${tenantId}::uuid
+      `;
+    } else {
+      // Create new config
+      result = await prisma.$executeRaw`
+        INSERT INTO custom_tenant_plan_configurations (
+          tenant_id, price_monthly, price_yearly, override_pricing, pricing_notes,
+          max_users, max_branches, max_storage_gb, governance_rules,
+          trial_enabled, trial_days, billing_cycle, billing_day, internal_notes,
+          status, created_by, created_by_email, updated_by, updated_by_email
+        ) VALUES (
+          ${tenantId}::uuid, ${price_monthly}, ${price_yearly}, ${override_pricing}, ${pricing_notes},
+          ${max_users}, ${max_branches}, ${max_storage_gb}, ${JSON.stringify(governance_rules)}::jsonb,
+          ${trial_enabled}, ${trial_days}, ${billing_cycle}, ${billing_day}, ${internal_notes},
+          ${status}::custom_plan_status, ${userId}, ${userEmail}, ${userId}, ${userEmail}
+        )
+      `;
+    }
+
+    // Log audit
+    await prisma.$executeRaw`
+      INSERT INTO custom_plan_audit_log (
+        tenant_id, action, new_values, change_summary, changed_by, changed_by_email, ip_address
+      ) VALUES (
+        ${tenantId}::uuid, 
+        ${existingConfig && existingConfig.length > 0 ? 'updated' : 'created'},
+        ${JSON.stringify(req.body)}::jsonb,
+        ${existingConfig && existingConfig.length > 0 ? 'Updated custom configuration' : 'Created custom configuration'},
+        ${userId}, ${userEmail}, ${req.ip}::inet
+      )
+    `;
+
+    res.json({
+      ok: true,
+      message: existingConfig && existingConfig.length > 0 
+        ? 'Configuration updated successfully' 
+        : 'Configuration created successfully'
+    });
+  } catch (error) {
+    console.error('[SubscriptionControl] Save custom tenant config error:', error);
+    res.status(500).json({ ok: false, error: 'Failed to save configuration' });
+  }
+});
+
+/**
+ * PUT /api/subscription-control/custom/tenants/:tenantId/features
+ * Update feature controls for a tenant's custom plan
+ */
+router.put('/custom/tenants/:tenantId/features', ...superAdminOnly, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const { tenantId } = req.params;
+    const { features } = req.body;
+
+    if (!Array.isArray(features)) {
+      return res.status(400).json({ ok: false, error: 'Features must be an array' });
+    }
+
+    // Clear existing feature controls for this tenant
+    await prisma.$executeRaw`
+      DELETE FROM custom_tenant_feature_controls WHERE tenant_id = ${tenantId}::uuid
+    `;
+
+    // Insert new feature controls
+    for (const feature of features) {
+      await prisma.$executeRaw`
+        INSERT INTO custom_tenant_feature_controls (
+          tenant_id, feature_code, is_enabled, free_limit, limit_period,
+          usage_limit, unlock_price, unlock_unit, lock_mode,
+          approval_threshold, requires_approval
+        ) VALUES (
+          ${tenantId}::uuid, ${feature.feature_code}, ${feature.is_enabled ?? true},
+          ${feature.free_limit ?? -1}, ${feature.limit_period ?? 'monthly'}::limit_period_type,
+          ${feature.usage_limit ?? null}, ${feature.unlock_price ?? 0}, ${feature.unlock_unit ?? 'per month'},
+          ${feature.lock_mode ?? 'none'}::lock_mode_type,
+          ${feature.approval_threshold ?? null}, ${feature.requires_approval ?? false}
+        )
+      `;
+    }
+
+    // Log audit
+    const userId = req.user?.id || 0;
+    const userEmail = req.user?.email || '';
+    
+    await prisma.$executeRaw`
+      INSERT INTO custom_plan_audit_log (
+        tenant_id, action, new_values, change_summary, changed_by, changed_by_email, ip_address
+      ) VALUES (
+        ${tenantId}::uuid, 'features_updated',
+        ${JSON.stringify({ feature_count: features.length })}::jsonb,
+        ${'Updated ' + features.length + ' feature controls'},
+        ${userId}, ${userEmail}, ${req.ip}::inet
+      )
+    `;
+
+    res.json({
+      ok: true,
+      message: `Updated ${features.length} feature controls`
+    });
+  } catch (error) {
+    console.error('[SubscriptionControl] Save custom features error:', error);
+    res.status(500).json({ ok: false, error: 'Failed to save feature controls' });
+  }
+});
+
+/**
+ * PATCH /api/subscription-control/custom/tenants/:tenantId/status
+ * Update custom plan configuration status
+ */
+router.patch('/custom/tenants/:tenantId/status', ...superAdminOnly, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const { tenantId } = req.params;
+    const { status } = req.body;
+
+    if (!['draft', 'configured', 'active', 'inactive'].includes(status)) {
+      return res.status(400).json({ ok: false, error: 'Invalid status' });
+    }
+
+    const userId = req.user?.id || 0;
+    const userEmail = req.user?.email || '';
+
+    // If activating, also assign the CUSTOM plan to the tenant
+    if (status === 'active') {
+      // Get CUSTOM plan id
+      const customPlan = await prisma.$queryRaw`
+        SELECT id FROM master_subscription_plans WHERE code = 'CUSTOM'
+      `;
+
+      if (customPlan && customPlan.length > 0) {
+        // Deactivate any existing plan assignments
+        await prisma.$executeRaw`
+          UPDATE tenant_plan_assignments 
+          SET is_active = FALSE, updated_at = NOW()
+          WHERE tenant_id = ${tenantId}::uuid AND is_active = TRUE
+        `;
+
+        // Assign CUSTOM plan
+        await prisma.$executeRaw`
+          INSERT INTO tenant_plan_assignments (
+            tenant_id, plan_id, billing_cycle, is_active, created_by
+          ) VALUES (
+            ${tenantId}::uuid, ${customPlan[0].id}, 'monthly', TRUE, ${userId}
+          )
+          ON CONFLICT (tenant_id) DO UPDATE SET
+            plan_id = ${customPlan[0].id},
+            is_active = TRUE,
+            updated_at = NOW()
+        `;
+      }
+
+      // Set effective_from
+      await prisma.$executeRaw`
+        UPDATE custom_tenant_plan_configurations 
+        SET effective_from = NOW() 
+        WHERE tenant_id = ${tenantId}::uuid AND effective_from IS NULL
+      `;
+    }
+
+    await prisma.$executeRaw`
+      UPDATE custom_tenant_plan_configurations 
+      SET status = ${status}::custom_plan_status, updated_by = ${userId}, updated_by_email = ${userEmail}
+      WHERE tenant_id = ${tenantId}::uuid
+    `;
+
+    // Log audit
+    await prisma.$executeRaw`
+      INSERT INTO custom_plan_audit_log (
+        tenant_id, action, new_values, change_summary, changed_by, changed_by_email, ip_address
+      ) VALUES (
+        ${tenantId}::uuid, ${status === 'active' ? 'activated' : 'status_changed'},
+        ${JSON.stringify({ status })}::jsonb,
+        ${'Status changed to ' + status},
+        ${userId}, ${userEmail}, ${req.ip}::inet
+      )
+    `;
+
+    res.json({ ok: true, message: `Status changed to ${status}` });
+  } catch (error) {
+    console.error('[SubscriptionControl] Update status error:', error);
+    res.status(500).json({ ok: false, error: 'Failed to update status' });
+  }
+});
+
+/**
+ * GET /api/subscription-control/custom/tenants/:tenantId/audit
+ * Get audit log for a tenant's custom configuration
+ */
+router.get('/custom/tenants/:tenantId/audit', ...superAdminOnly, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const { tenantId } = req.params;
+    const { limit = 50 } = req.query;
+
+    const logs = await prisma.$queryRaw`
+      SELECT * FROM custom_plan_audit_log 
+      WHERE tenant_id = ${tenantId}::uuid 
+      ORDER BY changed_at DESC 
+      LIMIT ${parseInt(limit)}
+    `;
+
+    res.json({ ok: true, logs: logs || [] });
+  } catch (error) {
+    console.error('[SubscriptionControl] Audit log error:', error);
+    res.status(500).json({ ok: false, error: 'Failed to fetch audit log' });
+  }
+});
+
+/**
+ * DELETE /api/subscription-control/custom/tenants/:tenantId
+ * Delete custom plan configuration for a tenant
+ */
+router.delete('/custom/tenants/:tenantId', ...superAdminOnly, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const { tenantId } = req.params;
+    const userId = req.user?.id || 0;
+    const userEmail = req.user?.email || '';
+
+    // Log before deleting
+    await prisma.$executeRaw`
+      INSERT INTO custom_plan_audit_log (
+        tenant_id, action, change_summary, changed_by, changed_by_email, ip_address
+      ) VALUES (
+        ${tenantId}::uuid, 'deleted', 'Custom configuration deleted',
+        ${userId}, ${userEmail}, ${req.ip}::inet
+      )
+    `;
+
+    // Delete feature controls
+    await prisma.$executeRaw`
+      DELETE FROM custom_tenant_feature_controls WHERE tenant_id = ${tenantId}::uuid
+    `;
+
+    // Delete configuration
+    await prisma.$executeRaw`
+      DELETE FROM custom_tenant_plan_configurations WHERE tenant_id = ${tenantId}::uuid
+    `;
+
+    res.json({ ok: true, message: 'Configuration deleted' });
+  } catch (error) {
+    console.error('[SubscriptionControl] Delete config error:', error);
+    res.status(500).json({ ok: false, error: 'Failed to delete configuration' });
+  }
+});
+
 module.exports = router;

@@ -55,6 +55,8 @@ import {
   Cpu,
   Cloud,
   Ticket,
+  Palette,
+  Search,
 } from 'lucide-react';
 
 // ============================================================================
@@ -153,6 +155,65 @@ interface ValidationResult {
   };
 }
 
+// Custom Plan Tenant Interfaces
+interface CustomTenant {
+  tenant_id: string;
+  tenant_name: string;
+  client_code: string;
+  email: string;
+  tenant_created_at: string;
+  config_id: number | null;
+  config_status: 'draft' | 'configured' | 'active' | 'inactive' | null;
+  price_monthly: number | null;
+  price_yearly: number | null;
+  max_users: number | null;
+  max_branches: number | null;
+  max_storage_gb: number | null;
+  trial_enabled: boolean | null;
+  trial_days: number | null;
+  effective_from: string | null;
+  config_updated_at: string | null;
+}
+
+interface CustomTenantConfig {
+  id: number;
+  tenant_id: string;
+  status: 'draft' | 'configured' | 'active' | 'inactive';
+  price_monthly: number;
+  price_yearly: number;
+  override_pricing: boolean;
+  pricing_notes: string;
+  max_users: number;
+  max_branches: number;
+  max_storage_gb: number;
+  governance_rules: Record<string, unknown>;
+  trial_enabled: boolean;
+  trial_days: number;
+  billing_cycle: string;
+  billing_day: number;
+  effective_from: string | null;
+  internal_notes: string;
+  created_at: string;
+  updated_at: string;
+}
+
+interface CustomTenantFeature {
+  id: number;
+  tenant_id: string;
+  feature_code: string;
+  feature_name: string;
+  category: string;
+  feature_description: string | null;
+  is_enabled: boolean;
+  free_limit: number;
+  limit_period: string;
+  usage_limit: number | null;
+  unlock_price: number;
+  lock_mode: string;
+  approval_threshold: number | null;
+  requires_approval: boolean;
+}
+
 // ============================================================================
 // CONSTANTS
 // ============================================================================
@@ -210,6 +271,7 @@ const PLAN_ICONS: Record<string, React.ReactNode> = {
   STANDARD: <Shield className="w-5 h-5 text-purple-500" />,
   PREMIUM: <Crown className="w-5 h-5 text-amber-500" />,
   ENTERPRISE: <Building2 className="w-5 h-5 text-emerald-500" />,
+  CUSTOM: <Palette className="w-5 h-5 text-violet-500" />,
 };
 
 const LIMIT_PERIOD_OPTIONS = [
@@ -252,6 +314,18 @@ export default function SubscriptionControlPage() {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [activeTab, setActiveTab] = useState<'features' | 'governance' | 'infra' | 'trial'>('features');
 
+  // Custom Plan States
+  const [customTenants, setCustomTenants] = useState<CustomTenant[]>([]);
+  const [customTenantsLoading, setCustomTenantsLoading] = useState(false);
+  const [selectedCustomTenantId, setSelectedCustomTenantId] = useState<string | null>(null);
+  const [customTenantConfig, setCustomTenantConfig] = useState<CustomTenantConfig | null>(null);
+  const [customTenantFeatures, setCustomTenantFeatures] = useState<CustomTenantFeature[]>([]);
+  const [customAvailableFeatures, setCustomAvailableFeatures] = useState<FeatureDefinition[]>([]);
+  const [customConfigLoading, setCustomConfigLoading] = useState(false);
+  const [customSaving, setCustomSaving] = useState(false);
+  const [customHasChanges, setCustomHasChanges] = useState(false);
+  const [customTenantSearch, setCustomTenantSearch] = useState('');
+
   // Toggle category expansion in breakdown section
   const toggleBreakdownCategory = (category: string) => {
     setExpandedBreakdownCategories(prev => {
@@ -270,6 +344,9 @@ export default function SubscriptionControlPage() {
     if (!selectedPlanId) return null;
     return plans.find(p => p.id === selectedPlanId) || null;
   }, [plans, selectedPlanId]);
+
+  // Check if selected plan is CUSTOM
+  const isCustomPlan = useMemo(() => selectedPlan?.code === 'CUSTOM', [selectedPlan]);
 
   // Group features by category
   const featuresByCategory = useMemo(() => {
@@ -403,6 +480,143 @@ export default function SubscriptionControlPage() {
     }
   }, []);
 
+  // Load custom plan tenants
+  const loadCustomTenants = useCallback(async (search?: string) => {
+    setCustomTenantsLoading(true);
+    try {
+      const searchParam = search ? `?search=${encodeURIComponent(search)}` : '';
+      const res = await fetch(`${API_BASE}/api/subscription-control/custom/tenants${searchParam}`, {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCustomTenants(data.tenants || []);
+      }
+    } catch (err) {
+      console.error('[SubscriptionControl] Load custom tenants error:', err);
+    } finally {
+      setCustomTenantsLoading(false);
+    }
+  }, []);
+
+  // Load custom tenant configuration
+  const loadCustomTenantConfig = useCallback(async (tenantId: string) => {
+    setCustomConfigLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/subscription-control/custom/tenants/${tenantId}`, {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setCustomTenantConfig(data.config);
+        setCustomTenantFeatures(data.features || []);
+        setCustomAvailableFeatures(data.availableFeatures || []);
+        setCustomHasChanges(false);
+      }
+    } catch (err) {
+      console.error('[SubscriptionControl] Load custom config error:', err);
+    } finally {
+      setCustomConfigLoading(false);
+    }
+  }, []);
+
+  // Save custom tenant configuration
+  const saveCustomTenantConfig = useCallback(async () => {
+    if (!selectedCustomTenantId) return;
+
+    setCustomSaving(true);
+    try {
+      const configPayload = {
+        price_monthly: customTenantConfig?.price_monthly ?? 0,
+        price_yearly: customTenantConfig?.price_yearly ?? 0,
+        override_pricing: customTenantConfig?.override_pricing ?? false,
+        pricing_notes: customTenantConfig?.pricing_notes ?? '',
+        max_users: customTenantConfig?.max_users ?? 10,
+        max_branches: customTenantConfig?.max_branches ?? 3,
+        max_storage_gb: customTenantConfig?.max_storage_gb ?? 50,
+        governance_rules: customTenantConfig?.governance_rules ?? {},
+        trial_enabled: customTenantConfig?.trial_enabled ?? false,
+        trial_days: customTenantConfig?.trial_days ?? 0,
+        billing_cycle: customTenantConfig?.billing_cycle ?? 'monthly',
+        internal_notes: customTenantConfig?.internal_notes ?? '',
+        status: customTenantConfig?.status ?? 'configured',
+      };
+
+      // Save config
+      const configRes = await fetch(`${API_BASE}/api/subscription-control/custom/tenants/${selectedCustomTenantId}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(configPayload),
+      });
+
+      if (!configRes.ok) {
+        const err = await configRes.json();
+        throw new Error(err.error || 'Failed to save configuration');
+      }
+
+      // Save features if any
+      if (customTenantFeatures.length > 0) {
+        const featuresRes = await fetch(`${API_BASE}/api/subscription-control/custom/tenants/${selectedCustomTenantId}/features`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ features: customTenantFeatures }),
+        });
+
+        if (!featuresRes.ok) {
+          const err = await featuresRes.json();
+          throw new Error(err.error || 'Failed to save features');
+        }
+      }
+
+      setCustomHasChanges(false);
+      await loadCustomTenants();
+      alert('Tenant configuration saved successfully!');
+    } catch (err) {
+      console.error('[SubscriptionControl] Save custom config error:', err);
+      alert(err instanceof Error ? err.message : 'Failed to save configuration');
+    } finally {
+      setCustomSaving(false);
+    }
+  }, [selectedCustomTenantId, customTenantConfig, customTenantFeatures, loadCustomTenants]);
+
+  // Activate custom tenant configuration
+  const activateCustomTenantConfig = useCallback(async () => {
+    if (!selectedCustomTenantId) return;
+
+    if (!confirm('Are you sure you want to activate this custom plan for the tenant? This will assign them to the CUSTOM plan.')) {
+      return;
+    }
+
+    try {
+      const res = await fetch(`${API_BASE}/api/subscription-control/custom/tenants/${selectedCustomTenantId}/status`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: 'active' }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to activate');
+      }
+
+      await loadCustomTenantConfig(selectedCustomTenantId);
+      await loadCustomTenants();
+      alert('Custom plan activated for tenant!');
+    } catch (err) {
+      console.error('[SubscriptionControl] Activate error:', err);
+      alert(err instanceof Error ? err.message : 'Failed to activate');
+    }
+  }, [selectedCustomTenantId, loadCustomTenantConfig, loadCustomTenants]);
+
+  // Update custom config field
+  const updateCustomConfig = useCallback((updates: Partial<CustomTenantConfig>) => {
+    setCustomTenantConfig(prev => prev ? { ...prev, ...updates } : null);
+    setCustomHasChanges(true);
+  }, []);
+
   // Initial load
   useEffect(() => {
     const loadAll = async () => {
@@ -445,6 +659,24 @@ export default function SubscriptionControlPage() {
       setHasChanges(false);
     }
   }, [selectedPlanId, loadPlanFeatures]);
+
+  // Load custom tenants when CUSTOM plan selected
+  useEffect(() => {
+    if (isCustomPlan) {
+      loadCustomTenants();
+      // Reset custom tenant selection
+      setSelectedCustomTenantId(null);
+      setCustomTenantConfig(null);
+      setCustomTenantFeatures([]);
+    }
+  }, [isCustomPlan, loadCustomTenants]);
+
+  // Load custom tenant config when tenant selected
+  useEffect(() => {
+    if (selectedCustomTenantId && isCustomPlan) {
+      loadCustomTenantConfig(selectedCustomTenantId);
+    }
+  }, [selectedCustomTenantId, isCustomPlan, loadCustomTenantConfig]);
 
   // ============================================================================
   // VALIDATION
@@ -859,6 +1091,392 @@ export default function SubscriptionControlPage() {
               <div className="text-center text-gray-500">
                 <Settings className="w-12 h-12 mx-auto mb-4 opacity-30" />
                 <p>Select a plan from the left panel to configure</p>
+              </div>
+            </div>
+          ) : isCustomPlan ? (
+            /* ================================================================ */
+            /* CUSTOM PLAN - TENANT-SPECIFIC CONFIGURATION                    */
+            /* ================================================================ */
+            <div className="flex flex-col h-full">
+              {/* Custom Plan Header */}
+              <div className="p-4 border-b border-gray-200 dark:border-gray-700 bg-gradient-to-r from-violet-50 to-purple-50 dark:from-violet-900/20 dark:to-purple-900/20">
+                <div className="flex items-center justify-between mb-4">
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-xl flex items-center justify-center bg-violet-100 dark:bg-violet-900/30">
+                      <Palette className="w-6 h-6 text-violet-600" />
+                    </div>
+                    <div>
+                      <h2 className="text-xl font-bold text-gray-900 dark:text-white flex items-center gap-2">
+                        Custom Plan
+                        <span className="text-xs px-2 py-1 bg-violet-100 text-violet-700 rounded font-normal">
+                          Tenant-Specific
+                        </span>
+                      </h2>
+                      <p className="text-sm text-gray-500">Configure unique plans for individual tenants</p>
+                    </div>
+                  </div>
+                  {selectedCustomTenantId && customHasChanges && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded flex items-center gap-1">
+                        <AlertTriangle className="w-3 h-3" />
+                        Unsaved changes
+                      </span>
+                      <button
+                        onClick={saveCustomTenantConfig}
+                        disabled={customSaving}
+                        className="flex items-center gap-2 px-4 py-2 bg-violet-600 text-white rounded-lg hover:bg-violet-700 font-medium disabled:opacity-50"
+                      >
+                        <Save className="w-4 h-4" />
+                        {customSaving ? 'Saving...' : 'Save Tenant Configuration'}
+                      </button>
+                    </div>
+                  )}
+                </div>
+
+                {/* Tenant Selector */}
+                <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-3">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
+                    <Users className="w-4 h-4 inline mr-1" />
+                    Select Tenant
+                  </label>
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      value={customTenantSearch}
+                      onChange={e => {
+                        setCustomTenantSearch(e.target.value);
+                        // Debounced search
+                        const timeout = setTimeout(() => loadCustomTenants(e.target.value), 300);
+                        return () => clearTimeout(timeout);
+                      }}
+                      placeholder="Search tenants by name or code..."
+                      className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 focus:ring-2 focus:ring-violet-500"
+                    />
+                  </div>
+                  {customTenantsLoading ? (
+                    <div className="mt-3 text-center py-4">
+                      <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-violet-500 mx-auto"></div>
+                    </div>
+                  ) : (
+                    <div className="mt-3 max-h-48 overflow-y-auto space-y-1">
+                      {customTenants.length === 0 ? (
+                        <p className="text-sm text-gray-500 py-2 text-center">No tenants found</p>
+                      ) : (
+                        customTenants.map(tenant => (
+                          <button
+                            key={tenant.tenant_id}
+                            onClick={() => setSelectedCustomTenantId(tenant.tenant_id)}
+                            className={`w-full text-left p-2 rounded-lg border transition flex items-center justify-between ${
+                              selectedCustomTenantId === tenant.tenant_id
+                                ? 'border-violet-500 bg-violet-50 dark:bg-violet-900/30'
+                                : 'border-transparent hover:bg-gray-50 dark:hover:bg-gray-700'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2">
+                              <Building2 className="w-4 h-4 text-gray-400" />
+                              <div>
+                                <div className="font-medium text-gray-900 dark:text-white text-sm">{tenant.tenant_name}</div>
+                                <div className="text-xs text-gray-500">{tenant.client_code}</div>
+                              </div>
+                            </div>
+                            {tenant.config_status && (
+                              <span className={`text-[10px] px-2 py-0.5 rounded-full ${
+                                tenant.config_status === 'active'
+                                  ? 'bg-green-100 text-green-700'
+                                  : tenant.config_status === 'configured'
+                                  ? 'bg-blue-100 text-blue-700'
+                                  : tenant.config_status === 'draft'
+                                  ? 'bg-yellow-100 text-yellow-700'
+                                  : 'bg-gray-100 text-gray-600'
+                              }`}>
+                                {tenant.config_status}
+                              </span>
+                            )}
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Custom Tenant Configuration Content */}
+              <div className="flex-1 overflow-y-auto p-4">
+                {!selectedCustomTenantId ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center text-gray-500">
+                      <Building2 className="w-12 h-12 mx-auto mb-4 opacity-30" />
+                      <p className="text-lg font-medium mb-2">Select a tenant to configure</p>
+                      <p className="text-sm">Choose a tenant from the list above to set up their custom plan configuration</p>
+                    </div>
+                  </div>
+                ) : customConfigLoading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-violet-500"></div>
+                  </div>
+                ) : (
+                  <div className="space-y-6">
+                    {/* Configuration Status Banner */}
+                    <div className={`p-3 rounded-lg border flex items-center justify-between ${
+                      customTenantConfig?.status === 'active'
+                        ? 'bg-green-50 border-green-200 dark:bg-green-900/20 dark:border-green-800'
+                        : customTenantConfig?.status === 'configured'
+                        ? 'bg-blue-50 border-blue-200 dark:bg-blue-900/20 dark:border-blue-800'
+                        : 'bg-yellow-50 border-yellow-200 dark:bg-yellow-900/20 dark:border-yellow-800'
+                    }`}>
+                      <div className="flex items-center gap-2">
+                        {customTenantConfig?.status === 'active' ? (
+                          <CheckCircle className="w-5 h-5 text-green-600" />
+                        ) : customTenantConfig?.status === 'configured' ? (
+                          <Settings className="w-5 h-5 text-blue-600" />
+                        ) : (
+                          <Edit2 className="w-5 h-5 text-yellow-600" />
+                        )}
+                        <span className="font-medium">
+                          Status: {customTenantConfig?.status ? customTenantConfig.status.charAt(0).toUpperCase() + customTenantConfig.status.slice(1) : 'Not Configured'}
+                        </span>
+                        {customTenantConfig?.effective_from && (
+                          <span className="text-xs text-gray-500">
+                            (Active since {new Date(customTenantConfig.effective_from).toLocaleDateString()})
+                          </span>
+                        )}
+                      </div>
+                      {customTenantConfig && customTenantConfig.status !== 'active' && (
+                        <button
+                          onClick={activateCustomTenantConfig}
+                          className="px-3 py-1.5 bg-green-600 text-white text-sm rounded-lg hover:bg-green-700"
+                        >
+                          Activate Plan
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Pricing Section */}
+                    <div className="border rounded-lg p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
+                        <CreditCard className="w-5 h-5 text-green-600" />
+                        Tenant Pricing
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Monthly Price
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500 font-medium">₹</span>
+                            <input
+                              type="number"
+                              value={customTenantConfig?.price_monthly ?? 0}
+                              onChange={e => updateCustomConfig({ price_monthly: parseFloat(e.target.value) || 0 })}
+                              placeholder="0"
+                              min="0"
+                              className="flex-1 px-3 py-2 border rounded-lg text-lg font-semibold dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                            />
+                            <span className="text-gray-500 text-sm">/month</span>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Yearly Price
+                          </label>
+                          <div className="flex items-center gap-2">
+                            <span className="text-gray-500 font-medium">₹</span>
+                            <input
+                              type="number"
+                              value={customTenantConfig?.price_yearly ?? 0}
+                              onChange={e => updateCustomConfig({ price_yearly: parseFloat(e.target.value) || 0 })}
+                              placeholder="0"
+                              min="0"
+                              className="flex-1 px-3 py-2 border rounded-lg text-lg font-semibold dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                            />
+                            <span className="text-gray-500 text-sm">/year</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={customTenantConfig?.override_pricing ?? false}
+                            onChange={e => updateCustomConfig({ override_pricing: e.target.checked })}
+                            className="w-4 h-4 rounded text-violet-600"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Override default pricing</span>
+                        </label>
+                      </div>
+                      <div className="mt-3">
+                        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                          Pricing Notes (Internal)
+                        </label>
+                        <input
+                          type="text"
+                          value={customTenantConfig?.pricing_notes ?? ''}
+                          onChange={e => updateCustomConfig({ pricing_notes: e.target.value })}
+                          placeholder="e.g., Custom negotiated pricing"
+                          className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Plan Limits Section */}
+                    <div className="border rounded-lg p-4">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
+                        <Users className="w-5 h-5 text-blue-600" />
+                        Plan Limits
+                        <span className="text-xs font-normal text-gray-500 ml-2">(Use 9999 for unlimited)</span>
+                      </h3>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Max Users
+                          </label>
+                          <input
+                            type="number"
+                            value={customTenantConfig?.max_users ?? 10}
+                            onChange={e => updateCustomConfig({ max_users: parseInt(e.target.value) || 10 })}
+                            min="1"
+                            className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Max Branches
+                          </label>
+                          <input
+                            type="number"
+                            value={customTenantConfig?.max_branches ?? 3}
+                            onChange={e => updateCustomConfig({ max_branches: parseInt(e.target.value) || 3 })}
+                            min="1"
+                            className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Max Storage (GB)
+                          </label>
+                          <input
+                            type="number"
+                            value={customTenantConfig?.max_storage_gb ?? 50}
+                            onChange={e => updateCustomConfig({ max_storage_gb: parseInt(e.target.value) || 50 })}
+                            min="1"
+                            className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Governance Rules Section */}
+                    <div className="border rounded-lg p-4">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
+                        <Shield className="w-5 h-5 text-purple-600" />
+                        Governance Rules
+                      </h3>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            Monthly Spend Cap (₹)
+                          </label>
+                          <input
+                            type="number"
+                            value={(customTenantConfig?.governance_rules as Record<string, number>)?.monthly_spend_cap ?? 50000}
+                            onChange={e => updateCustomConfig({
+                              governance_rules: {
+                                ...(customTenantConfig?.governance_rules || {}),
+                                monthly_spend_cap: parseFloat(e.target.value) || 0
+                              }
+                            })}
+                            min="0"
+                            className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                            CFO Approval Threshold (₹)
+                          </label>
+                          <input
+                            type="number"
+                            value={(customTenantConfig?.governance_rules as Record<string, number>)?.cfo_approval_threshold ?? 10000}
+                            onChange={e => updateCustomConfig({
+                              governance_rules: {
+                                ...(customTenantConfig?.governance_rules || {}),
+                                cfo_approval_threshold: parseFloat(e.target.value) || 0
+                              }
+                            })}
+                            min="0"
+                            className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Trial Settings Section */}
+                    <div className="border rounded-lg p-4">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
+                        <Clock className="w-5 h-5 text-amber-600" />
+                        Trial Settings
+                      </h3>
+                      <div className="flex items-center gap-6">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input
+                            type="checkbox"
+                            checked={customTenantConfig?.trial_enabled ?? false}
+                            onChange={e => updateCustomConfig({ trial_enabled: e.target.checked })}
+                            className="w-4 h-4 rounded text-violet-600"
+                          />
+                          <span className="text-sm text-gray-700 dark:text-gray-300">Enable Trial Period</span>
+                        </label>
+                        {customTenantConfig?.trial_enabled && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-gray-500">Duration:</span>
+                            <input
+                              type="number"
+                              value={customTenantConfig?.trial_days ?? 14}
+                              onChange={e => updateCustomConfig({ trial_days: parseInt(e.target.value) || 0 })}
+                              min="0"
+                              className="w-20 px-2 py-1 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                            />
+                            <span className="text-sm text-gray-500">days</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Feature Controls Section - Summary */}
+                    <div className="border rounded-lg p-4">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
+                        <Settings className="w-5 h-5 text-indigo-600" />
+                        Feature Controls
+                        <span className="text-xs font-normal text-gray-500 ml-2">
+                          ({customTenantFeatures.length} custom overrides)
+                        </span>
+                      </h3>
+                      {customAvailableFeatures.length > 0 && (
+                        <div className="text-sm text-gray-500 mb-3">
+                          {customAvailableFeatures.length} features available for customization
+                        </div>
+                      )}
+                      <p className="text-sm text-gray-500">
+                        Feature-level controls can be configured per tenant. Features enabled here will override the base plan restrictions.
+                      </p>
+                    </div>
+
+                    {/* Internal Notes */}
+                    <div className="border rounded-lg p-4">
+                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
+                        <FileText className="w-5 h-5 text-gray-600" />
+                        Internal Notes
+                      </h3>
+                      <textarea
+                        value={customTenantConfig?.internal_notes ?? ''}
+                        onChange={e => updateCustomConfig({ internal_notes: e.target.value })}
+                        placeholder="Add internal notes about this tenant's configuration..."
+                        rows={3}
+                        className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600 resize-none"
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
           ) : (
