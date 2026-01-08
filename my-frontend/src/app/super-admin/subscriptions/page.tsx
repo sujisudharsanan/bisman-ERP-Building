@@ -1456,57 +1456,59 @@ export default function SubscriptionControlPage() {
                 ) : activeTab === 'governance' ? (
                   /* GOVERNANCE RULES TAB */
                   <div className="space-y-6">
-                    {/* Plan Pricing */}
-                    <div className="border rounded-lg p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
-                      <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
-                        <CreditCard className="w-5 h-5 text-green-600" />
-                        Plan Pricing
-                      </h3>
-                      <div className="grid grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Monthly Price
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-500 font-medium">₹</span>
-                            <input
-                              type="number"
-                              value={editingPlan?.price_monthly ?? ''}
-                              onChange={e => updatePlanSettings({
-                                price_monthly: e.target.value === '' ? 0 : parseFloat(e.target.value)
-                              })}
-                              placeholder="0"
-                              min="0"
-                              className="flex-1 px-3 py-2 border rounded-lg text-lg font-semibold dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                            />
-                            <span className="text-gray-500 text-sm">/month</span>
+                    {/* Plan Pricing - Hidden for Free plan */}
+                    {editingPlan?.code !== 'FREE' && (
+                      <div className="border rounded-lg p-4 bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/20 dark:to-emerald-900/20">
+                        <h3 className="font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2 mb-4">
+                          <CreditCard className="w-5 h-5 text-green-600" />
+                          Plan Pricing
+                        </h3>
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Monthly Price
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-500 font-medium">₹</span>
+                              <input
+                                type="number"
+                                value={editingPlan?.price_monthly ?? ''}
+                                onChange={e => updatePlanSettings({
+                                  price_monthly: e.target.value === '' ? 0 : parseFloat(e.target.value)
+                                })}
+                                placeholder="0"
+                                min="0"
+                                className="flex-1 px-3 py-2 border rounded-lg text-lg font-semibold dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                              />
+                              <span className="text-gray-500 text-sm">/month</span>
+                            </div>
                           </div>
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                            Yearly Price
-                          </label>
-                          <div className="flex items-center gap-2">
-                            <span className="text-gray-500 font-medium">₹</span>
-                            <input
-                              type="number"
-                              value={editingPlan?.price_yearly ?? ''}
-                              onChange={e => updatePlanSettings({
-                                price_yearly: e.target.value === '' ? 0 : parseFloat(e.target.value)
-                              })}
-                              placeholder="0"
-                              min="0"
-                              className="flex-1 px-3 py-2 border rounded-lg text-lg font-semibold dark:bg-gray-700 dark:text-white dark:border-gray-600"
-                            />
-                            <span className="text-gray-500 text-sm">/year</span>
+                          <div>
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                              Yearly Price
+                            </label>
+                            <div className="flex items-center gap-2">
+                              <span className="text-gray-500 font-medium">₹</span>
+                              <input
+                                type="number"
+                                value={editingPlan?.price_yearly ?? ''}
+                                onChange={e => updatePlanSettings({
+                                  price_yearly: e.target.value === '' ? 0 : parseFloat(e.target.value)
+                                })}
+                                placeholder="0"
+                                min="0"
+                                className="flex-1 px-3 py-2 border rounded-lg text-lg font-semibold dark:bg-gray-700 dark:text-white dark:border-gray-600"
+                              />
+                              <span className="text-gray-500 text-sm">/year</span>
+                            </div>
+                            <p className="text-xs text-green-600 mt-1">
+                              {editingPlan?.price_monthly && editingPlan?.price_yearly ? 
+                                `Save ₹${((editingPlan.price_monthly * 12) - editingPlan.price_yearly).toLocaleString('en-IN')} per year` : ''}
+                            </p>
                           </div>
-                          <p className="text-xs text-green-600 mt-1">
-                            {editingPlan?.price_monthly && editingPlan?.price_yearly ? 
-                              `Save ₹${((editingPlan.price_monthly * 12) - editingPlan.price_yearly).toLocaleString('en-IN')} per year` : ''}
-                          </p>
                         </div>
                       </div>
-                    </div>
+                    )}
 
                     {/* Plan Limits */}
                     <div className="border rounded-lg p-4">
