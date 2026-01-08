@@ -27,7 +27,18 @@ import type {
   TimeRange,
 } from '@/types/superadmin-dashboard';
 
-const API_BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+// Use Next.js API proxy in production for proper cookie forwarding
+// In development, call backend directly if NEXT_PUBLIC_API_URL is set
+const getApiBase = () => {
+  if (typeof window === 'undefined') {
+    // Server-side: use direct backend URL
+    return process.env.NEXT_PUBLIC_API_URL || 'http://localhost:5000';
+  }
+  // Client-side: use relative path to go through Next.js API proxy
+  // This ensures cookies are properly forwarded
+  return '';
+};
+const API_BASE = getApiBase();
 
 // Helper to safely extract data from API responses
 const extractData = <T>(response: any, fallback: T): T => {
