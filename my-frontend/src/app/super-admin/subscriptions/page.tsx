@@ -795,11 +795,6 @@ export default function SubscriptionControlPage() {
                         <span className="font-medium text-gray-900 dark:text-gray-100 truncate">
                           {plan.name}
                         </span>
-                        {(plan.total_unlock_value || 0) > 0 && (
-                          <span className="text-[9px] px-1.5 py-0.5 bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300 rounded font-medium" title="Total Unlock Value">
-                            ₹{(plan.total_unlock_value || 0).toLocaleString('en-IN')}
-                          </span>
-                        )}
                         {plan.is_popular && (
                           <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full">
                             Popular
@@ -814,15 +809,20 @@ export default function SubscriptionControlPage() {
                         <span className="text-[9px] px-1.5 py-0.5 bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300 rounded" title="Categories">
                           {plan.total_categories || 0} cat
                         </span>
-                        <span className="text-[9px] px-1.5 py-0.5 bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300 rounded" title="Unlimited">
+                        <span className="text-[9px] px-1.5 py-0.5 bg-cyan-100 text-cyan-700 dark:bg-cyan-900/50 dark:text-cyan-300 rounded" title="Unlimited Features">
                           {plan.unlimited_count || 0}∞
                         </span>
-                        <span className="text-[9px] px-1.5 py-0.5 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 rounded" title="Soft Locked">
+                        <span className="text-[9px] px-1.5 py-0.5 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 rounded" title="Soft Locked (can unlock)">
                           {plan.soft_locked_count || 0}⚡
                         </span>
                         <span className="text-[9px] px-1.5 py-0.5 bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 rounded" title="Hard Locked">
                           {plan.hard_locked_count || 0}🔒
                         </span>
+                        {(plan.total_unlock_value || 0) > 0 && (
+                          <span className="text-[9px] px-1.5 py-0.5 bg-emerald-100 text-emerald-700 dark:bg-emerald-900/50 dark:text-emerald-300 rounded font-medium" title="Total cost to unlock all locked features">
+                            🔓₹{(plan.total_unlock_value || 0).toLocaleString('en-IN')}
+                          </span>
+                        )}
                       </div>
                       <div className="flex items-center justify-between text-xs mt-1">
                         <div className="flex items-center gap-2 text-gray-500">
