@@ -1028,6 +1028,11 @@ export default function SubscriptionControlPage() {
                         <span className="font-semibold text-gray-900 dark:text-gray-100 truncate">
                           {plan.name}
                         </span>
+                        {plan.is_custom && (
+                          <span className="text-[9px] px-1.5 py-0.5 bg-violet-100 text-violet-700 rounded-full">
+                            Tenant-Specific
+                          </span>
+                        )}
                         {plan.is_popular && (
                           <span className="text-[9px] px-1.5 py-0.5 bg-amber-100 text-amber-700 rounded-full">
                             Popular
@@ -1043,39 +1048,63 @@ export default function SubscriptionControlPage() {
                           {plan.status}
                         </span>
                       </div>
-                      {/* Info Boxes Grid - 2x2 for paid plans, different layout for free */}
-                      <div className={`grid gap-1.5 ${plan.price_monthly === 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
-                        {/* Rate Box */}
-                        <div className="bg-green-50 dark:bg-green-900/30 rounded px-2 py-1.5 text-center">
-                          <div className="text-[9px] text-green-600 dark:text-green-400 uppercase tracking-wider">Rate</div>
-                          <div className="text-sm font-bold text-green-700 dark:text-green-300">
-                            {plan.price_monthly === 0 ? 'Free' : `₹${plan.price_monthly?.toLocaleString('en-IN')}`}
-                          </div>
-                        </div>
-                        {/* Unlock Value Box */}
-                        <div className="bg-blue-50 dark:bg-blue-900/30 rounded px-2 py-1.5 text-center">
-                          <div className="text-[9px] text-blue-600 dark:text-blue-400 uppercase tracking-wider">Unlock</div>
-                          <div className="text-sm font-bold text-blue-700 dark:text-blue-300">
-                            {(plan.total_unlock_value || 0) === 0 ? '₹0' : `₹${(plan.total_unlock_value || 0).toLocaleString('en-IN')}`}
-                          </div>
-                        </div>
-                        {/* Trial Period Box - Only show for paid plans */}
-                        {plan.price_monthly > 0 && (
-                          <div className="bg-purple-50 dark:bg-purple-900/30 rounded px-2 py-1.5 text-center">
-                            <div className="text-[9px] text-purple-600 dark:text-purple-400 uppercase tracking-wider">Trial</div>
-                            <div className="text-sm font-bold text-purple-700 dark:text-purple-300">
-                              {plan.trial_enabled ? `${plan.trial_days || 14} days` : 'None'}
+                      {/* Info Boxes Grid - Custom for CUSTOM plan, 2x2 for paid plans, 3 cols for free */}
+                      {plan.is_custom ? (
+                        /* CUSTOM plan shows simpler view */
+                        <div className="grid grid-cols-2 gap-1.5">
+                          <div className="bg-violet-50 dark:bg-violet-900/30 rounded px-2 py-1.5 text-center col-span-2">
+                            <div className="text-[9px] text-violet-600 dark:text-violet-400 uppercase tracking-wider">Type</div>
+                            <div className="text-sm font-bold text-violet-700 dark:text-violet-300">
+                              Per-Tenant Config
                             </div>
                           </div>
-                        )}
-                        {/* Tenants Box */}
-                        <div className="bg-gray-50 dark:bg-gray-700/50 rounded px-2 py-1.5 text-center">
-                          <div className="text-[9px] text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tenants</div>
-                          <div className="text-sm font-bold text-gray-700 dark:text-gray-300">
-                            {plan.active_tenant_count || 0}
+                          <div className="bg-gray-50 dark:bg-gray-700/50 rounded px-2 py-1.5 text-center">
+                            <div className="text-[9px] text-gray-500 dark:text-gray-400 uppercase tracking-wider">Configured</div>
+                            <div className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                              {plan.active_tenant_count || 0}
+                            </div>
+                          </div>
+                          <div className="bg-green-50 dark:bg-green-900/30 rounded px-2 py-1.5 text-center">
+                            <div className="text-[9px] text-green-600 dark:text-green-400 uppercase tracking-wider">Active</div>
+                            <div className="text-sm font-bold text-green-700 dark:text-green-300">
+                              {plan.active_tenant_count || 0}
+                            </div>
                           </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className={`grid gap-1.5 ${plan.price_monthly === 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                          {/* Rate Box */}
+                          <div className="bg-green-50 dark:bg-green-900/30 rounded px-2 py-1.5 text-center">
+                            <div className="text-[9px] text-green-600 dark:text-green-400 uppercase tracking-wider">Rate</div>
+                            <div className="text-sm font-bold text-green-700 dark:text-green-300">
+                              {plan.price_monthly === 0 ? 'Free' : `₹${plan.price_monthly?.toLocaleString('en-IN')}`}
+                            </div>
+                          </div>
+                          {/* Unlock Value Box */}
+                          <div className="bg-blue-50 dark:bg-blue-900/30 rounded px-2 py-1.5 text-center">
+                            <div className="text-[9px] text-blue-600 dark:text-blue-400 uppercase tracking-wider">Unlock</div>
+                            <div className="text-sm font-bold text-blue-700 dark:text-blue-300">
+                              {(plan.total_unlock_value || 0) === 0 ? '₹0' : `₹${(plan.total_unlock_value || 0).toLocaleString('en-IN')}`}
+                            </div>
+                          </div>
+                          {/* Trial Period Box - Only show for paid plans */}
+                          {plan.price_monthly > 0 && (
+                            <div className="bg-purple-50 dark:bg-purple-900/30 rounded px-2 py-1.5 text-center">
+                              <div className="text-[9px] text-purple-600 dark:text-purple-400 uppercase tracking-wider">Trial</div>
+                              <div className="text-sm font-bold text-purple-700 dark:text-purple-300">
+                                {plan.trial_enabled ? `${plan.trial_days || 14} days` : 'None'}
+                              </div>
+                            </div>
+                          )}
+                          {/* Tenants Box */}
+                          <div className="bg-gray-50 dark:bg-gray-700/50 rounded px-2 py-1.5 text-center">
+                            <div className="text-[9px] text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tenants</div>
+                            <div className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                              {plan.active_tenant_count || 0}
+                            </div>
+                          </div>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </button>
