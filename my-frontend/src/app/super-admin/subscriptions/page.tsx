@@ -811,8 +811,8 @@ export default function SubscriptionControlPage() {
                           {plan.status}
                         </span>
                       </div>
-                      {/* 4 Info Boxes Grid */}
-                      <div className="grid grid-cols-2 gap-1.5">
+                      {/* Info Boxes Grid - 2x2 for paid plans, different layout for free */}
+                      <div className={`grid gap-1.5 ${plan.price_monthly === 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
                         {/* Rate Box */}
                         <div className="bg-green-50 dark:bg-green-900/30 rounded px-2 py-1.5 text-center">
                           <div className="text-[9px] text-green-600 dark:text-green-400 uppercase tracking-wider">Rate</div>
@@ -827,13 +827,15 @@ export default function SubscriptionControlPage() {
                             {(plan.total_unlock_value || 0) === 0 ? '₹0' : `₹${(plan.total_unlock_value || 0).toLocaleString('en-IN')}`}
                           </div>
                         </div>
-                        {/* Trial Period Box */}
-                        <div className="bg-purple-50 dark:bg-purple-900/30 rounded px-2 py-1.5 text-center">
-                          <div className="text-[9px] text-purple-600 dark:text-purple-400 uppercase tracking-wider">Trial</div>
-                          <div className="text-sm font-bold text-purple-700 dark:text-purple-300">
-                            {plan.trial_enabled ? `${plan.trial_days || 14} days` : 'None'}
+                        {/* Trial Period Box - Only show for paid plans */}
+                        {plan.price_monthly > 0 && (
+                          <div className="bg-purple-50 dark:bg-purple-900/30 rounded px-2 py-1.5 text-center">
+                            <div className="text-[9px] text-purple-600 dark:text-purple-400 uppercase tracking-wider">Trial</div>
+                            <div className="text-sm font-bold text-purple-700 dark:text-purple-300">
+                              {plan.trial_enabled ? `${plan.trial_days || 14} days` : 'None'}
+                            </div>
                           </div>
-                        </div>
+                        )}
                         {/* Tenants Box */}
                         <div className="bg-gray-50 dark:bg-gray-700/50 rounded px-2 py-1.5 text-center">
                           <div className="text-[9px] text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tenants</div>
