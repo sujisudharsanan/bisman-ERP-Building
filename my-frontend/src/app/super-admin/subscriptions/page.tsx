@@ -1462,12 +1462,13 @@ export default function SubscriptionControlPage() {
                             <span className="text-gray-500 font-medium">₹</span>
                             <input
                               type="number"
-                              value={editingPlan?.price_monthly || 0}
+                              value={editingPlan?.price_monthly ?? ''}
                               onChange={e => updatePlanSettings({
-                                price_monthly: parseFloat(e.target.value) || 0
+                                price_monthly: e.target.value === '' ? 0 : parseFloat(e.target.value)
                               })}
                               placeholder="0"
-                              className="flex-1 px-3 py-2 border rounded-lg text-lg font-semibold"
+                              min="0"
+                              className="flex-1 px-3 py-2 border rounded-lg text-lg font-semibold dark:bg-gray-700 dark:text-white dark:border-gray-600"
                             />
                             <span className="text-gray-500 text-sm">/month</span>
                           </div>
@@ -1480,12 +1481,13 @@ export default function SubscriptionControlPage() {
                             <span className="text-gray-500 font-medium">₹</span>
                             <input
                               type="number"
-                              value={editingPlan?.price_yearly || 0}
+                              value={editingPlan?.price_yearly ?? ''}
                               onChange={e => updatePlanSettings({
-                                price_yearly: parseFloat(e.target.value) || 0
+                                price_yearly: e.target.value === '' ? 0 : parseFloat(e.target.value)
                               })}
                               placeholder="0"
-                              className="flex-1 px-3 py-2 border rounded-lg text-lg font-semibold"
+                              min="0"
+                              className="flex-1 px-3 py-2 border rounded-lg text-lg font-semibold dark:bg-gray-700 dark:text-white dark:border-gray-600"
                             />
                             <span className="text-gray-500 text-sm">/year</span>
                           </div>
@@ -1510,11 +1512,12 @@ export default function SubscriptionControlPage() {
                           </label>
                           <input
                             type="number"
-                            value={editingPlan?.max_users || 5}
+                            value={editingPlan?.max_users ?? ''}
                             onChange={e => updatePlanSettings({
-                              max_users: parseInt(e.target.value) || 5
+                              max_users: e.target.value === '' ? 5 : parseInt(e.target.value)
                             })}
-                            className="w-full px-3 py-2 border rounded-lg"
+                            min="1"
+                            className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
                           />
                           <p className="text-xs text-gray-500 mt-1">Use 9999 for unlimited</p>
                         </div>
@@ -1524,11 +1527,12 @@ export default function SubscriptionControlPage() {
                           </label>
                           <input
                             type="number"
-                            value={editingPlan?.max_branches || 1}
+                            value={editingPlan?.max_branches ?? ''}
                             onChange={e => updatePlanSettings({
-                              max_branches: parseInt(e.target.value) || 1
+                              max_branches: e.target.value === '' ? 1 : parseInt(e.target.value)
                             })}
-                            className="w-full px-3 py-2 border rounded-lg"
+                            min="1"
+                            className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
                           />
                           <p className="text-xs text-gray-500 mt-1">Use 9999 for unlimited</p>
                         </div>
@@ -1538,11 +1542,12 @@ export default function SubscriptionControlPage() {
                           </label>
                           <input
                             type="number"
-                            value={editingPlan?.max_storage_gb || 5}
+                            value={editingPlan?.max_storage_gb ?? ''}
                             onChange={e => updatePlanSettings({
-                              max_storage_gb: parseInt(e.target.value) || 5
+                              max_storage_gb: e.target.value === '' ? 5 : parseInt(e.target.value)
                             })}
-                            className="w-full px-3 py-2 border rounded-lg"
+                            min="1"
+                            className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
                           />
                         </div>
                       </div>
@@ -1563,12 +1568,13 @@ export default function SubscriptionControlPage() {
                             <span className="text-gray-500">₹</span>
                             <input
                               type="number"
-                              value={editingPlan?.monthly_spend_cap || ''}
+                              value={editingPlan?.monthly_spend_cap ?? ''}
                               onChange={e => updatePlanSettings({
-                                monthly_spend_cap: e.target.value ? parseFloat(e.target.value) : null
+                                monthly_spend_cap: e.target.value === '' ? null : parseFloat(e.target.value)
                               })}
                               placeholder="No limit"
-                              className="flex-1 px-3 py-2 border rounded-lg"
+                              min="0"
+                              className="flex-1 px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
                             />
                           </div>
                           <p className="text-xs text-gray-500 mt-1">
@@ -1583,12 +1589,13 @@ export default function SubscriptionControlPage() {
                             <span className="text-gray-500">₹</span>
                             <input
                               type="number"
-                              value={editingPlan?.cfo_approval_threshold || ''}
+                              value={editingPlan?.cfo_approval_threshold ?? ''}
                               onChange={e => updatePlanSettings({
-                                cfo_approval_threshold: e.target.value ? parseFloat(e.target.value) : null
+                                cfo_approval_threshold: e.target.value === '' ? null : parseFloat(e.target.value)
                               })}
                               placeholder="No threshold"
-                              className="flex-1 px-3 py-2 border rounded-lg"
+                              min="0"
+                              className="flex-1 px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
                             />
                           </div>
                           <p className="text-xs text-gray-500 mt-1">
@@ -1601,11 +1608,12 @@ export default function SubscriptionControlPage() {
                           </label>
                           <input
                             type="number"
-                            value={editingPlan?.invoice_cycle_days || 30}
+                            value={editingPlan?.invoice_cycle_days ?? ''}
                             onChange={e => updatePlanSettings({
-                              invoice_cycle_days: parseInt(e.target.value) || 30
+                              invoice_cycle_days: e.target.value === '' ? 30 : parseInt(e.target.value)
                             })}
-                            className="w-full px-3 py-2 border rounded-lg"
+                            min="1"
+                            className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
                           />
                         </div>
                         <div>
@@ -1614,11 +1622,12 @@ export default function SubscriptionControlPage() {
                           </label>
                           <input
                             type="number"
-                            value={editingPlan?.grace_period_days || 7}
+                            value={editingPlan?.grace_period_days ?? ''}
                             onChange={e => updatePlanSettings({
-                              grace_period_days: parseInt(e.target.value) || 7
+                              grace_period_days: e.target.value === '' ? 7 : parseInt(e.target.value)
                             })}
-                            className="w-full px-3 py-2 border rounded-lg"
+                            min="0"
+                            className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
                           />
                         </div>
                       </div>
