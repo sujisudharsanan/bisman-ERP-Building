@@ -130,7 +130,7 @@ router.get('/metrics', ...superAdminOnly, async (req, res) => {
 
 /**
  * GET /api/subscription-control/plans
- * List all subscription plans
+ * List all subscription plans with feature stats
  */
 router.get('/plans', ...superAdminOnly, async (req, res) => {
   try {
@@ -142,21 +142,67 @@ router.get('/plans', ...superAdminOnly, async (req, res) => {
       plans = await prisma.$queryRaw`
         SELECT 
           msp.*,
-          COALESCE(COUNT(tpa.id), 0) as active_tenant_count
+          COALESCE(tenant_counts.cnt, 0) as active_tenant_count,
+          COALESCE(feature_stats.total_features, 0) as total_features,
+          COALESCE(feature_stats.total_categories, 0) as total_categories,
+          COALESCE(feature_stats.unlimited_count, 0) as unlimited_count,
+          COALESCE(feature_stats.soft_locked_count, 0) as soft_locked_count,
+          COALESCE(feature_stats.warning_count, 0) as warning_count,
+          COALESCE(feature_stats.hard_locked_count, 0) as hard_locked_count,
+          COALESCE(feature_stats.total_unlock_value, 0) as total_unlock_value
         FROM master_subscription_plans msp
-        LEFT JOIN tenant_plan_assignments tpa ON tpa.plan_id = msp.id AND tpa.is_active = TRUE
-        GROUP BY msp.id
+        LEFT JOIN (
+          SELECT plan_id, COUNT(*) as cnt
+          FROM tenant_plan_assignments WHERE is_active = TRUE
+          GROUP BY plan_id
+        ) tenant_counts ON tenant_counts.plan_id = msp.id
+        LEFT JOIN (
+          SELECT 
+            plan_id,
+            COUNT(*) as total_features,
+            COUNT(DISTINCT category) as total_categories,
+            COUNT(*) FILTER (WHERE free_limit = -1) as unlimited_count,
+            COUNT(*) FILTER (WHERE lock_mode = 'soft') as soft_locked_count,
+            COUNT(*) FILTER (WHERE lock_mode = 'warn') as warning_count,
+            COUNT(*) FILTER (WHERE lock_mode = 'hard') as hard_locked_count,
+            COALESCE(SUM(unlock_price), 0) as total_unlock_value
+          FROM plan_feature_controls
+          GROUP BY plan_id
+        ) feature_stats ON feature_stats.plan_id = msp.id
         ORDER BY msp.sort_order, msp.name
       `;
     } else {
       plans = await prisma.$queryRaw`
         SELECT 
           msp.*,
-          COALESCE(COUNT(tpa.id), 0) as active_tenant_count
+          COALESCE(tenant_counts.cnt, 0) as active_tenant_count,
+          COALESCE(feature_stats.total_features, 0) as total_features,
+          COALESCE(feature_stats.total_categories, 0) as total_categories,
+          COALESCE(feature_stats.unlimited_count, 0) as unlimited_count,
+          COALESCE(feature_stats.soft_locked_count, 0) as soft_locked_count,
+          COALESCE(feature_stats.warning_count, 0) as warning_count,
+          COALESCE(feature_stats.hard_locked_count, 0) as hard_locked_count,
+          COALESCE(feature_stats.total_unlock_value, 0) as total_unlock_value
         FROM master_subscription_plans msp
-        LEFT JOIN tenant_plan_assignments tpa ON tpa.plan_id = msp.id AND tpa.is_active = TRUE
+        LEFT JOIN (
+          SELECT plan_id, COUNT(*) as cnt
+          FROM tenant_plan_assignments WHERE is_active = TRUE
+          GROUP BY plan_id
+        ) tenant_counts ON tenant_counts.plan_id = msp.id
+        LEFT JOIN (
+          SELECT 
+            plan_id,
+            COUNT(*) as total_features,
+            COUNT(DISTINCT category) as total_categories,
+            COUNT(*) FILTER (WHERE free_limit = -1) as unlimited_count,
+            COUNT(*) FILTER (WHERE lock_mode = 'soft') as soft_locked_count,
+            COUNT(*) FILTER (WHERE lock_mode = 'warn') as warning_count,
+            COUNT(*) FILTER (WHERE lock_mode = 'hard') as hard_locked_count,
+            COALESCE(SUM(unlock_price), 0) as total_unlock_value
+          FROM plan_feature_controls
+          GROUP BY plan_id
+        ) feature_stats ON feature_stats.plan_id = msp.id
         WHERE msp.status != 'archived'
-        GROUP BY msp.id
         ORDER BY msp.sort_order, msp.name
       `;
     }
@@ -172,7 +218,15 @@ router.get('/plans', ...superAdminOnly, async (req, res) => {
         max_storage_gb: parseInt(p.max_storage_gb || 5),
         monthly_spend_cap: p.monthly_spend_cap ? parseFloat(p.monthly_spend_cap) : null,
         cfo_approval_threshold: p.cfo_approval_threshold ? parseFloat(p.cfo_approval_threshold) : null,
-        active_tenant_count: parseInt(p.active_tenant_count || 0)
+        active_tenant_count: parseInt(p.active_tenant_count || 0),
+        // Feature stats for UI display
+        total_features: parseInt(p.total_features || 0),
+        total_categories: parseInt(p.total_categories || 0),
+        unlimited_count: parseInt(p.unlimited_count || 0),
+        soft_locked_count: parseInt(p.soft_locked_count || 0),
+        warning_count: parseInt(p.warning_count || 0),
+        hard_locked_count: parseInt(p.hard_locked_count || 0),
+        total_unlock_value: p.total_unlock_value ? parseFloat(p.total_unlock_value) : 0
       }))
     });
   } catch (error) {
