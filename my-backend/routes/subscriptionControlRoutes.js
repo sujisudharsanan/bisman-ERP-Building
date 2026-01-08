@@ -147,7 +147,6 @@ router.get('/plans', ...superAdminOnly, async (req, res) => {
           COALESCE(feature_stats.total_categories, 0) as total_categories,
           COALESCE(feature_stats.unlimited_count, 0) as unlimited_count,
           COALESCE(feature_stats.soft_locked_count, 0) as soft_locked_count,
-          COALESCE(feature_stats.warning_count, 0) as warning_count,
           COALESCE(feature_stats.hard_locked_count, 0) as hard_locked_count,
           COALESCE(feature_stats.total_unlock_value, 0) as total_unlock_value
         FROM master_subscription_plans msp
@@ -158,16 +157,16 @@ router.get('/plans', ...superAdminOnly, async (req, res) => {
         ) tenant_counts ON tenant_counts.plan_id = msp.id
         LEFT JOIN (
           SELECT 
-            plan_id,
+            pfc.plan_id,
             COUNT(*) as total_features,
-            COUNT(DISTINCT category) as total_categories,
-            COUNT(*) FILTER (WHERE free_limit = -1) as unlimited_count,
-            COUNT(*) FILTER (WHERE lock_mode = 'soft') as soft_locked_count,
-            COUNT(*) FILTER (WHERE lock_mode = 'warn') as warning_count,
-            COUNT(*) FILTER (WHERE lock_mode = 'hard') as hard_locked_count,
-            COALESCE(SUM(unlock_price), 0) as total_unlock_value
-          FROM plan_feature_controls
-          GROUP BY plan_id
+            COUNT(DISTINCT mfd.category) as total_categories,
+            COUNT(*) FILTER (WHERE pfc.free_limit = -1) as unlimited_count,
+            COUNT(*) FILTER (WHERE pfc.lock_mode = 'soft') as soft_locked_count,
+            COUNT(*) FILTER (WHERE pfc.lock_mode = 'hard') as hard_locked_count,
+            COALESCE(SUM(pfc.unlock_price), 0) as total_unlock_value
+          FROM plan_feature_controls pfc
+          LEFT JOIN master_feature_definitions mfd ON mfd.feature_code = pfc.feature_code
+          GROUP BY pfc.plan_id
         ) feature_stats ON feature_stats.plan_id = msp.id
         ORDER BY msp.sort_order, msp.name
       `;
@@ -180,7 +179,6 @@ router.get('/plans', ...superAdminOnly, async (req, res) => {
           COALESCE(feature_stats.total_categories, 0) as total_categories,
           COALESCE(feature_stats.unlimited_count, 0) as unlimited_count,
           COALESCE(feature_stats.soft_locked_count, 0) as soft_locked_count,
-          COALESCE(feature_stats.warning_count, 0) as warning_count,
           COALESCE(feature_stats.hard_locked_count, 0) as hard_locked_count,
           COALESCE(feature_stats.total_unlock_value, 0) as total_unlock_value
         FROM master_subscription_plans msp
@@ -191,16 +189,16 @@ router.get('/plans', ...superAdminOnly, async (req, res) => {
         ) tenant_counts ON tenant_counts.plan_id = msp.id
         LEFT JOIN (
           SELECT 
-            plan_id,
+            pfc.plan_id,
             COUNT(*) as total_features,
-            COUNT(DISTINCT category) as total_categories,
-            COUNT(*) FILTER (WHERE free_limit = -1) as unlimited_count,
-            COUNT(*) FILTER (WHERE lock_mode = 'soft') as soft_locked_count,
-            COUNT(*) FILTER (WHERE lock_mode = 'warn') as warning_count,
-            COUNT(*) FILTER (WHERE lock_mode = 'hard') as hard_locked_count,
-            COALESCE(SUM(unlock_price), 0) as total_unlock_value
-          FROM plan_feature_controls
-          GROUP BY plan_id
+            COUNT(DISTINCT mfd.category) as total_categories,
+            COUNT(*) FILTER (WHERE pfc.free_limit = -1) as unlimited_count,
+            COUNT(*) FILTER (WHERE pfc.lock_mode = 'soft') as soft_locked_count,
+            COUNT(*) FILTER (WHERE pfc.lock_mode = 'hard') as hard_locked_count,
+            COALESCE(SUM(pfc.unlock_price), 0) as total_unlock_value
+          FROM plan_feature_controls pfc
+          LEFT JOIN master_feature_definitions mfd ON mfd.feature_code = pfc.feature_code
+          GROUP BY pfc.plan_id
         ) feature_stats ON feature_stats.plan_id = msp.id
         WHERE msp.status != 'archived'
         ORDER BY msp.sort_order, msp.name
@@ -224,7 +222,6 @@ router.get('/plans', ...superAdminOnly, async (req, res) => {
         total_categories: parseInt(p.total_categories || 0),
         unlimited_count: parseInt(p.unlimited_count || 0),
         soft_locked_count: parseInt(p.soft_locked_count || 0),
-        warning_count: parseInt(p.warning_count || 0),
         hard_locked_count: parseInt(p.hard_locked_count || 0),
         total_unlock_value: p.total_unlock_value ? parseFloat(p.total_unlock_value) : 0
       }))

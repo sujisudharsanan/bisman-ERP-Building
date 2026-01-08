@@ -97,7 +97,6 @@ interface SubscriptionPlan {
   total_categories?: number;
   unlimited_count?: number;
   soft_locked_count?: number;
-  warning_count?: number;
   hard_locked_count?: number;
   total_unlock_value?: number;
 }
@@ -820,9 +819,6 @@ export default function SubscriptionControlPage() {
                         </span>
                         <span className="text-[9px] px-1.5 py-0.5 bg-indigo-100 text-indigo-700 dark:bg-indigo-900/50 dark:text-indigo-300 rounded" title="Soft Locked">
                           {plan.soft_locked_count || 0}⚡
-                        </span>
-                        <span className="text-[9px] px-1.5 py-0.5 bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-300 rounded" title="Warning">
-                          {plan.warning_count || 0}⚠
                         </span>
                         <span className="text-[9px] px-1.5 py-0.5 bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300 rounded" title="Hard Locked">
                           {plan.hard_locked_count || 0}🔒
