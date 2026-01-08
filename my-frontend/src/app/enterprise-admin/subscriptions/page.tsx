@@ -334,8 +334,8 @@ function CreateCouponModal({ isOpen, onClose, onSuccess, plans }: CreateCouponMo
                 <Input
                   type="number"
                   min={1}
-                  value={formData.maxActivations}
-                  onChange={(e) => setFormData({ ...formData, maxActivations: parseInt(e.target.value) || 1 })}
+                  value={formData.maxActivations ?? ''}
+                  onChange={(e) => setFormData({ ...formData, maxActivations: e.target.value === '' ? 1 : parseInt(e.target.value) })}
                   className="dark:bg-slate-700"
                 />
               </div>

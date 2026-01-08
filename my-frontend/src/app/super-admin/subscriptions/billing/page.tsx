@@ -379,8 +379,8 @@ function OverrideModal({
                   type="number"
                   min="0"
                   max="100"
-                  value={formData.discountValue}
-                  onChange={(e) => setFormData({ ...formData, discountValue: parseInt(e.target.value) || 0 })}
+                  value={formData.discountValue ?? ''}
+                  onChange={(e) => setFormData({ ...formData, discountValue: e.target.value === '' ? 0 : parseInt(e.target.value) })}
                   className="w-full px-3 py-2 pr-8 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                 />
                 <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500">%</span>
@@ -396,8 +396,8 @@ function OverrideModal({
               <input
                 type="number"
                 min="0"
-                value={formData.priceValue}
-                onChange={(e) => setFormData({ ...formData, priceValue: parseInt(e.target.value) || 0 })}
+                value={formData.priceValue ?? ''}
+                onChange={(e) => setFormData({ ...formData, priceValue: e.target.value === '' ? 0 : parseInt(e.target.value) })}
                 className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
               />
             </div>
@@ -474,8 +474,8 @@ function OverrideModal({
                 <input
                   type="number"
                   min="-1"
-                  value={formData.limitValue}
-                  onChange={(e) => setFormData({ ...formData, limitValue: parseInt(e.target.value) || 0 })}
+                  value={formData.limitValue ?? ''}
+                  onChange={(e) => setFormData({ ...formData, limitValue: e.target.value === '' ? 0 : parseInt(e.target.value) })}
                   className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                 />
               </div>

@@ -399,9 +399,9 @@ export default function PaymentRequestForm({
                   <td className="border border-gray-300 px-2 py-2">
                     <input
                       type="number"
-                      value={item.quantity}
+                      value={item.quantity ?? ''}
                       onChange={(e) =>
-                        updateLineItem(index, 'quantity', parseFloat(e.target.value) || 0)
+                        updateLineItem(index, 'quantity', e.target.value === '' ? 0 : parseFloat(e.target.value))
                       }
                       className={`w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                         errors[`lineItem_${index}_quantity`]
@@ -415,9 +415,9 @@ export default function PaymentRequestForm({
                   <td className="border border-gray-300 px-2 py-2">
                     <input
                       type="number"
-                      value={item.rate}
+                      value={item.rate ?? ''}
                       onChange={(e) =>
-                        updateLineItem(index, 'rate', parseFloat(e.target.value) || 0)
+                        updateLineItem(index, 'rate', e.target.value === '' ? 0 : parseFloat(e.target.value))
                       }
                       className={`w-full px-2 py-1 border rounded focus:outline-none focus:ring-1 focus:ring-blue-500 ${
                         errors[`lineItem_${index}_rate`] ? 'border-red-500' : 'border-gray-300'
@@ -429,9 +429,9 @@ export default function PaymentRequestForm({
                   <td className="border border-gray-300 px-2 py-2">
                     <input
                       type="number"
-                      value={item.taxRate}
+                      value={item.taxRate ?? ''}
                       onChange={(e) =>
-                        updateLineItem(index, 'taxRate', parseFloat(e.target.value) || 0)
+                        updateLineItem(index, 'taxRate', e.target.value === '' ? 0 : parseFloat(e.target.value))
                       }
                       className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                       min="0"
@@ -442,9 +442,9 @@ export default function PaymentRequestForm({
                   <td className="border border-gray-300 px-2 py-2">
                     <input
                       type="number"
-                      value={item.discountRate}
+                      value={item.discountRate ?? ''}
                       onChange={(e) =>
-                        updateLineItem(index, 'discountRate', parseFloat(e.target.value) || 0)
+                        updateLineItem(index, 'discountRate', e.target.value === '' ? 0 : parseFloat(e.target.value))
                       }
                       className="w-full px-2 py-1 border border-gray-300 rounded focus:outline-none focus:ring-1 focus:ring-blue-500"
                       min="0"

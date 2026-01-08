@@ -1342,15 +1342,15 @@ Your 14-day trial has started. The admin can login immediately.`;
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Trial Days</label>
-                <input type="number" value={form.trial_days} onChange={(e) => setForm({ ...form, trial_days: parseInt(e.target.value) || 0 })} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
+                <input type="number" value={form.trial_days ?? ''} onChange={(e) => setForm({ ...form, trial_days: e.target.value === '' ? 0 : parseInt(e.target.value) })} min="0" className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 dark:text-white" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Max Users</label>
-                <input type="number" value={form.max_users} onChange={(e) => setForm({ ...form, max_users: parseInt(e.target.value) || 1 })} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
+                <input type="number" value={form.max_users ?? ''} onChange={(e) => setForm({ ...form, max_users: e.target.value === '' ? 1 : parseInt(e.target.value) })} min="1" className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 dark:text-white" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Storage Limit (GB)</label>
-                <input type="number" value={form.storage_limit_gb} onChange={(e) => setForm({ ...form, storage_limit_gb: parseInt(e.target.value) || 1 })} className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800" />
+                <input type="number" value={form.storage_limit_gb ?? ''} onChange={(e) => setForm({ ...form, storage_limit_gb: e.target.value === '' ? 1 : parseInt(e.target.value) })} min="1" className="w-full border border-gray-300 dark:border-gray-600 rounded-lg p-2.5 bg-white dark:bg-gray-800 dark:text-white" />
               </div>
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Payment Terms</label>

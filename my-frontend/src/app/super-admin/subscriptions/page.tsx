@@ -1297,11 +1297,11 @@ export default function SubscriptionControlPage() {
                                 <div className="col-span-1">
                                   <input
                                     type="number"
-                                    value={feature.free_limit}
+                                    value={feature.free_limit ?? ''}
                                     onChange={e => updateFeature(feature.feature_code, {
-                                      free_limit: parseInt(e.target.value) || 0
+                                      free_limit: e.target.value === '' ? 0 : parseInt(e.target.value)
                                     })}
-                                    className="w-full px-2 py-1 text-sm text-center border rounded bg-white dark:bg-gray-700"
+                                    className="w-full px-2 py-1 text-sm text-center border rounded bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600"
                                     title="Free limit (-1 = unlimited)"
                                   />
                                 </div>
@@ -1327,11 +1327,11 @@ export default function SubscriptionControlPage() {
                                     <span className="text-xs text-gray-400">₹</span>
                                     <input
                                       type="number"
-                                      value={feature.unlock_price}
+                                      value={feature.unlock_price ?? ''}
                                       onChange={e => updateFeature(feature.feature_code, {
-                                        unlock_price: parseFloat(e.target.value) || 0
+                                        unlock_price: e.target.value === '' ? 0 : parseFloat(e.target.value)
                                       })}
-                                      className="w-full px-1 py-1 text-sm text-center border rounded bg-white dark:bg-gray-700"
+                                      className="w-full px-1 py-1 text-sm text-center border rounded bg-white dark:bg-gray-700 dark:text-white dark:border-gray-600"
                                       disabled={feature.lock_mode === 'hard'}
                                     />
                                   </div>
@@ -1425,9 +1425,10 @@ export default function SubscriptionControlPage() {
                           </label>
                           <input
                             type="number"
-                            value={editingPlan?.sort_order || 0}
-                            onChange={e => updatePlanSettings({ sort_order: parseInt(e.target.value) || 0 })}
-                            className="w-full px-3 py-2 border rounded-lg"
+                            value={editingPlan?.sort_order ?? ''}
+                            onChange={e => updatePlanSettings({ sort_order: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                            min="0"
+                            className="w-full px-3 py-2 border rounded-lg dark:bg-gray-700 dark:text-white dark:border-gray-600"
                           />
                         </div>
                       </div>
@@ -1777,9 +1778,9 @@ export default function SubscriptionControlPage() {
                                 type="number"
                                 min="1"
                                 max="90"
-                                value={editingPlan?.trial_days ?? 14}
-                                onChange={e => updatePlanSettings({ trial_days: parseInt(e.target.value) || 14 })}
-                                className="w-24 px-3 py-2 border rounded-lg text-center text-lg font-bold"
+                                value={editingPlan?.trial_days ?? ''}
+                                onChange={e => updatePlanSettings({ trial_days: e.target.value === '' ? 14 : parseInt(e.target.value) })}
+                                className="w-24 px-3 py-2 border rounded-lg text-center text-lg font-bold dark:bg-gray-700 dark:text-white dark:border-gray-600"
                               />
                               <span className="text-gray-500">days</span>
                             </div>

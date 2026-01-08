@@ -695,8 +695,8 @@ function ExtendTrialForm({
           type="number"
           min="1"
           max="30"
-          value={days}
-          onChange={(e) => setDays(parseInt(e.target.value) || 7)}
+          value={days ?? ''}
+          onChange={(e) => setDays(e.target.value === '' ? 7 : parseInt(e.target.value))}
           className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
         />
       </div>

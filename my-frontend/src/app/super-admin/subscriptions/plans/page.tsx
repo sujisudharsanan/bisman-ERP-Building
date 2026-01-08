@@ -419,8 +419,9 @@ function EditPlanModal({
                 <label className="block text-xs text-gray-500 mb-1">Monthly Price (₹)</label>
                 <input
                   type="number"
-                  value={formData.monthlyPrice}
-                  onChange={(e) => setFormData({ ...formData, monthlyPrice: parseInt(e.target.value) || 0 })}
+                  value={formData.monthlyPrice ?? ''}
+                  onChange={(e) => setFormData({ ...formData, monthlyPrice: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                  min="0"
                   className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                 />
               </div>
@@ -428,8 +429,9 @@ function EditPlanModal({
                 <label className="block text-xs text-gray-500 mb-1">Yearly Price (₹)</label>
                 <input
                   type="number"
-                  value={formData.yearlyPrice}
-                  onChange={(e) => setFormData({ ...formData, yearlyPrice: parseInt(e.target.value) || 0 })}
+                  value={formData.yearlyPrice ?? ''}
+                  onChange={(e) => setFormData({ ...formData, yearlyPrice: e.target.value === '' ? 0 : parseInt(e.target.value) })}
+                  min="0"
                   className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
                 />
               </div>
@@ -447,11 +449,11 @@ function EditPlanModal({
                 <label className="block text-xs text-gray-500 mb-1">Users</label>
                 <input
                   type="number"
-                  value={formData.limits.users}
+                  value={formData.limits.users ?? ''}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      limits: { ...formData.limits, users: parseInt(e.target.value) || 0 },
+                      limits: { ...formData.limits, users: e.target.value === '' ? 0 : parseInt(e.target.value) },
                     })
                   }
                   className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
@@ -461,11 +463,11 @@ function EditPlanModal({
                 <label className="block text-xs text-gray-500 mb-1">Storage (GB)</label>
                 <input
                   type="number"
-                  value={formData.limits.storage}
+                  value={formData.limits.storage ?? ''}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      limits: { ...formData.limits, storage: parseInt(e.target.value) || 0 },
+                      limits: { ...formData.limits, storage: e.target.value === '' ? 0 : parseInt(e.target.value) },
                     })
                   }
                   className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
@@ -475,11 +477,11 @@ function EditPlanModal({
                 <label className="block text-xs text-gray-500 mb-1">API Calls</label>
                 <input
                   type="number"
-                  value={formData.limits.apiCalls}
+                  value={formData.limits.apiCalls ?? ''}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      limits: { ...formData.limits, apiCalls: parseInt(e.target.value) || 0 },
+                      limits: { ...formData.limits, apiCalls: e.target.value === '' ? 0 : parseInt(e.target.value) },
                     })
                   }
                   className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"
@@ -489,11 +491,11 @@ function EditPlanModal({
                 <label className="block text-xs text-gray-500 mb-1">Integrations</label>
                 <input
                   type="number"
-                  value={formData.limits.integrations}
+                  value={formData.limits.integrations ?? ''}
                   onChange={(e) =>
                     setFormData({
                       ...formData,
-                      limits: { ...formData.limits, integrations: parseInt(e.target.value) || 0 },
+                      limits: { ...formData.limits, integrations: e.target.value === '' ? 0 : parseInt(e.target.value) },
                     })
                   }
                   className="w-full px-3 py-2 border border-gray-200 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-900 text-gray-900 dark:text-white"

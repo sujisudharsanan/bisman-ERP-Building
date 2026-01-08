@@ -359,8 +359,8 @@ function EditFeatureModal({
             </label>
             <Input
               type="number"
-              value={price}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPrice(parseFloat(e.target.value) || 0)}
+              value={price ?? ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setPrice(e.target.value === '' ? 0 : parseFloat(e.target.value))}
               min={0}
               step={10}
             />
@@ -372,8 +372,8 @@ function EditFeatureModal({
             </label>
             <Input
               type="number"
-              value={limit}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLimit(parseInt(e.target.value) || 0)}
+              value={limit ?? ''}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setLimit(e.target.value === '' ? 0 : parseInt(e.target.value))}
               min={-1}
             />
             <p className="text-xs text-gray-500 mt-1">
@@ -619,16 +619,16 @@ function SubscriptionPlansManager({
                     <label className="block text-sm font-medium mb-1">Monthly Price (₹)</label>
                     <Input
                       type="number"
-                      value={formData.base_price_monthly}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, base_price_monthly: parseFloat(e.target.value) || 0 }))}
+                      value={formData.base_price_monthly ?? ''}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, base_price_monthly: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium mb-1">Yearly Price (₹)</label>
                     <Input
                       type="number"
-                      value={formData.base_price_yearly}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, base_price_yearly: parseFloat(e.target.value) || 0 }))}
+                      value={formData.base_price_yearly ?? ''}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, base_price_yearly: e.target.value === '' ? 0 : parseFloat(e.target.value) }))}
                     />
                   </div>
                 </div>
@@ -668,8 +668,8 @@ function SubscriptionPlansManager({
                     <label className="block text-sm font-medium mb-1">Sort Order</label>
                     <Input
                       type="number"
-                      value={formData.sort_order}
-                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, sort_order: parseInt(e.target.value) || 0 }))}
+                      value={formData.sort_order ?? ''}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setFormData(prev => ({ ...prev, sort_order: e.target.value === '' ? 0 : parseInt(e.target.value) }))}
                     />
                   </div>
                   <div className="flex items-center gap-4 pt-6">

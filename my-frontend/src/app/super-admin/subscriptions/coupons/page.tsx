@@ -298,8 +298,8 @@ function CreateCouponModal({ isOpen, onClose, onSuccess, plans }: CreateCouponMo
                 type="number"
                 min={1}
                 max={365}
-                value={validityDays}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValidityDays(parseInt(e.target.value) || 30)}
+                value={validityDays ?? ''}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValidityDays(e.target.value === '' ? 30 : parseInt(e.target.value))}
                 className="w-24"
               />
               <span className="text-gray-600 dark:text-gray-400">days from today</span>

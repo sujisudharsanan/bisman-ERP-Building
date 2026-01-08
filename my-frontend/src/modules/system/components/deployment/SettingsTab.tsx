@@ -252,8 +252,8 @@ export default function SettingsTab({ tenantId }: SettingsTabProps) {
               type="number"
               min={1}
               max={10}
-              value={formData.maxConcurrentDeployments ?? 1}
-              onChange={(e) => updateField('maxConcurrentDeployments', parseInt(e.target.value) || 1)}
+              value={formData.maxConcurrentDeployments ?? ''}
+              onChange={(e) => updateField('maxConcurrentDeployments', e.target.value === '' ? 1 : parseInt(e.target.value))}
               disabled={saving}
               className="w-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm text-center"
             />
@@ -267,8 +267,8 @@ export default function SettingsTab({ tenantId }: SettingsTabProps) {
               type="number"
               min={7}
               max={365}
-              value={formData.retentionDays ?? 90}
-              onChange={(e) => updateField('retentionDays', parseInt(e.target.value) || 90)}
+              value={formData.retentionDays ?? ''}
+              onChange={(e) => updateField('retentionDays', e.target.value === '' ? 90 : parseInt(e.target.value))}
               disabled={saving}
               className="w-20 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-gray-100 text-sm text-center"
             />
