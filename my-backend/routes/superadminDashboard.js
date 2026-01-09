@@ -5,9 +5,16 @@
 
 const express = require('express');
 const router = express.Router();
-const { PrismaClient } = require('@prisma/client');
+const { getPrisma } = require('../lib/prisma');
 
-const prisma = new PrismaClient();
+// Lazy prisma getter - avoid instantiating at module load
+let _prisma = null;
+const prisma = new Proxy({}, {
+  get(_, prop) {
+    if (!_prisma) _prisma = getPrisma();
+    return _prisma[prop];
+  }
+});
 
 // Helper to safely query tables that might not exist
 const safeQuery = async (queryFn, fallback = null) => {
