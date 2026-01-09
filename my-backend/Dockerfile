@@ -1,6 +1,6 @@
 FROM node:20-alpine
 
-# Force rebuild: 2025-01-17-v2 - Prisma schema fix
+# Force rebuild: 2025-01-09-v3 - SQL query fix for subscription control routes
 WORKDIR /app
 
 # Install dependencies for Prisma
