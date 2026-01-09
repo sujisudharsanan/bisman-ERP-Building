@@ -57,7 +57,7 @@ router.get('/plans', authenticate, async (req, res) => {
         is_popular: true,
         is_enterprise: true,
         cta_text: true,
-        features: true,
+        feature_flags: true,
       },
     });
 
@@ -272,33 +272,36 @@ router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
 
     // Check if trial was already used
     // Valid enum values: TRIAL, ACTIVE, UPGRADING, DOWNGRADING, GRACE_PERIOD, SUSPENDED, CANCELLED
-    const previousTrial = await prisma.client_subscriptions.findFirst({
-      where: {
-        client_id: tenantId,
-        state: { in: ['TRIAL', 'ACTIVE', 'GRACE_PERIOD', 'CANCELLED'] },
-      },
+    const existingSubscription = await prisma.client_subscriptions.findUnique({
+      where: { client_id: tenantId },
     });
 
-    if (previousTrial) {
-      // If already has subscription or trial, don't allow new trial
-      if (previousTrial.state === 'TRIAL') {
+    if (existingSubscription) {
+      // If already has active subscription or trial, don't allow new trial
+      if (existingSubscription.state === 'TRIAL') {
         return res.status(400).json({
           ok: false,
           error: 'TRIAL_ACTIVE',
           message: 'You already have an active trial.',
         });
       }
-      if (previousTrial.state === 'ACTIVE') {
+      if (existingSubscription.state === 'ACTIVE') {
         return res.status(400).json({
           ok: false,
           error: 'ALREADY_SUBSCRIBED',
           message: 'You already have an active subscription.',
         });
       }
-      return res.status(400).json({
-        ok: false,
-        error: 'TRIAL_USED',
-        message: 'You have already used your free trial. Please enter an activation code to continue.',
+      if (['GRACE_PERIOD', 'CANCELLED'].includes(existingSubscription.state)) {
+        return res.status(400).json({
+          ok: false,
+          error: 'TRIAL_USED',
+          message: 'You have already used your free trial. Please enter an activation code to continue.',
+        });
+      }
+      // If in PENDING or other state, delete it to allow new trial
+      await prisma.client_subscriptions.delete({
+        where: { client_id: tenantId },
       });
     }
 
@@ -363,16 +366,23 @@ router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
         status: 'trial',
         daysRemaining: trialDays,
         expiresAt: trialEnd.toISOString(),
-        features: basicPlan.features || {},
+        features: basicPlan.feature_flags || {},
         planName: basicPlan.name || 'Trial',
       },
     });
   } catch (error) {
     console.error('[RedemptionRoutes] Start trial error:', error);
+    console.error('[RedemptionRoutes] Error details:', {
+      name: error.name,
+      message: error.message,
+      code: error.code,
+      meta: error.meta,
+    });
     res.status(500).json({
       ok: false,
       error: 'TRIAL_START_FAILED',
       message: 'Failed to start trial. Please try again.',
+      debug: process.env.NODE_ENV === 'development' ? error.message : undefined,
     });
   }
 });
