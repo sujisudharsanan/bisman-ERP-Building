@@ -35,6 +35,7 @@ const DEFAULT_SUBSCRIPTION_PLANS = [
 // Dynamic plan type
 interface DynamicPlan {
   id: string;
+  dbId?: number; // Numeric database ID for API calls
   code: string;
   name: string;
   price: number;
@@ -336,6 +337,7 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
                 .filter((plan: any) => plan.is_active !== false)
                 .map((plan: any) => ({
                   id: (plan.plan_code || plan.code || plan.id)?.toString().toLowerCase(),
+                  dbId: typeof plan.id === 'number' ? plan.id : undefined, // numeric DB id for API
                   code: plan.plan_code || plan.code || '',
                   name: plan.name || '',
                   price: parseFloat(plan.price_monthly) || 0,
@@ -354,21 +356,26 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
                   isActive: plan.is_active !== false,
                 }));
               
-              // Add custom plan option
-              mappedPlans.push({
-                id: 'custom',
-                code: 'CUSTOM',
-                name: 'Custom',
-                price: 0,
-                priceMonthly: 0,
-                currency: 'INR',
-                users: 'Custom',
-                maxUsers: -1,
-                modules: 'Custom',
-                storage: 'Custom',
-                maxStorageGb: -1,
-                support: 'Custom',
-              });
+              // Only add custom plan option if not already present from API
+              const hasCustomPlan = mappedPlans.some(p => 
+                p.id === 'custom' || p.code === 'CUSTOM' || p.name?.toLowerCase() === 'custom'
+              );
+              if (!hasCustomPlan) {
+                mappedPlans.push({
+                  id: 'custom',
+                  code: 'CUSTOM',
+                  name: 'Custom',
+                  price: 0,
+                  priceMonthly: 0,
+                  currency: 'INR',
+                  users: 'Custom',
+                  maxUsers: -1,
+                  modules: 'Custom',
+                  storage: 'Custom',
+                  maxStorageGb: -1,
+                  support: 'Custom',
+                });
+              }
               
               setSubscriptionPlans(mappedPlans);
             }
@@ -504,6 +511,33 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
           durationDays: data.durationDays,
         });
         setCouponError(null);
+        // Redeem/apply coupon on behalf of this client (SuperAdmin assign)
+        if (mode === 'edit' && clientId) {
+          try {
+            const planDbId = data.plan?.id || subscriptionPlans.find(p => p.code?.toLowerCase() === (data.plan?.plan_code || data.plan?.code || '').toLowerCase())?.dbId;
+            if (planDbId) {
+              await fetch(`${API_BASE}/api/subscription-control/tenants/${encodeURIComponent(clientId)}/assign`, {
+                method: 'POST',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ plan_id: planDbId, billing_cycle: 'MONTHLY', reason: `Coupon ${couponCode.trim().toUpperCase()} applied by SuperAdmin` })
+              });
+              // Update local subscription snapshot so Active badge shows immediately
+              setForm(prev => ({
+                ...prev,
+                currentSubscription: {
+                  planId: planDbId,
+                  planCode: (data.plan?.plan_code || data.plan?.code || '').toUpperCase(),
+                  planName: data.plan?.name || '',
+                  state: 'ACTIVE',
+                  isActive: true,
+                }
+              }));
+            }
+          } catch (err) {
+            console.error('[ClientForm] Coupon apply assign error:', err);
+          }
+        }
       } else {
         setCouponError(data.message || 'Invalid coupon code');
         setCouponValid(null);
@@ -543,6 +577,29 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
       
       // Show success message
       alert(`Trial activated! You have ${trialDays} days to try ${selectedPlan.name}. Trial ends on ${trialEndDate.toLocaleDateString()}.`);
+      // Assign plan in backend so Subscriptions page shows this tenant
+      if (mode === 'edit' && clientId && selectedPlan?.dbId) {
+        try {
+          await fetch(`${API_BASE}/api/subscription-control/tenants/${encodeURIComponent(clientId)}/assign`, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ plan_id: selectedPlan.dbId, billing_cycle: 'MONTHLY', reason: 'Trial started by SuperAdmin' })
+          });
+          setForm(prev => ({
+            ...prev,
+            currentSubscription: {
+              planId: selectedPlan.dbId as number,
+              planCode: (selectedPlan.code || selectedPlan.id)?.toString().toUpperCase(),
+              planName: selectedPlan.name,
+              state: 'TRIAL',
+              isActive: true,
+            }
+          }));
+        } catch (err) {
+          console.error('[ClientForm] Start trial assign error:', err);
+        }
+      }
     } catch (error) {
       console.error('Start trial error:', error);
       alert('Failed to start trial. Please try again.');

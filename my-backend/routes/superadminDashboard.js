@@ -384,8 +384,7 @@ router.get('/health/queue', async (req, res) => {
 // Incident / Fallback Endpoints
 // ============================================================================
 
-router.get('/fallback/incidents', async (req, res) => {
-  const { status } = req.query;
+router.get('/fallback/incidents', async (_req, res) => {
   // Return empty array since incident tables may not exist
   res.json({ success: true, data: [] });
 });
@@ -404,8 +403,6 @@ router.get('/security/2fa-stats', async (req, res) => {
     if (!exists) {
       return res.json({ success: true, data: { adoptionRate: 0, enabled: 0, total: 0 } });
     }
-
-    const total = await prisma.users_enhanced.count();
     
     // Check if mfa_enabled column exists on clients
     const clientsWithMfa = await prisma.clients.count({ where: { mfa_enabled: true } });
@@ -725,8 +722,7 @@ router.get('/backup/status', async (req, res) => {
   });
 });
 
-router.get('/backup', async (req, res) => {
-  const { status } = req.query;
+router.get('/backup', async (_req, res) => {
   // Return empty array for failed backups
   res.json({ success: true, data: [] });
 });
@@ -783,7 +779,9 @@ router.get('/kpis', async (req, res) => {
     try {
       await prisma.$queryRaw`SELECT 1`;
       dbHealthy = true;
-    } catch {}
+    } catch {
+      // Ignore database connection errors - dbHealthy remains false
+    }
 
     // Get new tenants this month
     const startOfMonth = new Date();

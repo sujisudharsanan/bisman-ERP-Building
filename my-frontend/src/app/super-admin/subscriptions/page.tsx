@@ -504,13 +504,19 @@ export default function SubscriptionControlPage() {
   // Load tenants for the selected plan
   const loadPlanTenants = useCallback(async (planId: number) => {
     setTenantsLoading(true);
+    console.log('[SubscriptionControl] Loading tenants for plan ID:', planId);
     try {
       const res = await fetch(`${API_BASE}/api/subscription-control/plans/${planId}/tenants`, {
         credentials: 'include',
       });
+      console.log('[SubscriptionControl] Tenants API response status:', res.status);
       if (res.ok) {
         const data = await res.json();
+        console.log('[SubscriptionControl] Tenants data:', data);
         setPlanTenants(data.tenants || []);
+      } else {
+        console.error('[SubscriptionControl] Tenants API error:', res.status, await res.text());
+        setPlanTenants([]);
       }
     } catch (err) {
       console.error('[SubscriptionControl] Load plan tenants error:', err);

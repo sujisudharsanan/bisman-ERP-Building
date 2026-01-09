@@ -215,13 +215,16 @@ export default function ClientManagementPage() {
         other_registrations: registrations.other_registrations || [],
       },
       
-      // Subscription
-      subscription_plan: c.subscriptionPlan || 'starter',
+      // Subscription - use currentSubscription from backend if available
+      subscription_plan: c.currentSubscription?.planCode?.toLowerCase() || c.subscriptionPlan || 'starter',
       subscription_start: c.trial_start_date ? new Date(c.trial_start_date).toISOString().split('T')[0] : '',
       subscription_end: c.trial_end_date ? new Date(c.trial_end_date).toISOString().split('T')[0] : '',
       max_users: c.settings?.max_users || 5,
       storage_limit_gb: c.settings?.storage_limit_gb || 5,
       enabled_modules: c.modules_enabled || [],
+      
+      // Current subscription info for highlighting
+      currentSubscription: c.currentSubscription || null,
       
       // Documents
       documents: ent.documents || c.documents || [],

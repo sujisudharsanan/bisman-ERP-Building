@@ -817,69 +817,77 @@ router.get('/plans/:planId/tenants', ...superAdminOnly, async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Invalid plan ID' });
     }
 
-    // Get all client_subscriptions for this plan, joined with clients table
-    // Note: clients table doesn't have email column, we extract from contact_persons JSONB
-    const tenants = await prisma.$queryRaw`
-      SELECT 
-        cs.id,
-        cs.client_id,
-        cs.plan_id,
-        cs.state,
-        cs.started_at as start_date,
-        cs.expires_at as end_date,
-        cs.billing_cycle,
-        cs.created_at,
-        cs.trial_start_date,
-        cs.trial_end_date,
-        cs.trial_converted,
-        cs.current_period_start,
-        cs.current_period_end,
-        c.name as client_name,
-        COALESCE(c.contact_persons->0->>'email', '') as client_email,
-        -- Calculate days remaining
-        CASE 
-          WHEN cs.trial_end_date IS NOT NULL AND cs.trial_converted = false 
-          THEN GREATEST(0, EXTRACT(DAY FROM cs.trial_end_date - NOW()))
-          ELSE NULL
-        END as trial_days_remaining,
-        CASE 
-          WHEN cs.expires_at IS NOT NULL 
-          THEN GREATEST(0, EXTRACT(DAY FROM cs.expires_at - NOW()))
-          ELSE NULL
-        END as days_until_expiry,
-        -- Determine actual status
-        CASE
-          WHEN cs.trial_converted = false AND cs.trial_end_date IS NOT NULL AND cs.trial_end_date > NOW() THEN 'TRIAL'
-          WHEN cs.trial_converted = false AND cs.trial_end_date IS NOT NULL AND cs.trial_end_date <= NOW() THEN 'TRIAL_EXPIRED'
-          WHEN cs.state = 'ACTIVE' AND cs.expires_at IS NOT NULL AND cs.expires_at <= NOW() THEN 'EXPIRED'
-          ELSE cs.state
-        END as actual_status
-      FROM client_subscriptions cs
-      LEFT JOIN clients c ON c.id = cs.client_id
-      WHERE cs.plan_id = ${planId}
-      ORDER BY cs.created_at DESC
-    `;
+    // Get all client_subscriptions for this plan using Prisma query (more reliable than raw SQL)
+    const subscriptions = await prisma.client_subscriptions.findMany({
+      where: { plan_id: planId },
+      orderBy: { created_at: 'desc' },
+    });
 
-    console.log('[SubscriptionControl] Tenants query result for plan', planId, ':', tenants?.length || 0, 'tenants');
+    // Get client details for each subscription
+    const clientIds = subscriptions.map(s => s.client_id);
+    const clients = await prisma.clients.findMany({
+      where: { id: { in: clientIds } },
+      select: { id: true, name: true, client_code: true, contact_persons: true },
+    });
+    const clientMap = new Map(clients.map(c => [c.id, c]));
 
-    // Parse numeric fields and convert BigInt to Number for JSON serialization
-    const parsedTenants = (tenants || []).map(t => {
-      const parsed = {};
-      for (const [key, value] of Object.entries(t)) {
-        if (typeof value === 'bigint') {
-          parsed[key] = Number(value);
-        } else if (key === 'trial_days_remaining' || key === 'days_until_expiry') {
-          parsed[key] = value ? parseInt(String(value)) : null;
+    // Map subscriptions to tenant format
+    const tenants = subscriptions.map(sub => {
+      const client = clientMap.get(sub.client_id);
+      const contactPersons = client?.contact_persons;
+      const email = Array.isArray(contactPersons) && contactPersons[0]?.email 
+        ? contactPersons[0].email 
+        : '';
+      
+      // Calculate days remaining
+      const now = new Date();
+      let trialDaysRemaining = null;
+      let daysUntilExpiry = null;
+      let actualStatus = sub.state;
+
+      if (sub.trial_end_date && !sub.trial_converted) {
+        const trialEnd = new Date(sub.trial_end_date);
+        trialDaysRemaining = Math.max(0, Math.ceil((trialEnd - now) / (1000 * 60 * 60 * 24)));
+        if (trialEnd > now) {
+          actualStatus = 'TRIAL';
         } else {
-          parsed[key] = value;
+          actualStatus = 'TRIAL_EXPIRED';
+        }
+      } else if (sub.expires_at) {
+        const expiresAt = new Date(sub.expires_at);
+        daysUntilExpiry = Math.max(0, Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24)));
+        if (sub.state === 'ACTIVE' && expiresAt <= now) {
+          actualStatus = 'EXPIRED';
         }
       }
-      return parsed;
+
+      return {
+        id: sub.id,
+        client_id: sub.client_id,
+        plan_id: sub.plan_id,
+        state: sub.state,
+        start_date: sub.started_at,
+        end_date: sub.expires_at,
+        billing_cycle: sub.billing_cycle,
+        created_at: sub.created_at,
+        trial_start_date: sub.trial_start_date,
+        trial_end_date: sub.trial_end_date,
+        trial_converted: sub.trial_converted,
+        current_period_start: sub.current_period_start,
+        current_period_end: sub.current_period_end,
+        client_name: client?.name || `Client ${sub.client_id.substring(0, 8)}`,
+        client_email: email,
+        trial_days_remaining: trialDaysRemaining,
+        days_until_expiry: daysUntilExpiry,
+        actual_status: actualStatus,
+      };
     });
+
+    console.log('[SubscriptionControl] Tenants for plan', planId, ':', tenants.length, 'found');
 
     res.json({
       ok: true,
-      tenants: parsedTenants
+      tenants
     });
   } catch (error) {
     console.error('[SubscriptionControl] Load plan tenants error:', error);
@@ -1293,7 +1301,7 @@ router.post('/tenants/:tenantId/assign', ...superAdminOnly, async (req, res) => 
       SELECT cs.*, sp.plan_code, sp.name as plan_name
       FROM client_subscriptions cs
       LEFT JOIN subscription_plans sp ON sp.id = cs.plan_id
-      WHERE cs.client_id = ${tenantId} AND cs.state IN ('ACTIVE', 'TRIAL', 'PENDING')
+  WHERE cs.client_id = ${tenantId}::uuid AND cs.state IN ('ACTIVE', 'TRIAL')
     `;
     const oldSubscription = oldSubscriptions[0];
 
@@ -1326,9 +1334,17 @@ router.post('/tenants/:tenantId/assign', ...superAdminOnly, async (req, res) => 
       periodEnd.setMonth(periodEnd.getMonth() + 1);
     }
 
-    // Create new subscription
-    const newSubscription = await prisma.client_subscriptions.create({
-      data: {
+    // Upsert subscription for this tenant (unique on client_id)
+    const newSubscription = await prisma.client_subscriptions.upsert({
+      where: { client_id: tenantId },
+      update: {
+        plan_id: parseInt(plan_id),
+        state: 'ACTIVE',
+        billing_cycle: billing_cycle,
+        current_period_start: now,
+        current_period_end: periodEnd
+      },
+      create: {
         client_id: tenantId,
         plan_id: parseInt(plan_id),
         state: 'ACTIVE',

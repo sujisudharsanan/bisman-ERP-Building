@@ -22,6 +22,9 @@ export default function EditClientPage() {
         if (!res.ok) throw new Error(json.error || 'Failed to fetch client');
         const c = json.data;
         
+        // Debug: log currentSubscription from API
+        console.log('[EditClient] API response currentSubscription:', c.currentSubscription);
+        
         // Store raw data for components that need it (like logo)
         setRawData(c);
         
