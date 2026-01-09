@@ -84,7 +84,7 @@ router.get('/metrics', ...superAdminOnly, async (req, res) => {
         ORDER BY total_usage DESC
         LIMIT 10
       `;
-    } catch (e) {
+    } catch {
       // Table may not exist
     }
 
@@ -103,7 +103,7 @@ router.get('/metrics', ...superAdminOnly, async (req, res) => {
         ORDER BY block_count DESC
         LIMIT 10
       `;
-    } catch (e) {
+    } catch {
       // Table may not exist
     }
 
@@ -119,7 +119,7 @@ router.get('/metrics', ...superAdminOnly, async (req, res) => {
         WHERE billing_period_start >= DATE_TRUNC('month', NOW())
         GROUP BY source_type
       `;
-    } catch (e) {
+    } catch {
       // Table may not exist
     }
 
@@ -1030,12 +1030,13 @@ router.get('/tenants', ...superAdminOnly, async (req, res) => {
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
     // Use raw query for proper join since Prisma doesn't have relation defined
+    // Note: clients table doesn't have email column, extract from contact_persons JSONB
     let baseQuery = `
       SELECT 
         c.id as tenant_id,
         c.name as tenant_name,
         c.client_code,
-        c.email,
+        COALESCE(c.contact_persons->0->>'email', '') as email,
         cs.id as assignment_id,
         cs.plan_id,
         sp.plan_code,
@@ -1044,7 +1045,7 @@ router.get('/tenants', ...superAdminOnly, async (req, res) => {
         cs.current_period_start as effective_from,
         cs.state as subscription_state
       FROM clients c
-      LEFT JOIN client_subscriptions cs ON cs.client_id = c.id::text AND cs.state IN ('ACTIVE', 'TRIAL', 'PENDING')
+      LEFT JOIN client_subscriptions cs ON cs.client_id = c.id AND cs.state IN ('ACTIVE', 'TRIAL', 'PENDING')
       LEFT JOIN subscription_plans sp ON sp.id = cs.plan_id
       WHERE 1=1
     `;
@@ -1459,13 +1460,12 @@ router.post('/custom/tenants/:tenantId', ...superAdminOnly, async (req, res) => 
       SELECT id FROM custom_tenant_plan_configurations WHERE tenant_id = ${tenantId}::uuid
     `;
 
-    let result;
     const userId = req.user?.id || 0;
     const userEmail = req.user?.email || '';
 
     if (existingConfig && existingConfig.length > 0) {
       // Update existing config
-      result = await prisma.$executeRaw`
+      await prisma.$executeRaw`
         UPDATE custom_tenant_plan_configurations SET
           price_monthly = ${price_monthly},
           price_yearly = ${price_yearly},
@@ -1488,7 +1488,7 @@ router.post('/custom/tenants/:tenantId', ...superAdminOnly, async (req, res) => 
       `;
     } else {
       // Create new config
-      result = await prisma.$executeRaw`
+      await prisma.$executeRaw`
         INSERT INTO custom_tenant_plan_configurations (
           tenant_id, price_monthly, price_yearly, override_pricing, pricing_notes,
           max_users, max_branches, max_storage_gb, governance_rules,
