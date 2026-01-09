@@ -974,6 +974,18 @@ router.get('/sync', async (req, res) => {
  */
 router.get('/sync/initial', async (req, res) => {
   try {
+    // SUPER_ADMIN bypass - they don't participate in tenant chat threads
+    if (req.user?.role === 'SUPER_ADMIN' || req.user?.userType === 'SUPER_ADMIN') {
+      console.log('[Sync] SUPER_ADMIN detected - returning empty chat state');
+      return res.json({
+        threads: [],
+        total: 0,
+        totalUnread: 0,
+        hasMore: false,
+        syncedAt: new Date().toISOString()
+      });
+    }
+    
     const userId = getChatUserId(req);
     const messagesPerThread = Math.min(parseInt(req.query.messages_per_thread) || 20, 50);
 

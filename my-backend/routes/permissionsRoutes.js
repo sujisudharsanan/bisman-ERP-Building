@@ -20,15 +20,6 @@ const roleBasedPages = {
 // Security fix PM-01: Frontend must fetch from this endpoint, not use hardcoded maps
 router.get('/me', authMiddleware.authenticate, async (req, res) => {
   try {
-    const prisma = getPrisma();
-    if (!prisma) {
-      return res.status(500).json({
-        success: false,
-        error: { message: 'Database not available', code: 'DB_ERROR' },
-        timestamp: new Date().toISOString()
-      });
-    }
-
     const user = req.user;
     if (!user || !user.id) {
       return res.status(401).json({
@@ -38,8 +29,41 @@ router.get('/me', authMiddleware.authenticate, async (req, res) => {
       });
     }
 
+    const userRole = (user.role || user.userType || '').toUpperCase();
+    
+    // SUPER_ADMIN BYPASS - No DB queries, full access
+    if (userRole === 'SUPER_ADMIN' || user.userType === 'SUPER_ADMIN') {
+      console.log('[permissions/me] SUPER_ADMIN detected - returning full access');
+      return res.json({
+        success: true,
+        data: {
+          userId: user.id,
+          role: 'SUPER_ADMIN',
+          business_level: 99,
+          tenant_id: null,
+          allowedPages: ['*'],
+          permissions: { '*': { '*': ['*'] } },
+          cached: false
+        },
+        role: 'SUPER_ADMIN',
+        permissions: ['*'],
+        modules: ['*'],
+        allowedPages: ['*'],
+        timestamp: new Date().toISOString()
+      });
+    }
+    
+    const prisma = getPrisma();
+    if (!prisma) {
+      return res.status(500).json({
+        success: false,
+        error: { message: 'Database not available', code: 'DB_ERROR' },
+        timestamp: new Date().toISOString()
+      });
+    }
+
     const userId = user.id;
-    const userRole = (user.role || '').toUpperCase();
+    const normalizedRole = (user.role || '').toUpperCase();
     const businessLevel = user.business_level || 1;
 
     // ✅ Check cache first
@@ -51,7 +75,7 @@ router.get('/me', authMiddleware.authenticate, async (req, res) => {
         success: true,
         data: {
           userId,
-          role: userRole,
+          role: normalizedRole,
           business_level: businessLevel,
           tenant_id: user.tenant_id || null,
           allowedPages: cached.allowedPages,
@@ -78,7 +102,7 @@ router.get('/me', authMiddleware.authenticate, async (req, res) => {
 
     // 2. Get role-based RBAC permissions
     const roleRecord = await prisma.rbac_roles.findFirst({
-      where: { name: { equals: userRole, mode: 'insensitive' } },
+      where: { name: { equals: normalizedRole, mode: 'insensitive' } },
       select: { id: true }
     });
 
@@ -104,8 +128,8 @@ router.get('/me', authMiddleware.authenticate, async (req, res) => {
     }
 
     // 3. Add role-based default pages
-    if (roleBasedPages[userRole]) {
-      const rolePagesSet = new Set([...allowedPages, ...roleBasedPages[userRole]]);
+    if (roleBasedPages[normalizedRole]) {
+      const rolePagesSet = new Set([...allowedPages, ...roleBasedPages[normalizedRole]]);
       allowedPages = Array.from(rolePagesSet);
     }
 
@@ -118,7 +142,7 @@ router.get('/me', authMiddleware.authenticate, async (req, res) => {
       success: true,
       data: {
         userId,
-        role: userRole,
+        role: normalizedRole,
         business_level: businessLevel,
         tenant_id: user.tenant_id || null,
         allowedPages,

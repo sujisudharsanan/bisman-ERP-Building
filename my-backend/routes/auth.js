@@ -554,104 +554,30 @@ router.get('/me/permissions', async (req, res) => {
 
     const decoded = jwt.verify(token, ACCESS_TOKEN_SECRET);
     
-    // Handle SUPER_ADMIN
-    if (decoded.userType === 'SUPER_ADMIN') {
-      try {
-        const superAdmin = await prisma.super_admins.findUnique({
-          where: { id: decoded.id },
-          select: { id: true, email: true, name: true, productType: true }
-        });
-
-        if (!superAdmin) {
-          return res.status(401).json({ message: 'User not found' });
-        }
-
-        // Fetch module assignments with pages (best-effort)
-        let moduleAssignments = [];
-        try {
-          moduleAssignments = await prisma.module_assignments.findMany({
-            where: { super_admin_id: superAdmin.id },
-            include: { modules: true }
-          });
-        } catch (e) {
-          console.warn('[me/permissions] Module assignments lookup failed:', e.message);
-        }
-
-        const assignedModules = moduleAssignments.map(ma => ma.modules?.module_name).filter(Boolean);
-
-        // Build page permissions from assigned modules
-        const pagePermissions = {};
-        const allPages = [];
-
-        for (const ma of moduleAssignments) {
-          const moduleName = ma.modules?.module_name;
-          if (!moduleName) continue;
-          try {
-            const modulePages = await prisma.master_module_pages.findMany({
-              where: { module_name: moduleName, is_active: true },
-              select: { page_key: true, path: true }
-            });
-            const pageKeys = modulePages.map(p => p.page_key || p.path).filter(Boolean);
-            pagePermissions[moduleName] = pageKeys;
-            allPages.push(...pageKeys);
-          } catch (e) {
-            console.warn(`[me/permissions] Could not fetch pages for module ${moduleName}:`, e.message);
+    // Handle SUPER_ADMIN - BYPASS ALL DB QUERIES
+    // SUPER_ADMIN is a platform-level role with unrestricted access
+    if (decoded.userType === 'SUPER_ADMIN' || decoded.role === 'SUPER_ADMIN') {
+      console.log('[me/permissions] SUPER_ADMIN detected - returning full access (no DB queries)');
+      return res.json({
+        success: true,
+        user: {
+          id: decoded.id,
+          email: decoded.email || '',
+          name: decoded.name || 'Super Admin',
+          role: 'SUPER_ADMIN',
+          userType: 'SUPER_ADMIN',
+          permissions: {
+            assignedModules: ['*'],
+            pagePermissions: { '*': ['*'] },
+            allPages: ['*']
           }
-        }
-
-        // Fallback default pages for Super Admin
-        if (allPages.length === 0) {
-          const superAdminPages = [
-            '/dashboard',
-            '/system/roles-users-report',
-            '/admin/contracts',
-            '/admin/contracts/create',
-            '/compliance/agreements',
-            '/settings',
-            '/settings/profile',
-            '/settings/security',
-            '/system/user-management',
-            '/admin/user-management',
-            '/client-management'
-          ];
-          pagePermissions['default'] = superAdminPages;
-          allPages.push(...superAdminPages);
-        }
-
-        return res.json({
-          success: true,
-          user: {
-            id: superAdmin.id,
-            email: superAdmin.email,
-            name: superAdmin.name,
-            role: 'SUPER_ADMIN',
-            userType: 'SUPER_ADMIN',
-            permissions: {
-              assignedModules,
-              pagePermissions,
-              allPages: [...new Set(allPages)]
-            }
-          }
-        });
-      } catch (e) {
-        console.error('[me/permissions] SUPER_ADMIN fallback due to error:', e.message);
-        // Hard fallback: return minimal default access to unblock UI
-        return res.json({
-          success: true,
-          user: {
-            id: decoded.id,
-            email: decoded.email || '',
-            name: decoded.name || 'Super Admin',
-            role: 'SUPER_ADMIN',
-            userType: 'SUPER_ADMIN',
-            permissions: {
-              assignedModules: [],
-              pagePermissions: { default: ['/dashboard', '/system/roles-users-report'] },
-              allPages: ['/dashboard', '/system/roles-users-report']
-            }
-          }
-        });
-      }
+        },
+        // Additional fields for compatibility
+        role: 'SUPER_ADMIN',
+        permissions: ['*'],
+        modules: ['*'],
+        allowedPages: ['*']
+      });
     }
     
     // Handle ENTERPRISE_ADMIN

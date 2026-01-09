@@ -149,6 +149,9 @@ router.get('/metrics', ...superAdminOnly, async (req, res) => {
  */
 router.get('/plans', ...superAdminOnly, async (req, res) => {
   try {
+    // Log request for debugging
+    console.log('[SubscriptionControl] GET /plans - User:', req.user?.role, req.user?.userType);
+    
     const prisma = getPrisma();
     if (!prisma) {
       console.error('[SubscriptionControl] Prisma client not available');
@@ -159,10 +162,16 @@ router.get('/plans', ...superAdminOnly, async (req, res) => {
     // Query from subscription_plans (the Prisma-based system) with client_subscriptions counts
     const whereClause = include_archived === 'true' ? {} : { is_active: true };
     
-    const plans = await prisma.subscription_plans.findMany({
-      where: whereClause,
-      orderBy: [{ sort_order: 'asc' }, { name: 'asc' }],
-    });
+    let plans = [];
+    try {
+      plans = await prisma.subscription_plans.findMany({
+        where: whereClause,
+        orderBy: [{ sort_order: 'asc' }, { name: 'asc' }],
+      });
+    } catch (planErr) {
+      console.error('[SubscriptionControl] Failed to fetch plans:', planErr.message);
+      return res.status(500).json({ ok: false, error: 'Failed to query plans', plans: [], details: planErr.message });
+    }
 
     // Get tenant counts from client_subscriptions
     let tenantCounts = [];
