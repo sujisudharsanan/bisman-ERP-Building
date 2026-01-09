@@ -150,6 +150,10 @@ router.get('/metrics', ...superAdminOnly, async (req, res) => {
 router.get('/plans', ...superAdminOnly, async (req, res) => {
   try {
     const prisma = getPrisma();
+    if (!prisma) {
+      console.error('[SubscriptionControl] Prisma client not available');
+      return res.status(500).json({ ok: false, error: 'Database unavailable', plans: [] });
+    }
     const { include_archived = 'false' } = req.query;
 
     // Query from subscription_plans (the Prisma-based system) with client_subscriptions counts
@@ -220,8 +224,9 @@ router.get('/plans', ...superAdminOnly, async (req, res) => {
       plans: mappedPlans
     });
   } catch (error) {
-    console.error('[SubscriptionControl] List plans error:', error);
-    res.status(500).json({ ok: false, error: 'Failed to fetch plans' });
+    console.error('[SubscriptionControl] List plans error:', error.message, error.code, error.meta);
+    // Return empty plans with error flag so frontend doesn't crash
+    res.status(500).json({ ok: false, error: 'Failed to fetch plans', plans: [], details: error.message });
   }
 });
 
