@@ -17,8 +17,11 @@ export function useSocket(): UseSocketReturn {
   const [connected, setConnected] = useState(false);
 
   useEffect(() => {
-    // Get API URL from environment or default
-    const apiUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001';
+    // Get API URL - in production use Railway backend, in dev use localhost
+    const isProd = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+    const apiUrl = isProd
+      ? 'https://bisman-erp-backend-production.up.railway.app'
+      : (process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001');
     
     // Initialize Socket.IO client
     const socketInstance = io(apiUrl, {

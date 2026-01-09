@@ -81,8 +81,11 @@ export const SocketProvider: React.FC<SocketProviderProps> = ({ children }) => {
       return;
     }
 
-    // Determine backend URL
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001';
+    // Determine backend URL - use Railway in production, localhost in dev
+    const isProd = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+    const backendUrl = isProd
+      ? 'https://bisman-erp-backend-production.up.railway.app'
+      : (process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001');
     
     console.log('[Socket] Connecting to:', backendUrl);
     console.log('[Socket] Auth token found, establishing connection...');

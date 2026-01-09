@@ -69,7 +69,7 @@ let nextConfig = {
       styleSrc,
       `img-src 'self' data: https://${jitsi}`,
       "font-src 'self' data:",
-      `connect-src 'self' wss://${jitsi} https://${jitsi} https://${turn}`,
+      `connect-src 'self' https: wss: wss://${jitsi} https://${jitsi} https://${turn}`,
       `media-src 'self' https://${jitsi}`,
       `frame-src 'self' https://${jitsi}`,
       "frame-ancestors 'none'",

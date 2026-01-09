@@ -131,12 +131,14 @@ export function useReportSocket(options: UseReportSocketOptions = {}): UseReport
     setConnecting(true);
     setError(null);
 
-    // Determine backend URL
-    const backendUrl = process.env.NEXT_PUBLIC_API_URL || 
-                       process.env.NEXT_PUBLIC_BACKEND_URL || 
-                       'http://localhost:3001';
+    // Determine backend URL for WebSocket connection
+    // In production, use the Railway backend URL; in dev, use localhost
+    const isProd = typeof window !== 'undefined' && window.location.hostname !== 'localhost';
+    const backendUrl = isProd
+      ? 'https://bisman-erp-backend-production.up.railway.app'
+      : (process.env.NEXT_PUBLIC_API_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://localhost:3001');
 
-    console.log('[ReportSocket] Connecting to:', `${backendUrl}/reports`);
+    console.log('[ReportContext] Connecting to:', `${backendUrl}/reports`);
 
     // Create socket connection to /reports namespace
     const newSocket = io(`${backendUrl}/reports`, {
