@@ -4150,6 +4150,20 @@ app.get('/api/auth/permissions', authenticate, async (req, res) => {
     return res.status(401).json({ error: 'Authentication required.' });
   }
 
+  // ✅ SUPER_ADMIN BYPASS - Return full access immediately without DB queries
+  const userRole = (req.user.role || req.user.roleName || req.user.userType || '').toUpperCase();
+  if (userRole === 'SUPER_ADMIN' || req.user.userType === 'SUPER_ADMIN') {
+    console.log('[/api/auth/permissions] SUPER_ADMIN bypass - returning full access');
+    return res.json({ 
+      permissions: ['*', '*.*'],
+      role: 'SUPER_ADMIN',
+      userId: req.user.id,
+      modules: ['*'],
+      allowedPages: ['*'],
+      _bypass: 'SUPER_ADMIN full access'
+    });
+  }
+
   try {
     const userId = req.user.id
     
