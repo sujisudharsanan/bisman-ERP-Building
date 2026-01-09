@@ -260,19 +260,25 @@ router.get('/clients/:id', authMiddleware, async (req, res) => {
 // Update client (partial)
 router.patch('/clients/:id', authMiddleware, async (req, res) => {
   try {
+    const prismaClient = getPrisma();
+    if (!prismaClient) {
+      return res.status(503).json({ error: 'Database temporarily unavailable' });
+    }
     const user = req.user;
     const clientId = String(req.params.id);
-    console.log('[PATCH client] clientId:', clientId, 'user:', { id: user?.id, role: user?.role, super_admin_id: user?.super_admin_id });
+    console.log('[PATCH client] clientId:', clientId, 'user:', { id: user?.id, role: user?.role, super_admin_id: user?.super_admin_id, userType: user?.userType });
     console.log('[PATCH client] body keys:', Object.keys(req.body || {}));
-    const existing = await prisma.clients.findUnique({ where: { id: clientId } });
+    const existing = await prismaClient.clients.findUnique({ where: { id: clientId } });
     if (!existing) return res.status(404).json({ error: 'Client not found' });
     console.log('[PATCH client] existing.super_admin_id:', existing.super_admin_id);
     const role = user?.role;
-    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
-    const isSuperAdminRole = role === 'SUPER_ADMIN';
+    const userType = user?.userType;
+    // Allow SUPER_ADMIN userType or role to update any client
+    const isSuperAdminUser = userType === 'SUPER_ADMIN' || role === 'SUPER_ADMIN';
+    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || isSuperAdminUser || role === 'ADMIN';
     const ownsClient = user?.super_admin_id === existing.super_admin_id || user?.id === existing.super_admin_id;
-    console.log('[PATCH client] allowed:', allowed, 'isSuperAdminRole:', isSuperAdminRole, 'ownsClient:', ownsClient);
-    if (!allowed || (!isPlatformAdmin(role) && !isSuperAdminRole && !ownsClient)) return res.status(403).json({ error: 'Forbidden' });
+    console.log('[PATCH client] allowed:', allowed, 'isSuperAdminUser:', isSuperAdminUser, 'ownsClient:', ownsClient);
+    if (!allowed || (!isPlatformAdmin(role) && !isSuperAdminUser && !ownsClient)) return res.status(403).json({ error: 'Forbidden' });
     const b = req.body || {};
     const e0 = (existing.settings && existing.settings.enterprise) ? existing.settings.enterprise : {};
     const enterprise = {
@@ -351,7 +357,7 @@ router.patch('/clients/:id', authMiddleware, async (req, res) => {
         
         try {
           // Check if user already exists
-          const existingUser = await prisma.user.findUnique({ 
+          const existingUser = await prismaClient.user.findUnique({ 
             where: { email: adminUser.email },
             select: { id: true, tenant_id: true, email: true, username: true }
           });
@@ -362,7 +368,7 @@ router.patch('/clients/:id', authMiddleware, async (req, res) => {
               // Update existing user if password provided
               if (adminUser.password && adminUser.password.length >= 6) {
                 const hashed = await bcrypt.hash(adminUser.password, 10);
-                await prisma.user.update({
+                await prismaClient.user.update({
                   where: { id: existingUser.id },
                   data: { 
                     password_hash: hashed,
@@ -388,7 +394,7 @@ router.patch('/clients/:id', authMiddleware, async (req, res) => {
             const username = adminUser.name || adminUser.email.split('@')[0];
             const hashed = await bcrypt.hash(adminUser.password, 10);
             
-            const newUser = await prisma.user.create({
+            const newUser = await prismaClient.user.create({
               data: {
                 tenant_id: clientId,
                 username: username,
@@ -409,7 +415,7 @@ router.patch('/clients/:id', authMiddleware, async (req, res) => {
       }
     }
     
-    const updated = await prisma.clients.update({ 
+    const updated = await prismaClient.clients.update({ 
       where: { id: clientId }, 
       data: { 
         settings: newSettings,

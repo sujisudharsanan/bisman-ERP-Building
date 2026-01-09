@@ -862,12 +862,20 @@ router.get('/plans/:planId/tenants', ...superAdminOnly, async (req, res) => {
 
     console.log('[SubscriptionControl] Tenants query result for plan', planId, ':', tenants?.length || 0, 'tenants');
 
-    // Parse numeric fields
-    const parsedTenants = (tenants || []).map(t => ({
-      ...t,
-      trial_days_remaining: t.trial_days_remaining ? parseInt(t.trial_days_remaining) : null,
-      days_until_expiry: t.days_until_expiry ? parseInt(t.days_until_expiry) : null
-    }));
+    // Parse numeric fields and convert BigInt to Number for JSON serialization
+    const parsedTenants = (tenants || []).map(t => {
+      const parsed = {};
+      for (const [key, value] of Object.entries(t)) {
+        if (typeof value === 'bigint') {
+          parsed[key] = Number(value);
+        } else if (key === 'trial_days_remaining' || key === 'days_until_expiry') {
+          parsed[key] = value ? parseInt(String(value)) : null;
+        } else {
+          parsed[key] = value;
+        }
+      }
+      return parsed;
+    });
 
     res.json({
       ok: true,
