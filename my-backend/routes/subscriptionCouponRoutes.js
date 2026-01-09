@@ -293,18 +293,18 @@ router.get('/audit/log', ...superAdminOnly, async (req, res) => {
     if (eventType) where.event_type = eventType;
 
     const [logs, total] = await Promise.all([
-      prisma.subscriptionCouponAuditLog.findMany({
+      prisma.subscription_coupon_audit_logs.findMany({
         where,
         orderBy: { created_at: 'desc' },
         take: parseInt(limit),
         skip: parseInt(offset),
         include: {
-          coupon: { select: { code: true } },
-          tenant: { select: { name: true } },
-          actor: { select: { first_name: true, last_name: true, email: true } },
+          subscription_coupons: { select: { code: true } },
+          clients: { select: { name: true } },
+          users_enhanced: { select: { first_name: true, last_name: true, email: true } },
         },
       }),
-      prisma.subscriptionCouponAuditLog.count({ where }),
+      prisma.subscription_coupon_audit_logs.count({ where }),
     ]);
 
     res.json({

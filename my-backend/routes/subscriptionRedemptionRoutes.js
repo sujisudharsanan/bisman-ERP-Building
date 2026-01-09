@@ -321,7 +321,7 @@ router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
     const trialEnd = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
 
     // Create trial subscription
-    await prisma.client_subscriptions.create({
+    const newSubscription = await prisma.client_subscriptions.create({
       data: {
         client_id: tenantId,
         plan_id: basicPlan.id,
@@ -335,21 +335,26 @@ router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
       },
     });
 
-    // Log the trial start
-    await prisma.subscriptionCouponAuditLog.create({
-      data: {
-        action: 'TRIAL_STARTED',
-        actor_id: req.user.id,
-        tenant_id: tenantId,
-        details: {
-          trialDays: trialDays,
-          expiresAt: trialEnd.toISOString(),
-          planId: basicPlan.id,
-          planName: basicPlan.name,
+    // Log the trial start (using correct model and field names)
+    try {
+      await prisma.subscription_coupon_audit_logs.create({
+        data: {
+          event_type: 'TRIAL_STARTED',
+          actor_user_id: req.user.id,
+          subscription_id: newSubscription.id,
+          payload_snapshot: {
+            trialDays: trialDays,
+            expiresAt: trialEnd.toISOString(),
+            planId: basicPlan.id,
+            planName: basicPlan.name,
+          },
+          ip_address: req.ip || req.connection?.remoteAddress || null,
         },
-        ip_address: req.ip || req.connection?.remoteAddress,
-      },
-    });
+      });
+    } catch (auditError) {
+      // Don't fail trial start if audit logging fails
+      console.error('[RedemptionRoutes] Audit log error (non-fatal):', auditError.message);
+    }
 
     res.json({
       ok: true,
@@ -437,7 +442,7 @@ router.post('/activate-free', ...clientAdminOnly, async (req, res) => {
     });
 
     // Create free subscription (no expiration)
-    await prisma.client_subscriptions.create({
+    const freeSubscription = await prisma.client_subscriptions.create({
       data: {
         client_id: tenantId,
         plan_id: freePlan.id,
@@ -458,21 +463,26 @@ router.post('/activate-free', ...clientAdminOnly, async (req, res) => {
       },
     });
 
-    // Log the activation
-    await prisma.subscriptionCouponAuditLog.create({
-      data: {
-        action: 'FREE_PLAN_ACTIVATED',
-        actor_id: req.user.id,
-        tenant_id: tenantId,
-        details: {
-          planId: freePlan.id,
-          planName: freePlan.name,
-          maxUsers: freePlan.max_users,
-          maxStorageGb: freePlan.max_storage_gb,
+    // Log the activation (using correct model and field names)
+    try {
+      await prisma.subscription_coupon_audit_logs.create({
+        data: {
+          event_type: 'FREE_PLAN_ACTIVATED',
+          actor_user_id: req.user.id,
+          subscription_id: freeSubscription.id,
+          payload_snapshot: {
+            planId: freePlan.id,
+            planName: freePlan.name,
+            maxUsers: freePlan.max_users,
+            maxStorageGb: freePlan.max_storage_gb,
+          },
+          ip_address: req.ip || req.connection?.remoteAddress || null,
         },
-        ip_address: req.ip || req.connection?.remoteAddress,
-      },
-    });
+      });
+    } catch (auditError) {
+      // Don't fail activation if audit logging fails
+      console.error('[RedemptionRoutes] Audit log error (non-fatal):', auditError.message);
+    }
 
     res.json({
       ok: true,
