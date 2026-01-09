@@ -161,11 +161,17 @@ router.get('/plans', ...superAdminOnly, async (req, res) => {
     });
 
     // Get tenant counts from client_subscriptions
-    const tenantCounts = await prisma.client_subscriptions.groupBy({
-      by: ['plan_id'],
-      where: { state: { in: ['ACTIVE', 'TRIAL'] } },
-      _count: { id: true },
-    });
+    let tenantCounts = [];
+    try {
+      tenantCounts = await prisma.client_subscriptions.groupBy({
+        by: ['plan_id'],
+        where: { state: { in: ['ACTIVE', 'TRIAL'] } },
+        _count: { id: true },
+      });
+    } catch (e) {
+      console.warn('[SubscriptionControl] tenant counts fallback:', e.message);
+      tenantCounts = [];
+    }
 
     const tenantCountMap = new Map(tenantCounts.map(tc => [tc.plan_id, tc._count.id]));
 
