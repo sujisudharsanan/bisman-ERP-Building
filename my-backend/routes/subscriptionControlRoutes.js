@@ -46,6 +46,131 @@ async function logPlanChange(prisma, data, req) {
 }
 
 // ============================================================================
+// HELPER: Default/fallback plans for when DB is unavailable
+// ============================================================================
+
+function getDefaultPlans() {
+  return [
+    {
+      id: 1,
+      code: 'FREE',
+      name: 'Free',
+      description: 'Get started with basic features',
+      short_description: 'Basic features for small teams',
+      badge_text: null,
+      price_monthly: 0,
+      price_yearly: 0,
+      currency: 'INR',
+      max_users: 3,
+      max_branches: 1,
+      max_storage_gb: 1,
+      max_api_calls_day: 100,
+      feature_flags: {},
+      sort_order: 0,
+      is_popular: false,
+      is_enterprise: false,
+      is_custom: false,
+      is_active: true,
+      is_public: true,
+      status: 'active',
+      cta_text: 'Start Free',
+      cta_action: 'subscribe',
+      trial_enabled: false,
+      trial_days: 0,
+      active_tenant_count: 0,
+      total_features: 0,
+    },
+    {
+      id: 2,
+      code: 'BASIC',
+      name: 'Basic',
+      description: 'Essential features for growing businesses',
+      short_description: 'For small businesses',
+      badge_text: null,
+      price_monthly: 999,
+      price_yearly: 9990,
+      currency: 'INR',
+      max_users: 10,
+      max_branches: 3,
+      max_storage_gb: 10,
+      max_api_calls_day: 1000,
+      feature_flags: {},
+      sort_order: 1,
+      is_popular: false,
+      is_enterprise: false,
+      is_custom: false,
+      is_active: true,
+      is_public: true,
+      status: 'active',
+      cta_text: 'Get Started',
+      cta_action: 'subscribe',
+      trial_enabled: true,
+      trial_days: 14,
+      active_tenant_count: 0,
+      total_features: 0,
+    },
+    {
+      id: 3,
+      code: 'PROFESSIONAL',
+      name: 'Professional',
+      description: 'Advanced features for larger teams',
+      short_description: 'For medium businesses',
+      badge_text: 'Popular',
+      price_monthly: 2499,
+      price_yearly: 24990,
+      currency: 'INR',
+      max_users: 50,
+      max_branches: 10,
+      max_storage_gb: 50,
+      max_api_calls_day: 10000,
+      feature_flags: {},
+      sort_order: 2,
+      is_popular: true,
+      is_enterprise: false,
+      is_custom: false,
+      is_active: true,
+      is_public: true,
+      status: 'active',
+      cta_text: 'Get Started',
+      cta_action: 'subscribe',
+      trial_enabled: true,
+      trial_days: 14,
+      active_tenant_count: 0,
+      total_features: 0,
+    },
+    {
+      id: 4,
+      code: 'ENTERPRISE',
+      name: 'Enterprise',
+      description: 'Full-featured solution for large organizations',
+      short_description: 'For large enterprises',
+      badge_text: 'Best Value',
+      price_monthly: 9999,
+      price_yearly: 99990,
+      currency: 'INR',
+      max_users: 500,
+      max_branches: 100,
+      max_storage_gb: 500,
+      max_api_calls_day: 100000,
+      feature_flags: {},
+      sort_order: 3,
+      is_popular: false,
+      is_enterprise: true,
+      is_custom: false,
+      is_active: true,
+      is_public: true,
+      status: 'active',
+      cta_text: 'Contact Sales',
+      cta_action: 'contact',
+      trial_enabled: false,
+      trial_days: 0,
+      active_tenant_count: 0,
+      total_features: 0,
+    },
+  ];
+}
+
+// ============================================================================
 // DASHBOARD METRICS
 // ============================================================================
 
@@ -155,7 +280,12 @@ router.get('/plans', ...superAdminOnly, async (req, res) => {
     const prisma = getPrisma();
     if (!prisma) {
       console.error('[SubscriptionControl] Prisma client not available');
-      return res.status(500).json({ ok: false, error: 'Database unavailable', plans: [] });
+      // Return fallback plans instead of error for SUPER_ADMIN
+      return res.json({ 
+        ok: true, 
+        plans: getDefaultPlans(),
+        source: 'fallback-no-prisma'
+      });
     }
     const { include_archived = 'false' } = req.query;
 
@@ -170,7 +300,23 @@ router.get('/plans', ...superAdminOnly, async (req, res) => {
       });
     } catch (planErr) {
       console.error('[SubscriptionControl] Failed to fetch plans:', planErr.message);
-      return res.status(500).json({ ok: false, error: 'Failed to query plans', plans: [], details: planErr.message });
+      // Return fallback plans instead of 500 error
+      return res.json({ 
+        ok: true, 
+        plans: getDefaultPlans(),
+        source: 'fallback-query-error',
+        error: planErr.message
+      });
+    }
+
+    // If no plans found, return defaults
+    if (!plans || plans.length === 0) {
+      console.log('[SubscriptionControl] No plans in database, returning defaults');
+      return res.json({ 
+        ok: true, 
+        plans: getDefaultPlans(),
+        source: 'fallback-empty-db'
+      });
     }
 
     // Get tenant counts from client_subscriptions
@@ -234,8 +380,13 @@ router.get('/plans', ...superAdminOnly, async (req, res) => {
     });
   } catch (error) {
     console.error('[SubscriptionControl] List plans error:', error.message, error.code, error.meta);
-    // Return empty plans with error flag so frontend doesn't crash
-    res.status(500).json({ ok: false, error: 'Failed to fetch plans', plans: [], details: error.message });
+    // Return fallback plans instead of 500 error so frontend doesn't crash
+    res.json({ 
+      ok: true, 
+      plans: getDefaultPlans(),
+      source: 'fallback-catch-error',
+      error: error.message
+    });
   }
 });
 
