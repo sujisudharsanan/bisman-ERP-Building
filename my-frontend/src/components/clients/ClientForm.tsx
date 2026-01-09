@@ -284,6 +284,7 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
       // Check for logo in settings.logo.data or settings.logo (from welcome activation)
       const settings = (initial as any)?.settings;
       console.log('[ClientForm] Edit mode - settings:', settings);
+      console.log('[ClientForm] Edit mode - currentSubscription:', (initial as any)?.currentSubscription);
       
       // Try multiple possible logo locations
       const logoData = settings?.logo?.data || settings?.logo || settings?.company_logo;
@@ -1199,8 +1200,9 @@ Your 14-day trial has started. The admin can login immediately.`;
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {subscriptionPlans.map(plan => {
                   // Check if this is the client's current active subscription plan
-                  const isCurrentPlan = form.currentSubscription?.planId?.toString() === plan.id || 
-                                        form.currentSubscription?.planCode === plan.id;
+                  // plan.id is lowercase (e.g., "free"), planCode is uppercase (e.g., "FREE")
+                  const isCurrentPlan = form.currentSubscription?.planCode?.toLowerCase() === plan.id?.toLowerCase() ||
+                                        form.currentSubscription?.planId?.toString() === plan.id;
                   const isSelected = form.subscription_plan === plan.id;
                   
                   return (
