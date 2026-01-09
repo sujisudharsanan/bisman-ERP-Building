@@ -312,14 +312,18 @@ export default function ClientForm({ initial, mode, clientId, onSuccess }: Clien
         
         if (response.ok) {
           const data = await response.json();
-          if (data.ok && data.plans) {
-            if (data.plans.length === 0) {
+          // Handle both response formats: { ok: true, plans: [...] } and { success: true, data: [...] }
+          const plans = data.plans || data.data;
+          const isSuccess = data.ok || data.success;
+          
+          if (isSuccess && plans) {
+            if (plans.length === 0) {
               // No plans configured in database
               setSubscriptionPlans([]);
               setPlansError('No subscription plans configured. Please create plans in Subscriptions settings first.');
             } else {
               // Map API plans (snake_case) to component format (camelCase)
-              const mappedPlans: DynamicPlan[] = data.plans
+              const mappedPlans: DynamicPlan[] = plans
                 .filter((plan: any) => plan.is_active !== false)
                 .map((plan: any) => ({
                   id: (plan.plan_code || plan.code || plan.id)?.toString().toLowerCase(),

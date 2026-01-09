@@ -57,56 +57,71 @@ router.get('/metrics', ...superAdminOnly, async (req, res) => {
   try {
     const prisma = getPrisma();
     
-    // Get plan statistics
+    // Get plan statistics from the unified subscription_plans + client_subscriptions system
     const planStats = await prisma.$queryRaw`
       SELECT 
-        msp.code as plan_code,
-        msp.name as plan_name,
-        msp.status,
-        COUNT(tpa.id) as tenant_count
-      FROM master_subscription_plans msp
-      LEFT JOIN tenant_plan_assignments tpa ON tpa.plan_id = msp.id AND tpa.is_active = TRUE
-      GROUP BY msp.id, msp.code, msp.name, msp.status
-      ORDER BY msp.sort_order
+        sp.plan_code as plan_code,
+        sp.name as plan_name,
+        CASE WHEN sp.is_active THEN 'active' ELSE 'inactive' END as status,
+        COUNT(cs.id) as tenant_count
+      FROM subscription_plans sp
+      LEFT JOIN client_subscriptions cs ON cs.plan_id = sp.id AND cs.state IN ('ACTIVE', 'TRIAL')
+      GROUP BY sp.id, sp.plan_code, sp.name, sp.is_active
+      ORDER BY sp.sort_order
     `;
 
-    // Get feature usage summary
-    const usageStats = await prisma.$queryRaw`
-      SELECT 
-        feature_code,
-        SUM(used_count) as total_usage,
-        COUNT(DISTINCT tenant_id) as tenants_using
-      FROM feature_usage_counters
-      WHERE period_end > NOW()
-      GROUP BY feature_code
-      ORDER BY total_usage DESC
-      LIMIT 10
-    `;
+    // Get feature usage summary (keep original query if table exists)
+    let usageStats = [];
+    try {
+      usageStats = await prisma.$queryRaw`
+        SELECT 
+          feature_code,
+          SUM(used_count) as total_usage,
+          COUNT(DISTINCT tenant_id) as tenants_using
+        FROM feature_usage_counters
+        WHERE period_end > NOW()
+        GROUP BY feature_code
+        ORDER BY total_usage DESC
+        LIMIT 10
+      `;
+    } catch (e) {
+      // Table may not exist
+    }
 
-    // Get recent enforcement blocks
-    const recentBlocks = await prisma.$queryRaw`
-      SELECT 
-        feature_code,
-        decision,
-        COUNT(*) as block_count
-      FROM enforcement_decision_log
-      WHERE decided_at > NOW() - INTERVAL '7 days'
-        AND decision IN ('blocked', 'throttled')
-      GROUP BY feature_code, decision
-      ORDER BY block_count DESC
-      LIMIT 10
-    `;
+    // Get recent enforcement blocks (keep original query if table exists)
+    let recentBlocks = [];
+    try {
+      recentBlocks = await prisma.$queryRaw`
+        SELECT 
+          feature_code,
+          decision,
+          COUNT(*) as block_count
+        FROM enforcement_decision_log
+        WHERE decided_at > NOW() - INTERVAL '7 days'
+          AND decision IN ('blocked', 'throttled')
+        GROUP BY feature_code, decision
+        ORDER BY block_count DESC
+        LIMIT 10
+      `;
+    } catch (e) {
+      // Table may not exist
+    }
 
-    // Get billing summary
-    const billingSummary = await prisma.$queryRaw`
-      SELECT 
-        source_type,
-        SUM(amount) as total_amount,
-        COUNT(*) as line_count
-      FROM subscription_billing_ledger
-      WHERE billing_period_start >= DATE_TRUNC('month', NOW())
-      GROUP BY source_type
-    `;
+    // Get billing summary (keep original query if table exists)
+    let billingSummary = [];
+    try {
+      billingSummary = await prisma.$queryRaw`
+        SELECT 
+          source_type,
+          SUM(amount) as total_amount,
+          COUNT(*) as line_count
+        FROM subscription_billing_ledger
+        WHERE billing_period_start >= DATE_TRUNC('month', NOW())
+        GROUP BY source_type
+      `;
+    } catch (e) {
+      // Table may not exist
+    }
 
     res.json({
       ok: true,
@@ -130,101 +145,73 @@ router.get('/metrics', ...superAdminOnly, async (req, res) => {
 
 /**
  * GET /api/subscription-control/plans
- * List all subscription plans with feature stats
+ * List all subscription plans with tenant counts from the unified system
  */
 router.get('/plans', ...superAdminOnly, async (req, res) => {
   try {
     const prisma = getPrisma();
     const { include_archived = 'false' } = req.query;
 
-    let plans;
-    if (include_archived === 'true') {
-      plans = await prisma.$queryRaw`
-        SELECT 
-          msp.*,
-          COALESCE(tenant_counts.cnt, 0) as active_tenant_count,
-          COALESCE(feature_stats.total_features, 0) as total_features,
-          COALESCE(feature_stats.total_categories, 0) as total_categories,
-          COALESCE(feature_stats.unlimited_count, 0) as unlimited_count,
-          COALESCE(feature_stats.soft_locked_count, 0) as soft_locked_count,
-          COALESCE(feature_stats.hard_locked_count, 0) as hard_locked_count,
-          COALESCE(feature_stats.total_unlock_value, 0) as total_unlock_value
-        FROM master_subscription_plans msp
-        LEFT JOIN (
-          SELECT plan_id, COUNT(*) as cnt
-          FROM tenant_plan_assignments WHERE is_active = TRUE
-          GROUP BY plan_id
-        ) tenant_counts ON tenant_counts.plan_id = msp.id
-        LEFT JOIN (
-          SELECT 
-            pfc.plan_id,
-            COUNT(*) as total_features,
-            COUNT(DISTINCT mfd.category) as total_categories,
-            COUNT(*) FILTER (WHERE pfc.free_limit = -1) as unlimited_count,
-            COUNT(*) FILTER (WHERE pfc.lock_mode = 'soft') as soft_locked_count,
-            COUNT(*) FILTER (WHERE pfc.lock_mode = 'hard') as hard_locked_count,
-            COALESCE(SUM(pfc.unlock_price), 0) as total_unlock_value
-          FROM plan_feature_controls pfc
-          LEFT JOIN master_feature_definitions mfd ON mfd.feature_code = pfc.feature_code
-          GROUP BY pfc.plan_id
-        ) feature_stats ON feature_stats.plan_id = msp.id
-        ORDER BY msp.sort_order, msp.name
-      `;
-    } else {
-      plans = await prisma.$queryRaw`
-        SELECT 
-          msp.*,
-          COALESCE(tenant_counts.cnt, 0) as active_tenant_count,
-          COALESCE(feature_stats.total_features, 0) as total_features,
-          COALESCE(feature_stats.total_categories, 0) as total_categories,
-          COALESCE(feature_stats.unlimited_count, 0) as unlimited_count,
-          COALESCE(feature_stats.soft_locked_count, 0) as soft_locked_count,
-          COALESCE(feature_stats.hard_locked_count, 0) as hard_locked_count,
-          COALESCE(feature_stats.total_unlock_value, 0) as total_unlock_value
-        FROM master_subscription_plans msp
-        LEFT JOIN (
-          SELECT plan_id, COUNT(*) as cnt
-          FROM tenant_plan_assignments WHERE is_active = TRUE
-          GROUP BY plan_id
-        ) tenant_counts ON tenant_counts.plan_id = msp.id
-        LEFT JOIN (
-          SELECT 
-            pfc.plan_id,
-            COUNT(*) as total_features,
-            COUNT(DISTINCT mfd.category) as total_categories,
-            COUNT(*) FILTER (WHERE pfc.free_limit = -1) as unlimited_count,
-            COUNT(*) FILTER (WHERE pfc.lock_mode = 'soft') as soft_locked_count,
-            COUNT(*) FILTER (WHERE pfc.lock_mode = 'hard') as hard_locked_count,
-            COALESCE(SUM(pfc.unlock_price), 0) as total_unlock_value
-          FROM plan_feature_controls pfc
-          LEFT JOIN master_feature_definitions mfd ON mfd.feature_code = pfc.feature_code
-          GROUP BY pfc.plan_id
-        ) feature_stats ON feature_stats.plan_id = msp.id
-        WHERE msp.status != 'archived'
-        ORDER BY msp.sort_order, msp.name
-      `;
-    }
+    // Query from subscription_plans (the Prisma-based system) with client_subscriptions counts
+    const whereClause = include_archived === 'true' ? {} : { is_active: true };
     
+    const plans = await prisma.subscription_plans.findMany({
+      where: whereClause,
+      orderBy: [{ sort_order: 'asc' }, { name: 'asc' }],
+    });
+
+    // Get tenant counts from client_subscriptions
+    const tenantCounts = await prisma.client_subscriptions.groupBy({
+      by: ['plan_id'],
+      where: { state: { in: ['ACTIVE', 'TRIAL'] } },
+      _count: { id: true },
+    });
+
+    const tenantCountMap = new Map(tenantCounts.map(tc => [tc.plan_id, tc._count.id]));
+
+    // Map plans with counts and additional info
+    const mappedPlans = plans.map(p => ({
+      id: p.id,
+      code: p.plan_code,
+      name: p.name,
+      description: p.description,
+      short_description: p.short_description,
+      badge_text: p.badge_text,
+      price_monthly: parseFloat(p.price_monthly) || 0,
+      price_yearly: parseFloat(p.price_yearly) || 0,
+      currency: p.currency || 'INR',
+      max_users: p.max_users || 5,
+      max_branches: p.max_branches || 1,
+      max_storage_gb: p.max_storage_gb || 5,
+      max_api_calls_day: p.max_api_calls_day || 1000,
+      feature_flags: p.feature_flags || {},
+      sort_order: p.sort_order || 0,
+      is_popular: p.is_popular || false,
+      is_enterprise: p.is_enterprise || false,
+      is_custom: p.plan_code === 'CUSTOM',
+      is_active: p.is_active,
+      is_public: p.is_public,
+      status: p.is_active ? 'active' : 'inactive',
+      cta_text: p.cta_text,
+      cta_action: p.cta_action,
+      trial_enabled: (p.trial_days || 0) > 0,
+      trial_days: p.trial_days || 0,
+      created_at: p.created_at,
+      updated_at: p.updated_at,
+      active_tenant_count: tenantCountMap.get(p.id) || 0,
+      // For backward compatibility with legacy UI
+      total_features: Object.keys(p.feature_flags || {}).length,
+      total_categories: 0,
+      unlimited_count: 0,
+      soft_locked_count: 0,
+      hard_locked_count: 0,
+      total_unlock_value: 0,
+      color_code: '#3B82F6', // Default blue
+    }));
+
     res.json({
       ok: true,
-      plans: plans.map(p => ({
-        ...p,
-        price_monthly: p.price_monthly ? parseFloat(p.price_monthly) : 0,
-        price_yearly: p.price_yearly ? parseFloat(p.price_yearly) : 0,
-        max_users: parseInt(p.max_users || 5),
-        max_branches: parseInt(p.max_branches || 1),
-        max_storage_gb: parseInt(p.max_storage_gb || 5),
-        monthly_spend_cap: p.monthly_spend_cap ? parseFloat(p.monthly_spend_cap) : null,
-        cfo_approval_threshold: p.cfo_approval_threshold ? parseFloat(p.cfo_approval_threshold) : null,
-        active_tenant_count: parseInt(p.active_tenant_count || 0),
-        // Feature stats for UI display
-        total_features: parseInt(p.total_features || 0),
-        total_categories: parseInt(p.total_categories || 0),
-        unlimited_count: parseInt(p.unlimited_count || 0),
-        soft_locked_count: parseInt(p.soft_locked_count || 0),
-        hard_locked_count: parseInt(p.hard_locked_count || 0),
-        total_unlock_value: p.total_unlock_value ? parseFloat(p.total_unlock_value) : 0
-      }))
+      plans: mappedPlans
     });
   } catch (error) {
     console.error('[SubscriptionControl] List plans error:', error);
@@ -234,65 +221,93 @@ router.get('/plans', ...superAdminOnly, async (req, res) => {
 
 /**
  * GET /api/subscription-control/plans/:id
- * Get single plan with all features
+ * Get single plan with all features from plan_feature_controls + master_feature_definitions
  */
 router.get('/plans/:id', ...superAdminOnly, async (req, res) => {
   try {
     const prisma = getPrisma();
     const planId = parseInt(req.params.id);
 
-    const plans = await prisma.$queryRaw`
-      SELECT * FROM master_subscription_plans WHERE id = ${planId}
-    `;
+    // Get plan from the unified subscription_plans table
+    const plan = await prisma.subscription_plans.findUnique({
+      where: { id: planId }
+    });
     
-    if (plans.length === 0) {
+    if (!plan) {
       return res.status(404).json({ ok: false, error: 'Plan not found' });
     }
 
-    const plan = plans[0];
+    // Get tenant count from client_subscriptions
+    const tenantCount = await prisma.client_subscriptions.count({
+      where: { plan_id: planId, state: { in: ['ACTIVE', 'TRIAL'] } }
+    });
 
-    // Get all features with this plan's controls
-    const features = await prisma.$queryRaw`
+    // Get features from plan_feature_controls joined with master_feature_definitions
+    const featuresRaw = await prisma.$queryRaw`
       SELECT 
-        mfd.*,
-        pfc.id as control_id,
-        pfc.free_limit,
-        pfc.limit_period,
-        pfc.unlock_price,
-        pfc.unlock_unit,
-        pfc.currency,
-        pfc.approval_threshold,
-        pfc.requires_approval,
-        pfc.lock_mode,
-        pfc.is_visible,
-        pfc.show_in_pricing
+        mfd.feature_code,
+        mfd.feature_name,
+        mfd.description,
+        mfd.category,
+        mfd.icon,
+        mfd.sort_order as feature_sort_order,
+        COALESCE(pfc.free_limit, 0) as free_limit,
+        COALESCE(pfc.limit_period, 'monthly') as limit_period,
+        COALESCE(pfc.unlock_price, 0) as unlock_price,
+        COALESCE(pfc.unlock_unit, 'per month') as unlock_unit,
+        COALESCE(pfc.currency, 'INR') as currency,
+        COALESCE(pfc.approval_threshold, 0) as approval_threshold,
+        COALESCE(pfc.requires_approval, false) as requires_approval,
+        COALESCE(pfc.lock_mode, 'none') as lock_mode,
+        COALESCE(pfc.is_visible, true) as is_visible,
+        COALESCE(pfc.show_in_pricing, true) as show_in_pricing
       FROM master_feature_definitions mfd
       LEFT JOIN plan_feature_controls pfc ON pfc.feature_code = mfd.feature_code AND pfc.plan_id = ${planId}
-      WHERE mfd.is_active = TRUE
+      WHERE mfd.is_active = true
       ORDER BY mfd.category, mfd.sort_order, mfd.feature_name
     `;
 
-    // Get tenant count
-    const tenantCount = await prisma.$queryRaw`
-      SELECT COUNT(*) as count 
-      FROM tenant_plan_assignments 
-      WHERE plan_id = ${planId} AND is_active = TRUE
-    `;
+    // Parse numeric fields to ensure they are numbers, not strings
+    const features = featuresRaw.map(f => ({
+      ...f,
+      free_limit: parseInt(f.free_limit) || 0,
+      unlock_price: parseFloat(f.unlock_price) || 0,
+      approval_threshold: parseFloat(f.approval_threshold) || 0,
+      feature_sort_order: parseInt(f.feature_sort_order) || 0,
+    }));
 
     res.json({
       ok: true,
       plan: {
-        ...plan,
-        monthly_spend_cap: plan.monthly_spend_cap ? parseFloat(plan.monthly_spend_cap) : null,
-        cfo_approval_threshold: plan.cfo_approval_threshold ? parseFloat(plan.cfo_approval_threshold) : null,
-        active_tenant_count: parseInt(tenantCount[0]?.count || 0)
+        id: plan.id,
+        code: plan.plan_code,
+        name: plan.name,
+        description: plan.description,
+        short_description: plan.short_description,
+        badge_text: plan.badge_text,
+        price_monthly: parseFloat(plan.price_monthly) || 0,
+        price_yearly: parseFloat(plan.price_yearly) || 0,
+        currency: plan.currency || 'INR',
+        max_users: plan.max_users || 5,
+        max_branches: plan.max_branches || 1,
+        max_storage_gb: plan.max_storage_gb || 5,
+        max_api_calls_day: plan.max_api_calls_day || 1000,
+        feature_flags: plan.feature_flags || {},
+        sort_order: plan.sort_order || 0,
+        is_popular: plan.is_popular || false,
+        is_enterprise: plan.is_enterprise || false,
+        is_active: plan.is_active,
+        is_public: plan.is_public,
+        status: plan.is_active ? 'active' : 'inactive',
+        cta_text: plan.cta_text,
+        cta_action: plan.cta_action,
+        trial_days: plan.trial_days || 14,
+        created_at: plan.created_at,
+        updated_at: plan.updated_at,
+        active_tenant_count: tenantCount,
+        color_code: '#3B82F6',
       },
-      features: features.map(f => ({
-        ...f,
-        free_limit: f.free_limit ?? 0,
-        unlock_price: f.unlock_price ? parseFloat(f.unlock_price) : 0,
-        approval_threshold: f.approval_threshold ? parseFloat(f.approval_threshold) : null
-      }))
+      features
     });
   } catch (error) {
     console.error('[SubscriptionControl] Get plan error:', error);
@@ -302,7 +317,7 @@ router.get('/plans/:id', ...superAdminOnly, async (req, res) => {
 
 /**
  * POST /api/subscription-control/plans
- * Create a new subscription plan
+ * Create a new subscription plan (using subscription_plans table)
  */
 router.post('/plans', ...superAdminOnly, async (req, res) => {
   try {
@@ -311,16 +326,17 @@ router.post('/plans', ...superAdminOnly, async (req, res) => {
       code,
       name,
       description,
+      short_description,
       badge_text,
       sort_order = 0,
       is_popular = false,
-      color_code = '#3B82F6',
-      monthly_spend_cap,
-      auto_block_on_cap = true,
-      cfo_approval_threshold,
-      invoice_cycle_days = 30,
-      grace_period_days = 7,
-      read_only_after_grace = false
+      price_monthly = 0,
+      price_yearly = 0,
+      max_users = 5,
+      max_branches = 1,
+      max_storage_gb = 5,
+      trial_days = 14,
+      is_enterprise = false
     } = req.body;
 
     if (!code || !name) {
@@ -328,45 +344,55 @@ router.post('/plans', ...superAdminOnly, async (req, res) => {
     }
 
     // Check if code already exists
-    const existing = await prisma.$queryRaw`
-      SELECT id FROM master_subscription_plans WHERE code = ${code.toUpperCase()}
-    `;
+    const existing = await prisma.subscription_plans.findUnique({
+      where: { plan_code: code.toUpperCase() }
+    });
     
-    if (existing.length > 0) {
+    if (existing) {
       return res.status(409).json({ ok: false, error: 'Plan code already exists' });
     }
 
-    // Create plan
-    await prisma.$executeRaw`
-      INSERT INTO master_subscription_plans 
-      (code, name, description, badge_text, sort_order, is_popular, color_code, 
-       monthly_spend_cap, auto_block_on_cap, cfo_approval_threshold, 
-       invoice_cycle_days, grace_period_days, read_only_after_grace, created_by)
-      VALUES 
-      (${code.toUpperCase()}, ${name}, ${description || null}, ${badge_text || null}, 
-       ${sort_order}, ${is_popular}, ${color_code}, 
-       ${monthly_spend_cap || null}, ${auto_block_on_cap}, ${cfo_approval_threshold || null}, 
-       ${invoice_cycle_days}, ${grace_period_days}, ${read_only_after_grace}, ${req.user?.id || null})
-    `;
-
-    const newPlan = await prisma.$queryRaw`
-      SELECT * FROM master_subscription_plans WHERE code = ${code.toUpperCase()}
-    `;
+    // Create plan in subscription_plans table
+    const newPlan = await prisma.subscription_plans.create({
+      data: {
+        plan_code: code.toUpperCase(),
+        name,
+        description: description || null,
+        short_description: short_description || null,
+        badge_text: badge_text || null,
+        sort_order,
+        is_popular,
+        price_monthly: parseFloat(price_monthly) || 0,
+        price_yearly: parseFloat(price_yearly) || 0,
+        max_users: parseInt(max_users) || 5,
+        max_branches: parseInt(max_branches) || 1,
+        max_storage_gb: parseInt(max_storage_gb) || 5,
+        trial_days: parseInt(trial_days) || 14,
+        is_enterprise,
+        is_active: true,
+        is_public: true,
+        created_by: req.user?.id || null
+      }
+    });
 
     // Log the change
     await logPlanChange(prisma, {
       target_type: 'plan',
-      target_id: newPlan[0].id.toString(),
+      target_id: newPlan.id.toString(),
       target_name: name,
       action: 'created',
       old_values: null,
-      new_values: newPlan[0],
+      new_values: newPlan,
       change_summary: `Created new plan: ${name}`
     }, req);
 
     res.status(201).json({
       ok: true,
-      plan: newPlan[0],
+      plan: {
+        ...newPlan,
+        code: newPlan.plan_code, // alias for compatibility
+        color_code: '#3B82F6'
+      },
       message: `Plan "${name}" created successfully`
     });
   } catch (error) {
@@ -377,7 +403,7 @@ router.post('/plans', ...superAdminOnly, async (req, res) => {
 
 /**
  * PUT /api/subscription-control/plans/:id
- * Update a subscription plan
+ * Update a subscription plan (using subscription_plans table)
  */
 router.put('/plans/:id', ...superAdminOnly, async (req, res) => {
   try {
@@ -386,99 +412,73 @@ router.put('/plans/:id', ...superAdminOnly, async (req, res) => {
     const {
       name,
       description,
+      short_description,
       badge_text,
       sort_order,
       is_popular,
-      color_code,
       price_monthly,
       price_yearly,
       max_users,
       max_branches,
       max_storage_gb,
-      monthly_spend_cap,
-      auto_block_on_cap,
-      cfo_approval_threshold,
-      invoice_cycle_days,
-      grace_period_days,
-      read_only_after_grace,
-      // Trial settings
-      trial_enabled,
       trial_days,
-      trial_features_limited,
-      require_payment_method
+      is_enterprise,
+      is_active,
+      is_public
     } = req.body;
 
     // Get current plan for audit
-    const oldPlans = await prisma.$queryRaw`
-      SELECT * FROM master_subscription_plans WHERE id = ${planId}
-    `;
+    const oldPlan = await prisma.subscription_plans.findUnique({
+      where: { id: planId }
+    });
     
-    if (oldPlans.length === 0) {
+    if (!oldPlan) {
       return res.status(404).json({ ok: false, error: 'Plan not found' });
     }
 
-    const oldPlan = oldPlans[0];
+    // Build update data
+    const updateData = { updated_by: req.user?.id || null };
+    if (name !== undefined) updateData.name = name;
+    if (description !== undefined) updateData.description = description;
+    if (short_description !== undefined) updateData.short_description = short_description;
+    if (badge_text !== undefined) updateData.badge_text = badge_text;
+    if (sort_order !== undefined) updateData.sort_order = parseInt(sort_order);
+    if (is_popular !== undefined) updateData.is_popular = is_popular;
+    if (price_monthly !== undefined) updateData.price_monthly = parseFloat(price_monthly);
+    if (price_yearly !== undefined) updateData.price_yearly = parseFloat(price_yearly);
+    if (max_users !== undefined) updateData.max_users = parseInt(max_users);
+    if (max_branches !== undefined) updateData.max_branches = parseInt(max_branches);
+    if (max_storage_gb !== undefined) updateData.max_storage_gb = parseInt(max_storage_gb);
+    if (trial_days !== undefined) updateData.trial_days = parseInt(trial_days);
+    if (is_enterprise !== undefined) updateData.is_enterprise = is_enterprise;
+    if (is_active !== undefined) updateData.is_active = is_active;
+    if (is_public !== undefined) updateData.is_public = is_public;
 
-    // Update plan with pricing and trial fields
-    await prisma.$executeRaw`
-      UPDATE master_subscription_plans SET
-        name = COALESCE(${name}, name),
-        description = COALESCE(${description}, description),
-        badge_text = ${badge_text},
-        sort_order = COALESCE(${sort_order}, sort_order),
-        is_popular = COALESCE(${is_popular}, is_popular),
-        color_code = COALESCE(${color_code}, color_code),
-        price_monthly = COALESCE(${price_monthly !== undefined ? parseFloat(price_monthly) : null}, price_monthly),
-        price_yearly = COALESCE(${price_yearly !== undefined ? parseFloat(price_yearly) : null}, price_yearly),
-        max_users = COALESCE(${max_users !== undefined ? parseInt(max_users) : null}, max_users),
-        max_branches = COALESCE(${max_branches !== undefined ? parseInt(max_branches) : null}, max_branches),
-        max_storage_gb = COALESCE(${max_storage_gb !== undefined ? parseInt(max_storage_gb) : null}, max_storage_gb),
-        monthly_spend_cap = ${monthly_spend_cap},
-        auto_block_on_cap = COALESCE(${auto_block_on_cap}, auto_block_on_cap),
-        cfo_approval_threshold = ${cfo_approval_threshold},
-        invoice_cycle_days = COALESCE(${invoice_cycle_days}, invoice_cycle_days),
-        grace_period_days = COALESCE(${grace_period_days}, grace_period_days),
-        read_only_after_grace = COALESCE(${read_only_after_grace}, read_only_after_grace),
-        trial_enabled = COALESCE(${trial_enabled}, trial_enabled),
-        trial_days = COALESCE(${trial_days !== undefined ? parseInt(trial_days) : null}, trial_days),
-        trial_features_limited = COALESCE(${trial_features_limited}, trial_features_limited),
-        require_payment_method = COALESCE(${require_payment_method}, require_payment_method),
-        updated_by = ${req.user?.id || null}
-      WHERE id = ${planId}
-    `;
-
-    // Also sync with subscription_plans table (for welcome page)
-    const planCode = oldPlan.code;
-    await prisma.$executeRaw`
-      UPDATE subscription_plans SET
-        price_monthly = COALESCE(${price_monthly !== undefined ? parseFloat(price_monthly) : null}, price_monthly),
-        price_yearly = COALESCE(${price_yearly !== undefined ? parseFloat(price_yearly) : null}, price_yearly),
-        max_users = COALESCE(${max_users !== undefined ? parseInt(max_users) : null}, max_users),
-        max_branches = COALESCE(${max_branches !== undefined ? parseInt(max_branches) : null}, max_branches),
-        max_storage_gb = COALESCE(${max_storage_gb !== undefined ? parseInt(max_storage_gb) : null}, max_storage_gb),
-        updated_at = NOW()
-      WHERE plan_code = ${planCode}
-    `;
-
-    const updatedPlan = await prisma.$queryRaw`
-      SELECT * FROM master_subscription_plans WHERE id = ${planId}
-    `;
+    // Update plan
+    const updatedPlan = await prisma.subscription_plans.update({
+      where: { id: planId },
+      data: updateData
+    });
 
     // Log the change
     await logPlanChange(prisma, {
       target_type: 'plan',
       target_id: planId.toString(),
-      target_name: updatedPlan[0].name,
+      target_name: updatedPlan.name,
       action: 'updated',
       old_values: oldPlan,
-      new_values: updatedPlan[0],
-      change_summary: `Updated plan: ${updatedPlan[0].name}`
+      new_values: updatedPlan,
+      change_summary: `Updated plan: ${updatedPlan.name}`
     }, req);
 
     res.json({
       ok: true,
-      plan: updatedPlan[0],
-      message: `Plan "${updatedPlan[0].name}" updated successfully`
+      plan: {
+        ...updatedPlan,
+        code: updatedPlan.plan_code, // alias for compatibility
+        color_code: '#3B82F6'
+      },
+      message: `Plan "${updatedPlan.name}" updated successfully`
     });
   } catch (error) {
     console.error('[SubscriptionControl] Update plan error:', error);
@@ -488,7 +488,7 @@ router.put('/plans/:id', ...superAdminOnly, async (req, res) => {
 
 /**
  * POST /api/subscription-control/plans/:id/clone
- * Clone a subscription plan
+ * Clone a subscription plan (using subscription_plans table)
  */
 router.post('/plans/:id/clone', ...superAdminOnly, async (req, res) => {
   try {
@@ -501,67 +501,69 @@ router.post('/plans/:id/clone', ...superAdminOnly, async (req, res) => {
     }
 
     // Get source plan
-    const sourcePlans = await prisma.$queryRaw`
-      SELECT * FROM master_subscription_plans WHERE id = ${planId}
-    `;
+    const sourcePlan = await prisma.subscription_plans.findUnique({
+      where: { id: planId }
+    });
     
-    if (sourcePlans.length === 0) {
+    if (!sourcePlan) {
       return res.status(404).json({ ok: false, error: 'Source plan not found' });
     }
 
-    const source = sourcePlans[0];
-
     // Check if new code exists
-    const existing = await prisma.$queryRaw`
-      SELECT id FROM master_subscription_plans WHERE code = ${new_code.toUpperCase()}
-    `;
+    const existing = await prisma.subscription_plans.findUnique({
+      where: { plan_code: new_code.toUpperCase() }
+    });
     
-    if (existing.length > 0) {
+    if (existing) {
       return res.status(409).json({ ok: false, error: 'Plan code already exists' });
     }
 
     // Clone plan
-    await prisma.$executeRaw`
-      INSERT INTO master_subscription_plans 
-      (code, name, description, badge_text, sort_order, is_popular, color_code,
-       monthly_spend_cap, auto_block_on_cap, cfo_approval_threshold,
-       invoice_cycle_days, grace_period_days, read_only_after_grace, created_by)
-      SELECT 
-        ${new_code.toUpperCase()}, ${new_name}, description, badge_text, sort_order + 1, FALSE, color_code,
-        monthly_spend_cap, auto_block_on_cap, cfo_approval_threshold,
-        invoice_cycle_days, grace_period_days, read_only_after_grace, ${req.user?.id || null}
-      FROM master_subscription_plans WHERE id = ${planId}
-    `;
-
-    const newPlan = await prisma.$queryRaw`
-      SELECT * FROM master_subscription_plans WHERE code = ${new_code.toUpperCase()}
-    `;
-
-    // Clone feature controls
-    await prisma.$executeRaw`
-      INSERT INTO plan_feature_controls 
-      (plan_id, feature_code, free_limit, limit_period, unlock_price, unlock_unit, currency,
-       approval_threshold, requires_approval, lock_mode, is_visible, show_in_pricing)
-      SELECT 
-        ${newPlan[0].id}, feature_code, free_limit, limit_period, unlock_price, unlock_unit, currency,
-        approval_threshold, requires_approval, lock_mode, is_visible, show_in_pricing
-      FROM plan_feature_controls WHERE plan_id = ${planId}
-    `;
+    const newPlan = await prisma.subscription_plans.create({
+      data: {
+        plan_code: new_code.toUpperCase(),
+        name: new_name,
+        description: sourcePlan.description,
+        short_description: sourcePlan.short_description,
+        badge_text: sourcePlan.badge_text,
+        price_monthly: sourcePlan.price_monthly,
+        price_yearly: sourcePlan.price_yearly,
+        currency: sourcePlan.currency,
+        max_users: sourcePlan.max_users,
+        max_storage_gb: sourcePlan.max_storage_gb,
+        max_branches: sourcePlan.max_branches,
+        max_api_calls_day: sourcePlan.max_api_calls_day,
+        feature_flags: sourcePlan.feature_flags,
+        sort_order: sourcePlan.sort_order + 1,
+        is_popular: false,
+        is_enterprise: sourcePlan.is_enterprise,
+        is_active: true,
+        is_public: sourcePlan.is_public,
+        cta_text: sourcePlan.cta_text,
+        cta_action: sourcePlan.cta_action,
+        trial_days: sourcePlan.trial_days,
+        created_by: req.user?.id || null
+      }
+    });
 
     // Log
     await logPlanChange(prisma, {
       target_type: 'plan',
-      target_id: newPlan[0].id.toString(),
+      target_id: newPlan.id.toString(),
       target_name: new_name,
       action: 'cloned',
-      old_values: { source_plan_id: planId, source_plan_code: source.code },
-      new_values: newPlan[0],
-      change_summary: `Cloned plan "${source.name}" to "${new_name}"`
+      old_values: { source_plan_id: planId, source_plan_code: sourcePlan.plan_code },
+      new_values: newPlan,
+      change_summary: `Cloned plan "${sourcePlan.name}" to "${new_name}"`
     }, req);
 
     res.status(201).json({
       ok: true,
-      plan: newPlan[0],
+      plan: {
+        ...newPlan,
+        code: newPlan.plan_code, // alias for compatibility
+        color_code: '#3B82F6'
+      },
       message: `Plan cloned as "${new_name}"`
     });
   } catch (error) {
@@ -572,7 +574,7 @@ router.post('/plans/:id/clone', ...superAdminOnly, async (req, res) => {
 
 /**
  * PATCH /api/subscription-control/plans/:id/status
- * Toggle plan status (active/inactive/archived)
+ * Toggle plan status (active/inactive) using subscription_plans table
  */
 router.patch('/plans/:id/status', ...superAdminOnly, async (req, res) => {
   try {
@@ -584,44 +586,125 @@ router.patch('/plans/:id/status', ...superAdminOnly, async (req, res) => {
       return res.status(400).json({ ok: false, error: 'Invalid status. Use: active, inactive, archived' });
     }
 
-    const oldPlan = await prisma.$queryRaw`
-      SELECT * FROM master_subscription_plans WHERE id = ${planId}
-    `;
+    const oldPlan = await prisma.subscription_plans.findUnique({
+      where: { id: planId }
+    });
     
-    if (oldPlan.length === 0) {
+    if (!oldPlan) {
       return res.status(404).json({ ok: false, error: 'Plan not found' });
     }
 
-    await prisma.$executeRaw`
-      UPDATE master_subscription_plans SET 
-        status = ${status}::plan_status,
-        archived_at = ${status === 'archived' ? new Date() : null},
-        archived_by = ${status === 'archived' ? req.user?.id : null}
-      WHERE id = ${planId}
-    `;
+    // For subscription_plans, we use is_active and is_public flags
+    const is_active = status === 'active';
+    const is_public = status !== 'archived';
 
-    const updatedPlan = await prisma.$queryRaw`
-      SELECT * FROM master_subscription_plans WHERE id = ${planId}
-    `;
+    const updatedPlan = await prisma.subscription_plans.update({
+      where: { id: planId },
+      data: {
+        is_active,
+        is_public,
+        updated_by: req.user?.id || null
+      }
+    });
 
     await logPlanChange(prisma, {
       target_type: 'plan',
       target_id: planId.toString(),
-      target_name: updatedPlan[0].name,
+      target_name: updatedPlan.name,
       action: status === 'archived' ? 'archived' : 'status_changed',
-      old_values: { status: oldPlan[0].status },
-      new_values: { status },
-      change_summary: `Changed plan status from ${oldPlan[0].status} to ${status}`
+      old_values: { is_active: oldPlan.is_active, is_public: oldPlan.is_public },
+      new_values: { is_active, is_public, status },
+      change_summary: `Changed plan status to ${status}`
     }, req);
 
     res.json({
       ok: true,
-      plan: updatedPlan[0],
+      plan: {
+        ...updatedPlan,
+        code: updatedPlan.plan_code,
+        status,
+        color_code: '#3B82F6'
+      },
       message: `Plan status changed to ${status}`
     });
   } catch (error) {
     console.error('[SubscriptionControl] Status change error:', error);
     res.status(500).json({ ok: false, error: 'Failed to change plan status' });
+  }
+});
+
+/**
+ * GET /api/subscription-control/plans/:planId/tenants
+ * List all tenants subscribed to a specific plan
+ */
+router.get('/plans/:planId/tenants', ...superAdminOnly, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const planId = parseInt(req.params.planId, 10);
+
+    if (isNaN(planId)) {
+      return res.status(400).json({ ok: false, error: 'Invalid plan ID' });
+    }
+
+    // Get all client_subscriptions for this plan, joined with clients table
+    // Note: clients table doesn't have email column, we extract from contact_persons JSONB
+    const tenants = await prisma.$queryRaw`
+      SELECT 
+        cs.id,
+        cs.client_id,
+        cs.plan_id,
+        cs.state,
+        cs.started_at as start_date,
+        cs.expires_at as end_date,
+        cs.billing_cycle,
+        cs.created_at,
+        cs.trial_start_date,
+        cs.trial_end_date,
+        cs.trial_converted,
+        cs.current_period_start,
+        cs.current_period_end,
+        c.name as client_name,
+        COALESCE(c.contact_persons->0->>'email', '') as client_email,
+        -- Calculate days remaining
+        CASE 
+          WHEN cs.trial_end_date IS NOT NULL AND cs.trial_converted = false 
+          THEN GREATEST(0, EXTRACT(DAY FROM cs.trial_end_date - NOW()))
+          ELSE NULL
+        END as trial_days_remaining,
+        CASE 
+          WHEN cs.expires_at IS NOT NULL 
+          THEN GREATEST(0, EXTRACT(DAY FROM cs.expires_at - NOW()))
+          ELSE NULL
+        END as days_until_expiry,
+        -- Determine actual status
+        CASE
+          WHEN cs.trial_converted = false AND cs.trial_end_date IS NOT NULL AND cs.trial_end_date > NOW() THEN 'TRIAL'
+          WHEN cs.trial_converted = false AND cs.trial_end_date IS NOT NULL AND cs.trial_end_date <= NOW() THEN 'TRIAL_EXPIRED'
+          WHEN cs.state = 'ACTIVE' AND cs.expires_at IS NOT NULL AND cs.expires_at <= NOW() THEN 'EXPIRED'
+          ELSE cs.state
+        END as actual_status
+      FROM client_subscriptions cs
+      LEFT JOIN clients c ON c.id = cs.client_id
+      WHERE cs.plan_id = ${planId}
+      ORDER BY cs.created_at DESC
+    `;
+
+    console.log('[SubscriptionControl] Tenants query result for plan', planId, ':', tenants?.length || 0, 'tenants');
+
+    // Parse numeric fields
+    const parsedTenants = (tenants || []).map(t => ({
+      ...t,
+      trial_days_remaining: t.trial_days_remaining ? parseInt(t.trial_days_remaining) : null,
+      days_until_expiry: t.days_until_expiry ? parseInt(t.days_until_expiry) : null
+    }));
+
+    res.json({
+      ok: true,
+      tenants: parsedTenants
+    });
+  } catch (error) {
+    console.error('[SubscriptionControl] Load plan tenants error:', error);
+    res.status(500).json({ ok: false, error: 'Failed to load tenants', tenants: [] });
   }
 });
 
@@ -726,12 +809,12 @@ router.put('/plans/:planId/features', ...superAdminOnly, async (req, res) => {
       return res.status(400).json({ ok: false, error: 'features array is required' });
     }
 
-    // Validate the plan exists
-    const plan = await prisma.$queryRaw`
-      SELECT * FROM master_subscription_plans WHERE id = ${planId}
-    `;
+    // Validate the plan exists (using subscription_plans table)
+    const plan = await prisma.subscription_plans.findUnique({
+      where: { id: planId }
+    });
     
-    if (plan.length === 0) {
+    if (!plan) {
       return res.status(404).json({ ok: false, error: 'Plan not found' });
     }
 
@@ -769,19 +852,20 @@ router.put('/plans/:planId/features', ...superAdminOnly, async (req, res) => {
     for (const feature of features) {
       const {
         feature_code,
-        free_limit,
         limit_period = 'monthly',
         unlock_unit = 'per month',
         currency = 'INR',
-        approval_threshold,
         requires_approval = false,
         lock_mode = 'none',
         is_visible = true,
         show_in_pricing = true
       } = feature;
       
+      // Parse numeric values to ensure they are numbers, not strings
+      const free_limit = parseInt(feature.free_limit) || 0;
+      const approval_threshold = parseFloat(feature.approval_threshold) || 0;
       // Auto-fix: If hard locked, force unlock_price to 0
-      const unlock_price = lock_mode === 'hard' ? 0 : (feature.unlock_price || 0);
+      const unlock_price = lock_mode === 'hard' ? 0 : (parseFloat(feature.unlock_price) || 0);
 
       // Upsert
       const existing = await prisma.$queryRaw`
@@ -794,10 +878,10 @@ router.put('/plans/:planId/features', ...superAdminOnly, async (req, res) => {
           UPDATE plan_feature_controls SET
             free_limit = ${free_limit},
             limit_period = ${limit_period}::limit_period_type,
-            unlock_price = ${unlock_price},
+            unlock_price = ${unlock_price}::numeric,
             unlock_unit = ${unlock_unit},
             currency = ${currency},
-            approval_threshold = ${approval_threshold},
+            approval_threshold = ${approval_threshold}::numeric,
             requires_approval = ${requires_approval},
             lock_mode = ${lock_mode}::lock_mode_type,
             is_visible = ${is_visible},
@@ -812,7 +896,7 @@ router.put('/plans/:planId/features', ...superAdminOnly, async (req, res) => {
            approval_threshold, requires_approval, lock_mode, is_visible, show_in_pricing)
           VALUES 
           (${planId}, ${feature_code}, ${free_limit}, ${limit_period}::limit_period_type, 
-           ${unlock_price}, ${unlock_unit}, ${currency}, ${approval_threshold}, 
+           ${unlock_price}::numeric, ${unlock_unit}, ${currency}, ${approval_threshold}::numeric, 
            ${requires_approval}, ${lock_mode}::lock_mode_type, ${is_visible}, ${show_in_pricing})
         `;
         created++;
@@ -827,7 +911,7 @@ router.put('/plans/:planId/features', ...superAdminOnly, async (req, res) => {
     await logPlanChange(prisma, {
       target_type: 'plan_features',
       target_id: planId.toString(),
-      target_name: plan[0].name,
+      target_name: plan.name,
       action: 'updated',
       old_values: oldFeatures,
       new_values: newFeatures,
@@ -937,7 +1021,7 @@ router.put('/infra-rates/:resourceType', ...superAdminOnly, async (req, res) => 
 
 /**
  * GET /api/subscription-control/tenants
- * List all tenants with their plans
+ * List all tenants with their plans (using client_subscriptions table)
  */
 router.get('/tenants', ...superAdminOnly, async (req, res) => {
   try {
@@ -945,48 +1029,63 @@ router.get('/tenants', ...superAdminOnly, async (req, res) => {
     const { page = 1, limit = 20, plan_id, search } = req.query;
     const offset = (parseInt(page) - 1) * parseInt(limit);
 
-    let whereClause = 'WHERE 1=1';
-
-    if (plan_id) {
-      whereClause += ` AND tpa.plan_id = ${parseInt(plan_id)}`;
-    }
-    if (search) {
-      whereClause += ` AND (c.name ILIKE '%${search}%' OR c.client_code ILIKE '%${search}%')`;
-    }
-
-    const tenants = await prisma.$queryRawUnsafe(`
+    // Use raw query for proper join since Prisma doesn't have relation defined
+    let baseQuery = `
       SELECT 
         c.id as tenant_id,
         c.name as tenant_name,
         c.client_code,
         c.email,
-        tpa.id as assignment_id,
-        tpa.plan_id,
-        msp.code as plan_code,
-        msp.name as plan_name,
-        tpa.billing_cycle,
-        tpa.effective_from,
-        tpa.is_active as assignment_active
+        cs.id as assignment_id,
+        cs.plan_id,
+        sp.plan_code,
+        sp.name as plan_name,
+        cs.billing_cycle,
+        cs.current_period_start as effective_from,
+        cs.state as subscription_state
       FROM clients c
-      LEFT JOIN tenant_plan_assignments tpa ON tpa.tenant_id = c.id AND tpa.is_active = TRUE
-      LEFT JOIN master_subscription_plans msp ON msp.id = tpa.plan_id
-      ${whereClause}
-      ORDER BY c.name
-      LIMIT ${parseInt(limit)} OFFSET ${offset}
-    `);
-
-    const total = await prisma.$queryRaw`
-      SELECT COUNT(*) as count FROM clients
+      LEFT JOIN client_subscriptions cs ON cs.client_id = c.id::text AND cs.state IN ('ACTIVE', 'TRIAL', 'PENDING')
+      LEFT JOIN subscription_plans sp ON sp.id = cs.plan_id
+      WHERE 1=1
     `;
+
+    if (search) {
+      baseQuery += ` AND (c.name ILIKE '%${search}%' OR c.client_code ILIKE '%${search}%')`;
+    }
+    if (plan_id) {
+      baseQuery += ` AND cs.plan_id = ${parseInt(plan_id)}`;
+    }
+
+    baseQuery += ` ORDER BY c.name LIMIT ${parseInt(limit)} OFFSET ${offset}`;
+
+    const tenants = await prisma.$queryRawUnsafe(baseQuery);
+
+    // Transform to expected format
+    const transformedTenants = tenants.map(t => ({
+      tenant_id: t.tenant_id,
+      tenant_name: t.tenant_name,
+      client_code: t.client_code,
+      email: t.email,
+      assignment_id: t.assignment_id,
+      plan_id: t.plan_id,
+      plan_code: t.plan_code,
+      plan_name: t.plan_name,
+      billing_cycle: t.billing_cycle,
+      effective_from: t.effective_from,
+      assignment_active: t.subscription_state === 'ACTIVE' || t.subscription_state === 'TRIAL'
+    }));
+
+    const totalResult = await prisma.$queryRaw`SELECT COUNT(*)::int as count FROM clients`;
+    const total = totalResult[0]?.count || 0;
 
     res.json({
       ok: true,
-      tenants,
+      tenants: transformedTenants,
       pagination: {
         page: parseInt(page),
         limit: parseInt(limit),
-        total: parseInt(total[0]?.count || 0),
-        pages: Math.ceil(parseInt(total[0]?.count || 0) / parseInt(limit))
+        total,
+        pages: Math.ceil(total / parseInt(limit))
       }
     });
   } catch (error) {
@@ -997,64 +1096,90 @@ router.get('/tenants', ...superAdminOnly, async (req, res) => {
 
 /**
  * POST /api/subscription-control/tenants/:tenantId/assign
- * Assign a plan to a tenant
+ * Assign a plan to a tenant (using client_subscriptions table)
  */
 router.post('/tenants/:tenantId/assign', ...superAdminOnly, async (req, res) => {
   try {
     const prisma = getPrisma();
     const tenantId = req.params.tenantId;
-    const { plan_id, billing_cycle = 'monthly', custom_overrides = {}, reason } = req.body;
+    const { plan_id, billing_cycle = 'MONTHLY', reason } = req.body;
 
     if (!plan_id) {
       return res.status(400).json({ ok: false, error: 'plan_id is required' });
     }
 
-    // Get old assignment if exists
-    const oldAssignment = await prisma.$queryRaw`
-      SELECT * FROM tenant_plan_assignments 
-      WHERE tenant_id = ${tenantId}::uuid AND is_active = TRUE
+    // Get old subscription if exists
+    const oldSubscriptions = await prisma.$queryRaw`
+      SELECT cs.*, sp.plan_code, sp.name as plan_name
+      FROM client_subscriptions cs
+      LEFT JOIN subscription_plans sp ON sp.id = cs.plan_id
+      WHERE cs.client_id = ${tenantId} AND cs.state IN ('ACTIVE', 'TRIAL', 'PENDING')
     `;
+    const oldSubscription = oldSubscriptions[0];
 
-    // Deactivate old assignment
-    if (oldAssignment.length > 0) {
-      await prisma.$executeRaw`
-        UPDATE tenant_plan_assignments SET 
-          is_active = FALSE,
-          effective_until = NOW()
-        WHERE tenant_id = ${tenantId}::uuid AND is_active = TRUE
-      `;
+    // Deactivate old subscription
+    if (oldSubscription) {
+      await prisma.client_subscriptions.update({
+        where: { id: oldSubscription.id },
+        data: {
+          state: 'CANCELLED',
+          current_period_end: new Date()
+        }
+      });
     }
 
-    // Create new assignment
-    await prisma.$executeRaw`
-      INSERT INTO tenant_plan_assignments 
-      (tenant_id, plan_id, billing_cycle, custom_overrides, previous_plan_id, changed_reason, created_by)
-      VALUES 
-      (${tenantId}::uuid, ${plan_id}, ${billing_cycle}, ${JSON.stringify(custom_overrides)}::jsonb, 
-       ${oldAssignment[0]?.plan_id || null}, ${reason || null}, ${req.user?.id || null})
-    `;
+    // Get the plan
+    const plan = await prisma.subscription_plans.findUnique({
+      where: { id: parseInt(plan_id) }
+    });
 
-    const newAssignment = await prisma.$queryRaw`
-      SELECT tpa.*, msp.name as plan_name, msp.code as plan_code
-      FROM tenant_plan_assignments tpa
-      JOIN master_subscription_plans msp ON msp.id = tpa.plan_id
-      WHERE tpa.tenant_id = ${tenantId}::uuid AND tpa.is_active = TRUE
-    `;
+    if (!plan) {
+      return res.status(404).json({ ok: false, error: 'Plan not found' });
+    }
+
+    // Calculate period dates
+    const now = new Date();
+    const periodEnd = new Date(now);
+    if (billing_cycle === 'YEARLY') {
+      periodEnd.setFullYear(periodEnd.getFullYear() + 1);
+    } else {
+      periodEnd.setMonth(periodEnd.getMonth() + 1);
+    }
+
+    // Create new subscription
+    const newSubscription = await prisma.client_subscriptions.create({
+      data: {
+        client_id: tenantId,
+        plan_id: parseInt(plan_id),
+        state: 'ACTIVE',
+        billing_cycle: billing_cycle,
+        current_period_start: now,
+        current_period_end: periodEnd
+      }
+    });
 
     await logPlanChange(prisma, {
       target_type: 'tenant_assignment',
       target_id: tenantId,
       target_name: `Tenant ${tenantId}`,
-      action: oldAssignment.length > 0 ? 'plan_changed' : 'plan_assigned',
-      old_values: oldAssignment[0] || null,
-      new_values: newAssignment[0],
-      change_summary: `Assigned plan ${newAssignment[0].plan_code} to tenant`,
+      action: oldSubscription ? 'plan_changed' : 'plan_assigned',
+      old_values: oldSubscription ? { plan_id: oldSubscription.plan_id, plan_code: oldSubscription.plan_code } : null,
+      new_values: { plan_id: newSubscription.plan_id, plan_code: plan.plan_code },
+      change_summary: `Assigned plan ${plan.plan_code} to tenant`,
       reason
     }, req);
 
     res.json({
       ok: true,
-      assignment: newAssignment[0],
+      assignment: {
+        id: newSubscription.id,
+        plan_id: newSubscription.plan_id,
+        plan_name: plan.name,
+        plan_code: plan.plan_code,
+        billing_cycle: newSubscription.billing_cycle,
+        effective_from: newSubscription.current_period_start,
+        is_active: newSubscription.state === 'ACTIVE'
+      },
       message: `Plan assigned successfully`
     });
   } catch (error) {
@@ -1466,7 +1591,7 @@ router.put('/custom/tenants/:tenantId/features', ...superAdminOnly, async (req, 
 
 /**
  * PATCH /api/subscription-control/custom/tenants/:tenantId/status
- * Update custom plan configuration status
+ * Update custom plan configuration status (using client_subscriptions)
  */
 router.patch('/custom/tenants/:tenantId/status', ...superAdminOnly, async (req, res) => {
   try {
@@ -1483,31 +1608,40 @@ router.patch('/custom/tenants/:tenantId/status', ...superAdminOnly, async (req, 
 
     // If activating, also assign the CUSTOM plan to the tenant
     if (status === 'active') {
-      // Get CUSTOM plan id
-      const customPlan = await prisma.$queryRaw`
-        SELECT id FROM master_subscription_plans WHERE code = 'CUSTOM'
-      `;
+      // Get CUSTOM plan id from subscription_plans
+      const customPlan = await prisma.subscription_plans.findFirst({
+        where: { plan_code: 'CUSTOM' }
+      });
 
-      if (customPlan && customPlan.length > 0) {
-        // Deactivate any existing plan assignments
-        await prisma.$executeRaw`
-          UPDATE tenant_plan_assignments 
-          SET is_active = FALSE, updated_at = NOW()
-          WHERE tenant_id = ${tenantId}::uuid AND is_active = TRUE
-        `;
+      if (customPlan) {
+        // Deactivate any existing subscriptions
+        await prisma.client_subscriptions.updateMany({
+          where: { 
+            client_id: tenantId,
+            state: { in: ['ACTIVE', 'TRIAL', 'PENDING'] }
+          },
+          data: {
+            state: 'CANCELLED',
+            current_period_end: new Date()
+          }
+        });
 
-        // Assign CUSTOM plan
-        await prisma.$executeRaw`
-          INSERT INTO tenant_plan_assignments (
-            tenant_id, plan_id, billing_cycle, is_active, created_by
-          ) VALUES (
-            ${tenantId}::uuid, ${customPlan[0].id}, 'monthly', TRUE, ${userId}
-          )
-          ON CONFLICT (tenant_id) DO UPDATE SET
-            plan_id = ${customPlan[0].id},
-            is_active = TRUE,
-            updated_at = NOW()
-        `;
+        // Create CUSTOM subscription
+        const now = new Date();
+        const periodEnd = new Date(now);
+        periodEnd.setMonth(periodEnd.getMonth() + 1);
+
+        await prisma.client_subscriptions.create({
+          data: {
+            client_id: tenantId,
+            plan_id: customPlan.id,
+            state: 'ACTIVE',
+            billing_cycle: 'MONTHLY',
+            current_period_start: now,
+            current_period_end: periodEnd,
+            auto_renew: true
+          }
+        });
       }
 
       // Set effective_from

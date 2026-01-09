@@ -207,7 +207,15 @@ router.get('/pricing-page', async (req, res) => {
  */
 router.get('/current', authenticate, attachSubscriptionInfo, async (req, res) => {
   try {
-    const clientId = req.user.clientId || req.user.client_id;
+    const clientId = req.user.clientId || req.user.client_id || req.user.tenant_id || req.user.tenantId;
+    
+    console.log('[Subscriptions /current] req.user:', JSON.stringify({
+      clientId: req.user.clientId,
+      client_id: req.user.client_id,
+      tenant_id: req.user.tenant_id,
+      tenantId: req.user.tenantId,
+      resolvedClientId: clientId,
+    }));
     
     if (!clientId) {
       return res.status(400).json({
@@ -218,6 +226,7 @@ router.get('/current', authenticate, attachSubscriptionInfo, async (req, res) =>
     }
 
     const subscription = await subscriptionService.getSubscription(clientId);
+    console.log('[Subscriptions /current] subscription found:', subscription ? 'yes' : 'no', subscription?.plan?.name);
 
     if (!subscription) {
       return res.json({
@@ -251,7 +260,7 @@ router.get('/current', authenticate, attachSubscriptionInfo, async (req, res) =>
             limit: subscription.plan.max_users,
           },
           storage: {
-            current_bytes: subscription.current_storage_used,
+            current_bytes: Number(subscription.current_storage_used || 0),
             limit_gb: subscription.plan.max_storage_gb,
           },
         },
@@ -313,7 +322,7 @@ router.get('/features', authenticate, attachSubscriptionInfo, async (req, res) =
 router.post('/upgrade', authenticate, async (req, res) => {
   try {
     const { plan_code, billing_cycle = 'MONTHLY' } = req.body;
-    const clientId = req.user.clientId || req.user.client_id;
+    const clientId = req.user.clientId || req.user.client_id || req.user.tenant_id || req.user.tenantId;
     const userId = req.user.id;
 
     if (!plan_code) {
@@ -375,7 +384,7 @@ router.post('/upgrade', authenticate, async (req, res) => {
 router.post('/downgrade', authenticate, async (req, res) => {
   try {
     const { plan_code } = req.body;
-    const clientId = req.user.clientId || req.user.client_id;
+    const clientId = req.user.clientId || req.user.client_id || req.user.tenant_id || req.user.tenantId;
     const userId = req.user.id;
 
     if (!plan_code) {
@@ -439,7 +448,7 @@ router.post('/downgrade', authenticate, async (req, res) => {
 router.post('/cancel', authenticate, async (req, res) => {
   try {
     const { reason } = req.body;
-    const clientId = req.user.clientId || req.user.client_id;
+    const clientId = req.user.clientId || req.user.client_id || req.user.tenant_id || req.user.tenantId;
     const userId = req.user.id;
 
     const prisma = getPrisma();
@@ -485,7 +494,7 @@ router.post('/cancel', authenticate, async (req, res) => {
  */
 router.get('/invoices', authenticate, async (req, res) => {
   try {
-    const clientId = req.user.clientId || req.user.client_id;
+    const clientId = req.user.clientId || req.user.client_id || req.user.tenant_id || req.user.tenantId;
     const { page = 1, limit = 10 } = req.query;
 
     const prisma = getPrisma();
@@ -533,7 +542,7 @@ router.get('/invoices', authenticate, async (req, res) => {
  */
 router.get('/usage', authenticate, async (req, res) => {
   try {
-    const clientId = req.user.clientId || req.user.client_id;
+    const clientId = req.user.clientId || req.user.client_id || req.user.tenant_id || req.user.tenantId;
     const prisma = getPrisma();
 
     const subscription = await prisma.client_subscriptions.findUnique({

@@ -312,7 +312,9 @@ export default function SubscriptionControlPage() {
   const [expandedBreakdownCategories, setExpandedBreakdownCategories] = useState<Set<string>>(new Set());
   const [showCloneModal, setShowCloneModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [activeTab, setActiveTab] = useState<'features' | 'governance' | 'infra' | 'trial'>('features');
+  const [activeTab, setActiveTab] = useState<'features' | 'governance' | 'infra' | 'trial' | 'tenants'>('features');
+  const [planTenants, setPlanTenants] = useState<any[]>([]);
+  const [tenantsLoading, setTenantsLoading] = useState(false);
 
   // Custom Plan States
   const [customTenants, setCustomTenants] = useState<CustomTenant[]>([]);
@@ -369,9 +371,9 @@ export default function SubscriptionControlPage() {
         total: features.length,
         hardLocked: features.filter(f => f.lock_mode === 'hard').length,
         softLocked: features.filter(f => f.lock_mode === 'soft').length,
-        unlimited: features.filter(f => f.free_limit === -1).length,
-        totalUnlockValue: features.reduce((sum, f) => sum + (f.unlock_price || 0), 0),
-        totalApprovalValue: features.reduce((sum, f) => sum + (f.approval_threshold || 0), 0),
+        unlimited: features.filter(f => Number(f.free_limit) === -1).length,
+        totalUnlockValue: features.reduce((sum, f) => sum + (Number(f.unlock_price) || 0), 0),
+        totalApprovalValue: features.reduce((sum, f) => sum + (Number(f.approval_threshold) || 0), 0),
       };
     });
     
@@ -383,10 +385,10 @@ export default function SubscriptionControlPage() {
     const total = planFeatures.length;
     const hardLocked = planFeatures.filter(f => f.lock_mode === 'hard').length;
     const softLocked = planFeatures.filter(f => f.lock_mode === 'soft').length;
-    const unlimited = planFeatures.filter(f => f.free_limit === -1).length;
-    const limited = planFeatures.filter(f => f.free_limit > 0 && f.free_limit !== -1).length;
-    const blocked = planFeatures.filter(f => f.free_limit === 0 && f.lock_mode !== 'none').length;
-    const totalUnlockValue = planFeatures.reduce((sum, f) => sum + (f.unlock_price || 0), 0);
+    const unlimited = planFeatures.filter(f => Number(f.free_limit) === -1).length;
+    const limited = planFeatures.filter(f => Number(f.free_limit) > 0 && Number(f.free_limit) !== -1).length;
+    const blocked = planFeatures.filter(f => Number(f.free_limit) === 0 && f.lock_mode !== 'none').length;
+    const totalUnlockValue = planFeatures.reduce((sum, f) => sum + (Number(f.unlock_price) || 0), 0);
     const categoryCount = Object.keys(featuresByCategory).length;
     
     return {
@@ -496,6 +498,25 @@ export default function SubscriptionControlPage() {
       console.error('[SubscriptionControl] Load custom tenants error:', err);
     } finally {
       setCustomTenantsLoading(false);
+    }
+  }, []);
+
+  // Load tenants for the selected plan
+  const loadPlanTenants = useCallback(async (planId: number) => {
+    setTenantsLoading(true);
+    try {
+      const res = await fetch(`${API_BASE}/api/subscription-control/plans/${planId}/tenants`, {
+        credentials: 'include',
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setPlanTenants(data.tenants || []);
+      }
+    } catch (err) {
+      console.error('[SubscriptionControl] Load plan tenants error:', err);
+      setPlanTenants([]);
+    } finally {
+      setTenantsLoading(false);
     }
   }, []);
 
@@ -677,6 +698,13 @@ export default function SubscriptionControlPage() {
       loadCustomTenantConfig(selectedCustomTenantId);
     }
   }, [selectedCustomTenantId, isCustomPlan, loadCustomTenantConfig]);
+
+  // Load tenants when Tenants tab is selected
+  useEffect(() => {
+    if (activeTab === 'tenants' && selectedPlan?.id) {
+      loadPlanTenants(selectedPlan.id);
+    }
+  }, [activeTab, selectedPlan?.id, loadPlanTenants]);
 
   // ============================================================================
   // VALIDATION
@@ -967,10 +995,6 @@ export default function SubscriptionControlPage() {
           <div className="flex items-center gap-1" title="Hard Locked">
             <span className="text-red-600">{globalStats.hardLocked}🔒</span>
           </div>
-          <div className="flex items-center gap-1 pl-2 border-l border-gray-300">
-            <span className="font-bold text-emerald-600">₹{globalStats.totalUnlockValue.toLocaleString()}</span>
-            <span className="text-gray-500">unlock</span>
-          </div>
         </div>
         <div className="flex items-center gap-2">
           <Link
@@ -1072,34 +1096,32 @@ export default function SubscriptionControlPage() {
                           </div>
                         </div>
                       ) : (
-                        <div className={`grid gap-1.5 ${plan.price_monthly === 0 ? 'grid-cols-3' : 'grid-cols-2'}`}>
+                        <div className={`grid gap-1.5 grid-cols-3`}>
                           {/* Rate Box */}
-                          <div className="bg-green-50 dark:bg-green-900/30 rounded px-2 py-1.5 text-center">
+                          <div className="bg-green-50 dark:bg-green-900/30 rounded px-1.5 py-1.5 text-center overflow-hidden">
                             <div className="text-[9px] text-green-600 dark:text-green-400 uppercase tracking-wider">Rate</div>
-                            <div className="text-sm font-bold text-green-700 dark:text-green-300">
-                              {plan.price_monthly === 0 ? 'Free' : `₹${plan.price_monthly?.toLocaleString('en-IN')}`}
-                            </div>
-                          </div>
-                          {/* Unlock Value Box */}
-                          <div className="bg-blue-50 dark:bg-blue-900/30 rounded px-2 py-1.5 text-center">
-                            <div className="text-[9px] text-blue-600 dark:text-blue-400 uppercase tracking-wider">Unlock</div>
-                            <div className="text-sm font-bold text-blue-700 dark:text-blue-300">
-                              {(plan.total_unlock_value || 0) === 0 ? '₹0' : `₹${(plan.total_unlock_value || 0).toLocaleString('en-IN')}`}
+                            <div className="text-xs font-bold text-green-700 dark:text-green-300 truncate">
+                              {plan.price_monthly === 0 ? 'Free' : `₹${(plan.price_monthly / 1000).toFixed(1)}K`}
                             </div>
                           </div>
                           {/* Trial Period Box - Only show for paid plans */}
-                          {plan.price_monthly > 0 && (
-                            <div className="bg-purple-50 dark:bg-purple-900/30 rounded px-2 py-1.5 text-center">
+                          {plan.price_monthly > 0 ? (
+                            <div className="bg-purple-50 dark:bg-purple-900/30 rounded px-1.5 py-1.5 text-center overflow-hidden">
                               <div className="text-[9px] text-purple-600 dark:text-purple-400 uppercase tracking-wider">Trial</div>
-                              <div className="text-sm font-bold text-purple-700 dark:text-purple-300">
+                              <div className="text-xs font-bold text-purple-700 dark:text-purple-300 truncate">
                                 {plan.trial_enabled ? `${plan.trial_days || 14} days` : 'None'}
                               </div>
                             </div>
+                          ) : (
+                            <div className="bg-gray-50 dark:bg-gray-700/50 rounded px-1.5 py-1.5 text-center overflow-hidden">
+                              <div className="text-[9px] text-gray-500 dark:text-gray-400 uppercase tracking-wider">Trial</div>
+                              <div className="text-xs font-bold text-gray-700 dark:text-gray-300">N/A</div>
+                            </div>
                           )}
                           {/* Tenants Box */}
-                          <div className="bg-gray-50 dark:bg-gray-700/50 rounded px-2 py-1.5 text-center">
+                          <div className="bg-gray-50 dark:bg-gray-700/50 rounded px-1.5 py-1.5 text-center overflow-hidden">
                             <div className="text-[9px] text-gray-500 dark:text-gray-400 uppercase tracking-wider">Tenants</div>
-                            <div className="text-sm font-bold text-gray-700 dark:text-gray-300">
+                            <div className="text-xs font-bold text-gray-700 dark:text-gray-300">
                               {plan.active_tenant_count || 0}
                             </div>
                           </div>
@@ -1520,7 +1542,7 @@ export default function SubscriptionControlPage() {
                     >
                       {PLAN_ICONS[selectedPlan?.code || ''] || <Star className="w-6 h-6" />}
                     </div>
-                    <div>
+                    <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">
                         <input
                           type="text"
@@ -1528,7 +1550,7 @@ export default function SubscriptionControlPage() {
                           onChange={e => updatePlanSettings({ name: e.target.value })}
                           className="text-lg font-bold bg-transparent border-b border-transparent hover:border-gray-300 focus:border-purple-500 focus:outline-none px-1"
                         />
-                        <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded font-mono">
+                        <span className="text-xs px-2 py-1 bg-gray-100 dark:bg-gray-700 rounded font-mono flex-shrink-0">
                           {selectedPlan?.code}
                         </span>
                       </div>
@@ -1537,7 +1559,7 @@ export default function SubscriptionControlPage() {
                         value={editingPlan?.description || ''}
                         onChange={e => updatePlanSettings({ description: e.target.value })}
                         placeholder="Plan description..."
-                        className="text-sm text-gray-500 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-purple-500 focus:outline-none w-full"
+                        className="text-sm text-gray-500 bg-transparent border-b border-transparent hover:border-gray-300 focus:border-purple-500 focus:outline-none w-full max-w-md truncate"
                       />
                     </div>
                   </div>
@@ -1584,6 +1606,7 @@ export default function SubscriptionControlPage() {
                     { key: 'governance', label: 'Governance Rules', icon: <Shield className="w-4 h-4" /> },
                     { key: 'infra', label: 'Infrastructure', icon: <Server className="w-4 h-4" /> },
                     { key: 'trial', label: 'Trial Settings', icon: <Clock className="w-4 h-4" /> },
+                    { key: 'tenants', label: 'Tenants', icon: <Users className="w-4 h-4" /> },
                   ].map(tab => (
                     <button
                       key={tab.key}
@@ -2393,7 +2416,7 @@ export default function SubscriptionControlPage() {
                       </div>
                     )}
                   </div>
-                ) : (
+                ) : activeTab === 'trial' ? (
                   /* TRIAL SETTINGS TAB */
                   <div className="space-y-6">
                     <div className="border rounded-lg overflow-hidden">
@@ -2515,7 +2538,145 @@ export default function SubscriptionControlPage() {
                       </div>
                     </div>
                   </div>
-                )}
+                ) : activeTab === 'tenants' ? (
+                  /* TENANTS TAB */
+                  <div className="space-y-4">
+                    <div className="border rounded-lg overflow-hidden">
+                      <div className="p-4 bg-gradient-to-r from-purple-50 to-blue-50 dark:from-purple-900/20 dark:to-blue-900/20 border-b">
+                        <h3 className="font-semibold flex items-center gap-2">
+                          <Users className="w-5 h-5 text-purple-600" />
+                          Tenants on {selectedPlan?.name || 'this plan'}
+                        </h3>
+                        <p className="text-xs text-gray-500 mt-1">
+                          List of all clients/tenants currently subscribed to this plan.
+                        </p>
+                      </div>
+                      <div className="p-4">
+                        {tenantsLoading ? (
+                          <div className="flex items-center justify-center py-8">
+                            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-500"></div>
+                          </div>
+                        ) : planTenants.length === 0 ? (
+                          <div className="text-center py-8 text-gray-500">
+                            <Users className="w-12 h-12 mx-auto mb-3 opacity-30" />
+                            <p className="font-medium">No tenants on this plan</p>
+                            <p className="text-sm">No clients have subscribed to {selectedPlan?.name || 'this plan'} yet.</p>
+                          </div>
+                        ) : (
+                          <div className="overflow-x-auto">
+                            <table className="w-full text-sm">
+                              <thead className="bg-gray-50 dark:bg-gray-800">
+                                <tr>
+                                  <th className="text-left px-4 py-2 font-medium text-gray-600 dark:text-gray-300">Client</th>
+                                  <th className="text-left px-4 py-2 font-medium text-gray-600 dark:text-gray-300">Status</th>
+                                  <th className="text-left px-4 py-2 font-medium text-gray-600 dark:text-gray-300">Days Left</th>
+                                  <th className="text-left px-4 py-2 font-medium text-gray-600 dark:text-gray-300">Started</th>
+                                  <th className="text-left px-4 py-2 font-medium text-gray-600 dark:text-gray-300">Expires</th>
+                                  <th className="text-left px-4 py-2 font-medium text-gray-600 dark:text-gray-300">Billing</th>
+                                </tr>
+                              </thead>
+                              <tbody className="divide-y dark:divide-gray-700">
+                                {planTenants.map((tenant: any) => {
+                                  // Determine display status (use actual_status from backend or derive from state)
+                                  const displayStatus = tenant.actual_status || tenant.state || 'UNKNOWN';
+                                  const isTrialActive = displayStatus === 'TRIAL' || (tenant.trial_converted === false && tenant.trial_days_remaining > 0);
+                                  const isTrialExpired = displayStatus === 'TRIAL_EXPIRED';
+                                  const isExpired = displayStatus === 'EXPIRED';
+                                  const isActive = displayStatus === 'ACTIVE' && !isTrialActive;
+                                  
+                                  return (
+                                    <tr key={tenant.id} className="hover:bg-gray-50 dark:hover:bg-gray-800/50">
+                                      <td className="px-4 py-3">
+                                        <div className="font-medium text-gray-900 dark:text-white">{tenant.client_name || tenant.name || `Tenant ${tenant.client_id}`}</div>
+                                        <div className="text-xs text-gray-500">{tenant.client_email || tenant.email || ''}</div>
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${
+                                          isActive ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' :
+                                          isTrialActive ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' :
+                                          isTrialExpired ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' :
+                                          isExpired ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' :
+                                          displayStatus === 'CANCELLED' ? 'bg-gray-100 text-gray-700 dark:bg-gray-900/30 dark:text-gray-400' :
+                                          'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                                        }`}>
+                                          {isActive && <CheckCircle className="w-3 h-3" />}
+                                          {isTrialActive && <Clock className="w-3 h-3" />}
+                                          {(isTrialExpired || isExpired) && <XCircle className="w-3 h-3" />}
+                                          {isTrialActive ? 'Trial' : isTrialExpired ? 'Trial Expired' : isActive ? 'Active' : isExpired ? 'Expired' : displayStatus}
+                                        </span>
+                                      </td>
+                                      <td className="px-4 py-3">
+                                        {isTrialActive && tenant.trial_days_remaining !== null ? (
+                                          <div className="flex flex-col">
+                                            <span className={`font-bold ${tenant.trial_days_remaining <= 3 ? 'text-red-600' : tenant.trial_days_remaining <= 7 ? 'text-orange-500' : 'text-blue-600'}`}>
+                                              {tenant.trial_days_remaining} days
+                                            </span>
+                                            <span className="text-xs text-gray-400">trial left</span>
+                                          </div>
+                                        ) : tenant.days_until_expiry !== null ? (
+                                          <div className="flex flex-col">
+                                            <span className={`font-bold ${tenant.days_until_expiry <= 3 ? 'text-red-600' : tenant.days_until_expiry <= 7 ? 'text-orange-500' : 'text-gray-600 dark:text-gray-400'}`}>
+                                              {tenant.days_until_expiry} days
+                                            </span>
+                                            <span className="text-xs text-gray-400">until expiry</span>
+                                          </div>
+                                        ) : (
+                                          <span className="text-gray-400">-</span>
+                                        )}
+                                      </td>
+                                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                        {tenant.start_date ? new Date(tenant.start_date).toLocaleDateString() : '-'}
+                                      </td>
+                                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                        {isTrialActive && tenant.trial_end_date ? (
+                                          <div className="flex flex-col">
+                                            <span>{new Date(tenant.trial_end_date).toLocaleDateString()}</span>
+                                            <span className="text-xs text-blue-500">Trial ends</span>
+                                          </div>
+                                        ) : tenant.end_date ? (
+                                          new Date(tenant.end_date).toLocaleDateString()
+                                        ) : 'Never'}
+                                      </td>
+                                      <td className="px-4 py-3 text-gray-600 dark:text-gray-400">
+                                        <span className="capitalize">{tenant.billing_cycle?.toLowerCase() || '-'}</span>
+                                      </td>
+                                    </tr>
+                                  );
+                                })}
+                              </tbody>
+                            </table>
+                          </div>
+                        )}
+                      </div>
+                      {/* Summary Footer */}
+                      {planTenants.length > 0 && (
+                        <div className="p-4 bg-gray-50 dark:bg-gray-800 border-t flex items-center justify-between">
+                          <div className="text-sm text-gray-600 dark:text-gray-400">
+                            Total: <span className="font-semibold">{planTenants.length}</span> tenant{planTenants.length !== 1 ? 's' : ''}
+                          </div>
+                          <div className="flex gap-4 text-xs">
+                            <span className="flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                              Active: {planTenants.filter((t: any) => t.actual_status === 'ACTIVE' && t.trial_converted !== false).length}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-blue-500"></span>
+                              Trial: {planTenants.filter((t: any) => t.actual_status === 'TRIAL' || (t.trial_converted === false && t.trial_days_remaining > 0)).length}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-orange-500"></span>
+                              Trial Expired: {planTenants.filter((t: any) => t.actual_status === 'TRIAL_EXPIRED').length}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                              Expired: {planTenants.filter((t: any) => t.actual_status === 'EXPIRED' || t.state === 'EXPIRED').length}
+                            </span>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </>
           )}

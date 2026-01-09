@@ -382,7 +382,7 @@ const attachSubscriptionInfo = async (req, res, next) => {
   try {
     if (!req.user) return next();
 
-    const clientId = req.user.clientId || req.user.client_id;
+    const clientId = req.user.clientId || req.user.client_id || req.user.tenant_id || req.user.tenantId;
     if (!clientId) return next();
 
     const features = await featureFlagService.getClientFeatures(clientId);

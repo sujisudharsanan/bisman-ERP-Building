@@ -1141,6 +1141,8 @@ model client_subscriptions {
   plan_snapshot_json             Json?
   started_at                     DateTime?                        @db.Timestamptz(6)
   expires_at                     DateTime?                        @db.Timestamptz(6)
+  plan                           subscription_plans               @relation("plan", fields: [plan_id], references: [id], onUpdate: NoAction)
+  scheduled_plan                 subscription_plans?              @relation("scheduled_plan", fields: [scheduled_plan_id], references: [id], onUpdate: NoAction)
   subscription_coupons           subscription_coupons?            @relation(fields: [coupon_id], references: [id], onUpdate: NoAction)
   coupon_redemptions             coupon_redemptions[]
   subscription_coupon_audit_logs subscription_coupon_audit_logs[]
@@ -3288,6 +3290,8 @@ model subscription_plans {
   updated_by           Int?
   trial_days           Int?                   @default(14)
   subscription_coupons subscription_coupons[]
+  client_subscriptions client_subscriptions[] @relation("plan")
+  scheduled_subscriptions client_subscriptions[] @relation("scheduled_plan")
 
   @@index([is_active, is_public], map: "idx_subscription_plans_active")
   @@index([sort_order], map: "idx_subscription_plans_sort")

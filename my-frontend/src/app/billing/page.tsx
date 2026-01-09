@@ -63,15 +63,43 @@ const FEATURE_CATEGORIES = {
 };
 
 interface SubscriptionData {
-  subscription: {
+  ok?: boolean;
+  has_subscription?: boolean;
+  subscription?: {
     id: string;
-    plan_id: string;
     state: string;
-    start_date: string;
-    end_date: string;
-    is_active: boolean;
+    start_date?: string;
+    end_date?: string;
+    is_active?: boolean;
+    plan: {
+      code: string;
+      name: string;
+      price_monthly: number;
+      price_yearly: number;
+    };
+    billing_cycle: string;
+    current_period_end: string;
+    next_billing_date: string;
+    trial_end_date?: string;
+    trial_converted?: boolean;
+    usage: {
+      users: {
+        current: number;
+        limit: number;
+      };
+      storage: {
+        current_bytes: number;
+        limit_gb: number;
+      };
+    };
+    scheduled_change?: {
+      new_plan: string;
+      effective_date: string;
+      type: string;
+    } | null;
   } | null;
-  plan: {
+  // Legacy format support
+  plan?: {
     id: string;
     name: string;
     display_name: string;
@@ -81,14 +109,14 @@ interface SubscriptionData {
     features: Record<string, boolean | number | string>;
     limits: Record<string, number | string>;
   } | null;
-  usage: {
+  usage?: {
     users: number;
     storage_mb: number;
     api_calls: number;
     tasks_completed?: number;
     amount_processed?: number;
   } | null;
-  billing_history: Array<{
+  billing_history?: Array<{
     id: string;
     amount: number;
     currency: string;
@@ -103,6 +131,20 @@ interface TenantData {
   name: string;
   slug: string;
   settings?: Record<string, unknown>;
+}
+
+interface AvailablePlan {
+  id: number;
+  plan_code: string;
+  name: string;
+  description?: string;
+  price_monthly: number;
+  price_yearly: number;
+  max_users: number;
+  max_storage_gb: number;
+  max_branches: number;
+  is_active: boolean;
+  is_popular?: boolean;
 }
 
 interface UserRole {
@@ -135,6 +177,11 @@ const BillingPage = () => {
   const [showBillingHistory, setShowBillingHistory] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showCreateUserModal, setShowCreateUserModal] = useState(false);
+  const [availablePlans, setAvailablePlans] = useState<AvailablePlan[]>([]);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [upgrading, setUpgrading] = useState(false);
+  const [selectedPlanCode, setSelectedPlanCode] = useState<string | null>(null);
+  const [featuresData, setFeaturesData] = useState<Record<string, unknown> | null>(null);
 
   // Subscription limits for user creation
   const { 
@@ -142,9 +189,43 @@ const BillingPage = () => {
     refresh: refreshSubscription,
   } = useSubscriptionLimits();
 
-  // Handle upgrade plan - redirect to welcome page for plan selection
+  // Handle upgrade plan - show modal with available plans
   const handleUpgradePlan = () => {
-    router.push('/welcome');
+    setShowUpgradeModal(true);
+  };
+
+  // Handle plan upgrade submission
+  const handleConfirmUpgrade = async () => {
+    if (!selectedPlanCode) {
+      toast({ title: 'Please select a plan', variant: 'destructive' });
+      return;
+    }
+
+    setUpgrading(true);
+    try {
+      const response = await api.post('/api/subscriptions/upgrade', {
+        plan_code: selectedPlanCode,
+        billing_cycle: 'MONTHLY',
+      });
+
+      if (response.data?.ok) {
+        toast({ title: 'Plan upgraded successfully!', variant: 'success' });
+        setShowUpgradeModal(false);
+        setSelectedPlanCode(null);
+        await fetchData();
+        refreshSubscription();
+      } else {
+        toast({ title: response.data?.error || 'Failed to upgrade plan', variant: 'destructive' });
+      }
+    } catch (error: any) {
+      console.error('Upgrade error:', error);
+      toast({ 
+        title: error.response?.data?.error || 'Failed to upgrade plan', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setUpgrading(false);
+    }
   };
 
   // Fetch exchange rates from real API
@@ -216,10 +297,12 @@ const BillingPage = () => {
     try {
       // Use skipGlobalError to prevent toast spam - these endpoints may return 400/404
       // for users without tenant context, which is expected behavior
-      const [subResponse, usersResponse, analyticsResponse] = await Promise.allSettled([
+      const [subResponse, usersResponse, analyticsResponse, featuresResponse, plansResponse] = await Promise.allSettled([
         api.get('/api/subscriptions/current', { skipGlobalError: true } as any),
         api.get('/api/users', { skipGlobalError: true } as any),
         api.get('/api/analytics/summary', { skipGlobalError: true } as any),
+        api.get('/api/subscriptions/features', { skipGlobalError: true } as any),
+        api.get('/api/subscriptions/plans', { skipGlobalError: true } as any),
       ]);
 
       if (subResponse.status === 'fulfilled') {
@@ -234,6 +317,13 @@ const BillingPage = () => {
       }
       if (analyticsResponse.status === 'fulfilled') {
         setAnalyticsData(analyticsResponse.value.data);
+      }
+      if (featuresResponse.status === 'fulfilled') {
+        setFeaturesData(featuresResponse.value.data);
+      }
+      if (plansResponse.status === 'fulfilled') {
+        const plans = plansResponse.value.data?.plans || plansResponse.value.data?.data || [];
+        setAvailablePlans(plans.filter((p: AvailablePlan) => p.is_active));
       }
     } catch (error) {
       console.error('Error fetching billing data:', error);
@@ -283,34 +373,97 @@ const BillingPage = () => {
     };
   }, [users]);
 
-  // Calculate usage statistics
+  // Calculate usage statistics - handles both new and legacy API response formats
   const usageStats = useMemo(() => {
-    const usage = subscriptionData?.usage;
-    const limits = subscriptionData?.plan?.limits;
+    // New API format from /api/subscriptions/current
+    const sub = subscriptionData?.subscription;
+    const subUsage = sub?.usage;
+    
+    // Legacy format support
+    const legacyUsage = subscriptionData?.usage;
+    const legacyLimits = subscriptionData?.plan?.limits;
+    
+    // Features data from /api/subscriptions/features
+    const featureLimits = (featuresData as Record<string, unknown>)?.limits as Record<string, number> | undefined;
+    const featureUsage = (featuresData as Record<string, unknown>)?.usage as Record<string, number> | undefined;
+    
+    // Determine user limits (priority: new API > features > legacy > default)
+    const userLimit = subUsage?.users?.limit || 
+                      featureLimits?.max_users || 
+                      Number(legacyLimits?.max_users) || 
+                      100;
+    const userCurrent = subUsage?.users?.current || 
+                        featureUsage?.current_users ||
+                        roleStats.total;
+    
+    // Storage limits
+    const storageLimitGb = subUsage?.storage?.limit_gb || 
+                           featureLimits?.max_storage_gb ||
+                           Number(legacyLimits?.storage_gb) || 
+                           10;
+    const storageUsedBytes = subUsage?.storage?.current_bytes || 0;
+    const storageUsedMb = legacyUsage?.storage_mb || (storageUsedBytes / (1024 * 1024));
     
     return {
       users: {
-        used: roleStats.total,
-        limit: Number(limits?.max_users) || 100,
-        percentage: Math.min(100, (roleStats.total / (Number(limits?.max_users) || 100)) * 100),
+        used: userCurrent,
+        limit: userLimit === -1 ? 999 : userLimit, // -1 means unlimited
+        percentage: userLimit === -1 ? 0 : Math.min(100, (userCurrent / userLimit) * 100),
       },
       storage: {
-        used: usage?.storage_mb || 0,
-        limit: Number(limits?.storage_gb) * 1024 || 10240,
-        percentage: Math.min(100, ((usage?.storage_mb || 0) / (Number(limits?.storage_gb) * 1024 || 10240)) * 100),
+        used: storageUsedMb,
+        limit: storageLimitGb * 1024, // Convert GB to MB
+        percentage: storageLimitGb === -1 ? 0 : Math.min(100, (storageUsedMb / (storageLimitGb * 1024)) * 100),
       },
       tasks: {
-        completed: usage?.tasks_completed || (analyticsData as Record<string, number>)?.tasks_completed || 0,
+        completed: legacyUsage?.tasks_completed || (analyticsData as Record<string, number>)?.tasks_completed || 0,
       },
       amount: {
-        processed: usage?.amount_processed || (analyticsData as Record<string, number>)?.total_amount_processed || 0,
+        processed: legacyUsage?.amount_processed || (analyticsData as Record<string, number>)?.total_amount_processed || 0,
       },
       api: {
-        used: usage?.api_calls || 0,
-        limit: Number(limits?.api_calls_per_month) || 100000,
+        used: legacyUsage?.api_calls || 0,
+        limit: featureLimits?.max_api_calls_day || Number(legacyLimits?.api_calls_per_month) || 100000,
       },
     };
-  }, [subscriptionData, roleStats, analyticsData]);
+  }, [subscriptionData, roleStats, analyticsData, featuresData]);
+
+  // Get current plan name - handles both new and legacy API formats
+  const currentPlanName = useMemo(() => {
+    // New API format
+    if (subscriptionData?.subscription?.plan?.name) {
+      return subscriptionData.subscription.plan.name;
+    }
+    // Features API format
+    if ((featuresData as Record<string, unknown>)?.planName) {
+      return (featuresData as Record<string, unknown>).planName as string;
+    }
+    // Legacy format
+    if (subscriptionData?.plan?.name) {
+      return subscriptionData.plan.name;
+    }
+    return 'Free Plan';
+  }, [subscriptionData, featuresData]);
+
+  // Get current plan code
+  const currentPlanCode = useMemo(() => {
+    if (subscriptionData?.subscription?.plan?.code) {
+      return subscriptionData.subscription.plan.code;
+    }
+    if ((featuresData as Record<string, unknown>)?.plan) {
+      return (featuresData as Record<string, unknown>).plan as string;
+    }
+    return null;
+  }, [subscriptionData, featuresData]);
+
+  // Get current features - from features API or legacy plan data
+  const currentFeatures = useMemo(() => {
+    const features = (featuresData as Record<string, unknown>)?.features as Record<string, boolean | number | string> | undefined;
+    if (features && Object.keys(features).length > 0) {
+      return features;
+    }
+    return subscriptionData?.plan?.features || {};
+  }, [featuresData, subscriptionData]);
 
   // Get plan tier info for styling
   const getPlanTier = (planName: string | undefined) => {
@@ -330,7 +483,7 @@ const BillingPage = () => {
     return { icon: Zap, color: 'from-gray-500 to-slate-600', label: 'Basic', bg: 'bg-gradient-to-r from-gray-50 to-slate-50' };
   };
 
-  const planTier = getPlanTier(subscriptionData?.plan?.name);
+  const planTier = getPlanTier(currentPlanName);
   const PlanIcon = planTier.icon;
 
   if (loading) {
@@ -383,21 +536,21 @@ const BillingPage = () => {
               <div>
                 <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">Current Plan</p>
                 <h3 className={`text-lg md:text-xl font-extrabold text-slate-900`}>
-                  {subscriptionData?.plan?.display_name || subscriptionData?.plan?.name || 'Free Plan'}
+                  {currentPlanName}
                 </h3>
                 <p className="text-sm text-slate-500 mt-1">
-                  {subscriptionData?.subscription?.is_active
+                  {subscriptionData?.has_subscription
                     ? 'Your active subscription and billing status.'
                     : 'Basic features included. Upgrade to unlock more.'
                   }
                 </p>
                 <div className="flex items-center gap-2 mt-3">
                   <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                    Active
+                    {subscriptionData?.subscription?.state || 'Active'}
                   </span>
-                  {subscriptionData?.subscription?.end_date && subscriptionData?.subscription?.is_active && (
+                  {subscriptionData?.subscription?.current_period_end && (
                     <span className="text-xs text-slate-500">
-                      Expires: {new Date(subscriptionData.subscription.end_date).toLocaleDateString()}
+                      Renews: {new Date(subscriptionData.subscription.current_period_end).toLocaleDateString()}
                     </span>
                   )}
                 </div>
@@ -447,7 +600,7 @@ const BillingPage = () => {
             </div>
             <div className="text-center">
               <div className="text-4xl font-bold mb-1">
-                {Object.values(subscriptionData?.plan?.features || {}).filter(v => v === true).length}
+                {Object.values(currentFeatures).filter(v => v === true).length}
               </div>
               <p className="text-sm opacity-80">Active Features Enabled</p>
             </div>
@@ -645,7 +798,7 @@ const BillingPage = () => {
                 <div className="flex items-center gap-2 mb-2">
                   <Crown className="w-4 h-4 text-amber-500" />
                   <span className="text-sm font-medium text-slate-800">
-                    {subscriptionData?.plan?.display_name || subscriptionData?.plan?.name || 'Free Plan'}
+                    {currentPlanName}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
@@ -680,27 +833,27 @@ const BillingPage = () => {
             <div className="space-y-4">
               {/* Current Plan Highlight */}
               <div className={`rounded-xl p-4 border-2 ${
-                (subscriptionData?.plan?.name || '').toLowerCase().includes('enterprise') 
+                currentPlanName.toLowerCase().includes('enterprise') 
                   ? 'border-purple-500 bg-purple-50' 
-                  : (subscriptionData?.plan?.name || '').toLowerCase().includes('pro') 
+                  : currentPlanName.toLowerCase().includes('pro') 
                     ? 'border-blue-500 bg-blue-50'
                     : 'border-slate-300 bg-slate-50'
               }`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <PlanIcon className={`w-5 h-5 ${
-                      (subscriptionData?.plan?.name || '').toLowerCase().includes('enterprise') 
+                      currentPlanName.toLowerCase().includes('enterprise') 
                         ? 'text-purple-500' 
-                        : (subscriptionData?.plan?.name || '').toLowerCase().includes('pro') 
+                        : currentPlanName.toLowerCase().includes('pro') 
                           ? 'text-blue-500'
                           : 'text-slate-400'
                     }`} />
                     <span className="font-semibold text-slate-800">
-                      {subscriptionData?.plan?.display_name || subscriptionData?.plan?.name || 'Free Plan'}
+                      {currentPlanName}
                     </span>
                   </div>
                   <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">
-                    Active
+                    {subscriptionData?.subscription?.state || 'Active'}
                   </span>
                 </div>
               </div>
@@ -801,30 +954,34 @@ const BillingPage = () => {
                   <p className="font-semibold text-slate-700">
                     {subscriptionData?.subscription?.start_date 
                       ? new Date(subscriptionData.subscription.start_date).toLocaleDateString() 
-                      : 'N/A'}
+                      : subscriptionData?.subscription?.trial_end_date
+                        ? 'Trial Started'
+                        : 'N/A'}
                   </p>
                 </div>
                 <div className="text-center p-4 bg-slate-50 rounded-xl">
                   <Clock className="w-6 h-6 text-amber-500 mx-auto mb-2" />
-                  <p className="text-xs text-slate-500 mb-1">End Date</p>
+                  <p className="text-xs text-slate-500 mb-1">Renewal Date</p>
                   <p className="font-semibold text-slate-700">
-                    {subscriptionData?.subscription?.end_date 
-                      ? new Date(subscriptionData.subscription.end_date).toLocaleDateString() 
-                      : 'N/A'}
+                    {subscriptionData?.subscription?.current_period_end 
+                      ? new Date(subscriptionData.subscription.current_period_end).toLocaleDateString()
+                      : subscriptionData?.subscription?.end_date
+                        ? new Date(subscriptionData.subscription.end_date).toLocaleDateString() 
+                        : 'N/A'}
                   </p>
                 </div>
                 <div className="text-center p-4 bg-slate-50 rounded-xl">
                   <Activity className="w-6 h-6 text-green-500 mx-auto mb-2" />
                   <p className="text-xs text-slate-500 mb-1">Status</p>
-                  <p className={`font-semibold ${subscriptionData?.subscription?.is_active ? 'text-green-600' : 'text-red-600'}`}>
-                    {subscriptionData?.subscription?.state || 'Unknown'}
+                  <p className={`font-semibold ${subscriptionData?.has_subscription || subscriptionData?.subscription?.is_active ? 'text-green-600' : 'text-amber-600'}`}>
+                    {subscriptionData?.subscription?.state || (subscriptionData?.has_subscription ? 'Active' : 'Free')}
                   </p>
                 </div>
                 <div className="text-center p-4 bg-slate-50 rounded-xl">
                   <DollarSign className="w-6 h-6 text-blue-500 mx-auto mb-2" />
                   <p className="text-xs text-slate-500 mb-1">Billing Cycle</p>
                   <p className="font-semibold text-slate-700 capitalize">
-                    {subscriptionData?.plan?.billing_cycle || 'Monthly'}
+                    {subscriptionData?.subscription?.billing_cycle || subscriptionData?.plan?.billing_cycle || 'Monthly'}
                   </p>
                 </div>
               </div>
@@ -848,7 +1005,7 @@ const BillingPage = () => {
                   <div>
                     <h2 className="text-xl font-semibold text-slate-800">Plan Features</h2>
                     <p className="text-sm text-slate-500">
-                      {Object.values(subscriptionData?.plan?.features || {}).filter(v => v === true).length} features enabled
+                      {Object.values(currentFeatures).filter(v => v === true).length} features enabled
                     </p>
                   </div>
                 </div>
@@ -864,7 +1021,7 @@ const BillingPage = () => {
                     className="overflow-hidden"
                   >
                     <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-3">
-                      {Object.entries(subscriptionData?.plan?.features || {}).map(([key, value]) => (
+                      {Object.entries(currentFeatures).map(([key, value]) => (
                         <div 
                           key={key}
                           className={`flex items-center gap-3 p-3 rounded-lg ${
@@ -1136,6 +1293,160 @@ const BillingPage = () => {
           toast({ title: 'User created successfully', variant: 'success' });
         }}
       />
+
+      {/* Upgrade Plan Modal */}
+      <AnimatePresence>
+        {showUpgradeModal && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
+            onClick={() => setShowUpgradeModal(false)}
+          >
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-indigo-500 to-purple-600">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-2xl font-bold text-white">Choose Your Plan</h2>
+                    <p className="text-indigo-100 mt-1">Select a plan that fits your business needs</p>
+                  </div>
+                  {subscriptionData?.subscription?.trial_end_date && !subscriptionData?.subscription?.trial_converted && (
+                    <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2 text-white">
+                      <div className="flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        <span className="text-sm font-medium">
+                          Trial: {Math.max(0, Math.ceil((new Date(subscriptionData.subscription.trial_end_date).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} days remaining
+                        </span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Plans Grid */}
+              <div className="p-6 overflow-y-auto max-h-[60vh]">
+                {availablePlans.length === 0 ? (
+                  <div className="text-center py-12 text-slate-500">
+                    <Zap className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                    <p className="text-lg">No plans available</p>
+                    <p className="text-sm mt-2">Contact support for custom enterprise plans</p>
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {availablePlans.map((plan) => {
+                      const isCurrentPlan = currentPlanCode?.toUpperCase() === plan.plan_code?.toUpperCase();
+                      const isSelected = selectedPlanCode === plan.plan_code;
+                      
+                      return (
+                        <div
+                          key={plan.id}
+                          onClick={() => !isCurrentPlan && setSelectedPlanCode(plan.plan_code)}
+                          className={`relative rounded-xl border-2 p-5 cursor-pointer transition-all ${
+                            isCurrentPlan 
+                              ? 'border-green-500 bg-green-50 cursor-not-allowed opacity-75'
+                              : isSelected 
+                                ? 'border-indigo-500 bg-indigo-50 shadow-lg ring-2 ring-indigo-200' 
+                                : 'border-slate-200 hover:border-indigo-300 hover:shadow-md'
+                          }`}
+                        >
+                          {plan.is_popular && !isCurrentPlan && (
+                            <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold rounded-full shadow-md">
+                              POPULAR
+                            </span>
+                          )}
+                          {isCurrentPlan && (
+                            <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full shadow-md">
+                              CURRENT
+                            </span>
+                          )}
+                          
+                          <div className="text-center mb-4 pt-2">
+                            <h3 className="text-lg font-bold text-slate-800">{plan.name}</h3>
+                            <div className="mt-2">
+                              <span className="text-3xl font-extrabold text-indigo-600">
+                                {getDisplayPrice(plan.price_monthly)}
+                              </span>
+                              <span className="text-slate-500 text-sm">/month</span>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2 text-sm">
+                            <div className="flex items-center gap-2 text-slate-600">
+                              <Users className="w-4 h-4 text-indigo-500" />
+                              <span>{plan.max_users === -1 ? 'Unlimited' : plan.max_users} Users</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-slate-600">
+                              <HardDrive className="w-4 h-4 text-green-500" />
+                              <span>{plan.max_storage_gb === -1 ? 'Unlimited' : `${plan.max_storage_gb} GB`} Storage</span>
+                            </div>
+                            <div className="flex items-center gap-2 text-slate-600">
+                              <Layers className="w-4 h-4 text-purple-500" />
+                              <span>{plan.max_branches === -1 ? 'Unlimited' : plan.max_branches} Branches</span>
+                            </div>
+                          </div>
+
+                          {plan.description && (
+                            <p className="mt-3 text-xs text-slate-500 line-clamp-2">{plan.description}</p>
+                          )}
+
+                          {isSelected && !isCurrentPlan && (
+                            <div className="mt-4 flex items-center justify-center gap-2 text-indigo-600 font-medium">
+                              <CheckCircle className="w-5 h-5" />
+                              <span>Selected</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              {/* Footer */}
+              <div className="p-6 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+                <button
+                  onClick={() => {
+                    setShowUpgradeModal(false);
+                    setSelectedPlanCode(null);
+                  }}
+                  className="px-6 py-2.5 text-slate-600 hover:text-slate-800 font-medium transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleConfirmUpgrade}
+                  disabled={!selectedPlanCode || upgrading}
+                  className={`px-8 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+                    selectedPlanCode && !upgrading
+                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:opacity-90 shadow-lg'
+                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                  }`}
+                >
+                  {upgrading ? (
+                    <>
+                      <RefreshCw className="w-4 h-4 animate-spin" />
+                      Processing...
+                    </>
+                  ) : (
+                    <>
+                      <TrendingUp className="w-4 h-4" />
+                      Select Plan
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };
