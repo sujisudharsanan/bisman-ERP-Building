@@ -246,21 +246,20 @@ router.get('/clients/:id', authMiddleware, async (req, res) => {
     try {
       const subscription = await prisma.client_subscriptions.findUnique({
         where: { client_id: clientId },
-        include: {
-          subscription_plans: {
-            select: {
-              id: true,
-              plan_code: true,
-              name: true,
-            },
-          },
-        },
       });
       if (subscription) {
+        // Fetch the plan separately since there's no direct relation
+        let planInfo = null;
+        if (subscription.plan_id) {
+          planInfo = await prisma.subscription_plans.findUnique({
+            where: { id: subscription.plan_id },
+            select: { id: true, plan_code: true, name: true },
+          });
+        }
         currentSubscription = {
           planId: subscription.plan_id,
-          planCode: subscription.subscription_plans?.plan_code || null,
-          planName: subscription.subscription_plans?.name || null,
+          planCode: planInfo?.plan_code || null,
+          planName: planInfo?.name || null,
           state: subscription.state,
           startedAt: subscription.started_at,
           expiresAt: subscription.expires_at,
