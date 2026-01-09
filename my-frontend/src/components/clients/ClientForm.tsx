@@ -127,6 +127,14 @@ export interface ClientFormValues {
   max_users: number;
   enabled_modules: string[];
   storage_limit_gb: number;
+  // Current subscription info (for edit mode highlighting)
+  currentSubscription?: {
+    planId: number;
+    planCode?: string;
+    planName?: string;
+    state?: string;
+    isActive?: boolean;
+  } | null;
   // Admin user
   admin_users: Array<{ email: string; name: string; role: string; password?: string; confirmPassword?: string; id?: number; hasPassword?: boolean }>;
 }
@@ -1189,33 +1197,48 @@ Your 14-day trial has started. The admin can login immediately.`;
             {/* Plans Grid */}
             {subscriptionPlans.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-                {subscriptionPlans.map(plan => (
-                  <div 
-                    key={plan.id}
-                    onClick={() => handlePlanChange(plan.id)}
-                    className={`border-2 rounded-lg p-4 cursor-pointer transition-all ${
-                      form.subscription_plan === plan.id 
-                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
-                        : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <h4 className="font-semibold text-lg">{plan.name}</h4>
-                    {plan.price > 0 ? (
-                      <p className="text-2xl font-bold text-blue-600">₹{plan.price.toLocaleString()}<span className="text-sm font-normal text-gray-500">/mo</span></p>
-                    ) : (
-                      <p className="text-2xl font-bold text-blue-600">Contact Us</p>
-                    )}
-                    <ul className="mt-3 space-y-1 text-sm text-gray-600 dark:text-gray-400">
-                      <li>👥 {plan.users} users</li>
-                      <li>📦 {plan.modules} modules</li>
-                      <li>💾 {plan.storage} storage</li>
-                      <li>🎧 {plan.support}</li>
-                    </ul>
-                    {plan.description && (
-                      <p className="mt-2 text-xs text-gray-500">{plan.description}</p>
-                    )}
-                  </div>
-                ))}
+                {subscriptionPlans.map(plan => {
+                  // Check if this is the client's current active subscription plan
+                  const isCurrentPlan = form.currentSubscription?.planId?.toString() === plan.id || 
+                                        form.currentSubscription?.planCode === plan.id;
+                  const isSelected = form.subscription_plan === plan.id;
+                  
+                  return (
+                    <div 
+                      key={plan.id}
+                      onClick={() => handlePlanChange(plan.id)}
+                      className={`border-2 rounded-lg p-4 cursor-pointer transition-all relative ${
+                        isSelected 
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20' 
+                          : isCurrentPlan
+                          ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                          : 'border-gray-200 dark:border-gray-700 hover:border-gray-300'
+                      }`}
+                    >
+                      {/* Active Plan Badge */}
+                      {isCurrentPlan && (
+                        <span className="absolute -top-2 -right-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+                          Active
+                        </span>
+                      )}
+                      <h4 className="font-semibold text-lg">{plan.name}</h4>
+                      {plan.price > 0 ? (
+                        <p className="text-2xl font-bold text-blue-600">₹{plan.price.toLocaleString()}<span className="text-sm font-normal text-gray-500">/mo</span></p>
+                      ) : (
+                        <p className="text-2xl font-bold text-blue-600">Contact Us</p>
+                      )}
+                      <ul className="mt-3 space-y-1 text-sm text-gray-600 dark:text-gray-400">
+                        <li>👥 {plan.users} users</li>
+                        <li>📦 {plan.modules} modules</li>
+                        <li>💾 {plan.storage} storage</li>
+                        <li>🎧 {plan.support}</li>
+                      </ul>
+                      {plan.description && (
+                        <p className="mt-2 text-xs text-gray-500">{plan.description}</p>
+                      )}
+                    </div>
+                  );
+                })}
               </div>
             ) : !plansLoading && !plansError ? (
               <div className="text-center py-8 text-gray-500">

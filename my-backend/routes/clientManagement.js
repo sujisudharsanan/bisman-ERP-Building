@@ -215,10 +215,11 @@ router.get('/clients/:id', authMiddleware, async (req, res) => {
     const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
     const role = user?.role;
-    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
-    const isSuperAdminRole = role === 'SUPER_ADMIN';
+    const userType = user?.userType;
+    const isSuperAdminUser = userType === 'SUPER_ADMIN' || role === 'SUPER_ADMIN';
+    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || isSuperAdminUser || role === 'ADMIN';
     const ownsClient = user?.super_admin_id === client.super_admin_id || user?.id === client.super_admin_id;
-    if (!allowed || (!isPlatformAdmin(role) && !isSuperAdminRole && !ownsClient)) return res.status(403).json({ error: 'Forbidden' });
+    if (!allowed || (!isPlatformAdmin(role) && !isSuperAdminUser && !ownsClient)) return res.status(403).json({ error: 'Forbidden' });
     
     // Fetch only ADMIN role users associated with this client (tenant_id = client.id)
     const adminUsers = await prisma.user.findMany({
@@ -240,10 +241,42 @@ router.get('/clients/:id', authMiddleware, async (req, res) => {
       orderBy: { created_at: 'asc' },
     });
     
+    // Fetch the client's current subscription with plan details
+    let currentSubscription = null;
+    try {
+      const subscription = await prisma.client_subscriptions.findUnique({
+        where: { client_id: clientId },
+        include: {
+          subscription_plans: {
+            select: {
+              id: true,
+              plan_code: true,
+              name: true,
+            },
+          },
+        },
+      });
+      if (subscription) {
+        currentSubscription = {
+          planId: subscription.plan_id,
+          planCode: subscription.subscription_plans?.plan_code || null,
+          planName: subscription.subscription_plans?.name || null,
+          state: subscription.state,
+          startedAt: subscription.started_at,
+          expiresAt: subscription.expires_at,
+          trialEndDate: subscription.trial_end_date,
+          isActive: subscription.is_active,
+        };
+      }
+    } catch (subErr) {
+      console.error('[GET client] Subscription fetch error:', subErr.message);
+    }
+    
     res.json({ 
       success: true, 
       data: {
         ...client,
+        currentSubscription,
         admin_users: adminUsers.map(u => ({
           email: u.email,
           name: u.first_name && u.last_name ? `${u.first_name} ${u.last_name}` : u.username || u.email.split('@')[0],
