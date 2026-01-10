@@ -1,11 +1,11 @@
 'use client';
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { 
   X, User, Mail, Phone, Save, Plus, Trash2, Upload, 
   FileText, Building, Shield, GraduationCap, Users,
   CheckCircle, AlertCircle, Eye, EyeOff, MapPin,
-  Crown, Key, Calendar, AlertTriangle
+  Crown, Key, Calendar, AlertTriangle, Search
 } from 'lucide-react';
 import { useSubscriptionLimits } from '@/hooks/useSubscriptionLimits';
 import type { 
@@ -40,10 +40,52 @@ export function CreateFullUserModal({
   // Internal state for roles and branches if not provided as props
   const [internalRoles, setInternalRoles] = useState<UserRole[]>([]);
   const [internalBranches, setInternalBranches] = useState<Branch[]>([]);
+  const [roleSearchQuery, setRoleSearchQuery] = useState('');
 
   // Use props if provided, otherwise use internal state
   const roles = propRoles || internalRoles;
   const branches = propBranches || internalBranches;
+
+  // Filter out ADMIN and SUPER_ADMIN roles and apply search
+  const filteredRoles = useMemo(() => {
+    const excludedRoles = ['ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'Super Admin', 'Admin', 'System Administrator'];
+    return roles
+      .filter(role => !excludedRoles.includes(role.name))
+      .filter(role => 
+        roleSearchQuery === '' || 
+        role.name.toLowerCase().includes(roleSearchQuery.toLowerCase()) ||
+        role.description?.toLowerCase().includes(roleSearchQuery.toLowerCase())
+      );
+  }, [roles, roleSearchQuery]);
+
+  // Business level labels with role names
+  const businessLevelLabels: Record<number, string> = {
+    1: 'Level 1 - Entry (Staff)',
+    2: 'Level 2 - Junior (Associate)',
+    3: 'Level 3 - Mid (Officer)',
+    4: 'Level 4 - Senior (Sr. Officer)',
+    5: 'Level 5 - Lead (Team Lead)',
+    6: 'Level 6 - Supervisor (Supervisor)',
+    7: 'Level 7 - Manager (Manager)',
+    8: 'Level 8 - Sr. Manager (Sr. Manager)',
+    9: 'Level 9 - Director (Director)',
+    10: 'Level 10 - Executive (CEO/CFO)'
+  };
+
+  // Password strength calculation
+  const getPasswordStrength = (password: string): { score: number; label: string; color: string } => {
+    let score = 0;
+    if (password.length >= 8) score += 1;
+    if (password.length >= 12) score += 1;
+    if (/[a-z]/.test(password)) score += 1;
+    if (/[A-Z]/.test(password)) score += 1;
+    if (/[0-9]/.test(password)) score += 1;
+    if (/[^A-Za-z0-9]/.test(password)) score += 1;
+
+    if (score <= 2) return { score: (score / 6) * 100, label: 'Weak', color: 'bg-red-500' };
+    if (score <= 4) return { score: (score / 6) * 100, label: 'Medium', color: 'bg-yellow-500' };
+    return { score: (score / 6) * 100, label: 'Strong', color: 'bg-green-500' };
+  };
 
   // Fetch roles and branches if not provided as props
   useEffect(() => {
@@ -122,6 +164,9 @@ export function CreateFullUserModal({
     address_proof?: File;
     certificates?: File[];
   }>({});
+
+  // Password strength - calculated after formData is defined
+  const passwordStrength = getPasswordStrength(formData.password);
 
   // File input refs
   const profilePictureRef = useRef<HTMLInputElement>(null);
@@ -461,6 +506,44 @@ export function CreateFullUserModal({
                     errors.password ? 'border-red-300' : 'border-gray-300'
                   }`}
                 />
+                {/* Password strength progress bar */}
+                {formData.password && (
+                  <div className="mt-2">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-xs text-gray-500">Password Strength</span>
+                      <span className={`text-xs font-medium ${
+                        passwordStrength.label === 'Weak' ? 'text-red-600' :
+                        passwordStrength.label === 'Medium' ? 'text-yellow-600' : 'text-green-600'
+                      }`}>
+                        {passwordStrength.label}
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-200 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full ${passwordStrength.color} transition-all duration-300`}
+                        style={{ width: `${passwordStrength.score}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+                {/* Password guidelines */}
+                <div className="mt-2 text-xs text-gray-500 space-y-1">
+                  <p className={formData.password.length >= 8 ? 'text-green-600' : ''}>
+                    • Minimum 8 characters
+                  </p>
+                  <p className={/[A-Z]/.test(formData.password) ? 'text-green-600' : ''}>
+                    • At least one uppercase letter
+                  </p>
+                  <p className={/[a-z]/.test(formData.password) ? 'text-green-600' : ''}>
+                    • At least one lowercase letter
+                  </p>
+                  <p className={/[0-9]/.test(formData.password) ? 'text-green-600' : ''}>
+                    • At least one number
+                  </p>
+                  <p className={/[^A-Za-z0-9]/.test(formData.password) ? 'text-green-600' : ''}>
+                    • At least one special character
+                  </p>
+                </div>
                 {errors.password && (
                   <p className="text-red-600 text-sm mt-1">{errors.password}</p>
                 )}
@@ -504,27 +587,42 @@ export function CreateFullUserModal({
               <label className="block text-sm font-medium text-gray-700 mb-2">
                 Roles *
               </label>
+              {/* Role search bar */}
+              <div className="relative mb-2">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search roles..."
+                  value={roleSearchQuery}
+                  onChange={(e) => setRoleSearchQuery(e.target.value)}
+                  className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm"
+                />
+              </div>
               <div className="space-y-2 max-h-32 overflow-y-auto border border-gray-300 rounded-md p-3">
-                {roles.map(role => (
-                  <label key={role.id} className="flex items-center space-x-2">
-                    <input
-                      type="checkbox"
-                      checked={formData.role_ids.includes(role.id)}
-                      onChange={(e) => {
-                        if (e.target.checked) {
-                          handleInputChange('role_ids', [...formData.role_ids, role.id]);
-                        } else {
-                          handleInputChange('role_ids', formData.role_ids.filter(id => id !== role.id));
-                        }
-                      }}
-                      className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
-                    />
-                    <span className="text-sm text-gray-900">{role.name}</span>
-                    {role.description && (
-                      <span className="text-xs text-gray-500">({role.description})</span>
-                    )}
-                  </label>
-                ))}
+                {filteredRoles.length === 0 ? (
+                  <p className="text-sm text-gray-500 text-center py-2">No roles found</p>
+                ) : (
+                  filteredRoles.map(role => (
+                    <label key={role.id} className="flex items-center space-x-2">
+                      <input
+                        type="checkbox"
+                        checked={formData.role_ids.includes(role.id)}
+                        onChange={(e) => {
+                          if (e.target.checked) {
+                            handleInputChange('role_ids', [...formData.role_ids, role.id]);
+                          } else {
+                            handleInputChange('role_ids', formData.role_ids.filter(id => id !== role.id));
+                          }
+                        }}
+                        className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                      />
+                      <span className="text-sm text-gray-900">{role.name}</span>
+                      {role.description && (
+                        <span className="text-xs text-gray-500">({role.description})</span>
+                      )}
+                    </label>
+                  ))
+                )}
               </div>
               {errors.role_ids && (
                 <p className="text-red-600 text-sm mt-1">{errors.role_ids}</p>
@@ -547,7 +645,7 @@ export function CreateFullUserModal({
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(level => (
                     <option key={level} value={level}>
-                      Level {level} {level === 1 ? '(Entry)' : level === 10 ? '(Executive)' : ''}
+                      {businessLevelLabels[level]}
                     </option>
                   ))}
                 </select>
@@ -588,7 +686,6 @@ export function CreateFullUserModal({
               >
                 <option value="active">Active</option>
                 <option value="inactive">Inactive</option>
-                <option value="suspended">Suspended</option>
               </select>
             </div>
           </div>
