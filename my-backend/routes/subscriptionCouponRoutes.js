@@ -332,7 +332,7 @@ router.get('/plans/available', ...superAdminOnly, async (req, res) => {
   try {
     const prisma = getPrisma();
     
-    const plans = await prisma.subscriptionPlan.findMany({
+    const plans = await prisma.subscription_plans.findMany({
       where: { is_active: true },
       orderBy: { sort_order: 'asc' },
       select: {

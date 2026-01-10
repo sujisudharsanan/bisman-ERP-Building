@@ -243,7 +243,7 @@ router.post('/plans', ...superAdminOnly, async (req, res) => {
     }
 
     const plan = await prisma.$transaction(async (tx) => {
-      const newPlan = await tx.subscriptionPlan.create({
+      const newPlan = await tx.subscription_plans.create({
         data: {
           plan_code: plan_code.toUpperCase(),
           name,
@@ -269,7 +269,7 @@ router.post('/plans', ...superAdminOnly, async (req, res) => {
       });
 
       // Audit log
-      await tx.subscriptionAuditLog.create({
+      await tx.subscription_audit_log.create({
         data: {
           action: 'plan_created',
           action_category: 'admin',
@@ -318,7 +318,7 @@ router.put('/plans/:id', ...superAdminOnly, async (req, res) => {
     }
 
     const plan = await prisma.$transaction(async (tx) => {
-      const updated = await tx.subscriptionPlan.update({
+      const updated = await tx.subscription_plans.update({
         where: { id: planId },
         data: {
           ...updateData,
@@ -326,7 +326,7 @@ router.put('/plans/:id', ...superAdminOnly, async (req, res) => {
         },
       });
 
-      await tx.subscriptionAuditLog.create({
+      await tx.subscription_audit_log.create({
         data: {
           action: 'plan_updated',
           action_category: 'admin',
@@ -632,7 +632,7 @@ router.post('/tenants/:clientId/force-downgrade', ...superAdminOnly, async (req,
 
     // Force update (bypasses state machine for immediate downgrade)
     const updated = await prisma.$transaction(async (tx) => {
-      const result = await tx.clientSubscription.update({
+      const result = await tx.client_subscriptions.update({
         where: { id: subscription.id },
         data: {
           plan_id: newPlan.id,
@@ -644,7 +644,7 @@ router.post('/tenants/:clientId/force-downgrade', ...superAdminOnly, async (req,
         include: { plan: true },
       });
 
-      await tx.subscriptionAuditLog.create({
+      await tx.subscription_audit_log.create({
         data: {
           client_id: clientId,
           subscription_id: subscription.id,
@@ -705,7 +705,7 @@ router.post('/tenants/:clientId/extend-trial', ...superAdminOnly, async (req, re
     newTrialEnd.setDate(newTrialEnd.getDate() + parseInt(days));
 
     const updated = await prisma.$transaction(async (tx) => {
-      const result = await tx.clientSubscription.update({
+      const result = await tx.client_subscriptions.update({
         where: { id: subscription.id },
         data: {
           trial_end_date: newTrialEnd,
@@ -723,7 +723,7 @@ router.post('/tenants/:clientId/extend-trial', ...superAdminOnly, async (req, re
         },
       });
 
-      await tx.subscriptionAuditLog.create({
+      await tx.subscription_audit_log.create({
         data: {
           client_id: clientId,
           subscription_id: subscription.id,
@@ -811,7 +811,7 @@ router.post('/tenants/:clientId/suspend', ...superAdminOnly, async (req, res) =>
 
     // Force state to SUSPENDED
     const updated = await prisma.$transaction(async (tx) => {
-      const result = await tx.clientSubscription.update({
+      const result = await tx.client_subscriptions.update({
         where: { id: subscription.id },
         data: {
           state: 'SUSPENDED',
@@ -820,7 +820,7 @@ router.post('/tenants/:clientId/suspend', ...superAdminOnly, async (req, res) =>
         },
       });
 
-      await tx.subscriptionAuditLog.create({
+      await tx.subscription_audit_log.create({
         data: {
           client_id: clientId,
           subscription_id: subscription.id,
@@ -894,7 +894,7 @@ router.post('/tenants/:clientId/features', ...superAdminOnly, async (req, res) =
         },
       });
 
-      await tx.subscriptionAuditLog.create({
+      await tx.subscription_audit_log.create({
         data: {
           client_id: clientId,
           action: 'feature_override',
@@ -999,7 +999,7 @@ router.post('/tenants/:clientId/billing-override', ...superAdminOnly, async (req
         },
       });
 
-      await tx.subscriptionAuditLog.create({
+      await tx.subscription_audit_log.create({
         data: {
           client_id: clientId,
           action: 'billing_override_created',

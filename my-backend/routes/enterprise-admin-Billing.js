@@ -15,7 +15,7 @@ const requireEnterpriseAdmin = (req, res, next) => {
 router.get('/overview', requireEnterpriseAdmin, async (req, res) => {
   try {
     // Get all subscription plans with their pricing
-    const plans = await prisma.subscriptionPlan.findMany({
+    const plans = await prisma.subscription_plans.findMany({
       where: { is_active: true }
     });
     
@@ -149,7 +149,7 @@ router.get('/revenue-trends', requireEnterpriseAdmin, async (req, res) => {
       });
 
       // Get average plan price
-      const avgPlanPrice = await prisma.subscriptionPlan.aggregate({
+      const avgPlanPrice = await prisma.subscription_plans.aggregate({
         where: { is_active: true },
         _avg: { price_monthly: true }
       });
@@ -194,7 +194,7 @@ router.get('/subscription-analytics', requireEnterpriseAdmin, async (req, res) =
         _count: { id: true }
       }),
       // Recent subscription changes from audit log
-      prisma.subscriptionAuditLog.findMany({
+      prisma.subscription_audit_log.findMany({
         orderBy: { created_at: 'desc' },
         take: 10,
         include: { client: { select: { name: true } } }
@@ -326,7 +326,7 @@ router.get('/invoices', requireEnterpriseAdmin, async (req, res) => {
 // Get subscription plans
 router.get('/plans', requireEnterpriseAdmin, async (req, res) => {
   try {
-    const plans = await prisma.subscriptionPlan.findMany({
+    const plans = await prisma.subscription_plans.findMany({
       where: { is_active: true },
       orderBy: { sort_order: 'asc' }
     });

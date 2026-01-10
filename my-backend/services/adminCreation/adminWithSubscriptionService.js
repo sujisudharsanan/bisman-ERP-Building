@@ -197,13 +197,13 @@ async function createAdminWithSubscription(data, options = {}) {
   }
 
   // Find or create the subscription plan in database
-  let subscriptionPlan = await prisma.subscriptionPlan.findUnique({
+  let subscriptionPlan = await prisma.subscription_plans.findUnique({
     where: { plan_code: planConfig.code },
   });
 
   if (!subscriptionPlan) {
     // Create the plan if it doesn't exist
-    subscriptionPlan = await prisma.subscriptionPlan.create({
+    subscriptionPlan = await prisma.subscription_plans.create({
       data: {
         plan_code: planConfig.code,
         name: planConfig.name,
@@ -276,7 +276,7 @@ async function createAdminWithSubscription(data, options = {}) {
     });
 
     // 3. Create the Client Subscription
-    const subscription = await tx.clientSubscription.create({
+    const subscription = await tx.client_subscriptions.create({
       data: {
         client_id: organization.id,
         plan_id: subscriptionPlan.id,
@@ -330,7 +330,7 @@ async function createAdminWithSubscription(data, options = {}) {
     }
 
     // 6. Create initial audit log
-    await tx.subscriptionAuditLog.create({
+    await tx.subscription_audit_log.create({
       data: {
         client_id: organization.id,
         subscription_id: subscription.id,
@@ -475,7 +475,7 @@ async function getAvailablePlans() {
   
   try {
     // Try to fetch plans from database first
-    const dbPlans = await prisma.subscriptionPlan.findMany({
+    const dbPlans = await prisma.subscription_plans.findMany({
       where: { is_active: true },
       orderBy: { sort_order: 'asc' },
     });

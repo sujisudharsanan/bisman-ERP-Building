@@ -479,7 +479,7 @@ router.post('/organizations/:orgId/toggle-status', ...superAdminOnly, async (req
           state_changed_at: new Date(),
         },
       }) : Promise.resolve(null),
-      prisma.subscriptionAuditLog.create({
+      prisma.subscription_audit_log.create({
         data: {
           client_id: orgId,
           subscription_id: organization.subscription?.id || null,
@@ -534,7 +534,7 @@ router.patch('/organizations/:orgId/subscription', ...superAdminOnly, async (req
     }
 
     // Get new plan
-    const newPlanRecord = await prisma.subscriptionPlan.findUnique({
+    const newPlanRecord = await prisma.subscription_plans.findUnique({
       where: { plan_code: newPlan },
     });
 
@@ -549,7 +549,7 @@ router.patch('/organizations/:orgId/subscription', ...superAdminOnly, async (req
     if (immediate || isUpgrade) {
       // Immediate change
       updatedSubscription = await prisma.$transaction(async (tx) => {
-        const updated = await tx.clientSubscription.update({
+        const updated = await tx.client_subscriptions.update({
           where: { id: subscription.id },
           data: {
             plan_id: newPlanRecord.id,
@@ -565,7 +565,7 @@ router.patch('/organizations/:orgId/subscription', ...superAdminOnly, async (req
           data: { subscriptionPlan: newPlan },
         });
 
-        await tx.subscriptionAuditLog.create({
+        await tx.subscription_audit_log.create({
           data: {
             client_id: orgId,
             subscription_id: subscription.id,
@@ -592,7 +592,7 @@ router.patch('/organizations/:orgId/subscription', ...superAdminOnly, async (req
     } else {
       // Schedule downgrade for end of billing period
       updatedSubscription = await prisma.$transaction(async (tx) => {
-        const updated = await tx.clientSubscription.update({
+        const updated = await tx.client_subscriptions.update({
           where: { id: subscription.id },
           data: {
             scheduled_plan_id: newPlanRecord.id,
@@ -604,7 +604,7 @@ router.patch('/organizations/:orgId/subscription', ...superAdminOnly, async (req
           include: { plan: true },
         });
 
-        await tx.subscriptionAuditLog.create({
+        await tx.subscription_audit_log.create({
           data: {
             client_id: orgId,
             subscription_id: subscription.id,

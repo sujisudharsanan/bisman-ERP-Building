@@ -166,7 +166,7 @@ async function getTenantCountForPlan(prisma, planCode) {
   try {
     // Count ClientSubscription records with this plan
     // Try both plan_id join and direct planCode lookup
-    const plan = await prisma.subscriptionPlan.findFirst({
+    const plan = await prisma.subscription_plans.findFirst({
       where: { plan_code: planCode },
     });
     
@@ -238,7 +238,7 @@ router.get('/', async (req, res) => {
     // Try to get plans from database
     let dbPlans = [];
     try {
-      dbPlans = await prisma.subscriptionPlan.findMany({
+      dbPlans = await prisma.subscription_plans.findMany({
         orderBy: { sort_order: 'asc' },
       });
     } catch (err) {
@@ -297,7 +297,7 @@ router.get('/:id', async (req, res) => {
     let plan = null;
     try {
       const numericId = parseInt(id, 10);
-      plan = await prisma.subscriptionPlan.findFirst({
+      plan = await prisma.subscription_plans.findFirst({
         where: {
           OR: [
             ...(isNaN(numericId) ? [] : [{ id: numericId }]),
@@ -366,7 +366,7 @@ router.post('/', authenticate, superAdminOnly, async (req, res) => {
     }
 
     // Check if code already exists
-    const existingPlan = await prisma.subscriptionPlan.findFirst({
+    const existingPlan = await prisma.subscription_plans.findFirst({
       where: { plan_code: code.toUpperCase() },
     });
 
@@ -378,12 +378,12 @@ router.post('/', authenticate, superAdminOnly, async (req, res) => {
     }
 
     // Get max sort order
-    const maxSortOrder = await prisma.subscriptionPlan.aggregate({
+    const maxSortOrder = await prisma.subscription_plans.aggregate({
       _max: { sort_order: true },
     });
 
     // Create the plan
-    const newPlan = await prisma.subscriptionPlan.create({
+    const newPlan = await prisma.subscription_plans.create({
       data: {
         plan_code: code.toUpperCase(),
         name,
@@ -441,7 +441,7 @@ router.patch('/:id', authenticate, superAdminOnly, async (req, res) => {
 
     // Find the plan
     const numericId = parseInt(id, 10);
-    let plan = await prisma.subscriptionPlan.findFirst({
+    let plan = await prisma.subscription_plans.findFirst({
       where: {
         OR: [
           ...(isNaN(numericId) ? [] : [{ id: numericId }]),
@@ -454,7 +454,7 @@ router.patch('/:id', authenticate, superAdminOnly, async (req, res) => {
       // If it's a default plan not in DB, create it first
       const defaultPlan = DEFAULT_PLANS[id.toUpperCase()];
       if (defaultPlan) {
-        plan = await prisma.subscriptionPlan.create({
+        plan = await prisma.subscription_plans.create({
           data: {
             plan_code: defaultPlan.plan_code,
             name: defaultPlan.name,
@@ -480,7 +480,7 @@ router.patch('/:id', authenticate, superAdminOnly, async (req, res) => {
     }
 
     // Update the plan
-    const updatedPlan = await prisma.subscriptionPlan.update({
+    const updatedPlan = await prisma.subscription_plans.update({
       where: { id: plan.id },
       data: {
         ...(name !== undefined && { name }),
@@ -524,7 +524,7 @@ router.delete('/:id', authenticate, superAdminOnly, async (req, res) => {
 
     // Find the plan
     const numericId = parseInt(id, 10);
-    const plan = await prisma.subscriptionPlan.findFirst({
+    const plan = await prisma.subscription_plans.findFirst({
       where: {
         OR: [
           ...(isNaN(numericId) ? [] : [{ id: numericId }]),
@@ -558,7 +558,7 @@ router.delete('/:id', authenticate, superAdminOnly, async (req, res) => {
     }
 
     // Delete the plan
-    await prisma.subscriptionPlan.delete({
+    await prisma.subscription_plans.delete({
       where: { id: plan.id },
     });
 
@@ -587,7 +587,7 @@ router.post('/:id/toggle-status', authenticate, superAdminOnly, async (req, res)
 
     // Find the plan
     const numericId = parseInt(id, 10);
-    let plan = await prisma.subscriptionPlan.findFirst({
+    let plan = await prisma.subscription_plans.findFirst({
       where: {
         OR: [
           ...(isNaN(numericId) ? [] : [{ id: numericId }]),
@@ -600,7 +600,7 @@ router.post('/:id/toggle-status', authenticate, superAdminOnly, async (req, res)
       // If it's a default plan not in DB, create it first
       const defaultPlan = DEFAULT_PLANS[id.toUpperCase()];
       if (defaultPlan) {
-        plan = await prisma.subscriptionPlan.create({
+        plan = await prisma.subscription_plans.create({
           data: {
             plan_code: defaultPlan.plan_code,
             name: defaultPlan.name,
@@ -626,7 +626,7 @@ router.post('/:id/toggle-status', authenticate, superAdminOnly, async (req, res)
     }
 
     // Update the status
-    const updatedPlan = await prisma.subscriptionPlan.update({
+    const updatedPlan = await prisma.subscription_plans.update({
       where: { id: plan.id },
       data: { is_active: isActive },
     });

@@ -221,14 +221,14 @@ class SubscriptionStateMachine {
     // Perform update in transaction
     const result = await prisma.$transaction(async (tx) => {
       // Update subscription
-      const updated = await tx.clientSubscription.update({
+      const updated = await tx.client_subscriptions.update({
         where: { id: this.subscriptionId },
         data: updateData,
         include: { plan: true },
       });
 
       // Create audit log
-      await tx.subscriptionAuditLog.create({
+      await tx.subscription_audit_log.create({
         data: {
           client_id: this.subscription.client_id,
           subscription_id: this.subscriptionId,
@@ -375,7 +375,7 @@ class SubscriptionService {
     } = options;
 
     // Find the plan
-    const plan = await prisma.subscriptionPlan.findUnique({
+    const plan = await prisma.subscription_plans.findUnique({
       where: { plan_code: planCode },
     });
 
@@ -398,7 +398,7 @@ class SubscriptionService {
 
     // Create subscription
     const subscription = await prisma.$transaction(async (tx) => {
-      const sub = await tx.clientSubscription.create({
+      const sub = await tx.client_subscriptions.create({
         data: {
           client_id: clientId,
           plan_id: plan.id,
@@ -413,7 +413,7 @@ class SubscriptionService {
       });
 
       // Log creation
-      await tx.subscriptionAuditLog.create({
+      await tx.subscription_audit_log.create({
         data: {
           client_id: clientId,
           subscription_id: sub.id,
@@ -451,7 +451,7 @@ class SubscriptionService {
       throw new Error('Subscription not found');
     }
 
-    const newPlan = await prisma.subscriptionPlan.findUnique({
+    const newPlan = await prisma.subscription_plans.findUnique({
       where: { plan_code: newPlanCode },
     });
 
@@ -479,7 +479,7 @@ class SubscriptionService {
     // Then immediately transition to ACTIVE with new plan
     // (In production, this would happen after payment confirmation)
     const updated = await prisma.$transaction(async (tx) => {
-      const sub = await tx.clientSubscription.update({
+      const sub = await tx.client_subscriptions.update({
         where: { id: subscriptionId },
         data: {
           plan_id: newPlan.id,
@@ -490,7 +490,7 @@ class SubscriptionService {
         include: { plan: true },
       });
 
-      await tx.subscriptionAuditLog.create({
+      await tx.subscription_audit_log.create({
         data: {
           client_id: subscription.client_id,
           subscription_id: subscriptionId,
@@ -527,7 +527,7 @@ class SubscriptionService {
       throw new Error('Subscription not found');
     }
 
-    const newPlan = await prisma.subscriptionPlan.findUnique({
+    const newPlan = await prisma.subscription_plans.findUnique({
       where: { plan_code: newPlanCode },
     });
 
