@@ -36,6 +36,7 @@ export function CreateFullUserModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [showSensitiveFields, setShowSensitiveFields] = useState(false);
+  const [levelOverride, setLevelOverride] = useState(false); // Allow manual level override
 
   // Internal state for roles and branches if not provided as props
   const [internalRoles, setInternalRoles] = useState<UserRole[]>([]);
@@ -606,6 +607,12 @@ export function CreateFullUserModal({
                         onChange={(e) => {
                           if (e.target.checked) {
                             handleInputChange('role_ids', [...formData.role_ids, role.id]);
+                            // Auto-set business level based on role level (if not overridden)
+                            if (!levelOverride && role.level) {
+                              // Convert role level (1-10 where 1 is highest) to business level (1-10 where 10 is highest)
+                              const businessLevel = Math.max(1, Math.min(10, 11 - role.level));
+                              handleInputChange('business_level', businessLevel);
+                            }
                           } else {
                             handleInputChange('role_ids', formData.role_ids.filter(id => id !== role.id));
                           }
@@ -613,8 +620,8 @@ export function CreateFullUserModal({
                         className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
                       />
                       <span className="text-sm text-gray-900">{role.name}</span>
-                      {role.description && (
-                        <span className="text-xs text-gray-500">({role.description})</span>
+                      {role.level && (
+                        <span className="text-xs text-gray-400">(L{role.level})</span>
                       )}
                     </label>
                   ))
@@ -628,16 +635,37 @@ export function CreateFullUserModal({
             {/* Business Hierarchy Section - CANONICAL from PRINCIPAL_SYSTEMS_AUDIT */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t border-gray-200">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Business Level (1-10)
-                  <span className="ml-1 text-xs text-gray-500" title="Determines approval hierarchy position">
-                    ⓘ
-                  </span>
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-sm font-medium text-gray-700">
+                    Business Level (1-10)
+                    <span className="ml-1 text-xs text-gray-500" title="Determines approval hierarchy position">
+                      ⓘ
+                    </span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={() => setLevelOverride(!levelOverride)}
+                    className={`text-xs px-2 py-1 rounded ${
+                      levelOverride 
+                        ? 'bg-blue-100 text-blue-700 border border-blue-300' 
+                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    }`}
+                  >
+                    {levelOverride ? '✓ Manual Override' : 'Override Level'}
+                  </button>
+                </div>
                 <select
                   value={formData.business_level || 1}
-                  onChange={(e) => handleInputChange('business_level', parseInt(e.target.value))}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  onChange={(e) => {
+                    handleInputChange('business_level', parseInt(e.target.value));
+                    setLevelOverride(true); // Enable override when manually changed
+                  }}
+                  disabled={!levelOverride && formData.role_ids.length > 0}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                    !levelOverride && formData.role_ids.length > 0 
+                      ? 'bg-gray-50 border-gray-200 text-gray-600' 
+                      : 'border-gray-300'
+                  }`}
                 >
                   {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(level => (
                     <option key={level} value={level}>
@@ -646,7 +674,10 @@ export function CreateFullUserModal({
                   ))}
                 </select>
                 <p className="text-xs text-gray-500 mt-1">
-                  Higher levels can approve requests from lower levels
+                  {levelOverride 
+                    ? 'Manual override enabled - level will not auto-update with role changes'
+                    : 'Auto-set based on selected role. Click "Override Level" to change manually'
+                  }
                 </p>
               </div>
 

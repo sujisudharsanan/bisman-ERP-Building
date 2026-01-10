@@ -20,6 +20,8 @@ export interface Role {
   description?: string;
   permissions: Record<string, string[]>;
   is_system_role: boolean;
+  level?: number; // Business level from rbac_roles
+  displayName?: string;
   created_at: string;
   updated_at: string;
 }
