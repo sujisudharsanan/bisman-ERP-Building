@@ -1736,9 +1736,9 @@ app.get('/api/me', async (req, res) => {
             email: true,
             username: true,
             role: true,
-            productType: true,
+            product_type: true,
             profile_pic_url: true,
-            assignedModules: true,
+            assigned_modules: true,
             tenant_id: true,  // Include tenant_id for logo fetch
           }
         });
