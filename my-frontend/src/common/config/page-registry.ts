@@ -2157,7 +2157,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   },
   {
     id: 'admin-system-flow',
-    name: 'System Flow',
+    name: 'User Flow & Management',
     path: '/admin/system-flow',
     iconKey: "Workflow",
     module: 'admin',
