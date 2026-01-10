@@ -297,7 +297,14 @@ export default function OrbitFlowVisualization() {
 
   const fetchClientInfo = async () => {
     try {
-      const response = await fetch('/api/me', { credentials: 'include' });
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const response = await fetch('/api/me', { 
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+      });
       if (response.ok) {
         const data = await response.json();
         // Get tenant/client name from response (check both root and user object)
@@ -321,7 +328,14 @@ export default function OrbitFlowVisualization() {
     try {
       setLoading(true);
       setError(null);
-      const response = await fetch('/api/users?limit=500', { credentials: 'include' });
+      const token = typeof window !== 'undefined' ? localStorage.getItem('token') : null;
+      const response = await fetch('/api/users?limit=500', { 
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
+        },
+      });
       if (!response.ok) throw new Error('Failed to fetch users');
       const data = await response.json();
       console.log('[SystemFlow] API /api/users response:', data);
@@ -463,7 +477,7 @@ export default function OrbitFlowVisualization() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-white">
+      <div className="flex items-center justify-center h-[600px] bg-white">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading organization structure...</p>
@@ -474,7 +488,7 @@ export default function OrbitFlowVisualization() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-white">
+      <div className="flex items-center justify-center h-[600px] bg-white">
         <div className="text-center">
           <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
           <p className="text-gray-700 mb-4">{error}</p>
@@ -487,7 +501,7 @@ export default function OrbitFlowVisualization() {
   }
 
   return (
-    <div className="min-h-screen bg-white relative overflow-hidden">
+    <div className="h-[700px] bg-white relative overflow-hidden">
       {/* Controls */}
       <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
         <button onClick={() => setZoom(Math.max(0.5, zoom - 0.1))} className="p-2.5 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition shadow-sm">
@@ -507,7 +521,7 @@ export default function OrbitFlowVisualization() {
 
       {/* SVG Orbit Visualization - Optimized for 1280x960 at 100% */}
       <div 
-        className="w-full h-screen flex items-center justify-center relative"
+        className="w-full h-[650px] flex items-center justify-center relative"
         style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
       >
         <svg viewBox="0 0 1280 960" className="w-full h-full" style={{ maxWidth: '1280px', maxHeight: '960px' }}>
