@@ -72,19 +72,19 @@ export function CreateFullUserModal({
     10: 'Level 10 - Executive (CEO/CFO)'
   };
 
-  // Password strength calculation
+  // Password strength calculation (minimum 12 chars required by backend)
   const getPasswordStrength = (password: string): { score: number; label: string; color: string } => {
     let score = 0;
-    if (password.length >= 8) score += 1;
-    if (password.length >= 12) score += 1;
+    if (password.length >= 12) score += 2; // 12+ chars is required
+    else if (password.length >= 8) score += 1;
     if (/[a-z]/.test(password)) score += 1;
     if (/[A-Z]/.test(password)) score += 1;
     if (/[0-9]/.test(password)) score += 1;
-    if (/[^A-Za-z0-9]/.test(password)) score += 1;
+    if (/[!@#$%^&*(),.?":{}|<>]/.test(password)) score += 1;
 
-    if (score <= 2) return { score: (score / 6) * 100, label: 'Weak', color: 'bg-red-500' };
-    if (score <= 4) return { score: (score / 6) * 100, label: 'Medium', color: 'bg-yellow-500' };
-    return { score: (score / 6) * 100, label: 'Strong', color: 'bg-green-500' };
+    if (score <= 3) return { score: (score / 7) * 100, label: 'Weak', color: 'bg-red-500' };
+    if (score <= 5) return { score: (score / 7) * 100, label: 'Medium', color: 'bg-yellow-500' };
+    return { score: (score / 7) * 100, label: 'Strong', color: 'bg-green-500' };
   };
 
   // Fetch roles and branches if not provided as props
@@ -467,10 +467,6 @@ export function CreateFullUserModal({
                   value={formData.email}
                   onChange={(e) => {
                     handleInputChange('email', e.target.value);
-                    // Auto-fill personal_email if not set
-                    if (!formData.personal_email) {
-                      handleInputChange('personal_email', e.target.value);
-                    }
                   }}
                   className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
                     errors.email ? 'border-red-300' : 'border-gray-300'
@@ -528,8 +524,8 @@ export function CreateFullUserModal({
                 )}
                 {/* Password guidelines */}
                 <div className="mt-2 text-xs text-gray-500 space-y-1">
-                  <p className={formData.password.length >= 8 ? 'text-green-600' : ''}>
-                    • Minimum 8 characters
+                  <p className={formData.password.length >= 12 ? 'text-green-600' : ''}>
+                    • Minimum 12 characters
                   </p>
                   <p className={/[A-Z]/.test(formData.password) ? 'text-green-600' : ''}>
                     • At least one uppercase letter
@@ -540,8 +536,8 @@ export function CreateFullUserModal({
                   <p className={/[0-9]/.test(formData.password) ? 'text-green-600' : ''}>
                     • At least one number
                   </p>
-                  <p className={/[^A-Za-z0-9]/.test(formData.password) ? 'text-green-600' : ''}>
-                    • At least one special character
+                  <p className={/[!@#$%^&*(),.?":{}|<>]/.test(formData.password) ? 'text-green-600' : ''}>
+                    • At least one special character (!@#$%^&amp;*(),.?&quot;:{}|&lt;&gt;)
                   </p>
                 </div>
                 {errors.password && (

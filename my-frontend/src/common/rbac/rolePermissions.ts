@@ -57,6 +57,7 @@ export type RoleType =
   | 'ENTERPRISE_ADMIN'
   | 'SUPER_ADMIN'
   | 'ADMIN'
+  | 'ADMIN_OPS'
   | 'CFO'
   | 'FINANCE_CONTROLLER'
   | 'TREASURY'
@@ -233,6 +234,37 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
       '⚠️ STRICTLY TENANT-ISOLATED - All permissions are tenant-scoped',
       'CANNOT see: system logs, platform billing, deployments, backups, AI training',
       'Can only manage users and settings within their own tenant',
+    ],
+  },
+  /**
+   * ═══════════════════════════════════════════════════════════════════════════
+   * ADMIN_OPS ROLE - Operations Administrator (Department Level)
+   * ═══════════════════════════════════════════════════════════════════════════
+   * 
+   * This is a department-level operations admin, different from system ADMIN.
+   * Handles day-to-day operational management within their assigned scope.
+   * ═══════════════════════════════════════════════════════════════════════════
+   */
+  ADMIN_OPS: {
+    role: 'ADMIN_OPS',
+    label: 'Admin Ops',
+    level: 'CLIENT',
+    permissions: [
+      // Operations management
+      'tenant-user-management',
+      'tenant-settings',
+      'branch-management',
+      'attendance-management',
+      'leave-management',
+      'employee-management',
+      'report-generation',
+      'kpi-dashboard',
+    ],
+    defaultRoute: '/admin',
+    securityNotes: [
+      'Department-level operations administrator',
+      'Handles day-to-day user and operations management',
+      'Different from System Administrator (governance)',
     ],
   },
   CFO: {
