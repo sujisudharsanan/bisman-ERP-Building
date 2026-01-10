@@ -4716,11 +4716,22 @@ app.patch('/api/branches/:id/toggle-status', authenticate, async (req, res) => {
   try {
     const { id } = req.params;
     const tenantId = req.user.tenant_id || req.user.tenantId;
+    
+    console.log(`[Branches] Toggle request for branch ID: ${id}, tenant: ${tenantId}`);
+
+    // Parse ID - handle both numeric and string IDs
+    const branchId = parseInt(id);
+    if (isNaN(branchId)) {
+      return res.status(400).json({
+        success: false,
+        error: 'Invalid branch ID'
+      });
+    }
 
     // Find existing branch
     const existingBranch = await prisma.branches.findFirst({
       where: {
-        id: parseInt(id),
+        id: branchId,
         ...(tenantId ? { tenant_id: tenantId } : {})
       }
     });
@@ -4736,7 +4747,7 @@ app.patch('/api/branches/:id/toggle-status', authenticate, async (req, res) => {
     const newStatus = !existingBranch.is_active;
     
     const branch = await prisma.branches.update({
-      where: { id: parseInt(id) },
+      where: { id: branchId },
       data: {
         is_active: newStatus,
         updated_at: new Date(),
@@ -4756,7 +4767,7 @@ app.patch('/api/branches/:id/toggle-status', authenticate, async (req, res) => {
       message: `Branch ${newStatus ? 'enabled' : 'disabled'} successfully`
     });
   } catch (error) {
-    console.error('[Branches] Toggle status error:', error.message);
+    console.error('[Branches] Toggle status error:', error);
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to toggle branch status'
