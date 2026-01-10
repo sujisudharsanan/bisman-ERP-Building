@@ -47,6 +47,7 @@ router.get('/plans', async (req, res) => {
         feature_flags: true,
         is_popular: true,
         is_enterprise: true,
+        is_active: true,
         cta_text: true,
         cta_action: true,
       },
@@ -250,10 +251,14 @@ router.get('/current', authenticate, attachSubscriptionInfo, async (req, res) =>
           price_yearly: parseFloat(subscription.plan.price_yearly),
         },
         billing_cycle: subscription.billing_cycle,
+        current_period_start: subscription.current_period_start,
         current_period_end: subscription.current_period_end,
         next_billing_date: subscription.next_billing_date,
+        trial_start_date: subscription.trial_start_date,
         trial_end_date: subscription.trial_end_date,
         trial_converted: subscription.trial_converted,
+        started_at: subscription.started_at,
+        created_at: subscription.created_at,
         usage: {
           users: {
             current: subscription.current_user_count,

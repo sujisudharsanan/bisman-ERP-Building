@@ -323,7 +323,8 @@ const BillingPage = () => {
       }
       if (plansResponse.status === 'fulfilled') {
         const plans = plansResponse.value.data?.plans || plansResponse.value.data?.data || [];
-        setAvailablePlans(plans.filter((p: AvailablePlan) => p.is_active));
+        // Filter by is_active if present, otherwise assume all returned plans are active
+        setAvailablePlans(plans.filter((p: AvailablePlan) => p.is_active !== false));
       }
     } catch (error) {
       console.error('Error fetching billing data:', error);
@@ -952,11 +953,15 @@ const BillingPage = () => {
                   <Calendar className="w-6 h-6 text-indigo-500 mx-auto mb-2" />
                   <p className="text-xs text-slate-500 mb-1">Start Date</p>
                   <p className="font-semibold text-slate-700">
-                    {subscriptionData?.subscription?.start_date 
-                      ? new Date(subscriptionData.subscription.start_date).toLocaleDateString() 
-                      : subscriptionData?.subscription?.trial_end_date
-                        ? 'Trial Started'
-                        : 'N/A'}
+                    {subscriptionData?.subscription?.trial_start_date 
+                      ? new Date(subscriptionData.subscription.trial_start_date).toLocaleDateString()
+                      : subscriptionData?.subscription?.started_at 
+                        ? new Date(subscriptionData.subscription.started_at).toLocaleDateString()
+                        : subscriptionData?.subscription?.current_period_start
+                          ? new Date(subscriptionData.subscription.current_period_start).toLocaleDateString()
+                          : subscriptionData?.subscription?.created_at
+                            ? new Date(subscriptionData.subscription.created_at).toLocaleDateString()
+                            : 'N/A'}
                   </p>
                 </div>
                 <div className="text-center p-4 bg-slate-50 rounded-xl">
