@@ -88,7 +88,7 @@ const LINE_LENGTH = {
   sub: 85,         // Department → Role (increased for clarity)
 };
 
-const REQUIRED_ROLES = ['CEO', 'ADMIN', 'CFO', 'ACCOUNTANT', 'AUDITOR', 'HR_MANAGER'];
+const REQUIRED_ROLES = ['CEO', 'ADMIN', 'SYS_ADMIN', 'CFO', 'ACCOUNTANT', 'AUDITOR', 'HR_MANAGER'];
 
 // Department to roles mapping for state calculation
 const DEPARTMENT_ROLES: Record<string, string[]> = {
@@ -97,9 +97,12 @@ const DEPARTMENT_ROLES: Record<string, string[]> = {
   LEGAL: ['LEGAL', 'AUDITOR', 'COMPLIANCE'],
   IT: ['IT'],
   HR: ['HR_MANAGER', 'STAFF'],
-  ADMIN_OPS: ['ADMIN', 'MANAGER', 'STAFF'],
+  ADMIN_OPS: ['ADMIN_OPS', 'OFFICE_MANAGER', 'OFFICE_STAFF'],  // Separate from SYS_ADMIN
   FINANCE: ['CFO', 'ACCOUNTANT', 'ACCOUNTS_PAYABLE', 'BANKER'],
 };
+
+// Governance roles (separate from department roles)
+const GOVERNANCE_ROLES = ['CEO', 'CFO', 'ADMIN', 'SYS_ADMIN', 'SYSTEM_ADMIN'];
 
 interface OrbitNodeProps {
   cx: number;
@@ -673,8 +676,18 @@ export default function OrbitFlowVisualization() {
           
           {/* SYS ADMIN Circle - Bottom (Triangle Base) - Governance authority */}
           {(() => {
+            // SYS ADMIN checks for ADMIN, SYS_ADMIN, or SYSTEM_ADMIN roles
             const adminState = getState('ADMIN');
-            const isDisabled = !adminState.hasUsers;
+            const sysAdminState = getState('SYS_ADMIN');
+            const systemAdminState = getState('SYSTEM_ADMIN');
+            const combinedState: RoleState = {
+              hasUsers: adminState.hasUsers || sysAdminState.hasUsers || systemAdminState.hasUsers,
+              userCount: adminState.userCount + sysAdminState.userCount + systemAdminState.userCount,
+              isActive: adminState.isActive || sysAdminState.isActive || systemAdminState.isActive,
+              isRequired: true,
+              isDisabled: !adminState.hasUsers && !sysAdminState.hasUsers && !systemAdminState.hasUsers,
+            };
+            const isDisabled = !combinedState.hasUsers;
             const fillColor = isDisabled ? '#D1D5DB' : COLORS.sysAdmin;
             const textColor = isDisabled ? '#374151' : 'white';
             const opacity = isDisabled ? 0.7 : 1;
@@ -690,10 +703,10 @@ export default function OrbitFlowVisualization() {
                     <text x={centerX + 24} y={centerY + 60 - 20} textAnchor="middle" fill="#D97706" fontSize="12" fontWeight="bold">!</text>
                   </g>
                 )}
-                {adminState.userCount > 0 && (
+                {combinedState.userCount > 0 && (
                   <g>
                     <circle cx={centerX + 24} cy={centerY + 60 - 24} r={12} fill="white" stroke={COLORS.sysAdmin} strokeWidth="2" />
-                    <text x={centerX + 24} y={centerY + 60 - 20} textAnchor="middle" fill={COLORS.sysAdmin} fontSize="11" fontWeight="bold">{adminState.userCount}</text>
+                    <text x={centerX + 24} y={centerY + 60 - 20} textAnchor="middle" fill={COLORS.sysAdmin} fontSize="11" fontWeight="bold">{combinedState.userCount}</text>
                   </g>
                 )}
               </g>
