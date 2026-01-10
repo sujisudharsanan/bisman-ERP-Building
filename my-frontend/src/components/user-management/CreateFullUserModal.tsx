@@ -59,18 +59,18 @@ export function CreateFullUserModal({
       );
   }, [roles, roleSearchQuery]);
 
-  // Business level labels with role names
+  // Business level labels - matches role levels (1 = highest authority, 10 = entry level)
   const businessLevelLabels: Record<number, string> = {
-    1: 'Level 1 - Entry (Staff)',
-    2: 'Level 2 - Junior (Associate)',
-    3: 'Level 3 - Mid (Officer)',
-    4: 'Level 4 - Senior (Sr. Officer)',
-    5: 'Level 5 - Lead (Team Lead)',
-    6: 'Level 6 - Supervisor (Supervisor)',
-    7: 'Level 7 - Manager (Manager)',
-    8: 'Level 8 - Sr. Manager (Sr. Manager)',
-    9: 'Level 9 - Director (Director)',
-    10: 'Level 10 - Executive (CEO/CFO)'
+    1: 'Level 1 - Executive (Super Admin)',
+    2: 'Level 2 - C-Suite (CEO/CFO/Admin)',
+    3: 'Level 3 - Director (HR/Finance Head)',
+    4: 'Level 4 - Manager (Operations)',
+    5: 'Level 5 - Supervisor (Incharge)',
+    6: 'Level 6 - Team Lead (Compliance)',
+    7: 'Level 7 - Senior Staff',
+    8: 'Level 8 - Staff (Data Entry/IT)',
+    9: 'Level 9 - Junior Staff',
+    10: 'Level 10 - Entry Level'
   };
 
   // Password strength calculation (minimum 12 chars required by backend)
@@ -600,24 +600,21 @@ export function CreateFullUserModal({
                   <p className="text-sm text-gray-500 text-center py-2">No roles found</p>
                 ) : (
                   filteredRoles.map(role => (
-                    <label key={role.id} className="flex items-center space-x-2">
+                    <label key={role.id} className="flex items-center space-x-2 cursor-pointer hover:bg-gray-50 p-1 rounded">
                       <input
-                        type="checkbox"
+                        type="radio"
+                        name="user_role"
                         checked={formData.role_ids.includes(role.id)}
-                        onChange={(e) => {
-                          if (e.target.checked) {
-                            handleInputChange('role_ids', [...formData.role_ids, role.id]);
-                            // Auto-set business level based on role level (if not overridden)
-                            if (!levelOverride && role.level) {
-                              // Convert role level (1-10 where 1 is highest) to business level (1-10 where 10 is highest)
-                              const businessLevel = Math.max(1, Math.min(10, 11 - role.level));
-                              handleInputChange('business_level', businessLevel);
-                            }
-                          } else {
-                            handleInputChange('role_ids', formData.role_ids.filter(id => id !== role.id));
+                        onChange={() => {
+                          // Single role selection - replace the array with just this role
+                          handleInputChange('role_ids', [role.id]);
+                          // Auto-set business level based on role level (if not overridden)
+                          if (!levelOverride && role.level) {
+                            // Use role level directly as business level (L8 = Level 8)
+                            handleInputChange('business_level', role.level);
                           }
                         }}
-                        className="h-4 w-4 text-blue-600 rounded border-gray-300 focus:ring-blue-500"
+                        className="h-4 w-4 text-blue-600 border-gray-300 focus:ring-blue-500"
                       />
                       <span className="text-sm text-gray-900">{role.name}</span>
                       {role.level && (
