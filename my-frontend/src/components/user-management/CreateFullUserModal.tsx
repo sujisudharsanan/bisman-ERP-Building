@@ -49,29 +49,36 @@ export function CreateFullUserModal({
 
   // Filter out ADMIN and SUPER_ADMIN roles, apply search, and sort by level
   const filteredRoles = useMemo(() => {
-    const excludedRoles = ['ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'Super Admin', 'Admin', 'System Administrator'];
+    // Only exclude exact matches - Admin Ops should be visible
+    const excludedRolesExact = ['ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'System Administrator'];
     return roles
-      .filter(role => !excludedRoles.includes(role.name))
+      .filter(role => {
+        const upperName = role.name.toUpperCase();
+        // Exclude exact matches only (not partial like "Admin Ops")
+        return !excludedRolesExact.includes(upperName) && 
+               upperName !== 'SUPER ADMIN' && 
+               upperName !== 'ADMIN';
+      })
       .filter(role => 
         roleSearchQuery === '' || 
         role.name.toLowerCase().includes(roleSearchQuery.toLowerCase()) ||
         role.description?.toLowerCase().includes(roleSearchQuery.toLowerCase())
       )
-      .sort((a, b) => (a.level || 99) - (b.level || 99)); // Sort by level ascending (1 = highest authority)
+      .sort((a, b) => (a.level || 99) - (b.level || 99)); // Sort by level ascending (L1 = entry, L10 = executive)
   }, [roles, roleSearchQuery]);
 
-  // Business level labels - matches role levels (1 = highest authority, 10 = entry level)
+  // Business level labels - L1 = Entry level (first), L10 = Executive (top)
   const businessLevelLabels: Record<number, string> = {
-    1: 'Level 1 - Executive (Super Admin)',
-    2: 'Level 2 - C-Suite (CEO/CFO/Admin)',
-    3: 'Level 3 - Director (HR/Finance Head)',
-    4: 'Level 4 - Manager (Operations)',
-    5: 'Level 5 - Supervisor (Incharge)',
-    6: 'Level 6 - Team Lead (Compliance)',
-    7: 'Level 7 - Senior Staff',
-    8: 'Level 8 - Staff (Data Entry/IT)',
-    9: 'Level 9 - Junior Staff',
-    10: 'Level 10 - Entry Level'
+    1: 'Level 1 - Entry (Trainee/Intern)',
+    2: 'Level 2 - Junior Staff (Data Entry)',
+    3: 'Level 3 - Staff (Support)',
+    4: 'Level 4 - Senior Staff (Accounts)',
+    5: 'Level 5 - Team Lead (Incharge)',
+    6: 'Level 6 - Supervisor (Compliance)',
+    7: 'Level 7 - Manager (Operations)',
+    8: 'Level 8 - Sr. Manager (Department Head)',
+    9: 'Level 9 - Director (HR/Finance)',
+    10: 'Level 10 - Executive (CEO/CFO/Admin)'
   };
 
   // Password strength calculation (minimum 12 chars required by backend)

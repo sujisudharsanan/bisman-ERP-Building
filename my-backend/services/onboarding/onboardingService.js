@@ -137,7 +137,7 @@ async function storeIdempotency(idempotencyKey, result) {
  * Check if email is already registered
  */
 async function checkEmailExists(email) {
-  const user = await prisma.user.findFirst({
+  const user = await prisma.users_enhanced.findFirst({
     where: { email: email.toLowerCase() }
   });
   return !!user;
@@ -147,7 +147,7 @@ async function checkEmailExists(email) {
  * Check if company name is already taken
  */
 async function checkCompanyExists(companyName) {
-  const client = await prisma.client.findFirst({
+  const client = await prisma.clients.findFirst({
     where: { 
       name: { equals: companyName, mode: 'insensitive' }
     }
@@ -237,7 +237,7 @@ async function createTenant(params) {
   // Use transaction for atomicity
   const result = await prisma.$transaction(async (tx) => {
     // 1. Find a default SuperAdmin (required for Client)
-    const superAdmin = await tx.superAdmin.findFirst({
+    const superAdmin = await tx.super_admins.findFirst({
       where: { is_active: true },
       orderBy: { id: 'asc' }
     });
@@ -247,7 +247,7 @@ async function createTenant(params) {
     }
 
     // 2. Create Client (this is the "tenant" in this system)
-    const client = await tx.client.create({
+    const client = await tx.clients.create({
       data: {
         id: clientId,
         name: companyName,
@@ -277,9 +277,9 @@ async function createTenant(params) {
     });
 
     // 3. Create admin user in users_enhanced table
-    // NOTE: Using direct tx.user.create within transaction context
+    // NOTE: Using direct tx.users_enhanced.create within transaction context
     // business_level = 1 (default), reports_to = null (top-level admin)
-    const adminUser = await tx.user.create({
+    const adminUser = await tx.users_enhanced.create({
       data: {
         id: adminUserId,
         username: username,
@@ -316,7 +316,7 @@ async function createTenant(params) {
 
     // 5. Create audit log entry
     try {
-      await tx.auditLog.create({
+      await tx.audit_logs.create({
         data: {
           action: 'CLIENT_CREATED',
           table_name: 'clients',
@@ -520,7 +520,7 @@ async function enqueueProvisioningJobs(tenantId, params) {
  */
 async function resendWelcomeEmail(clientId, email) {
   // Find user by tenant_id (which is clientId in this system)
-  const user = await prisma.user.findFirst({
+  const user = await prisma.users_enhanced.findFirst({
     where: {
       tenant_id: clientId,
       email: email.toLowerCase()
@@ -532,7 +532,7 @@ async function resendWelcomeEmail(clientId, email) {
   }
 
   // Get client info
-  const client = await prisma.client.findUnique({
+  const client = await prisma.clients.findUnique({
     where: { id: clientId }
   });
 
@@ -545,7 +545,7 @@ async function resendWelcomeEmail(clientId, email) {
   const passwordHash = await bcrypt.hash(temporaryPassword, 12);
 
   // Update user password
-  await prisma.user.update({
+  await prisma.users_enhanced.update({
     where: { id: user.id },
     data: {
       password_hash: passwordHash,
@@ -574,14 +574,14 @@ async function resendWelcomeEmail(clientId, email) {
  * Get provisioning status for a client
  */
 async function getProvisioningStatus(clientId) {
-  const client = await prisma.client.findUnique({
+  const client = await prisma.clients.findUnique({
     where: { id: clientId }
   });
 
   if (!client) return null;
 
   // Find admin user for this client
-  const adminUser = await prisma.user.findFirst({
+  const adminUser = await prisma.users_enhanced.findFirst({
     where: { 
       tenant_id: clientId,
       role: 'ADMIN'

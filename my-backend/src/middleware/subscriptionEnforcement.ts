@@ -37,17 +37,17 @@ export interface SubscriptionLimits {
 export async function getClientSubscriptionLimits(clientId: string): Promise<SubscriptionLimits | null> {
   try {
     // Get client's subscription with plan details
-    const clientSubscription = await prisma.clientSubscription.findUnique({
+    // Use snake_case model name as per Prisma schema
+    const clientSubscription = await prisma.client_subscriptions.findUnique({
       where: { client_id: clientId },
       include: {
-        plan: true,
-        client: true
+        plan: true  // relation name in schema
       }
     });
 
     if (!clientSubscription) {
       // No subscription found - use defaults from client's subscriptionPlan field
-      const client = await prisma.client.findUnique({
+      const client = await prisma.clients.findUnique({
         where: { id: clientId }
       });
 
@@ -124,13 +124,13 @@ export async function getClientSubscriptionLimits(clientId: string): Promise<Sub
  */
 async function countClientUsers(clientId: string): Promise<{ total: number; active: number }> {
   try {
-    // Count all users for this client
-    const totalCount = await prisma.user.count({
+    // Count all users for this client (use users_enhanced model)
+    const totalCount = await prisma.users_enhanced.count({
       where: { tenant_id: clientId }
     });
 
     // Count active users for this client
-    const activeCount = await prisma.user.count({
+    const activeCount = await prisma.users_enhanced.count({
       where: {
         tenant_id: clientId,
         is_active: true
@@ -154,7 +154,7 @@ export async function logUserLimitExceeded(
   limits: SubscriptionLimits
 ): Promise<void> {
   try {
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
         user_id: typeof attemptedBy === 'number' ? attemptedBy : parseInt(attemptedBy) || 0,
         action: 'USER_LIMIT_EXCEEDED',
@@ -250,7 +250,7 @@ export function checkUserActivationLimit() {
       }
 
       // Get the user being activated to find their tenant
-      const userToActivate = await prisma.user.findUnique({
+      const userToActivate = await prisma.users_enhanced.findUnique({
         where: { id: id },
         select: { tenant_id: true, is_active: true }
       });
