@@ -151,9 +151,10 @@ class SubscriptionStateMachine {
       where: { id: this.subscriptionId },
       include: {
         plan: true,
-        client: {
-          select: { id: true, name: true, client_code: true },
-        },
+        scheduled_plan: true,
+        subscription_coupons: true,
+        coupon_redemptions: true,
+        subscription_coupon_audit_logs: true,
       },
     });
     return this;

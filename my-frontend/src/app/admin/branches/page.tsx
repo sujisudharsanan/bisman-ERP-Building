@@ -23,6 +23,8 @@ import {
   AlertCircle,
   Loader2,
   Download,
+  Power,
+  PowerOff,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import AddBranchDrawer from '@/components/branch-management/AddBranchDrawer';
@@ -414,9 +416,11 @@ export default function BranchesPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState<string>('all');
+  const [showInactive, setShowInactive] = useState(true);
   const [selectedBranch, setSelectedBranch] = useState<BranchData | null>(null);
   const [showAddBranchDrawer, setShowAddBranchDrawer] = useState(false);
   const [editBranch, setEditBranch] = useState<BranchData | null>(null);
+  const [togglingBranchId, setTogglingBranchId] = useState<string | null>(null);
 
   // Handler to open edit drawer
   const handleEditBranch = (branch: BranchData) => {
@@ -431,7 +435,7 @@ export default function BranchesPage() {
     setError(null);
     
     try {
-      const response = await fetch('/api/branches?include_agreements=true', {
+      const response = await fetch('/api/branches?include_agreements=true&include_inactive=true', {
         credentials: 'include',
       });
       
@@ -457,6 +461,47 @@ export default function BranchesPage() {
       setIsLoading(false);
     }
   }, []);
+
+  // Toggle branch status
+  const toggleBranchStatus = async (branchId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setTogglingBranchId(branchId);
+    
+    try {
+      const response = await fetch(`/api/branches/${branchId}/toggle-status`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to toggle branch status');
+      }
+      
+      const data = await response.json();
+      
+      // Update the local state
+      setBranches(prev => prev.map(b => 
+        b.id === branchId 
+          ? { ...b, isActive: data.branch.isActive }
+          : b
+      ));
+      
+      // Recalculate KPIs
+      calculateKPIs(branches.map(b => 
+        b.id === branchId 
+          ? { ...b, isActive: data.branch.isActive }
+          : b
+      ));
+    } catch (err) {
+      console.error('Error toggling branch status:', err);
+      alert('Failed to toggle branch status');
+    } finally {
+      setTogglingBranchId(null);
+    }
+  };
 
   const determineDataStatus = (branch: any): 'complete' | 'incomplete' | 'missing-critical' => {
     const needsAgreement = branch.buildingType === 'rented' || branch.buildingType === 'leased';
@@ -599,7 +644,9 @@ export default function BranchesPage() {
       filterType === 'all' ||
       branch.buildingType === filterType;
     
-    return matchesSearch && matchesFilter;
+    const matchesActiveFilter = showInactive || branch.isActive;
+    
+    return matchesSearch && matchesFilter && matchesActiveFilter;
   });
 
   // Loading state
@@ -694,6 +741,15 @@ export default function BranchesPage() {
             <option value="rented">Rented</option>
             <option value="leased">Leased</option>
           </select>
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input
+              type="checkbox"
+              checked={showInactive}
+              onChange={(e) => setShowInactive(e.target.checked)}
+              className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+            />
+            <span className="text-sm text-gray-600">Show Inactive</span>
+          </label>
         </div>
 
         {/* Error Message */}
@@ -757,12 +813,19 @@ export default function BranchesPage() {
                   return (
                     <tr
                       key={branch.id}
-                      className="hover:bg-gray-50 cursor-pointer transition-colors"
+                      className={`hover:bg-gray-50 cursor-pointer transition-colors ${!branch.isActive ? 'bg-gray-50 opacity-70' : ''}`}
                       onClick={() => setSelectedBranch(branch)}
                     >
                       <td className="px-4 py-4">
-                        <div className="font-medium text-blue-600 hover:text-blue-800">
-                          {branch.name}
+                        <div className="flex items-center gap-2">
+                          <span className={`font-medium ${branch.isActive ? 'text-blue-600 hover:text-blue-800' : 'text-gray-500'}`}>
+                            {branch.name}
+                          </span>
+                          {!branch.isActive && (
+                            <span className="px-1.5 py-0.5 text-[10px] font-semibold rounded bg-red-100 text-red-600 uppercase">
+                              Inactive
+                            </span>
+                          )}
                         </div>
                         <div className="text-xs text-gray-500">{branch.code}</div>
                       </td>
@@ -809,7 +872,7 @@ export default function BranchesPage() {
                         {getDataStatusBadge(branch.dataStatus, branch.missingFields)}
                       </td>
                       <td className="px-4 py-4">
-                        <div className="flex items-center justify-center gap-2">
+                        <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
@@ -829,6 +892,24 @@ export default function BranchesPage() {
                             title="Edit"
                           >
                             <Edit className="w-4 h-4 text-gray-600" />
+                          </button>
+                          <button
+                            onClick={(e) => toggleBranchStatus(branch.id, e)}
+                            disabled={togglingBranchId === branch.id}
+                            className={`p-1.5 rounded-lg transition-colors ${
+                              branch.isActive 
+                                ? 'hover:bg-red-100 text-red-600' 
+                                : 'hover:bg-green-100 text-green-600'
+                            }`}
+                            title={branch.isActive ? 'Disable Branch' : 'Enable Branch'}
+                          >
+                            {togglingBranchId === branch.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : branch.isActive ? (
+                              <PowerOff className="w-4 h-4" />
+                            ) : (
+                              <Power className="w-4 h-4" />
+                            )}
                           </button>
                         </div>
                       </td>

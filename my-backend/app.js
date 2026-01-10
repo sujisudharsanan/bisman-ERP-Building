@@ -4403,9 +4403,13 @@ app.get('/api/users/search', authenticate, async (req, res) => {
 app.get('/api/branches', authenticate, async (req, res) => {
   try {
     const tenantId = req.user.tenant_id || req.user.tenantId;
-    const whereClause = {
-      is_active: true
-    };
+    const { include_inactive } = req.query;
+    const whereClause = {};
+    
+    // Only filter by active if not requesting inactive branches
+    if (include_inactive !== 'true') {
+      whereClause.is_active = true;
+    }
     
     // Filter by tenant if available
     if (tenantId) {
@@ -4703,6 +4707,59 @@ app.put('/api/branches/:id', authenticate, async (req, res) => {
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to update branch'
+    });
+  }
+});
+
+// Toggle branch active status (Enable/Disable)
+app.patch('/api/branches/:id/toggle-status', authenticate, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const tenantId = req.user.tenant_id || req.user.tenantId;
+
+    // Find existing branch
+    const existingBranch = await prisma.branches.findFirst({
+      where: {
+        id: parseInt(id),
+        ...(tenantId ? { tenant_id: tenantId } : {})
+      }
+    });
+
+    if (!existingBranch) {
+      return res.status(404).json({
+        success: false,
+        error: 'Branch not found'
+      });
+    }
+
+    // Toggle the is_active status
+    const newStatus = !existingBranch.is_active;
+    
+    const branch = await prisma.branches.update({
+      where: { id: parseInt(id) },
+      data: {
+        is_active: newStatus,
+        updated_at: new Date(),
+      }
+    });
+
+    console.log(`[Branches] ${newStatus ? 'Enabled' : 'Disabled'} branch:`, branch.branch_name);
+
+    res.json({
+      success: true,
+      branch: {
+        id: String(branch.id),
+        code: branch.branch_code,
+        name: branch.branch_name,
+        isActive: branch.is_active,
+      },
+      message: `Branch ${newStatus ? 'enabled' : 'disabled'} successfully`
+    });
+  } catch (error) {
+    console.error('[Branches] Toggle status error:', error.message);
+    res.status(500).json({
+      success: false,
+      error: error.message || 'Failed to toggle branch status'
     });
   }
 });
