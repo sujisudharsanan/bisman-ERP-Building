@@ -481,16 +481,39 @@ async function calculateMonthlyBill(tenantId, periodStart = null, periodEnd = nu
   const monthEnd = periodEnd || new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const daysInMonth = Math.ceil((monthEnd.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-  // Get tenant's subscription plan base price
-  const [subscription] = await prisma.$queryRaw`
+  // Get tenant's subscription from client_subscriptions (new system) with fallback to old tenant_subscription
+  let subscription = null;
+  
+  // Try new subscription system first (client_subscriptions + subscription_plans)
+  const [newSub] = await prisma.$queryRaw`
     SELECT 
-      ts.*,
-      msp.plan_name,
-      msp.base_price_monthly
-    FROM tenant_subscription ts
-    LEFT JOIN micro_subscription_plans msp ON msp.id = ts.plan_id
-    WHERE ts.tenant_id = ${tenantId}::uuid AND ts.is_active = TRUE
+      cs.id,
+      cs.plan_id,
+      cs.state,
+      cs.billing_cycle,
+      cs.is_active,
+      sp.name as plan_name,
+      sp.price_monthly as base_price_monthly
+    FROM client_subscriptions cs
+    LEFT JOIN subscription_plans sp ON sp.id = cs.plan_id
+    WHERE cs.client_id = ${tenantId}::uuid
   `;
+  
+  if (newSub) {
+    subscription = newSub;
+  } else {
+    // Fallback to old micro_subscription_plans system
+    const [oldSub] = await prisma.$queryRaw`
+      SELECT 
+        ts.*,
+        msp.plan_name,
+        msp.base_price_monthly
+      FROM tenant_subscription ts
+      LEFT JOIN micro_subscription_plans msp ON msp.id = ts.plan_id
+      WHERE ts.tenant_id = ${tenantId}::uuid AND ts.is_active = TRUE
+    `;
+    subscription = oldSub;
+  }
 
   // Get all active unlocks with proration data
   // Note: Temporary overrides (is_override=TRUE with price>0) ARE billed but prorated
