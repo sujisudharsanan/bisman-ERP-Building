@@ -540,8 +540,8 @@ async function checkSubscriptionLimits(clientId) {
     where: { clientId: clientId },
   });
 
-  const branchCount = await prisma.branch.count({
-    where: { tenantId: clientId },
+  const branchCount = await prisma.branches.count({
+    where: { tenant_id: clientId },
   });
 
   const plan = subscription.plan;

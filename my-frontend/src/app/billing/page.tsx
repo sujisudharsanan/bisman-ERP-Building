@@ -79,9 +79,13 @@ interface SubscriptionData {
     };
     billing_cycle: string;
     current_period_end: string;
+    current_period_start?: string;
     next_billing_date: string;
+    trial_start_date?: string;
     trial_end_date?: string;
     trial_converted?: boolean;
+    started_at?: string;
+    created_at?: string;
     usage: {
       users: {
         current: number;
@@ -466,8 +470,16 @@ const BillingPage = () => {
     return subscriptionData?.plan?.features || {};
   }, [featuresData, subscriptionData]);
 
-  // Get plan tier info for styling
-  const getPlanTier = (planName: string | undefined) => {
+  // Get subscription state
+  const subscriptionState = subscriptionData?.subscription?.state || '';
+
+  // Get plan tier info for styling - considers subscription state first
+  const getPlanTier = (planName: string | undefined, state: string | undefined) => {
+    // If subscription is in TRIAL state, show Trial styling regardless of plan name
+    if (state === 'TRIAL') {
+      return { icon: Sparkles, color: 'from-amber-400 to-orange-500', label: 'Trial', bg: 'bg-gradient-to-r from-amber-50 to-orange-50' };
+    }
+    
     const name = (planName || '').toLowerCase();
     if (name.includes('enterprise') || name.includes('premium')) {
       return { icon: Crown, color: 'from-amber-400 to-yellow-600', label: 'Enterprise', bg: 'bg-gradient-to-r from-amber-50 to-yellow-50' };
@@ -479,12 +491,12 @@ const BillingPage = () => {
       return { icon: Star, color: 'from-blue-500 to-cyan-500', label: 'Standard', bg: 'bg-gradient-to-r from-blue-50 to-cyan-50' };
     }
     if (name.includes('trial')) {
-      return { icon: Sparkles, color: 'from-green-500 to-emerald-500', label: 'Trial', bg: 'bg-gradient-to-r from-green-50 to-emerald-50' };
+      return { icon: Sparkles, color: 'from-amber-400 to-orange-500', label: 'Trial', bg: 'bg-gradient-to-r from-amber-50 to-orange-50' };
     }
     return { icon: Zap, color: 'from-gray-500 to-slate-600', label: 'Basic', bg: 'bg-gradient-to-r from-gray-50 to-slate-50' };
   };
 
-  const planTier = getPlanTier(currentPlanName);
+  const planTier = getPlanTier(currentPlanName, subscriptionState);
   const PlanIcon = planTier.icon;
 
   if (loading) {
@@ -540,16 +552,31 @@ const BillingPage = () => {
                   {currentPlanName}
                 </h3>
                 <p className="text-sm text-slate-500 mt-1">
-                  {subscriptionData?.has_subscription
-                    ? 'Your active subscription and billing status.'
-                    : 'Basic features included. Upgrade to unlock more.'
+                  {subscriptionData?.subscription?.state === 'TRIAL'
+                    ? 'You are currently on a free trial.'
+                    : subscriptionData?.has_subscription
+                      ? 'Your active subscription and billing status.'
+                      : 'Basic features included. Upgrade to unlock more.'
                   }
                 </p>
                 <div className="flex items-center gap-2 mt-3">
-                  <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-700">
-                    {subscriptionData?.subscription?.state || 'Active'}
+                  <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                    subscriptionData?.subscription?.state === 'TRIAL' 
+                      ? 'bg-amber-100 text-amber-700' 
+                      : subscriptionData?.subscription?.state === 'ACTIVE'
+                        ? 'bg-green-100 text-green-700'
+                        : subscriptionData?.subscription?.state === 'SUSPENDED' || subscriptionData?.subscription?.state === 'CANCELLED'
+                          ? 'bg-red-100 text-red-700'
+                          : 'bg-green-100 text-green-700'
+                  }`}>
+                    {subscriptionData?.subscription?.state || (subscriptionData?.has_subscription ? 'ACTIVE' : 'FREE')}
                   </span>
-                  {subscriptionData?.subscription?.current_period_end && (
+                  {subscriptionData?.subscription?.state === 'TRIAL' && subscriptionData?.subscription?.trial_end_date && (
+                    <span className="text-xs text-amber-600 font-medium">
+                      Trial ends: {new Date(subscriptionData.subscription.trial_end_date).toLocaleDateString()}
+                    </span>
+                  )}
+                  {subscriptionData?.subscription?.state !== 'TRIAL' && subscriptionData?.subscription?.current_period_end && (
                     <span className="text-xs text-slate-500">
                       Renews: {new Date(subscriptionData.subscription.current_period_end).toLocaleDateString()}
                     </span>
@@ -834,27 +861,39 @@ const BillingPage = () => {
             <div className="space-y-4">
               {/* Current Plan Highlight */}
               <div className={`rounded-xl p-4 border-2 ${
-                currentPlanName.toLowerCase().includes('enterprise') 
-                  ? 'border-purple-500 bg-purple-50' 
-                  : currentPlanName.toLowerCase().includes('pro') 
-                    ? 'border-blue-500 bg-blue-50'
-                    : 'border-slate-300 bg-slate-50'
+                subscriptionData?.subscription?.state === 'TRIAL'
+                  ? 'border-amber-400 bg-amber-50'
+                  : currentPlanName.toLowerCase().includes('enterprise') 
+                    ? 'border-purple-500 bg-purple-50' 
+                    : currentPlanName.toLowerCase().includes('pro') 
+                      ? 'border-blue-500 bg-blue-50'
+                      : 'border-slate-300 bg-slate-50'
               }`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <PlanIcon className={`w-5 h-5 ${
-                      currentPlanName.toLowerCase().includes('enterprise') 
-                        ? 'text-purple-500' 
-                        : currentPlanName.toLowerCase().includes('pro') 
-                          ? 'text-blue-500'
-                          : 'text-slate-400'
+                      subscriptionData?.subscription?.state === 'TRIAL'
+                        ? 'text-amber-500'
+                        : currentPlanName.toLowerCase().includes('enterprise') 
+                          ? 'text-purple-500' 
+                          : currentPlanName.toLowerCase().includes('pro') 
+                            ? 'text-blue-500'
+                            : 'text-slate-400'
                     }`} />
                     <span className="font-semibold text-slate-800">
-                      {currentPlanName}
+                      {subscriptionData?.subscription?.state === 'TRIAL' 
+                        ? `${currentPlanName} (Trial)`
+                        : currentPlanName}
                     </span>
                   </div>
-                  <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded-full font-medium">
-                    {subscriptionData?.subscription?.state || 'Active'}
+                  <span className={`text-xs px-2 py-1 rounded-full font-medium ${
+                    subscriptionData?.subscription?.state === 'TRIAL' 
+                      ? 'bg-amber-100 text-amber-700' 
+                      : subscriptionData?.subscription?.state === 'ACTIVE'
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-green-100 text-green-700'
+                  }`}>
+                    {subscriptionData?.subscription?.state || 'ACTIVE'}
                   </span>
                 </div>
               </div>
@@ -976,9 +1015,18 @@ const BillingPage = () => {
                   </p>
                 </div>
                 <div className="text-center p-4 bg-slate-50 rounded-xl">
-                  <Activity className="w-6 h-6 text-green-500 mx-auto mb-2" />
+                  <Activity className={`w-6 h-6 mx-auto mb-2 ${
+                    subscriptionData?.subscription?.state === 'TRIAL' ? 'text-amber-500' :
+                    subscriptionData?.subscription?.state === 'ACTIVE' ? 'text-green-500' :
+                    'text-green-500'
+                  }`} />
                   <p className="text-xs text-slate-500 mb-1">Status</p>
-                  <p className={`font-semibold ${subscriptionData?.has_subscription || subscriptionData?.subscription?.is_active ? 'text-green-600' : 'text-amber-600'}`}>
+                  <p className={`font-semibold ${
+                    subscriptionData?.subscription?.state === 'TRIAL' ? 'text-amber-600' :
+                    subscriptionData?.subscription?.state === 'ACTIVE' ? 'text-green-600' :
+                    subscriptionData?.subscription?.state === 'SUSPENDED' || subscriptionData?.subscription?.state === 'CANCELLED' ? 'text-red-600' :
+                    subscriptionData?.has_subscription || subscriptionData?.subscription?.is_active ? 'text-green-600' : 'text-amber-600'
+                  }`}>
                     {subscriptionData?.subscription?.state || (subscriptionData?.has_subscription ? 'Active' : 'Free')}
                   </p>
                 </div>
@@ -1232,18 +1280,6 @@ const BillingPage = () => {
             >
               <h3 className="text-lg font-semibold text-slate-800 mb-4">Quick Actions</h3>
               <div className="space-y-3">
-                <button 
-                  onClick={() => setShowCreateUserModal(true)}
-                  disabled={!canCreateUser}
-                  className={`w-full flex items-center gap-3 p-3 rounded-xl transition-all ${
-                    canCreateUser 
-                      ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white hover:opacity-90' 
-                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                  }`}
-                >
-                  <UserPlus className="w-5 h-5" />
-                  <span className="font-medium">Create User</span>
-                </button>
                 <button 
                   onClick={handleUpgradePlan}
                   className="w-full flex items-center gap-3 p-3 bg-gradient-to-r from-indigo-500 to-purple-600 text-white rounded-xl hover:opacity-90 transition-opacity"

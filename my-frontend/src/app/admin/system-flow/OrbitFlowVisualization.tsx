@@ -358,8 +358,10 @@ export default function OrbitFlowVisualization() {
 
   const roleStates = useMemo(() => {
     const states: Record<string, RoleState> = {};
+    console.log('[OrbitFlow] Computing roleStates from users:', users.length, 'users');
     users.forEach(u => {
       const role = (u.role || u.roleName || '').toUpperCase();
+      console.log('[OrbitFlow] User role:', role, 'email:', u.email);
       if (!states[role]) {
         states[role] = { hasUsers: false, userCount: 0, isActive: false, isRequired: REQUIRED_ROLES.includes(role), isDisabled: true };
       }
@@ -368,6 +370,7 @@ export default function OrbitFlowVisualization() {
       states[role].isDisabled = false;
       if (u.is_active !== false && u.isActive !== false) states[role].isActive = true;
     });
+    console.log('[OrbitFlow] Final roleStates:', JSON.stringify(states));
     return states;
   }, [users]);
 
@@ -477,7 +480,7 @@ export default function OrbitFlowVisualization() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[600px] bg-white">
+      <div className="flex items-center justify-center h-[480px] bg-white">
         <div className="text-center">
           <Loader2 className="h-12 w-12 animate-spin text-purple-600 mx-auto mb-4" />
           <p className="text-gray-600">Loading organization structure...</p>
@@ -488,7 +491,7 @@ export default function OrbitFlowVisualization() {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-[600px] bg-white">
+      <div className="flex items-center justify-center h-[480px] bg-white">
         <div className="text-center">
           <AlertCircle className="h-16 w-16 text-red-400 mx-auto mb-4" />
           <p className="text-gray-700 mb-4">{error}</p>
@@ -501,7 +504,7 @@ export default function OrbitFlowVisualization() {
   }
 
   return (
-    <div className="h-[700px] bg-white relative overflow-hidden">
+    <div className="h-[520px] bg-white relative overflow-hidden">
       {/* Controls */}
       <div className="absolute top-4 right-4 z-20 flex items-center gap-2">
         <button onClick={() => setZoom(Math.max(0.5, zoom - 0.1))} className="p-2.5 bg-white border border-gray-200 rounded-lg text-gray-600 hover:bg-gray-50 transition shadow-sm">
@@ -521,7 +524,7 @@ export default function OrbitFlowVisualization() {
 
       {/* SVG Orbit Visualization - Optimized for 1280x960 at 100% */}
       <div 
-        className="w-full h-[650px] flex items-center justify-center relative"
+        className="w-full h-[480px] flex items-center justify-center relative"
         style={{ transform: `scale(${zoom})`, transformOrigin: 'center center' }}
       >
         <svg viewBox="0 0 1280 960" className="w-full h-full" style={{ maxWidth: '1280px', maxHeight: '960px' }}>

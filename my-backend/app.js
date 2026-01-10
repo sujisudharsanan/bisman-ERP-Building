@@ -4404,80 +4404,80 @@ app.get('/api/branches', authenticate, async (req, res) => {
   try {
     const tenantId = req.user.tenant_id || req.user.tenantId;
     const whereClause = {
-      isActive: true
+      is_active: true
     };
     
     // Filter by tenant if available
     if (tenantId) {
-      whereClause.tenantId = tenantId;
+      whereClause.tenant_id = tenantId;
     }
     
-    const branches = await prisma.branch.findMany({
+    const branches = await prisma.branches.findMany({
       where: whereClause,
       select: {
         id: true,
-        branchCode: true,
-        branchName: true,
-        addressLine1: true,
-        addressLine2: true,
+        branch_code: true,
+        branch_name: true,
+        address_line1: true,
+        address_line2: true,
         city: true,
         state: true,
         district: true,
-        postalCode: true,
+        postal_code: true,
         country: true,
-        isActive: true,
-        createdAt: true,
+        is_active: true,
+        created_at: true,
         // Building & Property Details
-        buildingType: true,
-        areaSquareFeet: true,
+        building_type: true,
+        area_square_feet: true,
         // Agreement & Lease Details
-        agreementType: true,
-        agreementStartDate: true,
-        agreementEndDate: true,
-        monthlyRent: true,
-        securityDeposit: true,
-        rentEscalationPercent: true,
-        noticePeriodDays: true,
-        autoRenew: true,
-        agreementReminderDays: true,
+        agreement_type: true,
+        agreement_start_date: true,
+        agreement_end_date: true,
+        monthly_rent: true,
+        security_deposit: true,
+        rent_escalation_percent: true,
+        notice_period_days: true,
+        auto_renew: true,
+        agreement_reminder_days: true,
         // Owner/Landlord Details
-        panHolderName: true,
-        panNumber: true,
-        gstNumber: true,
+        pan_holder_name: true,
+        pan_number: true,
+        gst_number: true,
       },
-      orderBy: { branchName: 'asc' }
+      orderBy: { branch_name: 'asc' }
     });
     
     res.json({
       success: true,
       branches: branches.map(b => ({
         id: String(b.id),
-        code: b.branchCode,
-        name: b.branchName,
-        address: b.addressLine1,
-        district: b.district || b.addressLine2 || '',
+        code: b.branch_code,
+        name: b.branch_name,
+        address: b.address_line1,
+        district: b.district || b.address_line2 || '',
         city: b.city,
         state: b.state,
-        pincode: b.postalCode,
+        pincode: b.postal_code,
         country: b.country,
-        isActive: b.isActive,
-        buildingType: b.buildingType || 'owned',
-        areaSquareFeet: b.areaSquareFeet ? Number(b.areaSquareFeet) : null,
+        isActive: b.is_active,
+        buildingType: b.building_type || 'owned',
+        areaSquareFeet: b.area_square_feet ? Number(b.area_square_feet) : null,
         // Agreement Details
-        agreementType: b.agreementType || '',
-        agreementStartDate: b.agreementStartDate ? b.agreementStartDate.toISOString().split('T')[0] : '',
-        agreementEndDate: b.agreementEndDate ? b.agreementEndDate.toISOString().split('T')[0] : '',
-        monthlyRent: b.monthlyRent ? Number(b.monthlyRent) : null,
-        securityDeposit: b.securityDeposit ? Number(b.securityDeposit) : null,
-        rentEscalationPercent: b.rentEscalationPercent ? Number(b.rentEscalationPercent) : null,
-        noticePeriodDays: b.noticePeriodDays || null,
-        autoRenew: b.autoRenew || false,
-        agreementReminderDays: b.agreementReminderDays || null,
+        agreementType: b.agreement_type || '',
+        agreementStartDate: b.agreement_start_date ? b.agreement_start_date.toISOString().split('T')[0] : '',
+        agreementEndDate: b.agreement_end_date ? b.agreement_end_date.toISOString().split('T')[0] : '',
+        monthlyRent: b.monthly_rent ? Number(b.monthly_rent) : null,
+        securityDeposit: b.security_deposit ? Number(b.security_deposit) : null,
+        rentEscalationPercent: b.rent_escalation_percent ? Number(b.rent_escalation_percent) : null,
+        noticePeriodDays: b.notice_period_days || null,
+        autoRenew: b.auto_renew || false,
+        agreementReminderDays: b.agreement_reminder_days || null,
         // Owner Details
-        panHolderName: b.panHolderName || '',
-        panNumber: b.panNumber || '',
-        gstNumber: b.gstNumber || '',
-        createdAt: b.createdAt,
+        panHolderName: b.pan_holder_name || '',
+        panNumber: b.pan_number || '',
+        gstNumber: b.gst_number || '',
+        createdAt: b.created_at,
       })),
       count: branches.length
     });
@@ -4532,10 +4532,10 @@ app.post('/api/branches', authenticate, async (req, res) => {
     }
 
     // Check for duplicate branch code
-    const existingBranch = await prisma.branch.findFirst({
+    const existingBranch = await prisma.branches.findFirst({
       where: {
-        branchCode: code,
-        ...(tenantId ? { tenantId } : {})
+        branch_code: code,
+        ...(tenantId ? { tenant_id: tenantId } : {})
       }
     });
 
@@ -4547,49 +4547,50 @@ app.post('/api/branches', authenticate, async (req, res) => {
     }
 
     // Create branch with all fields
-    const branch = await prisma.branch.create({
+    const branch = await prisma.branches.create({
       data: {
-        tenantId: tenantId || null,
-        branchCode: code,
-        branchName: name,
-        addressLine1: address,
-        addressLine2: district || null,
+        tenant_id: tenantId || null,
+        branch_code: code,
+        branch_name: name,
+        address_line1: address,
+        address_line2: district || null,
         city,
         state,
         district: district || null,
-        postalCode: pincode,
+        postal_code: pincode,
         country: 'India',
-        isActive: isActive !== false,
+        is_active: isActive !== false,
+        updated_at: new Date(),
         // Building & Property Details
-        buildingType: buildingType || 'owned',
-        areaSquareFeet: areaSquareFeet ? parseFloat(areaSquareFeet) : null,
+        building_type: buildingType || 'owned',
+        area_square_feet: areaSquareFeet ? parseFloat(areaSquareFeet) : null,
         // Agreement & Lease Details
-        agreementType: agreementType || null,
-        agreementStartDate: agreementStartDate ? new Date(agreementStartDate) : null,
-        agreementEndDate: agreementEndDate ? new Date(agreementEndDate) : null,
-        monthlyRent: monthlyRent ? parseFloat(monthlyRent) : null,
-        securityDeposit: securityDeposit ? parseFloat(securityDeposit) : null,
-        rentEscalationPercent: rentEscalationPercent ? parseFloat(rentEscalationPercent) : null,
-        noticePeriodDays: noticePeriodDays ? parseInt(noticePeriodDays) : null,
-        autoRenew: autoRenew || false,
-        agreementReminderDays: agreementReminderDays ? parseInt(agreementReminderDays) : null,
+        agreement_type: agreementType || null,
+        agreement_start_date: agreementStartDate ? new Date(agreementStartDate) : null,
+        agreement_end_date: agreementEndDate ? new Date(agreementEndDate) : null,
+        monthly_rent: monthlyRent ? parseFloat(monthlyRent) : null,
+        security_deposit: securityDeposit ? parseFloat(securityDeposit) : null,
+        rent_escalation_percent: rentEscalationPercent ? parseFloat(rentEscalationPercent) : null,
+        notice_period_days: noticePeriodDays ? parseInt(noticePeriodDays) : null,
+        auto_renew: autoRenew || false,
+        agreement_reminder_days: agreementReminderDays ? parseInt(agreementReminderDays) : null,
         // Owner/Landlord Details
-        panHolderName: panHolderName || null,
-        panNumber: panNumber || null,
-        gstNumber: gstNumber || null,
+        pan_holder_name: panHolderName || null,
+        pan_number: panNumber || null,
+        gst_number: gstNumber || null,
       }
     });
 
-    console.log('[Branches] Created branch:', branch.branchName);
+    console.log('[Branches] Created branch:', branch.branch_name);
 
     res.status(201).json({
       success: true,
       branch: {
         id: String(branch.id),
-        code: branch.branchCode,
-        name: branch.branchName,
+        code: branch.branch_code,
+        name: branch.branch_name,
         city: branch.city,
-        isActive: branch.isActive,
+        isActive: branch.is_active,
       },
       message: 'Branch created successfully'
     });
@@ -4636,10 +4637,10 @@ app.put('/api/branches/:id', authenticate, async (req, res) => {
     } = req.body;
 
     // Find existing branch
-    const existingBranch = await prisma.branch.findFirst({
+    const existingBranch = await prisma.branches.findFirst({
       where: {
         id: parseInt(id),
-        ...(tenantId ? { tenantId } : {})
+        ...(tenantId ? { tenant_id: tenantId } : {})
       }
     });
 
@@ -4651,48 +4652,49 @@ app.put('/api/branches/:id', authenticate, async (req, res) => {
     }
 
     // Update branch with all fields
-    const branch = await prisma.branch.update({
+    const branch = await prisma.branches.update({
       where: { id: parseInt(id) },
       data: {
-        branchCode: code || existingBranch.branchCode,
-        branchName: name || existingBranch.branchName,
-        addressLine1: address || existingBranch.addressLine1,
-        addressLine2: district !== undefined ? district : existingBranch.addressLine2,
+        branch_code: code || existingBranch.branch_code,
+        branch_name: name || existingBranch.branch_name,
+        address_line1: address || existingBranch.address_line1,
+        address_line2: district !== undefined ? district : existingBranch.address_line2,
         city: city || existingBranch.city,
         state: state || existingBranch.state,
         district: district !== undefined ? district : existingBranch.district,
-        postalCode: pincode || existingBranch.postalCode,
-        isActive: isActive !== undefined ? isActive : existingBranch.isActive,
+        postal_code: pincode || existingBranch.postal_code,
+        is_active: isActive !== undefined ? isActive : existingBranch.is_active,
+        updated_at: new Date(),
         // Building & Property Details
-        buildingType: buildingType !== undefined ? buildingType : existingBranch.buildingType,
-        areaSquareFeet: areaSquareFeet !== undefined && areaSquareFeet !== '' ? parseFloat(areaSquareFeet) : existingBranch.areaSquareFeet,
+        building_type: buildingType !== undefined ? buildingType : existingBranch.building_type,
+        area_square_feet: areaSquareFeet !== undefined && areaSquareFeet !== '' ? parseFloat(areaSquareFeet) : existingBranch.area_square_feet,
         // Agreement & Lease Details
-        agreementType: agreementType !== undefined ? agreementType : existingBranch.agreementType,
-        agreementStartDate: agreementStartDate !== undefined ? (agreementStartDate ? new Date(agreementStartDate) : null) : existingBranch.agreementStartDate,
-        agreementEndDate: agreementEndDate !== undefined ? (agreementEndDate ? new Date(agreementEndDate) : null) : existingBranch.agreementEndDate,
-        monthlyRent: monthlyRent !== undefined && monthlyRent !== '' ? parseFloat(monthlyRent) : existingBranch.monthlyRent,
-        securityDeposit: securityDeposit !== undefined && securityDeposit !== '' ? parseFloat(securityDeposit) : existingBranch.securityDeposit,
-        rentEscalationPercent: rentEscalationPercent !== undefined && rentEscalationPercent !== '' ? parseFloat(rentEscalationPercent) : existingBranch.rentEscalationPercent,
-        noticePeriodDays: noticePeriodDays !== undefined && noticePeriodDays !== '' ? parseInt(noticePeriodDays) : existingBranch.noticePeriodDays,
-        autoRenew: autoRenew !== undefined ? autoRenew : existingBranch.autoRenew,
-        agreementReminderDays: agreementReminderDays !== undefined && agreementReminderDays !== '' ? parseInt(agreementReminderDays) : existingBranch.agreementReminderDays,
+        agreement_type: agreementType !== undefined ? agreementType : existingBranch.agreement_type,
+        agreement_start_date: agreementStartDate !== undefined ? (agreementStartDate ? new Date(agreementStartDate) : null) : existingBranch.agreement_start_date,
+        agreement_end_date: agreementEndDate !== undefined ? (agreementEndDate ? new Date(agreementEndDate) : null) : existingBranch.agreement_end_date,
+        monthly_rent: monthlyRent !== undefined && monthlyRent !== '' ? parseFloat(monthlyRent) : existingBranch.monthly_rent,
+        security_deposit: securityDeposit !== undefined && securityDeposit !== '' ? parseFloat(securityDeposit) : existingBranch.security_deposit,
+        rent_escalation_percent: rentEscalationPercent !== undefined && rentEscalationPercent !== '' ? parseFloat(rentEscalationPercent) : existingBranch.rent_escalation_percent,
+        notice_period_days: noticePeriodDays !== undefined && noticePeriodDays !== '' ? parseInt(noticePeriodDays) : existingBranch.notice_period_days,
+        auto_renew: autoRenew !== undefined ? autoRenew : existingBranch.auto_renew,
+        agreement_reminder_days: agreementReminderDays !== undefined && agreementReminderDays !== '' ? parseInt(agreementReminderDays) : existingBranch.agreement_reminder_days,
         // Owner/Landlord Details
-        panHolderName: panHolderName !== undefined ? panHolderName : existingBranch.panHolderName,
-        panNumber: panNumber !== undefined ? panNumber : existingBranch.panNumber,
-        gstNumber: gstNumber !== undefined ? gstNumber : existingBranch.gstNumber,
+        pan_holder_name: panHolderName !== undefined ? panHolderName : existingBranch.pan_holder_name,
+        pan_number: panNumber !== undefined ? panNumber : existingBranch.pan_number,
+        gst_number: gstNumber !== undefined ? gstNumber : existingBranch.gst_number,
       }
     });
 
-    console.log('[Branches] Updated branch:', branch.branchName);
+    console.log('[Branches] Updated branch:', branch.branch_name);
 
     res.json({
       success: true,
       branch: {
         id: String(branch.id),
-        code: branch.branchCode,
-        name: branch.branchName,
+        code: branch.branch_code,
+        name: branch.branch_name,
         city: branch.city,
-        isActive: branch.isActive,
+        isActive: branch.is_active,
       },
       message: 'Branch updated successfully'
     });
@@ -4847,22 +4849,28 @@ app.get('/api/users', authenticate, requireRole(['ADMIN', 'SUPER_ADMIN']), async
     
     // Try to fetch from database first
     try {
-      // ✅ SECURITY FIX: Add tenant filter to prevent cross-tenant data access
-      const whereClause = TenantGuard.getTenantFilter(req);
-      console.log('[/api/users] Where clause:', JSON.stringify(whereClause));
+      // For Admin/Super Admin roles, fetch all users (they manage all users)
+      // Otherwise apply tenant filter for regular users
+      const isAdminRole = ['ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN'].includes(req.user?.role);
+      let whereClause = {};
+      
+      if (!isAdminRole && req.user?.tenant_id) {
+        whereClause = { tenant_id: req.user.tenant_id };
+      }
+      console.log('[/api/users] Where clause:', JSON.stringify(whereClause), 'isAdmin:', isAdminRole);
       
       const dbUsers = await prisma.user.findMany({
-        where: whereClause, // ✅ SECURITY: Filter by tenant_id
+        where: whereClause,
         select: {
           id: true,
           username: true,
           email: true,
           role: true,
-          createdAt: true,
+          created_at: true,
           // Add more fields as needed
         },
         orderBy: {
-          createdAt: 'desc'
+          created_at: 'desc'
         }
       })
       console.log('[/api/users] Found', dbUsers.length, 'users');
@@ -4874,7 +4882,7 @@ app.get('/api/users', authenticate, requireRole(['ADMIN', 'SUPER_ADMIN']), async
         roleName: user.role || 'USER',
         role: user.role || 'USER',  // Add role field for frontend compatibility
         isActive: true, // Default to active
-        createdAt: user.createdAt?.toISOString() || new Date().toISOString(),
+        createdAt: user.created_at?.toISOString() || new Date().toISOString(),
         lastLogin: null // TODO: Add last login tracking
       }))
     } catch (dbError) {

@@ -301,7 +301,7 @@ async function checkPlanLimits(clientId, limitType, additionalUsage = 0) {
       break;
 
     case 'branches':
-      currentUsage = await prisma.branch.count({ where: { tenantId: clientId } });
+      currentUsage = await prisma.branches.count({ where: { tenant_id: clientId } });
       limit = plan.max_branches;
       limitLabel = 'branches';
       break;
