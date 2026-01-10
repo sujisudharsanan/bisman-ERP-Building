@@ -47,7 +47,7 @@ export function CreateFullUserModal({
   const roles = propRoles || internalRoles;
   const branches = propBranches || internalBranches;
 
-  // Filter out ADMIN and SUPER_ADMIN roles and apply search
+  // Filter out ADMIN and SUPER_ADMIN roles, apply search, and sort by level
   const filteredRoles = useMemo(() => {
     const excludedRoles = ['ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'Super Admin', 'Admin', 'System Administrator'];
     return roles
@@ -56,7 +56,8 @@ export function CreateFullUserModal({
         roleSearchQuery === '' || 
         role.name.toLowerCase().includes(roleSearchQuery.toLowerCase()) ||
         role.description?.toLowerCase().includes(roleSearchQuery.toLowerCase())
-      );
+      )
+      .sort((a, b) => (a.level || 99) - (b.level || 99)); // Sort by level ascending (1 = highest authority)
   }, [roles, roleSearchQuery]);
 
   // Business level labels - matches role levels (1 = highest authority, 10 = entry level)
