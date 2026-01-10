@@ -43,11 +43,11 @@ router.get('/threads', async (req, res) => {
       where: {
         OR: [
           { createdById: userId },
-          { members: { some: { userId: userId } } }
+          { thread_members: { some: { userId: userId } } }
         ]
       },
       include: {
-        members: {
+        thread_thread_members: {
           select: {
             id: true,
             userId: true,
@@ -55,7 +55,7 @@ router.get('/threads', async (req, res) => {
             isActive: true
           }
         },
-        messages: {
+        thread_thread_messages: {
           take: 1,
           orderBy: { createdAt: 'desc' },
           select: {
@@ -101,7 +101,7 @@ router.get('/threads', async (req, res) => {
         createdById: thread.createdById,
         createdAt: thread.createdAt,
         updatedAt: thread.updatedAt,
-        members: thread.members.map(m => ({
+        members: thread.thread_members.map(m => ({
           id: m.id,
           odUserId: m.userId,
           role: m.role,
@@ -140,11 +140,11 @@ router.get('/threads/:threadId', async (req, res) => {
         id: threadId,
         OR: [
           { createdById: userId },
-          { members: { some: { userId: userId } } }
+          { thread_members: { some: { userId: userId } } }
         ]
       },
       include: {
-        members: {
+        thread_members: {
           select: {
             id: true,
             userId: true,
@@ -170,7 +170,7 @@ router.get('/threads/:threadId', async (req, res) => {
         createdById: thread.createdById,
         createdAt: thread.createdAt,
         updatedAt: thread.updatedAt,
-        members: thread.members.map(m => ({
+        members: thread.thread_members.map(m => ({
           id: m.id,
           odUserId: m.userId,
           role: m.role,
@@ -202,7 +202,7 @@ router.post('/threads', async (req, res) => {
         id: uuidv4(),
         title: title || 'New Chat',
         createdById: userId,
-        members: {
+        thread_members: {
           create: [
             { userId: userId },
             ...memberIds.filter(id => id !== userId).map(id => ({ userId: id }))
@@ -210,7 +210,7 @@ router.post('/threads', async (req, res) => {
         }
       },
       include: {
-        members: {
+        thread_members: {
           select: {
             id: true,
             userId: true,
@@ -229,7 +229,7 @@ router.post('/threads', async (req, res) => {
         createdById: thread.createdById,
         createdAt: thread.createdAt,
         updatedAt: thread.updatedAt,
-        members: thread.members.map(m => ({
+        members: thread.thread_members.map(m => ({
           id: m.id,
           odUserId: m.userId,
           role: m.role,
@@ -340,7 +340,7 @@ router.post('/threads/:threadId/members', async (req, res) => {
         id: threadId,
         OR: [
           { createdById: userId },
-          { members: { some: { userId: userId } } }
+          { thread_members: { some: { userId: userId } } }
         ]
       }
     });
@@ -361,7 +361,7 @@ router.post('/threads/:threadId/members', async (req, res) => {
     const thread = await prisma.threads.findUnique({
       where: { id: threadId },
       include: {
-        members: {
+        thread_members: {
           select: {
             id: true,
             userId: true,
@@ -809,7 +809,7 @@ router.get('/sync', async (req, res) => {
       where: {
         OR: [
           { createdById: userId },
-          { members: { some: { userId: userId } } }
+          { thread_members: { some: { userId: userId } } }
         ]
       },
       select: { id: true }
@@ -882,7 +882,7 @@ router.get('/sync', async (req, res) => {
         const thread = await prisma.threads.findUnique({
           where: { id: threadId },
           include: {
-            members: {
+            thread_members: {
               select: {
                 id: true,
                 userId: true,
@@ -890,7 +890,7 @@ router.get('/sync', async (req, res) => {
                 isActive: true
               }
             },
-            messages: {
+            thread_messages: {
               take: 1,
               orderBy: { createdAt: 'desc' },
               select: {
@@ -934,7 +934,7 @@ router.get('/sync', async (req, res) => {
           createdAt: thread.createdAt,
           updatedAt: thread.updatedAt,
           // Member IDs only - client should cache user info separately
-          members: thread.members.map(m => ({
+          members: thread.thread_members.map(m => ({
             id: m.id,
             odUserId: m.userId,
             role: m.role,
@@ -994,11 +994,11 @@ router.get('/sync/initial', async (req, res) => {
       where: {
         OR: [
           { createdById: userId },
-          { members: { some: { userId: userId } } }
+          { thread_members: { some: { userId: userId } } }
         ]
       },
       include: {
-        members: {
+        thread_members: {
           select: {
             id: true,
             userId: true,
@@ -1059,7 +1059,7 @@ router.get('/sync/initial', async (req, res) => {
           createdById: thread.createdById,
           createdAt: thread.createdAt,
           updatedAt: thread.updatedAt,
-          members: thread.members.map(m => ({
+          members: thread.thread_members.map(m => ({
             id: m.id,
             odUserId: m.userId,
             role: m.role,

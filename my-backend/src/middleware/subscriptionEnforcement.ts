@@ -17,6 +17,17 @@ import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
 
+interface AuthenticatedUser {
+  id: number | string;
+  tenant_id?: string;
+  [key: string]: unknown;
+}
+
+interface AuthenticatedRequest extends Request {
+  user?: AuthenticatedUser;
+  subscriptionLimits?: SubscriptionLimits;
+}
+
 export interface SubscriptionLimits {
   max_users: number;
   max_active_users?: number;
@@ -161,7 +172,7 @@ export async function logUserLimitExceeded(
         table_name: 'subscription_enforcement',
         record_id: 0,
         old_values: null,
-        new_values: {
+      new_values: {
           event: 'USER_LIMIT_EXCEEDED',
           client_id: clientId,
           subscription_plan_id: limits.plan_id,
@@ -175,7 +186,6 @@ export async function logUserLimitExceeded(
         }
       }
     });
-    console.log(`[SubscriptionEnforcement] USER_LIMIT_EXCEEDED logged for client ${clientId}`);
   } catch (error) {
     console.error('[SubscriptionEnforcement] Error logging limit exceeded:', error);
   }
@@ -188,14 +198,13 @@ export async function logUserLimitExceeded(
 export function checkUserCreationLimit() {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const currentUser = (req as any).user;
+      const authReq = req as AuthenticatedRequest;
+      const currentUser = authReq.user;
       
       // Get tenant_id from request body or current user
       const tenantId = req.body.tenant_id || currentUser?.tenant_id;
 
       if (!tenantId) {
-        // No tenant context - skip enforcement (enterprise admin creating for multiple tenants)
-        console.log('[SubscriptionEnforcement] No tenant_id - skipping limit check');
         return next();
       }
 
@@ -207,7 +216,7 @@ export function checkUserCreationLimit() {
       }
 
       // Attach limits to request for downstream use
-      (req as any).subscriptionLimits = limits;
+      authReq.subscriptionLimits = limits;
 
       if (!limits.can_create_user) {
         // Log the attempt
@@ -226,8 +235,7 @@ export function checkUserCreationLimit() {
 
       next();
     } catch (error) {
-      console.error('[SubscriptionEnforcement] Middleware error:', error);
-      // Don't block on errors - allow action but log
+      console.error('[SubscriptionEnforcement] Creation check error:', error);
       next();
     }
   };
@@ -240,7 +248,8 @@ export function checkUserCreationLimit() {
 export function checkUserActivationLimit() {
   return async (req: Request, res: Response, next: NextFunction) => {
     try {
-      const currentUser = (req as any).user;
+      const authReq = req as AuthenticatedRequest;
+      const currentUser = authReq.user;
       const { id } = req.params;
       const { status } = req.body;
 
@@ -272,7 +281,7 @@ export function checkUserActivationLimit() {
       }
 
       // Attach limits to request
-      (req as any).subscriptionLimits = limits;
+      authReq.subscriptionLimits = limits;
 
       if (!limits.can_activate_user) {
         // Log the attempt

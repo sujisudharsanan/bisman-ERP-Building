@@ -37,6 +37,7 @@ const SUBSCRIPTION_STATES = {
 const STATE_TRANSITIONS = {
   [SUBSCRIPTION_STATES.TRIAL]: [
     SUBSCRIPTION_STATES.ACTIVE,      // Trial conversion
+    SUBSCRIPTION_STATES.UPGRADING,   // Plan upgrade from trial
     SUBSCRIPTION_STATES.CANCELLED,   // Trial expiry without conversion
   ],
   
@@ -49,6 +50,7 @@ const STATE_TRANSITIONS = {
   
   [SUBSCRIPTION_STATES.UPGRADING]: [
     SUBSCRIPTION_STATES.ACTIVE,      // Upgrade completed
+    SUBSCRIPTION_STATES.UPGRADING,   // Retry upgrade (same plan or different)
     SUBSCRIPTION_STATES.GRACE_PERIOD,// Payment for upgrade failed
   ],
   
@@ -228,6 +230,25 @@ class SubscriptionStateMachine {
         include: { plan: true },
       });
 
+      // Resolve actor_id: must be Int (legacy_id), not UUID string
+      let resolvedActorId = null;
+      if (actorId) {
+        if (typeof actorId === 'number') {
+          resolvedActorId = actorId;
+        } else if (typeof actorId === 'string') {
+          // Try to look up legacy_id from UUID
+          try {
+            const user = await tx.users_enhanced.findUnique({
+              where: { id: actorId },
+              select: { legacy_id: true },
+            });
+            resolvedActorId = user?.legacy_id || null;
+          } catch {
+            resolvedActorId = null;
+          }
+        }
+      }
+
       // Create audit log
       await tx.subscription_audit_log.create({
         data: {
@@ -239,7 +260,7 @@ class SubscriptionStateMachine {
           new_values: { state: newState, ...metadata.newValues },
           reason,
           actor_type: actorType,
-          actor_id: actorId,
+          actor_id: resolvedActorId,
           actor_email: actorEmail,
         },
       });
@@ -491,6 +512,24 @@ class SubscriptionService {
         include: { plan: true },
       });
 
+      // Resolve actor_id: must be Int (legacy_id), not UUID string
+      let resolvedActorId = null;
+      if (actorId) {
+        if (typeof actorId === 'number') {
+          resolvedActorId = actorId;
+        } else if (typeof actorId === 'string') {
+          try {
+            const user = await tx.users_enhanced.findUnique({
+              where: { id: actorId },
+              select: { legacy_id: true },
+            });
+            resolvedActorId = user?.legacy_id || null;
+          } catch {
+            resolvedActorId = null;
+          }
+        }
+      }
+
       await tx.subscription_audit_log.create({
         data: {
           client_id: subscription.client_id,
@@ -501,7 +540,7 @@ class SubscriptionService {
           new_values: { plan_code: newPlanCode },
           reason,
           actor_type: actorType,
-          actor_id: actorId,
+          actor_id: resolvedActorId,
         },
       });
 

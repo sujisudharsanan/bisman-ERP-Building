@@ -1321,7 +1321,7 @@ class BankReconciliationService {
     const [statements, total] = await Promise.all([
       prisma.bank_statements.findMany({
         where,
-        include: { template: { select: { bank_name: true } } },
+        include: { bank_templates: { select: { bank_name: true } } },
         orderBy: { created_at: 'desc' },
         skip: (page - 1) * limit,
         take: limit
@@ -1355,14 +1355,11 @@ class BankReconciliationService {
     const [lines, total] = await Promise.all([
       prisma.bank_statement_lines.findMany({
         where,
-        orderBy: { line_number: 'asc' },
+        orderBy: { row_number: 'asc' },
         skip: offset,
         take: limit,
         include: {
-          matches: {
-            where: { is_active: true },
-            include: { settlement: { select: { id: true, utr: true, total_amount: true } } }
-          }
+          reconciliation_matches: true
         }
       }),
       prisma.bank_statement_lines.count({ where })

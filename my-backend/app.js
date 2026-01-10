@@ -4535,18 +4535,22 @@ app.post('/api/branches', authenticate, async (req, res) => {
       });
     }
 
-    // Check for duplicate branch code
+    // Check for duplicate branch code OR name within the same tenant
     const existingBranch = await prisma.branches.findFirst({
       where: {
-        branch_code: code,
+        OR: [
+          { branch_code: code },
+          { branch_name: { equals: name, mode: 'insensitive' } }
+        ],
         ...(tenantId ? { tenant_id: tenantId } : {})
       }
     });
 
     if (existingBranch) {
+      const duplicateField = existingBranch.branch_code === code ? 'code' : 'name';
       return res.status(400).json({
         success: false,
-        error: 'Branch code already exists'
+        error: `Branch ${duplicateField} already exists in this organization`
       });
     }
 
@@ -4917,17 +4921,21 @@ app.get('/api/users', authenticate, requireRole(['ADMIN', 'SUPER_ADMIN']), async
     
     // Try to fetch from database first
     try {
-      // For Admin/Super Admin roles, fetch all users (they manage all users)
-      // Otherwise apply tenant filter for regular users
-      const isAdminRole = ['ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN'].includes(req.user?.role);
+      // SECURITY FIX: Always filter by tenant_id for tenant isolation
+      // Admins only see users from their own tenant
+      const tenantId = req.user?.tenant_id;
       let whereClause = {};
       
-      if (!isAdminRole && req.user?.tenant_id) {
-        whereClause = { tenant_id: req.user.tenant_id };
+      // MANDATORY tenant isolation - admins only see their own tenant's users
+      if (tenantId) {
+        whereClause = { tenant_id: tenantId };
+      } else {
+        console.warn('[/api/users] No tenant_id found - returning empty for security');
+        return res.json({ success: true, users: [], total: 0 });
       }
-      console.log('[/api/users] Where clause:', JSON.stringify(whereClause), 'isAdmin:', isAdminRole);
+      console.log('[/api/users] Where clause:', JSON.stringify(whereClause));
       
-      const dbUsers = await prisma.user.findMany({
+      const dbUsers = await prisma.users_enhanced.findMany({
         where: whereClause,
         select: {
           id: true,
@@ -4935,23 +4943,27 @@ app.get('/api/users', authenticate, requireRole(['ADMIN', 'SUPER_ADMIN']), async
           email: true,
           role: true,
           created_at: true,
-          // Add more fields as needed
+          is_active: true,
+          first_name: true,
+          last_name: true,
         },
         orderBy: {
           created_at: 'desc'
         }
       })
-      console.log('[/api/users] Found', dbUsers.length, 'users');
+      console.log('[/api/users] Found', dbUsers.length, 'users for tenant', tenantId?.substring(0,8));
       
       users = dbUsers.map(user => ({
         id: user.id,
         username: user.username || user.email.split('@')[0],
         email: user.email,
         roleName: user.role || 'USER',
-        role: user.role || 'USER',  // Add role field for frontend compatibility
-        isActive: true, // Default to active
+        role: user.role || 'USER',
+        isActive: user.is_active !== false,
         createdAt: user.created_at?.toISOString() || new Date().toISOString(),
-        lastLogin: null // TODO: Add last login tracking
+        firstName: user.first_name,
+        lastName: user.last_name,
+        lastLogin: null
       }))
     } catch (dbError) {
       console.error('Database query failed in /api/users:', dbError.message)

@@ -5,7 +5,7 @@
  * This is the SINGLE SOURCE OF TRUTH for all user lifecycle operations.
  * 
  * ALL user creation and update operations MUST go through this service.
- * Direct prisma.user.create/update calls are PROHIBITED outside this file.
+ * Direct prisma.users_enhanced.create/update calls are PROHIBITED outside this file.
  * 
  * @version 1.0.0
  * @date 2026-01-05
@@ -106,7 +106,7 @@ async function detectReportingCycle(managerId, userId) {
       return true; // Cycle detected
     }
     
-    const manager = await prisma.user.findUnique({
+    const manager = await prisma.users_enhanced.findUnique({
       where: { id: currentId },
       select: { reports_to: true },
     });
@@ -175,7 +175,7 @@ async function enforceHierarchy(adminUserId, requestedLevel, isEnterpriseAdmin =
     return BUSINESS_LEVEL.DEFAULT;
   }
   
-  const adminUser = await prisma.user.findUnique({
+  const adminUser = await prisma.users_enhanced.findUnique({
     where: { id: adminUserId },
     select: { business_level: true, role: true },
   });
@@ -310,24 +310,30 @@ const UserService = {
       validateEmail(email);
       validatePassword(password);
 
-      // Check uniqueness
-      const existing = await prisma.user.findFirst({
-        where: {
-          OR: [
-            { email: email.toLowerCase() },
-            { username },
-          ],
-        },
-        select: { id: true, email: true, username: true },
+      // Check email uniqueness WITHIN THE SAME TENANT (tenant isolation)
+      // Same email can exist in different tenants, but NOT within the same tenant
+      if (tenant_id) {
+        const existingInTenant = await prisma.users_enhanced.findFirst({
+          where: {
+            email: email.toLowerCase(),
+            tenant_id: tenant_id,
+          },
+          select: { id: true, email: true },
+        });
+
+        if (existingInTenant) {
+          throw new Error('VALIDATION_ERROR: Email already exists in this organization');
+        }
+      }
+
+      // Check username uniqueness (globally unique for login purposes)
+      const existingUsername = await prisma.users_enhanced.findFirst({
+        where: { username },
+        select: { id: true, username: true },
       });
 
-      if (existing) {
-        if (existing.email === email.toLowerCase()) {
-          throw new Error('VALIDATION_ERROR: Email already exists');
-        }
-        if (existing.username === username) {
-          throw new Error('VALIDATION_ERROR: Username already exists');
-        }
+      if (existingUsername) {
+        throw new Error('VALIDATION_ERROR: Username already exists');
       }
 
       // ========== HIERARCHY ENFORCEMENT ==========
@@ -344,7 +350,7 @@ const UserService = {
       
       if (reports_to) {
         // Verify manager exists
-        const manager = await prisma.user.findUnique({
+        const manager = await prisma.users_enhanced.findUnique({
           where: { id: reports_to },
           select: { id: true, username: true, business_level: true },
         });
@@ -362,7 +368,7 @@ const UserService = {
       // ========== CREATE USER ==========
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      const newUser = await prisma.user.create({
+      const newUser = await prisma.users_enhanced.create({
         data: {
           id: newUserId,
           username,
@@ -462,7 +468,7 @@ const UserService = {
 
     try {
       // ========== LOAD EXISTING USER ==========
-      const existingUser = await prisma.user.findUnique({
+      const existingUser = await prisma.users_enhanced.findUnique({
         where: { id: userId },
         select: {
           id: true,
@@ -488,7 +494,7 @@ const UserService = {
       // Email update
       if (updates.email !== undefined && updates.email !== existingUser.email) {
         validateEmail(updates.email);
-        const emailExists = await prisma.user.findFirst({
+        const emailExists = await prisma.users_enhanced.findFirst({
           where: { email: updates.email.toLowerCase(), id: { not: userId } },
         });
         if (emailExists) {
@@ -499,7 +505,7 @@ const UserService = {
 
       // Username update
       if (updates.username !== undefined && updates.username !== existingUser.username) {
-        const usernameExists = await prisma.user.findFirst({
+        const usernameExists = await prisma.users_enhanced.findFirst({
           where: { username: updates.username, id: { not: userId } },
         });
         if (usernameExists) {
@@ -533,7 +539,7 @@ const UserService = {
           }
           
           // Verify manager exists
-          const manager = await prisma.user.findUnique({
+          const manager = await prisma.users_enhanced.findUnique({
             where: { id: updates.reports_to },
             select: { id: true },
           });
@@ -588,7 +594,7 @@ const UserService = {
       updateData.updated_at = new Date();
       updateData.updated_by = adminUserId || null;
 
-      const updatedUser = await prisma.user.update({
+      const updatedUser = await prisma.users_enhanced.update({
         where: { id: userId },
         data: updateData,
         select: {
@@ -634,7 +640,7 @@ const UserService = {
    * GET USER BY ID
    */
   async getUserById(userId) {
-    return prisma.user.findUnique({
+    return prisma.users_enhanced.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -669,7 +675,7 @@ const UserService = {
    * GET DIRECT REPORTS
    */
   async getDirectReports(managerId) {
-    return prisma.user.findMany({
+    return prisma.users_enhanced.findMany({
       where: { reports_to: managerId, is_active: true },
       select: {
         id: true,
@@ -691,7 +697,7 @@ const UserService = {
     let depth = 0;
     
     while (currentId && depth < maxDepth) {
-      const user = await prisma.user.findUnique({
+      const user = await prisma.users_enhanced.findUnique({
         where: { id: currentId },
         select: {
           id: true,
@@ -721,7 +727,7 @@ const UserService = {
   async deleteUser(userId, context = {}) {
     const { adminUserId, assignedByLegacyId } = context;
     
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users_enhanced.findUnique({
       where: { id: userId },
       select: { id: true, legacy_id: true, username: true },
     });
@@ -731,7 +737,7 @@ const UserService = {
     }
     
     // Soft delete
-    await prisma.user.update({
+    await prisma.users_enhanced.update({
       where: { id: userId },
       data: {
         is_active: false,

@@ -24,7 +24,7 @@ async function cleanRoles() {
         SELECT COUNT(*) as count FROM user_roles WHERE role_id = ${roleId}
       `;
       console.log("Role", roleId, "has", usersWithRole[0]?.count || 0, "users");
-    } catch (e) {
+    } catch (_e) {
       console.log("Role", roleId, "- user_roles table check skipped");
     }
   }
