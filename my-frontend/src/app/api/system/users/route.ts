@@ -12,7 +12,7 @@ const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL ||
 export async function GET(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value || cookieStore.get('auth_token')?.value;
+    const token = cookieStore.get('access_token')?.value || cookieStore.get('token')?.value || cookieStore.get('auth_token')?.value;
 
     const url = new URL(request.url);
     const backendUrl = `${BACKEND_URL}/api/system/users${url.search}`;
@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('token')?.value || cookieStore.get('auth_token')?.value;
+    const token = cookieStore.get('access_token')?.value || cookieStore.get('token')?.value || cookieStore.get('auth_token')?.value;
 
     if (!token) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
