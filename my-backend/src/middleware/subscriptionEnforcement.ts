@@ -95,6 +95,25 @@ export async function getClientSubscriptionLimits(clientId: string): Promise<Sub
 
     const plan = clientSubscription.plan;
     
+    // SAFETY: Check if plan was loaded
+    if (!plan) {
+      console.error('[SubscriptionEnforcement] Plan not loaded for subscription:', clientSubscription.id);
+      // Return default limits as fallback
+      const userCounts = await countClientUsers(clientId);
+      return {
+        max_users: 5,
+        max_active_users: 5,
+        current_user_count: userCounts.total,
+        current_active_user_count: userCounts.active,
+        plan_name: 'Unknown',
+        plan_id: clientSubscription.plan_id,
+        subscription_status: clientSubscription.state,
+        can_create_user: true, // Allow action when we can't verify
+        can_activate_user: true,
+        limit_message: 'Unable to load subscription plan - please contact support if this persists.'
+      };
+    }
+    
     // Calculate current user counts dynamically
     const userCounts = await countClientUsers(clientId);
 
@@ -125,8 +144,20 @@ export async function getClientSubscriptionLimits(clientId: string): Promise<Sub
 
     return limits;
   } catch (error) {
-    console.error('[SubscriptionEnforcement] Error getting limits:', error);
-    return null;
+    console.error('[SubscriptionEnforcement] Error getting limits for client:', clientId, error);
+    // Return a safe fallback instead of null to prevent UI confusion
+    return {
+      max_users: 999,
+      max_active_users: 999,
+      current_user_count: 0,
+      current_active_user_count: 0,
+      plan_name: 'Error',
+      plan_id: 0,
+      subscription_status: 'UNKNOWN',
+      can_create_user: true, // Fail open on error to not block operations
+      can_activate_user: true,
+      limit_message: 'Error loading subscription - please try again.'
+    };
   }
 }
 
