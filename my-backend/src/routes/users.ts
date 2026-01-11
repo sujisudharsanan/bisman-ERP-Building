@@ -91,7 +91,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
     const take = Number(limit);
 
     const [users, total] = await Promise.all([
-      prisma.user.findMany({
+      prisma.users_enhanced.findMany({
         where,
         skip,
         take,
@@ -112,7 +112,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
           // Don't include password
         },
       }),
-      prisma.user.count({ where }),
+      prisma.users_enhanced.count({ where }),
     ]);
 
     res.json({
@@ -186,7 +186,7 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const user = await prisma.user.findFirst({
+    const user = await prisma.users_enhanced.findFirst({
       where: {
         OR: [
           { id: id },
@@ -330,7 +330,7 @@ router.post('/', authMiddleware, checkUserCreationLimit(), async (req: Request, 
     }
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.users_enhanced.findUnique({
       where: { email },
     });
 
@@ -341,7 +341,7 @@ router.post('/', authMiddleware, checkUserCreationLimit(), async (req: Request, 
     }
 
     // CANONICAL: Delegate to UserService for all user creation
-    // See docs/USER_MODEL_LOCK.md - Direct prisma.user.create is PROHIBITED
+    // See docs/USER_MODEL_LOCK.md - Direct prisma.users_enhanced.create is PROHIBITED
     const newUser = await UserService.createUser(
       {
         username: finalUsername,
@@ -399,7 +399,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
     const { id } = req.params;
 
     // Check if user exists (ID can be UUID string or legacy integer)
-    const existingUser = await prisma.user.findFirst({
+    const existingUser = await prisma.users_enhanced.findFirst({
       where: {
         OR: [
           { id: id },
@@ -457,7 +457,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
       }
 
       // Check if email is already taken by another user
-      const emailExists = await prisma.user.findFirst({
+      const emailExists = await prisma.users_enhanced.findFirst({
         where: {
           email,
           id: { not: existingUser.id },
@@ -540,7 +540,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
     if (profile_pic_url !== undefined) updateData.profile_pic_url = profile_pic_url;
 
     // CANONICAL: Delegate to UserService for all user updates
-    // See docs/USER_MODEL_LOCK.md - Direct prisma.user.update is PROHIBITED
+    // See docs/USER_MODEL_LOCK.md - Direct prisma.users_enhanced.update is PROHIBITED
     const updatedUser = await UserService.updateUser(
       existingUser.id,
       updateData,
@@ -553,7 +553,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
     // Handle branch assignment if provided
     if (branch_id !== undefined && CORE_ROLES.includes(currentUserRole)) {
       // Remove existing branch assignments
-      await prisma.userBranch.deleteMany({
+      await prisma.user_branches.deleteMany({
         where: { userId: existingUser.legacy_id || 0 },
       }).catch(() => {
         // Ignore if no existing assignments
@@ -561,7 +561,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
       
       // Add new branch assignment if provided
       if (branch_id) {
-        await prisma.userBranch.create({
+        await prisma.user_branches.create({
           data: {
             userId: existingUser.legacy_id || 0,
             branchId: parseInt(branch_id),
@@ -575,7 +575,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
 
     // Create audit log
     // Create audit log (non-blocking)
-    prisma.auditLog.create({
+    prisma.audit_logs.create({
       data: {
         action: 'UPDATE_USER',
         table_name: 'users_enhanced',
@@ -628,7 +628,7 @@ router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
     }
 
     // Check if user exists
-    const existingUser = await prisma.user.findFirst({
+    const existingUser = await prisma.users_enhanced.findFirst({
       where: {
         OR: [
           { id: id },
@@ -642,12 +642,12 @@ router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
     }
 
     // Delete user (this will cascade delete related records based on schema)
-    await prisma.user.delete({
+    await prisma.users_enhanced.delete({
       where: { id: existingUser.id },
     });
 
     // Create audit log (non-blocking)
-    prisma.auditLog.create({
+    prisma.audit_logs.create({
       data: {
         action: 'DELETE_USER',
         table_name: 'users_enhanced',
@@ -705,7 +705,7 @@ router.get('/export/csv', authMiddleware, async (req: Request, res: Response) =>
       where.product_type = productType;
     }
 
-    const users = await prisma.user.findMany({
+    const users = await prisma.users_enhanced.findMany({
       where,
       select: {
         id: true,
@@ -778,7 +778,7 @@ router.put('/:id/status', authMiddleware, checkUserActivationLimit(), async (req
       return res.status(400).json({ error: 'Cannot deactivate your own account' });
     }
 
-    const user = await prisma.user.findFirst({
+    const user = await prisma.users_enhanced.findFirst({
       where: {
         OR: [
           { id: id },
@@ -792,7 +792,7 @@ router.put('/:id/status', authMiddleware, checkUserActivationLimit(), async (req
     }
 
     // Update is_active field
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await prisma.users_enhanced.update({
       where: { id: user.id },
       data: {
         is_active: status === 'active',
@@ -809,7 +809,7 @@ router.put('/:id/status', authMiddleware, checkUserActivationLimit(), async (req
     });
 
     // Create audit log (non-blocking)
-    prisma.auditLog.create({
+    prisma.audit_logs.create({
       data: {
         action: status === 'active' ? 'ACTIVATE_USER' : 'DEACTIVATE_USER',
         table_name: 'users_enhanced',
