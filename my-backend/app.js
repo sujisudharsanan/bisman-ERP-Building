@@ -4604,6 +4604,28 @@ app.post('/api/branches', authenticate, async (req, res) => {
     });
   } catch (error) {
     console.error('[Branches] Create error:', error.message);
+    
+    // Handle unique constraint violations with user-friendly messages
+    if (error.code === 'P2002') {
+      const target = error.meta?.target;
+      if (target?.includes('branch_code') || target?.includes('code')) {
+        return res.status(400).json({
+          success: false,
+          error: 'A branch with this code already exists. Please use a different branch code.'
+        });
+      }
+      if (target?.includes('branch_name') || target?.includes('name')) {
+        return res.status(400).json({
+          success: false,
+          error: 'A branch with this name already exists. Please use a different branch name.'
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        error: 'A branch with these details already exists.'
+      });
+    }
+    
     res.status(500).json({
       success: false,
       error: error.message || 'Failed to create branch'

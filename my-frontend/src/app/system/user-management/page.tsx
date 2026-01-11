@@ -240,6 +240,7 @@ export default function ClientManagementPage() {
         role: u.role || 'Admin',
         password: '', // Don't show existing password
         id: u.id,
+        hasPassword: u.hasPassword,  // Preserve password status from backend
       })),
       
       // Pass full settings for logo initialization

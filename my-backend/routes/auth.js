@@ -301,6 +301,25 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
       }
       
       if (isValidPassword) {
+        // Ensure we have a stable user id for JWT (UUID). In some cases, id may be missing
+        // if the lookup used a non-unique field after schema changes.
+        let safeUserId = regularUser.id || null;
+        try {
+          if (!safeUserId && prisma?.user) {
+            const idLookup = await prisma.user.findFirst({
+              where: { email },
+              select: { id: true }
+            });
+            if (idLookup?.id) safeUserId = idLookup.id;
+          }
+        } catch (e) {
+          console.warn('[auth.routes] Fallback id lookup failed:', e.message);
+        }
+        // Final fallback: derive a surrogate id from email to avoid null in JWT
+        if (!safeUserId && email) {
+          safeUserId = `email:${email}`;
+        }
+
         // Determine userType based on role - ADMIN users get userType: 'ADMIN'
         const userTypeValue = regularUser.role === 'ADMIN' ? 'ADMIN' : 'USER';
         console.log(`✅ Authenticated as ${userTypeValue} (role: ${regularUser.role})`);
@@ -338,7 +357,7 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
         }).catch(() => {}); // Don't block on audit logging
 
         authData = {
-          id: regularUser.id,
+          id: safeUserId,
           email: regularUser.email,
           username: regularUser.username,
           name: regularUser.username,
@@ -359,7 +378,7 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
         };
 
         const accessToken = generateAccessToken({
-          id: regularUser.id,
+          id: safeUserId,
           email: regularUser.email,
           name: regularUser.username,
           role: regularUser.role,

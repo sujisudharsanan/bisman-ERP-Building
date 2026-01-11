@@ -186,6 +186,18 @@ const BillingPage = () => {
   const [upgrading, setUpgrading] = useState(false);
   const [selectedPlanCode, setSelectedPlanCode] = useState<string | null>(null);
   const [featuresData, setFeaturesData] = useState<Record<string, unknown> | null>(null);
+  
+  // Upgrade modal step: 'select' for plan selection, 'activate' for coupon/trial
+  const [upgradeStep, setUpgradeStep] = useState<'select' | 'activate'>('select');
+  const [couponCode, setCouponCode] = useState('');
+  const [couponValidating, setCouponValidating] = useState(false);
+  const [couponValidation, setCouponValidation] = useState<{
+    valid: boolean;
+    plan?: { name: string; plan_code: string };
+    durationDays?: number;
+    message?: string;
+  } | null>(null);
+  const [couponError, setCouponError] = useState<string | null>(null);
 
   // Subscription limits for user creation
   const { 
@@ -195,10 +207,122 @@ const BillingPage = () => {
 
   // Handle upgrade plan - show modal with available plans
   const handleUpgradePlan = () => {
+    setUpgradeStep('select');
+    setCouponCode('');
+    setCouponValidation(null);
+    setCouponError(null);
     setShowUpgradeModal(true);
   };
 
-  // Handle plan upgrade submission
+  // Handle plan selection - move to activation step
+  const handlePlanSelected = () => {
+    if (!selectedPlanCode) {
+      toast({ title: 'Please select a plan', variant: 'destructive' });
+      return;
+    }
+    setUpgradeStep('activate');
+    setCouponCode('');
+    setCouponValidation(null);
+    setCouponError(null);
+  };
+
+  // Validate coupon code
+  const handleValidateCoupon = async () => {
+    if (!couponCode.trim()) {
+      setCouponError('Please enter a coupon code');
+      return;
+    }
+
+    setCouponValidating(true);
+    setCouponError(null);
+    setCouponValidation(null);
+
+    try {
+      const response = await api.post('/api/subscriptions/validate-coupon', {
+        code: couponCode.trim(),
+      });
+
+      if (response.data?.valid) {
+        setCouponValidation({
+          valid: true,
+          plan: response.data.plan,
+          durationDays: response.data.durationDays,
+          message: response.data.message,
+        });
+      } else {
+        setCouponValidation({ valid: false });
+        setCouponError(response.data?.message || 'Invalid coupon code');
+      }
+    } catch (error: any) {
+      console.error('Coupon validation error:', error);
+      setCouponError(error.response?.data?.message || 'Failed to validate coupon');
+    } finally {
+      setCouponValidating(false);
+    }
+  };
+
+  // Redeem coupon and activate plan
+  const handleRedeemCoupon = async () => {
+    if (!couponValidation?.valid) return;
+
+    setUpgrading(true);
+    try {
+      const response = await api.post('/api/subscriptions/redeem-coupon', {
+        code: couponCode.trim(),
+      });
+
+      if (response.data?.ok) {
+        toast({ title: 'Plan activated successfully with coupon!', variant: 'success' });
+        setShowUpgradeModal(false);
+        setSelectedPlanCode(null);
+        setUpgradeStep('select');
+        setCouponCode('');
+        setCouponValidation(null);
+        await fetchData();
+        refreshSubscription();
+      } else {
+        setCouponError(response.data?.message || 'Failed to redeem coupon');
+      }
+    } catch (error: any) {
+      console.error('Redeem error:', error);
+      setCouponError(error.response?.data?.message || 'Failed to redeem coupon');
+    } finally {
+      setUpgrading(false);
+    }
+  };
+
+  // Start trial for selected plan
+  const handleStartTrial = async () => {
+    if (!selectedPlanCode) return;
+
+    setUpgrading(true);
+    try {
+      const response = await api.post('/api/subscriptions/start-trial', {
+        plan_code: selectedPlanCode,
+      });
+
+      if (response.data?.ok) {
+        toast({ title: 'Trial started successfully!', variant: 'success' });
+        setShowUpgradeModal(false);
+        setSelectedPlanCode(null);
+        setUpgradeStep('select');
+        await fetchData();
+        refreshSubscription();
+      } else {
+        toast({ title: response.data?.message || 'Failed to start trial', variant: 'destructive' });
+      }
+    } catch (error: any) {
+      console.error('Trial error:', error);
+      toast({ 
+        title: error.response?.data?.message || 'Failed to start trial', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setUpgrading(false);
+    }
+  };
+
+  // Handle plan upgrade submission (keeping for backwards compatibility if coupon matches selected plan)
   const handleConfirmUpgrade = async () => {
     if (!selectedPlanCode) {
       toast({ title: 'Please select a plan', variant: 'destructive' });
@@ -1343,7 +1467,14 @@ const BillingPage = () => {
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             className="fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4"
-            onClick={() => setShowUpgradeModal(false)}
+            onClick={() => {
+              setShowUpgradeModal(false);
+              setUpgradeStep('select');
+              setSelectedPlanCode(null);
+              setCouponCode('');
+              setCouponValidation(null);
+              setCouponError(null);
+            }}
           >
             <motion.div
               initial={{ scale: 0.9, opacity: 0 }}
@@ -1356,8 +1487,14 @@ const BillingPage = () => {
               <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-indigo-500 to-purple-600">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h2 className="text-2xl font-bold text-white">Choose Your Plan</h2>
-                    <p className="text-indigo-100 mt-1">Select a plan that fits your business needs</p>
+                    <h2 className="text-2xl font-bold text-white">
+                      {upgradeStep === 'select' ? 'Choose Your Plan' : 'Activate Plan'}
+                    </h2>
+                    <p className="text-indigo-100 mt-1">
+                      {upgradeStep === 'select' 
+                        ? 'Select a plan that fits your business needs' 
+                        : `Activate ${availablePlans.find(p => p.plan_code === selectedPlanCode)?.name || 'your selected plan'}`}
+                    </p>
                   </div>
                   {subscriptionData?.subscription?.trial_end_date && !subscriptionData?.subscription?.trial_converted && (
                     <div className="bg-white/20 backdrop-blur-sm rounded-lg px-4 py-2 text-white">
@@ -1370,119 +1507,300 @@ const BillingPage = () => {
                     </div>
                   )}
                 </div>
+                
+                {/* Step indicator */}
+                <div className="flex items-center gap-2 mt-4">
+                  <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
+                    upgradeStep === 'select' ? 'bg-white text-indigo-600' : 'bg-white/30 text-white'
+                  }`}>
+                    <span className="w-5 h-5 rounded-full bg-indigo-600 text-white flex items-center justify-center text-xs">1</span>
+                    Select Plan
+                  </div>
+                  <ChevronDown className="w-4 h-4 text-white/50 rotate-[-90deg]" />
+                  <div className={`flex items-center gap-2 px-3 py-1 rounded-full text-sm ${
+                    upgradeStep === 'activate' ? 'bg-white text-indigo-600' : 'bg-white/30 text-white'
+                  }`}>
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs ${
+                      upgradeStep === 'activate' ? 'bg-indigo-600 text-white' : 'bg-white/30 text-white'
+                    }`}>2</span>
+                    Activate
+                  </div>
+                </div>
               </div>
 
-              {/* Plans Grid */}
-              <div className="p-6 overflow-y-auto max-h-[60vh]">
-                {availablePlans.length === 0 ? (
-                  <div className="text-center py-12 text-slate-500">
-                    <Zap className="w-16 h-16 mx-auto mb-4 opacity-30" />
-                    <p className="text-lg">No plans available</p>
-                    <p className="text-sm mt-2">Contact support for custom enterprise plans</p>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {availablePlans.map((plan) => {
-                      const isCurrentPlan = currentPlanCode?.toUpperCase() === plan.plan_code?.toUpperCase();
-                      const isSelected = selectedPlanCode === plan.plan_code;
-                      
-                      return (
-                        <div
-                          key={plan.id}
-                          onClick={() => !isCurrentPlan && setSelectedPlanCode(plan.plan_code)}
-                          className={`relative rounded-xl border-2 p-5 cursor-pointer transition-all ${
-                            isCurrentPlan 
-                              ? 'border-green-500 bg-green-50 cursor-not-allowed opacity-75'
-                              : isSelected 
-                                ? 'border-indigo-500 bg-indigo-50 shadow-lg ring-2 ring-indigo-200' 
-                                : 'border-slate-200 hover:border-indigo-300 hover:shadow-md'
-                          }`}
-                        >
-                          {plan.is_popular && !isCurrentPlan && (
-                            <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold rounded-full shadow-md">
-                              POPULAR
-                            </span>
-                          )}
-                          {isCurrentPlan && (
-                            <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full shadow-md">
-                              CURRENT
-                            </span>
-                          )}
-                          
-                          <div className="text-center mb-4 pt-2">
-                            <h3 className="text-lg font-bold text-slate-800">{plan.name}</h3>
-                            <div className="mt-2">
-                              <span className="text-3xl font-extrabold text-indigo-600">
-                                {getDisplayPrice(plan.price_monthly)}
+              {/* Step 1: Plans Grid */}
+              {upgradeStep === 'select' && (
+                <div className="p-6 overflow-y-auto max-h-[60vh]">
+                  {availablePlans.length === 0 ? (
+                    <div className="text-center py-12 text-slate-500">
+                      <Zap className="w-16 h-16 mx-auto mb-4 opacity-30" />
+                      <p className="text-lg">No plans available</p>
+                      <p className="text-sm mt-2">Contact support for custom enterprise plans</p>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      {availablePlans.map((plan) => {
+                        const isCurrentPlan = currentPlanCode?.toUpperCase() === plan.plan_code?.toUpperCase();
+                        const isSelected = selectedPlanCode === plan.plan_code;
+                        
+                        return (
+                          <div
+                            key={plan.id}
+                            onClick={() => !isCurrentPlan && setSelectedPlanCode(plan.plan_code)}
+                            className={`relative rounded-xl border-2 p-5 cursor-pointer transition-all ${
+                              isCurrentPlan 
+                                ? 'border-green-500 bg-green-50 cursor-not-allowed opacity-75'
+                                : isSelected 
+                                  ? 'border-indigo-500 bg-indigo-50 shadow-lg ring-2 ring-indigo-200' 
+                                  : 'border-slate-200 hover:border-indigo-300 hover:shadow-md'
+                            }`}
+                          >
+                            {plan.is_popular && !isCurrentPlan && (
+                              <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-gradient-to-r from-amber-400 to-orange-500 text-white text-xs font-bold rounded-full shadow-md">
+                                POPULAR
                               </span>
-                              <span className="text-slate-500 text-sm">/month</span>
+                            )}
+                            {isCurrentPlan && (
+                              <span className="absolute -top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-green-500 text-white text-xs font-bold rounded-full shadow-md">
+                                CURRENT
+                              </span>
+                            )}
+                            
+                            <div className="text-center mb-4 pt-2">
+                              <h3 className="text-lg font-bold text-slate-800">{plan.name}</h3>
+                              <div className="mt-2">
+                                <span className="text-3xl font-extrabold text-indigo-600">
+                                  {getDisplayPrice(plan.price_monthly)}
+                                </span>
+                                <span className="text-slate-500 text-sm">/month</span>
+                              </div>
                             </div>
+
+                            <div className="space-y-2 text-sm">
+                              <div className="flex items-center gap-2 text-slate-600">
+                                <Users className="w-4 h-4 text-indigo-500" />
+                                <span>{plan.max_users === -1 ? 'Unlimited' : plan.max_users} Users</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-slate-600">
+                                <HardDrive className="w-4 h-4 text-green-500" />
+                                <span>{plan.max_storage_gb === -1 ? 'Unlimited' : `${plan.max_storage_gb} GB`} Storage</span>
+                              </div>
+                              <div className="flex items-center gap-2 text-slate-600">
+                                <Layers className="w-4 h-4 text-purple-500" />
+                                <span>{plan.max_branches === -1 ? 'Unlimited' : plan.max_branches} Branches</span>
+                              </div>
+                            </div>
+
+                            {plan.description && (
+                              <p className="mt-3 text-xs text-slate-500 line-clamp-2">{plan.description}</p>
+                            )}
+
+                            {isSelected && !isCurrentPlan && (
+                              <div className="mt-4 flex items-center justify-center gap-2 text-indigo-600 font-medium">
+                                <CheckCircle className="w-5 h-5" />
+                                <span>Selected</span>
+                              </div>
+                            )}
                           </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
 
-                          <div className="space-y-2 text-sm">
-                            <div className="flex items-center gap-2 text-slate-600">
-                              <Users className="w-4 h-4 text-indigo-500" />
-                              <span>{plan.max_users === -1 ? 'Unlimited' : plan.max_users} Users</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-slate-600">
-                              <HardDrive className="w-4 h-4 text-green-500" />
-                              <span>{plan.max_storage_gb === -1 ? 'Unlimited' : `${plan.max_storage_gb} GB`} Storage</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-slate-600">
-                              <Layers className="w-4 h-4 text-purple-500" />
-                              <span>{plan.max_branches === -1 ? 'Unlimited' : plan.max_branches} Branches</span>
-                            </div>
-                          </div>
-
-                          {plan.description && (
-                            <p className="mt-3 text-xs text-slate-500 line-clamp-2">{plan.description}</p>
-                          )}
-
-                          {isSelected && !isCurrentPlan && (
-                            <div className="mt-4 flex items-center justify-center gap-2 text-indigo-600 font-medium">
-                              <CheckCircle className="w-5 h-5" />
-                              <span>Selected</span>
-                            </div>
-                          )}
+              {/* Step 2: Activation Options */}
+              {upgradeStep === 'activate' && (
+                <div className="p-6 overflow-y-auto max-h-[60vh]">
+                  <div className="max-w-md mx-auto space-y-6">
+                    {/* Selected Plan Summary */}
+                    <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl">
+                      <div className="flex items-center gap-3">
+                        <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
+                          <Crown className="w-6 h-6 text-indigo-600" />
                         </div>
-                      );
-                    })}
+                        <div>
+                          <p className="font-semibold text-slate-800">
+                            {availablePlans.find(p => p.plan_code === selectedPlanCode)?.name}
+                          </p>
+                          <p className="text-sm text-slate-500">
+                            {getDisplayPrice(availablePlans.find(p => p.plan_code === selectedPlanCode)?.price_monthly || 0)}/month
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Option 1: Coupon Code */}
+                    <div className="p-5 border-2 border-slate-200 rounded-xl">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
+                          <Award className="w-5 h-5 text-amber-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-slate-800">Have a Coupon Code?</h3>
+                          <p className="text-sm text-slate-500">Enter your coupon to activate the plan</p>
+                        </div>
+                      </div>
+                      
+                      <div className="space-y-3">
+                        <div className="flex gap-2">
+                          <input
+                            type="text"
+                            value={couponCode}
+                            onChange={(e) => {
+                              setCouponCode(e.target.value.toUpperCase().replace(/[^A-Z0-9-]/g, ''));
+                              setCouponValidation(null);
+                              setCouponError(null);
+                            }}
+                            placeholder="Enter coupon code"
+                            className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 uppercase"
+                          />
+                          <button
+                            onClick={handleValidateCoupon}
+                            disabled={!couponCode.trim() || couponValidating}
+                            className={`px-4 py-2.5 rounded-lg font-medium transition-all ${
+                              couponCode.trim() && !couponValidating
+                                ? 'bg-indigo-600 text-white hover:bg-indigo-700'
+                                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                            }`}
+                          >
+                            {couponValidating ? (
+                              <RefreshCw className="w-5 h-5 animate-spin" />
+                            ) : (
+                              'Validate'
+                            )}
+                          </button>
+                        </div>
+                        
+                        {couponError && (
+                          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+                            <AlertCircle className="w-4 h-4" />
+                            {couponError}
+                          </div>
+                        )}
+                        
+                        {couponValidation?.valid && (
+                          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
+                            <div className="flex items-center gap-2 text-green-700 font-medium">
+                              <CheckCircle className="w-4 h-4" />
+                              Valid coupon!
+                            </div>
+                            <p className="text-sm text-green-600 mt-1">
+                              {couponValidation.message || `Activates ${couponValidation.plan?.name} for ${couponValidation.durationDays} days`}
+                            </p>
+                            <button
+                              onClick={handleRedeemCoupon}
+                              disabled={upgrading}
+                              className="mt-3 w-full py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                            >
+                              {upgrading ? (
+                                <>
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                  Activating...
+                                </>
+                              ) : (
+                                <>
+                                  <Sparkles className="w-4 h-4" />
+                                  Activate with Coupon
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Divider */}
+                    <div className="relative">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-slate-200"></div>
+                      </div>
+                      <div className="relative flex justify-center">
+                        <span className="bg-white px-4 text-sm text-slate-500">or</span>
+                      </div>
+                    </div>
+
+                    {/* Option 2: Start Trial */}
+                    <div className="p-5 border-2 border-emerald-200 bg-emerald-50/50 rounded-xl">
+                      <div className="flex items-center gap-3 mb-4">
+                        <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
+                          <Clock className="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <div>
+                          <h3 className="font-semibold text-slate-800">Start Free Trial</h3>
+                          <p className="text-sm text-slate-500">Try all features free for 14 days</p>
+                        </div>
+                      </div>
+                      
+                      <ul className="space-y-2 mb-4 text-sm text-slate-600">
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-emerald-500" />
+                          Full access to all features
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-emerald-500" />
+                          No credit card required
+                        </li>
+                        <li className="flex items-center gap-2">
+                          <CheckCircle className="w-4 h-4 text-emerald-500" />
+                          Cancel anytime
+                        </li>
+                      </ul>
+                      
+                      <button
+                        onClick={handleStartTrial}
+                        disabled={upgrading}
+                        className="w-full py-2.5 bg-emerald-600 text-white rounded-lg font-medium hover:bg-emerald-700 transition-colors flex items-center justify-center gap-2"
+                      >
+                        {upgrading ? (
+                          <>
+                            <RefreshCw className="w-4 h-4 animate-spin" />
+                            Starting Trial...
+                          </>
+                        ) : (
+                          <>
+                            <Sparkles className="w-4 h-4" />
+                            Start 14-Day Free Trial
+                          </>
+                        )}
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
 
               {/* Footer */}
               <div className="p-6 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
                 <button
                   onClick={() => {
-                    setShowUpgradeModal(false);
-                    setSelectedPlanCode(null);
+                    if (upgradeStep === 'activate') {
+                      setUpgradeStep('select');
+                      setCouponCode('');
+                      setCouponValidation(null);
+                      setCouponError(null);
+                    } else {
+                      setShowUpgradeModal(false);
+                      setSelectedPlanCode(null);
+                    }
                   }}
                   className="px-6 py-2.5 text-slate-600 hover:text-slate-800 font-medium transition-colors"
                 >
-                  Cancel
+                  {upgradeStep === 'activate' ? '← Back to Plans' : 'Cancel'}
                 </button>
-                <button
-                  onClick={handleConfirmUpgrade}
-                  disabled={!selectedPlanCode || upgrading}
-                  className={`px-8 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 ${
-                    selectedPlanCode && !upgrading
-                      ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:opacity-90 shadow-lg'
-                      : 'bg-slate-200 text-slate-400 cursor-not-allowed'
-                  }`}
-                >
-                  {upgrading ? (
-                    <>
-                      <RefreshCw className="w-4 h-4 animate-spin" />
-                      Processing...
-                    </>
-                  ) : (
-                    <>
-                      <TrendingUp className="w-4 h-4" />
-                      Select Plan
-                    </>
-                  )}
-                </button>
+                {upgradeStep === 'select' && (
+                  <button
+                    onClick={handlePlanSelected}
+                    disabled={!selectedPlanCode}
+                    className={`px-8 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 ${
+                      selectedPlanCode
+                        ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:opacity-90 shadow-lg'
+                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    }`}
+                  >
+                    <TrendingUp className="w-4 h-4" />
+                    Continue
+                  </button>
+                )}
               </div>
             </motion.div>
           </motion.div>

@@ -179,6 +179,8 @@ export default function EditClientPage() {
             name: u.name || '',
             role: u.role || 'Admin',
             password: '', // Don't show existing password
+            id: u.id,  // Preserve user ID for updates
+            hasPassword: u.hasPassword,  // Preserve password status from backend
           })),
           
           // Pass full settings for logo initialization

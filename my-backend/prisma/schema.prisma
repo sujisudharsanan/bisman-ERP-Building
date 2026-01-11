@@ -627,7 +627,7 @@ model bills {
 model branches {
   id                      Int             @id @default(autoincrement())
   tenant_id               String?         @db.Uuid
-  branch_code             String          @unique @db.VarChar(50)
+  branch_code             String          @db.VarChar(50)
   branch_name             String          @db.VarChar(255)
   address_line1           String          @db.VarChar(255)
   address_line2           String?         @db.VarChar(255)
@@ -4155,8 +4155,8 @@ model user_skills {
 model users_enhanced {
   id                                                                   String                           @id @db.Uuid
   legacy_id                                                            Int?                             @unique(map: "users_enhanced_legacy_id_unique")
-  username                                                             String                           @unique(map: "erp_users_username_unique") @db.VarChar(50)
-  email                                                                String                           @unique(map: "erp_users_email_unique") @db.VarChar(255)
+  username                                                             String                           @db.VarChar(50)
+  email                                                                String                           @db.VarChar(255)
   password_hash                                                        String                           @db.VarChar(255)
   salt                                                                 String?                          @db.VarChar(255)
   first_name                                                           String?                          @db.VarChar(100)
@@ -4204,6 +4204,8 @@ model users_enhanced {
   @@index([business_level], map: "idx_users_enhanced_business_level")
   @@index([reports_to], map: "idx_users_enhanced_reports_to")
   @@index([unique_id], map: "idx_users_enhanced_unique_id")
+  @@unique([tenant_id, username], map: "uq_users_tenant_username")
+  @@unique([tenant_id, email], map: "uq_users_tenant_email")
 }
 
 model vehicle_contract_details {

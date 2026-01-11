@@ -46,7 +46,13 @@ export interface BranchFormData {
   // Owner/Vendor PAN details (required for rented/leased)
   panHolderName?: string;
   panNumber?: string;
+  
+  // GST details (optional - only when hasGst is checked)
+  hasGst?: boolean;
   gstNumber?: string;
+  taxPercent?: number | '';
+  taxAmount?: number;
+  totalRentWithTax?: number;
   
   isActive: boolean;
 }
@@ -74,7 +80,7 @@ function validateForm(data: BranchFormData): Record<string, string> {
   if (!data.pincode.trim()) errors.pincode = 'Pincode is required';
   if (!data.buildingType) errors.buildingType = 'Building type is required';
   
-  // Validation for rented/leased
+    // Validation for rented/leased
   if (data.buildingType === 'rented' || data.buildingType === 'leased') {
     if (!data.agreementStartDate) errors.agreementStartDate = 'Agreement start date is required';
     if (!data.agreementEndDate) errors.agreementEndDate = 'Agreement end date is required';
@@ -93,9 +99,19 @@ function validateForm(data: BranchFormData): Record<string, string> {
     if (data.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]{1}$/.test(data.panNumber.toUpperCase())) {
       errors.panNumber = 'Invalid PAN format (e.g., ABCDE1234F)';
     }
-  }
-  
-  return errors;
+    
+    // GST validation (only if hasGst is checked)
+    if (data.hasGst) {
+      if (!data.gstNumber?.trim()) {
+        errors.gstNumber = 'GST number is required when GST is enabled';
+      } else if (!/^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/.test(data.gstNumber.toUpperCase())) {
+        errors.gstNumber = 'Invalid GST format (e.g., 22AAAAA0000A1Z5)';
+      }
+      if (!data.taxPercent || data.taxPercent <= 0) {
+        errors.taxPercent = 'Tax percentage is required';
+      }
+    }
+  }  return errors;
 }
 
 // ============================================================================
@@ -123,7 +139,11 @@ const defaultFormData: BranchFormData = {
   agreementReminderDays: 30,
   panHolderName: '',
   panNumber: '',
+  hasGst: false,
   gstNumber: '',
+  taxPercent: 18,
+  taxAmount: 0,
+  totalRentWithTax: 0,
   isActive: true,
 };
 
@@ -158,10 +178,29 @@ export default function AddBranchDrawer({ isOpen, onClose, onSuccess, editBranch
     const { name, value, type } = e.target;
     const checked = (e.target as HTMLInputElement).checked;
     
-    setFormData((prev) => ({
-      ...prev,
-      [name]: type === 'checkbox' ? checked : value,
-    }));
+    setFormData((prev) => {
+      const newData = {
+        ...prev,
+        [name]: type === 'checkbox' ? checked : value,
+      };
+      
+      // Recalculate tax when relevant fields change
+      if (name === 'monthlyRent' || name === 'taxPercent' || name === 'hasGst') {
+        const rent = name === 'monthlyRent' ? Number(value) || 0 : Number(prev.monthlyRent) || 0;
+        const taxPct = name === 'taxPercent' ? Number(value) || 0 : Number(prev.taxPercent) || 0;
+        const isGstEnabled = name === 'hasGst' ? checked : prev.hasGst;
+        
+        if (isGstEnabled && rent > 0 && taxPct > 0) {
+          newData.taxAmount = Math.round((rent * taxPct) / 100 * 100) / 100;
+          newData.totalRentWithTax = Math.round((rent + newData.taxAmount) * 100) / 100;
+        } else {
+          newData.taxAmount = 0;
+          newData.totalRentWithTax = rent;
+        }
+      }
+      
+      return newData;
+    });
     
     // Clear error when field is edited
     if (errors[name]) {
@@ -620,7 +659,7 @@ export default function AddBranchDrawer({ isOpen, onClose, onSuccess, editBranch
             <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-lg">
               <h3 className="text-sm font-semibold text-blue-800 mb-4 flex items-center gap-2">
                 <FileText className="w-4 h-4" />
-                Owner / Vendor PAN Details (Required)
+                Owner / Vendor Details (Required)
               </h3>
               
               <div className="space-y-4">
@@ -663,20 +702,105 @@ export default function AddBranchDrawer({ isOpen, onClose, onSuccess, editBranch
                   </div>
                 </div>
                 
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    GST Number (Optional)
+                {/* GST Checkbox */}
+                <div className="p-3 bg-white rounded-lg border border-blue-200">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      name="hasGst"
+                      checked={formData.hasGst}
+                      onChange={handleInputChange}
+                      className="w-4 h-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                    />
+                    <span className="text-sm font-medium text-gray-700">
+                      Owner/Vendor is GST registered
+                    </span>
                   </label>
-                  <input
-                    type="text"
-                    name="gstNumber"
-                    value={formData.gstNumber}
-                    onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 uppercase"
-                    placeholder="22AAAAA0000A1Z5"
-                    maxLength={15}
-                  />
+                  <p className="ml-6 text-xs text-gray-500 mt-1">
+                    Enable this to add GST details and calculate tax on rent
+                  </p>
                 </div>
+                
+                {/* GST Details (shown only when hasGst is checked) */}
+                {formData.hasGst && (
+                  <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-4">
+                    <h4 className="text-sm font-semibold text-green-800 flex items-center gap-2">
+                      <IndianRupee className="w-4 h-4" />
+                      GST & Tax Calculation
+                    </h4>
+                    
+                    <div className="grid grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          GST Number *
+                        </label>
+                        <input
+                          type="text"
+                          name="gstNumber"
+                          value={formData.gstNumber}
+                          onChange={handleInputChange}
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 uppercase ${
+                            errors.gstNumber ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                          placeholder="22AAAAA0000A1Z5"
+                          maxLength={15}
+                        />
+                        {errors.gstNumber && (
+                          <p className="mt-1 text-xs text-red-600">{errors.gstNumber}</p>
+                        )}
+                      </div>
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Tax Rate (%) *
+                        </label>
+                        <input
+                          type="number"
+                          name="taxPercent"
+                          value={formData.taxPercent}
+                          onChange={handleInputChange}
+                          className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
+                            errors.taxPercent ? 'border-red-500' : 'border-gray-300'
+                          }`}
+                          placeholder="18"
+                          min="0"
+                          max="100"
+                          step="0.01"
+                        />
+                        {errors.taxPercent && (
+                          <p className="mt-1 text-xs text-red-600">{errors.taxPercent}</p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    {/* Tax Calculation Display */}
+                    {formData.monthlyRent && Number(formData.monthlyRent) > 0 && (
+                      <div className="p-3 bg-white rounded-lg border border-green-200">
+                        <div className="grid grid-cols-3 gap-4 text-center">
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Base Rent</p>
+                            <p className="text-sm font-semibold text-gray-900">
+                              ₹{Number(formData.monthlyRent).toLocaleString('en-IN')}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">
+                              Tax ({formData.taxPercent || 0}%)
+                            </p>
+                            <p className="text-sm font-semibold text-orange-600">
+                              + ₹{(formData.taxAmount || 0).toLocaleString('en-IN')}
+                            </p>
+                          </div>
+                          <div>
+                            <p className="text-xs text-gray-500 mb-1">Total Amount</p>
+                            <p className="text-sm font-bold text-green-700">
+                              ₹{(formData.totalRentWithTax || 0).toLocaleString('en-IN')}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
                 
                 {/* PAN Document Upload */}
                 <div>
