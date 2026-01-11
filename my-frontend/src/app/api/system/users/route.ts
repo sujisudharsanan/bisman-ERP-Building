@@ -42,10 +42,22 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   try {
     const cookieStore = await cookies();
-    const token = cookieStore.get('access_token')?.value || cookieStore.get('token')?.value || cookieStore.get('auth_token')?.value;
+    const accessToken = cookieStore.get('access_token')?.value;
+    const token = accessToken || cookieStore.get('token')?.value || cookieStore.get('auth_token')?.value;
+
+    console.log('[system/users POST proxy] Cookies found:', {
+      access_token: accessToken ? 'present' : 'missing',
+      token: cookieStore.get('token')?.value ? 'present' : 'missing',
+      auth_token: cookieStore.get('auth_token')?.value ? 'present' : 'missing'
+    });
 
     if (!token) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      console.error('[system/users POST proxy] No auth token found in cookies');
+      return NextResponse.json({ 
+        error: 'Unauthorized', 
+        message: 'No authentication token found. Please log in again.',
+        code: 'NO_TOKEN'
+      }, { status: 401 });
     }
 
     const body = await request.json();
@@ -70,7 +82,12 @@ export async function POST(request: NextRequest) {
       console.error('[system/users POST proxy] Backend error:', response.status, data);
     }
     
-    return NextResponse.json(data, { status: response.status });
+    // Add cache-control headers to prevent caching
+    const headers = new Headers();
+    headers.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+    headers.set('Pragma', 'no-cache');
+    
+    return NextResponse.json(data, { status: response.status, headers });
   } catch (error) {
     console.error('[system/users POST proxy] Error:', error);
     return NextResponse.json({ error: 'Failed to create user' }, { status: 500 });
