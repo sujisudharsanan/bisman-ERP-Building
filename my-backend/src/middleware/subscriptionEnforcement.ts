@@ -49,16 +49,28 @@ export async function getClientSubscriptionLimits(clientId: string): Promise<Sub
   try {
     // Get client's subscription with plan details
     // Use snake_case model name as per Prisma schema
-    const clientSubscription = await prisma.client_subscriptions.findUnique({
-      where: { client_id: clientId },
-      include: {
-        plan: true  // relation name in schema
-      }
-    });
+    // Guard: some runtimes may have mismatched generated client; fail open with safe defaults
+  const hasClientSubs = (prisma as unknown as { client_subscriptions?: { findUnique?: (args: unknown) => Promise<unknown> } })?.client_subscriptions?.findUnique;
+    let clientSubscription: {
+      plan_id?: number;
+      state?: string;
+      id?: number;
+      plan?: { id: number; name: string; max_users: number } | null;
+    } | null = null;
+    if (hasClientSubs) {
+      clientSubscription = await prisma.client_subscriptions.findUnique({
+        where: { client_id: clientId },
+        include: {
+          plan: true  // relation name in schema
+        }
+      });
+    } else {
+      console.warn('[SubscriptionEnforcement] Prisma client_subscriptions delegate missing; using client fallback');
+    }
 
     if (!clientSubscription) {
       // No subscription found - use defaults from client's subscriptionPlan field
-      const client = await prisma.clients.findUnique({
+  const client = await prisma.clients.findUnique({
         where: { id: clientId }
       });
 
@@ -93,11 +105,11 @@ export async function getClientSubscriptionLimits(clientId: string): Promise<Sub
       return defaultLimits;
     }
 
-    const plan = clientSubscription.plan;
+  const plan = clientSubscription?.plan;
     
     // SAFETY: Check if plan was loaded
     if (!plan) {
-      console.error('[SubscriptionEnforcement] Plan not loaded for subscription:', clientSubscription.id);
+  console.error('[SubscriptionEnforcement] Plan not loaded for subscription:', clientSubscription?.id);
       // Return default limits as fallback
       const userCounts = await countClientUsers(clientId);
       return {
@@ -106,8 +118,8 @@ export async function getClientSubscriptionLimits(clientId: string): Promise<Sub
         current_user_count: userCounts.total,
         current_active_user_count: userCounts.active,
         plan_name: 'Unknown',
-        plan_id: clientSubscription.plan_id,
-        subscription_status: clientSubscription.state,
+  plan_id: clientSubscription?.plan_id ?? 0,
+  subscription_status: clientSubscription?.state ?? 'UNKNOWN',
         can_create_user: true, // Allow action when we can't verify
         can_activate_user: true,
         limit_message: 'Unable to load subscription plan - please contact support if this persists.'
@@ -128,13 +140,13 @@ export async function getClientSubscriptionLimits(clientId: string): Promise<Sub
       current_active_user_count: userCounts.active,
       plan_name: plan.name,
       plan_id: plan.id,
-      subscription_status: clientSubscription.state,
+  subscription_status: clientSubscription?.state ?? 'ACTIVE',
       can_create_user: userCounts.total < maxUsers,
       can_activate_user: userCounts.active < maxActiveUsers
     };
 
     // Check subscription status - suspended/cancelled clients can't add users
-    if (['SUSPENDED', 'CANCELLED'].includes(clientSubscription.state)) {
+  if (['SUSPENDED', 'CANCELLED'].includes((clientSubscription?.state ?? 'ACTIVE'))) {
       limits.can_create_user = false;
       limits.can_activate_user = false;
       limits.limit_message = `Subscription is ${clientSubscription.state.toLowerCase()}. Please contact support.`;
