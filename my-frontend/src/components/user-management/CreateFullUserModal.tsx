@@ -371,10 +371,13 @@ export function CreateFullUserModal({
       }
 
       // Create user with KYC data
-      const response = await fetch('/api/system/users', {
+      // Add cache-busting timestamp to prevent browser caching
+      const response = await fetch(`/api/system/users?_t=${Date.now()}`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
+          'Cache-Control': 'no-cache, no-store, must-revalidate',
+          'Pragma': 'no-cache',
         },
         credentials: 'include',
         body: JSON.stringify({
