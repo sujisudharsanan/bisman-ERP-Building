@@ -418,7 +418,7 @@ const UserService = {
       // ========== AUDIT LOG ==========
       try {
         const assignedRoles = role_ids && role_ids.length > 0 ? role_ids : (role ? [role] : []);
-        await prisma.auditLog.create({
+        await prisma.audit_logs.create({
           data: {
             user_id: assignedByLegacyId || null,
             action: 'CREATE_USER',
@@ -613,7 +613,7 @@ const UserService = {
 
       // ========== AUDIT LOG ==========
       try {
-        await prisma.auditLog.create({
+        await prisma.audit_logs.create({
           data: {
             user_id: assignedByLegacyId || null,
             action: 'UPDATE_USER',
@@ -753,7 +753,7 @@ const UserService = {
     
     // Audit
     try {
-      await prisma.auditLog.create({
+      await prisma.audit_logs.create({
         data: {
           user_id: assignedByLegacyId,
           action: 'DELETE_USER',
