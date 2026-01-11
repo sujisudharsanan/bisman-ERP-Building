@@ -76,10 +76,24 @@ export async function POST(request: NextRequest) {
       body: JSON.stringify(body),
     });
 
-    const data = await response.json();
+    let data: unknown;
+    try {
+      data = await response.json();
+    } catch {
+      data = { error: 'Invalid JSON from backend' };
+    }
     
     if (!response.ok) {
       console.error('[system/users POST proxy] Backend error:', response.status, data);
+      // Bubble up backend status with details
+      return NextResponse.json(
+        {
+          error: 'User creation failed',
+          backendStatus: response.status,
+          details: data,
+        },
+        { status: response.status }
+      );
     }
     
     // Add cache-control headers to prevent caching

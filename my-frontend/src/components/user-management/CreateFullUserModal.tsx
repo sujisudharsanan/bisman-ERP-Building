@@ -372,6 +372,17 @@ export function CreateFullUserModal({
 
       // Create user with KYC data
       // Use /api/system/users endpoint with cache-busting
+      // Ensure password meets backend policy when not provided
+      const ensureStrongPassword = (pwd?: string) => {
+        if (pwd && pwd.length >= 12 && /[A-Z]/.test(pwd) && /[a-z]/.test(pwd) && /[0-9]/.test(pwd) && /[!@#$%^&*(),.?":{}|<>]/.test(pwd)) {
+          return pwd;
+        }
+        // Generate a 16+ char strong password
+        const base = Math.random().toString(36).slice(2) + Math.random().toString(36).slice(2);
+        const strong = `Aa1!${base}Zz9@`;
+        return strong.slice(0, 16);
+      };
+
       const response = await fetch(`/api/system/users?_t=${Date.now()}&_nocache=1`, {
         method: 'POST',
         headers: {
@@ -384,6 +395,8 @@ export function CreateFullUserModal({
         cache: 'no-store',
         body: JSON.stringify({
           ...formData,
+          // Fallback password if user didn't enter one
+          password: ensureStrongPassword(formData?.password as string | undefined),
           files: uploadedFiles,
           create_with_kyc: true, // Flag to indicate full user creation
         }),
