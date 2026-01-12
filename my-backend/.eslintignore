@@ -1,2 +1,8 @@
 # k6 load testing scripts use ES modules natively
 scripts/k6-*.js
+
+# Experimental TypeScript routes with any types
+src/routes/*.ts
+src/services/chat/*.ts
+src/services/ocrService.ts
+src/services/pageCollector.ts

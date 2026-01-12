@@ -274,7 +274,7 @@ router.post('/:id/toggle-status', requireEnterpriseAdmin, async (req, res) => {
 router.get('/:id/stats', requireEnterpriseAdmin, async (req, res) => {
   try {
     const [usersCount, recentActivity] = await Promise.all([
-      prisma.user.count({
+      prisma.users_enhanced.count({
         where: { tenant_id: req.params.id }
       }),
       prisma.recent_activity.findMany({

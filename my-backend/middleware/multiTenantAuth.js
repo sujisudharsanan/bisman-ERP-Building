@@ -111,7 +111,7 @@ const authenticateMultiTenant = async (req, res, next) => {
     }
 
     // Regular user (from users table)
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users_enhanced.findUnique({
       where: { id: decoded.id },
       select: {
         id: true,
@@ -292,39 +292,33 @@ const tenantIsolation = async (req, res, next) => {
     return res.status(401).json({ error: 'Authentication required' });
   }
 
-  // Enterprise Admin can access all tenants
-  if (req.user.role === 'ENTERPRISE_ADMIN') {
+  // CROSS_TENANT scope can access all tenants
+  if (req.user.system_scope === 'CROSS_TENANT') {
     req.tenant_id = req.query.tenant_id || req.body.tenant_id || null;
     req.bypassTenantIsolation = true;
-    return next();
-  }
-
-  // Super Admin can access their managed clients
-  if (req.user.role === 'SUPER_ADMIN') {
-    const requestedTenantId = req.query.tenant_id || req.body.tenant_id || req.params.clientId;
     
-    if (requestedTenantId) {
-      // Verify super admin owns this client
-      const client = await prisma.clients.findFirst({
-        where: {
-          id: requestedTenantId,
-          super_admin_id: req.user.super_admin_id
-        }
-      });
-
-      if (!client) {
-        return res.status(403).json({ 
-          error: 'Access denied',
-          message: 'You do not have access to this client'
+    // If Super Admin (not Enterprise Admin), still verify client ownership
+    if (req.user.userType !== 'ENTERPRISE_ADMIN') {
+      const requestedTenantId = req.query.tenant_id || req.body.tenant_id || req.params.clientId;
+      
+      if (requestedTenantId) {
+        // Verify super admin owns this client
+        const client = await prisma.clients.findFirst({
+          where: {
+            id: requestedTenantId,
+            super_admin_id: req.user.super_admin_id || req.user.id
+          }
         });
-      }
 
-      req.tenant_id = requestedTenantId;
-    } else {
-      // Super admin must specify which client they're accessing
-      req.tenant_id = null;
+        if (!client) {
+          return res.status(403).json({ 
+            error: 'Access denied',
+            message: 'You do not have access to this client'
+          });
+        }
+        req.tenant_id = requestedTenantId;
+      }
     }
-    
     return next();
   }
 

@@ -5,6 +5,7 @@ const authMiddleware = require('../middleware/auth');
 const rbacMiddleware = require('../middleware/rbac');
 const { getPrisma } = require('../lib/prisma');
 const cacheService = require('../services/cacheService'); // ✅ Cache service
+const { hasCrossTenantScope, hasTenantAdminScope } = require('../services/authorizationService');
 
 // Role-based default pages mapping (moved to top-level for reuse)
 const roleBasedPages = {
@@ -29,23 +30,22 @@ router.get('/me', authMiddleware.authenticate, async (req, res) => {
       });
     }
 
-    const userRole = (user.role || user.userType || '').toUpperCase();
-    
-    // SUPER_ADMIN BYPASS - No DB queries, full access
-    if (userRole === 'SUPER_ADMIN' || user.userType === 'SUPER_ADMIN') {
-      console.log('[permissions/me] SUPER_ADMIN detected - returning full access');
+    // Use system_scope instead of role string checks
+    // CROSS_TENANT users get full access
+    if (hasCrossTenantScope(user)) {
+      console.log('[permissions/me] CROSS_TENANT scope detected - returning full access');
       return res.json({
         success: true,
         data: {
           userId: user.id,
-          role: 'SUPER_ADMIN',
+          role: user.role || 'SUPER_ADMIN',
           business_level: 99,
           tenant_id: null,
           allowedPages: ['*'],
           permissions: { '*': { '*': ['*'] } },
           cached: false
         },
-        role: 'SUPER_ADMIN',
+        role: user.role || 'SUPER_ADMIN',
         permissions: ['*'],
         modules: ['*'],
         allowedPages: ['*'],
@@ -199,7 +199,7 @@ router.get('/', authMiddleware.authenticate, async (req, res) => {
     if (isNaN(userIdInt)) {
       console.log(`[permissions] UUID detected: ${userId}, looking up legacy_id`);
       try {
-        const user = await prisma.User.findUnique({
+        const user = await prisma.users_enhanced.findFirst({
           where: { id: userId },
           select: { legacy_id: true, role: true }
         });
@@ -258,7 +258,7 @@ router.get('/', authMiddleware.authenticate, async (req, res) => {
     console.log(`[permissions] Cache MISS for user ${userIdInt} - querying DB`);
     
     // Get user role first
-    const user = await prisma.User.findFirst({
+    const user = await prisma.users_enhanced.findFirst({
       where: { 
         OR: [
           { legacy_id: userIdInt },

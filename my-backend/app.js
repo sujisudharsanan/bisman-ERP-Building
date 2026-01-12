@@ -1729,7 +1729,7 @@ app.get('/api/me', async (req, res) => {
           dbUser.assignedModules = moduleAssignments.map(ma => ma.module.module_name);
         }
       } else {
-        dbUser = await prisma.user.findUnique({
+        dbUser = await prisma.users_enhanced.findUnique({
           where: { id: payload.id },
           select: {
             id: true,
@@ -2001,7 +2001,7 @@ app.post('/api/token/refresh', async (req, res) => {
         }
 
         // Load user to build claims
-        const userRecord = await prisma.user.findUnique({ where: { id: existingSession.user_id } })
+        const userRecord = await prisma.users_enhanced.findUnique({ where: { id: existingSession.user_id } })
         if (!userRecord) {
           return res.status(401).json({ message: 'User not found' });
         }
@@ -2424,7 +2424,7 @@ app.get('/api/auth/me/permissions', authenticate, async (req, res) => {
     }
 
     // For other users, fetch from users table
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users_enhanced.findUnique({
       where: { id: userId },
       select: {
         id: true,
@@ -2473,7 +2473,7 @@ app.post('/api/enterprise-admin/super-admins', authenticate, requireRole('ENTERP
     }
 
     // Check if user already exists
-    const existingUser = await prisma.user.findUnique({
+    const existingUser = await prisma.users_enhanced.findFirst({
       where: { email }
     });
 
@@ -2491,7 +2491,7 @@ app.post('/api/enterprise-admin/super-admins', authenticate, requireRole('ENTERP
     const tenantId = TenantGuard.getTenantId(req);
 
     // Create user
-    const newUser = await prisma.user.create({
+    const newUser = await prisma.users_enhanced.create({
       data: {
         username,
         email,
@@ -2551,7 +2551,7 @@ app.put('/api/enterprise-admin/super-admins/:id', authenticate, requireRole('ENT
     }
 
     // Update user
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await prisma.users_enhanced.update({
       where: whereClause,
       data: updateData
     });
@@ -2591,7 +2591,7 @@ app.delete('/api/enterprise-admin/super-admins/:id', authenticate, requireRole('
     const { id } = req.params;
 
     // Check if user exists
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users_enhanced.findUnique({
       where: { id: parseInt(id) }
     });
 
@@ -2603,7 +2603,7 @@ app.delete('/api/enterprise-admin/super-admins/:id', authenticate, requireRole('
     }
 
     // Delete user
-    await prisma.user.delete({
+    await prisma.users_enhanced.delete({
       where: { id: parseInt(id) }
     });
 
@@ -3918,7 +3918,7 @@ app.get('/api/hub-incharge/profile', authenticate, requireRole(['STAFF', 'ADMIN'
     let user = null
     if (databaseUrl) {
       try {
-        user = await prisma.user.findUnique({
+        user = await prisma.users_enhanced.findUnique({
           where: { id: req.user.id },
           select: { username: true, email: true, role: true }
         })
@@ -4282,7 +4282,7 @@ app.get('/api/users/search', authenticate, async (req, res) => {
     }
     
     // Get users from database
-    const users = await prisma.user.findMany({
+    const users = await prisma.users_enhanced.findMany({
       where: whereClause,
       select: {
         id: true,
@@ -5021,7 +5021,7 @@ app.put('/api/users/:userId/role', authenticate, requireRole(['ADMIN', 'SUPER_AD
     // Security: Ensure user is in same tenant
     const tenantFilter = TenantGuard.getTenantFilter(req);
     
-    const existingUser = await prisma.user.findFirst({
+    const existingUser = await prisma.users_enhanced.findFirst({
       where: { id: userId, ...tenantFilter }
     });
 
@@ -5030,7 +5030,7 @@ app.put('/api/users/:userId/role', authenticate, requireRole(['ADMIN', 'SUPER_AD
     }
 
     // Update role
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await prisma.users_enhanced.update({
       where: { id: userId },
       data: { 
         role: role,
@@ -5068,7 +5068,7 @@ app.put('/api/users/:userId/status', authenticate, requireRole(['ADMIN', 'SUPER_
     // Security: Ensure user is in same tenant
     const tenantFilter = TenantGuard.getTenantFilter(req);
     
-    const existingUser = await prisma.user.findFirst({
+    const existingUser = await prisma.users_enhanced.findFirst({
       where: { id: userId, ...tenantFilter }
     });
 
@@ -5082,7 +5082,7 @@ app.put('/api/users/:userId/status', authenticate, requireRole(['ADMIN', 'SUPER_
     }
 
     // Update status
-    const updatedUser = await prisma.user.update({
+    const updatedUser = await prisma.users_enhanced.update({
       where: { id: userId },
       data: { 
         is_active: is_active,
@@ -5119,7 +5119,7 @@ app.post('/api/auth/admin-password-reset', authenticate, requireRole(['ADMIN', '
     // Security: Ensure user is in same tenant
     const tenantFilter = TenantGuard.getTenantFilter(req);
     
-    const targetUser = await prisma.user.findFirst({
+    const targetUser = await prisma.users_enhanced.findFirst({
       where: user_id ? { id: user_id, ...tenantFilter } : { email: email, ...tenantFilter }
     });
 
@@ -5133,7 +5133,7 @@ app.post('/api/auth/admin-password-reset', authenticate, requireRole(['ADMIN', '
     const resetExpiry = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours
 
     // Store token in user record
-    await prisma.user.update({
+    await prisma.users_enhanced.update({
       where: { id: targetUser.id },
       data: { 
         reset_token: resetToken,

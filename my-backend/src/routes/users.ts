@@ -330,8 +330,9 @@ router.post('/', authMiddleware, checkUserCreationLimit(), async (req: Request, 
     }
 
     // Check if user already exists
-    const existingUser = await prisma.users_enhanced.findUnique({
-      where: { email },
+    // Use findFirst because email is not unique alone (compound unique with tenant_id)
+    const existingUser = await prisma.users_enhanced.findFirst({
+      where: { email: email.toLowerCase() },
     });
 
     if (existingUser) {
@@ -616,18 +617,19 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
     if (branch_id !== undefined && CORE_ROLES.includes(currentUserRole)) {
       // Remove existing branch assignments
       await prisma.user_branches.deleteMany({
-        where: { userId: existingUser.legacy_id || 0 },
+        where: { user_id: existingUser.legacy_id || 0 },
       }).catch(() => {
         // Ignore if no existing assignments
       });
       
       // Add new branch assignment if provided
-      if (branch_id) {
+      if (branch_id && existingUser.legacy_id) {
         await prisma.user_branches.create({
           data: {
-            userId: existingUser.legacy_id || 0,
-            branchId: parseInt(branch_id),
-            isPrimary: true,
+            is_primary: true,
+            user_id: existingUser.legacy_id,
+            branch_id: parseInt(branch_id),
+            updated_at: new Date(),
           },
         }).catch((e: Error) => {
           console.error('Failed to assign branch:', e.message);

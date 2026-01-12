@@ -220,7 +220,7 @@ async function authenticate(req, res, next) {
       user = await prisma.super_admins.findUnique({ where: { id: payload.id } })
     } else {
       // Regular user
-      user = await prisma.user.findUnique({ where: { id: payload.id } })
+      user = await prisma.users_enhanced.findUnique({ where: { id: payload.id } })
     }
 
     if (!user) {

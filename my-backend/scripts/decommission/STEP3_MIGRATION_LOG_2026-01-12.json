@@ -1,0 +1,30 @@
+{
+  "timestamp": "2026-01-12T08:17:59.176Z",
+  "dryRun": true,
+  "log": [
+    {
+      "action": "SET_LEGACY_ID",
+      "email": "newuser999@example.com",
+      "legacyId": null,
+      "status": "DRY_RUN"
+    },
+    {
+      "action": "SET_LEGACY_ID",
+      "email": "subin@gmail.com",
+      "legacyId": null,
+      "status": "DRY_RUN"
+    },
+    {
+      "action": "SET_LEGACY_ID",
+      "email": "suji@gmail.com",
+      "legacyId": null,
+      "status": "DRY_RUN"
+    },
+    {
+      "action": "SET_LEGACY_ID",
+      "email": "sujisudharsanan@gmail.com",
+      "legacyId": null,
+      "status": "DRY_RUN"
+    }
+  ]
+}

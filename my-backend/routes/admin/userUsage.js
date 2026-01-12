@@ -57,7 +57,7 @@ router.get('/:userId', authenticate, requireAdminAccess, async (req, res) => {
     }
 
     // Fetch user details
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users_enhanced.findUnique({
       where: { id: userId },
       include: {
         client: {

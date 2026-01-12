@@ -53,7 +53,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
     const skip = (Number(page) - 1) * Number(limit);
 
     const [tasks, total] = await Promise.all([
-      prisma.task.findMany({
+      prisma.workflow_tasks.findMany({
         where,
         skip,
         take: Number(limit),
@@ -84,7 +84,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
           },
         },
       }),
-      prisma.task.count({ where }),
+      prisma.workflow_tasks.count({ where }),
     ]);
 
     res.json({
@@ -111,7 +111,7 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const task = await prisma.task.findUnique({
+    const task = await prisma.workflow_tasks.findUnique({
       where: { id },
       include: {
         createdBy: {
@@ -185,7 +185,7 @@ router.post('/:id/approve', authMiddleware, async (req: Request, res: Response) 
     const { comment, attachments = [] } = req.body;
 
     // Get task with relations
-    const task = await prisma.task.findUnique({
+    const task = await prisma.workflow_tasks.findUnique({
       where: { id },
       include: {
         paymentRequest: true,
@@ -215,7 +215,7 @@ router.post('/:id/approve', authMiddleware, async (req: Request, res: Response) 
     }
 
     // Get current approval level config
-    const currentLevelConfig = await prisma.approvalLevel.findUnique({
+    const currentLevelConfig = await prisma.approval_levels.findUnique({
       where: { level: task.currentLevel, isActive: true },
     });
 
@@ -233,14 +233,14 @@ router.post('/:id/approve', authMiddleware, async (req: Request, res: Response) 
     }
 
     // Get next approval level
-    const nextLevel = await prisma.approvalLevel.findUnique({
+    const nextLevel = await prisma.approval_levels.findUnique({
       where: { level: task.currentLevel + 1, isActive: true },
     });
 
     // Execute approval flow in transaction
     const result = await prisma.$transaction(async (tx) => {
       // 1. Create approval record
-      const approval = await tx.approval.create({
+      const approval = await tx.approvals.create({
         data: {
           taskId: task.id,
           level: task.currentLevel,
@@ -253,7 +253,7 @@ router.post('/:id/approve', authMiddleware, async (req: Request, res: Response) 
       });
 
       // 2. Create approval message
-      await tx.message.create({
+      await tx.task_messages.create({
         data: {
           taskId: task.id,
           senderId: userId,
@@ -284,7 +284,7 @@ router.post('/:id/approve', authMiddleware, async (req: Request, res: Response) 
         nextApprover = nextApprovers[0];
 
         // Update task to next level
-        updatedTask = await tx.task.update({
+        updatedTask = await tx.workflow_tasks.update({
           where: { id: task.id },
           data: {
             currentLevel: nextLevel.level,
@@ -303,7 +303,7 @@ router.post('/:id/approve', authMiddleware, async (req: Request, res: Response) 
           dueDate: task.paymentRequest.dueDate,
         });
 
-        await tx.message.create({
+        await tx.task_messages.create({
           data: {
             taskId: task.id,
             senderId: userId,
@@ -336,7 +336,7 @@ router.post('/:id/approve', authMiddleware, async (req: Request, res: Response) 
         paymentToken = await generatePaymentToken();
 
         // Update task to banker
-        updatedTask = await tx.task.update({
+        updatedTask = await tx.workflow_tasks.update({
           where: { id: task.id },
           data: {
             currentLevel: nextLevel.level,
@@ -346,7 +346,7 @@ router.post('/:id/approve', authMiddleware, async (req: Request, res: Response) 
         });
 
         // Update payment request with token and status
-        await tx.paymentRequest.update({
+        await tx.payment_requests.update({
           where: { id: task.paymentRequestId },
           data: {
             status: 'SENT_TO_CLIENT',
@@ -356,7 +356,7 @@ router.post('/:id/approve', authMiddleware, async (req: Request, res: Response) 
         });
 
         // Create system message for banker assignment
-        await tx.message.create({
+        await tx.task_messages.create({
           data: {
             taskId: task.id,
             senderId: userId,
@@ -436,7 +436,7 @@ router.post('/:id/reject', authMiddleware, async (req: Request, res: Response) =
       });
     }
 
-    const task = await prisma.task.findUnique({
+    const task = await prisma.workflow_tasks.findUnique({
       where: { id },
       include: {
         paymentRequest: true,
@@ -464,13 +464,13 @@ router.post('/:id/reject', authMiddleware, async (req: Request, res: Response) =
     }
 
     // Get current approval level config
-    const levelConfig = await prisma.approvalLevel.findUnique({
+    const levelConfig = await prisma.approval_levels.findUnique({
       where: { level: task.currentLevel, isActive: true },
     });
 
     const result = await prisma.$transaction(async (tx) => {
       // Create rejection approval record
-      const approval = await tx.approval.create({
+      const approval = await tx.approvals.create({
         data: {
           taskId: task.id,
           level: task.currentLevel,
@@ -483,7 +483,7 @@ router.post('/:id/reject', authMiddleware, async (req: Request, res: Response) =
       });
 
       // Create rejection message
-      await tx.message.create({
+      await tx.task_messages.create({
         data: {
           taskId: task.id,
           senderId: userId,
@@ -499,7 +499,7 @@ router.post('/:id/reject', authMiddleware, async (req: Request, res: Response) =
       });
 
       // Update task status
-      const updatedTask = await tx.task.update({
+      const updatedTask = await tx.workflow_tasks.update({
         where: { id: task.id },
         data: {
           status: 'REJECTED',
@@ -507,7 +507,7 @@ router.post('/:id/reject', authMiddleware, async (req: Request, res: Response) =
       });
 
       // Update expense status
-      await tx.expense.update({
+      await tx.expenses.update({
         where: { id: task.expenseId },
         data: {
           status: 'CANCELLED',
@@ -515,7 +515,7 @@ router.post('/:id/reject', authMiddleware, async (req: Request, res: Response) =
       });
 
       // Update payment request status
-      await tx.paymentRequest.update({
+      await tx.payment_requests.update({
         where: { id: task.paymentRequestId },
         data: {
           status: 'REJECTED',
@@ -570,7 +570,7 @@ router.post('/:id/return', authMiddleware, async (req: Request, res: Response) =
       });
     }
 
-    const task = await prisma.task.findUnique({
+    const task = await prisma.workflow_tasks.findUnique({
       where: { id },
       include: {
         paymentRequest: true,
@@ -591,13 +591,13 @@ router.post('/:id/return', authMiddleware, async (req: Request, res: Response) =
       });
     }
 
-    const levelConfig = await prisma.approvalLevel.findUnique({
+    const levelConfig = await prisma.approval_levels.findUnique({
       where: { level: task.currentLevel, isActive: true },
     });
 
     const result = await prisma.$transaction(async (tx) => {
       // Create return approval record
-      const approval = await tx.approval.create({
+      const approval = await tx.approvals.create({
         data: {
           taskId: task.id,
           level: task.currentLevel,
@@ -610,7 +610,7 @@ router.post('/:id/return', authMiddleware, async (req: Request, res: Response) =
       });
 
       // Create return message
-      await tx.message.create({
+      await tx.task_messages.create({
         data: {
           taskId: task.id,
           senderId: userId,
@@ -628,7 +628,7 @@ router.post('/:id/return', authMiddleware, async (req: Request, res: Response) =
       });
 
       // Update task status
-      const updatedTask = await tx.task.update({
+      const updatedTask = await tx.workflow_tasks.update({
         where: { id: task.id },
         data: {
           status: 'RETURNED',
@@ -638,14 +638,14 @@ router.post('/:id/return', authMiddleware, async (req: Request, res: Response) =
       });
 
       // Update expense and payment request to DRAFT for editing
-      await tx.expense.update({
+      await tx.expenses.update({
         where: { id: task.expenseId },
         data: {
           status: 'DRAFT',
         },
       });
 
-      await tx.paymentRequest.update({
+      await tx.payment_requests.update({
         where: { id: task.paymentRequestId },
         data: {
           status: 'DRAFT',
@@ -700,7 +700,7 @@ router.post('/:id/messages', authMiddleware, async (req: Request, res: Response)
       });
     }
 
-    const task = await prisma.task.findUnique({
+    const task = await prisma.workflow_tasks.findUnique({
       where: { id },
     });
 
@@ -708,7 +708,7 @@ router.post('/:id/messages', authMiddleware, async (req: Request, res: Response)
       return res.status(404).json({ error: 'Task not found' });
     }
 
-    const message = await prisma.message.create({
+    const message = await prisma.task_messages.create({
       data: {
         taskId: id,
         senderId: userId,
@@ -749,7 +749,7 @@ router.get('/dashboard/pending', authMiddleware, async (req: Request, res: Respo
   try {
     const userId = (req as any).user?.id;
 
-    const tasks = await prisma.task.findMany({
+    const tasks = await prisma.workflow_tasks.findMany({
       where: {
         assigneeId: userId,
         status: 'PENDING',
@@ -816,7 +816,7 @@ router.get('/dashboard/inprocess', authMiddleware, async (req: Request, res: Res
       ];
     }
 
-    const tasks = await prisma.task.findMany({
+    const tasks = await prisma.workflow_tasks.findMany({
       where,
       orderBy: {
         updatedAt: 'desc',
@@ -868,7 +868,7 @@ router.get('/dashboard/completed', authMiddleware, async (req: Request, res: Res
 
     // Show tasks user was involved in (created or approved)
     const [tasks, total] = await Promise.all([
-      prisma.task.findMany({
+      prisma.workflow_tasks.findMany({
         where: {
           status: 'COMPLETED',
           OR: [
@@ -904,7 +904,7 @@ router.get('/dashboard/completed', authMiddleware, async (req: Request, res: Res
           },
         },
       }),
-      prisma.task.count({
+      prisma.workflow_tasks.count({
         where: {
           status: 'COMPLETED',
           OR: [

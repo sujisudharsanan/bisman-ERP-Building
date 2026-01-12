@@ -20,18 +20,18 @@ router.post('/system/onboarding/registered/draft', authMiddleware, async (req: R
       return res.status(400).json({ error: 'legal_or_trade_name_required' });
     }
     if (client_id) {
-      const existing = await prisma.client.findUnique({ where: { id: client_id } });
+      const existing = await prisma.clients.findUnique({ where: { id: client_id } });
       if (!existing) return res.status(404).json({ error: 'client_not_found' });
       // Merge into enterprise settings JSON
       const raw: any = existing.settings || {}; const enterprise: any = raw.enterprise || raw || {};
       enterprise.draft = { ...(enterprise.draft || {}), state }; // store full snapshot
-      const updated = await prisma.client.update({ where: { id: client_id }, data: { settings: { enterprise } as any } });
+      const updated = await prisma.clients.update({ where: { id: client_id }, data: { settings: { enterprise } as any } });
       await prismaAny.clientOnboardingActivity.create({ data: { client_id, step_key: 'draft', action: 'update', meta: { snapshot: true }, actor_email: user?.email || undefined } });
       return res.json({ success: true, client_id: updated.id });
     }
     // create new draft client (store everything in settings.enterprise)
     const enterprise: any = { legal_name: state.identification.legal_name, trade_name: state.identification.trade_name, status: 'draft', meta: { draft: true }, draft: { state } };
-    const created = await prisma.client.create({ data: { name: state.identification.legal_name || state.identification.trade_name, productType: 'BUSINESS_ERP', subscriptionPlan: 'free', subscriptionStatus: 'active', super_admin_id: await resolveDefaultSuperAdminId(), is_active: false, settings: { enterprise } as any } });
+    const created = await prisma.clients.create({ data: { name: state.identification.legal_name || state.identification.trade_name, productType: 'BUSINESS_ERP', subscriptionPlan: 'free', subscriptionStatus: 'active', super_admin_id: await resolveDefaultSuperAdminId(), is_active: false, settings: { enterprise } as any } });
     await prismaAny.clientOnboardingActivity.create({ data: { client_id: created.id, step_key: 'draft', action: 'create', meta: { snapshot: true }, actor_email: user?.email || undefined } });
     res.status(201).json({ success: true, client_id: created.id });
   } catch (e: any) {
@@ -42,12 +42,12 @@ router.post('/system/onboarding/registered/draft', authMiddleware, async (req: R
 
 async function resolveDefaultSuperAdminId(): Promise<number> {
   try {
-    const count = await prisma.superAdmin.count();
+    const count = await prisma.super_admins.count();
     if (count === 1) {
-      const only = await prisma.superAdmin.findFirst();
+      const only = await prisma.super_admins.findFirst();
       if (only?.id) return only.id;
     }
-    const any = await prisma.superAdmin.findFirst({ where: { is_active: true } });
+    const any = await prisma.super_admins.findFirst({ where: { is_active: true } });
     if (any?.id) return any.id;
   } catch {}
   return 1;

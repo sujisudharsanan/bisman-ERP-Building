@@ -42,15 +42,15 @@ function protectBusinessLevel(options = {}) {
       // Get target user ID from params or body
       const targetUserId = parseInt(req.params.userId || req.params.id || req.body.userId);
       const currentUserId = user.id;
-      const currentUserType = user.userType || user.user_type || 'USER';
+      const currentSystemScope = user.system_scope || 'BUSINESS';
       const currentUserLevel = user.business_level || 1;
       
       // ============================================================================
-      // RULE 1: Only ADMIN, SUPER_ADMIN, or ENTERPRISE_ADMIN can change business_level
+      // RULE 1: Only TENANT or CROSS_TENANT scope users can change business_level
       // ============================================================================
-      const allowedTypes = ['ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN'];
-      if (!allowedTypes.includes(currentUserType)) {
-        console.warn(`[BusinessLevel] BLOCKED: User ${currentUserId} (${currentUserType}) attempted to modify business_level`);
+      const allowedScopes = ['TENANT', 'CROSS_TENANT'];
+      if (!allowedScopes.includes(currentSystemScope)) {
+        console.warn(`[BusinessLevel] BLOCKED: User ${currentUserId} (scope: ${currentSystemScope}) attempted to modify business_level`);
         
         // Remove business_level from request body silently (fail-safe)
         delete req.body.business_level;
@@ -61,7 +61,7 @@ function protectBusinessLevel(options = {}) {
           await prisma.$executeRaw`
             INSERT INTO audit_logs (user_id, action, table_name, record_id, old_values, new_values, ip_address, created_at)
             VALUES (${currentUserId}, 'BUSINESS_LEVEL_CHANGE_BLOCKED', 'users_enhanced', ${targetUserId || null}, 
-                    ${JSON.stringify({ attempted_by: currentUserType })}::jsonb,
+                    ${JSON.stringify({ attempted_by_scope: currentSystemScope })}::jsonb,
                     ${JSON.stringify({ requested_level: requestedBusinessLevel })}::jsonb,
                     ${req.ip || 'unknown'}, NOW())
           `;
@@ -94,9 +94,9 @@ function protectBusinessLevel(options = {}) {
       }
       
       // ============================================================================
-      // RULE 4: Enforce hierarchy (can't set level higher than own, except ENTERPRISE_ADMIN)
+      // RULE 4: Enforce hierarchy (can't set level higher than own, except CROSS_TENANT)
       // ============================================================================
-      if (enforceHierarchy && currentUserType !== 'ENTERPRISE_ADMIN') {
+      if (enforceHierarchy && currentSystemScope !== 'CROSS_TENANT') {
         if (level > currentUserLevel) {
           console.warn(`[BusinessLevel] BLOCKED: User ${currentUserId} (L${currentUserLevel}) attempted to set L${level}`);
           return res.status(403).json({
@@ -152,10 +152,10 @@ async function logBusinessLevelChange(userId, oldLevel, newLevel, changedBy, cha
  * Use this as a quick middleware on routes that shouldn't allow business_level changes
  */
 function stripBusinessLevel(req, res, next) {
-  const userType = req.user?.userType || req.user?.user_type || 'USER';
-  const allowedTypes = ['ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN'];
+  const systemScope = req.user?.system_scope || 'BUSINESS';
+  const allowedScopes = ['TENANT', 'CROSS_TENANT'];
   
-  if (!allowedTypes.includes(userType)) {
+  if (!allowedScopes.includes(systemScope)) {
     delete req.body?.business_level;
   }
   

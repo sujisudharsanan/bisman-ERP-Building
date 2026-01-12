@@ -563,7 +563,7 @@ router.get('/usage', authenticate, async (req, res) => {
     }
 
     // Get actual user count
-    const userCount = await prisma.user.count({
+    const userCount = await prisma.users_enhanced.count({
       where: { clientId: clientId },
     });
 

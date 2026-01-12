@@ -38,7 +38,7 @@ router.get('/dashboard', async (req, res) => {
     });
 
     // Count total users
-    const totalUsers = await prisma.user.count();
+    const totalUsers = await prisma.users_enhanced.count();
 
     // Count modules
     const businessModules = await prisma.module.count({

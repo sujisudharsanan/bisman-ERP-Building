@@ -22,7 +22,7 @@ const sentAlerts = new Map();
 // Get Tenant Admin Email
 // ============================================================================
 async function getTenantAdminEmail(tenantId) {
-  const admin = await prisma.user.findFirst({
+  const admin = await prisma.users_enhanced.findFirst({
     where: {
       tenant_id: tenantId,
       role: 'admin',

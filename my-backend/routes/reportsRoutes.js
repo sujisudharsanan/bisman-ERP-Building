@@ -3,6 +3,7 @@ const router = express.Router();
 const { getPrisma } = require('../lib/prisma');
 const { authenticate, requireRole } = require('../middleware/auth'); // ✅ SECURITY: Add authentication
 const TenantGuard = require('../middleware/tenantGuard'); // ✅ SECURITY: Multi-tenant isolation
+const { hasCrossTenantScope, hasTenantAdminScope } = require('../services/authorizationService');
 
 /**
  * GET /api/reports/roles-users
@@ -25,7 +26,7 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
   
   try {
     console.log('[RolesUsersReport] Generating roles and users report...');
-    console.log('[RolesUsersReport] User type:', req.user?.userType, 'Role:', req.user?.role);
+    console.log('[RolesUsersReport] System scope:', req.user?.system_scope, 'Role:', req.user?.role);
     
     // ✅ SECURITY FIX: Define tenant filter at the beginning
     // For ADMIN in non-tenant demo contexts, gracefully fallback to no filter
@@ -33,20 +34,20 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
     try {
       tenantFilter = TenantGuard.getTenantFilter(req);
     } catch (err) {
-      if ((req.user?.role || req.user?.roleName) === 'ADMIN') {
-        console.warn('[RolesUsersReport] Tenant filter not available for ADMIN; using no filter');
+      if (hasTenantAdminScope(req.user)) {
+        console.warn('[RolesUsersReport] Tenant filter not available for admin; using no filter');
         tenantFilter = {};
       } else {
         throw err;
       }
     }
     
-    // ✅ SECURITY FIX: Get assigned role IDs/names for SUPER_ADMIN
+    // ✅ SECURITY FIX: Get assigned role IDs/names based on system_scope
     let assignedRoleIds = null; // null means no filter (show all)
     const assignedRoleNames = []; // Store role names for matching when IDs don't work
-    if (req.user?.userType === 'SUPER_ADMIN' || (req.user?.role || '').toUpperCase() === 'SUPER_ADMIN') {
-      console.log('[RolesUsersReport] SUPER_ADMIN access - showing all roles (SUPER_ADMIN has full access)');
-      // SUPER_ADMIN should see all roles - they manage clients and their role assignments
+    if (hasCrossTenantScope(req.user)) {
+      console.log('[RolesUsersReport] CROSS_TENANT scope - showing all roles');
+      // CROSS_TENANT users see all roles - they manage clients and their role assignments
       assignedRoleIds = null; // null means no filter (show all)
     }
     
@@ -180,7 +181,7 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
           orderBy: { role: 'asc' }
         });
       } else {
-        users = await prisma.user.findMany({
+        users = await prisma.users_enhanced.findMany({
           where: tenantFilter,
           select: {
             id: true,

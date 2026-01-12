@@ -32,6 +32,37 @@
 const { PrismaClient } = require('@prisma/client');
 
 /**
+ * Select approver with the least pending tasks (workload balancing)
+ */
+async function selectByWorkload(approvers, prisma) {
+    if (!approvers || approvers.length === 0) {
+        return null;
+    }
+
+    if (approvers.length === 1) {
+        return { ...approvers[0], pendingTasks: 0 };
+    }
+
+    // Get pending task counts for each approver
+    const approversWithWorkload = await Promise.all(
+        approvers.map(async (approver) => {
+            const pendingTasks = await prisma.task.count({
+                where: {
+                    assigneeId: approver.id,
+                    status: 'PENDING'
+                }
+            });
+            return { ...approver, pendingTasks };
+        })
+    );
+
+    // Sort by pending tasks (ascending) and return the one with least workload
+    approversWithWorkload.sort((a, b) => a.pendingTasks - b.pendingTasks);
+    
+    return approversWithWorkload[0];
+}
+
+/**
  * Select the best approver from a list based on multiple criteria
  * Priority order:
  * 1. Requested approvers (if specified)
@@ -211,7 +242,7 @@ async function shouldEscalateToEnterpriseAdmin(options) {
  * Get Enterprise Admin approvers
  */
 async function getEnterpriseAdminApprovers(prisma) {
-    const enterpriseAdmins = await prisma.user.findMany({
+    const enterpriseAdmins = await prisma.users_enhanced.findMany({
         where: {
             role: 'ENTERPRISE_ADMIN',
             is_active: true
@@ -281,7 +312,7 @@ async function selectApproverWithEscalation(options) {
  * Get statistics for approver workload (for monitoring/dashboard)
  */
 async function getApproverWorkloadStats(prisma) {
-    const approvers = await prisma.user.findMany({
+    const approvers = await prisma.users_enhanced.findMany({
         where: {
             role: {
                 in: ['MANAGER', 'ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN']

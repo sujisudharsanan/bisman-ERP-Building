@@ -45,27 +45,37 @@ async function resolveRBACContext(user) {
     let roleLevel = 'CLIENT';
     let roleName = user.role || user.userType || 'USER';
     
-    if (user.userType === 'ENTERPRISE_ADMIN' || user.role === 'ENTERPRISE_ADMIN') {
-      roleLevel = 'ENTERPRISE';
-      roleName = 'ENTERPRISE_ADMIN';
-    } else if (user.userType === 'SUPER_ADMIN' || user.role === 'SUPER_ADMIN') {
-      roleLevel = 'MODULE';
-      roleName = 'SUPER_ADMIN';
-    } else if (user.userType === 'ADMIN' || user.role === 'ADMIN') {
+    // Use system_scope for authorization decisions (P0-2 fix)
+    const systemScope = user.system_scope || 'BUSINESS';
+    
+    if (systemScope === 'CROSS_TENANT' || user.userType === 'ENTERPRISE_ADMIN') {
+      // CROSS_TENANT scope = ENTERPRISE or MODULE level
+      if (user.userType === 'ENTERPRISE_ADMIN' || user.role === 'ENTERPRISE_ADMIN') {
+        roleLevel = 'ENTERPRISE';
+        roleName = 'ENTERPRISE_ADMIN';
+      } else {
+        roleLevel = 'MODULE';
+        roleName = user.role || 'SUPER_ADMIN';
+      }
+    } else if (systemScope === 'TENANT') {
       roleLevel = 'CLIENT';
-      roleName = 'ADMIN';
+      roleName = user.role || 'ADMIN';
+    } else {
+      roleLevel = 'CLIENT';
+      roleName = user.role || 'USER';
     }
 
     return {
       userId: user.id,
       roleLevel,
       roleName,
+      systemScope, // Add system_scope to context
       moduleId: roleLevel === 'ENTERPRISE' ? null : (user.moduleId || null),
       clientId: roleLevel !== 'CLIENT' ? null : (user.clientId || null),
       permissions: user.permissions || [],
       isEnterpriseAdmin: roleLevel === 'ENTERPRISE',
-      isSuperAdmin: roleLevel === 'MODULE',
-      isAdmin: roleName === 'ADMIN',
+      isSuperAdmin: systemScope === 'CROSS_TENANT',
+      isAdmin: systemScope === 'TENANT' || systemScope === 'CROSS_TENANT',
     };
   } catch (error) {
     console.error('[RBAC Enforcer] Failed to resolve context:', error.message);

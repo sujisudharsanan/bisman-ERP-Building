@@ -59,7 +59,7 @@ router.get('/', requireEnterpriseAdmin, async (req, res) => {
     }
 
     const [users, total] = await Promise.all([
-      prisma.user.findMany({
+      prisma.users_enhanced.findMany({
         where,
         skip,
         take: limit,
@@ -84,7 +84,7 @@ router.get('/', requireEnterpriseAdmin, async (req, res) => {
           }
         }
       }),
-      prisma.user.count({ where })
+      prisma.users_enhanced.count({ where })
     ]);
 
     // Transform data
@@ -126,7 +126,7 @@ router.get('/:userId', requireEnterpriseAdmin, async (req, res) => {
     const userId = parseInt(req.params.userId);
 
     const [user, auditLogs, permissions] = await Promise.all([
-      prisma.user.findUnique({
+      prisma.users_enhanced.findUnique({
         where: { id: userId },
         include: {
           client: {
@@ -217,7 +217,7 @@ router.put('/:userId', requireEnterpriseAdmin, protectBusinessLevel({ enforceHie
     const { name, email, role, status, business_level } = req.body;
 
     // Get current user for audit logging
-    const currentUser = await prisma.user.findUnique({
+    const currentUser = await prisma.users_enhanced.findUnique({
       where: { id: userId },
       select: { business_level: true }
     });
@@ -352,7 +352,7 @@ router.put('/bulk/update', requireEnterpriseAdmin, async (req, res) => {
         return res.status(400).json({ ok: false, error: 'Invalid action' });
     }
 
-    const result = await prisma.user.updateMany({
+    const result = await prisma.users_enhanced.updateMany({
       where: {
         id: { in: userIds.map(id => parseInt(id)) }
       },
@@ -393,7 +393,7 @@ router.post('/bulk/import', requireEnterpriseAdmin, enforceUsage('user_creation'
 
     // SECURITY FIX P1-5: Get admin's business_level for hierarchy enforcement
     const adminId = req.user?.id;
-    const adminUser = await prisma.user.findUnique({
+    const adminUser = await prisma.users_enhanced.findUnique({
       where: { id: adminId },
       select: { business_level: true, user_type: true }
     });
@@ -432,7 +432,7 @@ router.post('/bulk/import', requireEnterpriseAdmin, enforceUsage('user_creation'
         const safeBusinessLevel = isEnterpriseAdmin ? parsedLevel : Math.min(parsedLevel, adminLevel);
 
         // Check if user already exists
-        const existing = await prisma.user.findUnique({
+        const existing = await prisma.users_enhanced.findFirst({
           where: { email }
         });
 
@@ -542,10 +542,10 @@ router.post('/:userId/force-logout', requireEnterpriseAdmin, async (req, res) =>
 router.get('/stats/overview', requireEnterpriseAdmin, async (req, res) => {
   try {
     const [totalUsers, activeUsers, disabledUsers, usersByRole] = await Promise.all([
-      prisma.user.count(),
-      prisma.user.count({ where: { is_active: true } }),
-      prisma.user.count({ where: { is_active: false } }),
-      prisma.user.groupBy({
+      prisma.users_enhanced.count(),
+      prisma.users_enhanced.count({ where: { is_active: true } }),
+      prisma.users_enhanced.count({ where: { is_active: false } }),
+      prisma.users_enhanced.groupBy({
         by: ['role'],
         _count: { id: true }
       })

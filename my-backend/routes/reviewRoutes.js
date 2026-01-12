@@ -310,7 +310,7 @@ router.get('/available-reviewers', async (req, res) => {
       ];
     }
     
-    const users = await prisma.user.findMany({
+    const users = await prisma.users_enhanced.findMany({
       where: whereClause,
       select: {
         id: true,

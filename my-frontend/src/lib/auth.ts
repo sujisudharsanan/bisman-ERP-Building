@@ -14,17 +14,17 @@ export const authOptions: NextAuthOptions = {
       },
   async authorize(credentials) {
         if (!credentials?.email || !credentials.password) return null;
-        const user = await prisma.user.findUnique({ where: { email: credentials.email }, include: { roles: { include: { role: true } }, memberships: true } });
-        if (!user || !user.password) return null;
-        const ok = await bcrypt.compare(credentials.password, user.password);
+        const user = await prisma.users_enhanced.findFirst({ where: { email: credentials.email.toLowerCase() } });
+        if (!user || !user.password_hash) return null;
+        const ok = await bcrypt.compare(credentials.password, user.password_hash);
         if (!ok) return null;
         return {
           id: user.id,
           email: user.email,
-          name: user.name || user.email,
-      roles: user.roles.map((ur: any) => ur.role.key),
-      memberships: user.memberships.map((m: any) => ({ organizationId: m.organizationId, roleId: m.roleId })),
-          theme: user.theme,
+          name: user.username || user.email,
+      roles: user.role ? [user.role] : [],
+      memberships: [],
+          theme: null,
         } as any;
       },
     }),

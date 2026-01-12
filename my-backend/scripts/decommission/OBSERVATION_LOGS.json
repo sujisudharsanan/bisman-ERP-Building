@@ -1,0 +1,68 @@
+[
+  {
+    "timestamp": "2026-01-12T11:30:49.402Z",
+    "day": 0,
+    "checks": [
+      {
+        "check": "Auth System",
+        "status": "OK",
+        "activeUsers": 4
+      },
+      {
+        "check": "Users VIEW",
+        "status": "OK",
+        "rowCount": 4
+      },
+      {
+        "check": "Password Consistency",
+        "status": "OK"
+      },
+      {
+        "check": "Backup Integrity",
+        "status": "OK",
+        "table": "_legacy_users_backup_20260106"
+      },
+      {
+        "check": "Recent Activity",
+        "status": "OK",
+        "last24h": 0
+      }
+    ],
+    "critical": 0,
+    "warnings": 0,
+    "ok": 5
+  },
+  {
+    "timestamp": "2026-01-12T11:43:31.057Z",
+    "day": 0,
+    "checks": [
+      {
+        "check": "Auth System",
+        "status": "OK",
+        "activeUsers": 4
+      },
+      {
+        "check": "Users VIEW",
+        "status": "OK",
+        "rowCount": 4
+      },
+      {
+        "check": "Password Consistency",
+        "status": "OK"
+      },
+      {
+        "check": "Backup Integrity",
+        "status": "OK",
+        "table": "_legacy_users_backup_20260106"
+      },
+      {
+        "check": "Recent Activity",
+        "status": "OK",
+        "last24h": 0
+      }
+    ],
+    "critical": 0,
+    "warnings": 0,
+    "ok": 5
+  }
+]

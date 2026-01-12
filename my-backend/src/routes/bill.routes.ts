@@ -308,7 +308,7 @@ router.post('/:id/create-task', authMiddleware, async (req: AuthRequest, res: Re
     // Create PaymentRequest
   // Create minimal PaymentRequest with required decimal fields
   const totalAmount = (bill.parsedJson as any)?.totalAmount || 0;
-  const paymentRequest = await prisma.paymentRequest.create({
+  const paymentRequest = await prisma.payment_requests.create({
       data: {
     requestId: `PR-${Date.now()}`,
     clientName: bill.originalName.substring(0,200),
@@ -323,7 +323,7 @@ router.post('/:id/create-task', authMiddleware, async (req: AuthRequest, res: Re
     });
 
     // Create Expense linked to PaymentRequest
-  const expense = await prisma.expense.create({
+  const expense = await prisma.expenses.create({
       data: {
     requestId: `EXP-${Date.now()}`,
     paymentRequestId: paymentRequest.id,
@@ -335,7 +335,7 @@ router.post('/:id/create-task', authMiddleware, async (req: AuthRequest, res: Re
     });
 
     // Create Task
-  const task = await prisma.task.create({
+  const task = await prisma.workflow_tasks.create({
       data: {
         title,
         description: description || '',

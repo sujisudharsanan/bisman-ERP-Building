@@ -31,10 +31,10 @@ router.post('/super-admins', authMiddleware, async (req: Request, res: Response)
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'name, email, password required' });
     }
-    const existing = await prisma.superAdmin.findUnique({ where: { email } });
+    const existing = await prisma.super_admins.findUnique({ where: { email } });
     if (existing) return res.status(400).json({ error: 'SuperAdmin email already exists' });
     const hashed = await bcrypt.hash(password, 10);
-    const created = await prisma.superAdmin.create({
+    const created = await prisma.super_admins.create({
       data: {
         name,
         email,
@@ -65,7 +65,7 @@ router.get('/clients', authMiddleware, async (req: Request, res: Response) => {
     if (!isPlatformAdmin(user?.role)) {
       if (user?.super_admin_id) where.super_admin_id = user.super_admin_id;
     }
-    const clientsRaw = await prisma.client.findMany({ where, orderBy: { created_at: 'desc' } });
+    const clientsRaw = await prisma.clients.findMany({ where, orderBy: { created_at: 'desc' } });
     const clients = (clientsRaw as any[]).filter((c) => {
       if (!status) return true;
       const s1 = c.status || '';
@@ -141,7 +141,7 @@ router.get('/clients/:id', authMiddleware, async (req: Request, res: Response) =
     const user = (req as any).user;
     const { id } = req.params;
     const clientId = String(id);
-    const existing = await prisma.client.findUnique({ where: { id: clientId } });
+    const existing = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!existing) return res.status(404).json({ error: 'Client not found' });
     // Authorization: same as update rules
     const role = user?.role;
@@ -250,7 +250,7 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
         orConditions.push({ tax_id: { equals: normTax, mode: 'insensitive' } });
       }
       if (orConditions.length > 0) {
-        const rawDuplicates = await prisma.client.findMany({
+        const rawDuplicates = await prisma.clients.findMany({
           where: { OR: orConditions },
           take: 5,
           select: { id: true, legal_name: true, trade_name: true, tax_id: true, status: true }
@@ -290,7 +290,7 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
     if (!sid) {
       try {
         if ((role === 'SUPER_ADMIN' || isTenantAdmin(role)) && user?.email) {
-          const sa = await prisma.superAdmin.findUnique({ where: { email: user.email } });
+          const sa = await prisma.super_admins.findUnique({ where: { email: user.email } });
           if (sa?.id) sid = sa.id;
         }
         if (!sid && user?.email) {
@@ -307,9 +307,9 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
           if (u?.super_admin_id) sid = u.super_admin_id;
         }
         if (!sid) {
-          const count = await prisma.superAdmin.count();
+          const count = await prisma.super_admins.count();
           if (count === 1) {
-            const only = await prisma.superAdmin.findFirst();
+            const only = await prisma.super_admins.findFirst();
             if (only?.id) sid = only.id;
           }
         }
@@ -448,9 +448,9 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
 
     if (adminUser || ensurePermissions) {
       await prisma.$transaction(async (tx) => {
-        created = await tx.client.create({ data: clientData });
+        created = await tx.clients.create({ data: clientData });
         if (ensurePermissions) {
-          const modules = await tx.module.findMany({ where: { is_active: true } });
+          const modules = await tx.modules.findMany({ where: { is_active: true } });
           for (const m of modules) {
             await (tx as any).clientModulePermission.upsert({
               where: { client_id_module_id: { client_id: created.id, module_id: m.id } },
@@ -461,11 +461,11 @@ router.post('/clients', authMiddleware, async (req: Request, res: Response) => {
         }
       });
   } else {
-      created = await prisma.client.create({ data: clientData });
+      created = await prisma.clients.create({ data: clientData });
     }
 
     if (saveAsDraft && !adminUser) {
-      created = await prisma.client.update({
+      created = await prisma.clients.update({
         where: { id: created.id },
         data: {
           is_active: false,
@@ -521,7 +521,7 @@ router.patch('/clients/:id', authMiddleware, async (req: Request, res: Response)
     const user = (req as any).user;
     const { id } = req.params;
     const clientId = String(id);
-    const existing = await prisma.client.findUnique({ where: { id: clientId } });
+    const existing = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!existing) return res.status(404).json({ error: 'Client not found' });
     const role = user?.role;
     const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
@@ -574,7 +574,7 @@ router.patch('/clients/:id', authMiddleware, async (req: Request, res: Response)
       status: b.status ?? e0.status,
     };
 
-    const updated = await prisma.client.update({ where: { id: clientId }, data: { settings: { enterprise } as any } });
+    const updated = await prisma.clients.update({ where: { id: clientId }, data: { settings: { enterprise } as any } });
     res.json({ success: true, data: updated });
   } catch (e: any) {
     console.error('Update client error', e);
@@ -591,14 +591,14 @@ router.get('/clients/:id/permissions', authMiddleware, async (req: Request, res:
   const clientId = String(id);
     const ensure = String(req.query.ensure || '').toLowerCase() === 'true';
     // Access control: platform or tenant admin with matching client
-  const client = await prisma.client.findUnique({ where: { id: clientId } });
+  const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
     if (!isPlatformAdmin(user?.role) && user?.super_admin_id !== client.super_admin_id) {
       return res.status(403).json({ error: 'Forbidden' });
     }
     // Optionally ensure a permission row exists for every active module
     if (ensure) {
-      const modules = await prisma.module.findMany({ where: { is_active: true } });
+      const modules = await prisma.modules.findMany({ where: { is_active: true } });
       for (const m of modules) {
   await prismaAny.clientModulePermission.upsert({
           where: { client_id_module_id: { client_id: clientId, module_id: m.id } },
@@ -626,7 +626,7 @@ router.put('/clients/:id/permissions/:moduleId', authMiddleware, async (req: Req
     const { id, moduleId } = req.params;
   const clientId = String(id);
     const modId = Number(moduleId);
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
     if (!isTenantAdmin(user?.role) || (!isPlatformAdmin(user?.role) && user?.super_admin_id !== client.super_admin_id)) {
       return res.status(403).json({ error: 'Forbidden' });
@@ -652,7 +652,7 @@ router.post('/clients/:id/permissions/bulk', authMiddleware, async (req: Request
     const user = (req as any).user;
     const { id } = req.params;
   const clientId = String(id);
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
     if (!isTenantAdmin(user?.role) || (!isPlatformAdmin(user?.role) && user?.super_admin_id !== client.super_admin_id)) {
       return res.status(403).json({ error: 'Forbidden' });
@@ -700,13 +700,13 @@ router.patch('/clients/:id/active', authMiddleware, async (req: Request, res: Re
     if (typeof is_active !== 'boolean') {
       return res.status(400).json({ error: 'is_active boolean required' });
     }
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
     // Only platform admin or tenant admin for the owning super_admin can change status
     if (!isTenantAdmin(user?.role) || (!isPlatformAdmin(user?.role) && user?.super_admin_id !== client.super_admin_id)) {
       return res.status(403).json({ error: 'Forbidden' });
     }
-    const updated = await prisma.client.update({ where: { id: clientId }, data: { is_active } });
+    const updated = await prisma.clients.update({ where: { id: clientId }, data: { is_active } });
     res.json({ success: true, data: updated });
   } catch (e: any) {
     console.error('Toggle client active error', e);
@@ -720,7 +720,7 @@ router.get('/clients/:id/usage/daily', authMiddleware, async (req: Request, res:
     const user = (req as any).user;
   const { id } = req.params;
   const clientId = String(id);
-  const client = await prisma.client.findUnique({ where: { id: clientId } });
+  const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
     if (!isPlatformAdmin(user?.role) && user?.super_admin_id !== client.super_admin_id) {
       return res.status(403).json({ error: 'Forbidden' });
@@ -741,7 +741,7 @@ router.post('/clients/:id/documents', authMiddleware, async (req: Request, res: 
     const user = (req as any).user;
     const { id } = req.params;
     const clientId = String(id);
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
     const role = user?.role;
     const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
@@ -767,7 +767,7 @@ router.post('/clients/:id/documents', authMiddleware, async (req: Request, res: 
     };
     docs.push(meta);
     enterprise.documents = docs;
-    await prisma.client.update({ where: { id: clientId }, data: { settings: { enterprise } as any } });
+    await prisma.clients.update({ where: { id: clientId }, data: { settings: { enterprise } as any } });
     res.status(201).json({ success: true, data: meta, count: docs.length });
   } catch (e: any) {
     console.error('Add client document error', e);
@@ -784,9 +784,9 @@ router.post('/public/clients/register', async (req: Request, res: Response) => {
     // Resolve a default super_admin_id: choose single SuperAdmin if only one exists
     let sid: number | undefined;
     try {
-      const count = await prisma.superAdmin.count();
+      const count = await prisma.super_admins.count();
       if (count === 1) {
-        const only = await prisma.superAdmin.findFirst();
+        const only = await prisma.super_admins.findFirst();
         if (only?.id) sid = only.id;
       }
     } catch { /* ignore */ }
@@ -802,7 +802,7 @@ router.post('/public/clients/register', async (req: Request, res: Response) => {
   let publicCodeData: { public_code: string; client_number: bigint } | null = null;
   try { publicCodeData = await generatePublicCode('trial'); } catch (e) { console.warn('Public code gen failed (trial)', (e as any)?.message); }
   if (publicCodeData) enterprise.meta = { ...(enterprise.meta || {}), public_code: publicCodeData.public_code, client_number: publicCodeData.client_number };
-    const created = await prisma.client.create({
+    const created = await prisma.clients.create({
       data: {
         name: legal_name || trade_name,
         productType: 'BUSINESS_ERP',
@@ -827,7 +827,7 @@ router.post('/clients/:id/promote', authMiddleware, async (req: Request, res: Re
     const user = (req as any).user;
     const { id } = req.params;
     const clientId = String(id);
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
     const role = user?.role;
     const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
@@ -853,7 +853,7 @@ router.post('/clients/:id/promote', authMiddleware, async (req: Request, res: Re
       try { publicCodeData = await generatePublicCode('paid'); } catch (e) { console.warn('Public code gen failed (promote)', (e as any)?.message); }
       if (publicCodeData) enterprise.meta = { ...(enterprise.meta || {}), public_code: publicCodeData.public_code, client_number: publicCodeData.client_number };
     }
-    const updated = await prisma.client.update({
+    const updated = await prisma.clients.update({
       where: { id: clientId },
       data: { is_active: true, settings: { enterprise } as any },
     });
@@ -869,7 +869,7 @@ router.post('/clients/:id/onboarding/activity', authMiddleware, async (req: Requ
   try {
     const user = (req as any).user;
     const { id } = req.params; const clientId = String(id);
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
     const role = user?.role;
     const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
@@ -895,7 +895,7 @@ router.patch('/clients/:id/onboarding/draft', authMiddleware, async (req: Reques
   try {
     const user = (req as any).user;
     const { id } = req.params; const clientId = String(id);
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
     const role = user?.role;
     const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
@@ -911,7 +911,7 @@ router.patch('/clients/:id/onboarding/draft', authMiddleware, async (req: Reques
     if (state?.identification?.trade_name) patch.trade_name = state.identification.trade_name;
     if (state?.identification?.tax_id) patch.tax_id = state.identification.tax_id;
     patch.onboarding_status = 'in_progress';
-  const updated = await prisma.client.update({ where: { id: clientId }, data: patch });
+  const updated = await prisma.clients.update({ where: { id: clientId }, data: patch });
     // log activity
   try { await (prismaAny as any).clientOnboardingActivity.create({ data: { client_id: clientId, step_key: step_key || 'unknown', action: 'autosaved', meta: { fields: Object.keys(patch) }, actor_email: user?.email || undefined } }); } catch { /* ignore */ }
   res.json({ success: true, data: { id: updated.id } });
@@ -929,7 +929,7 @@ router.delete('/clients/:id', authMiddleware, async (req: Request, res: Response
     const { id } = req.params;
     const clientId = String(id);
     const hard = String(req.query.hard || '').toLowerCase() === 'true';
-    const existing: any = await prisma.client.findUnique({ where: { id: clientId } });
+    const existing: any = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!existing) return res.status(404).json({ error: 'Client not found' });
     const role = user?.role;
     const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN';
@@ -939,12 +939,12 @@ router.delete('/clients/:id', authMiddleware, async (req: Request, res: Response
       return res.status(403).json({ error: 'Forbidden' });
     }
     if (hard) {
-      await prisma.client.delete({ where: { id: clientId } });
+      await prisma.clients.delete({ where: { id: clientId } });
       return res.json({ success: true, hard: true, id: clientId });
     }
     const settings: any = existing.settings || {}; const enterprise: any = settings.enterprise || settings;
     enterprise.meta = { ...(enterprise.meta || {}), deleted_at: new Date().toISOString() };
-    await prisma.client.update({ where: { id: clientId }, data: { is_active: false, settings: { enterprise } as any } });
+    await prisma.clients.update({ where: { id: clientId }, data: { is_active: false, settings: { enterprise } as any } });
     res.json({ success: true, hard: false, id: clientId, deleted_at: enterprise.meta.deleted_at });
   } catch (e: any) {
     console.error('Delete client error', e);

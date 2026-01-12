@@ -135,7 +135,7 @@ async function checkEmailExists(email) {
   const prisma = getPrisma();
   
   // Check in Users table
-  const existingUser = await prisma.user.findFirst({
+  const existingUser = await prisma.users_enhanced.findFirst({
     where: { email: { equals: email, mode: 'insensitive' } },
   });
 
@@ -536,7 +536,7 @@ async function checkSubscriptionLimits(clientId) {
   }
 
   // Get current usage
-  const userCount = await prisma.user.count({
+  const userCount = await prisma.users_enhanced.count({
     where: { clientId: clientId },
   });
 

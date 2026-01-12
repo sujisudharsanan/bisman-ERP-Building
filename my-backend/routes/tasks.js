@@ -111,7 +111,7 @@ router.get(
       let userId = rawUserId;
       if (typeof rawUserId === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(rawUserId)) {
         // Look up legacy_id from users_enhanced table
-        const userLookup = await prisma.user.findUnique({
+        const userLookup = await prisma.users_enhanced.findUnique({
           where: { id: rawUserId },
           select: { legacy_id: true }
         });

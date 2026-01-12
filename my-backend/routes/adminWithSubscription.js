@@ -273,7 +273,7 @@ router.get('/organizations', ...superAdminOnly, async (req, res) => {
 
     // Get user counts separately (since User is not directly related)
     const orgIds = organizations.map(o => o.id);
-    const userCounts = await prisma.user.groupBy({
+    const userCounts = await prisma.users_enhanced.groupBy({
       by: ['clientId'],
       where: { clientId: { in: orgIds } },
       _count: true,
@@ -352,7 +352,7 @@ router.get('/organizations/:orgId', ...superAdminOnly, async (req, res) => {
     }
 
     // Get admin users
-    const adminUsers = await prisma.user.findMany({
+    const adminUsers = await prisma.users_enhanced.findMany({
       where: { 
         clientId: orgId,
         role: { in: ['ADMIN', 'CLIENT_ADMIN', 'admin'] },

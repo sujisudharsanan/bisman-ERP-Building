@@ -53,7 +53,7 @@ router.post('/:id/payment', authMiddleware, async (req: Request, res: Response) 
       });
     }
 
-    const task = await prisma.task.findUnique({
+    const task = await prisma.workflow_tasks.findUnique({
       where: { id },
       include: {
         paymentRequest: true,
@@ -82,7 +82,7 @@ router.post('/:id/payment', authMiddleware, async (req: Request, res: Response) 
     // Execute payment recording in transaction
     const result = await prisma.$transaction(async (tx) => {
       // 1. Create payment record
-      const paymentRecord = await tx.paymentRecord.create({
+      const paymentRecord = await tx.payment_records.create({
         data: {
           taskId: task.id,
           paymentRequestId: task.paymentRequestId,
@@ -105,7 +105,7 @@ router.post('/:id/payment', authMiddleware, async (req: Request, res: Response) 
       if (paymentGateway) paymentDetails += `\nGateway: ${paymentGateway}`;
       if (details?.bankName) paymentDetails += `\nBank: ${details.bankName}`;
 
-      await tx.message.create({
+      await tx.task_messages.create({
         data: {
           taskId: task.id,
           senderId: userId,
@@ -123,7 +123,7 @@ router.post('/:id/payment', authMiddleware, async (req: Request, res: Response) 
       });
 
       // 3. Update task status to COMPLETED
-      const updatedTask = await tx.task.update({
+      const updatedTask = await tx.workflow_tasks.update({
         where: { id: task.id },
         data: {
           status: 'COMPLETED',
@@ -131,7 +131,7 @@ router.post('/:id/payment', authMiddleware, async (req: Request, res: Response) 
       });
 
       // 4. Update expense status to COMPLETED
-      await tx.expense.update({
+      await tx.expenses.update({
         where: { id: task.expenseId },
         data: {
           status: 'COMPLETED',
@@ -139,7 +139,7 @@ router.post('/:id/payment', authMiddleware, async (req: Request, res: Response) 
       });
 
       // 5. Update payment request status to PAID
-      await tx.paymentRequest.update({
+      await tx.payment_requests.update({
         where: { id: task.paymentRequestId },
         data: {
           status: 'PAID',
@@ -193,7 +193,7 @@ router.get('/public/:token', async (req: Request, res: Response) => {
   try {
     const { token } = req.params;
 
-    const paymentRequest = await prisma.paymentRequest.findUnique({
+    const paymentRequest = await prisma.payment_requests.findUnique({
       where: { paymentToken: token },
       include: {
         lineItems: {
@@ -257,7 +257,7 @@ router.post('/initiate', async (req: Request, res: Response) => {
   try {
     const { token, paymentGateway } = req.body; // 'razorpay' or 'stripe'
 
-    const paymentRequest = await prisma.paymentRequest.findUnique({
+    const paymentRequest = await prisma.payment_requests.findUnique({
       where: { paymentToken: token },
     }) as any;
 
@@ -471,7 +471,7 @@ async function handleSuccessfulPayment({
   amount: number;
   details: any;
 }) {
-  const paymentRequest = await prisma.paymentRequest.findUnique({
+  const paymentRequest = await prisma.payment_requests.findUnique({
     where: { id: paymentRequestId },
     include: { task: true },
   });
@@ -483,7 +483,7 @@ async function handleSuccessfulPayment({
   // Record payment in transaction
   await prisma.$transaction(async (tx) => {
     // Create payment record
-    await tx.paymentRecord.create({
+    await tx.payment_records.create({
       data: {
         taskId: paymentRequest.task!.id,
         paymentRequestId: paymentRequest.id,
@@ -499,7 +499,7 @@ async function handleSuccessfulPayment({
     });
 
     // Create payment message
-    await tx.message.create({
+    await tx.task_messages.create({
       data: {
         taskId: paymentRequest.task!.id,
         senderId: paymentRequest.createdById,
@@ -517,17 +517,17 @@ async function handleSuccessfulPayment({
     });
 
     // Update statuses
-    await tx.task.update({
+    await tx.workflow_tasks.update({
       where: { id: paymentRequest.task!.id },
       data: { status: 'COMPLETED' },
     });
 
-    await tx.expense.update({
+    await tx.expenses.update({
       where: { id: paymentRequest.task!.expenseId },
       data: { status: 'COMPLETED' },
     });
 
-    await tx.paymentRequest.update({
+    await tx.payment_requests.update({
       where: { id: paymentRequest.id },
       data: { status: 'PAID' },
     });

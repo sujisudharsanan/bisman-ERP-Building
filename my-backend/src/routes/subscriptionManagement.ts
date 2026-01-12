@@ -50,7 +50,7 @@ router.get('/plans', authMiddleware, requireSuperAdmin, async (req: Request, res
 
     const where = active_only === 'true' ? { is_active: true } : {};
 
-    const plans = await prisma.subscriptionPlan.findMany({
+    const plans = await prisma.subscription_plans.findMany({
       where,
       orderBy: { sort_order: 'asc' },
       include: {
@@ -84,7 +84,7 @@ router.get('/plans/:id', authMiddleware, requireSuperAdmin, async (req: Request,
   try {
     const { id } = req.params;
 
-    const plan = await prisma.subscriptionPlan.findUnique({
+    const plan = await prisma.subscription_plans.findUnique({
       where: { id: parseInt(id) },
       include: {
         subscriptions: {
@@ -163,7 +163,7 @@ router.post('/plans', authMiddleware, requireSuperAdmin, async (req: Request, re
     }
 
     // Check if plan_code already exists
-    const existing = await prisma.subscriptionPlan.findUnique({
+    const existing = await prisma.subscription_plans.findUnique({
       where: { plan_code }
     });
 
@@ -174,7 +174,7 @@ router.post('/plans', authMiddleware, requireSuperAdmin, async (req: Request, re
       });
     }
 
-    const plan = await prisma.subscriptionPlan.create({
+    const plan = await prisma.subscription_plans.create({
       data: {
         plan_code,
         name,
@@ -200,7 +200,7 @@ router.post('/plans', authMiddleware, requireSuperAdmin, async (req: Request, re
     });
 
     // Audit log
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
         user_id: (req as any).user?.id || 0,
         action: 'CREATE_SUBSCRIPTION_PLAN',
@@ -256,7 +256,7 @@ router.put('/plans/:id', authMiddleware, requireSuperAdmin, async (req: Request,
       cta_action
     } = req.body;
 
-    const existing = await prisma.subscriptionPlan.findUnique({
+    const existing = await prisma.subscription_plans.findUnique({
       where: { id: parseInt(id) }
     });
 
@@ -284,13 +284,13 @@ router.put('/plans/:id', authMiddleware, requireSuperAdmin, async (req: Request,
     if (cta_text !== undefined) updateData.cta_text = cta_text;
     if (cta_action !== undefined) updateData.cta_action = cta_action;
 
-    const plan = await prisma.subscriptionPlan.update({
+    const plan = await prisma.subscription_plans.update({
       where: { id: parseInt(id) },
       data: updateData
     });
 
     // Audit log
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
         user_id: (req as any).user?.id || 0,
         action: 'UPDATE_SUBSCRIPTION_PLAN',
@@ -323,7 +323,7 @@ router.delete('/plans/:id', authMiddleware, requireSuperAdmin, async (req: Reque
   try {
     const { id } = req.params;
 
-    const existing = await prisma.subscriptionPlan.findUnique({
+    const existing = await prisma.subscription_plans.findUnique({
       where: { id: parseInt(id) },
       include: {
         _count: { select: { subscriptions: true } }
@@ -342,12 +342,12 @@ router.delete('/plans/:id', authMiddleware, requireSuperAdmin, async (req: Reque
       });
     }
 
-    await prisma.subscriptionPlan.delete({
+    await prisma.subscription_plans.delete({
       where: { id: parseInt(id) }
     });
 
     // Audit log
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
         user_id: (req as any).user?.id || 0,
         action: 'DELETE_SUBSCRIPTION_PLAN',
@@ -380,7 +380,7 @@ router.delete('/plans/:id', authMiddleware, requireSuperAdmin, async (req: Reque
  */
 router.get('/clients', authMiddleware, requireSuperAdmin, async (req: Request, res: Response) => {
   try {
-    const clients = await prisma.client.findMany({
+    const clients = await prisma.clients.findMany({
       where: { is_active: true },
       select: {
         id: true,
@@ -451,7 +451,7 @@ router.put('/clients/:id', authMiddleware, requireSuperAdmin, async (req: Reques
     } = req.body;
 
     // Verify client exists
-    const client = await prisma.client.findUnique({
+    const client = await prisma.clients.findUnique({
       where: { id },
       include: { subscription: true }
     });
@@ -462,7 +462,7 @@ router.put('/clients/:id', authMiddleware, requireSuperAdmin, async (req: Reques
 
     // Verify plan exists
     if (plan_id) {
-      const plan = await prisma.subscriptionPlan.findUnique({
+      const plan = await prisma.subscription_plans.findUnique({
         where: { id: plan_id }
       });
 
@@ -484,14 +484,14 @@ router.put('/clients/:id', authMiddleware, requireSuperAdmin, async (req: Reques
         updateData.state_changed_at = new Date();
       }
 
-      subscription = await prisma.clientSubscription.update({
+      subscription = await prisma.client_subscriptions.update({
         where: { client_id: id },
         data: updateData,
         include: { plan: true }
       });
     } else {
       // Create new subscription
-      subscription = await prisma.clientSubscription.create({
+      subscription = await prisma.client_subscriptions.create({
         data: {
           client_id: id,
           plan_id: plan_id || 1, // Default to first plan if not specified
@@ -502,7 +502,7 @@ router.put('/clients/:id', authMiddleware, requireSuperAdmin, async (req: Reques
     }
 
     // Audit log
-    await prisma.auditLog.create({
+    await prisma.audit_logs.create({
       data: {
         user_id: (req as any).user?.id || 0,
         action: 'UPDATE_CLIENT_SUBSCRIPTION',
@@ -539,7 +539,7 @@ router.get('/clients/:id/usage', authMiddleware, requireSuperAdmin, async (req: 
   try {
     const { id } = req.params;
 
-    const client = await prisma.client.findUnique({
+    const client = await prisma.clients.findUnique({
       where: { id },
       include: {
         subscription: {

@@ -36,7 +36,7 @@ router.get('/roles', requireSuperAdmin, async (req, res) => {
 			const r = await prisma.$queryRaw`SELECT id, name, created_at, updated_at FROM roles ORDER BY name ASC LIMIT 200`
 			return res.json({ success: true, data: r })
 		} catch {
-			const roles = await prisma.user.findMany({
+			const roles = await prisma.users_enhanced.findMany({
 				select: { role: true },
 				distinct: ['role']
 			})

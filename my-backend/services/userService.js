@@ -137,7 +137,7 @@ async function enforceSubscriptionLimits(tenantId) {
       (SELECT COUNT(*) FROM users_enhanced WHERE tenant_id = ${tenantId}::uuid AND is_active = true) as current_count,
       (SELECT sp.max_users FROM subscription_plans sp 
         JOIN client_subscriptions cs ON sp.id = cs.plan_id 
-        WHERE cs.client_id = ${tenantId}::uuid AND cs.status = 'active'
+        WHERE cs.client_id = ${tenantId}::uuid AND cs.state = 'ACTIVE'
         LIMIT 1) as max_users
   `;
   
@@ -160,24 +160,30 @@ async function enforceSubscriptionLimits(tenantId) {
 // ============================================================================
 
 /**
- * Enforce business_level hierarchy rules
+ * Enforce business_level and system_scope hierarchy rules
  * - Non-Enterprise Admins cannot create users with higher business_level
+ * - Users cannot escalate scope (TENANT admin can't create CROSS_TENANT user)
  * - Returns the safe business_level to use
+ * 
+ * @param {string} adminUserId - UUID of the admin user
+ * @param {number} requestedLevel - Requested business_level (1-10)
+ * @param {boolean} isEnterpriseAdmin - Whether admin is enterprise admin
+ * @param {string} requestedScope - Requested system_scope (optional)
  */
-async function enforceHierarchy(adminUserId, requestedLevel, isEnterpriseAdmin = false) {
+async function enforceHierarchy(adminUserId, requestedLevel, isEnterpriseAdmin = false, requestedScope = null) {
   if (isEnterpriseAdmin) {
-    // Enterprise Admins can create any level
-    return validateBusinessLevel(requestedLevel || BUSINESS_LEVEL.DEFAULT);
+    // Enterprise Admins can create any level and scope
+    return { level: validateBusinessLevel(requestedLevel || BUSINESS_LEVEL.DEFAULT), scope: requestedScope || 'BUSINESS' };
   }
   
   if (!adminUserId) {
-    // System operations default to level 1
-    return BUSINESS_LEVEL.DEFAULT;
+    // System operations default to level 1, scope BUSINESS
+    return { level: BUSINESS_LEVEL.DEFAULT, scope: 'BUSINESS' };
   }
   
   const adminUser = await prisma.users_enhanced.findUnique({
     where: { id: adminUserId },
-    select: { business_level: true, role: true },
+    select: { business_level: true, role: true, system_scope: true },
   });
   
   if (!adminUser) {
@@ -186,14 +192,26 @@ async function enforceHierarchy(adminUserId, requestedLevel, isEnterpriseAdmin =
   }
   
   const adminLevel = adminUser.business_level || BUSINESS_LEVEL.DEFAULT;
+  const adminScope = adminUser.system_scope || 'BUSINESS';
   const requested = validateBusinessLevel(requestedLevel || BUSINESS_LEVEL.DEFAULT);
+  const targetScope = requestedScope || 'BUSINESS';
   
+  // P0-3 FIX: Scope escalation check
+  // TENANT admin cannot create CROSS_TENANT users
+  // BUSINESS users cannot create TENANT or CROSS_TENANT users
+  const scopeOrder = { 'BUSINESS': 1, 'TENANT': 2, 'CROSS_TENANT': 3 };
+  if (scopeOrder[targetScope] > scopeOrder[adminScope]) {
+    console.warn(`[SECURITY] UserService: Scope escalation blocked - ${adminScope} tried to create ${targetScope} user`);
+    throw new Error(`SCOPE_ESCALATION_BLOCKED: Cannot create user with system_scope (${targetScope}) higher than your own (${adminScope})`);
+  }
+  
+  // Business level hierarchy check
   if (requested > adminLevel) {
     console.warn(`[SECURITY] UserService: Hierarchy violation - L${adminLevel} admin tried to create L${requested} user`);
     throw new Error(`HIERARCHY_VIOLATION: Cannot create user with business_level (L${requested}) higher than your own (L${adminLevel})`);
   }
   
-  return requested;
+  return { level: requested, scope: targetScope };
 }
 
 // ============================================================================
@@ -337,7 +355,10 @@ const UserService = {
       }
 
       // ========== HIERARCHY ENFORCEMENT ==========
-      const safeBusinessLevel = await enforceHierarchy(adminUserId, business_level, isEnterpriseAdmin);
+      // P0-3: Now also enforces scope escalation prevention
+      const hierarchyResult = await enforceHierarchy(adminUserId, business_level, isEnterpriseAdmin, system_scope);
+      const safeBusinessLevel = hierarchyResult.level;
+      const safeSystemScope = hierarchyResult.scope;
 
       // ========== SUBSCRIPTION ENFORCEMENT ==========
       if (!skipSubscriptionCheck && tenant_id) {
@@ -368,14 +389,20 @@ const UserService = {
       // ========== CREATE USER ==========
       const hashedPassword = await bcrypt.hash(password, 10);
 
+      // Generate legacy_id from sequence for backward compatibility with RBAC junction tables
+      const legacyIdResult = await prisma.$queryRaw`SELECT nextval('users_enhanced_legacy_id_seq') as legacy_id`;
+      const generatedLegacyId = Number(legacyIdResult[0]?.legacy_id);
+
       const newUser = await prisma.users_enhanced.create({
         data: {
           id: newUserId,
+          legacy_id: generatedLegacyId, // Set legacy_id for RBAC role assignment
           username,
           email: email.toLowerCase(),
           password_hash: hashedPassword,
           role, // String role for backwards compatibility
           business_level: safeBusinessLevel,
+          system_scope: safeSystemScope, // P0-3: Use validated scope
           reports_to: reports_to || null,
           tenant_id: tenant_id || null,
           super_admin_id: super_admin_id || null,
@@ -523,8 +550,16 @@ const UserService = {
 
       // Business level update (requires hierarchy check)
       if (updates.business_level !== undefined && updates.business_level !== existingUser.business_level) {
-        const newLevel = await enforceHierarchy(adminUserId, updates.business_level, isEnterpriseAdmin);
-        updateData.business_level = newLevel;
+        const hierarchyResult = await enforceHierarchy(adminUserId, updates.business_level, isEnterpriseAdmin, updates.system_scope);
+        updateData.business_level = hierarchyResult.level;
+        // Also update scope if it was provided
+        if (updates.system_scope !== undefined) {
+          updateData.system_scope = hierarchyResult.scope;
+        }
+      } else if (updates.system_scope !== undefined && updates.system_scope !== existingUser.system_scope) {
+        // Scope-only update - still need to check for escalation
+        const hierarchyResult = await enforceHierarchy(adminUserId, existingUser.business_level, isEnterpriseAdmin, updates.system_scope);
+        updateData.system_scope = hierarchyResult.scope;
       }
 
       // Reports_to update (manager change)

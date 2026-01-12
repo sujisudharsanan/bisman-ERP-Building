@@ -135,7 +135,7 @@ class PrivilegeService {
             let userCount = 0;
             
             try {
-              userCount = await this.prisma.user.count({
+              userCount = await this.prisma.users_enhanced.count({
                 where: { role: role.name }
               });
               
@@ -148,7 +148,7 @@ class PrivilegeService {
                   normalized.replace(/_/g, ' ').toLowerCase(),
                 ];
                 
-                userCount = await this.prisma.user.count({
+                userCount = await this.prisma.users_enhanced.count({
                   where: { role: { in: roleVariations } }
                 });
               }
@@ -250,7 +250,7 @@ class PrivilegeService {
           roleVariations = [...new Set(roleVariations)];
         }
         
-        const users = await this.prisma.user.findMany({
+        const users = await this.prisma.users_enhanced.findMany({
           where: roleVariations.length > 0 ? { role: { in: roleVariations } } : {},
           orderBy: [{ username: 'asc' }]
         });

@@ -450,7 +450,7 @@ router.post('/activate', authMiddleware, upload.single('logo'), async (req, res)
 
     // Ensure user has ADMIN role
     try {
-      await prisma.user.update({
+      await prisma.users_enhanced.update({
         where: { id: user.id },
         data: {
           role: 'ADMIN',

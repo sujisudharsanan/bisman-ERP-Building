@@ -248,39 +248,37 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
     }
 
     // 3. Try Regular User (if DB available)
-    // First try users_enhanced (Prisma User model), then legacy users table for ADMIN users
+    // CANONICAL: Only query users_enhanced table (see docs/CANONICAL_USER_RESOLUTION.md)
+    // Legacy fallback REMOVED as of 2026-01-12 - see scripts/decommission/STEP5_AUTH_REFACTOR.md
     let regularUser = null;
     if (prisma) {
       try {
+        // Use findFirst since email is not unique in multi-tenant schema (unique is tenant_id + email)
         regularUser = await withTimeout(
-          prisma.user.findUnique({ where: { email } }),
+          prisma.users_enhanced.findFirst({ where: { email } }),
           3000 // 3 second timeout
         );
-      } catch (e) {
-        console.warn('[auth.routes] regularUser lookup failed/timeout, continuing:', e.message);
-      }
-      
-      // If not found in users_enhanced, try the legacy users table (for ADMIN users with integer IDs)
-      if (!regularUser) {
-        try {
-          const legacyResult = await withTimeout(
-            prisma.$queryRaw`
-              SELECT id, username, email, password_hash, role, is_active, 
-                     "productType", tenant_id, super_admin_id, profile_pic_url
-              FROM users 
-              WHERE email = ${email}
-              LIMIT 1
-            `,
-            3000
-          );
-          if (legacyResult && legacyResult[0]) {
-            regularUser = legacyResult[0];
-            regularUser.isLegacyUser = true;
-            console.log('[auth.routes] Found user in legacy users table:', email);
-          }
-        } catch (legacyErr) {
-          console.warn('[auth.routes] Legacy users lookup failed:', legacyErr.message);
+        
+        if (regularUser) {
+          console.log('[auth.routes] Found user in users_enhanced:', email);
+        } else {
+          // IMPORTANT: No fallback to legacy table!
+          // If user not found, log structured warning for debugging
+          console.warn('[auth.routes] User not found in users_enhanced:', email);
         }
+      } catch (e) {
+        console.error('[auth.routes] CRITICAL: users_enhanced lookup failed:', e.message);
+        // Fail closed - do not try legacy table
+        auditService.logLoginAttempt(false, email, req.ip, {
+          error: 'database_error',
+          message: e.message
+        }).catch(() => {});
+        
+        return res.status(503).json({
+          success: false,
+          message: 'Authentication service temporarily unavailable. Please try again.',
+          code: 'AUTH_DB_ERROR'
+        });
       }
     }
 
@@ -305,8 +303,8 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
         // if the lookup used a non-unique field after schema changes.
         let safeUserId = regularUser.id || null;
         try {
-          if (!safeUserId && prisma?.user) {
-            const idLookup = await prisma.user.findFirst({
+          if (!safeUserId && prisma?.users_enhanced) {
+            const idLookup = await prisma.users_enhanced.findFirst({
               where: { email },
               select: { id: true }
             });
@@ -633,15 +631,15 @@ router.get('/me/permissions', async (req, res) => {
     }
     
     // Handle regular users
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users_enhanced.findFirst({
       where: { id: decoded.id },
       select: {
         id: true,
         email: true,
         username: true,
         role: true,
-        assignedModules: true,
-        pagePermissions: true
+        assigned_modules: true,
+        page_permissions: true
       }
     });
 
@@ -749,18 +747,18 @@ router.get('/me', async (req, res) => {
         user.userType = 'SUPER_ADMIN';
       }
     } else {
-      user = await prisma.user.findUnique({
+      user = await prisma.users_enhanced.findFirst({
         where: { id: decoded.id },
         select: {
           id: true,
           email: true,
           username: true,
           role: true,
-          productType: true,
+          product_type: true,
           tenant_id: true,
           super_admin_id: true,
-          assignedModules: true,
-          pagePermissions: true,
+          assigned_modules: true,
+          page_permissions: true,
           profile_pic_url: true
         }
       });

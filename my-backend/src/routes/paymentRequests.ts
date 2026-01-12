@@ -15,11 +15,9 @@ import { Router, Request, Response } from 'express';
 import { PrismaClient } from '@prisma/client';
 import {
   generatePaymentRequestId,
-  generatePaymentToken,
   calculateLineTotal,
   calculateTotals,
   createActivityLog,
-  isValidStatusTransition,
 } from '../utils/paymentRequestUtils';
 import { authMiddleware } from '../../middleware/auth';
 
@@ -73,7 +71,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
 
     // Generate unique request ID
     const today = new Date().toISOString().split('T')[0];
-    const countToday = await prisma.paymentRequest.count({
+    const countToday = await prisma.payment_requests.count({
       where: {
         requestId: {
           contains: today,
@@ -83,17 +81,18 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
     const requestId = generatePaymentRequestId(countToday + 1);
 
     // Create payment request with line items
-    const paymentRequest = await prisma.paymentRequest.create({
+    const paymentRequest = await prisma.payment_requests.create({
       data: {
+        id: requestId, // Payment request ID is the same as requestId
         requestId,
-        clientId,
+        clientId: clientId || null, // Ensure proper typing
         clientName,
-        clientEmail,
-        clientPhone,
-        description,
-        notes,
+        clientEmail: clientEmail || null,
+        clientPhone: clientPhone || null,
+        description: description || null,
+        notes: notes || null,
         dueDate: dueDate ? new Date(dueDate) : null,
-        invoiceNumber,
+        invoiceNumber: invoiceNumber || null,
         subtotal: totals.subtotal,
         taxAmount: totals.taxAmount,
         discountAmount: totals.discountAmount,
@@ -101,7 +100,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
         attachments: attachments.length > 0 ? JSON.stringify(attachments) : null,
         status: 'DRAFT',
         createdById: userId,
-        lineItems: {
+        payment_request_line_items: {
           create: processedLineItems.map((item: any, index: number) => ({
             description: item.description,
             quantity: Number(item.quantity),
@@ -115,14 +114,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
         },
       },
       include: {
-        lineItems: true,
-        createdBy: {
-          select: {
-            id: true,
-            username: true,
-            email: true,
-          },
-        },
+        payment_request_line_items: true,
       },
     });
 
@@ -187,7 +179,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
     const skip = (Number(page) - 1) * Number(limit);
 
     const [paymentRequests, total] = await Promise.all([
-      prisma.paymentRequest.findMany({
+      prisma.payment_requests.findMany({
         where,
         skip,
         take: Number(limit),
@@ -195,29 +187,14 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
           [sortBy as string]: sortOrder,
         },
         include: {
-          lineItems: {
+          payment_request_line_items: {
             orderBy: {
               sortOrder: 'asc',
             },
           },
-          createdBy: {
-            select: {
-              id: true,
-              username: true,
-              email: true,
-            },
-          },
-          task: {
-            select: {
-              id: true,
-              status: true,
-              currentLevel: true,
-              assigneeId: true,
-            },
-          },
         },
       }),
-      prisma.paymentRequest.count({ where }),
+      prisma.payment_requests.count({ where }),
     ]);
 
     res.json({
@@ -247,68 +224,15 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
   try {
     const { id } = req.params;
 
-    const paymentRequest = await prisma.paymentRequest.findUnique({
+    const paymentRequest = await prisma.payment_requests.findUnique({
       where: { id },
       include: {
-        lineItems: {
+        payment_request_line_items: {
           orderBy: {
             sortOrder: 'asc',
           },
         },
-        createdBy: {
-          select: {
-            id: true,
-            username: true,
-            email: true,
-          },
-        },
-        task: {
-          include: {
-            approvals: {
-              include: {
-                approver: {
-                  select: {
-                    id: true,
-                    username: true,
-                    email: true,
-                  },
-                },
-              },
-              orderBy: {
-                createdAt: 'asc',
-              },
-            },
-            messages: {
-              include: {
-                sender: {
-                  select: {
-                    id: true,
-                    username: true,
-                  },
-                },
-              },
-              orderBy: {
-                createdAt: 'asc',
-              },
-            },
-            assignee: {
-              select: {
-                id: true,
-                username: true,
-                email: true,
-              },
-            },
-          },
-        },
-        activityLogs: {
-          include: {
-            user: {
-              select: {
-                id: true,
-                username: true,
-              },
-            },
-          },
+        payment_activity_logs: {
           orderBy: {
             createdAt: 'desc',
           },
@@ -355,9 +279,9 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
     } = req.body;
 
     // Check if payment request exists and is in DRAFT
-    const existingRequest = await prisma.paymentRequest.findUnique({
+    const existingRequest = await prisma.payment_requests.findUnique({
       where: { id },
-      include: { lineItems: true },
+      include: { payment_request_line_items: true },
     });
 
     if (!existingRequest) {
@@ -407,13 +331,13 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
     const updatedRequest = await prisma.$transaction(async (tx) => {
       // Delete existing line items if new ones provided
       if (lineItems && lineItems.length > 0) {
-        await tx.paymentRequestLineItem.deleteMany({
+        await tx.payment_request_line_items.deleteMany({
           where: { paymentRequestId: id },
         });
       }
 
       // Update payment request
-      return tx.paymentRequest.update({
+      return tx.payment_requests.update({
         where: { id },
         data: {
           ...(clientId !== undefined && { clientId }),
@@ -433,7 +357,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
           totalAmount: totals.totalAmount,
           ...(lineItems &&
             lineItems.length > 0 && {
-              lineItems: {
+              payment_request_line_items: {
                 create: lineItems.map((item: any, index: number) => ({
                   description: item.description,
                   quantity: Number(item.quantity),
@@ -453,7 +377,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
             }),
         },
         include: {
-          lineItems: {
+          payment_request_line_items: {
             orderBy: {
               sortOrder: 'asc',
             },
@@ -496,7 +420,7 @@ router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
     const userId = (req as any).user?.id;
     const { id } = req.params;
 
-    const paymentRequest = await prisma.paymentRequest.findUnique({
+    const paymentRequest = await prisma.payment_requests.findUnique({
       where: { id },
     });
 
@@ -516,7 +440,7 @@ router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
       });
     }
 
-    await prisma.paymentRequest.delete({
+    await prisma.payment_requests.delete({
       where: { id },
     });
 
@@ -541,11 +465,11 @@ router.post('/:id/submit', authMiddleware, async (req: Request, res: Response) =
   try {
     const userId = (req as any).user?.id;
     const { id } = req.params;
-    const { requestedApprovers } = req.body; // Optional: specific approver IDs for each level
+    // Note: requestedApprovers can be used for specific approver selection (future feature)
 
-    const paymentRequest = await prisma.paymentRequest.findUnique({
+    const paymentRequest = await prisma.payment_requests.findUnique({
       where: { id },
-      include: { lineItems: true },
+      include: { payment_request_line_items: true },
     });
 
     if (!paymentRequest) {
@@ -565,7 +489,7 @@ router.post('/:id/submit', authMiddleware, async (req: Request, res: Response) =
     }
 
     // Get L1 approval level
-    const l1Level = await prisma.approvalLevel.findUnique({
+    const l1Level = await prisma.approval_levels.findFirst({
       where: { level: 0, isActive: true },
     });
 
@@ -576,9 +500,9 @@ router.post('/:id/submit', authMiddleware, async (req: Request, res: Response) =
     }
 
     // Find L1 approver (first user with the role, or from requested list)
-    const approvers = await prisma.user.findMany({
-      where: { role: l1Level.roleName },
-      select: { id: true, username: true, email: true },
+    const approvers = await prisma.users_enhanced.findMany({
+      where: { legacy_role: l1Level.roleName },
+      select: { id: true, legacy_id: true, username: true, email: true },
     });
 
     if (approvers.length === 0) {
@@ -588,11 +512,18 @@ router.post('/:id/submit', authMiddleware, async (req: Request, res: Response) =
     }
 
     const firstApprover = approvers[0];
+    
+    // We need legacy_id for integer FK fields
+    if (!firstApprover.legacy_id) {
+      return res.status(500).json({
+        error: 'Approver does not have a legacy_id configured',
+      });
+    }
 
-    // Create expense, task, and initial message in transaction
+    // Create expense and update status in transaction
     const result = await prisma.$transaction(async (tx) => {
       // Update payment request status
-      const updatedRequest = await tx.paymentRequest.update({
+      const updatedRequest = await tx.payment_requests.update({
         where: { id },
         data: {
           status: 'SUBMITTED',
@@ -600,11 +531,12 @@ router.post('/:id/submit', authMiddleware, async (req: Request, res: Response) =
       });
 
       // Create expense
-      const expense = await tx.expense.create({
+      const expense = await tx.expenses.create({
         data: {
+          id: `EXP-${paymentRequest.requestId}`,
           requestId: paymentRequest.requestId,
           paymentRequestId: paymentRequest.id,
-          createdById: userId,
+          createdById: userId, // This expects Int - userId from request
           clientId: paymentRequest.clientId,
           description: paymentRequest.description,
           amount: paymentRequest.totalAmount,
@@ -614,35 +546,27 @@ router.post('/:id/submit', authMiddleware, async (req: Request, res: Response) =
         },
       });
 
-      // Create task
-      const task = await tx.task.create({
+      // Create workflow task
+      const task = await tx.workflow_tasks.create({
         data: {
-          expenseId: expense.id,
-          paymentRequestId: paymentRequest.id,
           title: `Payment Request ${paymentRequest.requestId}`,
           description: paymentRequest.description,
-          currentLevel: 0,
           status: 'PENDING',
-          createdById: userId,
-          assigneeId: firstApprover.id,
+          creator_id: userId, // This expects Int - userId from request
+          assignee_id: firstApprover.legacy_id, // Using legacy_id for Int FK
         },
       });
 
       // Create initial system message
-      await tx.message.create({
+      await tx.task_messages.create({
         data: {
-          taskId: task.id,
-          senderId: userId,
-          body: `Payment request created for ${paymentRequest.clientName}. Amount: ₹${paymentRequest.totalAmount.toFixed(
+          task_id: task.id,
+          sender_id: userId, // This expects Int - userId from request
+          content: `Payment request created for ${paymentRequest.clientName}. Amount: ₹${paymentRequest.totalAmount.toFixed(
             2
           )}. Assigned to @${firstApprover.username} for L1 approval.`,
-          type: 'SYSTEM',
-          meta: JSON.stringify({
-            action: 'CREATED',
-            amount: paymentRequest.totalAmount,
-            assignee: firstApprover.username,
-            level: 0,
-          }),
+          message_type: 'SYSTEM',
+          is_system_message: true,
         },
       });
 

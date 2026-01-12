@@ -7,6 +7,7 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const { authenticate } = require('../middleware/auth');
+const { hasCrossTenantScope, hasTenantAdminScope } = require('../services/authorizationService');
 
 const prisma = new PrismaClient();
 
@@ -19,6 +20,7 @@ router.get('/check-page', authenticate, async (req, res) => {
     const { pageId } = req.query;
     const userId = req.user.id;
     const userRole = (req.user.role || '').toUpperCase();
+    const systemScope = req.user.system_scope || 'BUSINESS';
 
     if (!pageId) {
       return res.status(400).json({
@@ -27,7 +29,7 @@ router.get('/check-page', authenticate, async (req, res) => {
       });
     }
 
-    console.log(`🔍 [CHECK PAGE] User: ${req.user.email}, Role: ${userRole}, Page: ${pageId}`);
+    console.log(`🔍 [CHECK PAGE] User: ${req.user.email}, Role: ${userRole}, Scope: ${systemScope}, Page: ${pageId}`);
 
     // Enterprise Admin: Only enterprise pages
     if (userRole === 'ENTERPRISE_ADMIN') {
@@ -48,8 +50,8 @@ router.get('/check-page', authenticate, async (req, res) => {
       }
     }
 
-    // Super Admin: Check module assignments and page permissions
-    if (userRole === 'SUPER_ADMIN') {
+    // CROSS_TENANT scope (Super Admin): Check module assignments and page permissions
+    if (hasCrossTenantScope(req.user)) {
       // Exclude enterprise pages
       const isEnterprisePage = pageId.startsWith('enterprise-') || 
                                 pageId.includes('super-admins') ||
@@ -152,8 +154,9 @@ router.get('/', authenticate, async (req, res) => {
   try {
     const userId = parseInt(req.query.userId) || req.user.id;
     const userRole = (req.user.role || '').toUpperCase();
+    const systemScope = req.user.system_scope || 'BUSINESS';
 
-    console.log(`📋 [GET PERMISSIONS] User: ${req.user.email}, Role: ${userRole}`);
+    console.log(`📋 [GET PERMISSIONS] User: ${req.user.email}, Role: ${userRole}, Scope: ${systemScope}`);
 
     // Enterprise Admin
     if (userRole === 'ENTERPRISE_ADMIN') {
@@ -166,8 +169,8 @@ router.get('/', authenticate, async (req, res) => {
       });
     }
 
-    // Super Admin
-    if (userRole === 'SUPER_ADMIN') {
+    // CROSS_TENANT scope (Super Admin)
+    if (hasCrossTenantScope(req.user)) {
       const assignments = await prisma.moduleAssignment.findMany({
         where: {
           super_admin_id: userId
@@ -258,8 +261,8 @@ router.post('/', authenticate, async (req, res) => {
     if (!targetUserId && (roleId || roleName)) {
       // If roleId/roleName provided, find a user with that role
       const roleQuery = roleId 
-        ? await prisma.user.findFirst({ where: { role: roleId } })
-        : await prisma.user.findFirst({ where: { role: roleName } });
+        ? await prisma.users_enhanced.findFirst({ where: { role: roleId } })
+        : await prisma.users_enhanced.findFirst({ where: { role: roleName } });
       
       if (roleQuery) {
         targetUserId = roleQuery.id;

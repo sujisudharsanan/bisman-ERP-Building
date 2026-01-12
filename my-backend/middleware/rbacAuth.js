@@ -22,7 +22,7 @@ async function authenticateToken(req, res, next) {
 
   try {
     const payload = jwt.verify(token, process.env.JWT_SECRET || 'dev-secret')
-    const user = await prisma.user.findUnique({ where: { id: payload.sub } })
+    const user = await prisma.users_enhanced.findUnique({ where: { id: payload.sub } })
     
     if (!user) {
       return res.status(401).json({ success: false, error: 'Invalid token user' })

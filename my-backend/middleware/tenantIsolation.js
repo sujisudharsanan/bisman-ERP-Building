@@ -31,9 +31,9 @@ function enforceTenantIsolation(req, res, next) {
     return next()
   }
 
-  // Skip for Enterprise Admin and Super Admin (they can access all tenants)
-  if (req.user.userType === 'ENTERPRISE_ADMIN' || req.user.userType === 'SUPER_ADMIN') {
-    console.log(`[TenantGuard] Allowing ${req.user.userType} full access`)
+  // Skip for users with CROSS_TENANT scope (Enterprise Admin, Super Admin, or users with cross-tenant authority)
+  if (req.user.system_scope === 'CROSS_TENANT') {
+    console.log(`[TenantGuard] Allowing CROSS_TENANT user (${req.user.userType || req.user.role}) full access`)
     return next()
   }
 
@@ -92,8 +92,8 @@ function getTenantPrisma(req) {
   const { getPrisma } = require('./prisma')
   const prisma = getPrisma()
 
-  // If admin, return normal Prisma client
-  if (req.user && (req.user.userType === 'ENTERPRISE_ADMIN' || req.user.userType === 'SUPER_ADMIN')) {
+  // If CROSS_TENANT scope, return normal Prisma client (no tenant filtering)
+  if (req.user && req.user.system_scope === 'CROSS_TENANT') {
     return prisma
   }
 
@@ -196,8 +196,8 @@ function getTenantPrisma(req) {
  * @returns {boolean} Whether user can access resource
  */
 function verifyResourceTenant(req, resource) {
-  // Admins can access anything
-  if (req.user && (req.user.userType === 'ENTERPRISE_ADMIN' || req.user.userType === 'SUPER_ADMIN')) {
+  // CROSS_TENANT scope can access anything
+  if (req.user && req.user.system_scope === 'CROSS_TENANT') {
     return true
   }
 
@@ -233,8 +233,8 @@ function verifyResourceTenant(req, resource) {
  * @returns {Object} Where clause with tenant filter
  */
 function getTenantWhereClause(req, baseWhere = {}) {
-  // Admins don't need tenant filter
-  if (req.user && (req.user.userType === 'ENTERPRISE_ADMIN' || req.user.userType === 'SUPER_ADMIN')) {
+  // CROSS_TENANT scope doesn't need tenant filter
+  if (req.user && req.user.system_scope === 'CROSS_TENANT') {
     return baseWhere
   }
 

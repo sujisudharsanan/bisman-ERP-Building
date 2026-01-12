@@ -33,7 +33,7 @@ class TenantGuard {
    */
   static async verifyTenantAccess(userId, tenantId) {
     try {
-      const user = await prisma.user.findFirst({
+      const user = await prisma.users_enhanced.findFirst({
         where: {
           id: userId,
           tenant_id: tenantId,
@@ -63,13 +63,8 @@ class TenantGuard {
       throw new Error('[TenantGuard] User not authenticated');
     }
     
-    // Enterprise Admin sees all tenants
-    if (user.role === 'ENTERPRISE_ADMIN') {
-      return additionalWhere;
-    }
-    
-    // Super Admin manages multiple tenants (handled by client associations, not tenant_id)
-    if (user.role === 'SUPER_ADMIN') {
+    // CROSS_TENANT scope sees all tenants (Enterprise Admin, Super Admin)
+    if (user.system_scope === 'CROSS_TENANT') {
       return additionalWhere;
     }
     
@@ -223,14 +218,9 @@ class TenantGuard {
    * @returns {boolean} True if user can access tenant
    */
   static canAccessTenant(user, targetTenantId) {
-    // Enterprise Admin can access all tenants
-    if (user.role === 'ENTERPRISE_ADMIN') {
+    // CROSS_TENANT scope can access all tenants
+    if (user.system_scope === 'CROSS_TENANT') {
       return true;
-    }
-    
-    // Super Admin can access assigned tenants (check client associations separately)
-    if (user.role === 'SUPER_ADMIN') {
-      return true; // Actual check done via client/super_admin_id relationship
     }
     
     // Regular users can only access their own tenant

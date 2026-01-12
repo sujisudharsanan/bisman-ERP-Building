@@ -112,7 +112,7 @@ export async function getNextApprovalLevel(currentLevel: number, prisma: any) {
  * @returns Array of users with that role
  */
 export async function findUsersByRole(roleName: string, prisma: any) {
-  return prisma.user.findMany({
+  return prisma.users_enhanced.findMany({
     where: {
       role: roleName,
     },

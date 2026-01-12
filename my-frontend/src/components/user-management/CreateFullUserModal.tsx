@@ -185,7 +185,23 @@ export function CreateFullUserModal({
 
   const totalSteps = 6;
 
+  // State for password visibility toggles
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+
   const handleInputChange = (field: keyof CreateUserData, value: any) => {
+    // Validation for name fields - no numbers allowed
+    if ((field === 'first_name' || field === 'last_name') && typeof value === 'string') {
+      // Remove any digits from name fields
+      value = value.replace(/[0-9]/g, '');
+    }
+    
+    // Validation for phone fields - only digits allowed
+    if ((field === 'phone' || field === 'alternate_phone') && typeof value === 'string') {
+      // Remove any non-digit characters
+      value = value.replace(/[^0-9]/g, '');
+    }
+    
     setFormData(prev => ({ ...prev, [field]: value }));
     // Clear error when user starts typing
     if (errors[field]) {
@@ -283,17 +299,21 @@ export function CreateFullUserModal({
     switch (step) {
       case 1: // Account Details
         if (!formData.first_name.trim()) newErrors.first_name = 'First name is required';
+        else if (/[0-9]/.test(formData.first_name)) newErrors.first_name = 'First name cannot contain numbers';
         if (!formData.last_name.trim()) newErrors.last_name = 'Last name is required';
+        else if (/[0-9]/.test(formData.last_name)) newErrors.last_name = 'Last name cannot contain numbers';
         if (!formData.email.trim()) newErrors.email = 'Email is required';
-  if (!formData.password) newErrors['password'] = 'Password is required';
+        if (!formData.password) newErrors['password'] = 'Password is required';
         if (formData.password !== formData.confirm_password) {
           newErrors.confirm_password = 'Passwords do not match';
         }
         if (formData.role_ids.length === 0) newErrors.role_ids = 'At least one role is required';
+        if (!formData.branch_id) newErrors.branch_id = 'Branch is required';
         break;
 
       case 2: // Personal Info
         if (!formData.phone?.trim()) newErrors.phone = 'Phone number is required';
+        else if (!/^\d{10,15}$/.test(formData.phone)) newErrors.phone = 'Phone number must be 10-15 digits';
         break;
 
       case 3: // Address
@@ -521,14 +541,23 @@ export function CreateFullUserModal({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Password *
                 </label>
-                <input
-                  type="password"
-                  value={formData.password}
-                  onChange={(e) => handleInputChange('password', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.password ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                />
+                <div className="relative">
+                  <input
+                    type={showPassword ? "text" : "password"}
+                    value={formData.password}
+                    onChange={(e) => handleInputChange('password', e.target.value)}
+                    className={`w-full px-3 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.password ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
                 {/* Password strength progress bar */}
                 {formData.password && (
                   <div className="mt-2">
@@ -576,14 +605,23 @@ export function CreateFullUserModal({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Confirm Password *
                 </label>
-                <input
-                  type="password"
-                  value={formData.confirm_password}
-                  onChange={(e) => handleInputChange('confirm_password', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.confirm_password ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                />
+                <div className="relative">
+                  <input
+                    type={showConfirmPassword ? "text" : "password"}
+                    value={formData.confirm_password}
+                    onChange={(e) => handleInputChange('confirm_password', e.target.value)}
+                    className={`w-full px-3 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.confirm_password ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
                 {errors.confirm_password && (
                   <p className="text-red-600 text-sm mt-1">{errors.confirm_password}</p>
                 )}
@@ -592,18 +630,23 @@ export function CreateFullUserModal({
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Branch
+                Branch *
               </label>
               <select
                 value={formData.branch_id || ''}
                 onChange={(e) => handleInputChange('branch_id', e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                  errors.branch_id ? 'border-red-300' : 'border-gray-300'
+                }`}
               >
                 <option value="">Select branch</option>
                 {branches.map(branch => (
                   <option key={branch.id} value={branch.id}>{branch.name}</option>
                 ))}
               </select>
+              {errors.branch_id && (
+                <p className="text-red-600 text-sm mt-1">{errors.branch_id}</p>
+              )}
             </div>
 
             <div>
@@ -767,14 +810,26 @@ export function CreateFullUserModal({
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Phone Number *
                 </label>
-                <input
-                  type="tel"
-                  value={formData.phone || ''}
-                  onChange={(e) => handleInputChange('phone', e.target.value)}
-                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
-                    errors.phone ? 'border-red-300' : 'border-gray-300'
-                  }`}
-                />
+                <div className="relative">
+                  <input
+                    type="tel"
+                    inputMode="numeric"
+                    pattern="[0-9]*"
+                    value={formData.phone || ''}
+                    onChange={(e) => handleInputChange('phone', e.target.value)}
+                    className={`w-full px-3 py-2 pr-10 border rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 ${
+                      errors.phone ? 'border-red-300' : 'border-gray-300'
+                    }`}
+                    placeholder="Enter digits only"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowSensitiveFields(!showSensitiveFields)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-500 hover:text-gray-700"
+                  >
+                    {showSensitiveFields ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
                 {errors.phone && (
                   <p className="text-red-600 text-sm mt-1">{errors.phone}</p>
                 )}

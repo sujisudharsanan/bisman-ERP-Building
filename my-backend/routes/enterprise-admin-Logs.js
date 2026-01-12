@@ -104,7 +104,7 @@ router.get('/', requireEnterpriseAdmin, async (req, res) => {
     // If filtering by client or super admin, we need to get associated usernames
     if (clientId && clientId !== 'all') {
       // Get users associated with this client
-      const clientUsers = await prisma.user.findMany({
+      const clientUsers = await prisma.users_enhanced.findMany({
         where: { client_id: clientId },
         select: { username: true }
       });

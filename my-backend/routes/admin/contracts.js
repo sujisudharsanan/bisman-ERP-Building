@@ -27,7 +27,7 @@ async function resolveUserIdToInt(userId, prisma) {
   if (!isUUID) return userId; // Already an integer
   
   try {
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users_enhanced.findUnique({
       where: { id: userId },
       select: { legacy_id: true }
     });

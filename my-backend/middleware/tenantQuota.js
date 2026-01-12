@@ -279,8 +279,8 @@ function hasAdminBypass(req) {
     return true;
   }
   
-  // Also bypass for super admins
-  if (req.user?.role === 'SUPER_ADMIN' || req.user?.role === 'ENTERPRISE_ADMIN') {
+  // Bypass for CROSS_TENANT scope (super admins, enterprise admins)
+  if (req.user?.system_scope === 'CROSS_TENANT') {
     return true;
   }
   

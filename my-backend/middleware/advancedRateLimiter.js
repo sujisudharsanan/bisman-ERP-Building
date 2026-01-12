@@ -341,8 +341,8 @@ function createAdaptiveRateLimiter(baseConfig) {
       if (req.user) {
         let multiplier = 2;
         
-        // Admins get 5x limit
-        if (req.user.role === 'SUPER_ADMIN' || req.user.role === 'ENTERPRISE_ADMIN') {
+        // CROSS_TENANT scope (admins) get 5x limit
+        if (req.user.system_scope === 'CROSS_TENANT') {
           multiplier = 5;
         }
         

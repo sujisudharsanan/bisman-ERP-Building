@@ -225,7 +225,7 @@ const enforceUserLimit = async (req, res, next) => {
     const prisma = getPrisma();
 
     // Get current user count
-    const currentCount = await prisma.user.count({
+    const currentCount = await prisma.users_enhanced.count({
       where: { clientId: clientId },
     });
 

@@ -282,7 +282,7 @@ router.post('/team', requireInternalPermission('*'), async (req, res) => {
 
   try {
     // Check if email exists
-    const existing = await prisma.user.findUnique({ where: { email } });
+    const existing = await prisma.users_enhanced.findFirst({ where: { email } });
     if (existing) {
       return res.status(409).json({ ok: false, error: 'Email already exists' });
     }
@@ -291,7 +291,7 @@ router.post('/team', requireInternalPermission('*'), async (req, res) => {
     const bcrypt = require('bcrypt');
     const passwordHash = await bcrypt.hash(password || 'TempPass123!', 10);
 
-    const newUser = await prisma.user.create({
+    const newUser = await prisma.users_enhanced.create({
       data: {
         username: name,
         email,
@@ -340,7 +340,7 @@ router.patch('/team/:userId', requireInternalPermission('*'), stripBusinessLevel
   const { role, isActive } = req.body;
 
   try {
-    const user = await prisma.user.findUnique({ where: { id: parseInt(userId) } });
+    const user = await prisma.users_enhanced.findUnique({ where: { id: parseInt(userId) } });
     
     if (!user || user.module_id || user.tenant_id) {
       return res.status(404).json({ ok: false, error: 'Internal user not found' });
@@ -354,7 +354,7 @@ router.patch('/team/:userId', requireInternalPermission('*'), stripBusinessLevel
       updateData.is_active = isActive;
     }
 
-    const updated = await prisma.user.update({
+    const updated = await prisma.users_enhanced.update({
       where: { id: parseInt(userId) },
       data: updateData
     });

@@ -45,7 +45,7 @@ class SuperAdminService {
   // =============== USER MANAGEMENT ===============
   async getAllUsers(_search = '', limit = 50, offset = 0) {
     try {
-  const users = await prisma.user.findMany({
+  const users = await prisma.users_enhanced.findMany({
         take: limit,
         skip: offset,
         select: {
@@ -53,13 +53,13 @@ class SuperAdminService {
           username: true,
           email: true,
           role: true,
-          createdAt: true,
-          updatedAt: true,
+          created_at: true,
+          updated_at: true,
         },
-        orderBy: { createdAt: 'desc' }
+        orderBy: { created_at: 'desc' }
       })
 
-  const total = await prisma.user.count().catch(() => users.length)
+  const total = await prisma.users_enhanced.count().catch(() => users.length)
   return { users, total, count: users.length }
     } catch (error) {
       console.error('Error getting users:', error)
@@ -79,7 +79,7 @@ class SuperAdminService {
       console.log('[SuperAdminService] createUser delegating to UserService');
       
       // Get admin user for context
-      const adminUser = await prisma.user.findUnique({
+      const adminUser = await prisma.users_enhanced.findFirst({
         where: { id: adminUserId },
         select: { legacy_id: true, role: true }
       });
@@ -123,7 +123,7 @@ class SuperAdminService {
       console.log('[SuperAdminService] updateUser delegating to UserService');
       
       // Get admin user for context
-      const adminUser = await prisma.user.findUnique({
+      const adminUser = await prisma.users_enhanced.findFirst({
         where: { id: adminUserId },
         select: { legacy_id: true, role: true }
       });
@@ -173,13 +173,13 @@ class SuperAdminService {
       console.log('[SuperAdminService] deleteUser delegating to UserService');
       
       // Get admin user for context
-      const adminUser = await prisma.user.findUnique({
+      const adminUser = await prisma.users_enhanced.findFirst({
         where: { id: adminUserId },
         select: { legacy_id: true, role: true, business_level: true }
       });
       
       // Additional hierarchy check before deletion
-      const targetUser = await prisma.user.findUnique({
+      const targetUser = await prisma.users_enhanced.findFirst({
         where: { id: userId },
         select: { business_level: true, role: true }
       });
@@ -227,7 +227,7 @@ class SuperAdminService {
         try { return await cb() } catch { return fallback }
       }
       const stats = {
-        users: await safeCount(() => prisma.user.count(), 0),
+        users: await safeCount(() => prisma.users_enhanced.count(), 0),
         roles: 4,
         routes: 0,
         permissions: 0,

@@ -448,6 +448,29 @@ model audit_logs_partitioned {
   @@index([table_name, action], map: "idx_audit_logs_part_table_action")
 }
 
+model authority_overrides {
+  id                                                            String          @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  user_id                                                       String          @db.Uuid
+  authority_level                                               Int
+  start_date                                                    DateTime        @default(now()) @db.Timestamptz(6)
+  end_date                                                      DateTime?       @db.Timestamptz(6)
+  reason                                                        String?
+  granted_by                                                    String          @db.Uuid
+  granted_by_role                                               String?         @db.VarChar(50)
+  granted_by_level                                              Int?
+  revoked_at                                                    DateTime?       @db.Timestamptz(6)
+  revoked_by                                                    String?         @db.Uuid
+  revoke_reason                                                 String?
+  is_active                                                     Boolean         @default(true)
+  created_at                                                    DateTime        @default(now()) @db.Timestamptz(6)
+  updated_at                                                    DateTime        @default(now()) @db.Timestamptz(6)
+  users_enhanced_authority_overrides_granted_byTousers_enhanced users_enhanced  @relation("authority_overrides_granted_byTousers_enhanced", fields: [granted_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_enhanced_authority_overrides_revoked_byTousers_enhanced users_enhanced? @relation("authority_overrides_revoked_byTousers_enhanced", fields: [revoked_by], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  users_enhanced_authority_overrides_user_idTousers_enhanced    users_enhanced  @relation("authority_overrides_user_idTousers_enhanced", fields: [user_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([user_id], map: "idx_authority_overrides_user_id")
+}
+
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
 model bank_statement_lines {
   id                        String                      @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
@@ -1142,8 +1165,6 @@ model client_subscriptions {
   started_at                     DateTime?                        @db.Timestamptz(6)
   expires_at                     DateTime?                        @db.Timestamptz(6)
   subscription_coupons           subscription_coupons?            @relation(fields: [coupon_id], references: [id], onUpdate: NoAction)
-  plan                           subscription_plans               @relation("ClientSubscriptionPlan", fields: [plan_id], references: [id], onUpdate: NoAction)
-  scheduled_plan                 subscription_plans?              @relation("ClientSubscriptionScheduledPlan", fields: [scheduled_plan_id], references: [id], onUpdate: NoAction)
   coupon_redemptions             coupon_redemptions[]
   subscription_coupon_audit_logs subscription_coupon_audit_logs[]
 
@@ -1196,89 +1217,92 @@ model client_usage_events_partitioned {
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
 /// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
 model clients {
-  id                             String                           @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  name                           String                           @db.VarChar(200)
-  client_code                    String?                          @unique @db.VarChar(50)
-  public_code                    String?                          @unique @db.VarChar(50)
-  client_number                  BigInt?                          @unique
-  legal_name                     String?                          @db.VarChar(200)
-  trade_name                     String?                          @db.VarChar(200)
-  client_type                    String?                          @db.VarChar(50)
-  industry                       String?                          @db.VarChar(100)
-  business_size                  String?                          @db.VarChar(50)
-  registration_number            String?                          @db.VarChar(100)
-  tax_id                         String?                          @db.VarChar(50)
-  legal_status                   String?                          @db.VarChar(50)
-  import_export_code             String?                          @db.VarChar(50)
-  registration_year              Int?
-  addresses                      Json?
-  contact_persons                Json?
-  financial_details              Json?
-  bank_details                   Json?
-  documents                      Json?
-  system_access                  Json?
-  operational                    Json?
-  risk                           Json?
-  status                         String?                          @default("Active") @db.VarChar(30)
-  onboarding_status              String?                          @default("pending") @db.VarChar(30)
-  trial_start_date               DateTime?                        @db.Timestamp(6)
-  trial_end_date                 DateTime?                        @db.Timestamp(6)
-  modules_enabled                Json?
-  notification_prefs             Json?
-  preferred_language             String?                          @db.VarChar(10)
-  timezone                       String?                          @db.VarChar(100)
-  mfa_enabled                    Boolean?                         @default(false)
-  duplicate_check                Json?
-  onboarding_activity            Json?
-  onboarding_date                DateTime?                        @db.Timestamp(6)
-  first_invoice_date             DateTime?                        @db.Timestamp(6)
-  last_activity_date             DateTime?                        @db.Timestamp(6)
-  auto_disable_rules             Json?
-  productType                    String                           @db.VarChar(50)
-  super_admin_id                 Int
-  subscriptionPlan               String                           @default("free") @db.VarChar(50)
-  subscriptionStatus             String                           @default("active") @db.VarChar(50)
-  is_active                      Boolean                          @default(true)
-  settings                       Json?
-  logo                           String?
-  created_at                     DateTime                         @default(now()) @db.Timestamp(6)
-  updated_at                     DateTime                         @default(now()) @db.Timestamp(6)
-  created_by                     Int?
-  stripe_customer_id             String?                          @db.VarChar(100)
-  stripe_subscription_id         String?                          @db.VarChar(100)
-  subscription_status            String?                          @db.VarChar(50)
-  current_period_end             DateTime?                        @db.Timestamptz(6)
-  cancel_at_period_end           Boolean?                         @default(false)
-  trial_expired                  Boolean?                         @default(false)
-  payment_failed                 Boolean?                         @default(false)
-  payment_failed_at              DateTime?                        @db.Timestamptz(6)
-  last_payment_at                DateTime?                        @db.Timestamptz(6)
-  unique_id                      String?                          @db.VarChar(50)
-  ClientToClientSequence         ClientToClientSequence[]
-  branches                       branches[]
-  client_daily_usage             client_daily_usage[]
-  client_module_permissions      client_module_permissions[]
-  client_onboarding_activity     client_onboarding_activity[]
-  client_role_assignments        client_role_assignments[]
-  client_usage_events            client_usage_events[]
-  super_admins                   super_admins                     @relation(fields: [super_admin_id], references: [id], onDelete: Cascade)
-  coupon_redemptions             coupon_redemptions[]
-  customers                      customers[]
-  enforcement_decision_log       enforcement_decision_log[]
-  events                         events[]
-  feature_grace_periods          feature_grace_periods[]
-  feature_micro_unlocks          feature_micro_unlocks[]
-  feature_usage_counters         feature_usage_counters[]
-  items                          items[]
-  micro_unlock_audit_log         micro_unlock_audit_log[]
-  micro_unlock_invoices          micro_unlock_invoices[]
-  onboarding_magic_links         onboarding_magic_links[]
-  payment_requests               payment_requests[]
-  resource_consumption           resource_consumption[]
-  subscription_billing_ledger    subscription_billing_ledger[]
-  subscription_coupon_audit_logs subscription_coupon_audit_logs[]
-  subscription_coupons           subscription_coupons[]
-  support_sessions               support_sessions[]
+  id                                String                             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                              String                             @db.VarChar(200)
+  client_code                       String?                            @unique @db.VarChar(50)
+  public_code                       String?                            @unique @db.VarChar(50)
+  client_number                     BigInt?                            @unique
+  legal_name                        String?                            @db.VarChar(200)
+  trade_name                        String?                            @db.VarChar(200)
+  client_type                       String?                            @db.VarChar(50)
+  industry                          String?                            @db.VarChar(100)
+  business_size                     String?                            @db.VarChar(50)
+  registration_number               String?                            @db.VarChar(100)
+  tax_id                            String?                            @db.VarChar(50)
+  legal_status                      String?                            @db.VarChar(50)
+  import_export_code                String?                            @db.VarChar(50)
+  registration_year                 Int?
+  addresses                         Json?
+  contact_persons                   Json?
+  financial_details                 Json?
+  bank_details                      Json?
+  documents                         Json?
+  system_access                     Json?
+  operational                       Json?
+  risk                              Json?
+  status                            String?                            @default("Active") @db.VarChar(30)
+  onboarding_status                 String?                            @default("pending") @db.VarChar(30)
+  trial_start_date                  DateTime?                          @db.Timestamp(6)
+  trial_end_date                    DateTime?                          @db.Timestamp(6)
+  modules_enabled                   Json?
+  notification_prefs                Json?
+  preferred_language                String?                            @db.VarChar(10)
+  timezone                          String?                            @db.VarChar(100)
+  mfa_enabled                       Boolean?                           @default(false)
+  duplicate_check                   Json?
+  onboarding_activity               Json?
+  onboarding_date                   DateTime?                          @db.Timestamp(6)
+  first_invoice_date                DateTime?                          @db.Timestamp(6)
+  last_activity_date                DateTime?                          @db.Timestamp(6)
+  auto_disable_rules                Json?
+  productType                       String                             @db.VarChar(50)
+  super_admin_id                    Int
+  subscriptionPlan                  String                             @default("free") @db.VarChar(50)
+  subscriptionStatus                String                             @default("active") @db.VarChar(50)
+  is_active                         Boolean                            @default(true)
+  settings                          Json?
+  logo                              String?
+  created_at                        DateTime                           @default(now()) @db.Timestamp(6)
+  updated_at                        DateTime                           @default(now()) @db.Timestamp(6)
+  created_by                        Int?
+  stripe_customer_id                String?                            @db.VarChar(100)
+  stripe_subscription_id            String?                            @db.VarChar(100)
+  subscription_status               String?                            @db.VarChar(50)
+  current_period_end                DateTime?                          @db.Timestamptz(6)
+  cancel_at_period_end              Boolean?                           @default(false)
+  trial_expired                     Boolean?                           @default(false)
+  payment_failed                    Boolean?                           @default(false)
+  payment_failed_at                 DateTime?                          @db.Timestamptz(6)
+  last_payment_at                   DateTime?                          @db.Timestamptz(6)
+  unique_id                         String?                            @db.VarChar(50)
+  ClientToClientSequence            ClientToClientSequence[]
+  branches                          branches[]
+  client_daily_usage                client_daily_usage[]
+  client_module_permissions         client_module_permissions[]
+  client_onboarding_activity        client_onboarding_activity[]
+  client_role_assignments           client_role_assignments[]
+  client_usage_events               client_usage_events[]
+  super_admins                      super_admins                       @relation(fields: [super_admin_id], references: [id], onDelete: Cascade)
+  coupon_redemptions                coupon_redemptions[]
+  custom_plan_audit_log             custom_plan_audit_log[]
+  custom_tenant_feature_controls    custom_tenant_feature_controls[]
+  custom_tenant_plan_configurations custom_tenant_plan_configurations?
+  customers                         customers[]
+  enforcement_decision_log          enforcement_decision_log[]
+  events                            events[]
+  feature_grace_periods             feature_grace_periods[]
+  feature_micro_unlocks             feature_micro_unlocks[]
+  feature_usage_counters            feature_usage_counters[]
+  items                             items[]
+  micro_unlock_audit_log            micro_unlock_audit_log[]
+  micro_unlock_invoices             micro_unlock_invoices[]
+  onboarding_magic_links            onboarding_magic_links[]
+  payment_requests                  payment_requests[]
+  resource_consumption              resource_consumption[]
+  subscription_billing_ledger       subscription_billing_ledger[]
+  subscription_coupon_audit_logs    subscription_coupon_audit_logs[]
+  subscription_coupons              subscription_coupons[]
+  support_sessions                  support_sessions[]
 
   @@index([client_code], map: "idx_clients_code")
   @@index([created_by], map: "idx_clients_created_by")
@@ -1448,6 +1472,77 @@ model coupon_redemptions {
   @@index([subscription_id], map: "idx_coupon_redemptions_subscription")
   @@index([tenant_id], map: "idx_coupon_redemptions_tenant")
   @@index([activated_by_user], map: "idx_coupon_redemptions_user")
+}
+
+model custom_plan_audit_log {
+  id               Int      @id @default(autoincrement())
+  tenant_id        String   @db.Uuid
+  action           String   @db.VarChar(50)
+  old_values       Json?
+  new_values       Json?
+  change_summary   String?
+  changed_by       Int?
+  changed_by_email String?  @db.VarChar(255)
+  ip_address       String?  @db.Inet
+  changed_at       DateTime @default(now()) @db.Timestamptz(6)
+  clients          clients  @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([changed_at], map: "idx_custom_plan_audit_changed_at")
+  @@index([tenant_id], map: "idx_custom_plan_audit_tenant_id")
+}
+
+model custom_tenant_feature_controls {
+  id                 Int                @id @default(autoincrement())
+  tenant_id          String             @db.Uuid
+  feature_code       String             @db.VarChar(100)
+  is_enabled         Boolean            @default(true)
+  free_limit         Int?               @default(-1)
+  limit_period       limit_period_type? @default(monthly)
+  usage_limit        Int?
+  unlock_price       Decimal?           @default(0) @db.Decimal(12, 2)
+  unlock_unit        String?            @default("per month") @db.VarChar(50)
+  lock_mode          lock_mode_type?    @default(none)
+  approval_threshold Decimal?           @db.Decimal(15, 2)
+  requires_approval  Boolean?           @default(false)
+  created_at         DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime           @default(now()) @db.Timestamptz(6)
+  clients            clients            @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([tenant_id, feature_code], map: "unique_custom_tenant_feature")
+  @@index([feature_code], map: "idx_custom_tenant_feature_code")
+  @@index([tenant_id], map: "idx_custom_tenant_feature_tenant_id")
+}
+
+model custom_tenant_plan_configurations {
+  id               Int                @id @default(autoincrement())
+  tenant_id        String             @unique(map: "unique_tenant_custom_config") @db.Uuid
+  status           custom_plan_status @default(draft)
+  price_monthly    Decimal            @default(0) @db.Decimal(12, 2)
+  price_yearly     Decimal            @default(0) @db.Decimal(12, 2)
+  override_pricing Boolean            @default(false)
+  pricing_notes    String?
+  max_users        Int                @default(10)
+  max_branches     Int                @default(3)
+  max_storage_gb   Int                @default(50)
+  enabled_features Json               @default("{}")
+  governance_rules Json               @default("{}")
+  trial_enabled    Boolean            @default(false)
+  trial_days       Int?               @default(0)
+  billing_cycle    String             @default("monthly") @db.VarChar(20)
+  billing_day      Int                @default(1)
+  effective_from   DateTime?          @db.Timestamptz(6)
+  effective_until  DateTime?          @db.Timestamptz(6)
+  created_at       DateTime           @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime           @default(now()) @db.Timestamptz(6)
+  created_by       Int?
+  created_by_email String?            @db.VarChar(255)
+  updated_by       Int?
+  updated_by_email String?            @db.VarChar(255)
+  internal_notes   String?
+  clients          clients            @relation(fields: [tenant_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@index([status], map: "idx_custom_tenant_config_status")
+  @@index([tenant_id], map: "idx_custom_tenant_config_tenant_id")
 }
 
 /// This table contains check constraints and requires additional setup for migrations. Visit https://pris.ly/d/check-constraints for more info.
@@ -2675,6 +2770,8 @@ model rbac_roles {
   updated_at              DateTime?                 @default(now()) @db.Timestamp(6)
   display_name            String?                   @db.VarChar(150)
   status                  String?                   @default("active") @db.VarChar(20)
+  is_system_role          Boolean?                  @default(false)
+  system_scope            String?                   @default("BUSINESS") @db.VarChar(20)
   admin_role_assignments  admin_role_assignments[]
   client_role_assignments client_role_assignments[]
   rbac_permissions        rbac_permissions[]
@@ -3290,8 +3387,6 @@ model subscription_plans {
   updated_by           Int?
   trial_days           Int?                   @default(14)
   subscription_coupons subscription_coupons[]
-  client_subscriptions_plan           client_subscriptions[] @relation("ClientSubscriptionPlan")
-  client_subscriptions_scheduled_plan client_subscriptions[] @relation("ClientSubscriptionScheduledPlan")
 
   @@index([is_active, is_public], map: "idx_subscription_plans_active")
   @@index([sort_order], map: "idx_subscription_plans_sort")
@@ -4188,6 +4283,10 @@ model users_enhanced {
   unique_id                                                            String?                          @db.VarChar(50)
   business_level                                                       Int                              @default(1)
   reports_to                                                           String?                          @db.Uuid
+  system_scope                                                         String?                          @default("BUSINESS") @db.VarChar(20)
+  authority_overrides_authority_overrides_granted_byTousers_enhanced   authority_overrides[]            @relation("authority_overrides_granted_byTousers_enhanced")
+  authority_overrides_authority_overrides_revoked_byTousers_enhanced   authority_overrides[]            @relation("authority_overrides_revoked_byTousers_enhanced")
+  authority_overrides_authority_overrides_user_idTousers_enhanced      authority_overrides[]            @relation("authority_overrides_user_idTousers_enhanced")
   coupon_redemptions                                                   coupon_redemptions[]
   subscription_coupon_audit_logs                                       subscription_coupon_audit_logs[]
   subscription_coupons_subscription_coupons_created_byTousers_enhanced subscription_coupons[]           @relation("subscription_coupons_created_byTousers_enhanced")
@@ -4196,6 +4295,8 @@ model users_enhanced {
   users_enhanced                                                       users_enhanced?                  @relation("users_enhancedTousers_enhanced", fields: [reports_to], references: [id], onUpdate: NoAction, map: "fk_users_reports_to")
   other_users_enhanced                                                 users_enhanced[]                 @relation("users_enhancedTousers_enhanced")
 
+  @@unique([tenant_id, email], map: "uq_users_tenant_email")
+  @@unique([tenant_id, username], map: "uq_users_tenant_username")
   @@index([is_active], map: "idx_erp_users_is_active")
   @@index([legacy_id], map: "idx_erp_users_legacy_id")
   @@index([role], map: "idx_erp_users_role")
@@ -4204,8 +4305,7 @@ model users_enhanced {
   @@index([business_level], map: "idx_users_enhanced_business_level")
   @@index([reports_to], map: "idx_users_enhanced_reports_to")
   @@index([unique_id], map: "idx_users_enhanced_unique_id")
-  @@unique([tenant_id, username], map: "uq_users_tenant_username")
-  @@unique([tenant_id, email], map: "uq_users_tenant_email")
+  @@index([system_scope], map: "idx_users_enhanced_system_scope")
 }
 
 model vehicle_contract_details {
@@ -4589,6 +4689,13 @@ enum coupon_status {
   EXPIRED
   REVOKED
   EXHAUSTED
+}
+
+enum custom_plan_status {
+  draft
+  configured
+  active
+  inactive
 }
 
 enum fallback_strategy {

@@ -30,20 +30,20 @@ function toCsv(rows) {
 
 router.get('/users/report', [authenticate, requireRole(['ADMIN', 'SUPER_ADMIN'])], async (req, res) => {
   let prisma = null;
-  try { prisma = getPrisma(); } catch (_) { prisma = null; }
+  try { prisma = getPrisma(); } catch { prisma = null; }
   const format = String(req.query.format || 'csv').toLowerCase();
   try {
     // Load users from DB when possible, otherwise gracefully fall back to service's dev users
     let users = [];
-    if (prisma && prisma.user) {
+    if (prisma && prisma.users_enhanced) {
       try {
-        users = await prisma.user.findMany({
+        users = await prisma.users_enhanced.findMany({
           include: { role: { select: { id: true, name: true } } },
         });
       } catch (_) {
         try {
-          users = await prisma.user.findMany({ include: { role: { select: { id: true, name: true } } } });
-        } catch (_) {
+          users = await prisma.users_enhanced.findMany({ include: { role: { select: { id: true, name: true } } } });
+        } catch {
           users = [];
         }
       }

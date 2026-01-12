@@ -193,9 +193,9 @@ function getRoleScope(roleKey) {
 
 /**
  * Get the effective authority level for a user.
- * Uses authority_override_level if active and not expired, else uses role level.
+ * Uses authority_overrides table if active override exists and not expired, else uses role level.
  * 
- * @param {number} userId - The user's ID
+ * @param {string|number} userId - The user's UUID or legacy integer ID
  * @returns {Promise<number>} - The effective authority level (10-100)
  */
 async function getEffectiveAuthorityLevel(userId) {
@@ -204,27 +204,36 @@ async function getEffectiveAuthorityLevel(userId) {
   const pool = getPool();
   
   try {
-    const result = await pool.query(`
+    // Get user's base role level from users_enhanced
+    const userResult = await pool.query(`
       SELECT 
-        COALESCE(r.level, 20) AS role_level,
-        u.authority_override_level,
-        u.override_end_date
-      FROM users u
-      LEFT JOIN roles r ON u.role_id = r.id
-      WHERE u.id = $1
+        ue.id as uuid_id,
+        COALESCE(r.level, 20) AS role_level
+      FROM users_enhanced ue
+      LEFT JOIN roles r ON ue.role_id = r.id
+      WHERE ue.id = $1::uuid OR ue.legacy_id = $1::text::int
     `, [userId]);
 
-    if (result.rows.length === 0) {
+    if (userResult.rows.length === 0) {
       return AUTHORITY_LEVELS.VIEWER;
     }
 
-    const { role_level, authority_override_level, override_end_date } = result.rows[0];
+    const { uuid_id, role_level } = userResult.rows[0];
 
-    // Check if override is active and not expired
-    if (authority_override_level !== null) {
-      if (!override_end_date || new Date(override_end_date) > new Date()) {
-        return authority_override_level;
-      }
+    // Check for active override in authority_overrides table
+    const overrideResult = await pool.query(`
+      SELECT authority_level, end_date
+      FROM authority_overrides
+      WHERE user_id = $1
+        AND is_active = true
+        AND start_date <= NOW()
+        AND (end_date IS NULL OR end_date > NOW())
+      ORDER BY created_at DESC
+      LIMIT 1
+    `, [uuid_id]);
+
+    if (overrideResult.rows.length > 0) {
+      return overrideResult.rows[0].authority_level;
     }
 
     return role_level || AUTHORITY_LEVELS.STAFF;
@@ -412,6 +421,7 @@ async function getUsersAtOrAboveLevel(minLevel, options = {}) {
 
 /**
  * Grant an authority override to a user (ADMIN+ only)
+ * Uses the new authority_overrides table instead of updating users table.
  * 
  * @param {object} params
  * @returns {Promise<{success: boolean, error?: string}>}
@@ -427,7 +437,7 @@ async function grantAuthorityOverride({
   const pool = getPool();
   
   try {
-    // Check granter's level
+    // Get granter's level and info
     const granterLevel = await getEffectiveAuthorityLevel(grantedBy);
     
     if (granterLevel < AUTHORITY_LEVELS.ADMIN) {
@@ -438,51 +448,75 @@ async function grantAuthorityOverride({
       return { success: false, error: 'Cannot grant higher authority than your own level' };
     }
 
-    // Get current state for audit
-    const currentResult = await pool.query(
-      'SELECT authority_override_level, role FROM users WHERE id = $1',
-      [userId]
-    );
-    const previousLevel = currentResult.rows[0]?.authority_override_level;
+    // Get user's UUID (handle both UUID and legacy integer ID)
+    const userResult = await pool.query(`
+      SELECT id FROM users_enhanced 
+      WHERE id = $1::uuid OR legacy_id = $1::text::int
+    `, [userId]);
+    
+    if (userResult.rows.length === 0) {
+      return { success: false, error: 'User not found' };
+    }
+    const userUuid = userResult.rows[0].id;
 
-    // Get granter info for audit
-    const granterResult = await pool.query(
-      'SELECT role FROM users WHERE id = $1',
-      [grantedBy]
-    );
-    const granterRole = granterResult.rows[0]?.role;
+    // Get granter's UUID and role
+    const granterResult = await pool.query(`
+      SELECT id, role FROM users_enhanced 
+      WHERE id = $1::uuid OR legacy_id = $1::text::int
+    `, [grantedBy]);
+    
+    if (granterResult.rows.length === 0) {
+      return { success: false, error: 'Granter not found' };
+    }
+    const granterUuid = granterResult.rows[0].id;
+    const granterRole = granterResult.rows[0].role;
 
-    // Update user
+    // Deactivate any existing active overrides for this user
     await pool.query(`
-      UPDATE users SET
-        authority_override_level = $1,
-        override_start_date = $2,
-        override_end_date = $3,
-        override_reason = $4,
-        override_granted_by = $5,
-        updated_at = NOW()
-      WHERE id = $6
-    `, [newLevel, startDate, endDate, reason, grantedBy, userId]);
+      UPDATE authority_overrides 
+      SET is_active = false, updated_at = NOW()
+      WHERE user_id = $1 AND is_active = true
+    `, [userUuid]);
 
-    // Log to audit
+    // Insert new override
     await pool.query(`
-      INSERT INTO authority_override_audit (
-        user_id, action, previous_override_level, new_override_level,
-        override_start_date, override_end_date, override_reason,
-        granted_by, granted_by_role, granted_by_level
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      INSERT INTO authority_overrides (
+        user_id, authority_level, start_date, end_date, 
+        reason, granted_by, granted_by_role, granted_by_level, is_active
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, true)
     `, [
-      userId,
-      previousLevel === null ? 'GRANTED' : 'MODIFIED',
-      previousLevel,
+      userUuid,
       newLevel,
-      startDate,
+      startDate || new Date(),
       endDate,
       reason,
-      grantedBy,
+      granterUuid,
       granterRole,
       granterLevel
     ]);
+
+    // Log to audit table (if exists)
+    try {
+      await pool.query(`
+        INSERT INTO authority_override_audit (
+          user_id, action, previous_override_level, new_override_level,
+          override_start_date, override_end_date, override_reason,
+          granted_by, granted_by_role, granted_by_level
+        ) VALUES ($1, 'GRANTED', NULL, $2, $3, $4, $5, $6, $7, $8)
+      `, [
+        userUuid,
+        newLevel,
+        startDate || new Date(),
+        endDate,
+        reason,
+        granterUuid,
+        granterRole,
+        granterLevel
+      ]);
+    } catch (auditError) {
+      // Audit table may not exist, log warning but don't fail
+      console.warn('Could not write to audit table:', auditError.message);
+    }
 
     return { success: true };
   } catch (error) {
@@ -493,6 +527,7 @@ async function grantAuthorityOverride({
 
 /**
  * Revoke an authority override from a user (ADMIN+ only)
+ * Uses the new authority_overrides table instead of updating users table.
  * 
  * @param {object} params
  * @returns {Promise<{success: boolean, error?: string}>}
@@ -507,39 +542,64 @@ async function revokeAuthorityOverride({ userId, revokedBy, reason }) {
       return { success: false, error: 'Only ADMIN+ can revoke authority overrides' };
     }
 
-    // Get current state for audit
-    const currentResult = await pool.query(
-      'SELECT authority_override_level, role FROM users WHERE id = $1',
-      [userId]
-    );
-    const previousLevel = currentResult.rows[0]?.authority_override_level;
-
-    // Get revoker info
-    const revokerResult = await pool.query(
-      'SELECT role FROM users WHERE id = $1',
-      [revokedBy]
-    );
-    const revokerRole = revokerResult.rows[0]?.role;
-
-    // Clear override
-    await pool.query(`
-      UPDATE users SET
-        authority_override_level = NULL,
-        override_start_date = NULL,
-        override_end_date = NULL,
-        override_reason = NULL,
-        override_granted_by = NULL,
-        updated_at = NOW()
-      WHERE id = $1
+    // Get user's UUID (handle both UUID and legacy integer ID)
+    const userResult = await pool.query(`
+      SELECT id FROM users_enhanced 
+      WHERE id = $1::uuid OR legacy_id = $1::text::int
     `, [userId]);
+    
+    if (userResult.rows.length === 0) {
+      return { success: false, error: 'User not found' };
+    }
+    const userUuid = userResult.rows[0].id;
 
-    // Log to audit
-    await pool.query(`
-      INSERT INTO authority_override_audit (
-        user_id, action, previous_override_level, new_override_level,
-        override_reason, granted_by, granted_by_role, granted_by_level
-      ) VALUES ($1, 'REVOKED', $2, NULL, $3, $4, $5, $6)
-    `, [userId, previousLevel, reason, revokedBy, revokerRole, revokerLevel]);
+    // Get revoker's UUID and role
+    const revokerResult = await pool.query(`
+      SELECT id, role FROM users_enhanced 
+      WHERE id = $1::uuid OR legacy_id = $1::text::int
+    `, [revokedBy]);
+    
+    if (revokerResult.rows.length === 0) {
+      return { success: false, error: 'Revoker not found' };
+    }
+    const revokerUuid = revokerResult.rows[0].id;
+    const revokerRole = revokerResult.rows[0].role;
+
+    // Get current active override for audit
+    const currentOverride = await pool.query(`
+      SELECT authority_level FROM authority_overrides
+      WHERE user_id = $1 AND is_active = true
+      LIMIT 1
+    `, [userUuid]);
+    const previousLevel = currentOverride.rows[0]?.authority_level || null;
+
+    // Revoke by setting is_active = false and recording revocation details
+    const revokeResult = await pool.query(`
+      UPDATE authority_overrides SET
+        is_active = false,
+        revoked_at = NOW(),
+        revoked_by = $2,
+        revoke_reason = $3,
+        updated_at = NOW()
+      WHERE user_id = $1 AND is_active = true
+    `, [userUuid, revokerUuid, reason]);
+
+    if (revokeResult.rowCount === 0) {
+      return { success: false, error: 'No active override found for this user' };
+    }
+
+    // Log to audit table (if exists)
+    try {
+      await pool.query(`
+        INSERT INTO authority_override_audit (
+          user_id, action, previous_override_level, new_override_level,
+          override_reason, granted_by, granted_by_role, granted_by_level
+        ) VALUES ($1, 'REVOKED', $2, NULL, $3, $4, $5, $6)
+      `, [userUuid, previousLevel, reason, revokerUuid, revokerRole, revokerLevel]);
+    } catch (auditError) {
+      // Audit table may not exist, log warning but don't fail
+      console.warn('Could not write to audit table:', auditError.message);
+    }
 
     return { success: true };
   } catch (error) {

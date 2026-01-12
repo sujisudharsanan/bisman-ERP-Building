@@ -75,6 +75,7 @@ async function authenticate(req, res, next) {
           user.roleName = 'ENTERPRISE_ADMIN'
           user.productType = 'ALL'
           user.userType = 'ENTERPRISE_ADMIN'
+          user.system_scope = 'CROSS_TENANT' // Enterprise admins can access all tenants
         }
       } else if (payload.userType === 'SUPER_ADMIN') {
         console.log('[authenticate] Looking up Super Admin with id:', subjectId)
@@ -103,6 +104,7 @@ async function authenticate(req, res, next) {
           user.role = 'SUPER_ADMIN'
           user.roleName = 'SUPER_ADMIN'
           user.userType = 'SUPER_ADMIN'
+          user.system_scope = 'CROSS_TENANT' // Super admins can access all tenants
         }
       } else {
         // Regular user (includes ADMIN users from legacy users table)
@@ -112,7 +114,7 @@ async function authenticate(req, res, next) {
           const isUUID = typeof subjectId === 'string' && subjectId.includes('-');
           if (isUUID) {
             try {
-              user = await prisma.user.findUnique({ where: { id: subjectId } })
+              user = await prisma.users_enhanced.findUnique({ where: { id: subjectId } })
             } catch {
               console.log('[authenticate] User not found in users_enhanced')
             }
@@ -144,6 +146,8 @@ async function authenticate(req, res, next) {
           delete user.password_hash
           user.roleName = user.role || null
           user.userType = user.role?.toUpperCase() === 'ADMIN' ? 'ADMIN' : 'USER'
+          // Ensure system_scope is set (use DB value or default to BUSINESS)
+          user.system_scope = user.system_scope || 'BUSINESS'
         }
       }
       

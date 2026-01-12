@@ -68,7 +68,7 @@ router.post('/profile-pic', authenticate, enforceUsage('file_upload'), (req, res
         whereClause.tenant_id = tenantId;
       }
       
-      const currentUser = await prisma.user.findUnique({
+      const currentUser = await prisma.users_enhanced.findUnique({
         where: whereClause,
         select: { profile_pic_url: true }
       });
@@ -93,7 +93,7 @@ router.post('/profile-pic', authenticate, enforceUsage('file_upload'), (req, res
         updateWhereClause.tenant_id = tenantId;
       }
       
-      const updatedUser = await prisma.user.update({
+      const updatedUser = await prisma.users_enhanced.update({
         where: updateWhereClause,
         data: { profile_pic_url: profilePicUrl },
         select: {
@@ -144,7 +144,7 @@ router.get('/profile-pic', authenticate, async (req, res) => {
       whereClause.tenant_id = tenantId;
     }
     
-    const user = await prisma.user.findUnique({
+    const user = await prisma.users_enhanced.findUnique({
       where: whereClause,
       select: { 
         profile_pic_url: true,

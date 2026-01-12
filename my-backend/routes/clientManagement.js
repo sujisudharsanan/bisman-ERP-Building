@@ -1,18 +1,22 @@
 const { Router } = require('express');
 const { authMiddleware } = require('../middleware/auth');
 const { getPrisma } = require('../lib/prisma');
+const { hasCrossTenantScope, hasTenantAdminScope } = require('../services/authorizationService');
 
 const router = Router();
 // Use shared Prisma singleton; may be null if DB not available
 const prisma = getPrisma();
 
+// DEPRECATED: Use hasCrossTenantScope/hasTenantAdminScope from authorizationService instead
+// Keeping for backwards compatibility during migration
 function isPlatformAdmin(role) { return role === 'SYSTEM_ADMIN'; }
 function isTenantAdmin(role) { return role === 'ADMIN' || role === 'SYSTEM_ADMIN'; }
 
 router.post('/super-admins', authMiddleware, async (req, res) => {
   try {
     const user = req.user;
-    if (!isPlatformAdmin(user?.role)) return res.status(403).json({ error: 'Platform admin only' });
+    // Only CROSS_TENANT scope users can create super admins
+    if (!hasCrossTenantScope(user)) return res.status(403).json({ error: 'Cross-tenant access required' });
     const { name, email, password, productType = 'BUSINESS_ERP', enterprise_admin_id = 1 } = req.body;
     if (!name || !email || !password) return res.status(400).json({ error: 'name, email, password required' });
     const exists = await prisma.super_admins.findUnique({ where: { email } });
@@ -31,18 +35,24 @@ router.get('/clients', authMiddleware, async (req, res) => {
     const user = req.user;
     const where = {};
     
-    // For SUPER_ADMIN, use their own id to filter clients
-    // For regular users, use super_admin_id from their user record
-    if (!isPlatformAdmin(user?.role)) {
-      if (user?.userType === 'SUPER_ADMIN' || user?.role === 'SUPER_ADMIN') {
-        // SUPER_ADMIN - filter by their own id
-        // Ensure the id is an integer (SuperAdmin.id is Int, Client.super_admin_id is Int)
+    // Use system_scope for authorization:
+    // - CROSS_TENANT: Can see all clients (no filter)
+    // - TENANT: Filter by super_admin_id  
+    // - BUSINESS: Filter by their assigned super_admin_id
+    if (!hasCrossTenantScope(user)) {
+      if (hasTenantAdminScope(user)) {
+        // TENANT scope (ADMIN) - filter by their super_admin_id
         const superAdminId = typeof user.id === 'string' ? parseInt(user.id, 10) : user.id;
-        if (!isNaN(superAdminId)) {
+        if (!isNaN(superAdminId) && user.userType === 'SUPER_ADMIN') {
           where.super_admin_id = superAdminId;
+        } else if (user?.super_admin_id) {
+          const saId = typeof user.super_admin_id === 'string' ? parseInt(user.super_admin_id, 10) : user.super_admin_id;
+          if (!isNaN(saId)) {
+            where.super_admin_id = saId;
+          }
         }
       } else if (user?.super_admin_id) {
-        // Regular user - filter by their assigned super_admin_id
+        // BUSINESS scope - filter by their assigned super_admin_id
         const saId = typeof user.super_admin_id === 'string' ? parseInt(user.super_admin_id, 10) : user.super_admin_id;
         if (!isNaN(saId)) {
           where.super_admin_id = saId;
@@ -77,9 +87,9 @@ router.get('/clients', authMiddleware, async (req, res) => {
 router.post('/clients', authMiddleware, async (req, res) => {
   try {
     const user = req.user;
-  const role = user?.role;
-  const isAllowed = role === 'SYSTEM_ADMIN' || role === 'ADMIN' || role === 'SUPER_ADMIN';
-  if (!isAllowed) return res.status(403).json({ error: 'Admin only' });
+  // Use scope-based authorization instead of role string checks
+  const isAllowed = hasTenantAdminScope(user);
+  if (!isAllowed) return res.status(403).json({ error: 'Tenant admin access required' });
     const {
       name,
       productType = 'BUSINESS_ERP',
@@ -157,7 +167,7 @@ router.post('/clients', authMiddleware, async (req, res) => {
         return res.status(400).json({ error: 'Valid admin email is required', client: created });
       }
       try {
-        const exists = await prisma.user.findUnique({ where: { email: adminUser.email } });
+        const exists = await prisma.users_enhanced.findFirst({ where: { email: adminUser.email } });
         if (exists) {
           // Rollback: delete the created client since admin creation will fail
           await prisma.clients.delete({ where: { id: created.id } }).catch(() => {});
@@ -180,7 +190,7 @@ router.post('/clients', authMiddleware, async (req, res) => {
       const username = adminUser.username || (adminUser.email?.split?.('@')?.[0] || `admin_${created.client_code || 'client'}`);
       
       try {
-        adminCreated = await prisma.user.create({
+        adminCreated = await prisma.users_enhanced.create({
           data: {
             id: crypto.randomUUID(), // Generate UUID for user ID
             username,
@@ -214,15 +224,19 @@ router.get('/clients/:id', authMiddleware, async (req, res) => {
     const clientId = String(req.params.id);
     const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
-    const role = user?.role;
-    const userType = user?.userType;
-    const isSuperAdminUser = userType === 'SUPER_ADMIN' || role === 'SUPER_ADMIN';
-    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || isSuperAdminUser || role === 'ADMIN';
+    
+    // Use scope-based authorization
+    const isCrossTenant = hasCrossTenantScope(user);
+    const isTenantAdmin = hasTenantAdminScope(user);
     const ownsClient = user?.super_admin_id === client.super_admin_id || user?.id === client.super_admin_id;
-    if (!allowed || (!isPlatformAdmin(role) && !isSuperAdminUser && !ownsClient)) return res.status(403).json({ error: 'Forbidden' });
+    
+    // Allow: CROSS_TENANT, TENANT admin who owns this client
+    if (!isCrossTenant && (!isTenantAdmin || !ownsClient)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     
     // Fetch only ADMIN role users associated with this client (tenant_id = client.id)
-    const adminUsers = await prisma.user.findMany({
+    const adminUsers = await prisma.users_enhanced.findMany({
       where: { 
         tenant_id: clientId,
         is_active: true,
@@ -298,19 +312,22 @@ router.patch('/clients/:id', authMiddleware, async (req, res) => {
     }
     const user = req.user;
     const clientId = String(req.params.id);
-    console.log('[PATCH client] clientId:', clientId, 'user:', { id: user?.id, role: user?.role, super_admin_id: user?.super_admin_id, userType: user?.userType });
+    console.log('[PATCH client] clientId:', clientId, 'user:', { id: user?.id, role: user?.role, super_admin_id: user?.super_admin_id, system_scope: user?.system_scope });
     console.log('[PATCH client] body keys:', Object.keys(req.body || {}));
     const existing = await prismaClient.clients.findUnique({ where: { id: clientId } });
     if (!existing) return res.status(404).json({ error: 'Client not found' });
     console.log('[PATCH client] existing.super_admin_id:', existing.super_admin_id);
-    const role = user?.role;
-    const userType = user?.userType;
-    // Allow SUPER_ADMIN userType or role to update any client
-    const isSuperAdminUser = userType === 'SUPER_ADMIN' || role === 'SUPER_ADMIN';
-    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || isSuperAdminUser || role === 'ADMIN';
+    
+    // Use scope-based authorization
+    const isCrossTenant = hasCrossTenantScope(user);
+    const isTenantAdmin = hasTenantAdminScope(user);
     const ownsClient = user?.super_admin_id === existing.super_admin_id || user?.id === existing.super_admin_id;
-    console.log('[PATCH client] allowed:', allowed, 'isSuperAdminUser:', isSuperAdminUser, 'ownsClient:', ownsClient);
-    if (!allowed || (!isPlatformAdmin(role) && !isSuperAdminUser && !ownsClient)) return res.status(403).json({ error: 'Forbidden' });
+    console.log('[PATCH client] isCrossTenant:', isCrossTenant, 'isTenantAdmin:', isTenantAdmin, 'ownsClient:', ownsClient);
+    
+    // Allow: CROSS_TENANT, TENANT admin who owns this client
+    if (!isCrossTenant && (!isTenantAdmin || !ownsClient)) {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
     const b = req.body || {};
     const e0 = (existing.settings && existing.settings.enterprise) ? existing.settings.enterprise : {};
     const enterprise = {
@@ -470,10 +487,11 @@ router.get('/clients/:id/permissions', authMiddleware, async (req, res) => {
     const ensure = String(req.query.ensure || '').toLowerCase() === 'true';
     const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
-    const role = user?.role;
-    const isSuperAdminRole = role === 'SUPER_ADMIN';
+    
+    // Use scope-based authorization
+    const isCrossTenant = hasCrossTenantScope(user);
     const ownsClient = user?.super_admin_id === client.super_admin_id || user?.id === client.super_admin_id;
-    if (!isPlatformAdmin(role) && !isSuperAdminRole && !ownsClient) return res.status(403).json({ error: 'Forbidden' });
+    if (!isCrossTenant && !ownsClient) return res.status(403).json({ error: 'Forbidden' });
     // Optionally ensure permission row exists for every active module
     if (ensure) {
       const modules = await prisma.modules.findMany({ where: { is_active: true } });
@@ -497,11 +515,12 @@ router.put('/clients/:id/permissions/:moduleId', authMiddleware, async (req, res
     const clientId = String(id);
     const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
-    const role = user?.role;
-    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
-    const isSuperAdminRole = role === 'SUPER_ADMIN';
+    
+    // Use scope-based authorization
+    const isCrossTenant = hasCrossTenantScope(user);
+    const isTenantAdmin = hasTenantAdminScope(user);
     const ownsClient = user?.super_admin_id === client.super_admin_id || user?.id === client.super_admin_id;
-    if (!allowed || (!isPlatformAdmin(role) && !isSuperAdminRole && !ownsClient)) return res.status(403).json({ error: 'Forbidden' });
+    if (!isCrossTenant && (!isTenantAdmin || !ownsClient)) return res.status(403).json({ error: 'Forbidden' });
     const { can_view, can_create, can_edit, can_delete } = req.body;
     const updated = await prisma.client_module_permissions.upsert({ where: { client_id_module_id: { client_id: clientId, module_id: Number(moduleId) } }, update: { can_view, can_create, can_edit, can_delete }, create: { client_id: clientId, module_id: Number(moduleId), can_view: !!can_view, can_create: !!can_create, can_edit: !!can_edit, can_delete: !!can_delete } });
     res.json({ success: true, data: updated });
@@ -517,11 +536,12 @@ router.post('/clients/:id/permissions/bulk', authMiddleware, async (req, res) =>
     const clientId = String(id);
     const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
-    const role = user?.role;
-    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
-    const isSuperAdminRole = role === 'SUPER_ADMIN';
+    
+    // Use scope-based authorization
+    const isCrossTenant = hasCrossTenantScope(user);
+    const isTenantAdmin = hasTenantAdminScope(user);
     const ownsClient = user?.super_admin_id === client.super_admin_id || user?.id === client.super_admin_id;
-    if (!allowed || (!isPlatformAdmin(role) && !isSuperAdminRole && !ownsClient)) return res.status(403).json({ error: 'Forbidden' });
+    if (!isCrossTenant && (!isTenantAdmin || !ownsClient)) return res.status(403).json({ error: 'Forbidden' });
     const items = Array.isArray(req.body?.items) ? req.body.items : [];
     if (items.length === 0) return res.status(400).json({ error: 'items array required' });
     const ops = items
@@ -562,11 +582,12 @@ router.patch('/clients/:id/active', authMiddleware, async (req, res) => {
     }
     const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
-    const role = user?.role;
-    const allowed = isPlatformAdmin(role) || isTenantAdmin(role) || role === 'SUPER_ADMIN' || role === 'ADMIN';
-    const isSuperAdminRole = role === 'SUPER_ADMIN';
+    
+    // Use scope-based authorization
+    const isCrossTenant = hasCrossTenantScope(user);
+    const isTenantAdmin = hasTenantAdminScope(user);
     const ownsClient = user?.super_admin_id === client.super_admin_id || user?.id === client.super_admin_id;
-    if (!allowed || (!isPlatformAdmin(role) && !isSuperAdminRole && !ownsClient)) {
+    if (!isCrossTenant && (!isTenantAdmin || !ownsClient)) {
       return res.status(403).json({ error: 'Forbidden' });
     }
     const updated = await prisma.clients.update({ where: { id: clientId }, data: { is_active } });
@@ -583,10 +604,11 @@ router.get('/clients/:id/usage/daily', authMiddleware, async (req, res) => {
   const clientId = String(id);
   const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'Client not found' });
-    const role = user?.role;
-    const isSuperAdminRole = role === 'SUPER_ADMIN';
+    
+    // Use scope-based authorization
+    const isCrossTenant = hasCrossTenantScope(user);
     const ownsClient = user?.super_admin_id === client.super_admin_id || user?.id === client.super_admin_id;
-    if (!isPlatformAdmin(role) && !isSuperAdminRole && !ownsClient) return res.status(403).json({ error: 'Forbidden' });
+    if (!isCrossTenant && !ownsClient) return res.status(403).json({ error: 'Forbidden' });
   const usage = await prisma.clientDailyUsage.findMany({ where: { client_id: clientId }, orderBy: { date: 'desc' }, take: 30 });
     res.json({ success: true, data: usage });
   } catch (e) { res.status(500).json({ error: 'Failed to fetch usage', details: e.message }); }
@@ -608,11 +630,9 @@ router.get('/clients/:id/roles', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Invalid client ID' });
     }
     
-    // Check authorization
-    const role = user?.role;
-    const isSuperAdminRole = role === 'SUPER_ADMIN' || user?.userType === 'SUPER_ADMIN';
-    if (!isPlatformAdmin(role) && !isSuperAdminRole) {
-      return res.status(403).json({ error: 'Forbidden' });
+    // Use scope-based authorization - only CROSS_TENANT can view all client roles
+    if (!hasCrossTenantScope(user)) {
+      return res.status(403).json({ error: 'Cross-tenant access required' });
     }
     
     // Get client_roles from client_role_assignments table
@@ -673,11 +693,9 @@ router.post('/clients/:id/roles', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Invalid client ID' });
     }
     
-    // Check authorization
-    const role = user?.role;
-    const isSuperAdminRole = role === 'SUPER_ADMIN' || user?.userType === 'SUPER_ADMIN';
-    if (!isPlatformAdmin(role) && !isSuperAdminRole) {
-      return res.status(403).json({ error: 'Forbidden' });
+    // Use scope-based authorization - only CROSS_TENANT can modify client roles
+    if (!hasCrossTenantScope(user)) {
+      return res.status(403).json({ error: 'Cross-tenant access required' });
     }
     
     const roleIdsArray = Array.isArray(roleIds) ? roleIds.map(id => parseInt(id, 10)).filter(id => !isNaN(id)) : [];

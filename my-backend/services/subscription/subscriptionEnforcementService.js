@@ -295,7 +295,7 @@ async function checkPlanLimits(clientId, limitType, additionalUsage = 0) {
 
   switch (limitType) {
     case 'users':
-      currentUsage = await prisma.user.count({ where: { clientId: clientId } });
+      currentUsage = await prisma.users_enhanced.count({ where: { clientId: clientId } });
       limit = plan.max_users;
       limitLabel = 'users';
       break;

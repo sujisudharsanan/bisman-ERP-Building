@@ -51,13 +51,13 @@ async function logActivity(clientId: string, step: string, action: string, meta:
       });
     } else {
       // Fallback: append to settings.enterprise.activity_log JSON
-      const client = await prisma.client.findUnique({ where: { id: clientId } });
+      const client = await prisma.clients.findUnique({ where: { id: clientId } });
       if (client) {
         const settings: any = client.settings || {}; const enterprise = settings.enterprise || {}; const log: any[] = enterprise.activity_log || [];
         log.unshift({ ts: new Date().toISOString(), step, action, meta, actorEmail });
         enterprise.activity_log = log.slice(0, 100); // cap
         settings.enterprise = enterprise;
-        await prisma.client.update({ where: { id: clientId }, data: { settings } });
+        await prisma.clients.update({ where: { id: clientId }, data: { settings } });
       }
     }
   } catch (e) {
@@ -97,9 +97,9 @@ router.post('/public/onboarding/trial', async (req: Request, res: Response) => {
 
     if (draft_client_id) {
       // Update existing draft client settings
-      const existing = await prisma.client.findUnique({ where: { id: draft_client_id } });
+      const existing = await prisma.clients.findUnique({ where: { id: draft_client_id } });
       if (!existing) return res.status(404).json({ error: 'draft_client_not_found' });
-      const updated = await prisma.client.update({
+      const updated = await prisma.clients.update({
         where: { id: draft_client_id },
         data: {
           // Store interim draft meta inside settings.enterprise until schema migration applied
@@ -125,7 +125,7 @@ router.post('/public/onboarding/trial', async (req: Request, res: Response) => {
     }
 
     // Create new trial client (inactive until email verification optionally performed)
-    const created = await prisma.client.create({
+    const created = await prisma.clients.create({
       data: {
         name: sanitizeString(company_name || full_name || 'Trial'),
         productType: 'BUSINESS_ERP',
@@ -174,7 +174,7 @@ router.post('/public/onboarding/trial/magic-link', async (req: Request, res: Res
   const { client_id, email } = req.body || {};
   try {
     if (!client_id || !isValidEmail(email)) return res.status(400).json({ error: 'client_id & valid email required' });
-    const client = await prisma.client.findUnique({ where: { id: client_id } });
+    const client = await prisma.clients.findUnique({ where: { id: client_id } });
     if (!client) return res.status(404).json({ error: 'client_not_found' });
     const link = await issueMagicLink(client_id, email, req);
     await logActivity(client_id, 'trial', 'magic_link_issued', { email });
@@ -196,7 +196,7 @@ router.get('/public/onboarding/trial/resume/:token', async (req: Request, res: R
   const record = await prismaAny.onboardingMagicLink?.findFirst({ where: { token_hash: hash, used_at: null, expires_at: { gt: new Date() } } });
     if (!record) return res.status(404).json({ error: 'token_not_found_or_expired' });
     if (!record.client_id) return res.status(400).json({ error: 'client_id_missing' });
-    const client = await prisma.client.findUnique({ where: { id: record.client_id } });
+    const client = await prisma.clients.findUnique({ where: { id: record.client_id } });
     if (!client) return res.status(404).json({ error: 'client_not_found' });
     // Mark used (single use) but allow multiple resume requests by not setting used_at until completion step maybe; keep single-use for now.
     if (prismaAny.onboardingMagicLink) {
@@ -218,7 +218,7 @@ router.get('/public/onboarding/trial/:clientId/minimal', async (req: Request, re
   if (!checkRateLimit(ip, 'trial_minimal')) return res.status(429).json({ error: 'rate_limited' });
   try {
     const { clientId } = req.params;
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'not_found' });
     const draft = (client.settings as any)?.enterprise?.draft || {};
     res.json({ success: true, data: { id: client.id, trial_end_date: draft.trial_end_date || null, onboarding_status: draft.status || null, company_name: draft.company_name || null } });
@@ -237,7 +237,7 @@ router.get('/public/onboarding/trial/activity/:clientId', async (req: Request, r
       const items = await prismaAny.clientOnboardingActivity.findMany({ where: { client_id: clientId }, orderBy: { created_at: 'desc' }, take: 50 });
       return res.json({ success: true, data: items });
     }
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (!client) return res.status(404).json({ error: 'not_found' });
     const log = (client.settings as any)?.enterprise?.activity_log || [];
     res.json({ success: true, data: log });
@@ -249,13 +249,13 @@ router.get('/public/onboarding/trial/activity/:clientId', async (req: Request, r
 // --- Helpers ---
 async function resolveDefaultSuperAdminId(): Promise<number> {
   try {
-    const count = await prisma.superAdmin.count();
+    const count = await prisma.super_admins.count();
     if (count === 1) {
-      const only = await prisma.superAdmin.findFirst();
+      const only = await prisma.super_admins.findFirst();
       if (only?.id) return only.id;
     }
     // fallback: pick first active
-    const any = await prisma.superAdmin.findFirst({ where: { is_active: true } });
+    const any = await prisma.super_admins.findFirst({ where: { is_active: true } });
     if (any?.id) return any.id;
   } catch {}
   // Hard fallback (should not happen in prod) - return 1
@@ -279,13 +279,13 @@ async function issueMagicLink(clientId: string, email: string, req: Request): Pr
     });
   } else {
     // Fallback: store token meta in settings.enterprise.magic_links
-    const client = await prisma.client.findUnique({ where: { id: clientId } });
+    const client = await prisma.clients.findUnique({ where: { id: clientId } });
     if (client) {
       const settings: any = client.settings || {}; const enterprise = settings.enterprise || {}; const ml: any[] = enterprise.magic_links || [];
       ml.unshift({ email, token_hash: hash, expires_at: expires.toISOString(), created_at: new Date().toISOString() });
       enterprise.magic_links = ml.slice(0, 10);
       settings.enterprise = enterprise;
-      await prisma.client.update({ where: { id: clientId }, data: { settings } });
+      await prisma.clients.update({ where: { id: clientId }, data: { settings } });
     }
   }
   // Raw token returned once; consumer builds full URL on frontend

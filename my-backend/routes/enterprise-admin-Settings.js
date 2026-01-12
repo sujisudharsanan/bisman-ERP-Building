@@ -313,7 +313,7 @@ router.get('/overview', requireEnterpriseAdmin, async (req, res) => {
       },
       usage: {
         totalOrganizations: await prisma.super_admins.count(),
-        totalUsers: await prisma.user.count(),
+        totalUsers: await prisma.users_enhanced.count(),
         storageUsed: '1.2 TB / 5 TB',
         apiCallsToday: 45230
       },

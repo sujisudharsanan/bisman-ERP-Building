@@ -45,15 +45,17 @@ export async function GET(req: NextRequest) {
 
     // Enrich with actor names if available
   const actorIds = Array.from(new Set(logs.map((l: any) => l.actorId).filter(Boolean))) as string[];
-  const users = actorIds.length ? await prisma.user.findMany({ where: { id: { in: actorIds as string[] } }, select: { id: true, name: true, email: true } }) : [];
+  const users = actorIds.length ? await prisma.users_enhanced.findMany({ where: { id: { in: actorIds as string[] } }, select: { id: true, username: true, email: true } }) : [];
     // Avoid implicit any: provide minimal typing for Prisma-selected fields
-    const userMap = new Map(
-      users.map((u: { id: string; name?: string | null; email?: string | null }) => [u.id, u])
+    type UserData = { id: string; username?: string | null; email?: string | null };
+    const userMap = new Map<string, UserData>(
+      users.map((u: UserData) => [u.id, u])
     );
 
     const data = logs.map((l: any) => {
       const sev = l?.meta?.severity || l?.meta?.level || undefined;
       const target = l?.meta?.target || l?.meta?.resource || undefined;
+      const actorData = l.actorId ? userMap.get(l.actorId) : null;
       return {
         id: l.id,
         timestamp: l.createdAt,
@@ -62,7 +64,7 @@ export async function GET(req: NextRequest) {
         actorId: l.actorId,
         severity: sev,
         meta: l.meta,
-        actor: l.actorId ? (userMap.get(l.actorId) || { id: l.actorId, name: 'Unknown' }) : { id: 'system', name: 'System' },
+        actor: actorData ? { id: actorData.id, name: actorData.username || actorData.email || 'Unknown' } : (l.actorId ? { id: l.actorId, name: 'Unknown' } : { id: 'system', name: 'System' }),
       };
     });
 
