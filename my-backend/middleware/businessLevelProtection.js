@@ -44,6 +44,7 @@ function protectBusinessLevel(options = {}) {
       const currentUserId = user.id;
       const currentSystemScope = user.system_scope || 'BUSINESS';
       const currentUserLevel = user.business_level || 1;
+      const currentUserType = user.userType || user.user_type || 'USER';
       
       // ============================================================================
       // RULE 1: Only TENANT or CROSS_TENANT scope users can change business_level

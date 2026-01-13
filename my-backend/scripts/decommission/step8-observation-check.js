@@ -127,7 +127,7 @@ async function runObservationCheck() {
     `;
     console.log('  Users logged in last 24h:', recentLogins[0].count);
     checks.push({ check: 'Recent Activity', status: 'OK', last24h: recentLogins[0].count });
-  } catch (e) {
+  } catch {
     console.log('  Info: last_login column may not exist');
     checks.push({ check: 'Recent Activity', status: 'SKIP' });
   }

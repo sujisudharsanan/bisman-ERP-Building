@@ -3,7 +3,8 @@
  * Helper functions for payment request ID generation, calculations, and transformations
  */
 
-import { Prisma } from '@prisma/client';
+import crypto from 'crypto';
+import { PrismaClient } from '@prisma/client';
 
 /**
  * Generate unique payment request ID: PR-YYYY-MM-DD-XXXX
@@ -19,13 +20,11 @@ export function generatePaymentRequestId(sequenceNumber: number): string {
   
   return `PR-${year}-${month}-${day}-${seq}`;
 }
-
 /**
  * Generate secure payment token for public payment page
  * @returns Random secure token
  */
 export function generatePaymentToken(): string {
-  const crypto = require('crypto');
   return crypto.randomBytes(32).toString('hex');
 }
 
@@ -73,8 +72,6 @@ export function calculateTotals(lineItems: Array<{
     return sum + discount;
   }, 0);
   
-  const afterDiscount = subtotal - totalDiscount;
-  
   const totalTax = lineItems.reduce((sum, item) => {
     const itemSubtotal = item.quantity * item.rate;
     const discount = (itemSubtotal * (item.discountRate || 0)) / 100;
@@ -98,8 +95,8 @@ export function calculateTotals(lineItems: Array<{
  * @param currentLevel - Current approval level
  * @returns Next level info or null if no more levels
  */
-export async function getNextApprovalLevel(currentLevel: number, prisma: any) {
-  const nextLevel = await prisma.approvalLevel.findUnique({
+export async function getNextApprovalLevel(currentLevel: number, prisma: PrismaClient) {
+  const nextLevel = await prisma.approval_levels.findUnique({
     where: { level: currentLevel + 1, isActive: true },
   });
   return nextLevel;
@@ -111,7 +108,7 @@ export async function getNextApprovalLevel(currentLevel: number, prisma: any) {
  * @param prisma - Prisma client
  * @returns Array of users with that role
  */
-export async function findUsersByRole(roleName: string, prisma: any) {
+export async function findUsersByRole(roleName: string, prisma: PrismaClient) {
   return prisma.users_enhanced.findMany({
     where: {
       role: roleName,
@@ -138,11 +135,11 @@ export async function createActivityLog(
     oldStatus?: string;
     newStatus?: string;
     comment?: string;
-    metadata?: any;
+    metadata?: Record<string, unknown>;
   },
-  prisma: any
+  prisma: PrismaClient
 ) {
-  return prisma.paymentActivityLog.create({
+  return prisma.payment_activity_logs.create({
     data: {
       ...data,
       metadata: data.metadata ? JSON.stringify(data.metadata) : undefined,

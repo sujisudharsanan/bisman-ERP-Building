@@ -12,7 +12,7 @@
  */
 
 import { Router, Request, Response } from 'express';
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, Prisma } from '@prisma/client';
 import {
   generatePaymentRequestId,
   calculateLineTotal,
@@ -21,6 +21,22 @@ import {
 } from '../utils/paymentRequestUtils';
 import { authMiddleware } from '../../middleware/auth';
 
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id: number;
+  };
+}
+
+interface LineItem {
+  description: string;
+  quantity: number | string;
+  unit?: string;
+  rate: number | string;
+  taxRate?: number | string;
+  discountRate?: number | string;
+  lineTotal?: number;
+}
+
 const router = Router();
 const prisma = new PrismaClient();
 
@@ -28,9 +44,9 @@ const prisma = new PrismaClient();
  * Create new payment request
  * POST /api/common/payment-requests
  */
-router.post('/', authMiddleware, async (req: Request, res: Response) => {
+router.post('/', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = req.user?.id;
     if (!userId) {
       return res.status(401).json({ error: 'Unauthorized' });
     }
@@ -56,7 +72,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
     }
 
     // Calculate line totals
-    const processedLineItems = lineItems.map((item: any) => ({
+    const processedLineItems = lineItems.map((item: LineItem) => ({
       ...item,
       lineTotal: calculateLineTotal(
         Number(item.quantity),
@@ -101,7 +117,7 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
         status: 'DRAFT',
         createdById: userId,
         payment_request_line_items: {
-          create: processedLineItems.map((item: any, index: number) => ({
+          create: processedLineItems.map((item: LineItem & { lineTotal: number }, index: number) => ({
             description: item.description,
             quantity: Number(item.quantity),
             unit: item.unit || 'unit',
@@ -135,11 +151,11 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
       data: paymentRequest,
       message: 'Payment request created successfully',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Create payment request error:', error);
     res.status(500).json({
       error: 'Failed to create payment request',
-      details: error.message,
+      details: error instanceof Error ? error.message : String(error),
     });
   }
 });
@@ -148,9 +164,9 @@ router.post('/', authMiddleware, async (req: Request, res: Response) => {
  * List payment requests with filters
  * GET /api/common/payment-requests
  */
-router.get('/', authMiddleware, async (req: Request, res: Response) => {
+router.get('/', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = req.user?.id;
     const {
       status,
       clientId,
@@ -160,15 +176,19 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
       sortOrder = 'desc',
     } = req.query;
 
-    const where: any = {};
+    const where: {
+      status?: string;
+      clientId?: string;
+      createdById?: number;
+    } = {};
 
     // Filter by status
-    if (status) {
+    if (status && typeof status === 'string') {
       where.status = status;
     }
 
     // Filter by client
-    if (clientId) {
+    if (clientId && typeof clientId === 'string') {
       where.clientId = clientId;
     }
 
@@ -207,11 +227,11 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
         totalPages: Math.ceil(total / Number(limit)),
       },
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('List payment requests error:', error);
     res.status(500).json({
       error: 'Failed to fetch payment requests',
-      details: error.message,
+      details: error instanceof Error ? error.message : String(error),
     });
   }
 });
@@ -220,7 +240,7 @@ router.get('/', authMiddleware, async (req: Request, res: Response) => {
  * Get payment request by ID
  * GET /api/common/payment-requests/:id
  */
-router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
+router.get('/:id', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
     const { id } = req.params;
 
@@ -248,11 +268,11 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
       success: true,
       data: paymentRequest,
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Get payment request error:', error);
     res.status(500).json({
       error: 'Failed to fetch payment request',
-      details: error.message,
+      details: error instanceof Error ? error.message : String(error),
     });
   }
 });
@@ -261,9 +281,9 @@ router.get('/:id', authMiddleware, async (req: Request, res: Response) => {
  * Update payment request (only in DRAFT status)
  * PUT /api/common/payment-requests/:id
  */
-router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
+router.put('/:id', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = req.user?.id;
     const { id } = req.params;
     const {
       clientId,
@@ -309,7 +329,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
     };
 
     if (lineItems && lineItems.length > 0) {
-      const processedLineItems = lineItems.map((item: any) => ({
+      const processedLineItems = lineItems.map((item: LineItem) => ({
         ...item,
         lineTotal: calculateLineTotal(
           Number(item.quantity),
@@ -320,10 +340,10 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
       }));
       const calculatedTotals = calculateTotals(processedLineItems);
       totals = {
-        subtotal: calculatedTotals.subtotal as any,
-        taxAmount: calculatedTotals.taxAmount as any,
-        discountAmount: calculatedTotals.discountAmount as any,
-        totalAmount: calculatedTotals.totalAmount as any,
+        subtotal: new Prisma.Decimal(calculatedTotals.subtotal),
+        taxAmount: new Prisma.Decimal(calculatedTotals.taxAmount),
+        discountAmount: new Prisma.Decimal(calculatedTotals.discountAmount),
+        totalAmount: new Prisma.Decimal(calculatedTotals.totalAmount),
       };
     }
 
@@ -348,9 +368,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
           ...(notes !== undefined && { notes }),
           ...(dueDate !== undefined && { dueDate: dueDate ? new Date(dueDate) : null }),
           ...(invoiceNumber !== undefined && { invoiceNumber }),
-          ...(attachments !== undefined && {
-            attachments: attachments.length > 0 ? JSON.stringify(attachments) : null,
-          }),
+          ...(attachments !== undefined && { attachments: attachments?.length > 0 ? JSON.stringify(attachments) : null }),
           subtotal: totals.subtotal,
           taxAmount: totals.taxAmount,
           discountAmount: totals.discountAmount,
@@ -358,7 +376,7 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
           ...(lineItems &&
             lineItems.length > 0 && {
               payment_request_line_items: {
-                create: lineItems.map((item: any, index: number) => ({
+                create: lineItems.map((item: LineItem, index: number) => ({
                   description: item.description,
                   quantity: Number(item.quantity),
                   unit: item.unit || 'unit',
@@ -402,11 +420,11 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
       data: updatedRequest,
       message: 'Payment request updated successfully',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Update payment request error:', error);
     res.status(500).json({
       error: 'Failed to update payment request',
-      details: error.message,
+      details: error instanceof Error ? error.message : String(error),
     });
   }
 });
@@ -415,9 +433,9 @@ router.put('/:id', authMiddleware, async (req: Request, res: Response) => {
  * Delete payment request (only in DRAFT status)
  * DELETE /api/common/payment-requests/:id
  */
-router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
+router.delete('/:id', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = req.user?.id;
     const { id } = req.params;
 
     const paymentRequest = await prisma.payment_requests.findUnique({
@@ -448,11 +466,11 @@ router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
       success: true,
       message: 'Payment request deleted successfully',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Delete payment request error:', error);
     res.status(500).json({
       error: 'Failed to delete payment request',
-      details: error.message,
+      details: error instanceof Error ? error.message : String(error),
     });
   }
 });
@@ -461,9 +479,9 @@ router.delete('/:id', authMiddleware, async (req: Request, res: Response) => {
  * Submit payment request for approval
  * POST /api/common/payment-requests/:id/submit
  */
-router.post('/:id/submit', authMiddleware, async (req: Request, res: Response) => {
+router.post('/:id/submit', authMiddleware, async (req: AuthenticatedRequest, res: Response) => {
   try {
-    const userId = (req as any).user?.id;
+    const userId = req.user?.id;
     const { id } = req.params;
     // Note: requestedApprovers can be used for specific approver selection (future feature)
 
@@ -603,11 +621,11 @@ router.post('/:id/submit', authMiddleware, async (req: Request, res: Response) =
       },
       message: 'Payment request submitted successfully',
     });
-  } catch (error: any) {
+  } catch (error: unknown) {
     console.error('Submit payment request error:', error);
     res.status(500).json({
       error: 'Failed to submit payment request',
-      details: error.message,
+      details: error instanceof Error ? error.message : String(error),
     });
   }
 });

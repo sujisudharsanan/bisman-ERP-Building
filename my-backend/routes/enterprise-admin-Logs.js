@@ -125,52 +125,45 @@ router.get('/', requireEnterpriseAdmin, async (req, res) => {
       }
     }
 
-    const [logs, stats] = await Promise.all([
-      prisma.recent_activity.findMany({
-        where,
-        take: limit,
-        orderBy: { created_at: 'desc' },
-        select: {
-          id: true,
-          action: true,
-          entity: true,
-          entity_id: true,
-          username: true,
-          details: true,
-          created_at: true
-        }
-      }),
-      prisma.recent_activity.groupBy({
-        by: ['action'],
-        where,
-        _count: { id: true }
-      })
-    ]);
+    const logs = await prisma.recent_activity.findMany({
+      where,
+      take: limit,
+      orderBy: { created_at: 'desc' },
+      select: {
+        id: true,
+        action: true,
+        entity: true,
+        entity_id: true,
+        username: true,
+        details: true,
+        created_at: true
+      }
+    });
 
     // Transform logs to match frontend interface
     const transformedLogs = logs.map(log => {
       // Determine log level based on action
-      let level = 'info';
+      let logLevel = 'info';
       const action = log.action.toUpperCase();
       if (action.includes('ERROR') || action.includes('FAIL') || action.includes('DELETE')) {
-        level = 'error';
+        logLevel = 'error';
       } else if (action.includes('WARN') || action.includes('SUSPEND')) {
-        level = 'warning';
+        logLevel = 'warning';
       } else if (action.includes('SUCCESS') || action.includes('CREATE') || action.includes('ACTIVATE')) {
-        level = 'success';
+        logLevel = 'success';
       }
 
       return {
         id: log.id,
         timestamp: log.created_at?.toISOString() || new Date().toISOString(),
-        level,
+        level: logLevel,
         action: log.action,
         user: log.username || 'System',
         module: log.entity || 'system',
         details: typeof log.details === 'object' ? JSON.stringify(log.details) : log.details,
         ip_address: ''
       };
-    });
+    }).filter(log => !level || level === 'all' || log.level === level);
 
     // Calculate stats
     const totalLogs = logs.length;

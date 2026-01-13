@@ -12,8 +12,6 @@
  * Compliance: OWASP A01 (Broken Access Control), ISO 27001 A.9.4.1, SOC 2 CC6.1
  */
 
-const { PrismaClient } = require('@prisma/client')
-
 /**
  * Middleware to enforce tenant isolation for all database operations
  * 

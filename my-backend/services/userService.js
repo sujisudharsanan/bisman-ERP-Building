@@ -298,6 +298,7 @@ const UserService = {
       role = 'USER',
       role_ids, // MULTI-ROLE FIX: Accept array of role names
       business_level,
+      system_scope,
       reports_to,
       tenant_id,
       super_admin_id,

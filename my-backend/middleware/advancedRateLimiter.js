@@ -14,13 +14,11 @@
  */
 
 const rateLimit = require('express-rate-limit');
-const { PrismaClient } = require('@prisma/client');
 
 // Custom IP key generator (replacing the non-exported internal helper)
 const ipKeyGenerator = (req) => {
   return req.ip || req.connection?.remoteAddress || 'unknown';
 };
-const prisma = new PrismaClient();
 
 // Optional: Redis store for distributed rate limiting
 let RedisStore = null;
@@ -105,10 +103,9 @@ function advancedKeyGenerator(req) {
  * Handler for rate limit exceeded events
  * Logs violations and optionally stores in database for security monitoring
  */
-async function rateLimitHandler(req, res, options) {
+async function rateLimitHandler(req, res, _options) {
   const ip = advancedKeyGenerator(req);
   const endpoint = req.path;
-  const userAgent = req.headers['user-agent'] || 'unknown';
   
   console.warn(`🚨 [RateLimit] IP ${ip} exceeded limit for ${endpoint}`);
   

@@ -11,7 +11,7 @@
 
 const express = require('express');
 const router = express.Router();
-const { authenticate, requireRole } = require('../../middleware/auth');
+const { authenticate } = require('../../middleware/auth');
 const prisma = require('../../lib/prisma');
 
 // Middleware for admin access
@@ -243,7 +243,7 @@ router.get('/:userId', authenticate, requireAdminAccess, async (req, res) => {
           }))
         };
       }
-    } catch (err) {
+    } catch {
       // Storage tracking not available
     }
 

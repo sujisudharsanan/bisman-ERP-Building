@@ -3,12 +3,7 @@
  * Test subscription info endpoint on Railway
  */
 
-const https = require('https');
-
 const CLIENT_ID = '6b68f86a-225f-480f-ae29-292da9e565d3';
-
-// Test by calling the backend directly with a mock user context
-const BACKEND_URL = 'https://bisman-erp-backend-production.up.railway.app';
 
 // We need to login first to get a token
 console.log('Testing subscription enforcement logic locally...\n');

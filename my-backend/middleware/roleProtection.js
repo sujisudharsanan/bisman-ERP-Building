@@ -10,7 +10,6 @@
  */
 
 const { PrismaClient } = require('@prisma/client');
-const TenantGuard = require('./tenantGuard'); // ✅ SECURITY: Multi-tenant isolation
 const prisma = new PrismaClient();
 
 /**

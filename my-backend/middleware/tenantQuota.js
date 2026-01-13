@@ -498,11 +498,9 @@ async function resetUsage(tenantId, scope = 'all') {
 /**
  * Get quota statistics for monitoring
  */
-async function getQuotaStats() {
-  const redis = getRedis();
-  
+function getQuotaStats() {
   return {
-    redisAvailable,
+    redisConnected: redisAvailable,
     cachedQuotas: quotaCache.size,
     denylistSize: denylist.size,
     defaultPlans: Object.keys(DEFAULT_QUOTAS),

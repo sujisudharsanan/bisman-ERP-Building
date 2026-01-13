@@ -13,7 +13,6 @@
 
 const jwt = require('jsonwebtoken')
 const crypto = require('crypto')
-const { PrismaClient } = require('@prisma/client')
 const { isJtiRevoked } = require('../lib/tokenStore')
 const { getPrisma } = require('../lib/prisma')
 

@@ -5,7 +5,7 @@ const authMiddleware = require('../middleware/auth');
 const rbacMiddleware = require('../middleware/rbac');
 const { getPrisma } = require('../lib/prisma');
 const cacheService = require('../services/cacheService'); // ✅ Cache service
-const { hasCrossTenantScope, hasTenantAdminScope } = require('../services/authorizationService');
+const { hasCrossTenantScope } = require('../services/authorizationService');
 
 // Role-based default pages mapping (moved to top-level for reuse)
 const roleBasedPages = {

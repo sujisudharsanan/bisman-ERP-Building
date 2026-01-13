@@ -17,7 +17,6 @@ const { getPrisma } = require('../../lib/prisma');
 // Namespaces
 const PERM_NS = 'perm';
 const PERM_USER_NS = 'perm:user';
-const PERM_ROLE_NS = 'perm:role';
 const PERM_MODULE_NS = 'perm:module';
 
 // TTL settings (in seconds)
@@ -33,13 +32,6 @@ function userPermKey(userId, module = null) {
     return key(PERM_USER_NS, userId, module);
   }
   return key(PERM_USER_NS, userId);
-}
-
-/**
- * Create cache key for role permissions
- */
-function rolePermKey(roleId) {
-  return key(PERM_ROLE_NS, roleId);
 }
 
 /**

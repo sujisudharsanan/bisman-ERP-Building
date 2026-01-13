@@ -50,6 +50,8 @@ router.put('/general', requireEnterpriseAdmin, async (req, res) => {
       currency,
       logo
     } = req.body;
+    // Variables destructured for validation/documentation; using req.body directly
+    void systemName, defaultTimezone, defaultLanguage, sessionTimeout, dateFormat, timeFormat, currency, logo;
 
     // Log the update
     await prisma.recent_activity.create({
@@ -121,6 +123,8 @@ router.get('/security', requireEnterpriseAdmin, async (req, res) => {
 router.put('/security', requireEnterpriseAdmin, async (req, res) => {
   try {
     const { passwordPolicy, mfaSettings, sessionSettings, apiAccess, ipWhitelist } = req.body;
+    // Variables destructured for validation/documentation; using req.body directly
+    void passwordPolicy, mfaSettings, sessionSettings, apiAccess, ipWhitelist;
 
     // Log the critical security update
     await prisma.recent_activity.create({
@@ -183,6 +187,8 @@ router.get('/usage', requireEnterpriseAdmin, async (req, res) => {
 router.put('/usage', requireEnterpriseAdmin, async (req, res) => {
   try {
     const { storage, api, users, modules } = req.body;
+    // Variables destructured for validation/documentation; using req.body directly
+    void storage, api, users, modules;
 
     // Log the update
     await prisma.recent_activity.create({

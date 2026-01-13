@@ -29,8 +29,6 @@
  * ============================================================================
  */
 
-const { PrismaClient } = require('@prisma/client');
-
 /**
  * Select approver with the least pending tasks (workload balancing)
  */

@@ -3,7 +3,6 @@ const router = express.Router();
 const upload = require('../middleware/upload');
 const { getPrisma } = require('../lib/prisma');
 const { authenticate } = require('../middleware/auth');
-const TenantGuard = require('../middleware/tenantGuard');
 const path = require('path');
 const fs = require('fs');
 

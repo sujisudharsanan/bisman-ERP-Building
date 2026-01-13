@@ -40,7 +40,7 @@ router.get('/users/report', [authenticate, requireRole(['ADMIN', 'SUPER_ADMIN'])
         users = await prisma.users_enhanced.findMany({
           include: { role: { select: { id: true, name: true } } },
         });
-      } catch (_) {
+      } catch {
         try {
           users = await prisma.users_enhanced.findMany({ include: { role: { select: { id: true, name: true } } } });
         } catch {
@@ -52,7 +52,7 @@ router.get('/users/report', [authenticate, requireRole(['ADMIN', 'SUPER_ADMIN'])
     if (!Array.isArray(users) || users.length === 0) {
       try {
         users = await privilegeService.getUsersByRole(undefined);
-      } catch (_) {
+      } catch {
         users = [];
       }
     }

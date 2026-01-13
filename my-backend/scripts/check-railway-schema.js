@@ -42,7 +42,7 @@ async function checkRailwaySchema() {
       try {
         const result = await client.query(`SELECT COUNT(*) as cnt FROM public.${table}`);
         console.log(`  ${table}: ${result.rows[0].cnt} records`);
-      } catch (_) {
+      } catch {
         console.log(`  ${table}: not found`);
       }
     }
@@ -73,7 +73,7 @@ async function checkRailwaySchema() {
           const cnt = parseInt(count.rows[0].cnt);
           totalErpRows += cnt;
           console.log(`  erp.${t.table_name}: ${cnt} rows`);
-        } catch (e) {
+        } catch {
           console.log(`  erp.${t.table_name}: error`);
         }
       }
