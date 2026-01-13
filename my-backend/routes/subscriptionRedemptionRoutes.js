@@ -512,13 +512,32 @@ router.post('/activate-free', ...clientAdminOnly, async (req, res) => {
       });
     }
 
-    // Check if already has active subscription
+    // Check if already has active subscription (but allow expired ones)
     const existingStatus = await couponService.getTenantSubscriptionStatus(tenantId);
-    if (existingStatus.hasActiveSubscription && existingStatus.subscription?.status !== 'none') {
+    
+    // Check if subscription is expired (trial or regular)
+    const now = new Date();
+    const expiresAt = existingStatus.subscription?.expiresAt ? new Date(existingStatus.subscription.expiresAt) : null;
+    const isExpired = expiresAt && expiresAt < now;
+    const currentState = existingStatus.subscription?.state;
+    const currentPlanCode = existingStatus.subscription?.planCode?.toUpperCase();
+    
+    // Allow Free Plan activation if:
+    // 1. No subscription exists
+    // 2. Subscription is expired (trial or regular)
+    // 3. Already on Free plan (re-activate)
+    // 4. State is not actively ACTIVE/TRIAL with valid expiry
+    const canActivateFree = 
+      !existingStatus.hasSubscription || 
+      isExpired || 
+      currentPlanCode === 'FREE' ||
+      !['ACTIVE', 'TRIAL'].includes(currentState);
+    
+    if (!canActivateFree) {
       return res.status(400).json({
         ok: false,
         error: 'ALREADY_SUBSCRIBED',
-        message: 'You already have an active subscription',
+        message: 'You already have an active subscription. Please wait for it to expire or contact support.',
       });
     }
 
@@ -543,8 +562,6 @@ router.post('/activate-free', ...clientAdminOnly, async (req, res) => {
         message: 'Free plan is not available. Please contact support.',
       });
     }
-
-    const now = new Date();
 
     // Delete any existing subscription (pending/none)
     await prisma.client_subscriptions.deleteMany({
