@@ -199,7 +199,7 @@ function CreateCouponModal({ isOpen, onClose, onSuccess, plans }: CreateCouponMo
   
   // Form state
   const [selectedPlanId, setSelectedPlanId] = useState<number | string | null>(null);
-  const [validityDays, setValidityDays] = useState(30);
+  const [validityDays, setValidityDays] = useState<number | string>(30);
   const [tenantRestriction, setTenantRestriction] = useState<'ANY' | 'ONLY_NEW_TENANTS' | 'SPECIFIC_TENANT'>('ANY');
   const [specificTenantId, setSpecificTenantId] = useState('');
   const [notes, setNotes] = useState('');
@@ -212,13 +212,15 @@ function CreateCouponModal({ isOpen, onClose, onSuccess, plans }: CreateCouponMo
       return;
     }
 
+    const numericValidityDays = typeof validityDays === 'string' ? parseInt(validityDays) || 30 : validityDays;
+
     setLoading(true);
     setError(null);
 
     // Calculate validity dates
     const validFrom = new Date();
     const validUntil = new Date();
-    validUntil.setDate(validUntil.getDate() + validityDays);
+    validUntil.setDate(validUntil.getDate() + numericValidityDays);
 
     try {
       const response = await fetch('/api/superadmin/coupons', {
@@ -229,7 +231,7 @@ function CreateCouponModal({ isOpen, onClose, onSuccess, plans }: CreateCouponMo
           planId: selectedPlanId,
           validFrom: validFrom.toISOString(),
           validUntil: validUntil.toISOString(),
-          durationDays: validityDays,
+          durationDays: numericValidityDays,
           tenantRestrictionType: tenantRestriction,
           restrictedTenantId: tenantRestriction === 'SPECIFIC_TENANT' ? specificTenantId : null,
           notes,
@@ -342,8 +344,14 @@ function CreateCouponModal({ isOpen, onClose, onSuccess, plans }: CreateCouponMo
                 type="number"
                 min={1}
                 max={365}
-                value={validityDays ?? ''}
-                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValidityDays(e.target.value === '' ? 30 : parseInt(e.target.value))}
+                value={validityDays}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) => setValidityDays(e.target.value)}
+                onBlur={() => {
+                  // Set default value on blur if empty
+                  if (validityDays === '' || validityDays === 0) {
+                    setValidityDays(30);
+                  }
+                }}
                 className="w-24"
               />
               <span className="text-gray-600 dark:text-gray-400">days from today</span>
@@ -424,7 +432,7 @@ function CreateCouponModal({ isOpen, onClose, onSuccess, plans }: CreateCouponMo
               <h4 className="text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Preview</h4>
               <div className="text-sm space-y-1">
                 <p><span className="text-gray-500">Plan:</span> {selectedPlan.name}</p>
-                <p><span className="text-gray-500">Coupon valid until:</span> {formatDate(new Date(Date.now() + validityDays * 24 * 60 * 60 * 1000).toISOString())}</p>
+                <p><span className="text-gray-500">Coupon valid until:</span> {formatDate(new Date(Date.now() + (parseInt(String(validityDays)) || 30) * 24 * 60 * 60 * 1000).toISOString())}</p>
                 <p><span className="text-gray-500">Restriction:</span> {tenantRestriction.replace(/_/g, ' ').toLowerCase()}</p>
               </div>
             </div>
