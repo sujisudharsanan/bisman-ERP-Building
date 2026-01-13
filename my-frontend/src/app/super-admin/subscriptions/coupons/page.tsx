@@ -77,6 +77,9 @@ interface Coupon {
   plan_id: number;
   plan_name: string;
   plan_tier: string;
+  duration_days: number;
+  coupon_value: number;
+  currency: string;
   valid_from: string;
   valid_until: string;
   tenant_restriction_type: 'ANY' | 'ONLY_NEW_TENANTS' | 'SPECIFIC_TENANT';
@@ -128,6 +131,9 @@ interface CouponAnalytics {
     expired: number;
     revoked: number;
     redemptionRate: string | number;
+    totalRevenue: number;
+    potentialRevenue: number;
+    currency: string;
   };
   expiringSoon: Array<{
     id: string;
@@ -1255,7 +1261,7 @@ export default function SuperAdminCouponsPage() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-5 gap-4">
+        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
           <Card>
             <CardContent className="pt-4">
               <p className="text-2xl font-bold text-gray-900 dark:text-gray-100">{stats.total}</p>
@@ -1284,6 +1290,32 @@ export default function SuperAdminCouponsPage() {
             <CardContent className="pt-4">
               <p className="text-2xl font-bold text-red-600">{stats.revoked}</p>
               <p className="text-sm text-gray-500">Revoked</p>
+            </CardContent>
+          </Card>
+          <Card className="border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-900/20">
+            <CardContent className="pt-4">
+              <p className="text-2xl font-bold text-emerald-600">
+                {new Intl.NumberFormat('en-IN', {
+                  style: 'currency',
+                  currency: analytics?.summary?.currency || 'INR',
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                }).format(analytics?.summary?.totalRevenue || 0)}
+              </p>
+              <p className="text-sm text-gray-500">Revenue</p>
+            </CardContent>
+          </Card>
+          <Card className="border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-900/20">
+            <CardContent className="pt-4">
+              <p className="text-2xl font-bold text-amber-600">
+                {new Intl.NumberFormat('en-IN', {
+                  style: 'currency',
+                  currency: analytics?.summary?.currency || 'INR',
+                  minimumFractionDigits: 0,
+                  maximumFractionDigits: 0,
+                }).format(analytics?.summary?.potentialRevenue || 0)}
+              </p>
+              <p className="text-sm text-gray-500">Potential</p>
             </CardContent>
           </Card>
         </div>
@@ -1388,10 +1420,11 @@ export default function SuperAdminCouponsPage() {
                       <tr className="border-b border-gray-200 dark:border-gray-700">
                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Code</th>
                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Plan</th>
+                        <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Value</th>
+                        <th className="text-center py-3 px-4 text-sm font-medium text-gray-500">Duration</th>
                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Status</th>
                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Valid Until</th>
                         <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Restriction</th>
-                        <th className="text-left py-3 px-4 text-sm font-medium text-gray-500">Created</th>
                         <th className="text-right py-3 px-4 text-sm font-medium text-gray-500">Actions</th>
                       </tr>
                     </thead>
@@ -1401,6 +1434,23 @@ export default function SuperAdminCouponsPage() {
                         const StatusIcon = statusConfig.icon;
                         const remainingDays = getRemainingDays(coupon.valid_until);
                         const isExpiringSoon = coupon.status === 'ACTIVE' && remainingDays <= 7 && remainingDays > 0;
+                        
+                        // Format currency value
+                        const formatCurrency = (value: number, currency: string) => {
+                          return new Intl.NumberFormat('en-IN', {
+                            style: 'currency',
+                            currency: currency || 'INR',
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0,
+                          }).format(value);
+                        };
+                        
+                        // Format duration
+                        const formatDuration = (days: number) => {
+                          if (days >= 365) return `${Math.floor(days / 365)}Y`;
+                          if (days >= 30) return `${Math.floor(days / 30)}M`;
+                          return `${days}D`;
+                        };
                         
                         return (
                           <tr key={coupon.id} className="border-b border-gray-100 dark:border-gray-800 hover:bg-gray-50 dark:hover:bg-gray-800/50">
@@ -1414,6 +1464,16 @@ export default function SuperAdminCouponsPage() {
                                 <p className="font-medium text-gray-900 dark:text-gray-100">{coupon.plan_name}</p>
                                 <p className="text-xs text-gray-500">{coupon.plan_tier}</p>
                               </div>
+                            </td>
+                            <td className="py-3 px-4 text-right">
+                              <span className="font-semibold text-green-600 dark:text-green-400">
+                                {formatCurrency(coupon.coupon_value || 0, coupon.currency)}
+                              </span>
+                            </td>
+                            <td className="py-3 px-4 text-center">
+                              <Badge className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+                                {formatDuration(coupon.duration_days || 30)}
+                              </Badge>
                             </td>
                             <td className="py-3 px-4">
                               <Badge className={statusConfig.color}>
@@ -1433,9 +1493,6 @@ export default function SuperAdminCouponsPage() {
                               {coupon.tenant_restriction_type === 'ANY' && 'Any'}
                               {coupon.tenant_restriction_type === 'ONLY_NEW_TENANTS' && 'New only'}
                               {coupon.tenant_restriction_type === 'SPECIFIC_TENANT' && 'Specific'}
-                            </td>
-                            <td className="py-3 px-4 text-sm text-gray-500">
-                              {formatDate(coupon.created_at)}
                             </td>
                             <td className="py-3 px-4 text-right">
                               <Button

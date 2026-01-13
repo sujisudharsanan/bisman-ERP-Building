@@ -209,6 +209,28 @@ async function logCouponEvent(prisma, eventType, data) {
 async function createCoupon(data, actor) {
   const prisma = getPrisma();
   
+  // Resolve the actor's UUID from users_enhanced table
+  // Super admins have their ID stored in super_admin_id or legacy_id
+  let actorUuid = actor.id;
+  if (typeof actor.id === 'number' || !isNaN(parseInt(actor.id))) {
+    const userEnhanced = await prisma.users_enhanced.findFirst({
+      where: {
+        OR: [
+          { super_admin_id: parseInt(actor.id) },
+          { legacy_id: parseInt(actor.id) },
+        ]
+      },
+      select: { id: true }
+    });
+    if (userEnhanced) {
+      actorUuid = userEnhanced.id;
+    } else {
+      // If no mapping found, create a placeholder or throw error
+      console.warn(`[CouponService] No users_enhanced entry found for actor id: ${actor.id}`);
+      throw { code: 'ACTOR_NOT_FOUND', message: 'Could not resolve actor UUID for coupon creation' };
+    }
+  }
+  
   // Validate plan exists - search in subscription_plans table
   let plan = null;
   const planId = data.planId;
@@ -276,21 +298,40 @@ async function createCoupon(data, actor) {
       notes: data.notes || null,
       sales_reference: data.salesReference || null,
       invoice_reference: data.invoiceReference || null,
-      created_by: actor.id,
+      created_by: actorUuid,
     },
   });
+  
+  // Calculate coupon value based on duration and plan price
+  const priceMonthly = planSnapshot.price_monthly || 0;
+  const priceYearly = planSnapshot.price_yearly || 0;
+  let couponValue = 0;
+  if (durationDays <= 30) {
+    couponValue = priceMonthly;
+  } else if (durationDays <= 90) {
+    couponValue = priceMonthly * 3;
+  } else if (durationDays <= 180) {
+    couponValue = priceMonthly * 6;
+  } else if (durationDays >= 365) {
+    couponValue = priceYearly || priceMonthly * 12;
+  } else {
+    couponValue = Math.round((priceMonthly / 30) * durationDays);
+  }
   
   // Enrich coupon with plan info from snapshot for response
   const enrichedCoupon = {
     ...coupon,
     plan_name: planSnapshot.name,
     plan_tier: planSnapshot.code,
+    duration_days: durationDays,
+    coupon_value: couponValue,
+    currency: planSnapshot.currency || 'INR',
   };
   
   // Log audit event
   await logCouponEvent(prisma, COUPON_EVENTS.COUPON_CREATED, {
     couponId: coupon.id,
-    actorUserId: actor.id,
+    actorUserId: actorUuid,
     actorRole: actor.role,
     payload: {
       code: coupon.code,
@@ -345,6 +386,27 @@ async function getCoupons(filters = {}) {
       const planName = planSnapshot.name || 'Unknown Plan';
       const planCode = planSnapshot.code || 'UNKNOWN';
       
+      // Calculate coupon value based on duration and plan price
+      const durationDays = coupon.duration_days || 30;
+      const priceMonthly = planSnapshot.price_monthly || 0;
+      const priceYearly = planSnapshot.price_yearly || 0;
+      const currency = planSnapshot.currency || 'INR';
+      
+      // Calculate pro-rated value based on duration
+      let couponValue = 0;
+      if (durationDays <= 30) {
+        couponValue = priceMonthly;
+      } else if (durationDays <= 90) {
+        couponValue = priceMonthly * 3;
+      } else if (durationDays <= 180) {
+        couponValue = priceMonthly * 6;
+      } else if (durationDays >= 365) {
+        couponValue = priceYearly || priceMonthly * 12;
+      } else {
+        // Pro-rate for other durations
+        couponValue = Math.round((priceMonthly / 30) * durationDays);
+      }
+      
       let remainingTime = null;
       let tenant = null;
       let activatedOn = null;
@@ -362,6 +424,9 @@ async function getCoupons(filters = {}) {
         ...coupon,
         plan_name: planName,
         plan_tier: planCode,
+        duration_days: durationDays,
+        coupon_value: couponValue,
+        currency: currency,
         derived_status: derivedStatus,
         tenant,
         activated_on: activatedOn,

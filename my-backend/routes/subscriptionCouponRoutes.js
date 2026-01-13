@@ -676,6 +676,76 @@ router.get('/analytics', ...superAdminOnly, async (req, res) => {
     const expiredCoupons = await prisma.subscription_coupons.count({ where: { status: 'EXPIRED' } });
     const revokedCoupons = await prisma.subscription_coupons.count({ where: { status: 'REVOKED' } });
 
+    // Calculate total revenue from redeemed coupons
+    const redeemedCouponData = await prisma.subscription_coupons.findMany({
+      where: { used_count: { gt: 0 } },
+      select: {
+        plan_snapshot_json: true,
+        duration_days: true,
+        used_count: true,
+      },
+    });
+    
+    let totalRevenue = 0;
+    let currency = 'INR';
+    redeemedCouponData.forEach(coupon => {
+      const planSnapshot = coupon.plan_snapshot_json || {};
+      const durationDays = coupon.duration_days || 30;
+      const priceMonthly = planSnapshot.price_monthly || 0;
+      const priceYearly = planSnapshot.price_yearly || 0;
+      currency = planSnapshot.currency || 'INR';
+      
+      let couponValue = 0;
+      if (durationDays <= 30) {
+        couponValue = priceMonthly;
+      } else if (durationDays <= 90) {
+        couponValue = priceMonthly * 3;
+      } else if (durationDays <= 180) {
+        couponValue = priceMonthly * 6;
+      } else if (durationDays >= 365) {
+        couponValue = priceYearly || priceMonthly * 12;
+      } else {
+        couponValue = Math.round((priceMonthly / 30) * durationDays);
+      }
+      
+      totalRevenue += couponValue * coupon.used_count;
+    });
+
+    // Calculate total potential value of all active coupons
+    const activeCouponData = await prisma.subscription_coupons.findMany({
+      where: { status: 'ACTIVE' },
+      select: {
+        plan_snapshot_json: true,
+        duration_days: true,
+        max_activations: true,
+        used_count: true,
+      },
+    });
+    
+    let potentialRevenue = 0;
+    activeCouponData.forEach(coupon => {
+      const planSnapshot = coupon.plan_snapshot_json || {};
+      const durationDays = coupon.duration_days || 30;
+      const priceMonthly = planSnapshot.price_monthly || 0;
+      const priceYearly = planSnapshot.price_yearly || 0;
+      const remainingActivations = coupon.max_activations - coupon.used_count;
+      
+      let couponValue = 0;
+      if (durationDays <= 30) {
+        couponValue = priceMonthly;
+      } else if (durationDays <= 90) {
+        couponValue = priceMonthly * 3;
+      } else if (durationDays <= 180) {
+        couponValue = priceMonthly * 6;
+      } else if (durationDays >= 365) {
+        couponValue = priceYearly || priceMonthly * 12;
+      } else {
+        couponValue = Math.round((priceMonthly / 30) * durationDays);
+      }
+      
+      potentialRevenue += couponValue * remainingActivations;
+    });
+
     // Get coupons expiring in next 7 days
     const now = new Date();
     const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
@@ -708,7 +778,7 @@ router.get('/analytics', ...superAdminOnly, async (req, res) => {
     });
 
     // Group redemptions by day
-    const redemptionsByDay: Record<string, number> = {};
+    const redemptionsByDay = {};
     redemptions.forEach(r => {
       const day = r.redeemed_at.toISOString().split('T')[0];
       redemptionsByDay[day] = (redemptionsByDay[day] || 0) + 1;
@@ -732,12 +802,15 @@ router.get('/analytics', ...superAdminOnly, async (req, res) => {
           expired: expiredCoupons,
           revoked: revokedCoupons,
           redemptionRate: totalCoupons > 0 ? ((redeemedCoupons / totalCoupons) * 100).toFixed(1) : 0,
+          totalRevenue: totalRevenue,
+          potentialRevenue: potentialRevenue,
+          currency: currency,
         },
         expiringSoon: expiringSoon.map(c => ({
           id: c.id,
           code: c.code,
           validUntil: c.valid_until,
-          planName: (c.plan_snapshot_json as any)?.name || 'Unknown',
+          planName: (c.plan_snapshot_json && c.plan_snapshot_json.name) || 'Unknown',
           daysLeft: Math.ceil((new Date(c.valid_until).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
         })),
         redemptionTrend: Object.entries(redemptionsByDay).map(([date, count]) => ({
