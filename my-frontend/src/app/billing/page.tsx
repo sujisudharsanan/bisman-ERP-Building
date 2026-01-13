@@ -601,23 +601,23 @@ const BillingPage = () => {
   const getPlanTier = (planName: string | undefined, state: string | undefined) => {
     // If subscription is in TRIAL state, show Trial styling regardless of plan name
     if (state === 'TRIAL') {
-      return { icon: Sparkles, color: 'from-amber-400 to-orange-500', label: 'Trial', bg: 'bg-gradient-to-r from-amber-50 to-orange-50' };
+      return { icon: Sparkles, color: 'from-amber-400 to-orange-500', label: 'Trial', bg: 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30' };
     }
     
     const name = (planName || '').toLowerCase();
     if (name.includes('enterprise') || name.includes('premium')) {
-      return { icon: Crown, color: 'from-amber-400 to-yellow-600', label: 'Enterprise', bg: 'bg-gradient-to-r from-amber-50 to-yellow-50' };
+      return { icon: Crown, color: 'from-amber-400 to-yellow-600', label: 'Enterprise', bg: 'bg-gradient-to-r from-amber-50 to-yellow-50 dark:from-amber-900/30 dark:to-yellow-900/30' };
     }
     if (name.includes('professional') || name.includes('pro')) {
-      return { icon: Award, color: 'from-purple-500 to-indigo-600', label: 'Professional', bg: 'bg-gradient-to-r from-purple-50 to-indigo-50' };
+      return { icon: Award, color: 'from-purple-500 to-indigo-600', label: 'Professional', bg: 'bg-gradient-to-r from-purple-50 to-indigo-50 dark:from-purple-900/30 dark:to-indigo-900/30' };
     }
     if (name.includes('standard') || name.includes('growth')) {
-      return { icon: Star, color: 'from-blue-500 to-cyan-500', label: 'Standard', bg: 'bg-gradient-to-r from-blue-50 to-cyan-50' };
+      return { icon: Star, color: 'from-blue-500 to-cyan-500', label: 'Standard', bg: 'bg-gradient-to-r from-blue-50 to-cyan-50 dark:from-blue-900/30 dark:to-cyan-900/30' };
     }
     if (name.includes('trial')) {
-      return { icon: Sparkles, color: 'from-amber-400 to-orange-500', label: 'Trial', bg: 'bg-gradient-to-r from-amber-50 to-orange-50' };
+      return { icon: Sparkles, color: 'from-amber-400 to-orange-500', label: 'Trial', bg: 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30' };
     }
-    return { icon: Zap, color: 'from-gray-500 to-slate-600', label: 'Basic', bg: 'bg-gradient-to-r from-gray-50 to-slate-50' };
+    return { icon: Zap, color: 'from-gray-500 to-slate-600', label: 'Basic', bg: 'bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-800/50 dark:to-slate-800/50' };
   };
 
   const planTier = getPlanTier(currentPlanName, subscriptionState);
@@ -635,7 +635,7 @@ const BillingPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 p-6">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
         
         {/* Header with Plan Sticker */}
@@ -643,18 +643,18 @@ const BillingPage = () => {
           {/* Title and Description */}
           <div className="flex-1">
             <div className="flex items-center gap-3 mb-2">
-              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">
+              <h1 className="text-3xl font-bold bg-gradient-to-r from-indigo-600 to-purple-600 dark:from-indigo-400 dark:to-purple-400 bg-clip-text text-transparent">
                 Billing & Subscription
               </h1>
               <button
                 onClick={handleRefresh}
                 disabled={refreshing}
-                className="p-2 rounded-full hover:bg-white/50 transition-colors"
+                className="p-2 rounded-full hover:bg-white/50 dark:hover:bg-slate-700/50 transition-colors"
               >
-                <RefreshCw className={`w-5 h-5 text-slate-500 ${refreshing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-5 h-5 text-slate-500 dark:text-slate-400 ${refreshing ? 'animate-spin' : ''}`} />
               </button>
             </div>
-            <p className="text-slate-600 max-w-2xl">
+            <p className="text-slate-600 dark:text-slate-300 max-w-2xl">
               Complete transparency into your subscription, usage, and billing. Track your plan features, 
               monitor usage, and manage your subscription with ease.
             </p>
@@ -664,18 +664,18 @@ const BillingPage = () => {
           <motion.div
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
-            className={`${planTier.bg} border-2 border-white/50 shadow-xl rounded-2xl p-4 min-w-[280px]`}
+            className={`${planTier.bg} border-2 border-white/50 dark:border-slate-600/50 shadow-xl rounded-2xl p-4 min-w-[280px]`}
           >
             <div className="flex items-center gap-3">
               <div className={`w-14 h-14 rounded-xl bg-gradient-to-br ${planTier.color} flex items-center justify-center shadow-lg`}>
                 <PlanIcon className="w-7 h-7 text-white" />
               </div>
               <div>
-                <p className="text-xs text-slate-500 uppercase tracking-wider font-medium">Current Plan</p>
-                <h3 className={`text-lg md:text-xl font-extrabold text-slate-900`}>
+                <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-medium">Current Plan</p>
+                <h3 className={`text-lg md:text-xl font-extrabold text-slate-900 dark:text-slate-100`}>
                   {currentPlanName}
                 </h3>
-                <p className="text-sm text-slate-500 mt-1">
+                <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
                   {subscriptionData?.subscription?.state === 'TRIAL'
                     ? 'You are currently on a free trial.'
                     : subscriptionData?.has_subscription
@@ -712,14 +712,14 @@ const BillingPage = () => {
         </div>
 
         {/* Currency Selector - Sleek Custom Dropdown */}
-        <div className="flex items-center gap-4 bg-white/70 backdrop-blur-sm rounded-xl p-4 shadow-sm border border-white/50">
-          <Globe className="w-5 h-5 text-slate-500" />
-          <span className="text-sm text-slate-600 font-medium">Display Currency:</span>
+        <div className="flex items-center gap-4 bg-white/70 dark:bg-slate-800/70 backdrop-blur-sm rounded-xl p-4 shadow-sm border border-white/50 dark:border-slate-700/50">
+          <Globe className="w-5 h-5 text-slate-500 dark:text-slate-400" />
+          <span className="text-sm text-slate-600 dark:text-slate-300 font-medium">Display Currency:</span>
           <div className="relative">
             <select
               value={selectedCurrency}
               onChange={(e) => setSelectedCurrency(e.target.value)}
-              className="appearance-none pl-4 pr-10 py-2 bg-gradient-to-r from-slate-50 to-white border border-slate-200 rounded-xl text-sm font-semibold text-slate-700 cursor-pointer hover:border-indigo-300 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all shadow-sm"
+              className="appearance-none pl-4 pr-10 py-2 bg-gradient-to-r from-slate-50 to-white dark:from-slate-700 dark:to-slate-600 border border-slate-200 dark:border-slate-600 rounded-xl text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer hover:border-indigo-300 dark:hover:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-400 transition-all shadow-sm"
             >
               {CURRENCIES.map(currency => (
                 <option key={currency.code} value={currency.code}>
@@ -731,7 +731,7 @@ const BillingPage = () => {
           </div>
           {ratesLoading && <RefreshCw className="w-4 h-4 text-indigo-500 animate-spin" />}
           {!ratesLoading && exchangeRates.USD && (
-            <span className="text-xs text-slate-400 ml-2 bg-slate-100 px-2 py-1 rounded-full">
+            <span className="text-xs text-slate-400 ml-2 bg-slate-100 dark:bg-slate-700 px-2 py-1 rounded-full">
               Live rates • 1 INR = {exchangeRates.USD?.toFixed(4)} USD
             </span>
           )}
@@ -831,13 +831,13 @@ const BillingPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.5 }}
-            className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6"
+            className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 dark:border-slate-700/50 p-6"
           >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">
                 <BarChart3 className="w-5 h-5 text-white" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-800">Plan vs Usage</h3>
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Plan vs Usage</h3>
             </div>
             <div className="flex items-center justify-center py-4">
               <div className="relative w-36 h-36">
@@ -850,7 +850,7 @@ const BillingPage = () => {
                     stroke="currentColor"
                     strokeWidth="12"
                     fill="none"
-                    className="text-slate-200"
+                    className="text-slate-200 dark:text-slate-600"
                   />
                   <circle
                     cx="72"
@@ -868,27 +868,27 @@ const BillingPage = () => {
                   />
                 </svg>
                 <div className="absolute inset-0 flex flex-col items-center justify-center">
-                  <span className="text-3xl font-bold text-slate-800">
+                  <span className="text-3xl font-bold text-slate-800 dark:text-slate-100">
                     {Math.round(usageStats.users.percentage || 0)}%
                   </span>
-                  <span className="text-sm text-slate-500">Utilized</span>
+                  <span className="text-sm text-slate-500 dark:text-slate-400">Utilized</span>
                 </div>
               </div>
             </div>
             <div className="space-y-2 mt-2">
               <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-slate-600">
+                <span className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
                   <span className="w-3 h-3 rounded-full bg-blue-500"></span>
                   Active Users
                 </span>
-                <span className="font-semibold text-slate-800">{roleStats.active}</span>
+                <span className="font-semibold text-slate-800 dark:text-slate-100">{roleStats.active}</span>
               </div>
               <div className="flex items-center justify-between text-sm">
-                <span className="flex items-center gap-2 text-slate-600">
-                  <span className="w-3 h-3 rounded-full bg-slate-300"></span>
+                <span className="flex items-center gap-2 text-slate-600 dark:text-slate-400">
+                  <span className="w-3 h-3 rounded-full bg-slate-300 dark:bg-slate-500"></span>
                   Available Slots
                 </span>
-                <span className="font-semibold text-slate-800">
+                <span className="font-semibold text-slate-800 dark:text-slate-100">
                   {usageStats.users.limit - usageStats.users.used}
                 </span>
               </div>
@@ -900,22 +900,22 @@ const BillingPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.6 }}
-            className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6"
+            className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 dark:border-slate-700/50 p-6"
           >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-600 flex items-center justify-center shadow-lg">
                 <Layers className="w-5 h-5 text-white" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-800">Resource Allocation</h3>
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Resource Allocation</h3>
             </div>
             <div className="space-y-4">
               {/* User Slots Bar */}
               <div>
-                <div className="flex items-center justify-between text-xs text-slate-600 mb-1">
+                <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 mb-1">
                   <span>User Slots</span>
                   <span>{usageStats.users.used}/{usageStats.users.limit}</span>
                 </div>
-                <div className="h-8 bg-slate-100 rounded-lg overflow-hidden flex">
+                <div className="h-8 bg-slate-100 dark:bg-slate-700 rounded-lg overflow-hidden flex">
                   <div 
                     className="h-full bg-gradient-to-r from-blue-400 to-blue-600 flex items-center justify-end pr-2 transition-all duration-500"
                     style={{ width: `${Math.min(usageStats.users.percentage || 0, 100)}%` }}
@@ -929,11 +929,11 @@ const BillingPage = () => {
 
               {/* Storage Bar */}
               <div>
-                <div className="flex items-center justify-between text-xs text-slate-600 mb-1">
+                <div className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400 mb-1">
                   <span>Storage</span>
                   <span>{(usageStats.storage.used / 1024).toFixed(1)} GB / {(usageStats.storage.limit / 1024).toFixed(0)} GB</span>
                 </div>
-                <div className="h-8 bg-slate-100 rounded-lg overflow-hidden flex">
+                <div className="h-8 bg-slate-100 dark:bg-slate-700 rounded-lg overflow-hidden flex">
                   <div 
                     className="h-full bg-gradient-to-r from-emerald-400 to-teal-600 flex items-center justify-end pr-2 transition-all duration-500"
                     style={{ width: `${Math.min(usageStats.storage.percentage || 0, 100)}%` }}
@@ -946,23 +946,23 @@ const BillingPage = () => {
               </div>
 
               {/* Plan Capacity Indicator */}
-              <div className="bg-slate-50 rounded-lg p-3 mt-2">
+              <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 mt-2">
                 <div className="flex items-center gap-2 mb-2">
                   <Crown className="w-4 h-4 text-amber-500" />
-                  <span className="text-sm font-medium text-slate-800">
+                  <span className="text-sm font-medium text-slate-800 dark:text-slate-100">
                     {currentPlanName}
                   </span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div className="bg-white rounded p-2 text-center shadow-sm">
+                  <div className="bg-white dark:bg-slate-800 rounded p-2 text-center shadow-sm">
                     <div className="text-lg font-bold text-blue-600">{usageStats.users.limit}</div>
-                    <div className="text-slate-500">Max Users</div>
+                    <div className="text-slate-500 dark:text-slate-400">Max Users</div>
                   </div>
-                  <div className="bg-white rounded p-2 text-center shadow-sm">
+                  <div className="bg-white dark:bg-slate-800 rounded p-2 text-center shadow-sm">
                     <div className="text-lg font-bold text-green-600">
                       {usageStats.users.limit - usageStats.users.used}
                     </div>
-                    <div className="text-slate-500">Available</div>
+                    <div className="text-slate-500 dark:text-slate-400">Available</div>
                   </div>
                 </div>
               </div>
@@ -974,24 +974,24 @@ const BillingPage = () => {
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.7 }}
-            className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6"
+            className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 dark:border-slate-700/50 p-6"
           >
             <div className="flex items-center gap-3 mb-4">
               <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-purple-500 to-pink-600 flex items-center justify-center shadow-lg">
                 <Activity className="w-5 h-5 text-white" />
               </div>
-              <h3 className="text-lg font-semibold text-slate-800">Usage Health</h3>
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100">Usage Health</h3>
             </div>
             <div className="space-y-4">
               {/* Current Plan Highlight */}
               <div className={`rounded-xl p-4 border-2 ${
                 subscriptionData?.subscription?.state === 'TRIAL'
-                  ? 'border-amber-400 bg-amber-50'
+                  ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/30'
                   : currentPlanName.toLowerCase().includes('enterprise') 
-                    ? 'border-purple-500 bg-purple-50' 
+                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' 
                     : currentPlanName.toLowerCase().includes('pro') 
-                      ? 'border-blue-500 bg-blue-50'
-                      : 'border-slate-300 bg-slate-50'
+                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                      : 'border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50'
               }`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -1064,13 +1064,13 @@ const BillingPage = () => {
 
               {/* Quick Stats */}
               <div className="grid grid-cols-2 gap-3">
-                <div className="bg-slate-50 rounded-lg p-3 text-center">
-                  <div className="text-2xl font-bold text-indigo-600">{roleStats.active}</div>
-                  <div className="text-xs text-slate-500">Active Users</div>
+                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold text-indigo-600 dark:text-indigo-400">{roleStats.active}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">Active Users</div>
                 </div>
-                <div className="bg-slate-50 rounded-lg p-3 text-center">
-                  <div className="text-2xl font-bold text-amber-600">{roleStats.pending}</div>
-                  <div className="text-xs text-slate-500">Pending Users</div>
+                <div className="bg-slate-50 dark:bg-slate-700/50 rounded-lg p-3 text-center">
+                  <div className="text-2xl font-bold text-amber-600 dark:text-amber-400">{roleStats.pending}</div>
+                  <div className="text-xs text-slate-500 dark:text-slate-400">Pending Users</div>
                 </div>
               </div>
             </div>
@@ -1087,24 +1087,24 @@ const BillingPage = () => {
             <motion.div
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 overflow-hidden"
+              className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 dark:border-slate-700/50 overflow-hidden"
             >
-              <div className="p-6 border-b border-slate-100">
+              <div className="p-6 border-b border-slate-100 dark:border-slate-700">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
                     <div className={`w-12 h-12 rounded-xl bg-gradient-to-br ${planTier.color} flex items-center justify-center shadow-lg`}>
                       <CreditCard className="w-6 h-6 text-white" />
                     </div>
                     <div>
-                      <h2 className="text-xl font-semibold text-slate-800">Subscription Details</h2>
-                      <p className="text-sm text-slate-500">Your current plan and billing information</p>
+                      <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">Subscription Details</h2>
+                      <p className="text-sm text-slate-500 dark:text-slate-400">Your current plan and billing information</p>
                     </div>
                   </div>
                   <div className="text-right">
-                    <div className="text-2xl font-bold text-slate-800">
+                    <div className="text-2xl font-bold text-slate-800 dark:text-slate-100">
                       {getDisplayPrice(subscriptionData?.plan?.base_price || 0)}
                     </div>
-                    <p className="text-sm text-slate-500">
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
                       /{subscriptionData?.plan?.billing_cycle || 'month'}
                     </p>
                   </div>
@@ -1112,10 +1112,10 @@ const BillingPage = () => {
               </div>
 
               <div className="p-6 grid grid-cols-2 md:grid-cols-4 gap-4">
-                <div className="text-center p-4 bg-slate-50 rounded-xl">
+                <div className="text-center p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                   <Calendar className="w-6 h-6 text-indigo-500 mx-auto mb-2" />
-                  <p className="text-xs text-slate-500 mb-1">Start Date</p>
-                  <p className="font-semibold text-slate-700">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Start Date</p>
+                  <p className="font-semibold text-slate-700 dark:text-slate-200">
                     {subscriptionData?.subscription?.trial_start_date 
                       ? new Date(subscriptionData.subscription.trial_start_date).toLocaleDateString()
                       : subscriptionData?.subscription?.started_at 
@@ -1127,10 +1127,10 @@ const BillingPage = () => {
                             : 'N/A'}
                   </p>
                 </div>
-                <div className="text-center p-4 bg-slate-50 rounded-xl">
+                <div className="text-center p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                   <Clock className="w-6 h-6 text-amber-500 mx-auto mb-2" />
-                  <p className="text-xs text-slate-500 mb-1">Renewal Date</p>
-                  <p className="font-semibold text-slate-700">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Renewal Date</p>
+                  <p className="font-semibold text-slate-700 dark:text-slate-200">
                     {subscriptionData?.subscription?.current_period_end 
                       ? new Date(subscriptionData.subscription.current_period_end).toLocaleDateString()
                       : subscriptionData?.subscription?.end_date
@@ -1138,13 +1138,13 @@ const BillingPage = () => {
                         : 'N/A'}
                   </p>
                 </div>
-                <div className="text-center p-4 bg-slate-50 rounded-xl">
+                <div className="text-center p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                   <Activity className={`w-6 h-6 mx-auto mb-2 ${
                     subscriptionData?.subscription?.state === 'TRIAL' ? 'text-amber-500' :
                     subscriptionData?.subscription?.state === 'ACTIVE' ? 'text-green-500' :
                     'text-green-500'
                   }`} />
-                  <p className="text-xs text-slate-500 mb-1">Status</p>
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Status</p>
                   <p className={`font-semibold ${
                     subscriptionData?.subscription?.state === 'TRIAL' ? 'text-amber-600' :
                     subscriptionData?.subscription?.state === 'ACTIVE' ? 'text-green-600' :
@@ -1154,10 +1154,10 @@ const BillingPage = () => {
                     {subscriptionData?.subscription?.state || (subscriptionData?.has_subscription ? 'Active' : 'Free')}
                   </p>
                 </div>
-                <div className="text-center p-4 bg-slate-50 rounded-xl">
+                <div className="text-center p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                   <DollarSign className="w-6 h-6 text-blue-500 mx-auto mb-2" />
-                  <p className="text-xs text-slate-500 mb-1">Billing Cycle</p>
-                  <p className="font-semibold text-slate-700 capitalize">
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mb-1">Billing Cycle</p>
+                  <p className="font-semibold text-slate-700 dark:text-slate-200 capitalize">
                     {subscriptionData?.subscription?.billing_cycle || subscriptionData?.plan?.billing_cycle || 'Monthly'}
                   </p>
                 </div>
@@ -1169,10 +1169,10 @@ const BillingPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.1 }}
-              className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 overflow-hidden"
+              className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 dark:border-slate-700/50 overflow-hidden"
             >
               <div 
-                className="p-6 border-b border-slate-100 cursor-pointer flex items-center justify-between"
+                className="p-6 border-b border-slate-100 dark:border-slate-700 cursor-pointer flex items-center justify-between"
                 onClick={() => setShowAllFeatures(!showAllFeatures)}
               >
                 <div className="flex items-center gap-3">
@@ -1202,7 +1202,7 @@ const BillingPage = () => {
                         <div 
                           key={key}
                           className={`flex items-center gap-3 p-3 rounded-lg ${
-                            value === true ? 'bg-green-50' : value === false ? 'bg-slate-50' : 'bg-blue-50'
+                            value === true ? 'bg-green-50 dark:bg-green-900/30' : value === false ? 'bg-slate-50 dark:bg-slate-700/50' : 'bg-blue-50 dark:bg-blue-900/30'
                           }`}
                         >
                           {value === true ? (
@@ -1213,11 +1213,11 @@ const BillingPage = () => {
                             <TrendingUp className="w-5 h-5 text-blue-500 flex-shrink-0" />
                           )}
                           <div className="flex-1 min-w-0">
-                            <p className="text-sm font-medium text-slate-700 truncate">
+                            <p className="text-sm font-medium text-slate-700 dark:text-slate-200 truncate">
                               {key.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
                             </p>
                             {typeof value !== 'boolean' && (
-                              <p className="text-xs text-slate-500">{String(value)}</p>
+                              <p className="text-xs text-slate-500 dark:text-slate-400">{String(value)}</p>
                             )}
                           </div>
                         </div>
@@ -1233,10 +1233,10 @@ const BillingPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 overflow-hidden"
+              className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 dark:border-slate-700/50 overflow-hidden"
             >
               <div 
-                className="p-6 border-b border-slate-100 cursor-pointer flex items-center justify-between"
+                className="p-6 border-b border-slate-100 dark:border-slate-700 cursor-pointer flex items-center justify-between"
                 onClick={() => setShowBillingHistory(!showBillingHistory)}
               >
                 <div className="flex items-center gap-3">
@@ -1244,8 +1244,8 @@ const BillingPage = () => {
                     <FileText className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-800">Billing History</h2>
-                    <p className="text-sm text-slate-500">
+                    <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">Billing History</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">
                       {subscriptionData?.billing_history?.length || 0} transactions
                     </p>
                   </div>
@@ -1265,30 +1265,30 @@ const BillingPage = () => {
                       {subscriptionData?.billing_history && subscriptionData.billing_history.length > 0 ? (
                         <div className="space-y-3">
                           {subscriptionData.billing_history.map((item) => (
-                            <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50 rounded-xl">
+                            <div key={item.id} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
                               <div className="flex items-center gap-3">
                                 <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${
-                                  item.status === 'paid' ? 'bg-green-100' : 'bg-amber-100'
+                                  item.status === 'paid' ? 'bg-green-100 dark:bg-green-900/50' : 'bg-amber-100 dark:bg-amber-900/50'
                                 }`}>
                                   {item.status === 'paid' ? (
-                                    <CheckCircle className="w-5 h-5 text-green-600" />
+                                    <CheckCircle className="w-5 h-5 text-green-600 dark:text-green-400" />
                                   ) : (
-                                    <Clock className="w-5 h-5 text-amber-600" />
+                                    <Clock className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                                   )}
                                 </div>
                                 <div>
-                                  <p className="font-medium text-slate-700">{item.description}</p>
-                                  <p className="text-xs text-slate-500">
+                                  <p className="font-medium text-slate-700 dark:text-slate-200">{item.description}</p>
+                                  <p className="text-xs text-slate-500 dark:text-slate-400">
                                     {new Date(item.created_at).toLocaleDateString()}
                                   </p>
                                 </div>
                               </div>
                               <div className="text-right">
-                                <p className="font-semibold text-slate-800">
+                                <p className="font-semibold text-slate-800 dark:text-slate-100">
                                   {getDisplayPrice(item.amount)}
                                 </p>
                                 <p className={`text-xs font-medium ${
-                                  item.status === 'paid' ? 'text-green-600' : 'text-amber-600'
+                                  item.status === 'paid' ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'
                                 }`}>
                                   {item.status.toUpperCase()}
                                 </p>
@@ -1297,7 +1297,7 @@ const BillingPage = () => {
                           ))}
                         </div>
                       ) : (
-                        <div className="text-center py-8 text-slate-500">
+                        <div className="text-center py-8 text-slate-500 dark:text-slate-400">
                           <FileText className="w-12 h-12 mx-auto mb-3 opacity-30" />
                           <p>No billing history available</p>
                         </div>
@@ -1317,16 +1317,16 @@ const BillingPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.3 }}
-              className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 overflow-hidden"
+              className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 dark:border-slate-700/50 overflow-hidden"
             >
-              <div className="p-6 border-b border-slate-100">
+              <div className="p-6 border-b border-slate-100 dark:border-slate-700">
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-violet-500 to-purple-600 flex items-center justify-center shadow-lg">
                     <Users className="w-6 h-6 text-white" />
                   </div>
                   <div>
-                    <h2 className="text-xl font-semibold text-slate-800">Role Usage</h2>
-                    <p className="text-sm text-slate-500">Team member status</p>
+                    <h2 className="text-xl font-semibold text-slate-800 dark:text-slate-100">Role Usage</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">Team member status</p>
                   </div>
                 </div>
               </div>
@@ -1334,32 +1334,32 @@ const BillingPage = () => {
               <div className="p-6 space-y-4">
                 {/* Summary Stats */}
                 <div className="grid grid-cols-3 gap-3">
-                  <div className="text-center p-3 bg-slate-50 rounded-xl">
-                    <Users className="w-5 h-5 text-slate-500 mx-auto mb-1" />
-                    <p className="text-2xl font-bold text-slate-800">{roleStats.total}</p>
-                    <p className="text-xs text-slate-500">Total</p>
+                  <div className="text-center p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
+                    <Users className="w-5 h-5 text-slate-500 dark:text-slate-400 mx-auto mb-1" />
+                    <p className="text-2xl font-bold text-slate-800 dark:text-slate-100">{roleStats.total}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
                   </div>
-                  <div className="text-center p-3 bg-green-50 rounded-xl">
+                  <div className="text-center p-3 bg-green-50 dark:bg-green-900/30 rounded-xl">
                     <UserCheck className="w-5 h-5 text-green-500 mx-auto mb-1" />
-                    <p className="text-2xl font-bold text-green-600">{roleStats.active}</p>
-                    <p className="text-xs text-slate-500">Active</p>
+                    <p className="text-2xl font-bold text-green-600 dark:text-green-400">{roleStats.active}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Active</p>
                   </div>
-                  <div className="text-center p-3 bg-amber-50 rounded-xl">
+                  <div className="text-center p-3 bg-amber-50 dark:bg-amber-900/30 rounded-xl">
                     <UserX className="w-5 h-5 text-amber-500 mx-auto mb-1" />
-                    <p className="text-2xl font-bold text-amber-600">{roleStats.pending}</p>
-                    <p className="text-xs text-slate-500">Pending</p>
+                    <p className="text-2xl font-bold text-amber-600 dark:text-amber-400">{roleStats.pending}</p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400">Pending</p>
                   </div>
                 </div>
 
                 {/* Usage Bar */}
                 <div className="space-y-2">
                   <div className="flex justify-between text-sm">
-                    <span className="text-slate-600">Users Used</span>
-                    <span className="font-medium text-slate-700">
+                    <span className="text-slate-600 dark:text-slate-300">Users Used</span>
+                    <span className="font-medium text-slate-700 dark:text-slate-200">
                       {usageStats.users.used} / {usageStats.users.limit}
                     </span>
                   </div>
-                  <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                  <div className="h-3 bg-slate-100 dark:bg-slate-700 rounded-full overflow-hidden">
                     <div 
                       className={`h-full rounded-full transition-all duration-500 ${
                         usageStats.users.percentage > 90 ? 'bg-red-500' :
@@ -1373,18 +1373,18 @@ const BillingPage = () => {
 
                 {/* Role Breakdown */}
                 <div className="space-y-2 pt-2">
-                  <p className="text-sm font-medium text-slate-700">Role Breakdown</p>
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Role Breakdown</p>
                   {Object.entries(roleStats.breakdown).map(([role, counts]) => (
-                    <div key={role} className="flex items-center justify-between p-2 bg-slate-50 rounded-lg">
-                      <span className="text-sm text-slate-600 capitalize">
+                    <div key={role} className="flex items-center justify-between p-2 bg-slate-50 dark:bg-slate-700/50 rounded-lg">
+                      <span className="text-sm text-slate-600 dark:text-slate-300 capitalize">
                         {role.replace(/_/g, ' ')}
                       </span>
                       <div className="flex items-center gap-2">
-                        <span className="text-xs px-2 py-0.5 bg-green-100 text-green-700 rounded">
+                        <span className="text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/50 text-green-700 dark:text-green-300 rounded">
                           {counts.active} active
                         </span>
                         {counts.pending > 0 && (
-                          <span className="text-xs px-2 py-0.5 bg-amber-100 text-amber-700 rounded">
+                          <span className="text-xs px-2 py-0.5 bg-amber-100 dark:bg-amber-900/50 text-amber-700 dark:text-amber-300 rounded">
                             {counts.pending} pending
                           </span>
                         )}
@@ -1400,9 +1400,9 @@ const BillingPage = () => {
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.4 }}
-              className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6"
+              className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 dark:border-slate-700/50 p-6"
             >
-              <h3 className="text-lg font-semibold text-slate-800 mb-4">Quick Actions</h3>
+              <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Quick Actions</h3>
               <div className="space-y-3">
                 <button 
                   onClick={handleUpgradePlan}
@@ -1411,11 +1411,11 @@ const BillingPage = () => {
                   <TrendingUp className="w-5 h-5" />
                   <span className="font-medium">Upgrade Plan</span>
                 </button>
-                <button className="w-full flex items-center gap-3 p-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors">
+                <button className="w-full flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
                   <Download className="w-5 h-5" />
                   <span className="font-medium">Download Invoice</span>
                 </button>
-                <button className="w-full flex items-center gap-3 p-3 bg-slate-100 text-slate-700 rounded-xl hover:bg-slate-200 transition-colors">
+                <button className="w-full flex items-center gap-3 p-3 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 rounded-xl hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors">
                   <CreditCard className="w-5 h-5" />
                   <span className="font-medium">Update Payment Method</span>
                 </button>
@@ -1428,17 +1428,17 @@ const BillingPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.5 }}
-                className="bg-white/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 p-6"
+                className="bg-white/80 dark:bg-slate-800/80 backdrop-blur-sm rounded-2xl shadow-lg border border-white/50 dark:border-slate-700/50 p-6"
               >
-                <h3 className="text-lg font-semibold text-slate-800 mb-4">Organization</h3>
+                <h3 className="text-lg font-semibold text-slate-800 dark:text-slate-100 mb-4">Organization</h3>
                 <div className="space-y-3">
-                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                    <span className="text-sm text-slate-600">Name</span>
-                    <span className="font-medium text-slate-800">{tenantData.name}</span>
+                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
+                    <span className="text-sm text-slate-600 dark:text-slate-300">Name</span>
+                    <span className="font-medium text-slate-800 dark:text-slate-100">{tenantData.name}</span>
                   </div>
-                  <div className="flex items-center justify-between p-3 bg-slate-50 rounded-xl">
-                    <span className="text-sm text-slate-600">Slug</span>
-                    <code className="text-sm bg-slate-200 px-2 py-0.5 rounded">{tenantData.slug}</code>
+                  <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-700/50 rounded-xl">
+                    <span className="text-sm text-slate-600 dark:text-slate-300">Slug</span>
+                    <code className="text-sm bg-slate-200 dark:bg-slate-600 dark:text-slate-100 px-2 py-0.5 rounded">{tenantData.slug}</code>
                   </div>
                 </div>
               </motion.div>
@@ -1481,10 +1481,10 @@ const BillingPage = () => {
               animate={{ scale: 1, opacity: 1 }}
               exit={{ scale: 0.9, opacity: 0 }}
               onClick={(e) => e.stopPropagation()}
-              className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+              className="bg-white dark:bg-slate-800 rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
             >
               {/* Header */}
-              <div className="p-6 border-b border-slate-100 bg-gradient-to-r from-indigo-500 to-purple-600">
+              <div className="p-6 border-b border-slate-100 dark:border-slate-700 bg-gradient-to-r from-indigo-500 to-purple-600">
                 <div className="flex items-center justify-between">
                   <div>
                     <h2 className="text-2xl font-bold text-white">
@@ -1549,10 +1549,10 @@ const BillingPage = () => {
                             onClick={() => !isCurrentPlan && setSelectedPlanCode(plan.plan_code)}
                             className={`relative rounded-xl border-2 p-5 cursor-pointer transition-all ${
                               isCurrentPlan 
-                                ? 'border-green-500 bg-green-50 cursor-not-allowed opacity-75'
+                                ? 'border-green-500 bg-green-50 dark:bg-green-900/30 cursor-not-allowed opacity-75'
                                 : isSelected 
-                                  ? 'border-indigo-500 bg-indigo-50 shadow-lg ring-2 ring-indigo-200' 
-                                  : 'border-slate-200 hover:border-indigo-300 hover:shadow-md'
+                                  ? 'border-indigo-500 bg-indigo-50 dark:bg-indigo-900/30 shadow-lg ring-2 ring-indigo-200 dark:ring-indigo-700' 
+                                  : 'border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-700 hover:border-indigo-300 dark:hover:border-indigo-500 hover:shadow-md'
                             }`}
                           >
                             {plan.is_popular && !isCurrentPlan && (
@@ -1567,32 +1567,32 @@ const BillingPage = () => {
                             )}
                             
                             <div className="text-center mb-4 pt-2">
-                              <h3 className="text-lg font-bold text-slate-800">{plan.name}</h3>
+                              <h3 className="text-lg font-bold text-slate-800 dark:text-slate-100">{plan.name}</h3>
                               <div className="mt-2">
-                                <span className="text-3xl font-extrabold text-indigo-600">
+                                <span className="text-3xl font-extrabold text-indigo-600 dark:text-indigo-400">
                                   {getDisplayPrice(plan.price_monthly)}
                                 </span>
-                                <span className="text-slate-500 text-sm">/month</span>
+                                <span className="text-slate-500 dark:text-slate-400 text-sm">/month</span>
                               </div>
                             </div>
 
                             <div className="space-y-2 text-sm">
-                              <div className="flex items-center gap-2 text-slate-600">
+                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
                                 <Users className="w-4 h-4 text-indigo-500" />
                                 <span>{plan.max_users === -1 ? 'Unlimited' : plan.max_users} Users</span>
                               </div>
-                              <div className="flex items-center gap-2 text-slate-600">
+                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
                                 <HardDrive className="w-4 h-4 text-green-500" />
                                 <span>{plan.max_storage_gb === -1 ? 'Unlimited' : `${plan.max_storage_gb} GB`} Storage</span>
                               </div>
-                              <div className="flex items-center gap-2 text-slate-600">
+                              <div className="flex items-center gap-2 text-slate-600 dark:text-slate-300">
                                 <Layers className="w-4 h-4 text-purple-500" />
                                 <span>{plan.max_branches === -1 ? 'Unlimited' : plan.max_branches} Branches</span>
                               </div>
                             </div>
 
                             {plan.description && (
-                              <p className="mt-3 text-xs text-slate-500 line-clamp-2">{plan.description}</p>
+                              <p className="mt-3 text-xs text-slate-500 dark:text-slate-400 line-clamp-2">{plan.description}</p>
                             )}
 
                             {isSelected && !isCurrentPlan && (
@@ -1614,16 +1614,16 @@ const BillingPage = () => {
                 <div className="p-6 overflow-y-auto max-h-[60vh]">
                   <div className="max-w-md mx-auto space-y-6">
                     {/* Selected Plan Summary */}
-                    <div className="p-4 bg-indigo-50 border border-indigo-200 rounded-xl">
+                    <div className="p-4 bg-indigo-50 dark:bg-indigo-900/30 border border-indigo-200 dark:border-indigo-700 rounded-xl">
                       <div className="flex items-center gap-3">
-                        <div className="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
-                          <Crown className="w-6 h-6 text-indigo-600" />
+                        <div className="w-12 h-12 bg-indigo-100 dark:bg-indigo-800 rounded-xl flex items-center justify-center">
+                          <Crown className="w-6 h-6 text-indigo-600 dark:text-indigo-400" />
                         </div>
                         <div>
-                          <p className="font-semibold text-slate-800">
+                          <p className="font-semibold text-slate-800 dark:text-slate-100">
                             {availablePlans.find(p => p.plan_code === selectedPlanCode)?.name}
                           </p>
-                          <p className="text-sm text-slate-500">
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
                             {getDisplayPrice(availablePlans.find(p => p.plan_code === selectedPlanCode)?.price_monthly || 0)}/month
                           </p>
                         </div>
@@ -1631,14 +1631,14 @@ const BillingPage = () => {
                     </div>
 
                     {/* Option 1: Coupon Code */}
-                    <div className="p-5 border-2 border-slate-200 rounded-xl">
+                    <div className="p-5 border-2 border-slate-200 dark:border-slate-600 rounded-xl">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center">
-                          <Award className="w-5 h-5 text-amber-600" />
+                        <div className="w-10 h-10 bg-amber-100 dark:bg-amber-900/50 rounded-lg flex items-center justify-center">
+                          <Award className="w-5 h-5 text-amber-600 dark:text-amber-400" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-slate-800">Have a Coupon Code?</h3>
-                          <p className="text-sm text-slate-500">Enter your coupon to activate the plan</p>
+                          <h3 className="font-semibold text-slate-800 dark:text-slate-100">Have a Coupon Code?</h3>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">Enter your coupon to activate the plan</p>
                         </div>
                       </div>
                       
@@ -1653,7 +1653,7 @@ const BillingPage = () => {
                               setCouponError(null);
                             }}
                             placeholder="Enter coupon code"
-                            className="flex-1 px-4 py-2.5 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 uppercase"
+                            className="flex-1 px-4 py-2.5 border border-slate-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 uppercase"
                           />
                           <button
                             onClick={handleValidateCoupon}
@@ -1661,7 +1661,7 @@ const BillingPage = () => {
                             className={`px-4 py-2.5 rounded-lg font-medium transition-all ${
                               couponCode.trim() && !couponValidating
                                 ? 'bg-indigo-600 text-white hover:bg-indigo-700'
-                                : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                                : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
                             }`}
                           >
                             {couponValidating ? (
@@ -1673,19 +1673,19 @@ const BillingPage = () => {
                         </div>
                         
                         {couponError && (
-                          <div className="p-3 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+                          <div className="p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg text-red-700 dark:text-red-300 text-sm flex items-center gap-2">
                             <AlertCircle className="w-4 h-4" />
                             {couponError}
                           </div>
                         )}
                         
                         {couponValidation?.valid && (
-                          <div className="p-3 bg-green-50 border border-green-200 rounded-lg">
-                            <div className="flex items-center gap-2 text-green-700 font-medium">
+                          <div className="p-3 bg-green-50 dark:bg-green-900/30 border border-green-200 dark:border-green-700 rounded-lg">
+                            <div className="flex items-center gap-2 text-green-700 dark:text-green-300 font-medium">
                               <CheckCircle className="w-4 h-4" />
                               Valid coupon!
                             </div>
-                            <p className="text-sm text-green-600 mt-1">
+                            <p className="text-sm text-green-600 dark:text-green-400 mt-1">
                               {couponValidation.message || `Activates ${couponValidation.plan?.name} for ${couponValidation.durationDays} days`}
                             </p>
                             <button
@@ -1710,29 +1710,32 @@ const BillingPage = () => {
                       </div>
                     </div>
 
-                    {/* Divider */}
-                    <div className="relative">
-                      <div className="absolute inset-0 flex items-center">
-                        <div className="w-full border-t border-slate-200"></div>
+                    {/* Divider - only show if trial option is available */}
+                    {!subscriptionData?.has_subscription && subscriptionData?.subscription?.state !== 'ACTIVE' && subscriptionData?.subscription?.state !== 'TRIAL' && (
+                      <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                          <div className="w-full border-t border-slate-200 dark:border-slate-600"></div>
+                        </div>
+                        <div className="relative flex justify-center">
+                          <span className="bg-white dark:bg-slate-800 px-4 text-sm text-slate-500 dark:text-slate-400">or</span>
+                        </div>
                       </div>
-                      <div className="relative flex justify-center">
-                        <span className="bg-white px-4 text-sm text-slate-500">or</span>
-                      </div>
-                    </div>
+                    )}
 
-                    {/* Option 2: Start Trial */}
-                    <div className="p-5 border-2 border-emerald-200 bg-emerald-50/50 rounded-xl">
+                    {/* Option 2: Start Trial - only show for users without active subscription */}
+                    {!subscriptionData?.has_subscription && subscriptionData?.subscription?.state !== 'ACTIVE' && subscriptionData?.subscription?.state !== 'TRIAL' && (
+                    <div className="p-5 border-2 border-emerald-200 dark:border-emerald-700 bg-emerald-50/50 dark:bg-emerald-900/30 rounded-xl">
                       <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 bg-emerald-100 rounded-lg flex items-center justify-center">
-                          <Clock className="w-5 h-5 text-emerald-600" />
+                        <div className="w-10 h-10 bg-emerald-100 dark:bg-emerald-800 rounded-lg flex items-center justify-center">
+                          <Clock className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
                         </div>
                         <div>
-                          <h3 className="font-semibold text-slate-800">Start Free Trial</h3>
-                          <p className="text-sm text-slate-500">Try all features free for 14 days</p>
+                          <h3 className="font-semibold text-slate-800 dark:text-slate-100">Start Free Trial</h3>
+                          <p className="text-sm text-slate-500 dark:text-slate-400">Try all features free for 14 days</p>
                         </div>
                       </div>
                       
-                      <ul className="space-y-2 mb-4 text-sm text-slate-600">
+                      <ul className="space-y-2 mb-4 text-sm text-slate-600 dark:text-slate-300">
                         <li className="flex items-center gap-2">
                           <CheckCircle className="w-4 h-4 text-emerald-500" />
                           Full access to all features
@@ -1765,12 +1768,27 @@ const BillingPage = () => {
                         )}
                       </button>
                     </div>
+                    )}
+
+                    {/* Info for users with active subscription */}
+                    {(subscriptionData?.has_subscription || subscriptionData?.subscription?.state === 'ACTIVE' || subscriptionData?.subscription?.state === 'TRIAL') && (
+                      <div className="p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-xl">
+                        <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                          <AlertCircle className="w-5 h-5" />
+                          <p className="text-sm font-medium">
+                            {subscriptionData?.subscription?.state === 'TRIAL' 
+                              ? 'You are currently on a trial. Use a coupon code to activate your selected plan.'
+                              : 'You already have an active subscription. Use a coupon code to upgrade to your selected plan.'}
+                          </p>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}
 
               {/* Footer */}
-              <div className="p-6 border-t border-slate-100 bg-slate-50 flex items-center justify-between">
+              <div className="p-6 border-t border-slate-100 dark:border-slate-700 bg-slate-50 dark:bg-slate-700 flex items-center justify-between">
                 <button
                   onClick={() => {
                     if (upgradeStep === 'activate') {
@@ -1783,7 +1801,7 @@ const BillingPage = () => {
                       setSelectedPlanCode(null);
                     }
                   }}
-                  className="px-6 py-2.5 text-slate-600 hover:text-slate-800 font-medium transition-colors"
+                  className="px-6 py-2.5 text-slate-600 dark:text-slate-300 hover:text-slate-800 dark:hover:text-white font-medium transition-colors"
                 >
                   {upgradeStep === 'activate' ? '← Back to Plans' : 'Cancel'}
                 </button>
@@ -1794,7 +1812,7 @@ const BillingPage = () => {
                     className={`px-8 py-2.5 rounded-xl font-semibold transition-all flex items-center gap-2 ${
                       selectedPlanCode
                         ? 'bg-gradient-to-r from-indigo-500 to-purple-600 text-white hover:opacity-90 shadow-lg'
-                        : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                        : 'bg-slate-200 dark:bg-slate-700 text-slate-400 cursor-not-allowed'
                     }`}
                   >
                     <TrendingUp className="w-4 h-4" />

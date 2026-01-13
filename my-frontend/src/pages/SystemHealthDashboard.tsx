@@ -542,13 +542,13 @@ const ImplementationTable: React.FC<{
             </th>
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-gray-200">
+        <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
           {features.map((feature) => {
             const config = statusConfig[feature.status];
             return (
-              <tr key={feature.id} className="hover:bg-gray-50">
+              <tr key={feature.id} className="hover:bg-gray-50 dark:hover:bg-slate-700">
                 <td className="px-6 py-4 whitespace-nowrap">
-                  <div className="font-medium text-gray-900">{feature.name}</div>
+                  <div className="font-medium text-gray-900 dark:text-slate-100">{feature.name}</div>
                 </td>
                 <td className="px-6 py-4 whitespace-nowrap">
                   <span className={`text-xs font-medium ${categoryColors[feature.category]}`}>
@@ -666,10 +666,10 @@ const ConfigModal: React.FC<{
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4 flex items-center justify-between">
-          <h2 className="text-xl font-bold text-gray-900">System Configuration</h2>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-600">
+      <div className="bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-4xl w-full max-h-[90vh] overflow-y-auto">
+        <div className="sticky top-0 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-4 flex items-center justify-between">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-slate-100">System Configuration</h2>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200">
             ✕
           </button>
         </div>
@@ -677,11 +677,11 @@ const ConfigModal: React.FC<{
         <div className="p-6 space-y-6">
           {/* Thresholds Section */}
           <div>
-            <h3 className="text-lg font-semibold mb-4">Performance Thresholds</h3>
+            <h3 className="text-lg font-semibold dark:text-slate-100 mb-4">Performance Thresholds</h3>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {Object.entries(localConfig.thresholds).map(([key, value]) => (
-                <div key={key} className="border border-gray-200 rounded-lg p-4">
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                <div key={key} className="border border-gray-200 dark:border-slate-600 rounded-lg p-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                     {key
                       .replace(/([A-Z])/g, ' $1')
                       .replace(/^./, (str) => str.toUpperCase())
@@ -1002,8 +1002,8 @@ const SystemHealthDashboard: React.FC = () => {
         {/* Charts Section */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-8">
           {/* Latency Chart */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-4 flex items-center space-x-2">
               <Activity className="w-5 h-5 text-blue-600" />
               <span>API Latency Over Time</span>
             </h3>
@@ -1038,8 +1038,8 @@ const SystemHealthDashboard: React.FC = () => {
           </div>
 
           {/* Error Rate Chart */}
-          <div className="bg-white rounded-lg shadow-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-4 flex items-center space-x-2">
               <AlertTriangle className="w-5 h-5 text-red-600" />
               <span>Error Rate Over Time</span>
             </h3>
@@ -1063,9 +1063,9 @@ const SystemHealthDashboard: React.FC = () => {
         </div>
 
         {/* Implementation Status */}
-        <div className="bg-white rounded-lg shadow-md mb-8">
-          <div className="px-6 py-4 border-b border-gray-200">
-            <h3 className="text-lg font-semibold text-gray-900 flex items-center space-x-2">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md mb-8">
+          <div className="px-6 py-4 border-b border-gray-200 dark:border-slate-700">
+            <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 flex items-center space-x-2">
               <CheckCircle className="w-5 h-5 text-green-600" />
               <span>Implementation Status</span>
             </h3>
@@ -1074,8 +1074,8 @@ const SystemHealthDashboard: React.FC = () => {
         </div>
 
         {/* Alerts Panel */}
-        <div className="bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center space-x-2">
+        <div className="bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-4 flex items-center space-x-2">
             <AlertTriangle className="w-5 h-5 text-yellow-600" />
             <span>Recent Alerts & Events</span>
           </h3>
@@ -1083,20 +1083,20 @@ const SystemHealthDashboard: React.FC = () => {
         </div>
 
         {/* System Info Footer */}
-        <div className="mt-8 bg-white rounded-lg shadow-md p-6">
-          <h3 className="text-lg font-semibold text-gray-900 mb-4">System Information</h3>
+        <div className="mt-8 bg-white dark:bg-slate-800 rounded-lg shadow-md p-6">
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-4">System Information</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="text-sm text-gray-500 mb-1">Last Backup</div>
-              <div className="text-lg font-semibold">{data.systemInfo.lastBackup}</div>
+            <div className="border border-gray-200 dark:border-slate-600 rounded-lg p-4">
+              <div className="text-sm text-gray-500 dark:text-slate-400 mb-1">Last Backup</div>
+              <div className="text-lg font-semibold dark:text-slate-100">{data.systemInfo.lastBackup}</div>
             </div>
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="text-sm text-gray-500 mb-1">Backup Location</div>
-              <div className="text-lg font-semibold">{data.systemInfo.backupLocation}</div>
+            <div className="border border-gray-200 dark:border-slate-600 rounded-lg p-4">
+              <div className="text-sm text-gray-500 dark:text-slate-400 mb-1">Backup Location</div>
+              <div className="text-lg font-semibold dark:text-slate-100">{data.systemInfo.backupLocation}</div>
             </div>
-            <div className="border border-gray-200 rounded-lg p-4">
-              <div className="text-sm text-gray-500 mb-1">Database Size</div>
-              <div className="text-lg font-semibold">{data.systemInfo.databaseSize}</div>
+            <div className="border border-gray-200 dark:border-slate-600 rounded-lg p-4">
+              <div className="text-sm text-gray-500 dark:text-slate-400 mb-1">Database Size</div>
+              <div className="text-lg font-semibold dark:text-slate-100">{data.systemInfo.databaseSize}</div>
             </div>
           </div>
         </div>

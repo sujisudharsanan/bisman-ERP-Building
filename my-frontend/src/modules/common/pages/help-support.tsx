@@ -512,7 +512,7 @@ export default function HelpSupportPage() {
         {activeView === 'list' && (
           <div className="space-y-6">
             {/* Search and Filters */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-4">
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-4">
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 {/* Search */}
                 <div className="relative">
@@ -522,7 +522,7 @@ export default function HelpSupportPage() {
                     placeholder="Search tickets..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 dark:bg-slate-700 dark:text-white rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
                   />
                 </div>
 
@@ -532,7 +532,7 @@ export default function HelpSupportPage() {
                   <select
                     value={statusFilter}
                     onChange={(e) => setStatusFilter(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white dark:bg-slate-700 dark:text-white"
                   >
                     <option value="all">All Status</option>
                     <option value="open">Open</option>
@@ -549,7 +549,7 @@ export default function HelpSupportPage() {
                   <select
                     value={moduleFilter}
                     onChange={(e) => setModuleFilter(e.target.value)}
-                    className="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white"
+                    className="w-full pl-10 pr-4 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 appearance-none bg-white dark:bg-slate-700 dark:text-white"
                   >
                     <option value="all">All Modules</option>
                     {modules.map((mod) => (
@@ -563,7 +563,7 @@ export default function HelpSupportPage() {
             </div>
 
             {/* Tickets Table */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 overflow-hidden">
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
               {loading ? (
                 <div className="flex items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
@@ -571,8 +571,8 @@ export default function HelpSupportPage() {
               ) : filteredTickets.length === 0 ? (
                 <div className="text-center py-12">
                   <HelpCircle className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                  <h3 className="text-lg font-medium text-gray-900 mb-2">No tickets found</h3>
-                  <p className="text-gray-600 mb-6">
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-slate-100 mb-2">No tickets found</h3>
+                  <p className="text-gray-600 dark:text-slate-400 mb-6">
                     {searchQuery || statusFilter !== 'all' || moduleFilter !== 'all'
                       ? 'Try adjusting your filters'
                       : 'Create your first support ticket to get started'}
@@ -618,29 +618,29 @@ export default function HelpSupportPage() {
                         </th>
                       </tr>
                     </thead>
-                    <tbody className="bg-white divide-y divide-gray-200">
+                    <tbody className="bg-white dark:bg-slate-800 divide-y divide-gray-200 dark:divide-slate-700">
                       {filteredTickets.map((ticket) => (
-                        <tr key={ticket.id} className="hover:bg-gray-50 transition-colors">
+                        <tr key={ticket.id} className="hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors">
                           <td className="px-6 py-4 whitespace-nowrap">
                             <div className="flex items-center">
                               {getStatusIcon(ticket.status)}
-                              <span className="ml-2 text-sm font-medium text-gray-900">
+                              <span className="ml-2 text-sm font-medium text-gray-900 dark:text-slate-100">
                                 {ticket.ticket_number}
                               </span>
                             </div>
                           </td>
                           <td className="px-6 py-4">
-                            <div className="text-sm font-medium text-gray-900 max-w-xs truncate">
+                            <div className="text-sm font-medium text-gray-900 dark:text-slate-100 max-w-xs truncate">
                               {ticket.title}
                             </div>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-600 capitalize">
+                            <span className="text-sm text-gray-600 dark:text-slate-300 capitalize">
                               {ticket.category.replace('_', ' ')}
                             </span>
                           </td>
                           <td className="px-6 py-4 whitespace-nowrap">
-                            <span className="text-sm text-gray-600 capitalize">
+                            <span className="text-sm text-gray-600 dark:text-slate-300 capitalize">
                               {modules.find((m) => m.value === ticket.module)?.label || ticket.module}
                             </span>
                           </td>
@@ -686,22 +686,22 @@ export default function HelpSupportPage() {
 
         {/* CREATE NEW TICKET VIEW */}
         {activeView === 'create' && (
-          <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-semibold text-gray-900 mb-6">Create New Support Ticket</h2>
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
+            <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100 mb-6">Create New Support Ticket</h2>
 
             <div className="space-y-6">
               {/* Category and Module */}
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                     Issue Category <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.category}
                     onChange={(e) => setFormData({ ...formData, category: e.target.value })}
                     className={`w-full px-3 py-2 border ${
-                      formErrors.category ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                      formErrors.category ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
+                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-white`}
                   >
                     <option value="">Select a category...</option>
                     {categories.map((cat) => (
@@ -716,15 +716,15 @@ export default function HelpSupportPage() {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
                     Module / Area Affected <span className="text-red-500">*</span>
                   </label>
                   <select
                     value={formData.module}
                     onChange={(e) => setFormData({ ...formData, module: e.target.value })}
                     className={`w-full px-3 py-2 border ${
-                      formErrors.module ? 'border-red-500' : 'border-gray-300'
-                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500`}
+                      formErrors.module ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
+                    } rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 dark:text-white`}
                   >
                     <option value="">Select a module...</option>
                     {modules.map((mod) => (
@@ -940,11 +940,11 @@ export default function HelpSupportPage() {
         {activeView === 'detail' && selectedTicket && (
           <div className="space-y-6">
             {/* Ticket Metadata Card */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
               <div className="flex items-start justify-between mb-6">
                 <div>
                   <div className="flex items-center space-x-3 mb-2">
-                    <h2 className="text-2xl font-bold text-gray-900">
+                    <h2 className="text-2xl font-bold text-gray-900 dark:text-slate-100">
                       Ticket #{selectedTicket.ticket_number}
                     </h2>
                     <span
@@ -962,20 +962,20 @@ export default function HelpSupportPage() {
                       {selectedTicket.priority}
                     </span>
                   </div>
-                  <h3 className="text-lg text-gray-700 mb-4">{selectedTicket.title}</h3>
+                  <h3 className="text-lg text-gray-700 dark:text-slate-300 mb-4">{selectedTicket.title}</h3>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Category</p>
-                  <p className="text-sm font-medium text-gray-900 capitalize">
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">Category</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-slate-100 capitalize">
                     {selectedTicket.category.replace('_', ' ')}
                   </p>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 mb-1">Module</p>
-                  <p className="text-sm font-medium text-gray-900">
+                  <p className="text-xs text-gray-500 dark:text-slate-400 mb-1">Module</p>
+                  <p className="text-sm font-medium text-gray-900 dark:text-slate-100">
                     {modules.find((m) => m.value === selectedTicket.module)?.label ||
                       selectedTicket.module}
                   </p>
@@ -1055,8 +1055,8 @@ export default function HelpSupportPage() {
             </div>
 
             {/* Comments Thread */}
-            <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-              <h3 className="text-lg font-semibold text-gray-900 mb-6">Conversation</h3>
+            <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-6">Conversation</h3>
 
               {/* Comments List */}
               <div className="space-y-4 mb-6">
@@ -1064,20 +1064,20 @@ export default function HelpSupportPage() {
                   selectedTicket.comments.map((comment) => (
                     <div key={comment.id} className="flex space-x-4">
                       <div className="flex-shrink-0">
-                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                          <User className="w-5 h-5 text-blue-600" />
+                        <div className="w-10 h-10 bg-blue-100 dark:bg-blue-900/50 rounded-full flex items-center justify-center">
+                          <User className="w-5 h-5 text-blue-600 dark:text-blue-400" />
                         </div>
                       </div>
                       <div className="flex-1">
-                        <div className="bg-gray-50 rounded-lg p-4">
+                        <div className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4">
                           <div className="flex items-center justify-between mb-2">
                             <div className="flex items-center space-x-2">
-                              <span className="text-sm font-medium text-gray-900">
+                              <span className="text-sm font-medium text-gray-900 dark:text-slate-100">
                                 {comment.user_name}
                               </span>
-                              <span className="text-xs text-gray-500">{comment.user_role}</span>
+                              <span className="text-xs text-gray-500 dark:text-slate-400">{comment.user_role}</span>
                             </div>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-gray-500 dark:text-slate-400">
                               {formatDate(comment.created_at)}
                             </span>
                           </div>
@@ -1194,8 +1194,8 @@ export default function HelpSupportPage() {
 
             {/* Activity Log */}
             {selectedTicket.activity_log && selectedTicket.activity_log.length > 0 && (
-              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-6 flex items-center space-x-2">
+              <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 p-6">
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-slate-100 mb-6 flex items-center space-x-2">
                   <Activity className="w-5 h-5" />
                   <span>Activity Timeline</span>
                 </h3>
@@ -1204,17 +1204,17 @@ export default function HelpSupportPage() {
                   {selectedTicket.activity_log.map((activity) => (
                     <div key={activity.id} className="flex space-x-3">
                       <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                          <Activity className="w-4 h-4 text-gray-600" />
+                        <div className="w-8 h-8 bg-gray-100 dark:bg-slate-700 rounded-full flex items-center justify-center">
+                          <Activity className="w-4 h-4 text-gray-600 dark:text-slate-400" />
                         </div>
                       </div>
                       <div className="flex-1">
                         <div className="flex items-center justify-between">
-                          <p className="text-sm text-gray-900">
+                          <p className="text-sm text-gray-900 dark:text-slate-100">
                             <span className="font-medium">{activity.user_name}</span>{' '}
                             {activity.action}
                           </p>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-gray-500 dark:text-slate-400">
                             {formatDate(activity.created_at)}
                           </span>
                         </div>

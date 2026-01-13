@@ -1427,19 +1427,19 @@ export function CreateFullUserModal({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg w-full max-w-6xl mx-4 max-h-[95vh] overflow-y-auto">
+      <div className="bg-white dark:bg-slate-800 rounded-lg w-full max-w-6xl mx-4 max-h-[95vh] overflow-y-auto">
         {/* Header */}
-        <div className="sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+        <div className="sticky top-0 bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 px-6 py-4">
           <div className="flex items-center justify-between">
             <div>
-              <h2 className="text-xl font-semibold text-gray-900">Create New User</h2>
-              <p className="text-sm text-gray-500">
+              <h2 className="text-xl font-semibold text-gray-900 dark:text-slate-100">Create New User</h2>
+              <p className="text-sm text-gray-500 dark:text-slate-400">
                 Complete user account with KYC information
               </p>
             </div>
             <button
               onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors"
+              className="text-gray-400 hover:text-gray-600 dark:hover:text-slate-200 transition-colors"
             >
               <X className="w-6 h-6" />
             </button>
@@ -1447,11 +1447,11 @@ export function CreateFullUserModal({
 
           {/* Progress Bar */}
           <div className="mt-4">
-            <div className="flex items-center justify-between text-sm text-gray-600 mb-2">
+            <div className="flex items-center justify-between text-sm text-gray-600 dark:text-slate-300 mb-2">
               <span>Step {currentStep} of {totalSteps}</span>
               <span>{Math.round((currentStep / totalSteps) * 100)}% Complete</span>
             </div>
-            <div className="w-full bg-gray-200 rounded-full h-2">
+            <div className="w-full bg-gray-200 dark:bg-slate-700 rounded-full h-2">
               <div 
                 className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                 style={{ width: `${(currentStep / totalSteps) * 100}%` }}
@@ -1460,22 +1460,22 @@ export function CreateFullUserModal({
           </div>
 
           {/* Step Labels */}
-          <div className="flex justify-between mt-3 text-xs text-gray-500">
-            <span className={currentStep >= 1 ? 'text-blue-600 font-medium' : ''}>Account</span>
-            <span className={currentStep >= 2 ? 'text-blue-600 font-medium' : ''}>Personal</span>
-            <span className={currentStep >= 3 ? 'text-blue-600 font-medium' : ''}>Address</span>
-            <span className={currentStep >= 4 ? 'text-blue-600 font-medium' : ''}>Identity</span>
-            <span className={currentStep >= 5 ? 'text-blue-600 font-medium' : ''}>Background</span>
-            <span className={currentStep >= 6 ? 'text-blue-600 font-medium' : ''}>Review</span>
+          <div className="flex justify-between mt-3 text-xs text-gray-500 dark:text-slate-400">
+            <span className={currentStep >= 1 ? 'text-blue-600 dark:text-blue-400 font-medium' : ''}>Account</span>
+            <span className={currentStep >= 2 ? 'text-blue-600 dark:text-blue-400 font-medium' : ''}>Personal</span>
+            <span className={currentStep >= 3 ? 'text-blue-600 dark:text-blue-400 font-medium' : ''}>Address</span>
+            <span className={currentStep >= 4 ? 'text-blue-600 dark:text-blue-400 font-medium' : ''}>Identity</span>
+            <span className={currentStep >= 5 ? 'text-blue-600 dark:text-blue-400 font-medium' : ''}>Background</span>
+            <span className={currentStep >= 6 ? 'text-blue-600 dark:text-blue-400 font-medium' : ''}>Review</span>
           </div>
 
           {/* Subscription Limit Warning */}
           {isLimitReached && (
-            <div className="mt-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-start gap-3">
-              <AlertTriangle className="w-5 h-5 text-red-600 flex-shrink-0 mt-0.5" />
+            <div className="mt-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-700 rounded-lg flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0 mt-0.5" />
               <div>
-                <p className="text-sm font-medium text-red-800">User Limit Reached</p>
-                <p className="text-sm text-red-600">
+                <p className="text-sm font-medium text-red-800 dark:text-red-300">User Limit Reached</p>
+                <p className="text-sm text-red-600 dark:text-red-400">
                   Your subscription ({planName}) allows {maxUsers} users. 
                   You currently have {activeUsers} active users. 
                   Please upgrade your subscription or deactivate existing users to create new accounts.
@@ -1502,13 +1502,13 @@ export function CreateFullUserModal({
         </div>
 
         {/* Navigation */}
-        <div className="sticky bottom-0 bg-white border-t border-gray-200 px-6 py-4">
+        <div className="sticky bottom-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 px-6 py-4">
           <div className="flex justify-between">
             <button
               type="button"
               onClick={prevStep}
               disabled={currentStep === 1}
-              className="px-6 py-2 border border-gray-300 text-gray-700 rounded-md hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+              className="px-6 py-2 border border-gray-300 dark:border-slate-600 text-gray-700 dark:text-slate-200 rounded-md hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
             >
               Previous
             </button>
