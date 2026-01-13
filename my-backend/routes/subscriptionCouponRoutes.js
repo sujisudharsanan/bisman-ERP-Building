@@ -419,4 +419,341 @@ router.get('/tenants/list', ...superAdminOnly, async (req, res) => {
   }
 });
 
+// ============================================================================
+// COUPON TEMPLATES ENDPOINTS
+// ============================================================================
+
+/**
+ * GET /api/superadmin/coupons/templates
+ * List all coupon templates
+ */
+router.get('/templates', ...superAdminOnly, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    
+    const templates = await prisma.coupon_templates.findMany({
+      where: { is_active: true },
+      include: {
+        subscription_plans: {
+          select: { id: true, name: true, plan_code: true }
+        }
+      },
+      orderBy: { created_at: 'desc' },
+    });
+
+    res.json({
+      ok: true,
+      templates: templates.map(t => ({
+        id: t.id,
+        name: t.name,
+        description: t.description,
+        planId: t.plan_id,
+        planName: t.subscription_plans?.name,
+        planCode: t.subscription_plans?.plan_code,
+        durationDays: t.duration_days,
+        validityDays: t.validity_days,
+        maxActivations: t.max_activations,
+        tenantRestrictionType: t.tenant_restriction_type,
+        notesTemplate: t.notes_template,
+        createdAt: t.created_at,
+      })),
+    });
+  } catch (error) {
+    console.error('[CouponRoutes] Templates list error:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'LIST_TEMPLATES_FAILED',
+      message: 'Failed to fetch templates',
+    });
+  }
+});
+
+/**
+ * POST /api/superadmin/coupons/templates
+ * Create a new coupon template
+ */
+router.post('/templates', ...superAdminOnly, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const { name, description, planId, durationDays, validityDays, maxActivations, tenantRestrictionType, notesTemplate } = req.body;
+
+    if (!name || !planId) {
+      return res.status(400).json({
+        ok: false,
+        error: 'MISSING_FIELDS',
+        message: 'Name and plan are required',
+      });
+    }
+
+    const template = await prisma.coupon_templates.create({
+      data: {
+        name,
+        description,
+        plan_id: parseInt(planId),
+        duration_days: durationDays || 30,
+        validity_days: validityDays || 30,
+        max_activations: maxActivations || 1,
+        tenant_restriction_type: tenantRestrictionType || 'ANY',
+        notes_template: notesTemplate,
+        created_by: req.user.id,
+      },
+    });
+
+    res.status(201).json({
+      ok: true,
+      template,
+      message: 'Template created successfully',
+    });
+  } catch (error) {
+    console.error('[CouponRoutes] Create template error:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'CREATE_TEMPLATE_FAILED',
+      message: 'Failed to create template',
+    });
+  }
+});
+
+/**
+ * DELETE /api/superadmin/coupons/templates/:id
+ * Deactivate a template
+ */
+router.delete('/templates/:id', ...superAdminOnly, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const { id } = req.params;
+
+    await prisma.coupon_templates.update({
+      where: { id: parseInt(id) },
+      data: { is_active: false },
+    });
+
+    res.json({
+      ok: true,
+      message: 'Template deleted successfully',
+    });
+  } catch (error) {
+    console.error('[CouponRoutes] Delete template error:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'DELETE_TEMPLATE_FAILED',
+      message: 'Failed to delete template',
+    });
+  }
+});
+
+// ============================================================================
+// SHARE/EMAIL COUPON ENDPOINTS
+// ============================================================================
+
+/**
+ * POST /api/superadmin/coupons/:id/share
+ * Share coupon via email
+ */
+router.post('/:id/share', ...superAdminOnly, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const { id } = req.params;
+    const { recipientEmail, recipientName, tenantId, message } = req.body;
+
+    if (!recipientEmail) {
+      return res.status(400).json({
+        ok: false,
+        error: 'MISSING_EMAIL',
+        message: 'Recipient email is required',
+      });
+    }
+
+    // Get coupon details
+    const coupon = await prisma.subscription_coupons.findUnique({
+      where: { id },
+      include: {
+        subscription_plans: true,
+      },
+    });
+
+    if (!coupon) {
+      return res.status(404).json({
+        ok: false,
+        error: 'COUPON_NOT_FOUND',
+        message: 'Coupon not found',
+      });
+    }
+
+    // Log the share
+    const shareLog = await prisma.coupon_share_logs.create({
+      data: {
+        coupon_id: id,
+        recipient_email: recipientEmail,
+        recipient_name: recipientName,
+        tenant_id: tenantId || null,
+        share_method: 'EMAIL',
+        shared_by: req.user.id,
+        message,
+      },
+    });
+
+    // TODO: Integrate with email service to send the coupon
+    // For now, just log it
+    console.log(`[CouponShare] Coupon ${coupon.code} shared to ${recipientEmail}`);
+
+    res.json({
+      ok: true,
+      shareLog,
+      message: `Coupon shared to ${recipientEmail}`,
+    });
+  } catch (error) {
+    console.error('[CouponRoutes] Share error:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'SHARE_FAILED',
+      message: 'Failed to share coupon',
+    });
+  }
+});
+
+/**
+ * GET /api/superadmin/coupons/:id/share-history
+ * Get share history for a coupon
+ */
+router.get('/:id/share-history', ...superAdminOnly, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const { id } = req.params;
+
+    const history = await prisma.coupon_share_logs.findMany({
+      where: { coupon_id: id },
+      include: {
+        users_enhanced: {
+          select: { first_name: true, last_name: true, email: true }
+        },
+        clients: {
+          select: { name: true }
+        },
+      },
+      orderBy: { shared_at: 'desc' },
+    });
+
+    res.json({
+      ok: true,
+      history: history.map(h => ({
+        id: h.id,
+        recipientEmail: h.recipient_email,
+        recipientName: h.recipient_name,
+        tenantName: h.clients?.name,
+        shareMethod: h.share_method,
+        sharedBy: `${h.users_enhanced?.first_name || ''} ${h.users_enhanced?.last_name || ''}`.trim(),
+        sharedAt: h.shared_at,
+        message: h.message,
+      })),
+    });
+  } catch (error) {
+    console.error('[CouponRoutes] Share history error:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'HISTORY_FAILED',
+      message: 'Failed to fetch share history',
+    });
+  }
+});
+
+// ============================================================================
+// ANALYTICS ENDPOINTS
+// ============================================================================
+
+/**
+ * GET /api/superadmin/coupons/analytics
+ * Get coupon analytics data
+ */
+router.get('/analytics', ...superAdminOnly, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    
+    // Get overall stats
+    const totalCoupons = await prisma.subscription_coupons.count();
+    const activeCoupons = await prisma.subscription_coupons.count({ where: { status: 'ACTIVE' } });
+    const redeemedCoupons = await prisma.subscription_coupons.count({ where: { used_count: { gt: 0 } } });
+    const expiredCoupons = await prisma.subscription_coupons.count({ where: { status: 'EXPIRED' } });
+    const revokedCoupons = await prisma.subscription_coupons.count({ where: { status: 'REVOKED' } });
+
+    // Get coupons expiring in next 7 days
+    const now = new Date();
+    const weekFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+    const expiringSoon = await prisma.subscription_coupons.findMany({
+      where: {
+        status: 'ACTIVE',
+        valid_until: {
+          gte: now,
+          lte: weekFromNow,
+        },
+      },
+      select: {
+        id: true,
+        code: true,
+        valid_until: true,
+        plan_snapshot_json: true,
+      },
+    });
+
+    // Get redemption trends (last 30 days)
+    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const redemptions = await prisma.coupon_redemptions.findMany({
+      where: {
+        redeemed_at: { gte: thirtyDaysAgo },
+      },
+      select: {
+        redeemed_at: true,
+      },
+      orderBy: { redeemed_at: 'asc' },
+    });
+
+    // Group redemptions by day
+    const redemptionsByDay: Record<string, number> = {};
+    redemptions.forEach(r => {
+      const day = r.redeemed_at.toISOString().split('T')[0];
+      redemptionsByDay[day] = (redemptionsByDay[day] || 0) + 1;
+    });
+
+    // Get top plans by redemption
+    const topPlans = await prisma.coupon_redemptions.groupBy({
+      by: ['coupon_id'],
+      _count: { id: true },
+      orderBy: { _count: { id: 'desc' } },
+      take: 5,
+    });
+
+    res.json({
+      ok: true,
+      analytics: {
+        summary: {
+          total: totalCoupons,
+          active: activeCoupons,
+          redeemed: redeemedCoupons,
+          expired: expiredCoupons,
+          revoked: revokedCoupons,
+          redemptionRate: totalCoupons > 0 ? ((redeemedCoupons / totalCoupons) * 100).toFixed(1) : 0,
+        },
+        expiringSoon: expiringSoon.map(c => ({
+          id: c.id,
+          code: c.code,
+          validUntil: c.valid_until,
+          planName: (c.plan_snapshot_json as any)?.name || 'Unknown',
+          daysLeft: Math.ceil((new Date(c.valid_until).getTime() - now.getTime()) / (1000 * 60 * 60 * 24)),
+        })),
+        redemptionTrend: Object.entries(redemptionsByDay).map(([date, count]) => ({
+          date,
+          count,
+        })),
+      },
+    });
+  } catch (error) {
+    console.error('[CouponRoutes] Analytics error:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'ANALYTICS_FAILED',
+      message: 'Failed to fetch analytics',
+    });
+  }
+});
+
 module.exports = router;

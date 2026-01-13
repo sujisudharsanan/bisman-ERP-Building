@@ -90,24 +90,26 @@ function getDurationFromBillingCycle(billingCycle) {
 
 /**
  * Create a plan snapshot for immutability
- * Works with master_subscription_plans table structure
+ * Works with subscription_plans table structure
  */
 function createPlanSnapshot(plan) {
   return {
     id: plan.id,
-    code: plan.code,
+    code: plan.plan_code,
     name: plan.name,
     description: plan.description,
-    status: plan.status,
-    is_global: plan.is_global,
-    is_custom: plan.is_custom,
+    short_description: plan.short_description,
     badge_text: plan.badge_text,
     sort_order: plan.sort_order,
     is_popular: plan.is_popular,
-    monthly_spend_cap: plan.monthly_spend_cap ? parseFloat(plan.monthly_spend_cap) : null,
-    cfo_approval_threshold: plan.cfo_approval_threshold ? parseFloat(plan.cfo_approval_threshold) : null,
-    invoice_cycle_days: plan.invoice_cycle_days,
-    grace_period_days: plan.grace_period_days,
+    is_active: plan.is_active,
+    price_monthly: plan.price_monthly ? parseFloat(plan.price_monthly) : 0,
+    price_yearly: plan.price_yearly ? parseFloat(plan.price_yearly) : 0,
+    currency: plan.currency,
+    max_users: plan.max_users,
+    max_storage_gb: plan.max_storage_gb,
+    max_branches: plan.max_branches,
+    trial_days: plan.trial_days,
     snapshot_at: new Date().toISOString(),
   };
 }
@@ -207,28 +209,22 @@ async function logCouponEvent(prisma, eventType, data) {
 async function createCoupon(data, actor) {
   const prisma = getPrisma();
   
-  // Validate plan exists - search in master_subscription_plans table
+  // Validate plan exists - search in subscription_plans table
   let plan = null;
   const planId = data.planId;
   
   if (typeof planId === 'number' || !isNaN(parseInt(planId))) {
-    // Try to find by numeric ID in master_subscription_plans
-    const plans = await prisma.$queryRaw`
-      SELECT * FROM master_subscription_plans WHERE id = ${parseInt(planId)} LIMIT 1
-    `;
-    if (plans && plans.length > 0) {
-      plan = plans[0];
-    }
+    // Try to find by numeric ID in subscription_plans
+    plan = await prisma.subscription_plans.findUnique({
+      where: { id: parseInt(planId) }
+    });
   }
   
-  // If not found by ID, try by code
+  // If not found by ID, try by plan_code
   if (!plan && typeof planId === 'string') {
-    const plans = await prisma.$queryRaw`
-      SELECT * FROM master_subscription_plans WHERE code = ${planId} LIMIT 1
-    `;
-    if (plans && plans.length > 0) {
-      plan = plans[0];
-    }
+    plan = await prisma.subscription_plans.findUnique({
+      where: { plan_code: planId }
+    });
   }
   
   if (!plan) {
@@ -246,11 +242,11 @@ async function createCoupon(data, actor) {
   // Calculate duration
   const durationDays = data.durationDays || getDurationFromBillingCycle(data.billingCycle || 'MONTHLY');
   
-  // Generate unique code - use plan.code (from master_subscription_plans)
+  // Generate unique code - use plan.plan_code (from subscription_plans)
   let couponCode;
   let attempts = 0;
   while (attempts < 10) {
-    couponCode = generateCouponCode(plan.code, durationDays);
+    couponCode = generateCouponCode(plan.plan_code, durationDays);
     const existing = await prisma.subscription_coupons.findUnique({ where: { code: couponCode } });
     if (!existing) break;
     attempts++;
@@ -299,7 +295,7 @@ async function createCoupon(data, actor) {
     payload: {
       code: coupon.code,
       planId: plan.id,
-      planCode: plan.code,
+      planCode: plan.plan_code,
       validFrom: validFrom.toISOString(),
       validUntil: validUntil.toISOString(),
       maxActivations: coupon.max_activations,

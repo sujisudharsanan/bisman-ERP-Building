@@ -1304,6 +1304,7 @@ model clients {
   subscription_billing_ledger       subscription_billing_ledger[]
   subscription_coupon_audit_logs    subscription_coupon_audit_logs[]
   subscription_coupons              subscription_coupons[]
+  coupon_share_logs                 coupon_share_logs[]
   support_sessions                  support_sessions[]
 
   @@index([client_code], map: "idx_clients_code")
@@ -3319,6 +3320,7 @@ model subscription_coupons {
   revocation_reason                                              String?
   client_subscriptions                                           client_subscriptions[]
   coupon_redemptions                                             coupon_redemptions[]
+  coupon_share_logs                                              coupon_share_logs[]
   subscription_coupon_audit_logs                                 subscription_coupon_audit_logs[]
   users_enhanced_subscription_coupons_created_byTousers_enhanced users_enhanced                   @relation("subscription_coupons_created_byTousers_enhanced", fields: [created_by], references: [id], onUpdate: NoAction)
   subscription_plans                                             subscription_plans               @relation(fields: [plan_id], references: [id], onUpdate: NoAction)
@@ -3331,6 +3333,47 @@ model subscription_coupons {
   @@index([plan_id], map: "idx_subscription_coupons_plan")
   @@index([status], map: "idx_subscription_coupons_status")
   @@index([valid_from, valid_until], map: "idx_subscription_coupons_validity")
+}
+
+/// Coupon templates for quick creation of coupons with predefined settings
+model coupon_templates {
+  id                      Int                     @id @default(autoincrement())
+  name                    String                  @db.VarChar(100)
+  description             String?
+  plan_id                 Int
+  duration_days           Int                     @default(30)
+  validity_days           Int                     @default(30)
+  max_activations         Int                     @default(1)
+  tenant_restriction_type tenant_restriction_type @default(ANY)
+  notes_template          String?
+  is_active               Boolean                 @default(true)
+  created_by              String                  @db.Uuid
+  created_at              DateTime                @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime                @default(now()) @db.Timestamptz(6)
+  subscription_plans      subscription_plans      @relation(fields: [plan_id], references: [id], onUpdate: NoAction)
+  users_enhanced          users_enhanced          @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+
+  @@index([is_active])
+  @@index([plan_id])
+}
+
+/// Tracks coupon share/email history
+model coupon_share_logs {
+  id            Int      @id @default(autoincrement())
+  coupon_id     String   @db.Uuid
+  recipient_email String @db.VarChar(255)
+  recipient_name  String? @db.VarChar(255)
+  tenant_id     String?  @db.Uuid
+  share_method  String   @default("EMAIL") @db.VarChar(20)
+  shared_by     String   @db.Uuid
+  shared_at     DateTime @default(now()) @db.Timestamptz(6)
+  message       String?
+  subscription_coupons subscription_coupons @relation(fields: [coupon_id], references: [id], onUpdate: NoAction)
+  users_enhanced       users_enhanced       @relation(fields: [shared_by], references: [id], onUpdate: NoAction)
+  clients              clients?             @relation(fields: [tenant_id], references: [id], onUpdate: NoAction)
+
+  @@index([coupon_id])
+  @@index([shared_at(sort: Desc)])
 }
 
 model subscription_invoices {
@@ -3389,6 +3432,7 @@ model subscription_plans {
   updated_by           Int?
   trial_days           Int?                   @default(14)
   subscription_coupons subscription_coupons[]
+  coupon_templates     coupon_templates[]
   client_subscriptions_plan           client_subscriptions[] @relation("client_subscription_plan")
   client_subscriptions_scheduled      client_subscriptions[] @relation("client_subscription_scheduled_plan")
 
@@ -4292,6 +4336,8 @@ model users_enhanced {
   authority_overrides_authority_overrides_revoked_byTousers_enhanced   authority_overrides[]            @relation("authority_overrides_revoked_byTousers_enhanced")
   authority_overrides_authority_overrides_user_idTousers_enhanced      authority_overrides[]            @relation("authority_overrides_user_idTousers_enhanced")
   coupon_redemptions                                                   coupon_redemptions[]
+  coupon_templates                                                     coupon_templates[]
+  coupon_share_logs                                                    coupon_share_logs[]
   subscription_coupon_audit_logs                                       subscription_coupon_audit_logs[]
   subscription_coupons_subscription_coupons_created_byTousers_enhanced subscription_coupons[]           @relation("subscription_coupons_created_byTousers_enhanced")
   subscription_coupons_subscription_coupons_revoked_byTousers_enhanced subscription_coupons[]           @relation("subscription_coupons_revoked_byTousers_enhanced")
