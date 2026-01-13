@@ -208,23 +208,61 @@ router.get('/billing/mrr', async (req, res) => {
 
 router.get('/billing/revenue', async (req, res) => {
   try {
-    // Get revenue from payment records if table exists
+    let totalRevenue = 0;
+    
+    // Calculate revenue from redeemed coupons
+    try {
+      const redeemedCoupons = await prisma.subscription_coupons.findMany({
+        where: { used_count: { gt: 0 } },
+        select: {
+          plan_snapshot_json: true,
+          duration_days: true,
+          used_count: true,
+        },
+      });
+      
+      redeemedCoupons.forEach(coupon => {
+        const planSnapshot = coupon.plan_snapshot_json || {};
+        const durationDays = coupon.duration_days || 30;
+        const priceMonthly = planSnapshot.price_monthly || 0;
+        const priceYearly = planSnapshot.price_yearly || 0;
+        
+        let couponValue = 0;
+        if (durationDays <= 30) {
+          couponValue = priceMonthly;
+        } else if (durationDays <= 90) {
+          couponValue = priceMonthly * 3;
+        } else if (durationDays <= 180) {
+          couponValue = priceMonthly * 6;
+        } else if (durationDays >= 365) {
+          couponValue = priceYearly || priceMonthly * 12;
+        } else {
+          couponValue = Math.round((priceMonthly / 30) * durationDays);
+        }
+        
+        totalRevenue += couponValue * coupon.used_count;
+      });
+    } catch (couponError) {
+      console.warn('Could not calculate coupon revenue:', couponError.message);
+    }
+    
+    // Also add revenue from payment records if table exists
     const exists = await tableExists('payment_records');
-    if (!exists) {
-      // Fallback: estimate from MRR * months
-      const clients = await prisma.clients.count({ where: { is_active: true } });
-      const estimatedRevenue = clients * 999 * 6; // 6 months average
-      return res.json({ success: true, data: { revenue: estimatedRevenue } });
+    if (exists) {
+      try {
+        const result = await prisma.$queryRawUnsafe(`
+          SELECT COALESCE(SUM(amount), 0) as total 
+          FROM payment_records 
+          WHERE status = 'completed' 
+          AND created_at >= NOW() - INTERVAL '12 months'
+        `);
+        totalRevenue += parseFloat(result[0]?.total || 0);
+      } catch (paymentError) {
+        console.warn('Could not calculate payment revenue:', paymentError.message);
+      }
     }
 
-    const result = await prisma.$queryRawUnsafe(`
-      SELECT COALESCE(SUM(amount), 0) as total 
-      FROM payment_records 
-      WHERE status = 'completed' 
-      AND created_at >= NOW() - INTERVAL '12 months'
-    `);
-
-    res.json({ success: true, data: { revenue: parseFloat(result[0]?.total || 0) } });
+    res.json({ success: true, data: { revenue: totalRevenue } });
   } catch (error) {
     console.error('Revenue calculation error:', error);
     res.json({ success: true, data: { revenue: 0 } });

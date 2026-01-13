@@ -123,6 +123,11 @@ async function getDerivedCouponStatus(coupon, prisma) {
     return 'REVOKED';
   }
   
+  // If exhausted (all activations used), show as REDEEMED
+  if (coupon.status === COUPON_STATUS.EXHAUSTED || coupon.used_count >= coupon.max_activations) {
+    return 'REDEEMED';
+  }
+  
   // Check if any redemption exists
   const redemption = await prisma.coupon_redemptions.findFirst({
     where: { coupon_id: coupon.id },
@@ -133,7 +138,7 @@ async function getDerivedCouponStatus(coupon, prisma) {
     if (new Date() > new Date(coupon.valid_until)) {
       return 'EXPIRED';
     }
-    return 'CREATED';
+    return 'ACTIVE';
   }
   
   // Has been redeemed - check subscription status
@@ -141,7 +146,7 @@ async function getDerivedCouponStatus(coupon, prisma) {
     if (redemption.subscription.expires_at && new Date() > new Date(redemption.subscription.expires_at)) {
       return 'EXPIRED';
     }
-    return 'ACTIVE';
+    return 'REDEEMED';
   }
   
   return 'REDEEMED';
@@ -422,12 +427,13 @@ async function getCoupons(filters = {}) {
       
       return {
         ...coupon,
+        status: derivedStatus, // Use derived status for display
+        raw_status: coupon.status, // Keep original for reference
         plan_name: planName,
         plan_tier: planCode,
         duration_days: durationDays,
         coupon_value: couponValue,
         currency: currency,
-        derived_status: derivedStatus,
         tenant,
         activated_on: activatedOn,
         remaining_time: remainingTime,

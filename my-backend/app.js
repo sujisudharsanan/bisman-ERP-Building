@@ -1492,18 +1492,17 @@ try {
 
 // User Management System routes (protected)
 try {
-  const usersRoutes = require('./dist/routes/users').default
+  // Use JavaScript version in routes/ folder (works in all environments)
+  const usersRoutes = require('./routes/users');
   
   if (usersRoutes) {
     app.use('/api/system/users', usersRoutes)
     console.log('✅ User Management System routes loaded')
   } else {
-    console.warn('⚠️  User Management System routes failed to load')
+    console.error('❌ User Management System routes failed to load - no valid router found')
   }
 } catch (e) {
-  if (process.env.NODE_ENV !== 'production') {
-    console.warn('User Management System routes not loaded:', e && e.message)
-  }
+  console.error('❌ User Management System routes loading error:', e && e.message)
 }
 
 // Client Management & Permissions routes

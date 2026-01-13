@@ -152,12 +152,15 @@ interface CouponAnalytics {
 // CONSTANTS
 // ============================================================================
 
-const STATUS_CONFIG = {
+const STATUS_CONFIG: Record<string, { color: string; icon: typeof CheckCircle }> = {
   ACTIVE: { color: 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200', icon: CheckCircle },
   EXPIRED: { color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300', icon: Clock },
   REVOKED: { color: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200', icon: XCircle },
   REDEEMED: { color: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200', icon: Gift },
+  EXHAUSTED: { color: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200', icon: CheckCircle },
 };
+
+const DEFAULT_STATUS_CONFIG = { color: 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300', icon: AlertTriangle };
 
 // ============================================================================
 // HELPER FUNCTIONS
@@ -490,7 +493,7 @@ function CouponDetailsDrawer({ coupon, isOpen, onClose, onRevoke, onShare }: Cou
 
   if (!isOpen || !coupon) return null;
 
-  const statusConfig = STATUS_CONFIG[coupon.status];
+  const statusConfig = STATUS_CONFIG[coupon.status] || DEFAULT_STATUS_CONFIG;
   const StatusIcon = statusConfig.icon;
   const remainingDays = getRemainingDays(coupon.valid_until);
   const isExpiringSoon = coupon.status === 'ACTIVE' && remainingDays <= 7 && remainingDays > 0;
@@ -1430,7 +1433,7 @@ export default function SuperAdminCouponsPage() {
                     </thead>
                     <tbody>
                       {filteredCoupons.map(coupon => {
-                        const statusConfig = STATUS_CONFIG[coupon.status];
+                        const statusConfig = STATUS_CONFIG[coupon.status] || DEFAULT_STATUS_CONFIG;
                         const StatusIcon = statusConfig.icon;
                         const remainingDays = getRemainingDays(coupon.valid_until);
                         const isExpiringSoon = coupon.status === 'ACTIVE' && remainingDays <= 7 && remainingDays > 0;

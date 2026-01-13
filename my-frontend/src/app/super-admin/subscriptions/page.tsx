@@ -328,6 +328,14 @@ export default function SubscriptionControlPage() {
   const [customHasChanges, setCustomHasChanges] = useState(false);
   const [customTenantSearch, setCustomTenantSearch] = useState('');
 
+  // Coupon Revenue Stats
+  const [couponRevenue, setCouponRevenue] = useState<{ totalRevenue: number; potentialRevenue: number; currency: string; redeemed: number }>({
+    totalRevenue: 0,
+    potentialRevenue: 0,
+    currency: 'INR',
+    redeemed: 0,
+  });
+
   // Toggle category expansion in breakdown section
   const toggleBreakdownCategory = (category: string) => {
     setExpandedBreakdownCategories(prev => {
@@ -673,6 +681,24 @@ export default function SubscriptionControlPage() {
         return;
       }
       
+      // Load coupon revenue analytics
+      try {
+        const couponRes = await fetch(`${API_BASE}/api/superadmin/coupons/analytics`, { credentials: 'include' });
+        if (couponRes.ok) {
+          const couponData = await couponRes.json();
+          if (couponData.ok && couponData.analytics?.summary) {
+            setCouponRevenue({
+              totalRevenue: couponData.analytics.summary.totalRevenue || 0,
+              potentialRevenue: couponData.analytics.summary.potentialRevenue || 0,
+              currency: couponData.analytics.summary.currency || 'INR',
+              redeemed: couponData.analytics.summary.redeemed || 0,
+            });
+          }
+        }
+      } catch (couponErr) {
+        console.warn('[SubscriptionControl] Could not load coupon analytics:', couponErr);
+      }
+      
       await Promise.all([loadPlans(), loadFeatures(), loadInfraRates()]);
       setLoading(false);
     };
@@ -1002,7 +1028,27 @@ export default function SubscriptionControlPage() {
             <span className="text-red-600">{globalStats.hardLocked}🔒</span>
           </div>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3">
+          {/* Revenue Stats */}
+          <div className="flex items-center gap-2 px-2 py-1 bg-green-50 dark:bg-green-900/20 rounded-md border border-green-200 dark:border-green-800">
+            <span className="text-[10px] text-green-600 dark:text-green-400">Revenue</span>
+            <span className="text-xs font-bold text-green-700 dark:text-green-300">
+              {couponRevenue.currency}{couponRevenue.totalRevenue.toLocaleString()}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 px-2 py-1 bg-purple-50 dark:bg-purple-900/20 rounded-md border border-purple-200 dark:border-purple-800">
+            <span className="text-[10px] text-purple-600 dark:text-purple-400">Potential</span>
+            <span className="text-xs font-bold text-purple-700 dark:text-purple-300">
+              {couponRevenue.currency}{couponRevenue.potentialRevenue.toLocaleString()}
+            </span>
+          </div>
+          <div className="flex items-center gap-2 px-2 py-1 bg-amber-50 dark:bg-amber-900/20 rounded-md border border-amber-200 dark:border-amber-800">
+            <span className="text-[10px] text-amber-600 dark:text-amber-400">Redeemed</span>
+            <span className="text-xs font-bold text-amber-700 dark:text-amber-300">
+              {couponRevenue.redeemed}
+            </span>
+          </div>
+          
           <Link
             href="/super-admin/subscriptions/coupons"
             className="flex items-center gap-1.5 px-2.5 py-1.5 text-xs bg-amber-600 text-white rounded-md hover:bg-amber-700"
