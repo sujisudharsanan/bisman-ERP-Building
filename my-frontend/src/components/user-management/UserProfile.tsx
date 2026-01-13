@@ -8,6 +8,7 @@ import {
   Crown, Users, UserCheck, AlertTriangle,
   ChevronRight, ChevronDown, ExternalLink
 } from 'lucide-react';
+import LoadingLogo from '@/components/common/LoadingLogo';
 import type { 
   User as UserType, 
   UserRole, 
@@ -799,8 +800,11 @@ export function UserProfile({ userId, currentUser }: UserProfileProps) {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+        <div className="text-center">
+          <LoadingLogo size={120} logoSrc="/logo.png" />
+          <p className="text-gray-600 dark:text-gray-400 mt-4">Loading profile...</p>
+        </div>
       </div>
     );
   }

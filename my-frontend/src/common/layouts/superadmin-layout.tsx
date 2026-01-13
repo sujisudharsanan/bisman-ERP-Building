@@ -12,6 +12,7 @@ import { useRouter } from 'next/navigation';
 import TopNavbar from '@/components/layout/TopNavbar';
 import Sidebar from '@/components/layout/Sidebar';
 import DarkModeToggle from '@/components/ui/DarkModeToggle';
+import LoadingLogo from '@/components/common/LoadingLogo';
 
 interface SuperAdminLayoutProps {
   children: React.ReactNode;
@@ -38,10 +39,10 @@ export default function SuperAdminLayout({
   // During SSR or initial render, show nothing to prevent hydration mismatch
   if (!isMounted) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+          <LoadingLogo size={120} logoSrc="/logo.png" />
+          <p className="text-gray-600 dark:text-gray-400 mt-4">Loading...</p>
         </div>
       </div>
     );
@@ -50,10 +51,10 @@ export default function SuperAdminLayout({
   // Show loading state
   if (loading) {
     return (
-  <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400 mx-auto mb-4"></div>
-          <p className="text-gray-600 dark:text-gray-400">Loading...</p>
+          <LoadingLogo size={120} logoSrc="/logo.png" />
+          <p className="text-gray-600 dark:text-gray-400 mt-4">Loading...</p>
         </div>
       </div>
     );

@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { uploadFiles } from '@/lib/attachments';
 import { useAuth } from '@/common/hooks/useAuth';
+import LoadingLogo from '@/components/common/LoadingLogo';
 
 // Types
 interface Ticket {
@@ -566,7 +567,7 @@ export default function HelpSupportPage() {
             <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden">
               {loading ? (
                 <div className="flex items-center justify-center py-12">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
+                  <LoadingLogo size={100} logoSrc="/logo.png" />
                 </div>
               ) : filteredTickets.length === 0 ? (
                 <div className="text-center py-12">

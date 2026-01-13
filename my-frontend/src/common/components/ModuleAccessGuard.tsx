@@ -3,6 +3,7 @@
 import React, { useEffect, useState } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import LoadingLogo from '@/components/common/LoadingLogo';
 
 interface ModuleAccessGuardProps {
   children: React.ReactNode;
@@ -125,8 +126,10 @@ export function ModuleAccessGuard({ children }: ModuleAccessGuardProps) {
   // Show loading while checking
   if (loading || !accessChecked) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900">
+        <div className="text-center">
+          <LoadingLogo size={120} logoSrc="/logo.png" />
+        </div>
       </div>
     );
   }

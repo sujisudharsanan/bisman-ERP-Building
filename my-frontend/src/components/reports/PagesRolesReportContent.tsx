@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import SuperAdminShell from '@/components/layouts/SuperAdminShell';
+import LoadingLogo from '@/components/common/LoadingLogo';
 
 // Inline SVG icon components to avoid importing lucide-react during SSR
 function FileTextIcon({ className = '' }: { className?: string }) {
@@ -243,7 +244,7 @@ export default function PagesRolesReportContent({ showAllPagesDefault = false }:
     return (
       <SuperAdminShell title="Pages & Roles Report">
         <div className="flex items-center justify-center h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 dark:border-blue-400"></div>
+          <LoadingLogo size={100} logoSrc="/logo.png" />
         </div>
       </SuperAdminShell>
     );

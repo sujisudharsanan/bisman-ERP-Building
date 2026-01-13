@@ -40,6 +40,7 @@ import api from '@/lib/api';
 import { useToast } from '@/components/ui/toast';
 import { CreateFullUserModal } from '@/components/user-management';
 import { useSubscriptionLimits } from '@/hooks/useSubscriptionLimits';
+import LoadingLogo from '@/components/common/LoadingLogo';
 
 // Currency configuration
 const CURRENCIES = [
@@ -625,10 +626,10 @@ const BillingPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 flex items-center justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50 dark:from-slate-900 dark:via-slate-800 dark:to-slate-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="w-16 h-16 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin mx-auto mb-4"></div>
-          <p className="text-slate-600 text-lg">Loading billing information...</p>
+          <LoadingLogo size={120} logoSrc="/logo.png" />
+          <p className="text-slate-600 dark:text-slate-300 text-lg mt-4">Loading billing information...</p>
         </div>
       </div>
     );
