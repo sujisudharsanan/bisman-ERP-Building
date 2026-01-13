@@ -1,10 +1,12 @@
-FROM node:20-alpine
+FROM node:20-bullseye-slim
 
-# Force rebuild: 2025-01-09-v3 - SQL query fix for subscription control routes
+# Force rebuild: 2025-01-13-v1 - Switch to Debian for stable package installs
 WORKDIR /app
 
-# Install dependencies for Prisma
-RUN apk add --no-cache openssl libc6-compat
+# Install dependencies for Prisma (Debian packages)
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends openssl ca-certificates && \
+    rm -rf /var/lib/apt/lists/*
 
 # Copy package files
 COPY package*.json ./
