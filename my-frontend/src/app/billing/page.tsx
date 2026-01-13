@@ -69,6 +69,10 @@ interface SubscriptionData {
   subscription?: {
     id: string;
     state: string;
+    db_state?: string;
+    is_expired?: boolean;
+    is_trial_expired?: boolean;
+    days_remaining?: number | null;
     start_date?: string;
     end_date?: string;
     is_active?: boolean;
@@ -85,8 +89,10 @@ interface SubscriptionData {
     trial_start_date?: string;
     trial_end_date?: string;
     trial_converted?: boolean;
+    expires_at?: string;
     started_at?: string;
     created_at?: string;
+    activation_source?: string;
     usage: {
       users: {
         current: number;
@@ -595,11 +601,35 @@ const BillingPage = () => {
     return subscriptionData?.plan?.features || {};
   }, [featuresData, subscriptionData]);
 
-  // Get subscription state
-  const subscriptionState = subscriptionData?.subscription?.state || '';
+  // Get subscription state - check for expiry
+  const subscriptionState = useMemo(() => {
+    const sub = subscriptionData?.subscription;
+    if (!sub) return '';
+    
+    // Use computed state from backend if available
+    if (sub.state) return sub.state;
+    
+    return '';
+  }, [subscriptionData]);
+
+  // Check if trial/subscription is expired
+  const isTrialExpired = subscriptionData?.subscription?.is_trial_expired || subscriptionState === 'TRIAL_EXPIRED';
+  const isExpired = subscriptionData?.subscription?.is_expired || subscriptionState === 'EXPIRED';
+  const daysRemaining = subscriptionData?.subscription?.days_remaining;
+  const isTrial = subscriptionState === 'TRIAL' || subscriptionData?.subscription?.activation_source === 'TRIAL_MODAL';
 
   // Get plan tier info for styling - considers subscription state first
   const getPlanTier = (planName: string | undefined, state: string | undefined) => {
+    // Handle expired states first
+    if (state === 'TRIAL_EXPIRED') {
+      return { icon: AlertCircle, color: 'from-red-400 to-orange-500', label: 'Trial Expired', bg: 'bg-gradient-to-r from-red-50 to-orange-50 dark:from-red-900/30 dark:to-orange-900/30' };
+    }
+    if (state === 'EXPIRED') {
+      return { icon: AlertCircle, color: 'from-red-500 to-red-600', label: 'Expired', bg: 'bg-gradient-to-r from-red-50 to-red-100 dark:from-red-900/30 dark:to-red-800/30' };
+    }
+    if (state === 'GRACE_PERIOD') {
+      return { icon: Clock, color: 'from-yellow-500 to-orange-500', label: 'Grace Period', bg: 'bg-gradient-to-r from-yellow-50 to-orange-50 dark:from-yellow-900/30 dark:to-orange-900/30' };
+    }
     // If subscription is in TRIAL state, show Trial styling regardless of plan name
     if (state === 'TRIAL') {
       return { icon: Sparkles, color: 'from-amber-400 to-orange-500', label: 'Trial', bg: 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30' };
@@ -617,6 +647,9 @@ const BillingPage = () => {
     }
     if (name.includes('trial')) {
       return { icon: Sparkles, color: 'from-amber-400 to-orange-500', label: 'Trial', bg: 'bg-gradient-to-r from-amber-50 to-orange-50 dark:from-amber-900/30 dark:to-orange-900/30' };
+    }
+    if (name.includes('free')) {
+      return { icon: Zap, color: 'from-green-500 to-emerald-600', label: 'Free', bg: 'bg-gradient-to-r from-green-50 to-emerald-50 dark:from-green-900/30 dark:to-emerald-900/30' };
     }
     return { icon: Zap, color: 'from-gray-500 to-slate-600', label: 'Basic', bg: 'bg-gradient-to-r from-gray-50 to-slate-50 dark:from-gray-800/50 dark:to-slate-800/50' };
   };
@@ -674,36 +707,52 @@ const BillingPage = () => {
               <div>
                 <p className="text-xs text-slate-500 dark:text-slate-400 uppercase tracking-wider font-medium">Current Plan</p>
                 <h3 className={`text-lg md:text-xl font-extrabold text-slate-900 dark:text-slate-100`}>
-                  {currentPlanName}
+                  {isTrialExpired || isExpired ? 'Free Plan' : currentPlanName}
                 </h3>
                 <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">
-                  {subscriptionData?.subscription?.state === 'TRIAL'
-                    ? 'You are currently on a free trial.'
-                    : subscriptionData?.has_subscription
-                      ? 'Your active subscription and billing status.'
-                      : 'Basic features included. Upgrade to unlock more.'
+                  {isTrialExpired
+                    ? 'Your trial has expired. Upgrade or enter an activation code.'
+                    : isExpired
+                      ? 'Your subscription has expired. Please renew to continue.'
+                      : subscriptionState === 'TRIAL'
+                        ? `You are on a free trial. ${daysRemaining ? `${daysRemaining} days remaining.` : ''}`
+                        : subscriptionState === 'GRACE_PERIOD'
+                          ? 'Your subscription is in grace period. Please renew soon.'
+                          : subscriptionData?.has_subscription
+                            ? 'Your active subscription and billing status.'
+                            : 'Basic features included. Upgrade to unlock more.'
                   }
                 </p>
                 <div className="flex items-center gap-2 mt-3">
                   <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
-                    subscriptionData?.subscription?.state === 'TRIAL' 
-                      ? 'bg-amber-100 text-amber-700' 
-                      : subscriptionData?.subscription?.state === 'ACTIVE'
-                        ? 'bg-green-100 text-green-700'
-                        : subscriptionData?.subscription?.state === 'SUSPENDED' || subscriptionData?.subscription?.state === 'CANCELLED'
-                          ? 'bg-red-100 text-red-700'
-                          : 'bg-green-100 text-green-700'
+                    isTrialExpired 
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' 
+                      : isExpired
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                        : subscriptionState === 'TRIAL' 
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' 
+                          : subscriptionState === 'GRACE_PERIOD'
+                            ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400'
+                            : subscriptionState === 'ACTIVE'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
+                              : subscriptionState === 'SUSPENDED' || subscriptionState === 'CANCELLED'
+                                ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                : 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
                   }`}>
-                    {subscriptionData?.subscription?.state || (subscriptionData?.has_subscription ? 'ACTIVE' : 'FREE')}
+                    {isTrialExpired 
+                      ? 'TRIAL EXPIRED' 
+                      : isExpired 
+                        ? 'EXPIRED'
+                        : subscriptionState || (subscriptionData?.has_subscription ? 'ACTIVE' : 'FREE')}
                   </span>
-                  {subscriptionData?.subscription?.state === 'TRIAL' && subscriptionData?.subscription?.trial_end_date && (
-                    <span className="text-xs text-amber-600 font-medium">
-                      Trial ends: {new Date(subscriptionData.subscription.trial_end_date).toLocaleDateString()}
+                  {subscriptionState === 'TRIAL' && daysRemaining !== null && (
+                    <span className="text-xs text-amber-600 dark:text-amber-400 font-medium">
+                      {daysRemaining} days left
                     </span>
                   )}
-                  {subscriptionData?.subscription?.state !== 'TRIAL' && subscriptionData?.subscription?.current_period_end && (
-                    <span className="text-xs text-slate-500">
-                      Renews: {new Date(subscriptionData.subscription.current_period_end).toLocaleDateString()}
+                  {!isTrialExpired && !isExpired && subscriptionState !== 'TRIAL' && subscriptionData?.subscription?.expires_at && (
+                    <span className="text-xs text-slate-500 dark:text-slate-400">
+                      Expires: {new Date(subscriptionData.subscription.expires_at).toLocaleDateString()}
                     </span>
                   )}
                 </div>
@@ -986,39 +1035,61 @@ const BillingPage = () => {
             <div className="space-y-4">
               {/* Current Plan Highlight */}
               <div className={`rounded-xl p-4 border-2 ${
-                subscriptionData?.subscription?.state === 'TRIAL'
-                  ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/30'
-                  : currentPlanName.toLowerCase().includes('enterprise') 
-                    ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' 
-                    : currentPlanName.toLowerCase().includes('pro') 
-                      ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
-                      : 'border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50'
+                isTrialExpired || isExpired
+                  ? 'border-red-400 bg-red-50 dark:bg-red-900/30'
+                  : subscriptionState === 'TRIAL'
+                    ? 'border-amber-400 bg-amber-50 dark:bg-amber-900/30'
+                    : subscriptionState === 'GRACE_PERIOD'
+                      ? 'border-yellow-400 bg-yellow-50 dark:bg-yellow-900/30'
+                      : currentPlanName.toLowerCase().includes('enterprise') 
+                        ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/30' 
+                        : currentPlanName.toLowerCase().includes('pro') 
+                          ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/30'
+                          : 'border-slate-300 dark:border-slate-600 bg-slate-50 dark:bg-slate-700/50'
               }`}>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
                     <PlanIcon className={`w-5 h-5 ${
-                      subscriptionData?.subscription?.state === 'TRIAL'
-                        ? 'text-amber-500'
-                        : currentPlanName.toLowerCase().includes('enterprise') 
-                          ? 'text-purple-500' 
-                          : currentPlanName.toLowerCase().includes('pro') 
-                            ? 'text-blue-500'
-                            : 'text-slate-400'
+                      isTrialExpired || isExpired
+                        ? 'text-red-500'
+                        : subscriptionState === 'TRIAL'
+                          ? 'text-amber-500'
+                          : subscriptionState === 'GRACE_PERIOD'
+                            ? 'text-yellow-500'
+                            : currentPlanName.toLowerCase().includes('enterprise') 
+                              ? 'text-purple-500' 
+                              : currentPlanName.toLowerCase().includes('pro') 
+                                ? 'text-blue-500'
+                                : 'text-slate-400'
                     }`} />
-                    <span className="font-semibold text-slate-800">
-                      {subscriptionData?.subscription?.state === 'TRIAL' 
-                        ? `${currentPlanName} (Trial)`
-                        : currentPlanName}
+                    <span className="font-semibold text-slate-800 dark:text-slate-200">
+                      {isTrialExpired 
+                        ? 'Free Plan (Trial Expired)'
+                        : isExpired
+                          ? 'Free Plan (Expired)'
+                          : subscriptionState === 'TRIAL' 
+                            ? `${currentPlanName} (Trial)`
+                            : currentPlanName}
                     </span>
                   </div>
                   <span className={`text-xs px-2 py-1 rounded-full font-medium ${
-                    subscriptionData?.subscription?.state === 'TRIAL' 
-                      ? 'bg-amber-100 text-amber-700' 
-                      : subscriptionData?.subscription?.state === 'ACTIVE'
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-green-100 text-green-700'
+                    isTrialExpired 
+                      ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400' 
+                      : isExpired
+                        ? 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-400'
+                        : subscriptionState === 'TRIAL' 
+                          ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400' 
+                          : subscriptionState === 'GRACE_PERIOD'
+                            ? 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/50 dark:text-yellow-400'
+                            : subscriptionState === 'ACTIVE'
+                              ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400'
+                              : 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-400'
                   }`}>
-                    {subscriptionData?.subscription?.state || 'ACTIVE'}
+                    {isTrialExpired 
+                      ? 'EXPIRED' 
+                      : isExpired 
+                        ? 'EXPIRED'
+                        : subscriptionState || 'ACTIVE'}
                   </span>
                 </div>
               </div>

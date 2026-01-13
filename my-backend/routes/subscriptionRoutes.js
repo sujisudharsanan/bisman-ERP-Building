@@ -238,12 +238,56 @@ router.get('/current', authenticate, attachSubscriptionInfo, async (req, res) =>
       });
     }
 
+    // Compute effective status based on expiry dates
+    const now = new Date();
+    const expiresAt = subscription.expires_at ? new Date(subscription.expires_at) : null;
+    const trialEndDate = subscription.trial_end_date ? new Date(subscription.trial_end_date) : null;
+    
+    let effectiveState = subscription.state;
+    let isExpired = false;
+    let isTrialExpired = false;
+    let daysRemaining = null;
+    
+    // Check if trial has expired
+    if (subscription.activation_source === 'TRIAL_MODAL' && trialEndDate && trialEndDate < now) {
+      isTrialExpired = true;
+      effectiveState = 'TRIAL_EXPIRED';
+    }
+    // Check if subscription has expired
+    else if (expiresAt && expiresAt < now && subscription.state === 'ACTIVE') {
+      isExpired = true;
+      effectiveState = 'EXPIRED';
+    }
+    // Check if currently in trial
+    else if (subscription.activation_source === 'TRIAL_MODAL' && trialEndDate && trialEndDate > now) {
+      effectiveState = 'TRIAL';
+      daysRemaining = Math.ceil((trialEndDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    }
+    // Check days remaining for active subscription
+    else if (expiresAt && expiresAt > now) {
+      daysRemaining = Math.ceil((expiresAt.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+    }
+
+    // If FREE plan, never expires
+    const isFreePlan = subscription.plan?.plan_code?.toUpperCase() === 'FREE' || 
+                       parseFloat(subscription.plan?.price_monthly || 0) === 0;
+    if (isFreePlan) {
+      isExpired = false;
+      isTrialExpired = false;
+      effectiveState = 'ACTIVE';
+      daysRemaining = null;
+    }
+
     res.json({
       ok: true,
       has_subscription: true,
       subscription: {
         id: subscription.id,
-        state: subscription.state,
+        state: effectiveState,
+        db_state: subscription.state, // Original DB state for debugging
+        is_expired: isExpired,
+        is_trial_expired: isTrialExpired,
+        days_remaining: daysRemaining,
         plan: {
           code: subscription.plan.plan_code,
           name: subscription.plan.name,
@@ -257,8 +301,10 @@ router.get('/current', authenticate, attachSubscriptionInfo, async (req, res) =>
         trial_start_date: subscription.trial_start_date,
         trial_end_date: subscription.trial_end_date,
         trial_converted: subscription.trial_converted,
+        expires_at: subscription.expires_at,
         started_at: subscription.started_at,
         created_at: subscription.created_at,
+        activation_source: subscription.activation_source,
         usage: {
           users: {
             current: subscription.current_user_count,
