@@ -13,7 +13,7 @@ const router = express.Router();
 const { authenticate, requireRole } = require('../middleware/auth');
 const { setTenantContext } = require('../middleware/tenantContext');
 const analyticsService = require('../services/analytics/analyticsService');
-const prisma = require('../lib/prisma');
+const { getPrisma } = require('../lib/prisma');
 
 // All routes require authentication
 router.use(authenticate);
@@ -48,7 +48,8 @@ router.get('/summary', async (req, res) => {
     }
 
     // Get aggregated usage from tenant_usage
-    const usage = await prisma.tenantUsage.findMany({
+    const prisma = getPrisma();
+    const usage = await prisma.tenant_usage.findMany({
       where: {
         tenant_id: tenantId,
         date: {
@@ -206,7 +207,8 @@ router.get('/export', async (req, res) => {
       });
       data = result.events;
     } else {
-      data = await prisma.tenantUsage.findMany({
+      const prisma = getPrisma();
+      data = await prisma.tenant_usage.findMany({
         where: {
           tenant_id: tenantId,
           date: {
@@ -310,12 +312,11 @@ router.get('/admin/all-tenants', requireRole(['super_admin']), async (req, res) 
     const {
       startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
       endDate = new Date().toISOString(),
-      sortBy = 'apiCalls',
-      order = 'desc',
       limit = 50
     } = req.query;
 
     // Aggregate usage per tenant
+    const prisma = getPrisma();
     const usage = await prisma.$queryRaw`
       SELECT 
         tu.tenant_id,
@@ -359,13 +360,15 @@ router.get('/admin/report', requireRole(['super_admin', 'admin']), async (req, r
       endDate = new Date().toISOString()
     } = req.query;
 
+    const prisma = getPrisma();
+
     // Get tenant info
-    const tenant = await prisma.tenant.findUnique({
+    const tenant = await prisma.clients.findUnique({
       where: { id: tenantId },
       select: {
         id: true,
-        name: true,
-        plan: true,
+        company_name: true,
+        subscriptionPlan: true,
         created_at: true
       }
     });
@@ -375,7 +378,7 @@ router.get('/admin/report', requireRole(['super_admin', 'admin']), async (req, r
     }
 
     // Get usage summary
-    const usage = await prisma.tenantUsage.findMany({
+    const usage = await prisma.tenant_usage.findMany({
       where: {
         tenant_id: tenantId,
         date: {

@@ -286,8 +286,9 @@ router.get('/my-subscription', ...clientAdminOnly, async (req, res) => {
 
 /**
  * POST /api/subscriptions/start-trial
- * Start a free trial for the tenant (14 days with Basic plan features)
+ * Start a free trial for the tenant (14 days with paid plan features)
  * RULE: Each tenant gets only ONE trial in their lifetime
+ * FREE plan users CAN start a trial (trial is for trying PAID features)
  */
 router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
   try {
@@ -313,21 +314,11 @@ router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
     // Check existing subscription
     const existingSubscription = await prisma.client_subscriptions.findUnique({
       where: { client_id: tenantId },
+      include: { plan: true },
     });
 
-    // RULE: One trial per tenant lifetime
-    // If tenant ever had a trial (trial_start_date set or trial_converted is true), deny new trial
     if (existingSubscription) {
-      // Check if trial was ever used
-      if (existingSubscription.trial_start_date || existingSubscription.trial_converted) {
-        return res.status(400).json({
-          ok: false,
-          error: 'TRIAL_USED',
-          message: 'You have already used your free trial. Please enter an activation code or upgrade your plan.',
-        });
-      }
-      
-      // If currently on TRIAL state
+      // If currently on TRIAL state - already has active trial
       if (existingSubscription.state === 'TRIAL') {
         return res.status(400).json({
           ok: false,
@@ -336,19 +327,33 @@ router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
         });
       }
       
-      // If already has active PAID subscription, don't start trial
-      if (existingSubscription.state === 'ACTIVE' && existingSubscription.activation_source !== 'FREE_PLAN_SELECTION') {
+      // If on a PAID plan (not FREE), check if they already used trial
+      const isFreePlan = existingSubscription.plan?.plan_code?.toUpperCase() === 'FREE' || 
+                         existingSubscription.plan?.price_monthly == 0 ||
+                         existingSubscription.activation_source === 'FREE_PLAN_SELECTION';
+      
+      if (!isFreePlan && existingSubscription.state === 'ACTIVE') {
+        // Already on a paid plan - no need for trial
         return res.status(400).json({
           ok: false,
           error: 'ALREADY_SUBSCRIBED',
-          message: 'You already have an active subscription. Use upgrade/downgrade to change plans.',
+          message: 'You already have an active paid subscription.',
         });
       }
       
-      // If on FREE plan, GRACE_PERIOD, SUSPENDED, or CANCELLED - check trial history
-      if (['GRACE_PERIOD', 'SUSPENDED', 'CANCELLED'].includes(existingSubscription.state)) {
-        // These states indicate the tenant had a subscription before
-        // Check audit logs for previous trial usage
+      // Check if trial was ever used (only if they previously had a trial)
+      // trial_converted = true means they converted from trial to paid
+      // If trial_start_date is set AND they're not currently on free plan with no trial history
+      if (existingSubscription.trial_converted === true) {
+        return res.status(400).json({
+          ok: false,
+          error: 'TRIAL_USED',
+          message: 'You have already used your free trial. Please enter an activation code or upgrade your plan.',
+        });
+      }
+      
+      // Check audit logs for previous trial usage (for edge cases)
+      if (existingSubscription.trial_start_date && !isFreePlan) {
         const previousTrial = await prisma.subscription_coupon_audit_logs.findFirst({
           where: {
             subscription_id: existingSubscription.id,
@@ -365,14 +370,21 @@ router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
         }
       }
       
-      // If on FREE plan and never used trial, allow starting trial by updating subscription
-      if (existingSubscription.state === 'ACTIVE' && existingSubscription.activation_source === 'FREE_PLAN_SELECTION') {
-        // Free plan user can start trial - will be handled below by updating existing subscription
-      }
+      // FREE plan users can always start a trial (trial is for trying paid features)
+      // Continue to trial activation below...
     }
 
-    // Get basic plan (or first available plan) for trial features
-    const basicPlan = await prisma.subscription_plans.findFirst({
+    // Get the FIRST PAID plan for trial features (not free plan)
+    const trialPlan = await prisma.subscription_plans.findFirst({
+      where: { 
+        is_active: true,
+        price_monthly: { gt: 0 }, // Must be a paid plan
+      },
+      orderBy: { sort_order: 'asc' },
+    });
+
+    // Fallback to any active plan if no paid plan found
+    const basicPlan = trialPlan || await prisma.subscription_plans.findFirst({
       where: { is_active: true },
       orderBy: { sort_order: 'asc' },
     });
