@@ -329,6 +329,33 @@ const BillingPage = () => {
     }
   };
 
+  // Activate Free Plan
+  const handleActivateFreePlan = async () => {
+    setUpgrading(true);
+    try {
+      const response = await api.post('/api/subscriptions/activate-free');
+
+      if (response.data?.ok) {
+        toast({ title: 'Free plan activated successfully!', variant: 'success' });
+        setShowUpgradeModal(false);
+        setSelectedPlanCode(null);
+        setUpgradeStep('select');
+        await fetchData();
+        refreshSubscription();
+      } else {
+        toast({ title: response.data?.message || 'Failed to activate free plan', variant: 'destructive' });
+      }
+    } catch (error: any) {
+      console.error('Free plan activation error:', error);
+      toast({ 
+        title: error.response?.data?.message || 'Failed to activate free plan', 
+        variant: 'destructive' 
+      });
+    } finally {
+      setUpgrading(false);
+    }
+  };
+
   // Handle plan upgrade submission (keeping for backwards compatibility if coupon matches selected plan)
   const handleConfirmUpgrade = async () => {
     if (!selectedPlanCode) {
@@ -1702,6 +1729,64 @@ const BillingPage = () => {
                       </div>
                     </div>
 
+                    {/* Check if selected plan is FREE */}
+                    {(() => {
+                      const selectedPlan = availablePlans.find(p => p.plan_code === selectedPlanCode);
+                      const isSelectedPlanFree = selectedPlan?.plan_code?.toUpperCase() === 'FREE' || (selectedPlan?.price_monthly || 0) === 0;
+                      
+                      if (isSelectedPlanFree) {
+                        // Show Activate Free Plan button for Free plan
+                        return (
+                          <div className="p-5 border-2 border-green-200 dark:border-green-700 bg-green-50/50 dark:bg-green-900/30 rounded-xl">
+                            <div className="flex items-center gap-3 mb-4">
+                              <div className="w-10 h-10 bg-green-100 dark:bg-green-800 rounded-lg flex items-center justify-center">
+                                <Zap className="w-5 h-5 text-green-600 dark:text-green-400" />
+                              </div>
+                              <div>
+                                <h3 className="font-semibold text-slate-800 dark:text-slate-100">Activate Free Plan</h3>
+                                <p className="text-sm text-slate-500 dark:text-slate-400">Get started with basic features at no cost</p>
+                              </div>
+                            </div>
+                            
+                            <ul className="space-y-2 mb-4 text-sm text-slate-600 dark:text-slate-300">
+                              <li className="flex items-center gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                                Basic features included
+                              </li>
+                              <li className="flex items-center gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                                Up to {selectedPlan?.max_users || 5} users
+                              </li>
+                              <li className="flex items-center gap-2">
+                                <CheckCircle className="w-4 h-4 text-green-500" />
+                                Upgrade anytime with a coupon code
+                              </li>
+                            </ul>
+                            
+                            <button
+                              onClick={handleActivateFreePlan}
+                              disabled={upgrading}
+                              className="w-full py-2.5 bg-green-600 text-white rounded-lg font-medium hover:bg-green-700 transition-colors flex items-center justify-center gap-2"
+                            >
+                              {upgrading ? (
+                                <>
+                                  <RefreshCw className="w-4 h-4 animate-spin" />
+                                  Activating...
+                                </>
+                              ) : (
+                                <>
+                                  <Zap className="w-4 h-4" />
+                                  Activate Free Plan
+                                </>
+                              )}
+                            </button>
+                          </div>
+                        );
+                      }
+                      
+                      // Show Coupon Code section for paid plans
+                      return (
+                        <>
                     {/* Option 1: Coupon Code */}
                     <div className="p-5 border-2 border-slate-200 dark:border-slate-600 rounded-xl">
                       <div className="flex items-center gap-3 mb-4">
@@ -1844,17 +1929,22 @@ const BillingPage = () => {
 
                     {/* Info for users with active subscription */}
                     {(subscriptionData?.has_subscription || subscriptionData?.subscription?.state === 'ACTIVE' || subscriptionData?.subscription?.state === 'TRIAL') && (
-                      <div className="p-4 bg-blue-50 dark:bg-blue-900/30 border border-blue-200 dark:border-blue-700 rounded-xl">
-                        <div className="flex items-center gap-2 text-blue-700 dark:text-blue-300">
+                      <div className="p-4 bg-amber-50 dark:bg-amber-900/30 border border-amber-200 dark:border-amber-700 rounded-xl">
+                        <div className="flex items-center gap-2 text-amber-700 dark:text-amber-300">
                           <AlertCircle className="w-5 h-5" />
                           <p className="text-sm font-medium">
-                            {subscriptionData?.subscription?.state === 'TRIAL' 
-                              ? 'You are currently on a trial. Use a coupon code to activate your selected plan.'
-                              : 'You already have an active subscription. Use a coupon code to upgrade to your selected plan.'}
+                            {isTrialExpired
+                              ? 'Your trial has ended. Use a coupon code to continue using premium features.'
+                              : subscriptionState === 'TRIAL' 
+                                ? 'You are currently on a trial. Use a coupon code to activate your selected plan.'
+                                : 'Your trial has been consumed. Use a coupon code to continue your subscription.'}
                           </p>
                         </div>
                       </div>
                     )}
+                        </>
+                      );
+                    })()}
                   </div>
                 </div>
               )}
