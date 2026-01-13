@@ -7,11 +7,6 @@ const router = Router();
 // Use shared Prisma singleton; may be null if DB not available
 const prisma = getPrisma();
 
-// DEPRECATED: Use hasCrossTenantScope/hasTenantAdminScope from authorizationService instead
-// Keeping for backwards compatibility during migration
-function isPlatformAdmin(role) { return role === 'SYSTEM_ADMIN'; }
-function isTenantAdmin(role) { return role === 'ADMIN' || role === 'SYSTEM_ADMIN'; }
-
 router.post('/super-admins', authMiddleware, async (req, res) => {
   try {
     const user = req.user;
@@ -405,33 +400,40 @@ router.patch('/clients/:id', authMiddleware, async (req, res) => {
         }
         
         try {
-          // Check if user already exists
-          const existingUser = await prismaClient.user.findUnique({ 
-            where: { email: adminUser.email },
+          // Check if user already exists - use findFirst since email alone isn't unique
+          // First check if user exists in this tenant
+          const existingUser = await prismaClient.user.findFirst({ 
+            where: { email: adminUser.email, tenant_id: clientId },
             select: { id: true, tenant_id: true, email: true, username: true }
           });
           
+          // If not found in this tenant, check if email exists in any other tenant
+          let existingInOtherTenant = null;
+          if (!existingUser) {
+            existingInOtherTenant = await prismaClient.user.findFirst({
+              where: { email: adminUser.email },
+              select: { id: true, tenant_id: true, email: true }
+            });
+          }
+
           if (existingUser) {
-            // User exists - check if they belong to this client
-            if (existingUser.tenant_id === clientId) {
-              // Update existing user if password provided
-              if (adminUser.password && adminUser.password.length >= 6) {
-                const hashed = await bcrypt.hash(adminUser.password, 10);
-                await prismaClient.user.update({
-                  where: { id: existingUser.id },
-                  data: { 
-                    password_hash: hashed,
-                    username: adminUser.name || existingUser.username,
-                  }
-                });
-                console.log('[PATCH client] Updated existing admin user:', adminUser.email);
-              }
-              adminUserResults.push({ email: adminUser.email, status: 'existing', updated: !!adminUser.password });
-            } else {
-              // User exists but belongs to another client
-              console.log('[PATCH client] User exists in different tenant:', adminUser.email);
-              adminUserResults.push({ email: adminUser.email, status: 'conflict', error: 'Email already in use by another client' });
+            // User exists in this client - update if password provided
+            if (adminUser.password && adminUser.password.length >= 6) {
+              const hashed = await bcrypt.hash(adminUser.password, 10);
+              await prismaClient.user.update({
+                where: { id: existingUser.id },
+                data: { 
+                  password_hash: hashed,
+                  username: adminUser.name || existingUser.username,
+                }
+              });
+              console.log('[PATCH client] Updated existing admin user:', adminUser.email);
             }
+            adminUserResults.push({ email: adminUser.email, status: 'existing', updated: !!adminUser.password });
+          } else if (existingInOtherTenant) {
+            // User exists but belongs to another client
+            console.log('[PATCH client] User exists in different tenant:', adminUser.email);
+            adminUserResults.push({ email: adminUser.email, status: 'conflict', error: 'Email already in use by another client' });
           } else {
             // Create new user
             if (!adminUser.password || adminUser.password.length < 6) {
@@ -442,15 +444,16 @@ router.patch('/clients/:id', authMiddleware, async (req, res) => {
             
             const username = adminUser.name || adminUser.email.split('@')[0];
             const hashed = await bcrypt.hash(adminUser.password, 10);
+            const { randomUUID } = require('crypto');
             
             const newUser = await prismaClient.user.create({
               data: {
+                id: randomUUID(),
                 tenant_id: clientId,
                 username: username,
                 email: adminUser.email,
                 password_hash: hashed,
                 role: 'ADMIN',
-                status: 'active',
                 is_active: true,
               }
             });
