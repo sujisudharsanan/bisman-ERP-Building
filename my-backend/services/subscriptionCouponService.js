@@ -574,16 +574,34 @@ async function redeemCoupon(couponCode, tenantId, actor) {
     }
   }
   
-  // VALIDATION 6: Tenant has no active subscription
+  // VALIDATION 6: Get existing subscription (we now allow plan changes)
   const existingSubscription = await prisma.client_subscriptions.findUnique({
     where: { client_id: tenantId },
+    include: { plan: true },
   });
   
-  if (existingSubscription && ['ACTIVE', 'TRIAL'].includes(existingSubscription.state)) {
-    throw { 
-      code: ERROR_CODES.TENANT_HAS_ACTIVE_SUBSCRIPTION, 
-      message: 'Your organization already has an active subscription' 
-    };
+  // Get the target plan from coupon
+  const targetPlan = plan || (coupon.plan_snapshot_json ? { 
+    id: coupon.plan_id,
+    plan_code: coupon.plan_snapshot_json.code,
+    name: coupon.plan_snapshot_json.name,
+    sort_order: coupon.plan_snapshot_json.sort_order || 0
+  } : null);
+  
+  // Determine if this is an upgrade, downgrade, or same plan
+  let planChangeType = 'new'; // new, upgrade, downgrade, same
+  if (existingSubscription && targetPlan) {
+    const currentPlanOrder = existingSubscription.plan?.sort_order || 0;
+    const targetPlanOrder = targetPlan.sort_order || 0;
+    
+    if (existingSubscription.plan_id === targetPlan.id) {
+      // Same plan - this extends the subscription
+      planChangeType = 'extend';
+    } else if (targetPlanOrder > currentPlanOrder) {
+      planChangeType = 'upgrade';
+    } else {
+      planChangeType = 'downgrade';
+    }
   }
   
   // VALIDATION 7: Coupon not used by this tenant
@@ -606,35 +624,88 @@ async function redeemCoupon(couponCode, tenantId, actor) {
   
   // ALL VALIDATIONS PASSED - Perform redemption in transaction
   const result = await prisma.$transaction(async (tx) => {
-    // Calculate subscription dates
+    // Calculate subscription dates based on plan change type
     const startedAt = now;
-    const expiresAt = new Date(now.getTime() + coupon.duration_days * 24 * 60 * 60 * 1000);
+    let expiresAt;
+    let nextBillingDate;
+    let currentPeriodStart;
+    let currentPeriodEnd;
+    
+    // For plan changes, preserve trial dates if in trial
+    const preserveTrialDates = existingSubscription?.state === 'TRIAL' && existingSubscription.trial_end_date;
+    
+    if (existingSubscription && ['ACTIVE', 'TRIAL'].includes(existingSubscription.state)) {
+      // Tenant already has an active/trial subscription - this is a plan change via coupon
+      
+      if (planChangeType === 'extend') {
+        // Same plan - extend from current expiration
+        const baseDate = existingSubscription.expires_at || existingSubscription.current_period_end || now;
+        expiresAt = new Date(baseDate.getTime() + coupon.duration_days * 24 * 60 * 60 * 1000);
+        currentPeriodStart = existingSubscription.current_period_start || startedAt;
+        currentPeriodEnd = expiresAt;
+        nextBillingDate = expiresAt;
+      } else if (planChangeType === 'upgrade') {
+        // Upgrade - apply immediately, start new period
+        expiresAt = new Date(now.getTime() + coupon.duration_days * 24 * 60 * 60 * 1000);
+        currentPeriodStart = startedAt;
+        currentPeriodEnd = expiresAt;
+        nextBillingDate = expiresAt;
+      } else if (planChangeType === 'downgrade') {
+        // Downgrade - scheduled for next billing cycle (current period end)
+        // But since using coupon, apply immediately with new duration
+        expiresAt = new Date(now.getTime() + coupon.duration_days * 24 * 60 * 60 * 1000);
+        currentPeriodStart = startedAt;
+        currentPeriodEnd = expiresAt;
+        nextBillingDate = expiresAt;
+      } else {
+        // New subscription
+        expiresAt = new Date(now.getTime() + coupon.duration_days * 24 * 60 * 60 * 1000);
+        currentPeriodStart = startedAt;
+        currentPeriodEnd = expiresAt;
+        nextBillingDate = expiresAt;
+      }
+    } else {
+      // No active subscription or expired - create new dates
+      expiresAt = new Date(now.getTime() + coupon.duration_days * 24 * 60 * 60 * 1000);
+      currentPeriodStart = startedAt;
+      currentPeriodEnd = expiresAt;
+      nextBillingDate = expiresAt;
+    }
     
     // Create or update subscription
     let subscription;
     
     if (existingSubscription) {
-      // Update existing (inactive) subscription
+      // Update existing subscription (handles both active plan changes and reactivation)
+      const updateData = {
+        plan_id: planId,
+        state: 'ACTIVE',
+        previous_state: existingSubscription.state,
+        state_changed_at: now,
+        billing_cycle: 'MONTHLY',
+        current_period_start: currentPeriodStart,
+        current_period_end: currentPeriodEnd,
+        next_billing_date: nextBillingDate,
+        is_active: true,
+        activation_source: 'COUPON',
+        coupon_id: coupon.id,
+        plan_snapshot_json: coupon.plan_snapshot_json,
+        started_at: existingSubscription.started_at || startedAt,
+        expires_at: expiresAt,
+        // Preserve trial dates if upgrading from trial
+        trial_converted: preserveTrialDates ? true : existingSubscription.trial_converted,
+      };
+      
+      // Don't reset usage counts on plan change
+      if (!existingSubscription.current_user_count) {
+        updateData.current_user_count = 0;
+        updateData.current_storage_used = BigInt(0);
+        updateData.current_api_calls = 0;
+      }
+      
       subscription = await tx.client_subscriptions.update({
         where: { id: existingSubscription.id },
-        data: {
-          plan_id: planId,
-          state: 'ACTIVE',
-          previous_state: existingSubscription.state,
-          state_changed_at: now,
-          billing_cycle: 'MONTHLY',
-          current_period_start: startedAt,
-          current_period_end: expiresAt,
-          is_active: true,
-          activation_source: 'COUPON',
-          coupon_id: coupon.id,
-          plan_snapshot_json: coupon.plan_snapshot_json,
-          started_at: startedAt,
-          expires_at: expiresAt,
-          current_user_count: 0,
-          current_storage_used: BigInt(0),
-          current_api_calls: 0,
-        },
+        data: updateData,
       });
     } else {
       // Create new subscription
@@ -645,8 +716,9 @@ async function redeemCoupon(couponCode, tenantId, actor) {
           state: 'ACTIVE',
           state_changed_at: now,
           billing_cycle: 'MONTHLY',
-          current_period_start: startedAt,
-          current_period_end: expiresAt,
+          current_period_start: currentPeriodStart,
+          current_period_end: currentPeriodEnd,
+          next_billing_date: nextBillingDate,
           is_active: true,
           activation_source: 'COUPON',
           coupon_id: coupon.id,
@@ -696,7 +768,7 @@ async function redeemCoupon(couponCode, tenantId, actor) {
       // clients table may not have these fields, ignore
     }
     
-    return { subscription, redemption, coupon: updatedCoupon };
+    return { subscription, redemption, coupon: updatedCoupon, planChangeType };
   });
   
   // Log audit events
@@ -708,32 +780,49 @@ async function redeemCoupon(couponCode, tenantId, actor) {
     actorRole: actor.role,
     payload: {
       code: coupon.code,
-      planCode: coupon.plan.plan_code,
+      planCode: targetPlan?.plan_code || coupon.plan_snapshot_json?.code,
+      planChangeType: result.planChangeType,
+      previousPlan: existingSubscription?.plan?.plan_code || null,
       startedAt: result.subscription.started_at,
       expiresAt: result.subscription.expires_at,
+      nextBillingDate: result.subscription.next_billing_date,
     },
   });
   
-  await logCouponEvent(prisma, COUPON_EVENTS.SUBSCRIPTION_ACTIVATED, {
+  // Determine appropriate event type based on plan change
+  const subscriptionEvent = result.planChangeType === 'upgrade' 
+    ? 'SUBSCRIPTION_UPGRADED' 
+    : result.planChangeType === 'downgrade'
+      ? 'SUBSCRIPTION_DOWNGRADED'
+      : result.planChangeType === 'extend'
+        ? 'SUBSCRIPTION_EXTENDED'
+        : COUPON_EVENTS.SUBSCRIPTION_ACTIVATED;
+  
+  await logCouponEvent(prisma, subscriptionEvent, {
     couponId: coupon.id,
     tenantId,
     subscriptionId: result.subscription.id,
     actorUserId: actor.id,
     actorRole: actor.role,
     payload: {
-      planCode: coupon.plan.plan_code,
+      planCode: targetPlan?.plan_code || coupon.plan_snapshot_json?.code,
+      planChangeType: result.planChangeType,
+      previousPlan: existingSubscription?.plan?.plan_code || null,
       planSnapshot: coupon.plan_snapshot_json,
       startedAt: result.subscription.started_at,
       expiresAt: result.subscription.expires_at,
+      nextBillingDate: result.subscription.next_billing_date,
       durationDays: coupon.duration_days,
     },
   });
   
   return {
     subscription: result.subscription,
-    plan: coupon.plan,
+    plan: targetPlan || { id: coupon.plan_id, ...coupon.plan_snapshot_json },
+    planChangeType: result.planChangeType,
     startedAt: result.subscription.started_at,
     expiresAt: result.subscription.expires_at,
+    nextBillingDate: result.subscription.next_billing_date,
     remainingTime: calculateRemainingTime(result.subscription.expires_at),
   };
 }

@@ -111,14 +111,26 @@ router.post('/redeem-coupon', ...clientAdminOnly, async (req, res) => {
 
     const result = await couponService.redeemCoupon(code, tenantId, actor);
 
+    // Customize message based on plan change type
+    let message = 'Subscription activated successfully!';
+    if (result.planChangeType === 'upgrade') {
+      message = `Successfully upgraded to ${result.plan.name}!`;
+    } else if (result.planChangeType === 'downgrade') {
+      message = `Plan changed to ${result.plan.name}. Changes take effect immediately.`;
+    } else if (result.planChangeType === 'extend') {
+      message = `Subscription extended! Your ${result.plan.name} plan now expires on ${new Date(result.expiresAt).toLocaleDateString()}.`;
+    }
+
     res.json({
       ok: true,
-      message: 'Subscription activated successfully!',
+      message,
+      planChangeType: result.planChangeType,
       subscription: {
         plan: result.plan.name,
-        planCode: result.plan.plan_code,
+        planCode: result.plan.plan_code || result.plan.code,
         startedAt: result.startedAt,
         expiresAt: result.expiresAt,
+        nextBillingDate: result.nextBillingDate,
         remainingTime: result.remainingTime,
       },
     });
@@ -169,13 +181,58 @@ router.post('/validate-coupon', ...clientAdminOnly, async (req, res) => {
     const result = await couponService.validateCoupon(code, tenantId);
 
     if (result.valid) {
+      // Check current subscription to determine plan change type
+      const prisma = getPrisma();
+      const existingSubscription = await prisma.client_subscriptions.findUnique({
+        where: { client_id: tenantId },
+        include: { plan: true },
+      });
+
+      let planChangeType = 'new';
+      let currentPlan = null;
+      let nextRenewalDate = null;
+
+      if (existingSubscription && ['ACTIVE', 'TRIAL'].includes(existingSubscription.state)) {
+        currentPlan = existingSubscription.plan;
+        const currentOrder = currentPlan?.sort_order || 0;
+        const targetOrder = result.plan?.sort_order || 0;
+
+        if (result.plan?.id === currentPlan?.id) {
+          planChangeType = 'extend';
+          // Extension adds duration to current expiry
+          const baseDate = existingSubscription.expires_at || existingSubscription.current_period_end || new Date();
+          nextRenewalDate = new Date(new Date(baseDate).getTime() + result.durationDays * 24 * 60 * 60 * 1000);
+        } else if (targetOrder > currentOrder) {
+          planChangeType = 'upgrade';
+          nextRenewalDate = new Date(Date.now() + result.durationDays * 24 * 60 * 60 * 1000);
+        } else {
+          planChangeType = 'downgrade';
+          nextRenewalDate = new Date(Date.now() + result.durationDays * 24 * 60 * 60 * 1000);
+        }
+      } else {
+        nextRenewalDate = new Date(Date.now() + result.durationDays * 24 * 60 * 60 * 1000);
+      }
+
       res.json({
         ok: true,
         valid: true,
         plan: result.plan,
         durationDays: result.durationDays,
         validUntil: result.validUntil,
-        message: `This code will activate the ${result.plan.name} plan for ${result.durationDays} days`,
+        planChangeType,
+        currentPlan: currentPlan ? {
+          id: currentPlan.id,
+          name: currentPlan.name,
+          planCode: currentPlan.plan_code,
+        } : null,
+        nextRenewalDate: nextRenewalDate?.toISOString(),
+        message: planChangeType === 'extend'
+          ? `This code will extend your ${result.plan.name} plan by ${result.durationDays} days. New expiry: ${nextRenewalDate?.toLocaleDateString()}`
+          : planChangeType === 'upgrade'
+            ? `This code will upgrade you to ${result.plan.name} for ${result.durationDays} days`
+            : planChangeType === 'downgrade'
+              ? `This code will change your plan to ${result.plan.name} for ${result.durationDays} days`
+              : `This code will activate the ${result.plan.name} plan for ${result.durationDays} days`,
       });
     } else {
       res.status(400).json({
@@ -230,6 +287,7 @@ router.get('/my-subscription', ...clientAdminOnly, async (req, res) => {
 /**
  * POST /api/subscriptions/start-trial
  * Start a free trial for the tenant (14 days with Basic plan features)
+ * RULE: Each tenant gets only ONE trial in their lifetime
  */
 router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
   try {
@@ -252,32 +310,24 @@ router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
       });
     }
 
-    // Check if already has active subscription or trial
-    const existingStatus = await couponService.getTenantSubscriptionStatus(tenantId);
-    if (existingStatus.hasActiveSubscription) {
-      return res.status(400).json({
-        ok: false,
-        error: 'ALREADY_SUBSCRIBED',
-        message: 'You already have an active subscription',
-      });
-    }
-
-    if (existingStatus.subscription?.status === 'trial') {
-      return res.status(400).json({
-        ok: false,
-        error: 'TRIAL_ACTIVE',
-        message: 'You already have an active trial',
-      });
-    }
-
-    // Check if trial was already used
-    // Valid enum values: TRIAL, ACTIVE, UPGRADING, DOWNGRADING, GRACE_PERIOD, SUSPENDED, CANCELLED
+    // Check existing subscription
     const existingSubscription = await prisma.client_subscriptions.findUnique({
       where: { client_id: tenantId },
     });
 
+    // RULE: One trial per tenant lifetime
+    // If tenant ever had a trial (trial_start_date set or trial_converted is true), deny new trial
     if (existingSubscription) {
-      // If already has active subscription or trial, don't allow new trial
+      // Check if trial was ever used
+      if (existingSubscription.trial_start_date || existingSubscription.trial_converted) {
+        return res.status(400).json({
+          ok: false,
+          error: 'TRIAL_USED',
+          message: 'You have already used your free trial. Please enter an activation code or upgrade your plan.',
+        });
+      }
+      
+      // If currently on TRIAL state
       if (existingSubscription.state === 'TRIAL') {
         return res.status(400).json({
           ok: false,
@@ -285,24 +335,40 @@ router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
           message: 'You already have an active trial.',
         });
       }
-      if (existingSubscription.state === 'ACTIVE') {
+      
+      // If already has active PAID subscription, don't start trial
+      if (existingSubscription.state === 'ACTIVE' && existingSubscription.activation_source !== 'FREE_PLAN_SELECTION') {
         return res.status(400).json({
           ok: false,
           error: 'ALREADY_SUBSCRIBED',
-          message: 'You already have an active subscription.',
+          message: 'You already have an active subscription. Use upgrade/downgrade to change plans.',
         });
       }
-      if (['GRACE_PERIOD', 'CANCELLED'].includes(existingSubscription.state)) {
-        return res.status(400).json({
-          ok: false,
-          error: 'TRIAL_USED',
-          message: 'You have already used your free trial. Please enter an activation code to continue.',
+      
+      // If on FREE plan, GRACE_PERIOD, SUSPENDED, or CANCELLED - check trial history
+      if (['GRACE_PERIOD', 'SUSPENDED', 'CANCELLED'].includes(existingSubscription.state)) {
+        // These states indicate the tenant had a subscription before
+        // Check audit logs for previous trial usage
+        const previousTrial = await prisma.subscription_coupon_audit_logs.findFirst({
+          where: {
+            subscription_id: existingSubscription.id,
+            event_type: 'TRIAL_STARTED',
+          },
         });
+        
+        if (previousTrial) {
+          return res.status(400).json({
+            ok: false,
+            error: 'TRIAL_USED',
+            message: 'You have already used your free trial. Please enter an activation code to continue.',
+          });
+        }
       }
-      // If in PENDING or other state, delete it to allow new trial
-      await prisma.client_subscriptions.delete({
-        where: { client_id: tenantId },
-      });
+      
+      // If on FREE plan and never used trial, allow starting trial by updating subscription
+      if (existingSubscription.state === 'ACTIVE' && existingSubscription.activation_source === 'FREE_PLAN_SELECTION') {
+        // Free plan user can start trial - will be handled below by updating existing subscription
+      }
     }
 
     // Get basic plan (or first available plan) for trial features
@@ -323,20 +389,41 @@ router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
     const now = new Date();
     const trialEnd = new Date(now.getTime() + trialDays * 24 * 60 * 60 * 1000);
 
-    // Create trial subscription
-    const newSubscription = await prisma.client_subscriptions.create({
-      data: {
-        client_id: tenantId,
-        plan_id: basicPlan.id,
-        state: 'TRIAL',
-        trial_start_date: now,
-        trial_end_date: trialEnd,
-        started_at: now,
-        expires_at: trialEnd,
-        activation_source: 'TRIAL_MODAL',
-        is_active: true,
-      },
-    });
+    let subscription;
+    
+    // If existing subscription (e.g., FREE plan), update it to TRIAL
+    if (existingSubscription) {
+      subscription = await prisma.client_subscriptions.update({
+        where: { client_id: tenantId },
+        data: {
+          plan_id: basicPlan.id,
+          state: 'TRIAL',
+          previous_state: existingSubscription.state,
+          state_changed_at: now,
+          trial_start_date: now,
+          trial_end_date: trialEnd,
+          started_at: now,
+          expires_at: trialEnd,
+          activation_source: 'TRIAL_MODAL',
+          is_active: true,
+        },
+      });
+    } else {
+      // Create new trial subscription
+      subscription = await prisma.client_subscriptions.create({
+        data: {
+          client_id: tenantId,
+          plan_id: basicPlan.id,
+          state: 'TRIAL',
+          trial_start_date: now,
+          trial_end_date: trialEnd,
+          started_at: now,
+          expires_at: trialEnd,
+          activation_source: 'TRIAL_MODAL',
+          is_active: true,
+        },
+      });
+    }
 
     // Log the trial start (using correct model and field names)
     try {
@@ -344,12 +431,13 @@ router.post('/start-trial', ...clientAdminOnly, async (req, res) => {
         data: {
           event_type: 'TRIAL_STARTED',
           actor_user_id: req.user.id,
-          subscription_id: newSubscription.id,
+          subscription_id: subscription.id,
           payload_snapshot: {
             trialDays: trialDays,
             expiresAt: trialEnd.toISOString(),
             planId: basicPlan.id,
             planName: basicPlan.name,
+            previousState: existingSubscription?.state || 'NONE',
           },
           ip_address: req.ip || req.connection?.remoteAddress || null,
         },
