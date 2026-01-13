@@ -99,7 +99,7 @@ async function setUserPermissions(userId, permissions, ttlSeconds = PERMISSION_T
  */
 async function getUserPermissionsWithFallback(userId, userType) {
   // Try cache first
-  let cached = await getUserPermissions(userId);
+  const cached = await getUserPermissions(userId);
   
   if (cached) {
     return { ...cached.permissions, source: 'cache' };
@@ -120,16 +120,18 @@ async function getUserPermissionsWithFallback(userId, userType) {
       };
     } else if (userType === 'SUPER_ADMIN') {
       // Get assigned modules
-      const moduleAssignments = await prisma.moduleAssignment.findMany({
+      const moduleAssignments = await prisma.module_assignments.findMany({
         where: { super_admin_id: userId, is_active: true },
-        include: { module: true }
+        include: { modules: true }
       });
 
       permissions = {
         role: 'SUPER_ADMIN',
-        modules: moduleAssignments.map(ma => ma.module.module_name),
+        modules: moduleAssignments.map(ma => ma.modules?.module_name).filter(Boolean),
         pagePermissions: moduleAssignments.reduce((acc, ma) => {
-          acc[ma.module.module_name] = ma.page_permissions || [];
+          if (ma.modules?.module_name) {
+            acc[ma.modules.module_name] = ma.page_permissions || [];
+          }
           return acc;
         }, {}),
         isAdmin: true
@@ -264,7 +266,7 @@ async function setModuleAssignments(superAdminId, modules, ttlSeconds = MODULE_T
  */
 async function getModuleAssignmentsWithFallback(superAdminId) {
   // Try cache first
-  let cached = await getModuleAssignments(superAdminId);
+  const cached = await getModuleAssignments(superAdminId);
   
   if (cached) {
     return { ...cached, source: 'cache' };
@@ -274,14 +276,14 @@ async function getModuleAssignmentsWithFallback(superAdminId) {
   try {
     const prisma = getPrisma();
     
-    const moduleAssignments = await prisma.moduleAssignment.findMany({
+    const moduleAssignments = await prisma.module_assignments.findMany({
       where: { super_admin_id: superAdminId, is_active: true },
-      include: { module: true }
+      include: { modules: true }
     });
 
-    const modules = moduleAssignments.map(ma => ({
-      id: ma.module.id,
-      name: ma.module.module_name,
+    const modules = moduleAssignments.filter(ma => ma.modules).map(ma => ({
+      id: ma.modules.id,
+      name: ma.modules.module_name,
       pages: ma.page_permissions || []
     }));
 

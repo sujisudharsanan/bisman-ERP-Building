@@ -294,7 +294,7 @@ router.post('/super-admins', async (req, res) => {
 
     // Create module assignments
     for (const module of modules) {
-      await prisma.moduleAssignment.create({
+      await prisma.module_assignments.create({
         data: {
           super_admin_id: superAdmin.id,
           module_id: module.id
@@ -461,13 +461,13 @@ router.post('/super-admins/:id/assign-modules', async (req, res) => {
     }
 
     // Delete existing assignments
-    await prisma.moduleAssignment.deleteMany({
+    await prisma.module_assignments.deleteMany({
       where: { super_admin_id: superAdminId }
     });
 
     // Create new assignments
     for (const moduleId of moduleIds) {
-      await prisma.moduleAssignment.create({
+      await prisma.module_assignments.create({
         data: {
           super_admin_id: superAdminId,
           module_id: moduleId

@@ -7,7 +7,7 @@ const express = require('express');
 const router = express.Router();
 const { PrismaClient } = require('@prisma/client');
 const { authenticate } = require('../middleware/auth');
-const { hasCrossTenantScope, hasTenantAdminScope } = require('../services/authorizationService');
+const { hasCrossTenantScope } = require('../services/authorizationService');
 
 const prisma = new PrismaClient();
 
@@ -66,12 +66,12 @@ router.get('/check-page', authenticate, async (req, res) => {
       }
 
       // Check if page is in approved module assignments
-      const assignments = await prisma.moduleAssignment.findMany({
+      const assignments = await prisma.module_assignments.findMany({
         where: {
           super_admin_id: userId
         },
         include: {
-          module: true
+          modules: true
         }
       });
 
@@ -171,12 +171,12 @@ router.get('/', authenticate, async (req, res) => {
 
     // CROSS_TENANT scope (Super Admin)
     if (hasCrossTenantScope(req.user)) {
-      const assignments = await prisma.moduleAssignment.findMany({
+      const assignments = await prisma.module_assignments.findMany({
         where: {
           super_admin_id: userId
         },
         include: {
-          module: true
+          modules: true
         }
       });
 

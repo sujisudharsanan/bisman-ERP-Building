@@ -24,8 +24,8 @@ router.get('/system-overview', requireEnterpriseAdmin, async (req, res) => {
       prisma.super_admins.count({ where: { is_active: true } }),
       prisma.clients.count({ where: { is_active: true } }),
       prisma.users_enhanced.count(),
-      prisma.module.count({ where: { is_active: true } }),
-      prisma.moduleAssignment.count()
+      prisma.modules.count({ where: { is_active: true } }),
+      prisma.module_assignments.count()
     ]);
 
     res.json({

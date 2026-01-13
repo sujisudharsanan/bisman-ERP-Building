@@ -1724,9 +1724,9 @@ app.get('/api/me', async (req, res) => {
           // Get assigned modules
           const moduleAssignments = await prisma.module_assignments.findMany({
             where: { super_admin_id: dbUser.id },
-            include: { module: true }
+            include: { modules: true }
           });
-          dbUser.assignedModules = moduleAssignments.map(ma => ma.module.module_name);
+          dbUser.assignedModules = moduleAssignments.map(ma => ma.modules?.module_name).filter(Boolean);
         }
       } else {
         dbUser = await prisma.users_enhanced.findUnique({

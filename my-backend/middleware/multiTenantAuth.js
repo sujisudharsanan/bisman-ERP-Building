@@ -86,12 +86,12 @@ const authenticateMultiTenant = async (req, res, next) => {
       }
 
       // Get assigned modules for this super admin
-      const moduleAssignments = await prisma.moduleAssignment.findMany({
+      const moduleAssignments = await prisma.module_assignments.findMany({
         where: { super_admin_id: superAdmin.id },
-        include: { module: true }
+        include: { modules: true }
       });
 
-      const assignedModules = moduleAssignments.map(ma => ma.module.module_name);
+      const assignedModules = moduleAssignments.map(ma => ma.modules?.module_name).filter(Boolean);
 
       req.user = {
         id: superAdmin.id,

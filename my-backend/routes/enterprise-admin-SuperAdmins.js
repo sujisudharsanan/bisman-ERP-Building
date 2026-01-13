@@ -50,9 +50,9 @@ router.get('/', async (req, res) => {
 
     // Transform to include assigned modules
     const transformedAdmins = await Promise.all(superAdmins.map(async (admin) => {
-      const moduleAssignments = await prisma.moduleAssignment.findMany({
+      const moduleAssignments = await prisma.module_assignments.findMany({
         where: { super_admin_id: admin.id },
-        include: { module: true }
+        include: { modules: true }
       });
 
       return {
@@ -61,9 +61,9 @@ router.get('/', async (req, res) => {
         email: admin.email,
         productType: admin.productType,
         status: admin.is_active ? 'active' : 'inactive',
-        assignedModules: moduleAssignments.map(ma => ({
+        assignedModules: moduleAssignments.filter(ma => ma.modules).map(ma => ({
           module_id: ma.module_id,
-          module_name: ma.module.module_name,
+          module_name: ma.modules.module_name,
           assigned_pages: ma.page_permissions || []
         }))
       };

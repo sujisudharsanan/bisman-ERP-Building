@@ -162,10 +162,10 @@ const requireModuleAccess = (moduleName) => {
       try {
         // ✅ SECURITY FIX: Add tenant filter to module assignment check
         const tenantId = req.user.tenant_id;
-        const hasAccess = await prisma.moduleAssignment.findFirst({
+        const hasAccess = await prisma.module_assignments.findFirst({
           where: {
             super_admin_id: req.user.id,
-            module: {
+            modules: {
               module_name: moduleName
             },
             ...(tenantId && { tenant_id: tenantId }) // ✅ SECURITY: Tenant isolation
@@ -266,13 +266,13 @@ const requirePageAccess = (pageId) => {
         // ✅ SECURITY FIX: Add tenant filter to module assignments
         const tenantId = req.user.tenant_id;
         // Get all page permissions from module assignments
-        const assignments = await prisma.moduleAssignment.findMany({
+        const assignments = await prisma.module_assignments.findMany({
           where: {
             super_admin_id: req.user.id,
             ...(tenantId && { tenant_id: tenantId }) // ✅ SECURITY: Tenant isolation
           },
           include: {
-            module: true
+            modules: true
           }
         });
 
