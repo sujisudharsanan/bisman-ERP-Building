@@ -1852,154 +1852,131 @@ export default function Page() {
         </div>
       </div>
 
-      {/* Collapsible Roles Drawer - Fixed at bottom */}
+      {/* All Roles Overview - Static Bottom Section (20% of screen) */}
       <div 
-        className={`fixed left-0 right-0 bottom-0 z-40 transition-all duration-300 ease-in-out ${
-          isRolesDrawerExpanded ? 'max-h-[60vh]' : 'max-h-[50px]'
-        }`}
-        onMouseEnter={() => {
-          if (rolesDrawerTimeoutRef.current) {
-            clearTimeout(rolesDrawerTimeoutRef.current);
-          }
-          setIsRolesDrawerExpanded(true);
-        }}
-        onMouseLeave={() => {
-          rolesDrawerTimeoutRef.current = setTimeout(() => {
-            setIsRolesDrawerExpanded(false);
-          }, 300);
-        }}
+        className="flex-shrink-0 min-h-[20vh] bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950 border-t-2 border-purple-200 dark:border-purple-800 rounded-t-xl shadow-lg"
       >
-        {/* Drawer Container */}
-        <div className={`bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-2xl transition-all duration-300 ${
-          isRolesDrawerExpanded ? 'rounded-t-xl' : ''
-        }`}>
-          {/* Collapsed Bar / Header - Always visible */}
-          <div 
-            className={`flex items-center justify-between px-4 cursor-pointer select-none ${
-              isRolesDrawerExpanded ? 'py-3 border-b border-gray-200 dark:border-gray-700' : 'py-3'
-            }`}
-            onClick={() => setIsRolesDrawerExpanded(!isRolesDrawerExpanded)}
-          >
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <FiShield className="text-purple-600 w-5 h-5" />
-                <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">All Roles Overview</span>
-                <span className="text-xs font-normal text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
-                  {allRoles.length} roles
-                </span>
-              </div>
-              {/* Quick stats - visible in collapsed state */}
-              <div className="flex items-center gap-3 text-xs">
-                <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
-                  <span className="text-gray-600 dark:text-gray-400">{assignedRoleIds.length}</span>
-                </span>
-                <span className="flex items-center gap-1">
-                  <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
-                  <span className="text-gray-600 dark:text-gray-400">{allRoles.length - assignedRoleIds.length}</span>
-                </span>
-              </div>
-            </div>
-            
+        {/* Header Bar - Always visible, more prominent */}
+        <div 
+          className="flex items-center justify-between px-5 py-4 bg-purple-50 dark:bg-purple-900/30 border-b border-purple-100 dark:border-purple-800 rounded-t-xl cursor-pointer"
+          onClick={() => setIsRolesDrawerExpanded(!isRolesDrawerExpanded)}
+        >
+          <div className="flex items-center gap-4">
             <div className="flex items-center gap-3">
-              {/* Hover hint - only show when collapsed */}
-              {!isRolesDrawerExpanded && (
-                <span className="text-xs text-gray-400 italic hidden md:block">
-                  Hover to expand
-                </span>
-              )}
-              {/* Expand/Collapse indicator */}
-              <div className={`p-1.5 rounded-full bg-gray-100 dark:bg-gray-800 transition-transform duration-300 ${
-                isRolesDrawerExpanded ? 'rotate-180' : ''
-              }`}>
-                <FiChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              <div className="p-2 bg-purple-600 rounded-lg">
+                <FiShield className="text-white w-5 h-5" />
+              </div>
+              <div>
+                <span className="text-base font-bold text-gray-800 dark:text-gray-100">All Roles Overview</span>
+                <div className="flex items-center gap-3 mt-0.5">
+                  <span className="text-xs text-gray-500 dark:text-gray-400">{allRoles.length} roles available</span>
+                  <span className="flex items-center gap-1 text-xs">
+                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
+                    <span className="text-green-600 dark:text-green-400 font-medium">{assignedRoleIds.length} assigned</span>
+                  </span>
+                  <span className="flex items-center gap-1 text-xs">
+                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
+                    <span className="text-red-600 dark:text-red-400 font-medium">{allRoles.length - assignedRoleIds.length} unassigned</span>
+                  </span>
+                </div>
               </div>
             </div>
           </div>
+          
+          <div className="flex items-center gap-4">
+            {/* Total users */}
+            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+              <FiUsers className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+                {allRoles.reduce((sum, r) => sum + (r.userCount || r.users?.length || 0), 0)} total users
+              </span>
+            </div>
+            {/* Expand/Collapse button */}
+            <button 
+              className={`p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-transform duration-300 hover:bg-gray-50 ${
+                isRolesDrawerExpanded ? 'rotate-180' : ''
+              }`}
+            >
+              <FiChevronUp className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+            </button>
+          </div>
+        </div>
 
-          {/* Expanded Content */}
-          <div className={`overflow-hidden transition-all duration-300 ${
-            isRolesDrawerExpanded ? 'opacity-100' : 'opacity-0 h-0'
-          }`}>
-            <div className="px-4 pt-3 pb-4 max-h-[calc(60vh-56px)] overflow-y-auto">
-              {/* Toolbar: Search, Filter, Add/Remove button */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-                <div className="flex items-center gap-3 flex-1">
-                  {/* Search */}
-                  <div className="relative flex-1 max-w-xs">
-                    <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                    <input
-                      type="text"
-                      placeholder="Search roles..."
-                      value={rolesSearchQuery}
-                      onChange={(e) => setRolesSearchQuery(e.target.value)}
-                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                    />
-                  </div>
-                  {/* Filter buttons */}
-                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-                    <button
-                      onClick={() => setRolesFilter('all')}
-                      className={`px-3 py-1 text-xs rounded-md transition ${
-                        rolesFilter === 'all'
-                          ? 'bg-white dark:bg-gray-700 text-purple-600 shadow-sm font-semibold'
-                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
-                      }`}
-                    >
-                      All
-                    </button>
-                    <button
-                      onClick={() => setRolesFilter('assigned')}
-                      className={`px-3 py-1 text-xs rounded-md transition ${
-                        rolesFilter === 'assigned'
-                          ? 'bg-white dark:bg-gray-700 text-green-600 shadow-sm font-semibold'
-                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
-                      }`}
-                    >
-                      Assigned
-                    </button>
-                    <button
-                      onClick={() => setRolesFilter('unassigned')}
-                      className={`px-3 py-1 text-xs rounded-md transition ${
-                        rolesFilter === 'unassigned'
-                          ? 'bg-white dark:bg-gray-700 text-red-600 shadow-sm font-semibold'
-                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
-                      }`}
-                    >
-                      Not Assigned
-                    </button>
-                  </div>
+        {/* Content Area - Collapsible */}
+        <div className={`overflow-hidden transition-all duration-300 ${
+          isRolesDrawerExpanded ? 'max-h-[50vh] opacity-100' : 'max-h-0 opacity-0'
+        }`}>
+          <div className="px-5 py-4">
+            {/* Toolbar: Search, Filter, Add/Remove button */}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+              <div className="flex items-center gap-3 flex-1">
+                {/* Search */}
+                <div className="relative flex-1 max-w-xs">
+                  <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search roles..."
+                    value={rolesSearchQuery}
+                    onChange={(e) => setRolesSearchQuery(e.target.value)}
+                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
                 </div>
-                
-                <div className="flex items-center gap-3">
-                  {/* Stats */}
-                  <div className="flex items-center gap-3 text-xs text-gray-500">
-                    <span className="flex items-center gap-1">
-                      <FiUsers className="w-3.5 h-3.5 text-blue-500" />
-                      {allRoles.reduce((sum, r) => sum + (r.userCount || r.users?.length || 0), 0)} total users
-                    </span>
-                  </div>
-                  {/* Add/Remove button - only show when Super Admin is selected */}
-                  {selectedAdminId ? (
-                    <button
-                      onClick={() => setIsRoleAssignMode(!isRoleAssignMode)}
-                      className={`text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center gap-2 shadow-sm ${
-                        isRoleAssignMode
-                          ? "bg-green-600 text-white hover:bg-green-700"
-                          : "bg-purple-600 text-white hover:bg-purple-700"
-                      }`}
-                    >
-                      {isRoleAssignMode ? "✓ Done" : "Add/Remove Roles"}
-                    </button>
-                  ) : (
-                    <span className="text-xs text-gray-500 italic bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-lg">
-                      Select a Super Admin first
-                    </span>
-                  )}
+                {/* Filter buttons */}
+                <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
+                  <button
+                    onClick={() => setRolesFilter('all')}
+                    className={`px-3 py-1.5 text-xs rounded-md transition font-medium ${
+                      rolesFilter === 'all'
+                        ? 'bg-white dark:bg-gray-700 text-purple-600 shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setRolesFilter('assigned')}
+                    className={`px-3 py-1.5 text-xs rounded-md transition font-medium ${
+                      rolesFilter === 'assigned'
+                        ? 'bg-white dark:bg-gray-700 text-green-600 shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
+                    }`}
+                  >
+                    Assigned
+                  </button>
+                  <button
+                    onClick={() => setRolesFilter('unassigned')}
+                    className={`px-3 py-1.5 text-xs rounded-md transition font-medium ${
+                      rolesFilter === 'unassigned'
+                        ? 'bg-white dark:bg-gray-700 text-red-600 shadow-sm'
+                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
+                    }`}
+                  >
+                    Not Assigned
+                  </button>
                 </div>
               </div>
+              
+              {/* Add/Remove button - only show when Super Admin is selected */}
+              {selectedAdminId ? (
+                <button
+                  onClick={() => setIsRoleAssignMode(!isRoleAssignMode)}
+                  className={`text-sm font-semibold px-5 py-2.5 rounded-lg transition flex items-center gap-2 shadow-md ${
+                    isRoleAssignMode
+                      ? "bg-green-600 text-white hover:bg-green-700"
+                      : "bg-purple-600 text-white hover:bg-purple-700"
+                  }`}
+                >
+                  {isRoleAssignMode ? "✓ Done" : "Add/Remove Roles"}
+                </button>
+              ) : (
+                <span className="text-sm text-gray-500 italic bg-gray-100 dark:bg-gray-800 px-4 py-2.5 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
+                  Select a Super Admin to manage roles
+                </span>
+              )}
+            </div>
 
-              {/* Roles Grid */}
+            {/* Roles Grid */}
+            <div className="max-h-[35vh] overflow-y-auto pr-2">
               <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
                 {allRoles
                   .filter((role) => {
@@ -2123,9 +2100,6 @@ export default function Page() {
           </div>
         </div>
       </div>
-
-      {/* Spacer to prevent content from being hidden behind the drawer */}
-      <div className="h-[60px] flex-shrink-0"></div>
 
       {/* Create Super Admin Modal */}
       {showCreateModal && (
