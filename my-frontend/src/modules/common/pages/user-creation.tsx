@@ -33,17 +33,34 @@ export default function UserCreationPage() {
         setIsLoading(true);
         setError(null);
 
-        // Fetch roles
-        const rolesResponse = await fetch('/api/roles', {
+        // Fetch roles - use assignable-roles endpoint which respects Enterprise Admin assignments
+        // This ensures Super Admin only sees roles assigned to them by Enterprise Admin
+        const rolesResponse = await fetch('/api/privileges/assignable-roles', {
           credentials: 'include',
         });
         
         if (!rolesResponse.ok) {
-          throw new Error('Failed to fetch roles');
+          // Fallback to /api/roles if assignable-roles fails
+          console.warn('assignable-roles failed, falling back to /api/roles');
+          const fallbackResponse = await fetch('/api/roles', { credentials: 'include' });
+          if (fallbackResponse.ok) {
+            const fallbackData = await fallbackResponse.json();
+            setRoles(fallbackData.roles || []);
+          } else {
+            throw new Error('Failed to fetch roles');
+          }
+        } else {
+          const rolesData = await rolesResponse.json();
+          // assignable-roles returns data in 'data' field, /api/roles returns in 'roles' field
+          const rolesList = rolesData.data || rolesData.roles || [];
+          // Normalize the role format
+          setRoles(rolesList.map((r: any) => ({
+            id: String(r.id),
+            name: r.name,
+            displayName: r.displayName || r.display_name || r.name,
+            level: r.level,
+          })));
         }
-        
-        const rolesData = await rolesResponse.json();
-        setRoles(rolesData.roles || []);
 
         // Fetch branches
         const branchesResponse = await fetch('/api/branches', {

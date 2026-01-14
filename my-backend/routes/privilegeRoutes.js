@@ -40,12 +40,12 @@ router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) =>
     
     console.log('[assignable-roles] User:', { userId, userRole, superAdminId });
     
-    // For SUPER_ADMIN or ENTERPRISE_ADMIN - return all roles at lower level
+    // For SUPER_ADMIN - return only roles assigned by Enterprise Admin
     const isSuperAdmin = userRole.toUpperCase() === 'SUPER_ADMIN';
     const isEnterpriseAdmin = userRole.toUpperCase() === 'ENTERPRISE_ADMIN';
     
-    if (isSuperAdmin || isEnterpriseAdmin) {
-      // Super Admin can assign all roles below their level
+    if (isEnterpriseAdmin) {
+      // Enterprise Admin can assign all roles
       let allRoles = [];
       try {
         allRoles = await rbacService.getAllRoles();
@@ -62,10 +62,112 @@ router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) =>
       return res.json({
         success: true,
         data: assignableRoles,
-        source: 'super_admin_access',
+        source: 'enterprise_admin_access',
         total: assignableRoles.length,
         timestamp: new Date().toISOString()
       });
+    }
+    
+    if (isSuperAdmin) {
+      // Super Admin can only assign roles that Enterprise Admin has granted to them
+      const PrismaClient = require('@prisma/client').PrismaClient;
+      const prismaInstance = new PrismaClient();
+      
+      try {
+        // Get Super Admin ID from JWT or lookup
+        let superAdminUserId = userId;
+        if (typeof userId === 'string' && userId.includes('-')) {
+          // UUID - lookup super_admin record by email
+          const superAdmin = await prismaInstance.super_admins.findFirst({
+            where: { email: req.user?.email }
+          });
+          superAdminUserId = superAdmin?.id;
+        }
+        
+        if (!superAdminUserId) {
+          console.log('[assignable-roles] Could not find Super Admin ID');
+          return res.json({
+            success: true,
+            data: [],
+            source: 'no_super_admin_found',
+            message: 'Super Admin not found',
+            total: 0,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        // Get roles assigned to this Super Admin by Enterprise Admin
+        const assignedRoles = await prismaInstance.admin_role_assignments.findMany({
+          where: {
+            assignee_type: 'SUPER_ADMIN',
+            assignee_id: parseInt(superAdminUserId),
+            is_active: true
+          },
+          include: {
+            rbac_roles: true
+          }
+        });
+        
+        console.log('[assignable-roles] Super Admin assigned roles:', assignedRoles.length);
+        
+        if (assignedRoles.length > 0) {
+          const roles = assignedRoles
+            .filter(ar => ar.rbac_roles)
+            .map(ar => ({
+              id: ar.rbac_roles.id,
+              name: ar.rbac_roles.name,
+              displayName: ar.rbac_roles.display_name || ar.rbac_roles.name,
+              description: ar.rbac_roles.description,
+              level: ar.rbac_roles.level || ar.rbac_roles.role_level || 0,
+              is_active: ar.rbac_roles.is_active
+            }))
+            .filter(role => {
+              const roleName = (role.name || '').toLowerCase();
+              return !roleName.includes('super') && !roleName.includes('enterprise');
+            });
+          
+          return res.json({
+            success: true,
+            data: roles,
+            source: 'enterprise_admin_assignment',
+            total: roles.length,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
+        // No roles assigned by Enterprise Admin - return empty
+        console.log('[assignable-roles] No roles assigned to Super Admin by Enterprise Admin');
+        return res.json({
+          success: true,
+          data: [],
+          source: 'no_enterprise_admin_assignment',
+          message: 'No roles have been assigned to you by Enterprise Admin. Contact your Enterprise Admin to assign roles.',
+          total: 0,
+          timestamp: new Date().toISOString()
+        });
+      } catch (saError) {
+        console.error('[assignable-roles] Error checking Super Admin roles:', saError.message);
+        // Fallback to all roles (for backwards compatibility)
+        let allRoles = [];
+        try {
+          allRoles = await rbacService.getAllRoles();
+        } catch {
+          allRoles = await privilegeService.getAllRoles();
+        }
+        
+        const assignableRoles = allRoles.filter(role => {
+          const roleName = (role.name || '').toLowerCase();
+          return !roleName.includes('super') && !roleName.includes('enterprise');
+        });
+        
+        return res.json({
+          success: true,
+          data: assignableRoles,
+          source: 'fallback_all_roles',
+          total: assignableRoles.length,
+          timestamp: new Date().toISOString()
+        });
+      }
     }
     
     // For other admins - check what roles their Super Admin has granted them

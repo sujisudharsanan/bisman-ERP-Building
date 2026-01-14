@@ -99,9 +99,23 @@ export function CreateFullUserModal({
   // Fetch roles and branches if not provided as props
   useEffect(() => {
     if (isOpen && !propRoles) {
-      fetch('/api/roles', { credentials: 'include' })
-        .then(res => res.ok ? res.json() : [])
-        .then(data => setInternalRoles(data.roles || data || []))
+      // Use assignable-roles endpoint to respect Enterprise Admin assignments
+      fetch('/api/privileges/assignable-roles', { credentials: 'include' })
+        .then(res => {
+          if (res.ok) return res.json();
+          // Fallback to /api/roles
+          return fetch('/api/roles', { credentials: 'include' }).then(r => r.ok ? r.json() : { roles: [] });
+        })
+        .then(data => {
+          // assignable-roles returns data in 'data' field, /api/roles returns in 'roles' field
+          const rolesList = data.data || data.roles || data || [];
+          setInternalRoles(rolesList.map((r: any) => ({
+            id: String(r.id),
+            name: r.name,
+            displayName: r.displayName || r.display_name || r.name,
+            level: r.level,
+          })));
+        })
         .catch(() => setInternalRoles([]));
     }
     if (isOpen && !propBranches) {

@@ -280,9 +280,10 @@ export default function CreateUserPage() {
       const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
 
       // Fetch branches, roles, users, and usage limits in parallel
+      // Use assignable-roles endpoint to respect Enterprise Admin assignments
       const [branchesRes, rolesRes, usersRes, usageRes] = await Promise.all([
         fetch(`${baseURL}/api/branches`, { credentials: 'include' }),
-        fetch(`${baseURL}/api/roles`, { credentials: 'include' }),
+        fetch(`${baseURL}/api/privileges/assignable-roles`, { credentials: 'include' }),
         fetch(`${baseURL}/api/users/list-simple`, { credentials: 'include' }),
         fetch(`${baseURL}/api/subscription/usage`, { credentials: 'include' }),
       ]);
@@ -293,10 +294,23 @@ export default function CreateUserPage() {
         setBranches(branchData.branches || branchData.data || []);
       }
 
-      // Process roles
+      // Process roles - assignable-roles returns data in 'data' field
       if (rolesRes.ok) {
         const roleData = await rolesRes.json();
-        setRoles(roleData.roles || roleData.data || []);
+        const rolesList = roleData.data || roleData.roles || [];
+        setRoles(rolesList.map((r: any) => ({
+          id: String(r.id),
+          name: r.name,
+          displayName: r.displayName || r.display_name || r.name,
+          level: r.level,
+        })));
+      } else {
+        // Fallback to /api/roles
+        const fallbackRes = await fetch(`${baseURL}/api/roles`, { credentials: 'include' });
+        if (fallbackRes.ok) {
+          const roleData = await fallbackRes.json();
+          setRoles(roleData.roles || roleData.data || []);
+        }
       }
 
       // Process users for reporting structure
