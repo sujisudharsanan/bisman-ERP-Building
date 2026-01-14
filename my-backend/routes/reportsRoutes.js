@@ -42,12 +42,69 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
       }
     }
     
-    // ✅ SECURITY FIX: Get assigned role IDs/names based on system_scope
+    // ✅ SECURITY FIX: Get assigned role IDs/names based on user role
     let assignedRoleIds = null; // null means no filter (show all)
     const assignedRoleNames = []; // Store role names for matching when IDs don't work
-    if (hasCrossTenantScope(req.user)) {
-      console.log('[RolesUsersReport] CROSS_TENANT scope - showing all roles');
-      // CROSS_TENANT users see all roles - they manage clients and their role assignments
+    
+    const userRole = (req.user?.role || req.user?.roleName || '').toUpperCase();
+    const isSuperAdmin = userRole === 'SUPER_ADMIN';
+    const isEnterpriseAdmin = userRole === 'ENTERPRISE_ADMIN';
+    
+    if (isEnterpriseAdmin) {
+      console.log('[RolesUsersReport] ENTERPRISE_ADMIN - showing all roles');
+      assignedRoleIds = null; // Enterprise Admin sees all roles
+    } else if (isSuperAdmin) {
+      // Super Admin can only see roles that Enterprise Admin has assigned to them
+      console.log('[RolesUsersReport] SUPER_ADMIN - filtering to assigned roles only');
+      try {
+        // Get Super Admin ID from JWT or lookup
+        let superAdminUserId = req.user?.id || req.user?.userId;
+        if (typeof superAdminUserId === 'string' && superAdminUserId.includes('-')) {
+          // UUID - lookup super_admin record by email
+          const superAdmin = await prisma.super_admins.findFirst({
+            where: { email: req.user?.email }
+          });
+          superAdminUserId = superAdmin?.id;
+        }
+        
+        if (superAdminUserId) {
+          // Get roles assigned to this Super Admin by Enterprise Admin
+          const assignedRoles = await prisma.admin_role_assignments.findMany({
+            where: {
+              assignee_type: 'SUPER_ADMIN',
+              assignee_id: parseInt(superAdminUserId),
+              is_active: true
+            },
+            include: {
+              rbac_roles: true
+            }
+          });
+          
+          console.log('[RolesUsersReport] Super Admin assigned roles:', assignedRoles.length);
+          
+          if (assignedRoles.length > 0) {
+            assignedRoleIds = assignedRoles.map(ar => ar.role_id);
+            assignedRoles.forEach(ar => {
+              if (ar.rbac_roles?.name) {
+                assignedRoleNames.push(ar.rbac_roles.name.toUpperCase());
+              }
+            });
+            console.log('[RolesUsersReport] Filtering to role IDs:', assignedRoleIds, 'Names:', assignedRoleNames);
+          } else {
+            // No roles assigned - return empty result
+            console.log('[RolesUsersReport] No roles assigned to Super Admin by Enterprise Admin');
+            assignedRoleIds = []; // Empty array will filter out all roles
+          }
+        } else {
+          console.log('[RolesUsersReport] Could not find Super Admin ID');
+          assignedRoleIds = []; // No ID found, show no roles
+        }
+      } catch (saError) {
+        console.error('[RolesUsersReport] Error checking Super Admin roles:', saError.message);
+        assignedRoleIds = []; // Error case - show no roles for safety
+      }
+    } else if (hasCrossTenantScope(req.user)) {
+      console.log('[RolesUsersReport] CROSS_TENANT scope (non-SUPER_ADMIN) - showing all roles');
       assignedRoleIds = null; // null means no filter (show all)
     }
     
