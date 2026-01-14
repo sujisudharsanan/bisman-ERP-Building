@@ -824,7 +824,7 @@ try {
 // ===================================================================
 try {
   const approvalDashboardRoutes = require('./routes/approvalDashboardRoutes')
-  app.use('/api/approval-dashboard', approvalDashboardRoutes)
+  app.use('/api/approval-dashboard', authenticate, setTenantContext, approvalDashboardRoutes)
   console.log('✅ Approval Dashboard routes loaded at /api/approval-dashboard')
 } catch (e) {
   console.warn('Approval Dashboard routes not loaded:', e && e.message)
@@ -945,7 +945,7 @@ try {
 // ===================================================================
 try {
   const decisionLoadRoutes = require('./routes/decisionLoadRoutes')
-  app.use('/api/decision-load', decisionLoadRoutes)
+  app.use('/api/decision-load', authenticate, setTenantContext, decisionLoadRoutes)
   console.log('✅ Decision Load Map routes loaded at /api/decision-load')
 } catch (e) {
   console.warn('Decision Load Map routes not loaded:', e && e.message)
@@ -965,7 +965,7 @@ try {
 // ===================================================================
 try {
   const chatModuleRoutes = require('./modules/chat/routes')
-  app.use('/api/chat', chatModuleRoutes)
+  app.use('/api/chat', authenticate, setTenantContext, chatModuleRoutes)
   console.log('✅ 🎯 CHAT MODULE loaded at /api/chat - Modular architecture enabled!')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
@@ -1015,7 +1015,7 @@ try {
 // Admin Usage & Quota routes (per-tenant metering)
 try {
   const adminUsageRoutes = require('./routes/adminUsage')
-  app.use('/api/admin/usage', adminUsageRoutes)
+  app.use('/api/admin/usage', authenticate, setTenantContext, adminUsageRoutes)
   console.log('✅ Admin Usage routes loaded at /api/admin/usage')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
@@ -1026,7 +1026,7 @@ try {
 // Audit routes (for Service-Table usage tracking)
 try {
   const auditRoutes = require('./routes/admin/auditRoutes')
-  app.use('/api/audit', auditRoutes)
+  app.use('/api/audit', authenticate, setTenantContext, auditRoutes)
   console.log('✅ Audit routes loaded at /api/audit')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
@@ -1037,7 +1037,7 @@ try {
 // Audit Integrity routes (Governance Dashboard)
 try {
   const auditIntegrityRoutes = require('./routes/audit-integrity')
-  app.use('/api/audit-integrity', auditIntegrityRoutes)
+  app.use('/api/audit-integrity', authenticate, setTenantContext, auditIntegrityRoutes)
   console.log('✅ Audit Integrity routes loaded at /api/audit-integrity')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
@@ -1048,7 +1048,7 @@ try {
 // Security Governance routes (Security & RBAC Dashboard for Enterprise/Super Admins)
 try {
   const securityGovernanceRoutes = require('./routes/security-governance')
-  app.use('/api/security-governance', securityGovernanceRoutes)
+  app.use('/api/security-governance', authenticate, setTenantContext, securityGovernanceRoutes)
   console.log('✅ Security Governance routes loaded at /api/security-governance')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
@@ -1059,7 +1059,7 @@ try {
 // Subscription Management routes (Super Admin only - user count limits)
 try {
   const subscriptionManagementRoutes = require('./src/routes/subscriptionManagement').default
-  app.use('/api/super-admin/subscriptions', subscriptionManagementRoutes)
+  app.use('/api/super-admin/subscriptions', authenticate, setTenantContext, subscriptionManagementRoutes)
   console.log('✅ Subscription Management routes loaded at /api/super-admin/subscriptions')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
@@ -1070,7 +1070,7 @@ try {
 // Vendor Management routes (Non-Privileged Users - vendors, building owners, creditors)
 try {
   const vendorRoutes = require('./src/routes/vendors').default
-  app.use('/api/vendors', vendorRoutes)
+  app.use('/api/vendors', authenticate, setTenantContext, vendorRoutes)
   console.log('✅ Vendor Management routes loaded at /api/vendors')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
@@ -1081,7 +1081,7 @@ try {
 // Approval Workflow routes (Multi-tenant stage-based approval engine)
 try {
   const approvalRoutes = require('./dist/routes/approvals').default
-  app.use('/api/approvals', approvalRoutes)
+  app.use('/api/approvals', authenticate, setTenantContext, approvalRoutes)
   console.log('✅ Approval Workflow routes loaded at /api/approvals')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
@@ -1092,7 +1092,7 @@ try {
 // Internal Operations routes (BISMAN Internal Staff Only - Finance, Billing, Support, Engineering)
 try {
   const internalOperationsRoutes = require('./routes/internal-operations')
-  app.use('/api/internal', internalOperationsRoutes)
+  app.use('/api/internal', authenticate, setTenantContext, internalOperationsRoutes)
   console.log('✅ Internal Operations routes loaded at /api/internal')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
@@ -1103,7 +1103,7 @@ try {
 // Support Playbooks routes (BISMAN Internal Staff - Read, ENTERPRISE_ADMIN - Manage)
 try {
   const supportPlaybooksRoutes = require('./routes/support-playbooks')
-  app.use('/api/playbooks', supportPlaybooksRoutes)
+  app.use('/api/playbooks', authenticate, setTenantContext, supportPlaybooksRoutes)
   console.log('✅ Support Playbooks routes loaded at /api/playbooks')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
@@ -1114,7 +1114,7 @@ try {
 // Fallback Logs routes (for Super Admin monitoring)
 try {
   const fallbackLogsRoutes = require('./routes/fallbackLogsRoutes')
-  app.use('/api/fallback-logs', fallbackLogsRoutes)
+  app.use('/api/fallback-logs', authenticate, setTenantContext, fallbackLogsRoutes)
   console.log('✅ Fallback Logs routes loaded at /api/fallback-logs')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
@@ -1125,7 +1125,7 @@ try {
 // Deployment routes (for deployment management)
 try {
   const deploymentRoutes = require('./routes/deployment')
-  app.use('/api/deployment', deploymentRoutes)
+  app.use('/api/deployment', authenticate, setTenantContext, deploymentRoutes)
   console.log('✅ Deployment routes loaded at /api/deployment')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
@@ -1136,7 +1136,7 @@ try {
 // SuperAdmin Dashboard routes (aggregated dashboard endpoints)
 try {
   const superadminDashboardRoutes = require('./routes/superadminDashboard')
-  app.use('/api', superadminDashboardRoutes)
+  app.use('/api', authenticate, setTenantContext, superadminDashboardRoutes)
   console.log('✅ SuperAdmin Dashboard routes loaded at /api')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
@@ -1147,7 +1147,7 @@ try {
 // QA / Testing Module routes (bug tracking, test assignments)
 try {
   const qaRoutes = require('./routes/qaRoutes')
-  app.use('/api/qa', qaRoutes)
+  app.use('/api/qa', authenticate, setTenantContext, qaRoutes)
   console.log('✅ QA Module routes loaded at /api/qa')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
@@ -1257,7 +1257,7 @@ try {
 // Tenant Dashboard Admin routes
 try {
   const tenantDashboardRoutes = require('./routes/admin/tenantDashboard')
-  app.use('/api/admin/tenants', tenantDashboardRoutes)
+  app.use('/api/admin/tenants', authenticate, setTenantContext, tenantDashboardRoutes)
   console.log('✅ Tenant dashboard routes loaded at /api/admin/tenants')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
@@ -1528,7 +1528,7 @@ try {
 // Contract Management routes (Admin Panel)
 try {
   const contractRoutes = require('./routes/admin/contracts')
-  app.use('/api/admin/contracts', contractRoutes)
+  app.use('/api/admin/contracts', authenticate, setTenantContext, contractRoutes)
   console.log('✅ Contract Management routes loaded at /api/admin/contracts')
 } catch (e) {
   console.warn('Contract Management routes not loaded:', e && e.message)
@@ -1537,7 +1537,7 @@ try {
 // Contract Finance routes (Accounting & Payables)
 try {
   const contractFinanceRoutes = require('./routes/finance/contractFinance')
-  app.use('/api/finance', contractFinanceRoutes)
+  app.use('/api/finance', authenticate, setTenantContext, contractFinanceRoutes)
   console.log('✅ Contract Finance routes loaded at /api/finance')
 } catch (e) {
   console.warn('Contract Finance routes not loaded:', e && e.message)
@@ -1577,7 +1577,7 @@ try {
 try {
   const superAdminRoutes = require('./routes/superAdmin')
   // Mount under versioned path expected by frontend
-  app.use('/api/v1/super-admin', superAdminRoutes)
+  app.use('/api/v1/super-admin', authenticate, setTenantContext, superAdminRoutes)
 } catch (e) {
   // Route optional in some builds; log once in dev
   if (process.env.NODE_ENV !== 'production') {
