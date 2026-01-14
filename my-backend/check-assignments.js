@@ -8,7 +8,7 @@ async function test() {
   console.log('Super Admins:', superAdmins.map(s => ({ id: s.id, user_id: s.user_id, email: s.email })));
   
   // Get all admin role assignments
-  const assignments = await prisma.adminRoleAssignment.findMany();
+  const assignments = await prisma.admin_role_assignments.findMany();
   console.log('\nAdmin Role Assignments:', assignments.length);
   assignments.forEach(a => console.log('  -', { 
     id: a.id, 

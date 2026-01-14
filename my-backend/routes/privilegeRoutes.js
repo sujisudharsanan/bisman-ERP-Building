@@ -123,7 +123,7 @@ router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) =>
       // Get roles assigned to this user (as assignee) - only if we have a valid integer ID
       let assignedRoles = [];
       if (!isNaN(userIdInt)) {
-        assignedRoles = await prismaInstance.adminRoleAssignment.findMany({
+        assignedRoles = await prismaInstance.admin_role_assignments.findMany({
           where: {
             assignee_id: userIdInt,
             is_active: true
@@ -187,7 +187,7 @@ router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) =>
           console.log('[assignable-roles] Admin has super_admin_id:', adminSuperAdminId);
           
           // Get roles assigned to the Super Admin (which Admin can inherit)
-          const superAdminRoles = await prismaInstance.adminRoleAssignment.findMany({
+          const superAdminRoles = await prismaInstance.admin_role_assignments.findMany({
             where: {
               assignee_id: adminSuperAdminId,
               is_active: true

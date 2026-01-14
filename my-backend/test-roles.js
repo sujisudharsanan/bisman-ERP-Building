@@ -6,7 +6,7 @@ async function test() {
   const superAdminId = 3;
   
   // Get role assignments
-  const roleAssignments = await prisma.adminRoleAssignment.findMany({
+  const roleAssignments = await prisma.admin_role_assignments.findMany({
     where: {
       assignee_type: 'SUPER_ADMIN',
       assignee_id: superAdminId,

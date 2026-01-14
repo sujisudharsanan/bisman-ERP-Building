@@ -3034,7 +3034,7 @@ app.post('/api/enterprise-admin/super-admins/:id/assign-roles', authenticate, re
     // Use transaction to atomically update role assignments
     const result = await prisma.$transaction(async (tx) => {
       // Delete existing role assignments for this super admin
-      await tx.adminRoleAssignment.deleteMany({
+      await tx.admin_role_assignments.deleteMany({
         where: {
           assignee_type: 'SUPER_ADMIN',
           assignee_id: superAdminId
@@ -3044,7 +3044,7 @@ app.post('/api/enterprise-admin/super-admins/:id/assign-roles', authenticate, re
       // Create new role assignments
       const assignments = [];
       for (const roleId of roleIds) {
-        const assignment = await tx.adminRoleAssignment.create({
+        const assignment = await tx.admin_role_assignments.create({
           data: {
             assigner_type: 'ENTERPRISE_ADMIN',
             assigner_id: enterpriseAdminId,
@@ -3086,7 +3086,7 @@ app.get('/api/enterprise-admin/super-admins/:id/roles', authenticate, requireRol
     const superAdminId = parseInt(id);
 
     // Get role assignments for this super admin
-    const assignments = await prisma.adminRoleAssignment.findMany({
+    const assignments = await prisma.admin_role_assignments.findMany({
       where: {
         assignee_type: 'SUPER_ADMIN',
         assignee_id: superAdminId,
@@ -3336,7 +3336,7 @@ app.get('/api/admin/role-assignments', authenticate, async (req, res) => {
     try {
       if (userRole === 'ENTERPRISE_ADMIN') {
         // Enterprise Admin: Get roles THEY have assigned (as assigner)
-        assignments = await prisma.adminRoleAssignment.findMany({
+        assignments = await prisma.admin_role_assignments.findMany({
           where: {
             assigner_type: 'ENTERPRISE_ADMIN',
             assigner_id: userId,
@@ -3349,7 +3349,7 @@ app.get('/api/admin/role-assignments', authenticate, async (req, res) => {
         // Look for assignments where assigner_type = 'ENTERPRISE_ADMIN'
         // Note: assignee fields might be null if it's a global assignment, 
         // or could be specific to this user
-        assignments = await prisma.adminRoleAssignment.findMany({
+        assignments = await prisma.admin_role_assignments.findMany({
           where: {
             assigner_type: 'ENTERPRISE_ADMIN',
             is_active: true,
@@ -3444,7 +3444,7 @@ app.post('/api/admin/role-assignments', authenticate, async (req, res) => {
     // Use a transaction for atomic operations - simple delete + insert approach
     const result = await prisma.$transaction(async (tx) => {
       // First, delete all existing assignments for this assigner
-      await tx.adminRoleAssignment.deleteMany({
+      await tx.admin_role_assignments.deleteMany({
         where: {
           assigner_type: assignerType,
           assigner_id: userId
@@ -3454,7 +3454,7 @@ app.post('/api/admin/role-assignments', authenticate, async (req, res) => {
       // Then, create new assignments for each role
       const assignments = [];
       for (const roleId of roleIds) {
-        const assignment = await tx.adminRoleAssignment.create({
+        const assignment = await tx.admin_role_assignments.create({
           data: {
             assigner_type: assignerType,
             assigner_id: userId,
@@ -3516,7 +3516,7 @@ app.post('/api/admin/role-assignments/assign', authenticate, async (req, res) =>
     const assigneeIdVal = assigneeId || 0;
 
     // Delete existing assignment if any, then create new one
-    await prisma.adminRoleAssignment.deleteMany({
+    await prisma.admin_role_assignments.deleteMany({
       where: {
         assigner_type: assignerType,
         assigner_id: userId,
@@ -3526,7 +3526,7 @@ app.post('/api/admin/role-assignments/assign', authenticate, async (req, res) =>
       }
     });
 
-    const assignment = await prisma.adminRoleAssignment.create({
+    const assignment = await prisma.admin_role_assignments.create({
       data: {
         assigner_type: assignerType,
         assigner_id: userId,
@@ -3586,7 +3586,7 @@ app.post('/api/admin/role-assignments/unassign', authenticate, async (req, res) 
     const assigneeIdVal = assigneeId || 0;
 
     // Delete the assignment (hard delete instead of soft delete for simplicity)
-    const result = await prisma.adminRoleAssignment.deleteMany({
+    const result = await prisma.admin_role_assignments.deleteMany({
       where: {
         assigner_type: assignerType,
         assigner_id: userId,

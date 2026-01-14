@@ -381,7 +381,7 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-950 p-4 md:p-6">
+    <div className="w-full bg-gray-50 dark:bg-gray-950">
       <style jsx>{`
         .profile-container {
           max-width: 1400px;

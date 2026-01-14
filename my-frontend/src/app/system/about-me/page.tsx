@@ -31,8 +31,6 @@ export default function SystemAboutMePage() {
   }
 
   return (
-    <div className="w-full">
-      <AboutMePage showTeamSidebar={true} />
-    </div>
+    <AboutMePage showTeamSidebar={true} />
   );
 }
