@@ -1136,8 +1136,8 @@ try {
 // SuperAdmin Dashboard routes (aggregated dashboard endpoints)
 try {
   const superadminDashboardRoutes = require('./routes/superadminDashboard')
-  app.use('/api', authenticate, setTenantContext, superadminDashboardRoutes)
-  console.log('✅ SuperAdmin Dashboard routes loaded at /api')
+  app.use('/api/superadmin-dashboard', authenticate, setTenantContext, superadminDashboardRoutes)
+  console.log('✅ SuperAdmin Dashboard routes loaded at /api/superadmin-dashboard')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('SuperAdmin Dashboard routes not loaded:', e && e.message)

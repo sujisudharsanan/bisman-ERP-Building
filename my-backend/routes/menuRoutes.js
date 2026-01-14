@@ -12,14 +12,14 @@
 
 const express = require('express');
 const router = express.Router();
-const { verifyToken } = require('../middleware/authMiddleware');
-const { getPool } = require('../config/db');
+const { authenticate } = require('../middleware/auth');
+const { getPool } = require('../middleware/database');
 
 // ============================================================================
 // GET /api/modules/menu - Get menu for current user
 // ============================================================================
 
-router.get('/menu', verifyToken, async (req, res) => {
+router.get('/menu', authenticate, async (req, res) => {
   const client = await getPool().connect();
 
   try {
@@ -176,7 +176,7 @@ router.get('/menu', verifyToken, async (req, res) => {
 // GET /api/modules/check-access - Check if user can access a specific route
 // ============================================================================
 
-router.get('/check-access', verifyToken, async (req, res) => {
+router.get('/check-access', authenticate, async (req, res) => {
   const client = await getPool().connect();
 
   try {
@@ -244,7 +244,7 @@ router.get('/check-access', verifyToken, async (req, res) => {
 // GET /api/modules/all - Get all modules (for admin pages)
 // ============================================================================
 
-router.get('/all', verifyToken, async (req, res) => {
+router.get('/all', authenticate, async (req, res) => {
   const client = await getPool().connect();
 
   try {
@@ -308,7 +308,7 @@ router.get('/all', verifyToken, async (req, res) => {
 // GET /api/modules/:moduleCode/pages - Get pages for a module
 // ============================================================================
 
-router.get('/:moduleCode/pages', verifyToken, async (req, res) => {
+router.get('/:moduleCode/pages', authenticate, async (req, res) => {
   const client = await getPool().connect();
 
   try {
