@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { FiUsers, FiPackage, FiGrid, FiCheckCircle, FiUnlock, FiExternalLink, FiShield, FiPlus, FiX } from "react-icons/fi";
+import { FiUsers, FiPackage, FiGrid, FiCheckCircle, FiUnlock, FiExternalLink, FiShield, FiPlus, FiX, FiChevronUp, FiChevronDown, FiSearch } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePageRefresh } from "@/contexts/RefreshContext";
 
@@ -196,6 +196,12 @@ export default function Page() {
   });
   const [createError, setCreateError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
+  
+  // Collapsible Roles Drawer state
+  const [isRolesDrawerExpanded, setIsRolesDrawerExpanded] = useState(false);
+  const [rolesSearchQuery, setRolesSearchQuery] = useState('');
+  const [rolesFilter, setRolesFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
+  const rolesDrawerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedRef = useRef<string>(''); // Track last saved state to avoid duplicate saves
@@ -1846,136 +1852,280 @@ export default function Page() {
         </div>
       </div>
 
-      {/* Static bottom section - Roles Overview */}
-      <div className="flex-shrink-0 rounded-lg border bg-white/40 dark:bg-gray-900/30 p-4">
-        {/* Show All Roles Grid */}
-        <>
-          <div className="flex items-center justify-between mb-3">
-              <div className="flex items-center gap-4">
-                <div className="text-sm font-semibold flex items-center gap-2">
-                  <FiShield className="text-purple-600" />
-                  All Roles Overview
-                  <span className="text-xs font-normal text-gray-500">({allRoles.length} roles)</span>
-                </div>
-                {/* Add/Remove button - only show when Super Admin is selected */}
-                {selectedAdminId ? (
-                  <button
-                    onClick={() => setIsRoleAssignMode(!isRoleAssignMode)}
-                    className={`text-sm font-semibold px-4 py-1.5 rounded-lg transition flex items-center gap-2 shadow-sm ${
-                      isRoleAssignMode
-                        ? "bg-green-600 text-white hover:bg-green-700"
-                        : "bg-purple-600 text-white hover:bg-purple-700"
-                    }`}
-                  >
-                    {isRoleAssignMode ? "✓ Done" : "Add/Remove Roles"}
-                  </button>
-                ) : (
-                  <span className="text-xs text-gray-500 italic">Select a Super Admin to assign roles</span>
-                )}
+      {/* Collapsible Roles Drawer - Fixed at bottom */}
+      <div 
+        className={`fixed left-0 right-0 bottom-0 z-40 transition-all duration-300 ease-in-out ${
+          isRolesDrawerExpanded ? 'max-h-[60vh]' : 'max-h-[50px]'
+        }`}
+        onMouseEnter={() => {
+          if (rolesDrawerTimeoutRef.current) {
+            clearTimeout(rolesDrawerTimeoutRef.current);
+          }
+          setIsRolesDrawerExpanded(true);
+        }}
+        onMouseLeave={() => {
+          rolesDrawerTimeoutRef.current = setTimeout(() => {
+            setIsRolesDrawerExpanded(false);
+          }, 300);
+        }}
+      >
+        {/* Drawer Container */}
+        <div className={`bg-white dark:bg-gray-900 border-t border-gray-200 dark:border-gray-700 shadow-2xl transition-all duration-300 ${
+          isRolesDrawerExpanded ? 'rounded-t-xl' : ''
+        }`}>
+          {/* Collapsed Bar / Header - Always visible */}
+          <div 
+            className={`flex items-center justify-between px-4 cursor-pointer select-none ${
+              isRolesDrawerExpanded ? 'py-3 border-b border-gray-200 dark:border-gray-700' : 'py-3'
+            }`}
+            onClick={() => setIsRolesDrawerExpanded(!isRolesDrawerExpanded)}
+          >
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <FiShield className="text-purple-600 w-5 h-5" />
+                <span className="text-sm font-semibold text-gray-800 dark:text-gray-200">All Roles Overview</span>
+                <span className="text-xs font-normal text-gray-500 bg-gray-100 dark:bg-gray-800 px-2 py-0.5 rounded-full">
+                  {allRoles.length} roles
+                </span>
               </div>
+              {/* Quick stats - visible in collapsed state */}
               <div className="flex items-center gap-3 text-xs">
                 <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-green-500"></span>
-                  Assigned ({assignedRoleIds.length})
+                  <span className="w-2.5 h-2.5 rounded-full bg-green-500"></span>
+                  <span className="text-gray-600 dark:text-gray-400">{assignedRoleIds.length}</span>
                 </span>
                 <span className="flex items-center gap-1">
-                  <span className="w-3 h-3 rounded bg-red-500"></span>
-                  Not Assigned ({allRoles.length - assignedRoleIds.length})
-                </span>
-                <span className="flex items-center gap-1">
-                  <FiUsers className="w-3 h-3 text-blue-500" />
-                  Total Users: {allRoles.reduce((sum, r) => sum + (r.userCount || r.users?.length || 0), 0)}
+                  <span className="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                  <span className="text-gray-600 dark:text-gray-400">{allRoles.length - assignedRoleIds.length}</span>
                 </span>
               </div>
             </div>
-            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-2">
-              {allRoles.map((role) => {
-                const isSelected = selectedRoleId === role.id;
-                const userCount = role.userCount || role.users?.length || 0;
-                const isAssigned = assignedRoleIds.includes(role.id);
-                
-                return (
-                  <div key={role.id} className="relative">
-                    {/* Show +/- button overlay when in role assign mode AND Super Admin is selected */}
-                    {isRoleAssignMode && selectedAdminId && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setAssignedRoleIds(prev => 
-                            prev.includes(role.id) 
-                              ? prev.filter(id => id !== role.id)
-                              : [...prev, role.id]
-                          );
-                        }}
-                        className={`absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full flex items-center justify-center text-lg font-bold shadow-lg transition-transform hover:scale-110 ${
-                          isAssigned 
-                            ? "bg-red-500 hover:bg-red-600 text-white"
-                            : "bg-green-500 hover:bg-green-600 text-white"
-                        }`}
-                        title={isAssigned ? `Remove ${role.name}` : `Add ${role.name}`}
-                      >
-                        {isAssigned ? '−' : '+'}
-                      </button>
-                    )}
+            
+            <div className="flex items-center gap-3">
+              {/* Hover hint - only show when collapsed */}
+              {!isRolesDrawerExpanded && (
+                <span className="text-xs text-gray-400 italic hidden md:block">
+                  Hover to expand
+                </span>
+              )}
+              {/* Expand/Collapse indicator */}
+              <div className={`p-1.5 rounded-full bg-gray-100 dark:bg-gray-800 transition-transform duration-300 ${
+                isRolesDrawerExpanded ? 'rotate-180' : ''
+              }`}>
+                <FiChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+              </div>
+            </div>
+          </div>
+
+          {/* Expanded Content */}
+          <div className={`overflow-hidden transition-all duration-300 ${
+            isRolesDrawerExpanded ? 'opacity-100' : 'opacity-0 h-0'
+          }`}>
+            <div className="px-4 pt-3 pb-4 max-h-[calc(60vh-56px)] overflow-y-auto">
+              {/* Toolbar: Search, Filter, Add/Remove button */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
+                <div className="flex items-center gap-3 flex-1">
+                  {/* Search */}
+                  <div className="relative flex-1 max-w-xs">
+                    <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                    <input
+                      type="text"
+                      placeholder="Search roles..."
+                      value={rolesSearchQuery}
+                      onChange={(e) => setRolesSearchQuery(e.target.value)}
+                      className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                    />
+                  </div>
+                  {/* Filter buttons */}
+                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
                     <button
-                      onClick={() => {
-                        if (isRoleAssignMode && selectedAdminId) {
-                          setAssignedRoleIds(prev => 
-                            prev.includes(role.id) 
-                              ? prev.filter(id => id !== role.id)
-                              : [...prev, role.id]
-                          );
-                        } else {
-                          setSelectedRoleId(role.id);
-                        }
-                      }}
-                      className={`w-full text-left rounded-md border px-3 py-2 text-xs cursor-pointer transition hover:ring-2 ${
-                        isSelected
-                          ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-300 hover:ring-purple-300"
-                          : isAssigned
-                          ? "border-green-500 bg-green-50 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 hover:ring-green-300"
-                          : "border-red-400 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/30 hover:ring-red-300"
+                      onClick={() => setRolesFilter('all')}
+                      className={`px-3 py-1 text-xs rounded-md transition ${
+                        rolesFilter === 'all'
+                          ? 'bg-white dark:bg-gray-700 text-purple-600 shadow-sm font-semibold'
+                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
                       }`}
-                      title={`${role.description || role.name} (Level ${role.level || 0})`}
                     >
-                      <div className="flex items-center gap-1.5">
-                        {isAssigned ? (
-                          <span className="text-green-600 dark:text-green-400 font-bold text-sm">✓</span>
-                        ) : (
-                          <span className="text-red-600 dark:text-red-400 font-bold text-sm">✗</span>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate font-medium">{role.display_name || role.name}</div>
-                          <div className="flex items-center justify-between gap-1">
-                            <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                              <FiUsers className="w-3 h-3" />
-                              {userCount} users
-                            </span>
-                            {role.level !== undefined && (
-                              <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
-                                role.level >= 9 
-                                  ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-300'
-                                  : role.level >= 7
-                                  ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300'
-                                  : role.level >= 5
-                                  ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300'
-                                  : role.level >= 3
-                                  ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-300'
-                                  : 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-300'
-                              }`}>
-                                L{role.level}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
+                      All
+                    </button>
+                    <button
+                      onClick={() => setRolesFilter('assigned')}
+                      className={`px-3 py-1 text-xs rounded-md transition ${
+                        rolesFilter === 'assigned'
+                          ? 'bg-white dark:bg-gray-700 text-green-600 shadow-sm font-semibold'
+                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
+                      }`}
+                    >
+                      Assigned
+                    </button>
+                    <button
+                      onClick={() => setRolesFilter('unassigned')}
+                      className={`px-3 py-1 text-xs rounded-md transition ${
+                        rolesFilter === 'unassigned'
+                          ? 'bg-white dark:bg-gray-700 text-red-600 shadow-sm font-semibold'
+                          : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
+                      }`}
+                    >
+                      Not Assigned
                     </button>
                   </div>
-                );
-              })}
+                </div>
+                
+                <div className="flex items-center gap-3">
+                  {/* Stats */}
+                  <div className="flex items-center gap-3 text-xs text-gray-500">
+                    <span className="flex items-center gap-1">
+                      <FiUsers className="w-3.5 h-3.5 text-blue-500" />
+                      {allRoles.reduce((sum, r) => sum + (r.userCount || r.users?.length || 0), 0)} total users
+                    </span>
+                  </div>
+                  {/* Add/Remove button - only show when Super Admin is selected */}
+                  {selectedAdminId ? (
+                    <button
+                      onClick={() => setIsRoleAssignMode(!isRoleAssignMode)}
+                      className={`text-sm font-semibold px-4 py-2 rounded-lg transition flex items-center gap-2 shadow-sm ${
+                        isRoleAssignMode
+                          ? "bg-green-600 text-white hover:bg-green-700"
+                          : "bg-purple-600 text-white hover:bg-purple-700"
+                      }`}
+                    >
+                      {isRoleAssignMode ? "✓ Done" : "Add/Remove Roles"}
+                    </button>
+                  ) : (
+                    <span className="text-xs text-gray-500 italic bg-gray-100 dark:bg-gray-800 px-3 py-2 rounded-lg">
+                      Select a Super Admin first
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {/* Roles Grid */}
+              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+                {allRoles
+                  .filter((role) => {
+                    // Search filter
+                    const matchesSearch = rolesSearchQuery === '' || 
+                      (role.display_name || role.name).toLowerCase().includes(rolesSearchQuery.toLowerCase()) ||
+                      (role.description || '').toLowerCase().includes(rolesSearchQuery.toLowerCase());
+                    
+                    // Assignment filter
+                    const isAssigned = assignedRoleIds.includes(role.id);
+                    const matchesFilter = rolesFilter === 'all' || 
+                      (rolesFilter === 'assigned' && isAssigned) ||
+                      (rolesFilter === 'unassigned' && !isAssigned);
+                    
+                    return matchesSearch && matchesFilter;
+                  })
+                  .map((role) => {
+                    const isSelected = selectedRoleId === role.id;
+                    const userCount = role.userCount || role.users?.length || 0;
+                    const isAssigned = assignedRoleIds.includes(role.id);
+                    
+                    return (
+                      <div key={role.id} className="relative group">
+                        {/* Show +/- button overlay when in role assign mode AND Super Admin is selected */}
+                        {isRoleAssignMode && selectedAdminId && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setAssignedRoleIds(prev => 
+                                prev.includes(role.id) 
+                                  ? prev.filter(id => id !== role.id)
+                                  : [...prev, role.id]
+                              );
+                            }}
+                            className={`absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full flex items-center justify-center text-lg font-bold shadow-lg transition-transform hover:scale-110 ${
+                              isAssigned 
+                                ? "bg-red-500 hover:bg-red-600 text-white"
+                                : "bg-green-500 hover:bg-green-600 text-white"
+                            }`}
+                            title={isAssigned ? `Remove ${role.name}` : `Add ${role.name}`}
+                          >
+                            {isAssigned ? '−' : '+'}
+                          </button>
+                        )}
+                        <button
+                          onClick={() => {
+                            if (isRoleAssignMode && selectedAdminId) {
+                              setAssignedRoleIds(prev => 
+                                prev.includes(role.id) 
+                                  ? prev.filter(id => id !== role.id)
+                                  : [...prev, role.id]
+                              );
+                            } else {
+                              setSelectedRoleId(role.id);
+                            }
+                          }}
+                          className={`w-full text-left rounded-lg border px-3 py-2.5 text-xs cursor-pointer transition-all duration-200 hover:shadow-md ${
+                            isSelected
+                              ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-300"
+                              : isAssigned
+                              ? "border-green-400 bg-green-50/80 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 hover:border-green-500"
+                              : "border-red-300 bg-red-50/50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 hover:border-red-400"
+                          }`}
+                          title={`${role.description || role.name} (Level ${role.level || 0})`}
+                        >
+                          <div className="flex items-center gap-1.5">
+                            {isAssigned ? (
+                              <span className="text-green-600 dark:text-green-400 font-bold text-sm flex-shrink-0">✓</span>
+                            ) : (
+                              <span className="text-red-500 dark:text-red-400 font-bold text-sm flex-shrink-0">✗</span>
+                            )}
+                            <div className="min-w-0 flex-1">
+                              <div className="truncate font-medium text-gray-800 dark:text-gray-200">
+                                {role.display_name || role.name}
+                              </div>
+                              <div className="flex items-center justify-between gap-1 mt-0.5">
+                                <span className="text-[10px] text-gray-500 flex items-center gap-1">
+                                  <FiUsers className="w-3 h-3" />
+                                  {userCount}
+                                </span>
+                                {role.level !== undefined && (
+                                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
+                                    role.level >= 9 
+                                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300'
+                                      : role.level >= 7
+                                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
+                                      : role.level >= 5
+                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
+                                      : role.level >= 3
+                                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300'
+                                      : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+                                  }`}>
+                                    L{role.level}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      </div>
+                    );
+                  })}
+              </div>
+              
+              {/* Empty state when filtered */}
+              {allRoles.filter((role) => {
+                const matchesSearch = rolesSearchQuery === '' || 
+                  (role.display_name || role.name).toLowerCase().includes(rolesSearchQuery.toLowerCase());
+                const isAssigned = assignedRoleIds.includes(role.id);
+                const matchesFilter = rolesFilter === 'all' || 
+                  (rolesFilter === 'assigned' && isAssigned) ||
+                  (rolesFilter === 'unassigned' && !isAssigned);
+                return matchesSearch && matchesFilter;
+              }).length === 0 && (
+                <div className="text-center py-8 text-gray-500">
+                  <FiShield className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">No roles match your filters</p>
+                </div>
+              )}
             </div>
-          </>
+          </div>
+        </div>
       </div>
+
+      {/* Spacer to prevent content from being hidden behind the drawer */}
+      <div className="h-[60px] flex-shrink-0"></div>
 
       {/* Create Super Admin Modal */}
       {showCreateModal && (
