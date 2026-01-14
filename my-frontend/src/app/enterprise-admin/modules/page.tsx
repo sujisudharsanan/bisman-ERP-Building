@@ -197,8 +197,8 @@ export default function Page() {
   const [createError, setCreateError] = useState<string | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   
-  // Collapsible Roles Drawer state
-  const [isRolesDrawerExpanded, setIsRolesDrawerExpanded] = useState(false);
+  // Collapsible Roles Drawer state - default to expanded so roles are visible
+  const [isRolesDrawerExpanded, setIsRolesDrawerExpanded] = useState(true);
   const [rolesSearchQuery, setRolesSearchQuery] = useState('');
   const [rolesFilter, setRolesFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
   const rolesDrawerTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -1852,145 +1852,212 @@ export default function Page() {
         </div>
       </div>
 
-      {/* All Roles Overview - Static Bottom Section (20% of screen) */}
+      {/* All Roles Overview - Static Bottom Section */}
       <div 
-        className="flex-shrink-0 min-h-[20vh] bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950 border-t-2 border-purple-200 dark:border-purple-800 rounded-t-xl shadow-lg"
+        className="flex-shrink-0 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950 border-t-2 border-purple-200 dark:border-purple-800 rounded-t-xl shadow-lg"
       >
-        {/* Header Bar - Always visible, more prominent */}
+        {/* Header Bar with Title and Stats */}
         <div 
-          className="flex items-center justify-between px-5 py-4 bg-purple-50 dark:bg-purple-900/30 border-b border-purple-100 dark:border-purple-800 rounded-t-xl cursor-pointer"
-          onClick={() => setIsRolesDrawerExpanded(!isRolesDrawerExpanded)}
+          className="flex items-center justify-between px-4 py-2 bg-purple-50 dark:bg-purple-900/30 border-b border-purple-100 dark:border-purple-800 rounded-t-xl"
         >
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-600 rounded-lg">
-                <FiShield className="text-white w-5 h-5" />
-              </div>
-              <div>
-                <span className="text-base font-bold text-gray-800 dark:text-gray-100">All Roles Overview</span>
-                <div className="flex items-center gap-3 mt-0.5">
-                  <span className="text-xs text-gray-500 dark:text-gray-400">{allRoles.length} roles available</span>
-                  <span className="flex items-center gap-1 text-xs">
-                    <span className="w-2 h-2 rounded-full bg-green-500"></span>
-                    <span className="text-green-600 dark:text-green-400 font-medium">{assignedRoleIds.length} assigned</span>
-                  </span>
-                  <span className="flex items-center gap-1 text-xs">
-                    <span className="w-2 h-2 rounded-full bg-red-500"></span>
-                    <span className="text-red-600 dark:text-red-400 font-medium">{allRoles.length - assignedRoleIds.length} unassigned</span>
-                  </span>
-                </div>
-              </div>
+          <div className="flex items-center gap-3">
+            <div className="p-1.5 bg-purple-600 rounded-lg">
+              <FiShield className="text-white w-4 h-4" />
+            </div>
+            <span className="text-sm font-bold text-gray-800 dark:text-gray-100">All Roles Overview</span>
+            <span className="text-xs text-gray-500">({allRoles.length} roles)</span>
+            <div className="flex items-center gap-2 ml-2">
+              <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                <span className="text-green-700 dark:text-green-400">{assignedRoleIds.length}</span>
+              </span>
+              <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-red-100 dark:bg-red-900/30 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                <span className="text-red-700 dark:text-red-400">{allRoles.length - assignedRoleIds.length}</span>
+              </span>
             </div>
           </div>
           
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-3">
+            {/* Add/Remove button - only show when Super Admin is selected */}
+            {selectedAdminId && (
+              <button
+                onClick={() => setIsRoleAssignMode(!isRoleAssignMode)}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm ${
+                  isRoleAssignMode
+                    ? "bg-green-600 text-white hover:bg-green-700"
+                    : "bg-purple-600 text-white hover:bg-purple-700"
+                }`}
+              >
+                {isRoleAssignMode ? "✓ Done" : "Add/Remove"}
+              </button>
+            )}
             {/* Total users */}
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-              <FiUsers className="w-4 h-4 text-blue-600" />
-              <span className="text-sm font-medium text-blue-700 dark:text-blue-300">
-                {allRoles.reduce((sum, r) => sum + (r.userCount || r.users?.length || 0), 0)} total users
+            <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+              <FiUsers className="w-3.5 h-3.5 text-blue-600" />
+              <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                {allRoles.reduce((sum, r) => sum + (r.userCount || r.users?.length || 0), 0)} users
               </span>
             </div>
             {/* Expand/Collapse button */}
             <button 
-              className={`p-2 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-transform duration-300 hover:bg-gray-50 ${
+              onClick={() => setIsRolesDrawerExpanded(!isRolesDrawerExpanded)}
+              className={`p-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-transform duration-300 hover:bg-gray-50 ${
                 isRolesDrawerExpanded ? 'rotate-180' : ''
               }`}
+              title={isRolesDrawerExpanded ? 'Collapse' : 'Expand to see all roles'}
             >
-              <FiChevronUp className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+              <FiChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
             </button>
           </div>
         </div>
 
-        {/* Content Area - Collapsible */}
-        <div className={`overflow-hidden transition-all duration-300 ${
-          isRolesDrawerExpanded ? 'max-h-[50vh] opacity-100' : 'max-h-0 opacity-0'
-        }`}>
-          <div className="px-5 py-4">
-            {/* Toolbar: Search, Filter, Add/Remove button */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <div className="flex items-center gap-3 flex-1">
-                {/* Search */}
-                <div className="relative flex-1 max-w-xs">
-                  <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search roles..."
-                    value={rolesSearchQuery}
-                    onChange={(e) => setRolesSearchQuery(e.target.value)}
-                    className="w-full pl-9 pr-3 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
-                  />
-                </div>
-                {/* Filter buttons */}
-                <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-1">
-                  <button
-                    onClick={() => setRolesFilter('all')}
-                    className={`px-3 py-1.5 text-xs rounded-md transition font-medium ${
-                      rolesFilter === 'all'
-                        ? 'bg-white dark:bg-gray-700 text-purple-600 shadow-sm'
-                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
-                    }`}
-                  >
-                    All
-                  </button>
-                  <button
-                    onClick={() => setRolesFilter('assigned')}
-                    className={`px-3 py-1.5 text-xs rounded-md transition font-medium ${
-                      rolesFilter === 'assigned'
-                        ? 'bg-white dark:bg-gray-700 text-green-600 shadow-sm'
-                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
-                    }`}
-                  >
-                    Assigned
-                  </button>
-                  <button
-                    onClick={() => setRolesFilter('unassigned')}
-                    className={`px-3 py-1.5 text-xs rounded-md transition font-medium ${
-                      rolesFilter === 'unassigned'
-                        ? 'bg-white dark:bg-gray-700 text-red-600 shadow-sm'
-                        : 'text-gray-600 dark:text-gray-400 hover:text-gray-900'
-                    }`}
-                  >
-                    Not Assigned
-                  </button>
-                </div>
-              </div>
+        {/* Always Visible: One Row of Roles */}
+        <div className="px-4 py-3 bg-white/50 dark:bg-gray-900/50">
+          <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-2">
+            {allRoles.slice(0, 9).map((role) => {
+              const isSelected = selectedRoleId === role.id;
+              const userCount = role.userCount || role.users?.length || 0;
+              const isAssigned = assignedRoleIds.includes(role.id);
               
-              {/* Add/Remove button - only show when Super Admin is selected */}
-              {selectedAdminId ? (
+              return (
+                <div key={role.id} className="relative">
+                  {isRoleAssignMode && selectedAdminId && (
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setAssignedRoleIds(prev => 
+                          prev.includes(role.id) 
+                            ? prev.filter(id => id !== role.id)
+                            : [...prev, role.id]
+                        );
+                      }}
+                      className={`absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-transform hover:scale-110 ${
+                        isAssigned 
+                          ? "bg-red-500 hover:bg-red-600 text-white"
+                          : "bg-green-500 hover:bg-green-600 text-white"
+                      }`}
+                    >
+                      {isAssigned ? '−' : '+'}
+                    </button>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (isRoleAssignMode && selectedAdminId) {
+                        setAssignedRoleIds(prev => 
+                          prev.includes(role.id) 
+                            ? prev.filter(id => id !== role.id)
+                            : [...prev, role.id]
+                        );
+                      } else {
+                        setSelectedRoleId(role.id);
+                      }
+                    }}
+                    className={`w-full text-left rounded-lg border px-2 py-1.5 text-xs cursor-pointer transition-all duration-200 hover:shadow-md ${
+                      isSelected
+                        ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-300"
+                        : isAssigned
+                        ? "border-green-400 bg-green-50/80 dark:bg-green-900/20 hover:bg-green-100"
+                        : "border-red-300 bg-red-50/50 dark:bg-red-900/10 hover:bg-red-100"
+                    }`}
+                    title={`${role.description || role.name} (Level ${role.level || 0})`}
+                  >
+                    <div className="flex items-center gap-1">
+                      {isAssigned ? (
+                        <span className="text-green-600 text-xs">✓</span>
+                      ) : (
+                        <span className="text-red-500 text-xs">✗</span>
+                      )}
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate font-medium text-[11px]">{role.display_name || role.name}</div>
+                        <div className="flex items-center justify-between">
+                          <span className="text-[9px] text-gray-500">{userCount} users</span>
+                          {role.level !== undefined && (
+                            <span className={`text-[8px] px-1 rounded font-bold ${
+                              role.level >= 9 ? 'bg-purple-100 text-purple-700'
+                                : role.level >= 7 ? 'bg-blue-100 text-blue-700'
+                                : role.level >= 5 ? 'bg-green-100 text-green-700'
+                                : 'bg-gray-100 text-gray-700'
+                            }`}>
+                              L{role.level}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+              );
+            })}
+            {/* Show more indicator */}
+            {allRoles.length > 9 && !isRolesDrawerExpanded && (
+              <button
+                onClick={() => setIsRolesDrawerExpanded(true)}
+                className="flex items-center justify-center rounded-lg border border-dashed border-gray-300 dark:border-gray-600 px-2 py-1.5 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
+              >
+                +{allRoles.length - 9} more
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Expanded Content - Additional rows */}
+        <div className={`overflow-hidden transition-all duration-300 ${
+          isRolesDrawerExpanded ? 'max-h-[40vh] opacity-100' : 'max-h-0 opacity-0'
+        }`}>
+          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
+            {/* Search and Filter */}
+            <div className="flex items-center gap-3 mb-3">
+              <div className="relative flex-1 max-w-xs">
+                <FiSearch className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                <input
+                  type="text"
+                  placeholder="Search roles..."
+                  value={rolesSearchQuery}
+                  onChange={(e) => setRolesSearchQuery(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 text-sm border border-gray-200 dark:border-gray-700 rounded-lg bg-white dark:bg-gray-800 focus:outline-none focus:ring-2 focus:ring-purple-500"
+                />
+              </div>
+              <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5">
                 <button
-                  onClick={() => setIsRoleAssignMode(!isRoleAssignMode)}
-                  className={`text-sm font-semibold px-5 py-2.5 rounded-lg transition flex items-center gap-2 shadow-md ${
-                    isRoleAssignMode
-                      ? "bg-green-600 text-white hover:bg-green-700"
-                      : "bg-purple-600 text-white hover:bg-purple-700"
+                  onClick={() => setRolesFilter('all')}
+                  className={`px-2.5 py-1 text-xs rounded-md transition ${
+                    rolesFilter === 'all' ? 'bg-white dark:bg-gray-700 text-purple-600 shadow-sm font-medium' : 'text-gray-600'
                   }`}
                 >
-                  {isRoleAssignMode ? "✓ Done" : "Add/Remove Roles"}
+                  All
                 </button>
-              ) : (
-                <span className="text-sm text-gray-500 italic bg-gray-100 dark:bg-gray-800 px-4 py-2.5 rounded-lg border border-dashed border-gray-300 dark:border-gray-600">
-                  Select a Super Admin to manage roles
-                </span>
-              )}
+                <button
+                  onClick={() => setRolesFilter('assigned')}
+                  className={`px-2.5 py-1 text-xs rounded-md transition ${
+                    rolesFilter === 'assigned' ? 'bg-white dark:bg-gray-700 text-green-600 shadow-sm font-medium' : 'text-gray-600'
+                  }`}
+                >
+                  Assigned
+                </button>
+                <button
+                  onClick={() => setRolesFilter('unassigned')}
+                  className={`px-2.5 py-1 text-xs rounded-md transition ${
+                    rolesFilter === 'unassigned' ? 'bg-white dark:bg-gray-700 text-red-600 shadow-sm font-medium' : 'text-gray-600'
+                  }`}
+                >
+                  Unassigned
+                </button>
+              </div>
             </div>
 
-            {/* Roles Grid */}
-            <div className="max-h-[35vh] overflow-y-auto pr-2">
-              <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+            {/* Remaining Roles Grid (skip first 9 shown above) */}
+            <div className="max-h-[30vh] overflow-y-auto pr-1">
+              <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-2">
                 {allRoles
+                  .slice(9)
                   .filter((role) => {
-                    // Search filter
                     const matchesSearch = rolesSearchQuery === '' || 
-                      (role.display_name || role.name).toLowerCase().includes(rolesSearchQuery.toLowerCase()) ||
-                      (role.description || '').toLowerCase().includes(rolesSearchQuery.toLowerCase());
-                    
-                    // Assignment filter
+                      (role.display_name || role.name).toLowerCase().includes(rolesSearchQuery.toLowerCase());
                     const isAssigned = assignedRoleIds.includes(role.id);
                     const matchesFilter = rolesFilter === 'all' || 
                       (rolesFilter === 'assigned' && isAssigned) ||
                       (rolesFilter === 'unassigned' && !isAssigned);
-                    
                     return matchesSearch && matchesFilter;
                   })
                   .map((role) => {
@@ -1999,8 +2066,7 @@ export default function Page() {
                     const isAssigned = assignedRoleIds.includes(role.id);
                     
                     return (
-                      <div key={role.id} className="relative group">
-                        {/* Show +/- button overlay when in role assign mode AND Super Admin is selected */}
+                      <div key={role.id} className="relative">
                         {isRoleAssignMode && selectedAdminId && (
                           <button
                             onClick={(e) => {
@@ -2011,12 +2077,11 @@ export default function Page() {
                                   : [...prev, role.id]
                               );
                             }}
-                            className={`absolute -top-1 -right-1 z-10 w-6 h-6 rounded-full flex items-center justify-center text-lg font-bold shadow-lg transition-transform hover:scale-110 ${
+                            className={`absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-transform hover:scale-110 ${
                               isAssigned 
                                 ? "bg-red-500 hover:bg-red-600 text-white"
                                 : "bg-green-500 hover:bg-green-600 text-white"
                             }`}
-                            title={isAssigned ? `Remove ${role.name}` : `Add ${role.name}`}
                           >
                             {isAssigned ? '−' : '+'}
                           </button>
@@ -2033,41 +2098,31 @@ export default function Page() {
                               setSelectedRoleId(role.id);
                             }
                           }}
-                          className={`w-full text-left rounded-lg border px-3 py-2.5 text-xs cursor-pointer transition-all duration-200 hover:shadow-md ${
+                          className={`w-full text-left rounded-lg border px-2 py-1.5 text-xs cursor-pointer transition-all duration-200 hover:shadow-md ${
                             isSelected
                               ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-300"
                               : isAssigned
-                              ? "border-green-400 bg-green-50/80 dark:bg-green-900/20 hover:bg-green-100 dark:hover:bg-green-900/30 hover:border-green-500"
-                              : "border-red-300 bg-red-50/50 dark:bg-red-900/10 hover:bg-red-100 dark:hover:bg-red-900/20 hover:border-red-400"
+                              ? "border-green-400 bg-green-50/80 dark:bg-green-900/20 hover:bg-green-100"
+                              : "border-red-300 bg-red-50/50 dark:bg-red-900/10 hover:bg-red-100"
                           }`}
                           title={`${role.description || role.name} (Level ${role.level || 0})`}
                         >
-                          <div className="flex items-center gap-1.5">
+                          <div className="flex items-center gap-1">
                             {isAssigned ? (
-                              <span className="text-green-600 dark:text-green-400 font-bold text-sm flex-shrink-0">✓</span>
+                              <span className="text-green-600 text-xs">✓</span>
                             ) : (
-                              <span className="text-red-500 dark:text-red-400 font-bold text-sm flex-shrink-0">✗</span>
+                              <span className="text-red-500 text-xs">✗</span>
                             )}
                             <div className="min-w-0 flex-1">
-                              <div className="truncate font-medium text-gray-800 dark:text-gray-200">
-                                {role.display_name || role.name}
-                              </div>
-                              <div className="flex items-center justify-between gap-1 mt-0.5">
-                                <span className="text-[10px] text-gray-500 flex items-center gap-1">
-                                  <FiUsers className="w-3 h-3" />
-                                  {userCount}
-                                </span>
+                              <div className="truncate font-medium text-[11px]">{role.display_name || role.name}</div>
+                              <div className="flex items-center justify-between">
+                                <span className="text-[9px] text-gray-500">{userCount} users</span>
                                 {role.level !== undefined && (
-                                  <span className={`text-[9px] px-1.5 py-0.5 rounded-full font-bold ${
-                                    role.level >= 9 
-                                      ? 'bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300'
-                                      : role.level >= 7
-                                      ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/50 dark:text-blue-300'
-                                      : role.level >= 5
-                                      ? 'bg-green-100 text-green-700 dark:bg-green-900/50 dark:text-green-300'
-                                      : role.level >= 3
-                                      ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/50 dark:text-orange-300'
-                                      : 'bg-red-100 text-red-700 dark:bg-red-900/50 dark:text-red-300'
+                                  <span className={`text-[8px] px-1 rounded font-bold ${
+                                    role.level >= 9 ? 'bg-purple-100 text-purple-700'
+                                      : role.level >= 7 ? 'bg-blue-100 text-blue-700'
+                                      : role.level >= 5 ? 'bg-green-100 text-green-700'
+                                      : 'bg-gray-100 text-gray-700'
                                   }`}>
                                     L{role.level}
                                   </span>
@@ -2081,8 +2136,8 @@ export default function Page() {
                   })}
               </div>
               
-              {/* Empty state when filtered */}
-              {allRoles.filter((role) => {
+              {/* Empty state when no additional roles */}
+              {allRoles.slice(9).filter((role) => {
                 const matchesSearch = rolesSearchQuery === '' || 
                   (role.display_name || role.name).toLowerCase().includes(rolesSearchQuery.toLowerCase());
                 const isAssigned = assignedRoleIds.includes(role.id);
@@ -2091,9 +2146,8 @@ export default function Page() {
                   (rolesFilter === 'unassigned' && !isAssigned);
                 return matchesSearch && matchesFilter;
               }).length === 0 && (
-                <div className="text-center py-8 text-gray-500">
-                  <FiShield className="w-8 h-8 mx-auto mb-2 opacity-50" />
-                  <p className="text-sm">No roles match your filters</p>
+                <div className="text-center py-4 text-gray-500">
+                  <p className="text-xs">No additional roles match your filters</p>
                 </div>
               )}
             </div>
