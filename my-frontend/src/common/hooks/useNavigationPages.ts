@@ -191,10 +191,16 @@ export function useNavigationPages(): UseNavigationPagesResult {
       );
     } else if (isSuperAdmin) {
       const corePageIds = ['super-admin-dashboard'];
+      // Super Admin modules that should always be accessible (not requiring explicit assignment)
+      const defaultSuperAdminModules = ['super-admin', 'common', 'chat'];
+      // Combine default modules with explicitly assigned modules
+      const accessibleModules = [...new Set([...defaultSuperAdminModules, ...superAdminModules])];
+      
       filteredPages = filteredPages.filter(p => 
         isPageAllowed(p, userAllowedPages) || 
         corePageIds.includes(p.id) ||
-        (p.module === 'super-admin' && p.roles.includes('SUPER_ADMIN')) ||
+        // Show pages from accessible modules (default + assigned)
+        (accessibleModules.includes(p.module) && p.roles.includes('SUPER_ADMIN')) ||
         p.roles.includes('ALL')
       );
     } else {
@@ -224,7 +230,7 @@ export function useNavigationPages(): UseNavigationPagesResult {
       isActive: pathname === p.path || (pathname?.startsWith(`${p.path}/`) ?? false),
       order: p.order ?? 999,
     }));
-  }, [user, userAllowedPages, isSuperAdmin, isEnterpriseAdmin, pathname, isPageAllowed]);
+  }, [user, userAllowedPages, superAdminModules, isSuperAdmin, isEnterpriseAdmin, pathname, isPageAllowed]);
 
   return {
     pages,

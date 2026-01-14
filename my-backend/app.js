@@ -796,6 +796,10 @@ const {
 const reportsRoutes = require('./routes/reportsRoutes')
 app.use('/api/reports', reportsRoutes)
 
+// Menu routes - SSOT for navigation menus
+const menuRoutes = require('./routes/menuRoutes')
+app.use('/api/modules', menuRoutes)
+
 // Calendar routes for event management
 try {
   const calendarRoutes = require('./routes/calendar')

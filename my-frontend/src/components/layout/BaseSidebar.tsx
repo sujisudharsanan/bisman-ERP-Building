@@ -1,12 +1,12 @@
 "use client";
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { X, Shield } from "lucide-react";
-import { iconMap, getIcon } from '../../utils/iconMap';
+import { X, Shield, Loader2, AlertCircle } from "lucide-react";
+import { getIcon } from '../../utils/iconMap';
 import { safeComponent } from '@/lib/safeComponent';
-import { roleLayoutConfig, MenuItem } from '../../config/roleLayoutConfig';
+import { useMenu } from '../../hooks/useMenu';
 
 // Export getIcon for external use
 export { getIcon };
@@ -25,14 +25,22 @@ interface BaseSidebarProps {
 
 const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, isMobile }) => {
 	const pathname = usePathname();
-	// Memoize layout config for performance
-	const layoutConfig = useMemo(() => {
-		if (user?.roleName && roleLayoutConfig[user.roleName]) {
-			return roleLayoutConfig[user.roleName];
-		}
-		return roleLayoutConfig.DEFAULT;
-	}, [user]);
-	const menuItems: MenuItem[] = layoutConfig.menuItems || [];
+	
+	// Use DB-driven menu instead of hardcoded roleLayoutConfig
+	const { menu, isLoading, error} = useMenu();
+	
+	// Flatten pages from all modules for sidebar display
+	const menuItems = menu.flatMap(module => 
+		module.pages.map(page => ({
+			id: page.code,
+			label: page.name,
+			href: page.route,
+			icon: page.icon,
+			moduleCode: module.code,
+			moduleName: module.name,
+			moduleColor: module.colorCode,
+		}))
+	);
 
 	useEffect(() => {
 		if (isMobile) {
@@ -97,7 +105,26 @@ const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, 
 				</div>
 				{/* Sidebar Navigation */}
 								<nav className="flex-1 overflow-y-auto p-4 space-y-1" aria-label="Sidebar menu">
-									{menuItems.map((item: MenuItem) => {
+									{/* Loading State */}
+									{isLoading && (
+										<div className="flex flex-col items-center justify-center py-8 text-gray-400">
+											<Loader2 size={24} className="animate-spin mb-2" />
+											{(!collapsed || isMobile) && <span className="text-xs">Loading menu...</span>}
+										</div>
+									)}
+									
+									{/* Error State */}
+									{error && !isLoading && (
+										<div className="flex flex-col items-center justify-center py-8 text-red-400">
+											<AlertCircle size={24} className="mb-2" />
+											{(!collapsed || isMobile) && (
+												<span className="text-xs text-center px-2">Unable to load menu</span>
+											)}
+										</div>
+									)}
+									
+									{/* Menu Items */}
+									{!isLoading && !error && menuItems.map((item) => {
 										const IconComp = safeComponent(getIcon(item.icon), item.icon, 'BaseSidebar');
 										const isActive = pathname === item.href || pathname?.startsWith(item.href + '/');
 										return (
@@ -120,11 +147,6 @@ const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, 
 												<IconComp size={20} className={isActive ? 'text-indigo-400' : ''} aria-hidden="true" />
 												{(!collapsed || isMobile) && (
 													<span className="text-sm font-medium">{item.label}</span>
-												)}
-												{(!collapsed || isMobile) && item.badge && (
-													<span className="ml-auto bg-red-500 text-white text-xs px-2 py-0.5 rounded-full" aria-label={item.badgeLabel || 'Badge'}>
-														{item.badge}
-													</span>
 												)}
 											</Link>
 										);

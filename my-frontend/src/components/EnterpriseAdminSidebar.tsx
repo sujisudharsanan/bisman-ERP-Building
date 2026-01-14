@@ -22,9 +22,35 @@ import {
   FiTrendingUp,
   FiDatabase,
   FiLock,
+  FiLoader,
+  FiAlertCircle,
 } from 'react-icons/fi';
 import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
+import { useMenu } from '@/hooks/useMenu';
+
+// Icon mapping for DB-driven menu
+const iconMap: Record<string, React.ComponentType<{ className?: string }>> = {
+  'LayoutDashboard': FiGrid,
+  'Layers': FiLayers,
+  'Shield': FiShield,
+  'Users': FiUsers,
+  'ScrollText': FiFileText,
+  'Activity': FiActivity,
+  'CreditCard': FiDollarSign,
+  'Settings': FiSettings,
+  'Monitor': FiMonitor,
+  'Package': FiPackage,
+  'HelpCircle': FiHelpCircle,
+  'Lock': FiLock,
+  'TrendingUp': FiTrendingUp,
+  'Database': FiDatabase,
+  'Bell': FiBell,
+  'BarChart3': FiBarChart2,
+  'FileText': FiFileText,
+  // Fallback
+  'default': FiGrid,
+};
 
 interface EnterpriseAdminSidebarProps {
   className?: string;
@@ -34,6 +60,19 @@ export default function EnterpriseAdminSidebar({ className = '' }: EnterpriseAdm
   const pathname = usePathname();
   const router = useRouter();
   const { logout } = useAuth();
+  
+  // Use DB-driven menu instead of hardcoded items
+  const { menu, isLoading, error } = useMenu();
+  
+  // Flatten pages from all modules for sidebar display
+  const navItems = menu.flatMap(module => 
+    module.pages.map(page => ({
+      id: page.code,
+      label: page.name,
+      icon: iconMap[page.icon] || iconMap['default'],
+      href: page.route,
+    }))
+  );
 
   const handleLogout = async () => {
     try {
@@ -45,46 +84,6 @@ export default function EnterpriseAdminSidebar({ className = '' }: EnterpriseAdm
     }
   };
 
-  const navItems = [
-    {
-      id: 'dashboard',
-      label: 'Dashboard',
-      icon: FiGrid,
-      href: '/enterprise-admin/dashboard',
-    },
-    {
-      id: 'modules',
-      label: 'Module Management',
-      icon: FiPackage,
-      href: '/enterprise-admin/modules',
-    },
-    {
-      id: 'activity-logs',
-      label: 'Activity & Audit',
-      icon: FiActivity,
-      href: '/enterprise-admin/activity-logs',
-    },
-    {
-      id: 'settings',
-      label: 'Settings',
-      icon: FiSettings,
-      href: '/enterprise-admin/settings',
-    },
-  // New enterprise links (appended without altering existing ones)
-  { id: 'super-admins', label: 'Super Admins', icon: FiUsers, href: '/enterprise-admin/super-admins' },
-  { id: 'billing', label: 'Billing', icon: FiDollarSign, href: '/enterprise-admin/billing' },
-  { id: 'integrations', label: 'Integrations', icon: FiPackage, href: '/enterprise-admin/integrations' },
-  { id: 'support', label: 'Support', icon: FiHelpCircle, href: '/enterprise-admin/support' },
-  // Monitoring & Observability
-  { id: 'monitoring', label: 'System Monitoring', icon: FiMonitor, href: '/enterprise-admin/monitoring' },
-  { id: 'live-monitoring', label: '📊 Live Metrics', icon: FiActivity, href: '/enterprise-admin/monitoring/live' },
-  { id: 'performance', label: 'Performance Metrics', icon: FiTrendingUp, href: '/enterprise-admin/monitoring/performance' },
-  { id: 'database-health', label: 'Database Health', icon: FiDatabase, href: '/enterprise-admin/monitoring/database' },
-  // Security Operations Center
-  { id: 'security-ops', label: '🛡️ Security Operations', icon: FiShield, href: '/enterprise-admin/security-operations' },
-  { id: 'rbac-security', label: '🔐 RBAC Security', icon: FiLock, href: '/enterprise-admin/rbac-security' },
-  ];
-
   const isActive = (href: string) => {
     return pathname === href || pathname?.startsWith(href + '/');
   };
@@ -92,7 +91,24 @@ export default function EnterpriseAdminSidebar({ className = '' }: EnterpriseAdm
   return (
     <div className={`bg-white dark:bg-slate-900 border-r border-gray-200 dark:border-transparent h-full flex flex-col overflow-hidden ${className}`}>
       <nav className="flex-1 px-3 py-2 space-y-0.5 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-300 dark:scrollbar-thumb-gray-600 scrollbar-track-transparent">
-        {navItems.map((item) => {
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+            <FiLoader className="w-5 h-5 animate-spin mb-2" />
+            <span className="text-xs">Loading menu...</span>
+          </div>
+        )}
+        
+        {/* Error State */}
+        {error && !isLoading && (
+          <div className="flex flex-col items-center justify-center py-8 text-red-400">
+            <FiAlertCircle className="w-5 h-5 mb-2" />
+            <span className="text-xs text-center px-2">Unable to load menu</span>
+          </div>
+        )}
+        
+        {/* Menu Items */}
+        {!isLoading && !error && navItems.map((item) => {
           const Icon = item.icon;
           const active = isActive(item.href);
           

@@ -384,10 +384,9 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
     <div className="w-full bg-gray-50 dark:bg-gray-950">
       <style jsx>{`
         .profile-container {
-          max-width: 1400px;
-          margin: 0 auto;
+          width: 100%;
           display: flex;
-          gap: 24px;
+          gap: 16px;
           flex-direction: column;
         }
 
@@ -401,7 +400,7 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
           background-color: white;
           border-radius: 8px;
           box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-          padding: 20px;
+          padding: 16px;
           height: fit-content;
         }
 
@@ -412,7 +411,7 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
 
         @media (min-width: 1024px) {
           .team-sidebar {
-            flex: 0 0 280px;
+            flex: 0 0 240px;
             position: sticky;
             top: 20px;
           }
@@ -524,7 +523,7 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
         .profile-section {
           flex: 1;
           display: flex;
-          gap: 20px;
+          gap: 16px;
           flex-direction: column;
         }
 
@@ -540,7 +539,7 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
 
         @media (min-width: 768px) {
           .profile-left-column {
-            flex: 0 0 320px;
+            flex: 0 0 280px;
           }
         }
 
@@ -548,8 +547,8 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
           background-color: white;
           border-radius: 8px;
           box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-          padding: 24px;
-          margin-bottom: 20px;
+          padding: 20px;
+          margin-bottom: 16px;
         }
 
         .dark .profile-card {
@@ -620,8 +619,8 @@ export const AboutMePage: React.FC<AboutMePageProps> = ({
           background-color: white;
           border-radius: 8px;
           box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-          padding: 20px;
-          margin-bottom: 20px;
+          padding: 16px;
+          margin-bottom: 16px;
         }
 
         .dark .info-section {

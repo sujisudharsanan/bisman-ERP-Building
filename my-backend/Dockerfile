@@ -1,6 +1,6 @@
 FROM node:20-bullseye-slim
 
-# Force rebuild: 2025-01-14-v2 - Add TypeScript compilation
+# Force rebuild: 2025-01-13-v1 - Switch to Debian for stable package installs
 WORKDIR /app
 
 # Install dependencies for Prisma (Debian packages)
@@ -10,7 +10,6 @@ RUN apt-get update && \
 
 # Copy package files
 COPY package*.json ./
-COPY tsconfig.json ./
 
 # Install dependencies (use legacy-peer-deps due to langchain peer dep conflicts)
 RUN npm ci --legacy-peer-deps --ignore-scripts
@@ -21,9 +20,6 @@ RUN npx prisma generate
 
 # Copy source code
 COPY . ./
-
-# Compile TypeScript to dist/
-RUN npx tsc --skipLibCheck || echo "TypeScript compilation completed with warnings"
 
 # Environment
 ENV NODE_ENV=production
