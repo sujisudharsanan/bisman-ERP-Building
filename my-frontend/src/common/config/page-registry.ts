@@ -271,7 +271,7 @@ export interface PageMetadata {
   // iconKey is a lucide-react component name string (e.g. "Settings", "Users")
   // resolved client-side; avoids importing lucide components during SSR.
   iconKey?: string;
-  module: 'system' | 'finance' | 'procurement' | 'operations' | 'compliance' | 'common' | 'pump-management' | 'hr' | 'super-admin' | 'enterprise-admin' | 'admin' | 'billing' | 'qa' | 'governance' | 'internal';
+  module: 'system' | 'finance' | 'procurement' | 'operations' | 'compliance' | 'common' | 'pump-management' | 'hr' | 'super-admin' | 'enterprise-admin' | 'admin' | 'billing' | 'qa' | 'governance' | 'internal' | 'subscriptions';
   permissions: string[]; // Required permissions (OR logic)
   roles: string[]; // Recommended roles
   status: PageStatus;
@@ -986,7 +986,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     name: 'Subscriptions',
     path: '/super-admin/subscriptions',
     iconKey: "CreditCard",
-    module: 'super-admin',
+    module: 'subscriptions',
     permissions: ['system-settings'],
     roles: ['SUPER_ADMIN'],
     status: 'active',
@@ -998,7 +998,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     name: 'Plan Management',
     path: '/super-admin/subscriptions/plans',
     iconKey: "Package",
-    module: 'super-admin',
+    module: 'subscriptions',
     permissions: ['system-settings'],
     roles: ['SUPER_ADMIN'],
     status: 'active',
@@ -1011,7 +1011,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     name: 'Tenant Subscriptions',
     path: '/super-admin/subscriptions/tenants',
     iconKey: "Building2",
-    module: 'super-admin',
+    module: 'subscriptions',
     permissions: ['system-settings'],
     roles: ['SUPER_ADMIN'],
     status: 'active',
@@ -1024,7 +1024,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     name: 'Billing Overrides',
     path: '/super-admin/subscriptions/billing',
     iconKey: "DollarSign",
-    module: 'super-admin',
+    module: 'subscriptions',
     permissions: ['system-settings'],
     roles: ['SUPER_ADMIN'],
     status: 'active',
@@ -1037,7 +1037,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     name: 'Subscription Audit',
     path: '/super-admin/subscriptions/audit',
     iconKey: "FileText",
-    module: 'super-admin',
+    module: 'subscriptions',
     permissions: ['system-settings'],
     roles: ['SUPER_ADMIN'],
     status: 'active',
@@ -1050,7 +1050,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     name: 'Coupons',
     path: '/super-admin/subscriptions/coupons',
     iconKey: "Ticket",
-    module: 'super-admin',
+    module: 'subscriptions',
     permissions: ['system-settings'],
     roles: ['SUPER_ADMIN'],
     status: 'active',

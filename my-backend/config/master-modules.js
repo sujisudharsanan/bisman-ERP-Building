@@ -224,6 +224,25 @@ const MASTER_MODULES = [
       { id: 'monitoring-system-health', name: 'System Health', path: '/enterprise-admin/monitoring/system-health' },
     ],
   },
+  {
+    id: 'subscriptions',
+    name: 'Subscriptions Module',
+    description: 'Subscription plan management, feature controls, billing and enforcement - Enterprise Admin assigns to Super Admin',
+    icon: 'FiCreditCard',
+    category: 'Administration',
+    businessCategory: 'Enterprise',
+    // This module can be assigned to Super Admins by Enterprise Admin
+    pages: [
+      { id: 'subscriptions', name: 'Subscriptions', path: '/super-admin/subscriptions' },
+      { id: 'subscription-plans', name: 'Plan Management', path: '/super-admin/subscriptions/plans' },
+      { id: 'subscription-tenants', name: 'Tenant Subscriptions', path: '/super-admin/subscriptions/tenants' },
+      { id: 'subscription-billing', name: 'Billing Overrides', path: '/super-admin/subscriptions/billing' },
+      { id: 'subscription-audit', name: 'Subscription Audit', path: '/super-admin/subscriptions/audit' },
+      { id: 'subscription-coupons', name: 'Coupons', path: '/super-admin/subscriptions/coupons' },
+      { id: 'subscription-settings', name: 'Subscription Settings', path: '/super-admin/subscriptions/settings' },
+      { id: 'subscription-micro-unlock', name: 'Micro Unlock', path: '/super-admin/subscriptions/micro-unlock' },
+    ],
+  },
 ];
 
 module.exports = { MASTER_MODULES };
