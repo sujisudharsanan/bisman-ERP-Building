@@ -43,12 +43,14 @@ const MODULE_MAPPING = {
   'contracts': 'procurement',         // contracts → procurement
   'security-governance': 'compliance',// security → compliance
   'audit': 'compliance',              // audit → compliance
+  'audit-integrity': 'compliance',    // audit-integrity → compliance
   'calls': 'operations',              // calls → operations
   'tasks': 'task-management',         // tasks → task-management
   'task-requests': 'task-management', // task requests → task-management
   'enterprise-admin': 'enterprise-admin',
   'super-admin': 'super-admin',
   'superadmin': 'super-admin',
+  'superadmin-dashboard': 'super-admin', // superadmin dashboard → super-admin
 };
 
 /**
@@ -254,12 +256,29 @@ async function getTenantModuleAccess(tenantId) {
   }
 }
 
+// Roles that bypass plan-based access checks (platform administrators)
+const BYPASS_ROLES = ['ENTERPRISE_ADMIN', 'SUPER_ADMIN'];
+
 /**
  * Middleware factory: Require access to a specific module
  * Usage: router.use('/finance', requirePlanModuleAccess('finance'))
  */
 function requirePlanModuleAccess(moduleId) {
   return async (req, res, next) => {
+    // Platform administrators bypass plan checks
+    const userRole = String(req.user?.roleName || req.user?.role || req.user?.userType || '').toUpperCase();
+    if (BYPASS_ROLES.includes(userRole)) {
+      req.moduleAccess = {
+        hasAccess: true,
+        accessLevel: 'full',
+        moduleId,
+        planName: 'Admin Bypass',
+        planId: 0,
+        message: 'Platform administrator - full access'
+      };
+      return next();
+    }
+
     const tenantId = req.user?.tenant_id || req.user?.client_id;
 
     if (!tenantId) {
@@ -305,7 +324,9 @@ function requirePlanModuleAccess(moduleId) {
       return res.status(403).json({
         success: false,
         error: accessResult.message,
-        code: 'MODULE_ACCESS_DENIED',
+        code: 'PLAN_UPGRADE_REQUIRED',
+        module: moduleId,
+        access_level: accessResult.accessLevel,
         upgradeRequired: accessResult.upgradeRequired,
         data: {
           moduleId,
@@ -321,7 +342,9 @@ function requirePlanModuleAccess(moduleId) {
       return res.status(403).json({
         success: false,
         error: `Read-only access to '${moduleId}' module. Upgrade to modify data.`,
-        code: 'READ_ONLY_ACCESS',
+        code: 'PLAN_UPGRADE_REQUIRED',
+        module: moduleId,
+        access_level: 'read_only',
         upgradeRequired: true,
         data: {
           moduleId,

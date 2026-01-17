@@ -11,7 +11,8 @@
 
 const express = require('express');
 const router = express.Router();
-const prisma = require('../config/db');
+const { getPrisma } = require('../lib/prisma');
+const prisma = getPrisma();
 
 // ============================================================================
 // AUTHORIZATION MIDDLEWARE

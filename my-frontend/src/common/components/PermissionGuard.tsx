@@ -91,11 +91,40 @@ export default function PermissionGuard({
       }
 
       // ==========================================
+      // ENTERPRISE ADMIN BYPASS - FULL ACCESS
+      // ==========================================
+      // Enterprise Admin bypasses all checks
+      if (isEnterpriseAdmin) {
+        console.log('[PermissionGuard] Enterprise Admin - full access');
+        setHasAccess(true);
+        setIsChecking(false);
+        return;
+      }
+
+      // ==========================================
+      // SUPER ADMIN - BYPASS PLAN, CHECK PAGES
+      // ==========================================
+      // Super Admin bypasses subscription checks but has page restrictions
+      if (isSuperAdmin) {
+        // Has full access to /super-admin/* pages
+        if (pathname?.startsWith('/super-admin')) {
+          console.log('[PermissionGuard] Super Admin accessing super-admin page:', pathname);
+          setHasAccess(true);
+          setIsChecking(false);
+          return;
+        }
+        
+        // For other pages, check Enterprise Admin page assignments
+        // (This is handled in the existing Super Admin logic below)
+      }
+
+      // ==========================================
       // STEP 1: CHECK SUBSCRIPTION/PLAN ACCESS
       // ==========================================
+      // Skip plan checks for Super Admin (already handled above for page checks)
       // Check if the module is accessible based on subscription plan
       // Skip for always-accessible modules
-      if (inferredModule && !ALWAYS_ACCESSIBLE.includes(inferredModule.toLowerCase())) {
+      if (!isSuperAdmin && inferredModule && !ALWAYS_ACCESSIBLE.includes(inferredModule.toLowerCase())) {
         const hasModuleAccess = checkModuleAccess(inferredModule);
         
         if (!hasModuleAccess) {
@@ -111,13 +140,6 @@ export default function PermissionGuard({
       // STEP 2: CHECK RBAC PERMISSIONS
       // ==========================================
       
-      // Enterprise Admin always has full access
-      if (isEnterpriseAdmin) {
-        setHasAccess(true);
-        setIsChecking(false);
-        return;
-      }
-
       // If not requiring permission check, grant access
       if (!requirePermissions) {
         setHasAccess(true);
