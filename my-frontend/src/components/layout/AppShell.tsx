@@ -29,40 +29,30 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   const excludedPrefixes = useMemo(
     () => [
+      // Public/auth pages - no shell needed
       '/auth',
-      '/landing',         // ✅ Added: Landing page - no shell (public marketing page)
-      '/access-denied',   // ✅ Added: Full screen access denied page
-      '/unauthorized',    // ✅ Added: Full screen unauthorized/403 page
-      '/signup',          // ✅ Added: Signup pages - no shell
-      '/onboarding',      // ✅ Added: Onboarding wizard pages - no shell
-      '/get-started',     // ✅ Added: Get started redirect page - no shell
-      '/login',           // ✅ Added: Login page - no shell
-      '/welcome',         // ✅ Added: Welcome/subscription selection page - no shell (mandatory gate)
-      '/approvals',       // ✅ Added: Uses DashboardLayout
-      '/super-admin',
-      '/enterprise-admin',
-      '/enterprise',
-      '/hub-incharge',
-      '/admin',
-      '/system',          // ✅ Added: System pages use SuperAdminShell with DynamicSidebar
-      '/hr',              // ✅ Added: HR pages use their own layout
-      '/qa',              // ✅ Added: QA Testing module uses standalone layout
-      '/common',
-      '/dashboard',
-      '/staff',
-      '/operations-manager',
-      '/cfo-dashboard',
-      '/finance',
-      '/accounts',
-      '/accounts-payable',
-      '/treasury',
-      '/legal',
-      '/procurement-officer',
-      '/procurement',
-      '/it-admin',
-      '/store-incharge',
-      '/task-dashboard',
-      '/examples',
+      '/landing',
+      '/access-denied',
+      '/unauthorized',
+      '/signup',
+      '/onboarding',
+      '/get-started',
+      '/login',
+      '/welcome',
+      '/pricing',
+      '/privacy',
+      '/terms',
+      '/contact-sales',
+      '/trust-security',
+      '/status',
+      // Admin sections with their own layout.tsx containing sidebar
+      '/super-admin',       // Has layout.tsx with Sidebar
+      '/enterprise-admin',  // Has layout.tsx with EnterpriseAdminSidebar
+      '/admin',             // Has layout.tsx with Sidebar
+      '/common',            // Has layout.tsx with Sidebar
+      '/system',            // Has layout.tsx with Sidebar
+      '/qa',                // Has layout.tsx (standalone testing)
+      // API routes
       '/api',
     ],
     []
