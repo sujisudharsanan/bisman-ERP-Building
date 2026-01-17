@@ -658,4 +658,191 @@ function formatBytes(bytes) {
   return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
 }
 
+// ============================================================================
+// MODULE ACCESS ROUTES (Free vs Paid Enforcement)
+// ============================================================================
+
+/**
+ * GET /api/subscriptions/module-access
+ * Get all module access permissions for the authenticated tenant's plan.
+ * Used by frontend to filter sidebar and show upgrade prompts.
+ */
+router.get('/module-access', authenticate, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const tenantId = req.user?.tenant_id || req.user?.client_id;
+
+    if (!tenantId) {
+      return res.status(401).json({
+        ok: false,
+        error: 'Authentication required',
+      });
+    }
+
+    // Always accessible modules
+    const ALWAYS_ACCESSIBLE = ['dashboard', 'common', 'chat', 'support', 'help'];
+
+    // Get tenant's plan
+    let planId = 1; // Default to FREE
+    let planCode = 'FREE';
+    let planName = 'Free';
+
+    const subscription = await prisma.client_subscriptions.findUnique({
+      where: { client_id: tenantId },
+      include: { plan: true },
+    });
+
+    if (subscription?.plan) {
+      planId = subscription.plan.id;
+      planCode = subscription.plan.plan_code;
+      planName = subscription.plan.name;
+    } else {
+      // Fallback: check clients table
+      const client = await prisma.clients.findUnique({
+        where: { id: tenantId },
+        select: { subscriptionPlan: true },
+      });
+
+      if (client?.subscriptionPlan) {
+        const planMap = {
+          'free': { id: 1, code: 'FREE', name: 'Free' },
+          'basic': { id: 2, code: 'BASIC', name: 'Basic' },
+          'standard': { id: 3, code: 'STANDARD', name: 'Standard' },
+          'premium': { id: 4, code: 'PREMIUM', name: 'Premium' },
+          'enterprise': { id: 5, code: 'ENTERPRISE', name: 'Enterprise' },
+        };
+        const legacyPlan = planMap[client.subscriptionPlan.toLowerCase()] || planMap['free'];
+        planId = legacyPlan.id;
+        planCode = legacyPlan.code;
+        planName = legacyPlan.name;
+      }
+    }
+
+    // Get all module access records for this plan
+    const moduleAccessRecords = await prisma.plan_module_access.findMany({
+      where: { plan_id: planId },
+    });
+
+    // Build modules object
+    const modules = {};
+
+    // Add always-accessible modules
+    for (const moduleId of ALWAYS_ACCESSIBLE) {
+      modules[moduleId] = {
+        accessLevel: 'full',
+        pageLimit: -1,
+        features: {},
+      };
+    }
+
+    // Add plan-specific modules
+    for (const record of moduleAccessRecords) {
+      modules[record.module_id] = {
+        accessLevel: record.access_level,
+        pageLimit: record.page_limit,
+        features: record.features_json || {},
+      };
+    }
+
+    res.json({
+      ok: true,
+      planId,
+      planCode,
+      planName,
+      modules,
+      alwaysAccessible: ALWAYS_ACCESSIBLE,
+    });
+  } catch (error) {
+    console.error('[Subscriptions] Module access error:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'Failed to fetch module access',
+    });
+  }
+});
+
+/**
+ * GET /api/subscriptions/check-module/:moduleId
+ * Check if tenant has access to a specific module
+ */
+router.get('/check-module/:moduleId', authenticate, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const tenantId = req.user?.tenant_id || req.user?.client_id;
+    const { moduleId } = req.params;
+
+    if (!tenantId) {
+      return res.status(401).json({
+        ok: false,
+        error: 'Authentication required',
+      });
+    }
+
+    // Always accessible modules
+    const ALWAYS_ACCESSIBLE = ['dashboard', 'common', 'chat', 'support', 'help'];
+
+    if (ALWAYS_ACCESSIBLE.includes(moduleId.toLowerCase())) {
+      return res.json({
+        ok: true,
+        hasAccess: true,
+        accessLevel: 'full',
+        moduleId,
+        message: 'Core module - always accessible',
+      });
+    }
+
+    // Get tenant's plan
+    let planId = 1;
+    let planName = 'Free';
+
+    const subscription = await prisma.client_subscriptions.findUnique({
+      where: { client_id: tenantId },
+      include: { plan: true },
+    });
+
+    if (subscription?.plan) {
+      planId = subscription.plan.id;
+      planName = subscription.plan.name;
+    }
+
+    // Check module access
+    const moduleAccess = await prisma.plan_module_access.findUnique({
+      where: {
+        unique_plan_module: {
+          plan_id: planId,
+          module_id: moduleId,
+        },
+      },
+    });
+
+    if (!moduleAccess || moduleAccess.access_level === 'none') {
+      return res.json({
+        ok: true,
+        hasAccess: false,
+        accessLevel: 'none',
+        moduleId,
+        planName,
+        upgradeRequired: true,
+        message: `Module '${moduleId}' is not available in your ${planName} plan. Upgrade to access this feature.`,
+      });
+    }
+
+    res.json({
+      ok: true,
+      hasAccess: true,
+      accessLevel: moduleAccess.access_level,
+      moduleId,
+      planName,
+      pageLimit: moduleAccess.page_limit,
+      features: moduleAccess.features_json || {},
+    });
+  } catch (error) {
+    console.error('[Subscriptions] Check module error:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'Failed to check module access',
+    });
+  }
+});
+
 module.exports = router;

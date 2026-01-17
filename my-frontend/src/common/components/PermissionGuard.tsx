@@ -2,6 +2,10 @@
  * Permission Guard Component
  * Checks user permissions before rendering page content
  * Redirects to access-denied if user has no permissions
+ * 
+ * ORDER OF CHECKS:
+ * 1. Subscription/Plan module access (Free users can't access paid modules)
+ * 2. RBAC permissions (role-based access control)
  */
 
 'use client';
@@ -9,21 +13,57 @@
 import React, { useEffect, useState } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/common/hooks/useAuth';
+import { useModuleAccess } from '@/hooks/useModuleAccess';
 
 interface PermissionGuardProps {
   children: React.ReactNode;
   requirePermissions?: boolean; // If true, checks if user has any permissions
+  module?: string; // If provided, checks subscription access to this module
 }
+
+// Map path prefixes to module IDs
+const PATH_TO_MODULE: Record<string, string> = {
+  'finance': 'finance',
+  'billing': 'billing',
+  'procurement': 'procurement',
+  'operations': 'operations',
+  'hr': 'hr',
+  'compliance': 'compliance',
+  'governance': 'governance',
+  'internal': 'internal',
+  'qa': 'qa',
+  'analytics': 'analytics',
+  'reports': 'reports',
+  'admin': 'admin',
+  'system': 'system',
+  'enterprise-admin': 'enterprise-admin',
+  'super-admin': 'super-admin',
+  'task-management': 'task-management',
+  'tasks': 'task-management',
+};
+
+// Modules always accessible regardless of plan
+const ALWAYS_ACCESSIBLE = ['dashboard', 'common', 'chat', 'support', 'help', 'auth', 'public', 'onboarding'];
 
 export default function PermissionGuard({ 
   children, 
-  requirePermissions = true 
+  requirePermissions = true,
+  module: explicitModule
 }: PermissionGuardProps) {
   const { user } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
   const [isChecking, setIsChecking] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
+  const { hasAccess: checkModuleAccess, loading: moduleAccessLoading, planName } = useModuleAccess();
+
+  // Infer module from pathname if not explicitly provided
+  const inferredModule = React.useMemo(() => {
+    if (explicitModule) return explicitModule;
+    const segments = pathname?.split('/').filter(Boolean) || [];
+    const firstSegment = segments[0] || '';
+    return PATH_TO_MODULE[firstSegment] || firstSegment;
+  }, [pathname, explicitModule]);
 
   // Check if user is Enterprise Admin (top-most role - has access to everything)
   const isEnterpriseAdmin = React.useMemo(() => {
@@ -40,11 +80,37 @@ export default function PermissionGuard({
 
   useEffect(() => {
     const checkPermissions = async () => {
+      // Wait for module access to load
+      if (moduleAccessLoading) {
+        return;
+      }
+
       if (!user?.id) {
         setIsChecking(false);
         return;
       }
 
+      // ==========================================
+      // STEP 1: CHECK SUBSCRIPTION/PLAN ACCESS
+      // ==========================================
+      // Check if the module is accessible based on subscription plan
+      // Skip for always-accessible modules
+      if (inferredModule && !ALWAYS_ACCESSIBLE.includes(inferredModule.toLowerCase())) {
+        const hasModuleAccess = checkModuleAccess(inferredModule);
+        
+        if (!hasModuleAccess) {
+          console.log(`[PermissionGuard] Plan access denied: module=${inferredModule}, plan=${planName}`);
+          router.replace(`/upgrade-required?module=${encodeURIComponent(inferredModule)}&plan=${encodeURIComponent(planName || 'FREE')}`);
+          setHasAccess(false);
+          setIsChecking(false);
+          return;
+        }
+      }
+
+      // ==========================================
+      // STEP 2: CHECK RBAC PERMISSIONS
+      // ==========================================
+      
       // Enterprise Admin always has full access
       if (isEnterpriseAdmin) {
         setHasAccess(true);
@@ -148,7 +214,7 @@ export default function PermissionGuard({
     };
 
     checkPermissions();
-  }, [user?.id, isEnterpriseAdmin, isSuperAdmin, requirePermissions, router, pathname]);
+  }, [user?.id, isEnterpriseAdmin, isSuperAdmin, requirePermissions, router, pathname, moduleAccessLoading, inferredModule, checkModuleAccess, planName]);
 
   // Show loading state while checking
   if (isChecking) {

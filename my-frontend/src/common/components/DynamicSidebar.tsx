@@ -1,6 +1,7 @@
 /**
  * Dynamic Sidebar Navigation
  * Automatically generates navigation from page registry based on user permissions from database
+ * and subscription-based module access (Free vs Paid enforcement)
  */
 
 "use client";
@@ -10,10 +11,11 @@ import { hasFullAdmin } from '../../constants/roles';
 import { safeFetch } from '@/lib/safeFetch';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { Circle, AlertCircle } from 'lucide-react';
+import { Circle, AlertCircle, Lock } from 'lucide-react';
 import { safeComponent } from '@/lib/safeComponent';
 import { useAuth } from '@/common/hooks/useAuth';
 import { getRoleDisplayName } from '@/utils/roleDisplay';
+import { useModuleAccess } from '@/hooks/useModuleAccess';
 import {
   PAGE_REGISTRY,
   type PageMetadata,
@@ -50,6 +52,9 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
   const [superAdminModules, setSuperAdminModules] = useState<string[]>([]);
   const [isLoadingPermissions, setIsLoadingPermissions] = useState(true);
   const [iconMap, setIconMap] = useState<Record<string, IconComponent>>({});
+  
+  // Module access hook for Free vs Paid enforcement
+  const { hasAccess: hasModuleAccess, getAccessLevel, loading: moduleAccessLoading, planName } = useModuleAccess();
   
   // Magnification effect state (macOS Dock style)
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
@@ -437,8 +442,25 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
       return true;
     });
     
-    return uniquePages;
-  }, [user, userAllowedPages, isSuperAdmin, superAdminModules]);
+    // FREE vs PAID MODULE ACCESS FILTER
+    // Filter pages based on subscription plan's module access
+    // This is the final filter - even if RBAC allows, plan must include the module
+    const planFilteredPages = uniquePages.filter(p => {
+      // Always allow core modules (dashboard, common, chat, support, help)
+      const coreModules = ['dashboard', 'common', 'chat', 'support', 'help'];
+      if (coreModules.includes(p.module.toLowerCase())) return true;
+      
+      // Super Admin and Enterprise Admin bypass plan restrictions
+      if (isSuperAdmin || isEnterprise) return true;
+      
+      // Check if tenant's plan grants access to this module
+      return hasModuleAccess(p.module);
+    });
+    
+    console.log('[Sidebar] After plan filter:', planFilteredPages.length, 'pages');
+    
+    return planFilteredPages;
+  }, [user, userAllowedPages, isSuperAdmin, superAdminModules, hasModuleAccess]);
 
   // Remove toggle function - modules will always be expanded
   // const toggleModule = (moduleId: string) => {

@@ -1164,9 +1164,9 @@ model client_subscriptions {
   plan_snapshot_json             Json?
   started_at                     DateTime?                        @db.Timestamptz(6)
   expires_at                     DateTime?                        @db.Timestamptz(6)
+  subscription_coupons           subscription_coupons?            @relation(fields: [coupon_id], references: [id], onUpdate: NoAction)
   plan                           subscription_plans               @relation("client_subscription_plan", fields: [plan_id], references: [id], onUpdate: NoAction)
   scheduled_plan                 subscription_plans?              @relation("client_subscription_scheduled_plan", fields: [scheduled_plan_id], references: [id], onUpdate: NoAction)
-  subscription_coupons           subscription_coupons?            @relation(fields: [coupon_id], references: [id], onUpdate: NoAction)
   coupon_redemptions             coupon_redemptions[]
   subscription_coupon_audit_logs subscription_coupon_audit_logs[]
 
@@ -1286,6 +1286,7 @@ model clients {
   client_usage_events               client_usage_events[]
   super_admins                      super_admins                       @relation(fields: [super_admin_id], references: [id], onDelete: Cascade)
   coupon_redemptions                coupon_redemptions[]
+  coupon_share_logs                 coupon_share_logs[]
   custom_plan_audit_log             custom_plan_audit_log[]
   custom_tenant_feature_controls    custom_tenant_feature_controls[]
   custom_tenant_plan_configurations custom_tenant_plan_configurations?
@@ -1304,7 +1305,6 @@ model clients {
   subscription_billing_ledger       subscription_billing_ledger[]
   subscription_coupon_audit_logs    subscription_coupon_audit_logs[]
   subscription_coupons              subscription_coupons[]
-  coupon_share_logs                 coupon_share_logs[]
   support_sessions                  support_sessions[]
 
   @@index([client_code], map: "idx_clients_code")
@@ -2085,40 +2085,41 @@ model master_feature_definitions {
 }
 
 model master_subscription_plans {
-  id                     Int                     @id @default(autoincrement())
-  code                   String                  @unique @db.VarChar(50)
-  name                   String                  @db.VarChar(200)
-  description            String?
-  status                 plan_status             @default(active)
-  is_global              Boolean                 @default(true)
-  is_custom              Boolean                 @default(false)
-  badge_text             String?                 @db.VarChar(50)
-  sort_order             Int                     @default(0)
-  is_popular             Boolean                 @default(false)
-  color_code             String?                 @default("#3B82F6") @db.VarChar(20)
-  monthly_spend_cap      Decimal?                @default(50000.00) @db.Decimal(15, 2)
-  auto_block_on_cap      Boolean                 @default(true)
-  cfo_approval_threshold Decimal?                @default(10000.00) @db.Decimal(15, 2)
-  invoice_cycle_days     Int                     @default(30)
-  grace_period_days      Int                     @default(7)
-  read_only_after_grace  Boolean                 @default(false)
-  created_at             DateTime                @default(now()) @db.Timestamptz(6)
-  updated_at             DateTime                @default(now()) @db.Timestamptz(6)
-  created_by             Int?
-  updated_by             Int?
-  archived_at            DateTime?               @db.Timestamptz(6)
-  archived_by            Int?
-  price_monthly          Decimal                 @default(0) @db.Decimal(12, 2)
-  price_yearly           Decimal                 @default(0) @db.Decimal(12, 2)
-  currency               String                  @default("INR") @db.VarChar(3)
-  max_users              Int                     @default(5)
-  max_branches           Int                     @default(1)
-  max_storage_gb         Int                     @default(5)
-  trial_enabled          Boolean                 @default(true)
-  trial_days             Int                     @default(14)
-  trial_features_limited Boolean                 @default(false)
-  require_payment_method Boolean                 @default(false)
-  plan_feature_controls  plan_feature_controls[]
+  id                          Int                           @id @default(autoincrement())
+  code                        String                        @unique @db.VarChar(50)
+  name                        String                        @db.VarChar(200)
+  description                 String?
+  status                      plan_status                   @default(active)
+  is_global                   Boolean                       @default(true)
+  is_custom                   Boolean                       @default(false)
+  badge_text                  String?                       @db.VarChar(50)
+  sort_order                  Int                           @default(0)
+  is_popular                  Boolean                       @default(false)
+  color_code                  String?                       @default("#3B82F6") @db.VarChar(20)
+  monthly_spend_cap           Decimal?                      @default(50000.00) @db.Decimal(15, 2)
+  auto_block_on_cap           Boolean                       @default(true)
+  cfo_approval_threshold      Decimal?                      @default(10000.00) @db.Decimal(15, 2)
+  invoice_cycle_days          Int                           @default(30)
+  grace_period_days           Int                           @default(7)
+  read_only_after_grace       Boolean                       @default(false)
+  created_at                  DateTime                      @default(now()) @db.Timestamptz(6)
+  updated_at                  DateTime                      @default(now()) @db.Timestamptz(6)
+  created_by                  Int?
+  updated_by                  Int?
+  archived_at                 DateTime?                     @db.Timestamptz(6)
+  archived_by                 Int?
+  price_monthly               Decimal                       @default(0) @db.Decimal(12, 2)
+  price_yearly                Decimal                       @default(0) @db.Decimal(12, 2)
+  currency                    String                        @default("INR") @db.VarChar(3)
+  max_users                   Int                           @default(5)
+  max_branches                Int                           @default(1)
+  max_storage_gb              Int                           @default(5)
+  trial_enabled               Boolean                       @default(true)
+  trial_days                  Int                           @default(14)
+  trial_features_limited      Boolean                       @default(false)
+  require_payment_method      Boolean                       @default(false)
+  plan_feature_controls       plan_feature_controls[]
+  plan_feature_controls_draft plan_feature_controls_draft[]
 
   @@index([code], map: "idx_master_plans_code")
   @@index([status], map: "idx_master_plans_status")
@@ -2574,6 +2575,208 @@ model plan_feature_controls {
   @@unique([plan_id, feature_code], map: "unique_plan_feature")
   @@index([feature_code], map: "idx_plan_features_feature")
   @@index([plan_id], map: "idx_plan_features_plan")
+}
+
+/// Controls which modules are available in each subscription plan (Free vs Paid enforcement)
+model plan_module_access {
+  id                 Int                 @id @default(autoincrement())
+  plan_id            Int
+  module_id          String              @db.VarChar(100)
+  access_level       module_access_level @default(none)
+  page_limit         Int                 @default(-1)
+  features_json      Json?               @default("{}")
+  created_at         DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime            @default(now()) @db.Timestamptz(6)
+  subscription_plans subscription_plans  @relation(fields: [plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
+
+  @@unique([plan_id, module_id], map: "unique_plan_module")
+  @@index([plan_id], map: "idx_plan_module_access_plan")
+  @@index([module_id], map: "idx_plan_module_access_module")
+  @@index([access_level], map: "idx_plan_module_access_level")
+}
+
+/// Draft/staging table for plan module access changes before publish
+model plan_module_access_draft {
+  id                 Int                 @id @default(autoincrement())
+  plan_id            Int
+  module_id          String              @db.VarChar(100)
+  access_level       module_access_level @default(none)
+  page_limit         Int                 @default(-1)
+  features_json      Json?               @default("{}")
+  is_dirty           Boolean             @default(false)
+  draft_action       String?             @default("update") @db.VarChar(20)
+  created_at         DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at         DateTime            @default(now()) @db.Timestamptz(6)
+  modified_by        Int?
+  subscription_plans subscription_plans  @relation(fields: [plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_draft_module_plan")
+
+  @@unique([plan_id, module_id], map: "unique_draft_plan_module")
+  @@index([plan_id], map: "idx_draft_module_plan")
+}
+
+/// Draft/staging table for plan feature controls before publish
+model plan_feature_controls_draft {
+  id                        Int                       @id @default(autoincrement())
+  plan_id                   Int
+  feature_code              String                    @db.VarChar(100)
+  free_limit                Int                       @default(0)
+  limit_period              limit_period_type         @default(monthly)
+  unlock_price              Decimal                   @default(0) @db.Decimal(12, 2)
+  unlock_unit               String?                   @default("per month") @db.VarChar(50)
+  currency                  String                    @default("INR") @db.VarChar(3)
+  approval_threshold        Decimal?                  @db.Decimal(15, 2)
+  requires_approval         Boolean                   @default(false)
+  lock_mode                 lock_mode_type            @default(none)
+  is_visible                Boolean                   @default(true)
+  show_in_pricing           Boolean                   @default(true)
+  is_dirty                  Boolean                   @default(false)
+  draft_action              String?                   @default("update") @db.VarChar(20)
+  created_at                DateTime                  @default(now()) @db.Timestamptz(6)
+  updated_at                DateTime                  @default(now()) @db.Timestamptz(6)
+  modified_by               Int?
+  master_subscription_plans master_subscription_plans @relation(fields: [plan_id], references: [id], onDelete: Cascade, onUpdate: NoAction, map: "fk_draft_feature_plan")
+
+  @@unique([plan_id, feature_code], map: "unique_draft_plan_feature")
+  @@index([plan_id], map: "idx_draft_feature_plan")
+}
+
+/// Per-tenant module access overrides (grants/revokes beyond subscription plan)
+model tenant_module_overrides {
+  id              Int                 @id @default(autoincrement())
+  tenant_id       String              @db.Uuid
+  module_id       String              @db.VarChar(100)
+  access_level    module_access_level @default(full)
+  override_reason String?
+  override_type   String              @default("grant") @db.VarChar(30)
+  start_date      DateTime            @default(now()) @db.Timestamptz(6)
+  end_date        DateTime?           @db.Timestamptz(6)
+  is_active       Boolean             @default(true)
+  granted_by      Int
+  granted_at      DateTime            @default(now()) @db.Timestamptz(6)
+  revoked_by      Int?
+  revoked_at      DateTime?           @db.Timestamptz(6)
+  revoke_reason   String?
+  created_at      DateTime            @default(now()) @db.Timestamptz(6)
+  updated_at      DateTime            @default(now()) @db.Timestamptz(6)
+
+  @@unique([tenant_id, module_id], map: "unique_tenant_module_override")
+  @@index([tenant_id], map: "idx_tenant_override_tenant")
+  @@index([module_id], map: "idx_tenant_override_module")
+}
+
+/// Audit log for subscription publish events (staging to production)
+model subscription_publish_log {
+  id                Int      @id @default(autoincrement())
+  publish_type      String   @db.VarChar(50)
+  published_by      Int
+  published_at      DateTime @default(now()) @db.Timestamptz(6)
+  changes_summary   Json     @default("{}")
+  affected_plans    Int[]    @default([])
+  affected_modules  String[] @default([])
+  affected_features String[] @default([])
+  total_changes     Int      @default(0)
+  rollback_data     Json?
+  notes             String?
+  ip_address        String?  @db.Inet
+  user_agent        String?
+  created_at        DateTime @default(now()) @db.Timestamptz(6)
+
+  @@index([published_by], map: "idx_publish_log_by")
+  @@index([published_at(sort: Desc)], map: "idx_publish_log_at")
+  @@index([publish_type], map: "idx_publish_log_type")
+}
+
+/// Master modules table - defines all available modules in the system
+model modules_master {
+  id               Int              @id @default(autoincrement())
+  module_code      String           @unique @db.VarChar(50)
+  display_name     String           @db.VarChar(100)
+  description      String?
+  icon             String?          @db.VarChar(50)
+  base_route       String           @db.VarChar(200)
+  sort_order       Int?             @default(0)
+  is_active        Boolean?         @default(true)
+  is_hidden        Boolean?         @default(false)
+  color_code       String?          @db.VarChar(20)
+  layout_group     String?          @default("common") @db.VarChar(50)
+  product_type     String?          @default("ALL") @db.VarChar(50)
+  parent_module_id Int?
+  created_at       DateTime?        @default(now()) @db.Timestamptz(6)
+  updated_at       DateTime?        @default(now()) @db.Timestamptz(6)
+  parent_module    modules_master?  @relation("ModuleHierarchy", fields: [parent_module_id], references: [id])
+  child_modules    modules_master[] @relation("ModuleHierarchy")
+  pages            pages_master[]
+
+  @@index([is_active], map: "idx_modules_master_active")
+  @@index([layout_group], map: "idx_modules_master_layout")
+  @@index([sort_order], map: "idx_modules_master_sort")
+}
+
+/// Master pages table - defines all pages/routes in the system
+model pages_master {
+  id                   Int                @id @default(autoincrement())
+  page_code            String             @unique @db.VarChar(100)
+  display_name         String             @db.VarChar(200)
+  description          String?
+  route                String             @db.VarChar(300)
+  module_id            Int?
+  icon                 String?            @db.VarChar(50)
+  sort_order           Int?               @default(0)
+  is_active            Boolean?           @default(true)
+  show_in_sidebar      Boolean?           @default(true)
+  required_roles       String[]           @default([])
+  required_permissions String[]           @default([])
+  required_features    String[]           @default([])
+  min_role_level       Int?               @default(1)
+  layout_group         String?            @default("common") @db.VarChar(50)
+  status               String?            @default("active") @db.VarChar(20)
+  created_at           DateTime?          @default(now()) @db.Timestamptz(6)
+  updated_at           DateTime?          @default(now()) @db.Timestamptz(6)
+  is_public            Boolean?           @default(false)
+  module               modules_master?    @relation(fields: [module_id], references: [id])
+  role_page_access     role_page_access[]
+
+  @@index([is_active], map: "idx_pages_master_active")
+  @@index([module_id], map: "idx_pages_master_module")
+  @@index([required_roles], map: "idx_pages_master_roles")
+  @@index([route], map: "idx_pages_master_route")
+  @@index([show_in_sidebar], map: "idx_pages_master_sidebar")
+}
+
+/// Role-page access mapping - controls which roles can access which pages
+model role_page_access {
+  id         Int          @id @default(autoincrement())
+  role_name  String       @db.VarChar(100)
+  page_id    Int
+  can_view   Boolean?     @default(true)
+  can_edit   Boolean?     @default(false)
+  can_delete Boolean?     @default(false)
+  can_export Boolean?     @default(false)
+  granted_at DateTime?    @default(now()) @db.Timestamptz(6)
+  granted_by Int?
+  notes      String?
+  page       pages_master @relation(fields: [page_id], references: [id], onDelete: Cascade)
+
+  @@unique([role_name, page_id])
+  @@index([page_id], map: "idx_role_page_access_page")
+  @@index([role_name], map: "idx_role_page_access_role")
+  @@index([can_view], map: "idx_role_page_access_view")
+}
+
+/// Backup of modules data
+model modules_backup {
+  id                   Int       @id
+  module_name          String?   @db.VarChar(100)
+  display_name         String?   @db.VarChar(150)
+  description          String?
+  route                String?   @db.VarChar(255)
+  icon                 String?   @db.VarChar(100)
+  productType          String?   @db.VarChar(50)
+  is_active            Boolean?
+  sort_order           Int?
+  created_at           DateTime? @db.Timestamp(6)
+  updated_at           DateTime? @db.Timestamp(6)
+  is_always_accessible Boolean?
 }
 
 model preprocessing_settings {
@@ -3350,8 +3553,8 @@ model coupon_templates {
   created_by              String                  @db.Uuid
   created_at              DateTime                @default(now()) @db.Timestamptz(6)
   updated_at              DateTime                @default(now()) @db.Timestamptz(6)
-  subscription_plans      subscription_plans      @relation(fields: [plan_id], references: [id], onUpdate: NoAction)
   users_enhanced          users_enhanced          @relation(fields: [created_by], references: [id], onUpdate: NoAction)
+  subscription_plans      subscription_plans      @relation(fields: [plan_id], references: [id], onUpdate: NoAction)
 
   @@index([is_active])
   @@index([plan_id])
@@ -3359,15 +3562,15 @@ model coupon_templates {
 
 /// Tracks coupon share/email history
 model coupon_share_logs {
-  id            Int      @id @default(autoincrement())
-  coupon_id     String   @db.Uuid
-  recipient_email String @db.VarChar(255)
-  recipient_name  String? @db.VarChar(255)
-  tenant_id     String?  @db.Uuid
-  share_method  String   @default("EMAIL") @db.VarChar(20)
-  shared_by     String   @db.Uuid
-  shared_at     DateTime @default(now()) @db.Timestamptz(6)
-  message       String?
+  id                   Int                  @id @default(autoincrement())
+  coupon_id            String               @db.Uuid
+  recipient_email      String               @db.VarChar(255)
+  recipient_name       String?              @db.VarChar(255)
+  tenant_id            String?              @db.Uuid
+  share_method         String               @default("EMAIL") @db.VarChar(20)
+  shared_by            String               @db.Uuid
+  shared_at            DateTime             @default(now()) @db.Timestamptz(6)
+  message              String?
   subscription_coupons subscription_coupons @relation(fields: [coupon_id], references: [id], onUpdate: NoAction)
   users_enhanced       users_enhanced       @relation(fields: [shared_by], references: [id], onUpdate: NoAction)
   clients              clients?             @relation(fields: [tenant_id], references: [id], onUpdate: NoAction)
@@ -3405,36 +3608,38 @@ model subscription_invoices {
 }
 
 model subscription_plans {
-  id                   Int                    @id @default(autoincrement())
-  plan_code            String                 @unique @db.VarChar(50)
-  name                 String                 @db.VarChar(100)
-  description          String?
-  short_description    String?                @db.VarChar(255)
-  badge_text           String?                @db.VarChar(50)
-  price_monthly        Decimal                @default(0) @db.Decimal(12, 2)
-  price_yearly         Decimal                @default(0) @db.Decimal(12, 2)
-  currency             String                 @default("INR") @db.VarChar(3)
-  max_users            Int                    @default(5)
-  max_storage_gb       Int                    @default(5)
-  max_branches         Int                    @default(1)
-  max_api_calls_day    Int                    @default(0)
-  feature_flags        Json                   @default("{}")
-  sort_order           Int                    @default(0)
-  is_popular           Boolean                @default(false)
-  is_enterprise        Boolean                @default(false)
-  is_active            Boolean                @default(true)
-  is_public            Boolean                @default(true)
-  cta_text             String?                @default("Get Started") @db.VarChar(100)
-  cta_action           String?                @default("subscribe") @db.VarChar(50)
-  created_at           DateTime               @default(now()) @db.Timestamptz(6)
-  updated_at           DateTime               @default(now()) @db.Timestamptz(6)
-  created_by           Int?
-  updated_by           Int?
-  trial_days           Int?                   @default(14)
-  subscription_coupons subscription_coupons[]
-  coupon_templates     coupon_templates[]
-  client_subscriptions_plan           client_subscriptions[] @relation("client_subscription_plan")
-  client_subscriptions_scheduled      client_subscriptions[] @relation("client_subscription_scheduled_plan")
+  id                             Int                        @id @default(autoincrement())
+  plan_code                      String                     @unique @db.VarChar(50)
+  name                           String                     @db.VarChar(100)
+  description                    String?
+  short_description              String?                    @db.VarChar(255)
+  badge_text                     String?                    @db.VarChar(50)
+  price_monthly                  Decimal                    @default(0) @db.Decimal(12, 2)
+  price_yearly                   Decimal                    @default(0) @db.Decimal(12, 2)
+  currency                       String                     @default("INR") @db.VarChar(3)
+  max_users                      Int                        @default(5)
+  max_storage_gb                 Int                        @default(5)
+  max_branches                   Int                        @default(1)
+  max_api_calls_day              Int                        @default(0)
+  feature_flags                  Json                       @default("{}")
+  sort_order                     Int                        @default(0)
+  is_popular                     Boolean                    @default(false)
+  is_enterprise                  Boolean                    @default(false)
+  is_active                      Boolean                    @default(true)
+  is_public                      Boolean                    @default(true)
+  cta_text                       String?                    @default("Get Started") @db.VarChar(100)
+  cta_action                     String?                    @default("subscribe") @db.VarChar(50)
+  created_at                     DateTime                   @default(now()) @db.Timestamptz(6)
+  updated_at                     DateTime                   @default(now()) @db.Timestamptz(6)
+  created_by                     Int?
+  updated_by                     Int?
+  trial_days                     Int?                       @default(14)
+  client_subscriptions_plan      client_subscriptions[]     @relation("client_subscription_plan")
+  client_subscriptions_scheduled client_subscriptions[]     @relation("client_subscription_scheduled_plan")
+  coupon_templates               coupon_templates[]
+  plan_module_access             plan_module_access[]
+  plan_module_access_draft       plan_module_access_draft[]
+  subscription_coupons           subscription_coupons[]
 
   @@index([is_active, is_public], map: "idx_subscription_plans_active")
   @@index([sort_order], map: "idx_subscription_plans_sort")
@@ -4336,8 +4541,8 @@ model users_enhanced {
   authority_overrides_authority_overrides_revoked_byTousers_enhanced   authority_overrides[]            @relation("authority_overrides_revoked_byTousers_enhanced")
   authority_overrides_authority_overrides_user_idTousers_enhanced      authority_overrides[]            @relation("authority_overrides_user_idTousers_enhanced")
   coupon_redemptions                                                   coupon_redemptions[]
-  coupon_templates                                                     coupon_templates[]
   coupon_share_logs                                                    coupon_share_logs[]
+  coupon_templates                                                     coupon_templates[]
   subscription_coupon_audit_logs                                       subscription_coupon_audit_logs[]
   subscription_coupons_subscription_coupons_created_byTousers_enhanced subscription_coupons[]           @relation("subscription_coupons_created_byTousers_enhanced")
   subscription_coupons_subscription_coupons_revoked_byTousers_enhanced subscription_coupons[]           @relation("subscription_coupons_revoked_byTousers_enhanced")
@@ -4777,6 +4982,12 @@ enum lock_mode_type {
   none
   soft
   hard
+}
+
+enum module_access_level {
+  full
+  read_only
+  none
 }
 
 enum message_type {

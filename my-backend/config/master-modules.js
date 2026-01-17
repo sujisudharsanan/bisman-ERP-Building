@@ -690,6 +690,7 @@ const MASTER_MODULES = [
       { id: 'pages-report', name: 'Pages Report', path: '/enterprise-admin/pages-report' },
       { id: 'roles', name: 'Roles', path: '/enterprise-admin/roles' },
       { id: 'subscriptions', name: 'Subscriptions', path: '/enterprise-admin/subscriptions' },
+      { id: 'subscription-access', name: 'Subscription Access Control', path: '/enterprise-admin/subscription-access' },
       { id: 'system-pages-roles-report', name: 'System Pages & Roles Report', path: '/enterprise-admin/system/pages-roles-report' },
     ],
   },

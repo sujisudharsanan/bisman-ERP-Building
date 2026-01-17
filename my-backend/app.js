@@ -78,6 +78,7 @@ const { adminIpAllowlist } = require('./middleware/adminIpAllowlist') // ✅ IP 
 // eslint-disable-next-line no-unused-vars
 const { loginBruteForceProtection, signupBruteForceProtection, verifyCaptcha } = require('./middleware/bruteForceProtection') // ✅ Brute force protection
 const { rbacEnforcer } = require('./middleware/rbac.enforcer') // ✅ SECURITY: Global RBAC enforcement
+const { requirePlanModuleAccess } = require('./middleware/planModuleAccessMiddleware') // ✅ SECURITY: Subscription-based module access
 
 const app = express()
 
@@ -794,7 +795,8 @@ const {
 
 // Reports routes for generating system reports
 const reportsRoutes = require('./routes/reportsRoutes')
-app.use('/api/reports', reportsRoutes)
+app.use('/api/reports', authenticate, setTenantContext, requirePlanModuleAccess('reports'), reportsRoutes)
+console.log('✅ Reports routes loaded at /api/reports (plan-gated)')
 
 // Menu routes - SSOT for navigation menus
 const menuRoutes = require('./routes/menuRoutes')
@@ -858,8 +860,8 @@ try {
 // ===================================================================
 try {
   const paymentWorkflowRoutes = require('./routes/paymentWorkflowRoutes')
-  app.use('/api/payment-workflow', authenticate, setTenantContext, paymentWorkflowRoutes)
-  console.log('✅ Payment Workflow routes loaded at /api/payment-workflow')
+  app.use('/api/payment-workflow', authenticate, setTenantContext, requirePlanModuleAccess('finance'), paymentWorkflowRoutes)
+  console.log('✅ Payment Workflow routes loaded at /api/payment-workflow (plan-gated: finance)')
 } catch (e) {
   console.warn('Payment Workflow routes not loaded:', e && e.message)
 }
@@ -875,8 +877,8 @@ try {
 // ===================================================================
 try {
   const settlementRoutes = require('./routes/settlementRoutes')
-  app.use('/api/settlements', authenticate, setTenantContext, settlementRoutes)
-  console.log('✅ Settlement routes loaded at /api/settlements')
+  app.use('/api/settlements', authenticate, setTenantContext, requirePlanModuleAccess('finance'), settlementRoutes)
+  console.log('✅ Settlement routes loaded at /api/settlements (plan-gated: finance)')
 } catch (e) {
   console.warn('Settlement routes not loaded:', e && e.message)
 }
@@ -892,8 +894,8 @@ try {
 // ===================================================================
 try {
   const bankReconciliationRoutes = require('./routes/bankReconciliationRoutes')
-  app.use('/api/reconciliation', authenticate, setTenantContext, bankReconciliationRoutes)
-  console.log('✅ Bank Reconciliation routes loaded at /api/reconciliation')
+  app.use('/api/reconciliation', authenticate, setTenantContext, requirePlanModuleAccess('finance'), bankReconciliationRoutes)
+  console.log('✅ Bank Reconciliation routes loaded at /api/reconciliation (plan-gated: finance)')
 } catch (e) {
   console.warn('Bank Reconciliation routes not loaded:', e && e.message)
 }
@@ -1026,8 +1028,8 @@ try {
 // Audit routes (for Service-Table usage tracking)
 try {
   const auditRoutes = require('./routes/admin/auditRoutes')
-  app.use('/api/audit', authenticate, setTenantContext, auditRoutes)
-  console.log('✅ Audit routes loaded at /api/audit')
+  app.use('/api/audit', authenticate, setTenantContext, requirePlanModuleAccess('compliance'), auditRoutes)
+  console.log('✅ Audit routes loaded at /api/audit (plan-gated: compliance)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Audit routes not loaded:', e && e.message)
@@ -1037,8 +1039,8 @@ try {
 // Audit Integrity routes (Governance Dashboard)
 try {
   const auditIntegrityRoutes = require('./routes/audit-integrity')
-  app.use('/api/audit-integrity', authenticate, setTenantContext, auditIntegrityRoutes)
-  console.log('✅ Audit Integrity routes loaded at /api/audit-integrity')
+  app.use('/api/audit-integrity', authenticate, setTenantContext, requirePlanModuleAccess('compliance'), auditIntegrityRoutes)
+  console.log('✅ Audit Integrity routes loaded at /api/audit-integrity (plan-gated: compliance)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Audit Integrity routes not loaded:', e && e.message)
@@ -1048,8 +1050,8 @@ try {
 // Security Governance routes (Security & RBAC Dashboard for Enterprise/Super Admins)
 try {
   const securityGovernanceRoutes = require('./routes/security-governance')
-  app.use('/api/security-governance', authenticate, setTenantContext, securityGovernanceRoutes)
-  console.log('✅ Security Governance routes loaded at /api/security-governance')
+  app.use('/api/security-governance', authenticate, setTenantContext, requirePlanModuleAccess('compliance'), securityGovernanceRoutes)
+  console.log('✅ Security Governance routes loaded at /api/security-governance (plan-gated: compliance)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Security Governance routes not loaded:', e && e.message)
@@ -1059,8 +1061,8 @@ try {
 // Subscription Management routes (Super Admin only - user count limits)
 try {
   const subscriptionManagementRoutes = require('./src/routes/subscriptionManagement').default
-  app.use('/api/super-admin/subscriptions', authenticate, setTenantContext, subscriptionManagementRoutes)
-  console.log('✅ Subscription Management routes loaded at /api/super-admin/subscriptions')
+  app.use('/api/super-admin/subscriptions', authenticate, setTenantContext, requirePlanModuleAccess('super-admin'), subscriptionManagementRoutes)
+  console.log('✅ Subscription Management routes loaded at /api/super-admin/subscriptions (plan-gated: super-admin)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Subscription Management routes not loaded:', e && e.message)
@@ -1070,8 +1072,8 @@ try {
 // Vendor Management routes (Non-Privileged Users - vendors, building owners, creditors)
 try {
   const vendorRoutes = require('./src/routes/vendors').default
-  app.use('/api/vendors', authenticate, setTenantContext, vendorRoutes)
-  console.log('✅ Vendor Management routes loaded at /api/vendors')
+  app.use('/api/vendors', authenticate, setTenantContext, requirePlanModuleAccess('procurement'), vendorRoutes)
+  console.log('✅ Vendor Management routes loaded at /api/vendors (plan-gated: procurement)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Vendor Management routes not loaded:', e && e.message)
@@ -1081,8 +1083,8 @@ try {
 // Approval Workflow routes (Multi-tenant stage-based approval engine)
 try {
   const approvalRoutes = require('./dist/routes/approvals').default
-  app.use('/api/approvals', authenticate, setTenantContext, approvalRoutes)
-  console.log('✅ Approval Workflow routes loaded at /api/approvals')
+  app.use('/api/approvals', authenticate, setTenantContext, requirePlanModuleAccess('operations'), approvalRoutes)
+  console.log('✅ Approval Workflow routes loaded at /api/approvals (plan-gated: operations)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Approval Workflow routes not loaded:', e && e.message)
@@ -1092,8 +1094,8 @@ try {
 // Internal Operations routes (BISMAN Internal Staff Only - Finance, Billing, Support, Engineering)
 try {
   const internalOperationsRoutes = require('./routes/internal-operations')
-  app.use('/api/internal', authenticate, setTenantContext, internalOperationsRoutes)
-  console.log('✅ Internal Operations routes loaded at /api/internal')
+  app.use('/api/internal', authenticate, setTenantContext, requirePlanModuleAccess('internal'), internalOperationsRoutes)
+  console.log('✅ Internal Operations routes loaded at /api/internal (plan-gated)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Internal Operations routes not loaded:', e && e.message)
@@ -1147,8 +1149,8 @@ try {
 // QA / Testing Module routes (bug tracking, test assignments)
 try {
   const qaRoutes = require('./routes/qaRoutes')
-  app.use('/api/qa', authenticate, setTenantContext, qaRoutes)
-  console.log('✅ QA Module routes loaded at /api/qa')
+  app.use('/api/qa', authenticate, setTenantContext, requirePlanModuleAccess('qa'), qaRoutes)
+  console.log('✅ QA Module routes loaded at /api/qa (plan-gated)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('QA routes not loaded:', e && e.message)
@@ -1246,8 +1248,8 @@ try {
 // Analytics routes
 try {
   const analyticsRoutes = require('./routes/analytics')
-  app.use('/api/analytics', analyticsRoutes)
-  console.log('✅ Analytics routes loaded at /api/analytics')
+  app.use('/api/analytics', authenticate, setTenantContext, requirePlanModuleAccess('analytics'), analyticsRoutes)
+  console.log('✅ Analytics routes loaded at /api/analytics (plan-gated)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Analytics routes not loaded:', e && e.message)
@@ -1257,8 +1259,8 @@ try {
 // Tenant Dashboard Admin routes
 try {
   const tenantDashboardRoutes = require('./routes/admin/tenantDashboard')
-  app.use('/api/admin/tenants', authenticate, setTenantContext, tenantDashboardRoutes)
-  console.log('✅ Tenant dashboard routes loaded at /api/admin/tenants')
+  app.use('/api/admin/tenants', authenticate, setTenantContext, requirePlanModuleAccess('admin'), tenantDashboardRoutes)
+  console.log('✅ Tenant dashboard routes loaded at /api/admin/tenants (plan-gated: admin)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Tenant dashboard routes not loaded:', e && e.message)
@@ -1537,8 +1539,8 @@ try {
 // Contract Finance routes (Accounting & Payables)
 try {
   const contractFinanceRoutes = require('./routes/finance/contractFinance')
-  app.use('/api/finance', authenticate, setTenantContext, contractFinanceRoutes)
-  console.log('✅ Contract Finance routes loaded at /api/finance')
+  app.use('/api/finance', authenticate, setTenantContext, requirePlanModuleAccess('finance'), contractFinanceRoutes)
+  console.log('✅ Contract Finance routes loaded at /api/finance (plan-gated)')
 } catch (e) {
   console.warn('Contract Finance routes not loaded:', e && e.message)
 }
@@ -1592,6 +1594,7 @@ try {
   const subscriptionControlRoutes = require('./routes/subscriptionControlRoutes')
   const subscriptionCouponRoutes = require('./routes/subscriptionCouponRoutes')
   const subscriptionRedemptionRoutes = require('./routes/subscriptionRedemptionRoutes')
+  const enterpriseSubscriptionRoutes = require('./routes/enterpriseSubscriptionRoutes')
   
   // Public subscription endpoints (pricing, plans) - no auth required for GET
   // Tenant subscription management - requires authentication
@@ -1609,9 +1612,13 @@ try {
   // SuperAdmin Subscription Control ("God Mode" page) - comprehensive plan management
   app.use('/api/subscription-control', authenticate, adminIpAllowlist, subscriptionControlRoutes)
   
+  // Enterprise Admin Subscription Access Control - module/feature matrix management
+  app.use('/api/enterprise-admin/subscriptions', enterpriseSubscriptionRoutes)
+  
   console.log('✅ Subscription Management routes loaded')
   console.log('✅ Subscription Control ("God Mode") routes loaded')
   console.log('✅ Subscription Coupon routes loaded')
+  console.log('✅ Enterprise Subscription Access Control routes loaded')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Subscription routes not loaded:', e && e.message)
