@@ -423,15 +423,15 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="bg-gray-50 dark:bg-slate-900">
       {/* Header */}
-      <div className="bg-white border-b px-6 py-4">
+      <div className="bg-white dark:bg-slate-800 border-b dark:border-gray-700 px-6 py-4">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Bell className="w-6 h-6 text-blue-600" />
             <div>
-              <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
-              <p className="text-gray-500">
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Notifications</h1>
+              <p className="text-gray-500 dark:text-gray-400">
                 {unreadCount > 0 ? `${unreadCount} unread notifications` : 'All caught up!'}
               </p>
             </div>
@@ -440,14 +440,14 @@ export default function NotificationsPage() {
             <button 
               onClick={handleMarkAllRead}
               disabled={unreadCount === 0}
-              className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50 disabled:opacity-50"
+              className="flex items-center gap-2 px-4 py-2 border dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 disabled:opacity-50"
             >
               <CheckCheck className="w-4 h-4" />
               Mark All Read
             </button>
             <button 
               onClick={() => setShowSettings(true)}
-              className="flex items-center gap-2 px-4 py-2 border rounded-lg hover:bg-gray-50"
+              className="flex items-center gap-2 px-4 py-2 border dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700"
             >
               <Settings className="w-4 h-4" />
               Settings
@@ -456,7 +456,7 @@ export default function NotificationsPage() {
         </div>
       </div>
 
-      <div className="max-w-4xl mx-auto p-6">
+      <div className="p-6">
         {/* Filters */}
         <div className="flex gap-4 mb-6">
           <div className="flex gap-2">
@@ -466,8 +466,8 @@ export default function NotificationsPage() {
                 onClick={() => setFilter(f)}
                 className={`px-4 py-2 rounded-lg capitalize ${
                   filter === f 
-                    ? 'bg-blue-100 text-blue-600' 
-                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+                    ? 'bg-blue-100 text-blue-600 dark:bg-blue-900 dark:text-blue-300' 
+                    : 'bg-gray-100 text-gray-600 hover:bg-gray-200 dark:bg-slate-700 dark:text-gray-300 dark:hover:bg-slate-600'
                 }`}
               >
                 {f}
@@ -487,14 +487,14 @@ export default function NotificationsPage() {
               placeholder="Search notifications..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border rounded-lg"
+              className="w-full pl-10 pr-4 py-2 border dark:border-gray-600 rounded-lg dark:bg-slate-800 dark:text-gray-200"
             />
           </div>
 
           <select
             value={categoryFilter}
             onChange={(e) => setCategoryFilter(e.target.value)}
-            className="px-4 py-2 border rounded-lg"
+            className="px-4 py-2 border dark:border-gray-600 rounded-lg dark:bg-slate-800 dark:text-gray-200"
           >
             <option value="all">All Categories</option>
             <option value="order">Orders</option>
@@ -507,7 +507,7 @@ export default function NotificationsPage() {
         </div>
 
         {/* Notifications List */}
-        <div className="bg-white rounded-lg border overflow-hidden">
+        <div className="bg-white dark:bg-slate-800 rounded-lg border dark:border-gray-700 overflow-hidden">
           {filteredNotifications.length > 0 ? (
             filteredNotifications.map((notification) => (
               <NotificationItem
@@ -520,8 +520,8 @@ export default function NotificationsPage() {
             ))
           ) : (
             <div className="p-12 text-center">
-              <Bell className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <p className="text-gray-500">
+              <Bell className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
+              <p className="text-gray-500 dark:text-gray-400">
                 {filter === 'unread' ? 'No unread notifications' :
                  filter === 'archived' ? 'No archived notifications' :
                  'No notifications found'}
