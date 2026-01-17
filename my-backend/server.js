@@ -1,11 +1,21 @@
 // server.js - Start Express API and optionally serve the exported Next.js app
-// Build: 2025-11-26T15:07:00Z - NUCLEAR REBUILD v4
-// Commit: 891a089f (Latest fix with root route handler)
+// Build: 2025-01-17T00:00:00Z - RAILWAY DEBUG v1
+// Commit: 27a8b35f (Railway debug logging)
+
+console.log('[server.js] 📦 Module loading started at:', new Date().toISOString());
+
 try { require('dotenv').config(); } catch { /* dotenv not available */ }
 
+console.log('[server.js] Loading path...');
 const path = require('path');
+
+console.log('[server.js] Loading express...');
 const express = require('express');
+
+console.log('[server.js] Loading http...');
 const http = require('http');
+
+console.log('[server.js] Loading socket.io...');
 const { Server } = require('socket.io');
 
 // Optional Next.js integration is disabled by default on Railway API service.
@@ -26,14 +36,26 @@ if (ENABLE_NEXT) {
   }
 }
 
-const apiApp = require('./app');
+console.log('[server.js] Loading app.js...');
+let apiApp;
+try {
+  apiApp = require('./app');
+  console.log('[server.js] ✅ app.js loaded successfully');
+} catch (appError) {
+  console.error('[server.js] ❌ FATAL: app.js failed to load:', appError.message);
+  console.error('[server.js] Stack:', appError.stack);
+  process.exit(1);
+}
 
 // Next.js setup
 const dev = process.env.NODE_ENV !== 'production';
 const nextApp = (ENABLE_NEXT && nextAvailable) ? next({ dev, dir: frontendDir }) : null;
 const handle = nextApp ? nextApp.getRequestHandler() : null;
 
+console.log('[server.js] 🎯 All modules loaded, defining start()...');
+
 async function start() {
+  console.log('[server.js] 🚀 start() function called');
   // Create Express server first, before Next preparation
   const app = express();
   const server = http.createServer(app);
