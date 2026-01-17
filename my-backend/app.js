@@ -306,7 +306,7 @@ if (process.env.FRONTEND_URLS) {
 if (allowedOrigins.length === 0) {
   allowedOrigins = [
     process.env.FRONTEND_URL || 'http://localhost:3000',
-    'https://bisman-erp-frontend-production.up.railway.app',
+    'https://bisman.up.railway.app', // Railway frontend (new domain)
     'https://bisman-erp-backend-production.up.railway.app'
   ].filter(Boolean)
 }
