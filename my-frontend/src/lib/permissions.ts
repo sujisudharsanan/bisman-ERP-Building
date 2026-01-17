@@ -11,6 +11,9 @@
  * This file will be deprecated in a future release.
  */
 
+// Import for local use
+import type { Permission as PermissionType } from '@/common/rbac/rolePermissions';
+
 // Re-export from the authoritative source
 export {
   PERMISSIONS,
@@ -63,8 +66,12 @@ export interface SessionUser {
  * @deprecated Use hasPermission from @/common/rbac/rolePermissions instead
  * This function is kept for backward compatibility with legacy code.
  */
-export function can(user: SessionUser | null | undefined, permission: string, orgId?: string) {
+export function can(user: SessionUser | null | undefined, permission: string | PermissionType, orgId?: string) {
   if (!user) return false;
+  
+  // Extract key if Permission object is passed
+  const permissionKey = typeof permission === 'string' ? permission : permission.key;
+  
   // SECURITY FIX: Removed blanket ADMIN bypass - now admins use ROLE_PERMISSIONS like other roles
   // SYSTEM_ADMIN and SUPER_ADMIN still have full access as they are platform-level roles
   if (user.roles?.includes('SYSTEM_ADMIN') || user.roles?.includes('SUPER_ADMIN')) return true;
@@ -108,7 +115,7 @@ export function can(user: SessionUser | null | undefined, permission: string, or
   };
   
   (user.roles || []).forEach((r) => rolePermissionMap[r]?.forEach((p) => granted.add(p)));
-  if (!granted.has(permission)) return false;
+  if (!granted.has(permissionKey)) return false;
   
   // If org-scoped, require membership
   if (orgId) {
