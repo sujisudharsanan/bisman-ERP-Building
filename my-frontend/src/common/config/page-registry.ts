@@ -3072,19 +3072,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'View company HR policies',
     order: 23,
   },
-  {
-    id: 'common-messages',
-    name: 'Messages',
-    path: '/common/messages',
-    iconKey: "MessageSquare",
-    module: 'common',
-    permissions: ['authenticated'],
-    roles: ['ALL'],
-    status: 'active',
-    showInSidebar: false,
-    description: 'View and send messages',
-    order: 24,
-  },
+  // Removed: common-messages (use /chat instead)
   {
     id: 'common-notifications',
     name: 'Notifications',

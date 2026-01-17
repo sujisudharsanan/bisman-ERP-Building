@@ -153,7 +153,7 @@ const PAGES = [
   { page_code: 'COMMON_PAYMENT_REQUEST', display_name: 'Payment Request', route: '/common/payment-request', module_code: 'COMMON', icon: 'CreditCard', sort_order: 2, roles: ['ADMIN', 'MANAGER', 'STAFF', 'CFO', 'FINANCE_CONTROLLER', 'OPERATIONS_MANAGER', 'HUB_INCHARGE'] },
   { page_code: 'COMMON_CALENDAR', display_name: 'Calendar', route: '/common/calendar', module_code: 'COMMON', icon: 'Calendar', sort_order: 3, roles: ['ADMIN', 'MANAGER', 'STAFF', 'CFO', 'FINANCE_CONTROLLER', 'OPERATIONS_MANAGER', 'HUB_INCHARGE', 'STORE_INCHARGE'] },
   { page_code: 'COMMON_NOTIFICATIONS', display_name: 'Notifications', route: '/common/notifications', module_code: 'COMMON', icon: 'Bell', sort_order: 4, roles: ['ADMIN', 'MANAGER', 'STAFF', 'CFO', 'FINANCE_CONTROLLER', 'OPERATIONS_MANAGER', 'HUB_INCHARGE', 'STORE_INCHARGE'] },
-  { page_code: 'COMMON_MESSAGES', display_name: 'Messages', route: '/common/messages', module_code: 'COMMON', icon: 'MessageSquare', sort_order: 5, roles: ['ADMIN', 'MANAGER', 'STAFF'] },
+  // Removed: COMMON_MESSAGES (use /chat instead)
   { page_code: 'COMMON_ABOUT_ME', display_name: 'About Me', route: '/common/about-me', module_code: 'COMMON', icon: 'User', sort_order: 6, show_in_sidebar: false, roles: ['*'] },
   { page_code: 'COMMON_BANK_ACCOUNTS', display_name: 'Bank Accounts', route: '/common/bank-accounts', module_code: 'COMMON', icon: 'Building', sort_order: 7, roles: ['CFO', 'FINANCE_CONTROLLER', 'ACCOUNTS', 'BANKER'] },
   { page_code: 'COMMON_SECURITY_SETTINGS', display_name: 'Security Settings', route: '/common/security-settings', module_code: 'COMMON', icon: 'Shield', sort_order: 8, show_in_sidebar: false, roles: ['*'] },

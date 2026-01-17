@@ -6,7 +6,7 @@ import { FiDollarSign, FiTrendingUp, FiCreditCard, FiPieChart } from 'react-icon
 
 export default function BankerPage() {
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Banker Portal"
         description="Banking operations and treasury management"

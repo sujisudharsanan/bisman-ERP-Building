@@ -6,7 +6,7 @@ import { FiFileText, FiClock, FiCheckCircle, FiAlertCircle } from 'react-icons/f
 
 export default function AccountsPayablePage() {
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Accounts Payable"
         description="Manage vendor invoices and payment obligations"

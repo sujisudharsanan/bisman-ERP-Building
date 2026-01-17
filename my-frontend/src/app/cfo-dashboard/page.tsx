@@ -6,7 +6,7 @@ import { FiDollarSign, FiTrendingUp, FiBarChart2, FiPieChart } from 'react-icons
 
 export default function CFODashboardPage() {
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="CFO Dashboard"
         description="Executive financial overview and KPIs"

@@ -101,13 +101,12 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <TopNavbar showThemeToggle />
         </ErrorBoundary>
 
-        <div className="flex flex-1">
+        <div className="flex flex-1 pt-14">
           <ErrorBoundary fallback={<div className="w-16 bg-red-100 dark:bg-red-900/20 flex items-center justify-center"><p className="text-red-600 text-xs">Sidebar Error</p></div>}>
             <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
           </ErrorBoundary>
           <main
             className="flex-1 overflow-auto transition-all duration-300 p-6"
-            style={{ marginLeft: 'var(--sidebar-width)' }}
           >
             {children}
           </main>

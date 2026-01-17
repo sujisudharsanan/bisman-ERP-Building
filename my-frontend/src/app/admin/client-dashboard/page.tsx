@@ -6,7 +6,7 @@ import { FiUsers, FiActivity, FiCheckCircle, FiClock } from 'react-icons/fi';
 
 export default function AdminClientDashboardPage() {
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="Client Dashboard"
         description="Overview of client operations and metrics"

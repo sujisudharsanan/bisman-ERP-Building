@@ -6,7 +6,7 @@ import { FiActivity, FiServer, FiCpu, FiHardDrive } from 'react-icons/fi';
 
 export default function MonitoringSystemHealthPage() {
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <div className="space-y-6">
       <PageHeader
         title="System Health"
         description="Monitor system health and performance metrics"

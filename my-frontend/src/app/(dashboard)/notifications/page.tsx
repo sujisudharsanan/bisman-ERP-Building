@@ -423,7 +423,7 @@ export default function NotificationsPage() {
   };
 
   return (
-    <div className="bg-gray-50 dark:bg-slate-900">
+    <div className="bg-gray-50 dark:bg-slate-900 min-h-full">
       {/* Header */}
       <div className="bg-white dark:bg-slate-800 border-b dark:border-gray-700 px-6 py-4">
         <div className="flex justify-between items-center">

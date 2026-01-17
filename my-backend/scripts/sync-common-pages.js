@@ -24,7 +24,6 @@ const COMMON_PAGES = [
   'common-change-password',
   'common-security-settings',
   'common-notifications',
-  'common-messages',
   'common-help-center',
   'common-documentation',
   'common-user-settings',

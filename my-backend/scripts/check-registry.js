@@ -11,7 +11,7 @@ const fsPages = [
   '/admin/permissions','/admin/rag-sources','/admin/reports','/admin/settings','/admin/support',
   '/admin/users','/ai-training','/assistant','/banker','/calendar','/cfo-dashboard','/chat',
   '/chat/ai','/common/about-me','/common/bank-accounts','/common/calendar','/common/change-password',
-  '/common/documentation','/common/help-center','/common/hr-policy','/common/messages',
+  '/common/documentation','/common/help-center','/common/hr-policy',
   '/common/notifications','/common/payment-request','/common/payment-requests/create',
   '/common/security-settings','/common/task-approvals','/common/user-creation','/common/user-settings',
   '/compliance-officer','/compliance/agreements','/compliance/compliance-dashboard',

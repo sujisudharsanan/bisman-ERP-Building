@@ -43,7 +43,7 @@ const MASTER_MODULES = [
       { id: 'bank-accounts', name: 'Bank Accounts', path: '/common/bank-accounts' },
       { id: 'calendar-common', name: 'Calendar', path: '/common/calendar' },
       { id: 'documentation', name: 'Documentation', path: '/common/documentation' },
-      { id: 'messages', name: 'Messages', path: '/common/messages' },
+      // Removed: messages (use /chat instead)
       { id: 'notifications-common', name: 'Notifications', path: '/common/notifications' },
       { id: 'security-settings', name: 'Security Settings', path: '/common/security-settings' },
       { id: 'task-approvals-common', name: 'Task Approvals', path: '/common/task-approvals' },
