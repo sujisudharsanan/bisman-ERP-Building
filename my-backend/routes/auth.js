@@ -511,7 +511,7 @@ function getRedirectPath(role) {
     'ACCOUNTS_PAYABLE': '/accounts-payable',
     'BANKER': '/banker',
     'PROCUREMENT_OFFICER': '/procurement-officer',
-    'STORE_INCHARGE': '/store-incharge',
+    'STORE_INCHARGE': '/dashboard',
     'COMPLIANCE': '/compliance-officer',
     'LEGAL': '/legal',
     'HUB_INCHARGE': '/hub-incharge',

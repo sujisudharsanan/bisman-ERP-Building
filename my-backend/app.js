@@ -2167,7 +2167,23 @@ app.get('/api/enterprise-admin/master-modules', authenticate, requireRole(['ENTE
 
     // Merge database modules with config modules (for pages info)
     const modulesWithPages = dbModules.map(dbModule => {
-      const configModule = MASTER_MODULES.find(m => m.id === dbModule.module_name);
+      // Try multiple matching strategies to find the config module
+      let configModule = MASTER_MODULES.find(m => m.id === dbModule.module_name);
+      
+      // If no match by id, try matching by name (case-insensitive)
+      if (!configModule) {
+        const moduleName = (dbModule.module_name || '').toLowerCase().replace(/[_-]/g, '');
+        const displayName = (dbModule.display_name || '').toLowerCase().replace(/[_-\s]/g, '');
+        configModule = MASTER_MODULES.find(m => {
+          const configId = (m.id || '').toLowerCase().replace(/[_-]/g, '');
+          const configName = (m.name || '').toLowerCase().replace(/[_-\s]/g, '');
+          return configId === moduleName || 
+                 configId === displayName ||
+                 configName === displayName ||
+                 configName.includes(displayName) ||
+                 displayName.includes(configName);
+        });
+      }
       
       return {
         id: dbModule.id, // Use database ID for assignment

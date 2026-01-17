@@ -1,12 +1,421 @@
-"use client";
+'use client';
+
+import React, { useState, useMemo } from 'react';
+import {
+  Wallet,
+  TrendingUp,
+  TrendingDown,
+  Calendar,
+  Clock,
+  AlertTriangle,
+  CheckCircle,
+  Search,
+  Filter,
+  Download,
+  Eye,
+  FileText,
+  Users,
+  DollarSign,
+  ArrowUpRight,
+  ArrowDownRight,
+  MoreVertical,
+  RefreshCw,
+  PieChart,
+  BarChart3,
+  Send,
+  Mail
+} from 'lucide-react';
+
+// Types
+interface ReceivableItem {
+  id: string;
+  customerName: string;
+  customerCode: string;
+  invoiceNumber: string;
+  invoiceDate: string;
+  dueDate: string;
+  amount: number;
+  receivedAmount: number;
+  status: 'pending' | 'partial' | 'overdue' | 'received' | 'disputed' | 'written-off';
+  category: string;
+  paymentTerms: string;
+  salesRep: string;
+}
+
+// Mock data
+const mockReceivables: ReceivableItem[] = [
+  { id: '1', customerName: 'Acme Corporation', customerCode: 'CUST-001', invoiceNumber: 'SI-2026-0245', invoiceDate: '2026-01-03', dueDate: '2026-02-02', amount: 125000, receivedAmount: 0, status: 'pending', category: 'Enterprise', paymentTerms: 'Net 30', salesRep: 'John Smith' },
+  { id: '2', customerName: 'TechStart Inc', customerCode: 'CUST-002', invoiceNumber: 'SI-2026-0198', invoiceDate: '2025-12-18', dueDate: '2026-01-17', amount: 45000, receivedAmount: 0, status: 'overdue', category: 'SMB', paymentTerms: 'Net 30', salesRep: 'Sarah Chen' },
+  { id: '3', customerName: 'Global Retail Ltd', customerCode: 'CUST-003', invoiceNumber: 'SI-2026-0156', invoiceDate: '2026-01-08', dueDate: '2026-01-23', amount: 32500, receivedAmount: 15000, status: 'partial', category: 'Retail', paymentTerms: 'Net 15', salesRep: 'Mike Johnson' },
+  { id: '4', customerName: 'HealthCare Plus', customerCode: 'CUST-004', invoiceNumber: 'SI-2025-4521', invoiceDate: '2025-12-12', dueDate: '2026-01-11', amount: 78000, receivedAmount: 78000, status: 'received', category: 'Healthcare', paymentTerms: 'Net 30', salesRep: 'Lisa Wang' },
+  { id: '5', customerName: 'Manufacturing Co', customerCode: 'CUST-005', invoiceNumber: 'SI-2026-0212', invoiceDate: '2026-01-06', dueDate: '2026-02-05', amount: 156000, receivedAmount: 0, status: 'pending', category: 'Manufacturing', paymentTerms: 'Net 30', salesRep: 'David Brown' },
+  { id: '6', customerName: 'SmallBiz Solutions', customerCode: 'CUST-006', invoiceNumber: 'SI-2025-4389', invoiceDate: '2025-12-22', dueDate: '2026-01-06', amount: 8500, receivedAmount: 0, status: 'disputed', category: 'SMB', paymentTerms: 'Net 15', salesRep: 'John Smith' },
+  { id: '7', customerName: 'Logistics Pro', customerCode: 'CUST-007', invoiceNumber: 'SI-2026-0089', invoiceDate: '2025-12-28', dueDate: '2026-01-12', amount: 67500, receivedAmount: 67500, status: 'received', category: 'Logistics', paymentTerms: 'Net 15', salesRep: 'Sarah Chen' },
+  { id: '8', customerName: 'EduTech Academy', customerCode: 'CUST-008', invoiceNumber: 'SI-2026-0267', invoiceDate: '2026-01-10', dueDate: '2026-02-09', amount: 42000, receivedAmount: 0, status: 'pending', category: 'Education', paymentTerms: 'Net 30', salesRep: 'Mike Johnson' }
+];
+
+const summaryMetrics = {
+  totalReceivables: 554500,
+  currentDue: 323500,
+  overdue: 53500,
+  collectedThisMonth: 245800,
+  averageCollectionDays: 28,
+  customerCount: 156,
+  overdueCount: 12,
+  disputedCount: 3,
+  dso: 32 // Days Sales Outstanding
+};
+
+const agingBuckets = [
+  { label: 'Current', amount: 323000, percentage: 58, color: 'bg-green-500' },
+  { label: '1-30 Days', amount: 125000, percentage: 23, color: 'bg-yellow-500' },
+  { label: '31-60 Days', amount: 68000, percentage: 12, color: 'bg-orange-500' },
+  { label: '60+ Days', amount: 38500, percentage: 7, color: 'bg-red-500' }
+];
+
+const topCustomers = [
+  { name: 'Manufacturing Co', amount: 156000, percentage: 28 },
+  { name: 'Acme Corporation', amount: 125000, percentage: 23 },
+  { name: 'HealthCare Plus', amount: 78000, percentage: 14 },
+  { name: 'Logistics Pro', amount: 67500, percentage: 12 },
+  { name: 'TechStart Inc', amount: 45000, percentage: 8 }
+];
 
 export default function AccountsReceivableSummaryPage() {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [categoryFilter, setCategoryFilter] = useState<string>('all');
+  const [dateRange, setDateRange] = useState('30d');
+
+  const filteredReceivables = useMemo(() => {
+    return mockReceivables.filter((r) => {
+      const matchesSearch = 
+        r.customerName.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        r.invoiceNumber.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        r.customerCode.toLowerCase().includes(searchTerm.toLowerCase());
+      
+      const matchesStatus = statusFilter === 'all' || r.status === statusFilter;
+      const matchesCategory = categoryFilter === 'all' || r.category === categoryFilter;
+      
+      return matchesSearch && matchesStatus && matchesCategory;
+    });
+  }, [searchTerm, statusFilter, categoryFilter]);
+
+  const getStatusColor = (status: string) => {
+    const colors: Record<string, string> = {
+      'pending': 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+      'partial': 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+      'overdue': 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+      'received': 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+      'disputed': 'bg-purple-100 text-purple-800 dark:bg-purple-900/30 dark:text-purple-400',
+      'written-off': 'bg-gray-100 text-gray-800 dark:bg-gray-900/30 dark:text-gray-400'
+    };
+    return colors[status] || colors['pending'];
+  };
+
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('en-US', {
+      style: 'currency',
+      currency: 'USD',
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0
+    }).format(value);
+  };
+
+  const getDaysUntilDue = (dueDate: string) => {
+    const today = new Date();
+    const due = new Date(dueDate);
+    const diffTime = due.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    return diffDays;
+  };
+
+  const categories = [...new Set(mockReceivables.map(r => r.category))];
+
   return (
-    <div className="p-6">
-      <h1 className="text-2xl font-bold mb-4">Accounts Receivable Summary</h1>
-      <p className="text-gray-600 dark:text-gray-400">
-        Accounts receivable summary page - Coming soon.
-      </p>
+    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+      {/* Header */}
+      <div className="mb-8">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900 dark:text-white flex items-center gap-3">
+              <Wallet className="w-8 h-8 text-green-500" />
+              Accounts Receivable Summary
+            </h1>
+            <p className="text-gray-600 dark:text-gray-400 mt-1">
+              Track customer invoices, collections, and outstanding receivables
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            <select
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value)}
+              className="px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
+            >
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+              <option value="90d">Last 90 days</option>
+              <option value="1y">Last year</option>
+            </select>
+            <button className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+              <RefreshCw className="w-4 h-4" />
+              <span className="text-sm">Refresh</span>
+            </button>
+            <button className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+              <Download className="w-4 h-4" />
+              <span className="text-sm">Export</span>
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* Key Metrics */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-8">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-gray-600 dark:text-gray-400 text-sm">Total Receivables</span>
+            <DollarSign className="w-5 h-5 text-blue-500" />
+          </div>
+          <div className="text-3xl font-bold text-gray-900 dark:text-white">
+            {formatCurrency(summaryMetrics.totalReceivables)}
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {summaryMetrics.customerCount} customers
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-gray-600 dark:text-gray-400 text-sm">Currently Due</span>
+            <Clock className="w-5 h-5 text-yellow-500" />
+          </div>
+          <div className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">
+            {formatCurrency(summaryMetrics.currentDue)}
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Due within 30 days</p>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-gray-600 dark:text-gray-400 text-sm">Overdue</span>
+            <AlertTriangle className="w-5 h-5 text-red-500" />
+          </div>
+          <div className="text-3xl font-bold text-red-600 dark:text-red-400">
+            {formatCurrency(summaryMetrics.overdue)}
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+            {summaryMetrics.overdueCount} invoices
+          </p>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-gray-600 dark:text-gray-400 text-sm">Collected This Month</span>
+            <CheckCircle className="w-5 h-5 text-green-500" />
+          </div>
+          <div className="text-3xl font-bold text-green-600 dark:text-green-400">
+            {formatCurrency(summaryMetrics.collectedThisMonth)}
+          </div>
+          <div className="flex items-center gap-1 mt-1 text-sm text-green-500">
+            <TrendingUp className="w-4 h-4" />
+            <span>8% vs last month</span>
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <span className="text-gray-600 dark:text-gray-400 text-sm">DSO</span>
+            <Calendar className="w-5 h-5 text-indigo-500" />
+          </div>
+          <div className="text-3xl font-bold text-gray-900 dark:text-white">
+            {summaryMetrics.dso}
+          </div>
+          <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">Days Sales Outstanding</p>
+        </div>
+      </div>
+
+      {/* Aging & Top Customers */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="lg:col-span-2 bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+            <BarChart3 className="w-5 h-5 text-indigo-500" />
+            Aging Analysis
+          </h2>
+          <div className="space-y-4">
+            {agingBuckets.map((bucket) => (
+              <div key={bucket.label} className="flex items-center gap-4">
+                <div className="w-24 text-sm font-medium text-gray-600 dark:text-gray-400">{bucket.label}</div>
+                <div className="flex-1">
+                  <div className="h-8 bg-gray-100 dark:bg-gray-700 rounded-lg overflow-hidden">
+                    <div 
+                      className={`h-full ${bucket.color} flex items-center justify-end pr-2`}
+                      style={{ width: `${bucket.percentage}%` }}
+                    >
+                      <span className="text-xs font-medium text-white">{bucket.percentage}%</span>
+                    </div>
+                  </div>
+                </div>
+                <div className="w-28 text-right font-semibold text-gray-900 dark:text-white">
+                  {formatCurrency(bucket.amount)}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm p-6">
+          <h2 className="text-lg font-semibold text-gray-900 dark:text-white mb-6 flex items-center gap-2">
+            <Users className="w-5 h-5 text-indigo-500" />
+            Top Customers
+          </h2>
+          <div className="space-y-4">
+            {topCustomers.map((customer, index) => (
+              <div key={customer.name} className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-8 h-8 rounded-full bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                    <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">{index + 1}</span>
+                  </div>
+                  <span className="text-sm font-medium text-gray-900 dark:text-white">{customer.name}</span>
+                </div>
+                <span className="text-sm font-semibold text-gray-600 dark:text-gray-400">
+                  {formatCurrency(customer.amount)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {/* Filters */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm mb-6">
+        <div className="p-4 flex flex-col lg:flex-row gap-4">
+          <div className="flex-1 relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+            <input
+              type="text"
+              placeholder="Search by customer, invoice number..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+            />
+          </div>
+          <div className="flex gap-3">
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
+            >
+              <option value="all">All Status</option>
+              <option value="pending">Pending</option>
+              <option value="partial">Partial</option>
+              <option value="overdue">Overdue</option>
+              <option value="received">Received</option>
+              <option value="disputed">Disputed</option>
+            </select>
+            <select
+              value={categoryFilter}
+              onChange={(e) => setCategoryFilter(e.target.value)}
+              className="px-4 py-2 bg-gray-50 dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg text-sm"
+            >
+              <option value="all">All Categories</option>
+              {categories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </div>
+
+      {/* Receivables Table */}
+      <div className="bg-white dark:bg-gray-800 rounded-xl border border-gray-200 dark:border-gray-700 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead className="bg-gray-50 dark:bg-gray-900">
+              <tr>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Customer</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Invoice</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Category</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Due Date</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Amount</th>
+                <th className="px-6 py-4 text-left text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Status</th>
+                <th className="px-6 py-4 text-right text-xs font-semibold text-gray-600 dark:text-gray-400 uppercase tracking-wider">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+              {filteredReceivables.map((item) => {
+                const daysUntilDue = getDaysUntilDue(item.dueDate);
+                return (
+                  <tr key={item.id} className="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-gray-100 dark:bg-gray-700 flex items-center justify-center">
+                          <Users className="w-5 h-5 text-gray-500" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900 dark:text-white">{item.customerName}</div>
+                          <div className="text-sm text-gray-500 dark:text-gray-400">{item.customerCode}</div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="font-medium text-gray-900 dark:text-white">{item.invoiceNumber}</div>
+                      <div className="text-sm text-gray-500 dark:text-gray-400">{item.invoiceDate}</div>
+                    </td>
+                    <td className="px-6 py-4 text-sm text-gray-600 dark:text-gray-400">
+                      {item.category}
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="text-sm text-gray-900 dark:text-white">{item.dueDate}</div>
+                      <div className={`text-xs ${daysUntilDue < 0 ? 'text-red-500' : daysUntilDue <= 7 ? 'text-yellow-500' : 'text-gray-500'}`}>
+                        {daysUntilDue < 0 ? `${Math.abs(daysUntilDue)} days overdue` : `${daysUntilDue} days left`}
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      <div className="font-semibold text-gray-900 dark:text-white">{formatCurrency(item.amount)}</div>
+                      {item.receivedAmount > 0 && item.receivedAmount < item.amount && (
+                        <div className="text-sm text-green-500">Received: {formatCurrency(item.receivedAmount)}</div>
+                      )}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(item.status)}`}>
+                        {item.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="Send Reminder">
+                          <Mail className="w-4 h-4 text-gray-500" />
+                        </button>
+                        <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="View Details">
+                          <Eye className="w-4 h-4 text-gray-500" />
+                        </button>
+                        <button className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors" title="More">
+                          <MoreVertical className="w-4 h-4 text-gray-500" />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination */}
+        <div className="px-6 py-4 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            Showing {filteredReceivables.length} of {mockReceivables.length} invoices
+          </div>
+          <div className="flex gap-2">
+            <button className="px-4 py-2 text-sm border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
+              Previous
+            </button>
+            <button className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors">
+              Next
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

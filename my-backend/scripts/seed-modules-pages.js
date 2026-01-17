@@ -294,7 +294,7 @@ async function seedModulesAndPages() {
     console.log('🔐 Inserting role page access...');
     let accessCount = 0;
 
-    for (const [_pageCode, pageData] of Object.entries(pageIdMap)) {
+    for (const [, pageData] of Object.entries(pageIdMap)) {
       const pageId = pageData.id;
       const roles = pageData.roles;
 

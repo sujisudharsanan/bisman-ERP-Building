@@ -3,6 +3,109 @@
 // Enterprise Admin can assign these to Super Admins
 
 const MASTER_MODULES = [
+  // =========================================
+  // GRANULAR MODULES (match database entries)
+  // =========================================
+  {
+    id: 'dashboard',
+    name: 'Dashboard',
+    description: 'Main dashboard access',
+    icon: 'FiLayout',
+    category: 'Common',
+    businessCategory: 'All',
+    alwaysAccessible: true,
+    pages: [
+      { id: 'dashboard', name: 'Dashboard', path: '/dashboard' },
+      { id: 'task-dashboard', name: 'Task Dashboard', path: '/task-dashboard' },
+    ],
+  },
+  {
+    id: 'client-management',
+    name: 'Client Management',
+    description: 'Manage clients and user accounts',
+    icon: 'FiUsers',
+    category: 'Administration',
+    businessCategory: 'Business ERP',
+    pages: [
+      { id: 'user-management', name: 'User Management', path: '/super-admin/system/user-management' },
+      { id: 'clients', name: 'Clients List', path: '/admin/clients' },
+      { id: 'system-clients', name: 'System Clients', path: '/system/clients' },
+    ],
+  },
+  {
+    id: 'security-management',
+    name: 'Security Management',
+    description: 'Security settings and access control',
+    icon: 'FiShield',
+    category: 'Administration',
+    businessCategory: 'Business ERP',
+    pages: [
+      { id: 'security', name: 'Security', path: '/super-admin/security' },
+      { id: 'rbac-security', name: 'RBAC Security', path: '/enterprise-admin/rbac-security' },
+      { id: 'security-operations', name: 'Security Operations', path: '/enterprise-admin/security-operations' },
+    ],
+  },
+  {
+    id: 'pages-roles-report',
+    name: 'Pages & Roles Report',
+    description: 'View pages and role assignments',
+    icon: 'FiFileText',
+    category: 'Administration',
+    businessCategory: 'Business ERP',
+    pages: [
+      { id: 'pages-roles-report', name: 'Pages & Roles Report', path: '/super-admin/system/pages-roles-report' },
+      { id: 'role-access-explorer', name: 'Role & Access Explorer', path: '/super-admin/system/role-access-explorer' },
+    ],
+  },
+  {
+    id: 'backup-restore',
+    name: 'Backup & Restore',
+    description: 'System backup and restore functionality',
+    icon: 'FiDatabase',
+    category: 'Administration',
+    businessCategory: 'Business ERP',
+    pages: [
+      { id: 'backup-restore', name: 'Backup & Restore', path: '/super-admin/system/backup-restore' },
+    ],
+  },
+  {
+    id: 'system-health',
+    name: 'System Health',
+    description: 'Monitor system health and performance',
+    icon: 'FiActivity',
+    category: 'Administration',
+    businessCategory: 'Business ERP',
+    pages: [
+      { id: 'system-health', name: 'System Health Dashboard', path: '/super-admin/system/system-health' },
+      { id: 'monitoring', name: 'System Monitoring', path: '/enterprise-admin/monitoring' },
+    ],
+  },
+  {
+    id: 'integration-settings',
+    name: 'Integration Settings',
+    description: 'Configure external integrations',
+    icon: 'FiLink',
+    category: 'Administration',
+    businessCategory: 'Business ERP',
+    pages: [
+      { id: 'integration-settings', name: 'Integration Settings', path: '/super-admin/system/integration-settings' },
+      { id: 'integrations', name: 'Integrations', path: '/enterprise-admin/integrations' },
+    ],
+  },
+  {
+    id: 'deployment-tools',
+    name: 'Deployment Tools',
+    description: 'Deployment and DevOps tools',
+    icon: 'FiUpload',
+    category: 'Administration',
+    businessCategory: 'Business ERP',
+    pages: [
+      { id: 'deployment-tools', name: 'Deployment Tools', path: '/super-admin/system/deployment-tools' },
+    ],
+  },
+  // =========================================
+  // CORE MODULES
+  // =========================================
   {
     id: 'common',
     name: 'Common Module',

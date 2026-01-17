@@ -8,7 +8,7 @@ export default function LoginPortalPage() {
       title: 'Admin Portal',
       description: 'System administration and configuration',
       icon: Shield,
-      href: '/auth/admin-login',
+      href: '/auth/login',
       color: 'blue',
       features: [
         'User Management',

@@ -1,8 +1,9 @@
 "use client";
 
 import React, { useEffect, useMemo, useState } from "react";
-import { FiPackage, FiGrid, FiUsers, FiCheckCircle, FiSearch, FiChevronUp, FiLock, FiPlus, FiX } from "react-icons/fi";
+import { FiPackage, FiGrid, FiUsers, FiCheckCircle, FiSearch, FiChevronUp, FiLock, FiPlus, FiX, FiExternalLink } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
+import Link from "next/link";
 
 type ModulePage = {
   id: string;
@@ -104,14 +105,25 @@ export default function ModuleManagementPage() {
   const [selectedModuleId, setSelectedModuleId] = useState<number | null>(null);
   const [moduleSearchQuery, setModuleSearchQuery] = useState('');
   
-  // Drawer state for Super Admins
+  // Drawer state for Pages Preview
   const [isDrawerExpanded, setIsDrawerExpanded] = useState(true);
-  const [adminsSearchQuery, setAdminsSearchQuery] = useState('');
-  const [adminsFilter, setAdminsFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
   
   // Add Super Admin modal state
   const [showAddAdminModal, setShowAddAdminModal] = useState(false);
   const [addingAdmin, setAddingAdmin] = useState(false);
+  
+  // Selected Super Admin for detailed view
+  const [selectedAdminId, setSelectedAdminId] = useState<number | null>(null);
+  
+  // Checked unassigned modules (for showing pages in overview)
+  const [checkedUnassignedModules, setCheckedUnassignedModules] = useState<Set<number>>(new Set());
+  
+  // Assign mode state
+  const [isAssignMode, setIsAssignMode] = useState(false);
+  const [assigningModules, setAssigningModules] = useState(false);
+  
+  // Selected module for pages preview (from either assigned or unassigned)
+  const [selectedPreviewModuleId, setSelectedPreviewModuleId] = useState<number | null>(null);
 
   // Fetch data on mount
   useEffect(() => {
@@ -231,29 +243,6 @@ export default function ModuleManagementPage() {
     return superAdmins.filter(a => !assignedIds.has(a.id));
   }, [selectedModuleId, superAdmins, moduleAssignedAdmins]);
 
-  // Filter admins for drawer display
-  const filteredAdminsForDrawer = useMemo(() => {
-    let result = superAdmins;
-
-    // Search filter
-    if (adminsSearchQuery.trim()) {
-      const q = adminsSearchQuery.toLowerCase();
-      result = result.filter(a => 
-        (a.name || '').toLowerCase().includes(q) ||
-        (a.email || '').toLowerCase().includes(q)
-      );
-    }
-
-    // Assigned/unassigned filter
-    if (adminsFilter === 'assigned') {
-      result = result.filter(a => moduleAssignedAdmins.some(ma => ma.id === a.id));
-    } else if (adminsFilter === 'unassigned') {
-      result = result.filter(a => !moduleAssignedAdmins.some(ma => ma.id === a.id));
-    }
-
-    return result;
-  }, [superAdmins, adminsSearchQuery, adminsFilter, moduleAssignedAdmins]);
-
   // Module stats
   const moduleStats = useMemo(() => {
     const total = modules.length;
@@ -267,6 +256,114 @@ export default function ModuleManagementPage() {
     
     return { total, business, pump, alwaysAccessible };
   }, [modules]);
+
+  // Get selected admin for detailed view
+  const selectedAdmin = useMemo(() => {
+    return superAdmins.find(a => a.id === selectedAdminId) || null;
+  }, [superAdmins, selectedAdminId]);
+
+  // Get assigned modules for selected admin
+  const selectedAdminAssignedModules = useMemo(() => {
+    if (!selectedAdmin) return [];
+    const assigned = selectedAdmin.assignedModules || [];
+    return modules.filter(m => {
+      return assigned.some(v => {
+        if (typeof v === 'number') return v === m.id;
+        if (typeof v === 'string') {
+          const n = Number(v);
+          if (Number.isFinite(n)) return n === m.id;
+          const keyLc = String(v).toLowerCase();
+          return (m.module_name || '').toLowerCase() === keyLc || 
+                 (m.display_name || '').toLowerCase() === keyLc;
+        }
+        return false;
+      });
+    });
+  }, [selectedAdmin, modules]);
+
+  // Get unassigned modules for selected admin
+  const selectedAdminUnassignedModules = useMemo(() => {
+    if (!selectedAdmin) return [];
+    const assignedIds = new Set(selectedAdminAssignedModules.map(m => m.id));
+    return filteredModules.filter(m => !assignedIds.has(m.id));
+  }, [selectedAdmin, selectedAdminAssignedModules, filteredModules]);
+
+  // Get selected module for preview
+  const selectedPreviewModule = useMemo(() => {
+    if (!selectedPreviewModuleId) return null;
+    return modules.find(m => m.id === selectedPreviewModuleId) || null;
+  }, [selectedPreviewModuleId, modules]);
+
+  // Get pages for the selected preview module
+  const selectedModulePages = useMemo(() => {
+    if (!selectedPreviewModule) return [];
+    return (selectedPreviewModule.pages || []).map(p => ({ 
+      ...p, 
+      moduleName: selectedPreviewModule.display_name || selectedPreviewModule.module_name 
+    }));
+  }, [selectedPreviewModule]);
+
+  // Toggle unassigned module checkbox
+  const toggleUnassignedModule = (moduleId: number) => {
+    setCheckedUnassignedModules(prev => {
+      const next = new Set(prev);
+      if (next.has(moduleId)) {
+        next.delete(moduleId);
+      } else {
+        next.add(moduleId);
+      }
+      return next;
+    });
+  };
+
+  // Assign checked modules to selected admin
+  const assignModulesToAdmin = async () => {
+    if (!selectedAdminId || checkedUnassignedModules.size === 0) return;
+    
+    setAssigningModules(true);
+    try {
+      // Assign each checked module
+      const moduleIds = Array.from(checkedUnassignedModules);
+      
+      for (const moduleId of moduleIds) {
+        const response = await fetch(`/api/enterprise-admin/super-admins/${selectedAdminId}/assign-module`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({ moduleId }),
+        });
+
+        if (!response.ok) {
+          console.error(`Failed to assign module ${moduleId}`);
+        }
+      }
+
+      // Update local state - add modules to admin's assigned list
+      setSuperAdmins(prev => prev.map(admin => {
+        if (admin.id === selectedAdminId) {
+          return {
+            ...admin,
+            assignedModules: [...(admin.assignedModules || []), ...moduleIds],
+          };
+        }
+        return admin;
+      }));
+
+      // Clear checked modules and exit assign mode
+      setCheckedUnassignedModules(new Set());
+      setIsAssignMode(false);
+    } catch (err) {
+      console.error('Error assigning modules:', err);
+    } finally {
+      setAssigningModules(false);
+    }
+  };
+
+  // Cancel assign mode
+  const cancelAssignMode = () => {
+    setCheckedUnassignedModules(new Set());
+    setIsAssignMode(false);
+  };
 
   // Assign admin to current module
   const assignAdminToModule = async (adminId: number) => {
@@ -398,77 +495,58 @@ export default function ModuleManagementPage() {
             </div>
           </div>
 
-          {/* 2. Modules Column */}
+          {/* 2. Super Admins Column */}
           <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
             <div className="text-sm font-semibold mb-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FiPackage className="text-blue-600" />
-                <span>Modules</span>
+                <FiUsers className="text-emerald-600" />
+                <span>Super Admins</span>
               </div>
-              <span className="text-xs font-normal text-gray-500">{filteredModules.length}</span>
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-normal text-gray-500">
+                  {superAdmins.length}
+                </span>
+              </div>
             </div>
             
-            {/* Search */}
-            <div className="relative mb-2">
-              <FiSearch className="absolute left-2 top-1/2 -translate-y-1/2 w-3 h-3 text-gray-400" />
-              <input
-                type="text"
-                placeholder="Search modules..."
-                value={moduleSearchQuery}
-                onChange={(e) => setModuleSearchQuery(e.target.value)}
-                className="w-full pl-7 pr-3 py-1.5 text-xs rounded border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 focus:ring-2 focus:ring-blue-400 focus:outline-none"
-              />
-            </div>
-            
-            <div className="space-y-1 max-h-[480px] overflow-y-auto">
-              {filteredModules.length === 0 ? (
-                <div className="text-xs text-gray-500 text-center py-4">No modules found</div>
+            <div className="space-y-1 max-h-[520px] overflow-y-auto">
+              {superAdmins.length === 0 ? (
+                <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-300 dark:border-gray-600">
+                  No Super Admins found.
+                </div>
               ) : (
-                filteredModules.map((m) => {
-                  const isSelected = selectedModuleId === m.id;
-                  const isAlwaysAccessible = m.alwaysAccessible || m.is_always_accessible;
-                  const assignedCount = superAdmins.filter(a => 
-                    (a.assignedModules || []).some(v => {
-                      if (typeof v === 'number') return v === m.id;
-                      const n = Number(v);
-                      return Number.isFinite(n) ? n === m.id : false;
-                    })
-                  ).length;
-                  const pageCount = m.pages?.length || 0;
+                superAdmins.map((admin) => {
+                  const isSelected = selectedAdminId === admin.id;
+                  const assignedCount = (admin.assignedModules || []).length;
                   
                   return (
                     <button
-                      key={m.id}
-                      onClick={() => setSelectedModuleId(m.id)}
+                      key={admin.id}
+                      onClick={() => {
+                        setSelectedAdminId(admin.id);
+                        setCheckedUnassignedModules(new Set());
+                      }}
                       className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition ${
                         isSelected
-                          ? "border-blue-500 bg-blue-100 dark:bg-blue-900/40 ring-2 ring-blue-300 shadow-sm"
-                          : isAlwaysAccessible
-                          ? "border-green-300 bg-green-50/50 dark:bg-green-900/20 hover:bg-green-100/50"
-                          : "border-gray-200 dark:border-gray-700 hover:border-blue-300 hover:bg-blue-50/50"
+                          ? "border-emerald-500 bg-emerald-100 dark:bg-emerald-900/40 ring-2 ring-emerald-300 shadow-sm"
+                          : "border-gray-200 dark:border-gray-700 hover:border-emerald-300 hover:bg-emerald-50/50"
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
                         <div className="flex items-center gap-2 min-w-0">
-                          {isSelected && <span className="text-blue-600 font-bold">✓</span>}
-                          <span className={`truncate font-medium ${isSelected ? 'text-blue-700 dark:text-blue-300' : ''}`}>
-                            {m.display_name || m.name || m.module_name}
-                          </span>
-                          {isAlwaysAccessible && (
-                            <span className="text-[9px] px-1.5 py-0.5 rounded bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-300 flex items-center gap-0.5">
-                              <FiLock className="w-2.5 h-2.5" />
-                              Always
-                            </span>
-                          )}
+                          {isSelected && <FiCheckCircle className="w-3.5 h-3.5 text-emerald-600 shrink-0" />}
+                          <div className="min-w-0">
+                            <div className={`font-medium truncate ${isSelected ? 'text-emerald-700 dark:text-emerald-300' : ''}`}>
+                              {admin.name || admin.email || `Admin #${admin.id}`}
+                            </div>
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                              {admin.email}
+                            </div>
+                          </div>
                         </div>
                         <div className="flex items-center gap-1.5 shrink-0">
-                          <span className="text-[10px] text-gray-500 flex items-center gap-0.5" title="Pages">
-                            <FiGrid className="w-3 h-3" />
-                            {pageCount}
-                          </span>
-                          <span className="text-[10px] text-gray-500 flex items-center gap-0.5" title="Assigned Super Admins">
-                            <FiUsers className="w-3 h-3" />
-                            {assignedCount}
+                          <span className="text-[10px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                            {assignedCount} modules
                           </span>
                         </div>
                       </div>
@@ -479,172 +557,210 @@ export default function ModuleManagementPage() {
             </div>
           </div>
 
-          {/* 3. Pages Column */}
+          {/* 3. Assigned Modules Column */}
           <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
             <div className="text-sm font-semibold mb-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FiGrid className="text-purple-600" />
-                <span>Pages</span>
-                {selectedModule && (
-                  <span className="text-xs font-normal text-blue-600 bg-blue-50 dark:bg-blue-900/30 px-2 py-0.5 rounded">
-                    {selectedModule.display_name || selectedModule.name}
+                <FiPackage className="text-blue-600" />
+                <span>Assigned Modules</span>
+                {selectedAdmin && (
+                  <span className="text-xs font-normal text-emerald-600 bg-emerald-50 dark:bg-emerald-900/30 px-2 py-0.5 rounded">
+                    {selectedAdmin.name || selectedAdmin.email}
                   </span>
                 )}
               </div>
               <span className="text-xs font-normal text-gray-500">
-                {selectedModule?.pages?.length || 0}
+                {selectedAdmin ? selectedAdminAssignedModules.length : 0}
               </span>
             </div>
             
             <div className="space-y-1 max-h-[520px] overflow-y-auto">
-              {!selectedModule ? (
+              {!selectedAdmin ? (
                 <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
-                  ⚠️ Select a Module to view its pages
+                  ⚠️ Select a Super Admin to view assigned modules
                 </div>
-              ) : !selectedModule.pages || selectedModule.pages.length === 0 ? (
+              ) : selectedAdminAssignedModules.length === 0 ? (
                 <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-300 dark:border-gray-600">
-                  No pages defined for this module.
+                  No modules assigned to this Super Admin.
                 </div>
               ) : (
-                selectedModule.pages.map((page, idx) => (
-                  <div
-                    key={page.id || page.path || idx}
-                    className="flex items-center gap-2 p-2 rounded-md border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800"
-                  >
-                    <FiCheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {page.name || page.id || page.path}
+                selectedAdminAssignedModules.map((m) => {
+                  const pageCount = m.pages?.length || 0;
+                  const isAlwaysAccessible = m.alwaysAccessible || m.is_always_accessible;
+                  const isSelected = selectedPreviewModuleId === m.id;
+                  
+                  return (
+                    <button
+                      key={m.id}
+                      onClick={() => setSelectedPreviewModuleId(isSelected ? null : m.id)}
+                      className={`w-full text-left flex items-center gap-2 p-2 rounded-md border transition ${
+                        isSelected
+                          ? "border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300 shadow-sm"
+                          : isAlwaysAccessible
+                          ? "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 hover:border-green-400"
+                          : "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 hover:border-blue-400"
+                      }`}
+                    >
+                      <FiCheckCircle className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-purple-600' : isAlwaysAccessible ? 'text-green-500' : 'text-blue-500'}`} />
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-xs font-medium truncate ${isSelected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-900 dark:text-gray-100'}`}>
+                          {m.display_name || m.name || m.module_name}
+                        </div>
+                        <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                          <FiGrid className="w-2.5 h-2.5" />
+                          {pageCount} pages
+                          {isAlwaysAccessible && (
+                            <span className="ml-1 text-green-600 dark:text-green-400 flex items-center gap-0.5">
+                              <FiLock className="w-2.5 h-2.5" />
+                              Always
+                            </span>
+                          )}
+                        </div>
                       </div>
-                      <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                        {page.path || page.id}
-                      </div>
-                    </div>
-                  </div>
-                ))
+                    </button>
+                  );
+                })
               )}
             </div>
           </div>
 
-          {/* 4. Assigned Super Admins Column */}
+          {/* 4. Unassigned Modules Column */}
           <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
             <div className="text-sm font-semibold mb-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <FiUsers className="text-emerald-600" />
-                <span>Assigned Super Admins</span>
+                <FiPackage className="text-orange-600" />
+                <span>Unassigned Modules</span>
               </div>
               <div className="flex items-center gap-2">
                 <span className="text-xs font-normal text-gray-500">
-                  {moduleAssignedAdmins.length}
+                  {selectedAdmin ? selectedAdminUnassignedModules.length : 0}
                 </span>
-                {selectedModule && !selectedModule.alwaysAccessible && !selectedModule.is_always_accessible && (
+                {selectedAdmin && selectedAdminUnassignedModules.length > 0 && !isAssignMode && (
                   <button
-                    onClick={() => setShowAddAdminModal(true)}
-                    className="p-1 rounded-md bg-emerald-100 hover:bg-emerald-200 dark:bg-emerald-900/30 dark:hover:bg-emerald-800/50 text-emerald-600 dark:text-emerald-400 transition-colors"
-                    title="Add Super Admin to this module"
+                    onClick={() => setIsAssignMode(true)}
+                    className="px-2 py-1 text-xs font-medium rounded-md bg-orange-100 hover:bg-orange-200 dark:bg-orange-900/30 dark:hover:bg-orange-800/50 text-orange-700 dark:text-orange-300 transition-colors flex items-center gap-1"
                   >
-                    <FiPlus className="w-3.5 h-3.5" />
+                    <FiPlus className="w-3 h-3" />
+                    Assign
                   </button>
                 )}
               </div>
             </div>
             
-            <div className="space-y-1 max-h-[520px] overflow-y-auto">
-              {!selectedModule ? (
+            <div className="space-y-1 max-h-[480px] overflow-y-auto">
+              {!selectedAdmin ? (
                 <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
-                  ⚠️ Select a Module to view assigned Super Admins
+                  ⚠️ Select a Super Admin from the list to view unassigned modules
                 </div>
-              ) : selectedModule.alwaysAccessible || selectedModule.is_always_accessible ? (
-                <div className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-300 dark:border-blue-700">
-                  <div className="flex items-center gap-2 mb-1">
-                    <FiLock className="w-3.5 h-3.5" />
-                    <span className="font-medium">Always Accessible Module</span>
-                  </div>
-                  <p className="text-[10px] opacity-80">
-                    This module is available to all Super Admins automatically. No assignment needed.
-                  </p>
-                </div>
-              ) : moduleAssignedAdmins.length === 0 ? (
-                <div className="text-xs text-gray-500 bg-gray-50 dark:bg-gray-800/50 p-2 rounded border border-gray-300 dark:border-gray-600">
-                  No Super Admins have been assigned this module.
+              ) : selectedAdminUnassignedModules.length === 0 ? (
+                <div className="text-xs text-green-700 dark:text-green-300 bg-green-50 dark:bg-green-900/20 p-2 rounded border border-green-300 dark:border-green-700">
+                  ✓ All modules are assigned to this Super Admin
                 </div>
               ) : (
-                moduleAssignedAdmins.map((admin) => (
-                  <div
-                    key={admin.id}
-                    className="flex items-center gap-2 p-2 rounded-md border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20"
-                  >
-                    <FiCheckCircle className="w-3.5 h-3.5 text-green-500 shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
-                        {admin.name || admin.email || `Admin #${admin.id}`}
-                      </div>
-                      <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                        {admin.email}
+                selectedAdminUnassignedModules.map((m) => {
+                  const isChecked = checkedUnassignedModules.has(m.id);
+                  const pageCount = m.pages?.length || 0;
+                  const isSelected = selectedPreviewModuleId === m.id;
+                  
+                  return (
+                    <div
+                      key={m.id}
+                      className={`flex items-center gap-2 p-2 rounded-md border transition cursor-pointer ${
+                        isAssignMode && isChecked
+                          ? "border-orange-400 bg-orange-50 dark:bg-orange-900/30 ring-1 ring-orange-300"
+                          : isSelected && !isAssignMode
+                          ? "border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300 shadow-sm"
+                          : "border-gray-200 dark:border-gray-700 hover:border-orange-300 hover:bg-orange-50/50"
+                      }`}
+                      onClick={() => {
+                        if (isAssignMode) {
+                          toggleUnassignedModule(m.id);
+                        } else {
+                          setSelectedPreviewModuleId(isSelected ? null : m.id);
+                        }
+                      }}
+                    >
+                      {isAssignMode && (
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => toggleUnassignedModule(m.id)}
+                          className="w-3.5 h-3.5 rounded border-gray-300 text-orange-600 focus:ring-orange-500"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className={`text-xs font-medium truncate ${isSelected && !isAssignMode ? 'text-purple-700 dark:text-purple-300' : 'text-gray-900 dark:text-gray-100'}`}>
+                          {m.display_name || m.name || m.module_name}
+                        </div>
+                        <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
+                          <FiGrid className="w-2.5 h-2.5" />
+                          {pageCount} pages
+                        </div>
                       </div>
                     </div>
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400">
-                      {admin.role || 'SUPER_ADMIN'}
-                    </span>
-                  </div>
-                ))
+                  );
+                })
               )}
             </div>
+            
+            {/* Assign Mode Actions */}
+            {isAssignMode && selectedAdmin && (
+              <div className="mt-3 pt-3 border-t border-gray-200 dark:border-gray-700 space-y-2">
+                {checkedUnassignedModules.size > 0 && (
+                  <div className="text-xs text-orange-700 dark:text-orange-300 font-medium">
+                    {checkedUnassignedModules.size} module(s) selected
+                  </div>
+                )}
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={assignModulesToAdmin}
+                    disabled={checkedUnassignedModules.size === 0 || assigningModules}
+                    className="flex-1 px-3 py-1.5 text-xs font-medium rounded-md bg-emerald-600 hover:bg-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-1"
+                  >
+                    {assigningModules ? (
+                      <>Assigning...</>
+                    ) : (
+                      <>
+                        <FiCheckCircle className="w-3 h-3" />
+                        Confirm
+                      </>
+                    )}
+                  </button>
+                  <button
+                    onClick={cancelAssignMode}
+                    disabled={assigningModules}
+                    className="px-3 py-1.5 text-xs font-medium rounded-md bg-gray-100 hover:bg-gray-200 dark:bg-gray-700 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 disabled:opacity-50 transition-colors"
+                  >
+                    Cancel
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>
 
-      {/* All Super Admins Overview - Static Bottom Section */}
-      <div className="flex-shrink-0 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950 border-t-2 border-emerald-200 dark:border-emerald-800 rounded-t-xl shadow-lg">
-        {/* Header Bar with Title and Stats - Fully clickable */}
+      {/* Pages Preview - Static Bottom Section */}
+      <div className="flex-shrink-0 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950 border-t-2 border-purple-200 dark:border-purple-800 rounded-t-xl shadow-lg">
+        {/* Header Bar */}
         <div 
-          className="flex items-center justify-between px-4 py-2 bg-emerald-50 dark:bg-emerald-900/30 border-b border-emerald-100 dark:border-emerald-800 rounded-t-xl cursor-pointer hover:bg-emerald-100 dark:hover:bg-emerald-900/40 transition-colors"
+          className="flex items-center justify-between px-4 py-2 bg-purple-50 dark:bg-purple-900/30 border-b border-purple-100 dark:border-purple-800 rounded-t-xl cursor-pointer hover:bg-purple-100 dark:hover:bg-purple-900/40 transition-colors"
           onClick={() => setIsDrawerExpanded(!isDrawerExpanded)}
         >
           <div className="flex items-center gap-3">
-            <div className="p-1.5 bg-emerald-600 rounded-lg">
-              <FiUsers className="text-white w-4 h-4" />
+            <div className="p-1.5 bg-purple-600 rounded-lg">
+              <FiGrid className="text-white w-4 h-4" />
             </div>
-            <span className="text-sm font-bold text-gray-800 dark:text-gray-100">All Super Admins Overview</span>
-            <span className="text-xs text-gray-500">({superAdmins.length} admins)</span>
-            
-            {/* Filter buttons */}
-            <div className="flex items-center gap-1 bg-white/70 dark:bg-gray-800/70 rounded-lg p-0.5 ml-2" onClick={(e) => e.stopPropagation()}>
-              <button
-                onClick={() => setAdminsFilter('all')}
-                className={`px-2.5 py-1 text-xs rounded-md transition ${
-                  adminsFilter === 'all' ? 'bg-emerald-600 text-white shadow-sm font-medium' : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setAdminsFilter('assigned')}
-                className={`px-2.5 py-1 text-xs rounded-md transition ${
-                  adminsFilter === 'assigned' ? 'bg-green-600 text-white shadow-sm font-medium' : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                Has Module ({moduleAssignedAdmins.length})
-              </button>
-              <button
-                onClick={() => setAdminsFilter('unassigned')}
-                className={`px-2.5 py-1 text-xs rounded-md transition ${
-                  adminsFilter === 'unassigned' ? 'bg-red-600 text-white shadow-sm font-medium' : 'text-gray-600 hover:bg-gray-100'
-                }`}
-              >
-                No Module ({superAdmins.length - moduleAssignedAdmins.length})
-              </button>
-            </div>
+            <span className="text-sm font-bold text-gray-800 dark:text-gray-100">Pages Preview</span>
+            {selectedPreviewModule && (
+              <span className="text-xs text-purple-600 dark:text-purple-400 bg-purple-100 dark:bg-purple-900/30 px-2 py-0.5 rounded">
+                {selectedPreviewModule.display_name || selectedPreviewModule.module_name} • {selectedModulePages.length} pages
+              </span>
+            )}
           </div>
           
-          <div className="flex items-center gap-3" onClick={(e) => e.stopPropagation()}>
-            {/* Total modules assigned */}
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-              <FiPackage className="w-3.5 h-3.5 text-blue-600" />
-              <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                {modules.length} modules
-              </span>
-            </div>
+          <div className="flex items-center gap-3">
             {/* Expand/Collapse indicator */}
             <div className={`p-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-transform duration-300 ${
               isDrawerExpanded ? 'rotate-180' : ''
@@ -654,83 +770,45 @@ export default function ModuleManagementPage() {
           </div>
         </div>
 
-        {/* Always Visible: One Row of Super Admins */}
+        {/* Pages Content */}
         <div className="px-4 py-3 bg-white/50 dark:bg-gray-900/50">
-          <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-2">
-            {filteredAdminsForDrawer.slice(0, 9).map((admin) => {
-              const isAssignedModule = selectedModuleId ? moduleAssignedAdmins.some(a => a.id === admin.id) : false;
-              const assignedCount = (admin.assignedModules || []).length;
-              
-              return (
-                <div
-                  key={admin.id}
-                  className={`relative p-2 rounded-lg border text-center cursor-default transition ${
-                    isAssignedModule
-                      ? 'border-green-300 bg-green-50 dark:bg-green-900/30 dark:border-green-700'
-                      : 'border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50'
-                  }`}
-                >
-                  {isAssignedModule && (
-                    <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-green-500 text-white flex items-center justify-center text-[9px] font-bold">
-                      ✓
-                    </div>
-                  )}
-                  <div className="text-xs font-medium truncate text-gray-800 dark:text-gray-200">
-                    {admin.name || 'Admin'}
-                  </div>
-                  <div className="text-[10px] text-gray-500 truncate">
-                    {admin.email}
-                  </div>
-                  <div className="mt-1 flex items-center justify-center gap-1">
-                    <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                      {assignedCount} modules
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-
-        {/* Collapsible: More Super Admins */}
-        {isDrawerExpanded && filteredAdminsForDrawer.length > 9 && (
-          <div className="px-4 pb-3 bg-white/50 dark:bg-gray-900/50 border-t border-gray-200 dark:border-gray-700">
-            <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-2 pt-3">
-              {filteredAdminsForDrawer.slice(9).map((admin) => {
-                const isAssignedModule = selectedModuleId ? moduleAssignedAdmins.some(a => a.id === admin.id) : false;
-                const assignedCount = (admin.assignedModules || []).length;
-                
-                return (
-                  <div
-                    key={admin.id}
-                    className={`relative p-2 rounded-lg border text-center cursor-default transition ${
-                      isAssignedModule
-                        ? 'border-green-300 bg-green-50 dark:bg-green-900/30 dark:border-green-700'
-                        : 'border-gray-200 bg-white dark:bg-gray-800 dark:border-gray-700 hover:bg-gray-50'
-                    }`}
-                  >
-                    {isAssignedModule && (
-                      <div className="absolute -top-1.5 -right-1.5 w-4 h-4 rounded-full bg-green-500 text-white flex items-center justify-center text-[9px] font-bold">
-                        ✓
-                      </div>
-                    )}
-                    <div className="text-xs font-medium truncate text-gray-800 dark:text-gray-200">
-                      {admin.name || 'Admin'}
-                    </div>
-                    <div className="text-[10px] text-gray-500 truncate">
-                      {admin.email}
-                    </div>
-                    <div className="mt-1 flex items-center justify-center gap-1">
-                      <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
-                        {assignedCount} modules
-                      </span>
-                    </div>
-                  </div>
-                );
-              })}
+          {!selectedPreviewModule ? (
+            <div className="text-center py-6">
+              <FiGrid className="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                Click on a module in the Assigned or Unassigned Modules column to see its pages here
+              </p>
             </div>
-          </div>
-        )}
+          ) : selectedModulePages.length === 0 ? (
+            <div className="text-center py-6">
+              <FiGrid className="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+              <p className="text-sm text-gray-500 dark:text-gray-400">
+                No pages defined for this module
+              </p>
+            </div>
+          ) : (
+            <div className={`grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2 ${isDrawerExpanded ? 'max-h-48' : 'max-h-24'} overflow-y-auto transition-all`}>
+              {selectedModulePages.map((page, idx) => (
+                <Link
+                  key={`${page.id}-${idx}`}
+                  href={page.path || '#'}
+                  className="p-2 rounded-lg border border-purple-200 dark:border-purple-700 bg-white dark:bg-gray-800 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20 transition-colors cursor-pointer group"
+                >
+                  <div className="text-[10px] text-purple-600 dark:text-purple-400 font-medium truncate mb-0.5 flex items-center justify-between">
+                    <span>{page.moduleName}</span>
+                    <FiExternalLink className="w-2.5 h-2.5 opacity-0 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
+                    {page.name || page.id || page.path}
+                  </div>
+                  <div className="text-[9px] text-gray-500 dark:text-gray-400 truncate">
+                    {page.path || page.id}
+                  </div>
+                </Link>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Add Super Admin Modal */}
