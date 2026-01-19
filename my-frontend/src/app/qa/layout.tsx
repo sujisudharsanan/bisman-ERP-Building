@@ -13,6 +13,7 @@ import {
   Shield
 } from 'lucide-react';
 import ProtectedRoute from '@/components/ProtectedRoute';
+import ModuleGate from '@/components/subscription/ModuleGate';
 
 const navItems = [
   { href: '/qa', label: 'Dashboard', icon: LayoutDashboard, exact: true },
@@ -32,7 +33,8 @@ export default function QALayout({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <ProtectedRoute allowedRoles={['QA', 'ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN']}>
+    <ModuleGate module="qa">
+      <ProtectedRoute allowedRoles={['QA', 'ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN']}>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
       {/* Top Navigation Bar */}
       <header className="bg-white dark:bg-gray-800 border-b border-gray-200 dark:border-gray-700 sticky top-0 z-50">
@@ -146,5 +148,6 @@ export default function QALayout({ children }: { children: React.ReactNode }) {
       </footer>
     </div>
     </ProtectedRoute>
+    </ModuleGate>
   );
 }

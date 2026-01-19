@@ -271,6 +271,57 @@ DROP POLICY IF EXISTS branches_tenant_isolation ON branches;
 - [ ] Monitor query performance with RLS enabled
 - [ ] Train team on tenant context requirements
 
+---
+
+## P1 Module Access Gating (Completed January 2025)
+
+### Routes Protected with Plan-Based Access
+
+The following API routes now enforce subscription plan-based module access:
+
+| Route | Module | Gating Function |
+|-------|--------|-----------------|
+| `/api/approval-dashboard` | operations | requirePlanModuleAccess('operations') |
+| `/api/task-approvals` | task-management | requirePlanModuleAccess('task-management') |
+| `/api/clarifications` | task-management | requirePlanModuleAccess('task-management') |
+| `/api/reviews` | operations | requirePlanModuleAccess('operations') |
+| `/api/decision-load` | operations | requirePlanModuleAccess('operations') |
+| `/api/playbooks` | support | requirePlanModuleAccess('support') |
+| `/api/fallback-logs` | system | requirePlanModuleAccess('system') |
+| `/api/deployment` | system | requirePlanModuleAccess('system') |
+| `/api/superadmin-dashboard` | super-admin | requirePlanModuleAccess('super-admin') |
+| `/api/tasks/workbench` | task-management | requirePlanModuleAccess('task-management') |
+| `/api/tasks` | task-management | requirePlanModuleAccess('task-management') |
+| `/api/task-requests` | task-management | requirePlanModuleAccess('task-management') |
+| `/api/approvers` | operations | requirePlanModuleAccess('operations') |
+| `/api/approval-flows` | operations | requirePlanModuleAccess('operations') |
+| `/api/v2/tasks` | task-management | requirePlanModuleAccess('task-management') |
+| `/api/admin/usage` | admin | requirePlanModuleAccess('admin') |
+| `/api/admin/contracts` | procurement | requirePlanModuleAccess('procurement') |
+| `/api/v1/super-admin` | super-admin | requirePlanModuleAccess('super-admin') |
+
+### MODULE_MAPPING Updates
+
+Added mappings in `planModuleAccessMiddleware.js`:
+
+```javascript
+'task-approvals': 'task-management',
+'approval-dashboard': 'operations',
+'clarifications': 'task-management',
+'decision-load': 'operations',
+'playbooks': 'support',
+'fallback-logs': 'system',
+'deployment': 'system',
+```
+
+### Deprecation: tenant_subscription
+
+- `assignPlanToTenant()` in `microUnlockService.js` updated to use `client_subscriptions` (canonical source)
+- Legacy fallback in `calculateMonthlyBill()` marked as DEPRECATED with console warning
+- All new code should use `client_subscriptions` table, NOT `tenant_subscription`
+
+---
+
 ## Troubleshooting
 
 ### "permission denied for table X"

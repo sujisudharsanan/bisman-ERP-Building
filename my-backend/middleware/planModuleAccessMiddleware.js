@@ -8,7 +8,7 @@
  * 
  * This middleware:
  * - Checks if the tenant's subscription plan grants access to the requested module
- * - Returns 403 with upgrade message if module is not included in plan
+ * - Returns 402 Payment Required with upgrade message if module is not included in plan
  * - Allows access if module is included with 'full' or 'read_only' access level
  * - Logs MODULE_ACCESS_DENIED events for audit
  */
@@ -37,9 +37,12 @@ const MODULE_MAPPING = {
   'settlements': 'finance',           // settlements → finance module
   'reconciliation': 'finance',        // bank reconciliation → finance module
   'payment-workflow': 'finance',      // payment workflow → finance module
-  'task-approvals': 'operations',     // task approvals → operations
+  'task-approvals': 'task-management',// task approvals → task-management
+  'approval-dashboard': 'operations', // approval dashboard → operations
   'approvals': 'operations',          // approvals → operations module
-  'reviews': 'qa',                    // reviews → qa module
+  'reviews': 'operations',            // reviews → operations module
+  'clarifications': 'task-management',// clarifications → task-management
+  'decision-load': 'operations',      // decision load map → operations
   'contracts': 'procurement',         // contracts → procurement
   'security-governance': 'compliance',// security → compliance
   'audit': 'compliance',              // audit → compliance
@@ -47,6 +50,9 @@ const MODULE_MAPPING = {
   'calls': 'operations',              // calls → operations
   'tasks': 'task-management',         // tasks → task-management
   'task-requests': 'task-management', // task requests → task-management
+  'playbooks': 'support',             // playbooks → support
+  'fallback-logs': 'system',          // fallback logs → system
+  'deployment': 'system',             // deployment → system
   'enterprise-admin': 'enterprise-admin',
   'super-admin': 'super-admin',
   'superadmin': 'super-admin',
@@ -321,7 +327,8 @@ function requirePlanModuleAccess(moduleId) {
         console.error('[PlanModuleAccess] Failed to log audit:', auditError.message);
       }
 
-      return res.status(403).json({
+      // 402 Payment Required - SaaS billing standard for upgrade-required
+      return res.status(402).json({
         success: false,
         error: accessResult.message,
         code: 'PLAN_UPGRADE_REQUIRED',
@@ -339,7 +346,8 @@ function requirePlanModuleAccess(moduleId) {
     // Warn if read-only access but mutation attempted
     if (accessResult.accessLevel === 'read_only' && ['POST', 'PUT', 'PATCH', 'DELETE'].includes(req.method)) {
       console.warn(`[PlanModuleAccess] READ_ONLY_VIOLATION: tenant=${tenantId}, module=${moduleId}, method=${req.method}`);
-      return res.status(403).json({
+      // 402 Payment Required - write access requires upgrade
+      return res.status(402).json({
         success: false,
         error: `Read-only access to '${moduleId}' module. Upgrade to modify data.`,
         code: 'PLAN_UPGRADE_REQUIRED',

@@ -301,7 +301,9 @@ export default function SubscriptionAccessControlPage() {
 
   const fetchPublishStatus = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/enterprise-admin/subscriptions/publish/status`);
+      const res = await fetch(`${API_BASE}/api/enterprise-admin/subscriptions/publish/status`, {
+        credentials: 'include',
+      });
       const data = await res.json();
       if (data.success) {
         setPublishStatus(data.data);
@@ -313,7 +315,9 @@ export default function SubscriptionAccessControlPage() {
 
   const fetchModuleMatrix = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/enterprise-admin/subscriptions/module-matrix`);
+      const res = await fetch(`${API_BASE}/api/enterprise-admin/subscriptions/module-matrix`, {
+        credentials: 'include',
+      });
       const data = await res.json();
       if (data.success) {
         setPlans(data.data.plans);
@@ -328,7 +332,9 @@ export default function SubscriptionAccessControlPage() {
 
   const fetchFeatureLimits = useCallback(async () => {
     try {
-      const res = await fetch(`${API_BASE}/api/enterprise-admin/subscriptions/feature-limits`);
+      const res = await fetch(`${API_BASE}/api/enterprise-admin/subscriptions/feature-limits`, {
+        credentials: 'include',
+      });
       const data = await res.json();
       if (data.success) {
         setFeatures(data.data.features);
@@ -370,6 +376,7 @@ export default function SubscriptionAccessControlPage() {
       const res = await fetch(`${API_BASE}/api/enterprise-admin/subscriptions/module-access`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ planId, moduleId, accessLevel, modifiedBy: 1 }), // TODO: Get actual user ID
       });
       
@@ -415,6 +422,7 @@ export default function SubscriptionAccessControlPage() {
       const res = await fetch(`${API_BASE}/api/enterprise-admin/subscriptions/feature-limit`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ planId, featureCode, ...updates, modifiedBy: 1 }),
       });
       
@@ -443,7 +451,9 @@ export default function SubscriptionAccessControlPage() {
     setIsSearching(true);
 
     try {
-      const res = await fetch(`${API_BASE}/api/enterprise-admin/subscriptions/tenants/search?q=${encodeURIComponent(searchQuery)}`);
+      const res = await fetch(`${API_BASE}/api/enterprise-admin/subscriptions/tenants/search?q=${encodeURIComponent(searchQuery)}`, {
+        credentials: 'include',
+      });
       const data = await res.json();
       if (data.success) {
         setSearchResults(data.data);
@@ -461,7 +471,9 @@ export default function SubscriptionAccessControlPage() {
     setSearchQuery('');
 
     try {
-      const res = await fetch(`${API_BASE}/api/enterprise-admin/subscriptions/tenants/${tenant.id}/access`);
+      const res = await fetch(`${API_BASE}/api/enterprise-admin/subscriptions/tenants/${tenant.id}/access`, {
+        credentials: 'include',
+      });
       const data = await res.json();
       if (data.success) {
         setTenantAccess(data.data.effectiveAccess);
@@ -487,6 +499,7 @@ export default function SubscriptionAccessControlPage() {
       const res = await fetch(`${API_BASE}/api/enterprise-admin/subscriptions/publish`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
         body: JSON.stringify({ 
           publishedBy: 1, // TODO: Get actual user ID
           notes: 'Published from Access Control page',
@@ -521,6 +534,7 @@ export default function SubscriptionAccessControlPage() {
       const res = await fetch(`${API_BASE}/api/enterprise-admin/subscriptions/discard`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
       });
 
       const data = await res.json();

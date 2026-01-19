@@ -481,10 +481,11 @@ async function calculateMonthlyBill(tenantId, periodStart = null, periodEnd = nu
   const monthEnd = periodEnd || new Date(now.getFullYear(), now.getMonth() + 1, 0);
   const daysInMonth = Math.ceil((monthEnd.getTime() - monthStart.getTime()) / (1000 * 60 * 60 * 24)) + 1;
 
-  // Get tenant's subscription from client_subscriptions (new system) with fallback to old tenant_subscription
+  // Get tenant's subscription from client_subscriptions (canonical source)
+  // DEPRECATED: tenant_subscription fallback will be removed in future release
   let subscription = null;
   
-  // Try new subscription system first (client_subscriptions + subscription_plans)
+  // Use new subscription system (client_subscriptions + subscription_plans)
   const [newSub] = await prisma.$queryRaw`
     SELECT 
       cs.id,
@@ -502,7 +503,8 @@ async function calculateMonthlyBill(tenantId, periodStart = null, periodEnd = nu
   if (newSub) {
     subscription = newSub;
   } else {
-    // Fallback to old micro_subscription_plans system
+    // DEPRECATED: Legacy fallback to old micro_subscription_plans system
+    // This fallback will be removed once all tenants are migrated to client_subscriptions
     const [oldSub] = await prisma.$queryRaw`
       SELECT 
         ts.*,
@@ -513,6 +515,9 @@ async function calculateMonthlyBill(tenantId, periodStart = null, periodEnd = nu
       WHERE ts.tenant_id = ${tenantId}::uuid AND ts.is_active = TRUE
     `;
     subscription = oldSub;
+    if (oldSub) {
+      console.warn(`[DEPRECATED] Tenant ${tenantId} still using legacy tenant_subscription. Migrate to client_subscriptions.`);
+    }
   }
 
   // Get all active unlocks with proration data
@@ -947,35 +952,38 @@ async function upsertSubscriptionPlan(planData, actorId) {
 
 /**
  * Assign a plan to a tenant
- * @param {string} tenantId - Tenant UUID
- * @param {number} planId - Plan ID
- * @param {number} actorId - User assigning
+ * Uses client_subscriptions (canonical source) instead of deprecated tenant_subscription
+ * @param {string} tenantId - Tenant UUID (client_id)
+ * @param {number} planId - Plan ID from subscription_plans
+ * @param {number} _actorId - User assigning (kept for API compatibility, not used in new system)
  * @returns {Promise<Object>} Assignment result
  */
-async function assignPlanToTenant(tenantId, planId, actorId) {
+async function assignPlanToTenant(tenantId, planId, _actorId) {
   const prisma = getPrisma();
 
   const now = new Date();
   const periodEnd = new Date(now);
   periodEnd.setMonth(periodEnd.getMonth() + 1);
 
+  // Use client_subscriptions (canonical source) instead of deprecated tenant_subscription
   await prisma.$queryRaw`
-    INSERT INTO tenant_subscription (
-      tenant_id, plan_id, billing_cycle, billing_day,
+    INSERT INTO client_subscriptions (
+      client_id, plan_id, billing_cycle, 
       current_period_start, current_period_end,
-      payment_status, next_payment_date,
-      created_by
+      is_active, state,
+      created_at, updated_at
     ) VALUES (
-      ${tenantId}::uuid, ${planId}, 'MONTHLY', 1,
+      ${tenantId}::uuid, ${planId}, 'monthly',
       ${now}, ${periodEnd},
-      'PENDING', ${periodEnd},
-      ${actorId}
+      TRUE, 'active',
+      NOW(), NOW()
     )
-    ON CONFLICT (tenant_id) DO UPDATE SET
+    ON CONFLICT (client_id) DO UPDATE SET
       plan_id = EXCLUDED.plan_id,
       current_period_start = EXCLUDED.current_period_start,
       current_period_end = EXCLUDED.current_period_end,
-      next_payment_date = EXCLUDED.next_payment_date,
+      is_active = TRUE,
+      state = 'active',
       updated_at = NOW()
   `;
 

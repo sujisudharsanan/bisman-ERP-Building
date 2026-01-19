@@ -802,6 +802,11 @@ console.log('✅ Reports routes loaded at /api/reports (plan-gated)')
 const menuRoutes = require('./routes/menuRoutes')
 app.use('/api/modules', menuRoutes)
 
+// Governance routes - Route validation and access tracking
+const governanceRoutes = require('./routes/governanceRoutes')
+app.use('/api/governance', governanceRoutes)
+console.log('✅ Governance routes loaded at /api/governance')
+
 // Calendar routes for event management
 try {
   const calendarRoutes = require('./routes/calendar')
@@ -826,8 +831,8 @@ try {
 // ===================================================================
 try {
   const approvalDashboardRoutes = require('./routes/approvalDashboardRoutes')
-  app.use('/api/approval-dashboard', authenticate, setTenantContext, approvalDashboardRoutes)
-  console.log('✅ Approval Dashboard routes loaded at /api/approval-dashboard')
+  app.use('/api/approval-dashboard', authenticate, setTenantContext, requirePlanModuleAccess('operations'), approvalDashboardRoutes)
+  console.log('✅ Approval Dashboard routes loaded at /api/approval-dashboard (plan-gated: operations)')
 } catch (e) {
   console.warn('Approval Dashboard routes not loaded:', e && e.message)
 }
@@ -843,8 +848,8 @@ try {
 // ===================================================================
 try {
   const taskApprovalRoutes = require('./routes/taskApprovalRoutes')
-  app.use('/api/task-approvals', authenticate, setTenantContext, taskApprovalRoutes)
-  console.log('✅ Task Approval routes loaded at /api/task-approvals')
+  app.use('/api/task-approvals', authenticate, setTenantContext, requirePlanModuleAccess('task-management'), taskApprovalRoutes)
+  console.log('✅ Task Approval routes loaded at /api/task-approvals (plan-gated: task-management)')
 } catch (e) {
   console.warn('Task Approval routes not loaded:', e && e.message)
 }
@@ -908,8 +913,8 @@ try {
 // Purple visual indicator for "WAITING_FOR_CLARIFICATION" status.
 try {
   const clarificationRoutes = require('./routes/clarificationRoutes')
-  app.use('/api/clarifications', authenticate, setTenantContext, clarificationRoutes)
-  console.log('✅ Task Clarification routes loaded at /api/clarifications')
+  app.use('/api/clarifications', authenticate, setTenantContext, requirePlanModuleAccess('task-management'), clarificationRoutes)
+  console.log('✅ Task Clarification routes loaded at /api/clarifications (plan-gated: task-management)')
 } catch (e) {
   console.warn('Task Clarification routes not loaded:', e && e.message)
 }
@@ -926,8 +931,8 @@ try {
 // Yellow visual indicator for "COMPLETED + Under Review"
 try {
   const reviewRoutes = require('./routes/reviewRoutes')
-  app.use('/api/reviews', authenticate, setTenantContext, reviewRoutes)
-  console.log('✅ Post-Completion Review routes loaded at /api/reviews')
+  app.use('/api/reviews', authenticate, setTenantContext, requirePlanModuleAccess('operations'), reviewRoutes)
+  console.log('✅ Post-Completion Review routes loaded at /api/reviews (plan-gated: operations)')
 } catch (e) {
   console.warn('Post-Completion Review routes not loaded:', e && e.message)
 }
@@ -947,8 +952,8 @@ try {
 // ===================================================================
 try {
   const decisionLoadRoutes = require('./routes/decisionLoadRoutes')
-  app.use('/api/decision-load', authenticate, setTenantContext, decisionLoadRoutes)
-  console.log('✅ Decision Load Map routes loaded at /api/decision-load')
+  app.use('/api/decision-load', authenticate, setTenantContext, requirePlanModuleAccess('operations'), decisionLoadRoutes)
+  console.log('✅ Decision Load Map routes loaded at /api/decision-load (plan-gated: operations)')
 } catch (e) {
   console.warn('Decision Load Map routes not loaded:', e && e.message)
 }
@@ -1017,8 +1022,8 @@ try {
 // Admin Usage & Quota routes (per-tenant metering)
 try {
   const adminUsageRoutes = require('./routes/adminUsage')
-  app.use('/api/admin/usage', authenticate, setTenantContext, adminUsageRoutes)
-  console.log('✅ Admin Usage routes loaded at /api/admin/usage')
+  app.use('/api/admin/usage', authenticate, setTenantContext, requirePlanModuleAccess('admin'), adminUsageRoutes)
+  console.log('✅ Admin Usage routes loaded at /api/admin/usage (plan-gated: admin)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Admin Usage routes not loaded:', e && e.message)
@@ -1105,8 +1110,8 @@ try {
 // Support Playbooks routes (BISMAN Internal Staff - Read, ENTERPRISE_ADMIN - Manage)
 try {
   const supportPlaybooksRoutes = require('./routes/support-playbooks')
-  app.use('/api/playbooks', authenticate, setTenantContext, supportPlaybooksRoutes)
-  console.log('✅ Support Playbooks routes loaded at /api/playbooks')
+  app.use('/api/playbooks', authenticate, setTenantContext, requirePlanModuleAccess('support'), supportPlaybooksRoutes)
+  console.log('✅ Support Playbooks routes loaded at /api/playbooks (plan-gated: support)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Support Playbooks routes not loaded:', e && e.message)
@@ -1116,8 +1121,8 @@ try {
 // Fallback Logs routes (for Super Admin monitoring)
 try {
   const fallbackLogsRoutes = require('./routes/fallbackLogsRoutes')
-  app.use('/api/fallback-logs', authenticate, setTenantContext, fallbackLogsRoutes)
-  console.log('✅ Fallback Logs routes loaded at /api/fallback-logs')
+  app.use('/api/fallback-logs', authenticate, setTenantContext, requirePlanModuleAccess('system'), fallbackLogsRoutes)
+  console.log('✅ Fallback Logs routes loaded at /api/fallback-logs (plan-gated: system)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Fallback Logs routes not loaded:', e && e.message)
@@ -1127,8 +1132,8 @@ try {
 // Deployment routes (for deployment management)
 try {
   const deploymentRoutes = require('./routes/deployment')
-  app.use('/api/deployment', authenticate, setTenantContext, deploymentRoutes)
-  console.log('✅ Deployment routes loaded at /api/deployment')
+  app.use('/api/deployment', authenticate, setTenantContext, requirePlanModuleAccess('system'), deploymentRoutes)
+  console.log('✅ Deployment routes loaded at /api/deployment (plan-gated: system)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Deployment routes not loaded:', e && e.message)
@@ -1138,8 +1143,8 @@ try {
 // SuperAdmin Dashboard routes (aggregated dashboard endpoints)
 try {
   const superadminDashboardRoutes = require('./routes/superadminDashboard')
-  app.use('/api/superadmin-dashboard', authenticate, setTenantContext, superadminDashboardRoutes)
-  console.log('✅ SuperAdmin Dashboard routes loaded at /api/superadmin-dashboard')
+  app.use('/api/superadmin-dashboard', authenticate, setTenantContext, requirePlanModuleAccess('super-admin'), superadminDashboardRoutes)
+  console.log('✅ SuperAdmin Dashboard routes loaded at /api/superadmin-dashboard (plan-gated: super-admin)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('SuperAdmin Dashboard routes not loaded:', e && e.message)
@@ -1310,8 +1315,8 @@ try {
 // Task Workbench routes (protected) - must be before general task routes
 try {
   const taskWorkbenchRoutes = require('./routes/taskWorkbenchRoutes')
-  app.use('/api/tasks/workbench', authenticate, setTenantContext, taskWorkbenchRoutes)
-  console.log('✅ Task Workbench routes loaded (protected)')
+  app.use('/api/tasks/workbench', authenticate, setTenantContext, requirePlanModuleAccess('task-management'), taskWorkbenchRoutes)
+  console.log('✅ Task Workbench routes loaded (protected, plan-gated: task-management)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Task Workbench routes not loaded:', e && e.message)
@@ -1321,8 +1326,8 @@ try {
 // Task Management routes (protected)
 try {
   const taskRoutes = require('./routes/tasks')
-  app.use('/api/tasks', authenticate, setTenantContext, taskRoutes)
-  console.log('✅ Task Management routes loaded (protected)')
+  app.use('/api/tasks', authenticate, setTenantContext, requirePlanModuleAccess('task-management'), taskRoutes)
+  console.log('✅ Task Management routes loaded (protected, plan-gated: task-management)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Task routes not loaded:', e && e.message)
@@ -1332,8 +1337,8 @@ try {
 // Task Request routes (hierarchical workflow)
 try {
   const taskRequestRoutes = require('./routes/taskRequestRoutes')
-  app.use('/api/task-requests', authenticate, setTenantContext, taskRequestRoutes)
-  console.log('✅ Task Request routes loaded (protected)')
+  app.use('/api/task-requests', authenticate, setTenantContext, requirePlanModuleAccess('task-management'), taskRequestRoutes)
+  console.log('✅ Task Request routes loaded (protected, plan-gated: task-management)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Task Request routes not loaded:', e && e.message)
@@ -1424,10 +1429,10 @@ try {
   const { router: taskRoutes } = require('./routes/taskRoutes');
   const approverRoutes = require('./routes/approverRoutes');
   
-  app.use('/api/tasks', authenticate, setTenantContext, taskRoutes);
-  app.use('/api/approvers', authenticate, setTenantContext, approverRoutes);
+  app.use('/api/tasks', authenticate, setTenantContext, requirePlanModuleAccess('task-management'), taskRoutes);
+  app.use('/api/approvers', authenticate, setTenantContext, requirePlanModuleAccess('operations'), approverRoutes);
   
-  console.log('✅ Task Workflow System routes loaded (with Socket.IO realtime)');
+  console.log('✅ Task Workflow System routes loaded (with Socket.IO realtime, plan-gated)');
 } catch (e) {
   console.warn('Task Workflow System routes not loaded:', e && e.message);
 }
@@ -1435,8 +1440,8 @@ try {
 // Module Approval Flow routes (Super Admin configurable approval hierarchy)
 try {
   const approvalFlowRoutes = require('./routes/approvalFlowRoutes');
-  app.use('/api/approval-flows', authenticate, setTenantContext, approvalFlowRoutes);
-  console.log('✅ Module Approval Flow routes loaded (Super Admin configurable)');
+  app.use('/api/approval-flows', authenticate, setTenantContext, requirePlanModuleAccess('operations'), approvalFlowRoutes);
+  console.log('✅ Module Approval Flow routes loaded (Super Admin configurable, plan-gated: operations)');
 } catch (e) {
   console.warn('Approval Flow routes not loaded:', e && e.message);
 }
@@ -1444,8 +1449,8 @@ try {
 // Task V2 API routes (NEW - Enhanced with TanStack Query support)
 try {
   const tasksV2Routes = require('./routes/tasksV2');
-  app.use('/api/v2/tasks', authenticate, setTenantContext, tasksV2Routes);
-  console.log('✅ Task V2 API routes loaded (enhanced with React Query support)');
+  app.use('/api/v2/tasks', authenticate, setTenantContext, requirePlanModuleAccess('task-management'), tasksV2Routes);
+  console.log('✅ Task V2 API routes loaded (enhanced with React Query support, plan-gated: task-management)');
 } catch (e) {
   console.warn('Task V2 API routes not loaded:', e && e.message);
 }
@@ -1530,8 +1535,8 @@ try {
 // Contract Management routes (Admin Panel)
 try {
   const contractRoutes = require('./routes/admin/contracts')
-  app.use('/api/admin/contracts', authenticate, setTenantContext, contractRoutes)
-  console.log('✅ Contract Management routes loaded at /api/admin/contracts')
+  app.use('/api/admin/contracts', authenticate, setTenantContext, requirePlanModuleAccess('procurement'), contractRoutes)
+  console.log('✅ Contract Management routes loaded at /api/admin/contracts (plan-gated: procurement)')
 } catch (e) {
   console.warn('Contract Management routes not loaded:', e && e.message)
 }
@@ -1579,7 +1584,8 @@ try {
 try {
   const superAdminRoutes = require('./routes/superAdmin')
   // Mount under versioned path expected by frontend
-  app.use('/api/v1/super-admin', authenticate, setTenantContext, superAdminRoutes)
+  app.use('/api/v1/super-admin', authenticate, setTenantContext, requirePlanModuleAccess('super-admin'), superAdminRoutes)
+  console.log('✅ Super Admin routes loaded at /api/v1/super-admin (plan-gated: super-admin)')
 } catch (e) {
   // Route optional in some builds; log once in dev
   if (process.env.NODE_ENV !== 'production') {
@@ -1613,7 +1619,7 @@ try {
   app.use('/api/subscription-control', authenticate, adminIpAllowlist, subscriptionControlRoutes)
   
   // Enterprise Admin Subscription Access Control - module/feature matrix management
-  app.use('/api/enterprise-admin/subscriptions', enterpriseSubscriptionRoutes)
+  app.use('/api/enterprise-admin/subscriptions', authenticate, adminIpAllowlist, setTenantContext, enterpriseSubscriptionRoutes)
   
   console.log('✅ Subscription Management routes loaded')
   console.log('✅ Subscription Control ("God Mode") routes loaded')
