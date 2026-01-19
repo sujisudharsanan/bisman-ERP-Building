@@ -16,6 +16,41 @@ const { authenticate } = require('../middleware/auth');
 const { getPool } = require('../middleware/database');
 
 // ============================================================================
+// Role-to-Module Sidebar Mapping
+// Defines which modules appear in sidebar for each admin role type
+// Admins can still ACCESS all pages, but sidebar shows only their home modules
+// ============================================================================
+const ROLE_SIDEBAR_MODULES = {
+  // Enterprise Admin sees only EA module + essential common pages
+  'ENTERPRISE_ADMIN': ['ENTERPRISE_ADMIN', 'COMMON', 'DASHBOARD'],
+  
+  // Super Admin sees SA module + system + common
+  'SUPER_ADMIN': ['SUPER_ADMIN', 'SYSTEM', 'COMMON', 'DASHBOARD', 'SUBSCRIPTIONS'],
+  
+  // System Admin sees system module
+  'SYSTEM_ADMIN': ['SYSTEM', 'COMMON', 'DASHBOARD'],
+  
+  // Regular Admin sees admin console + common
+  'ADMIN': ['ADMIN', 'COMMON', 'DASHBOARD'],
+  
+  // All other roles: null means "show all modules user has access to"
+};
+
+// Route prefixes for admin roles - only show pages with these route prefixes
+// This prevents showing unrelated pages from COMMON module
+const ROLE_ROUTE_PREFIXES = {
+  'ENTERPRISE_ADMIN': ['/enterprise-admin'],
+  'SUPER_ADMIN': ['/super-admin', '/system', '/common/', '/dashboard', '/subscriptions'],
+  'SYSTEM_ADMIN': ['/system', '/common/', '/dashboard'],
+  'ADMIN': ['/admin', '/common/', '/dashboard'],
+};
+
+// Routes to explicitly exclude from sidebar (even if matched by prefix)
+const EXCLUDED_SIDEBAR_ROUTES = {
+  'ENTERPRISE_ADMIN': ['/common/calendar', '/common/messages'],
+};
+
+// ============================================================================
 // GET /api/modules/menu - Get menu for current user
 // ============================================================================
 
@@ -34,9 +69,31 @@ router.get('/menu', authenticate, async (req, res) => {
     }
 
     console.log(`[MenuRoutes] Fetching menu for role: ${userRole}, userId: ${userId}`);
+    
+    // Check if this role has a sidebar module filter
+    const sidebarModules = ROLE_SIDEBAR_MODULES[userRole] || null;
+    const routePrefixes = ROLE_ROUTE_PREFIXES[userRole] || null;
+    
+    // Build module filter clause
+    const moduleFilter = sidebarModules ? `AND m.module_code = ANY($2)` : '';
+    
+    // Build route prefix filter for admin roles
+    let routeFilter = '';
+    let queryParams = sidebarModules ? [userRole, sidebarModules] : [userRole];
+    
+    if (routePrefixes) {
+      const prefixConditions = routePrefixes.map((_, i) => `p.route LIKE $${queryParams.length + i + 1}`).join(' OR ');
+      routeFilter = `AND (${prefixConditions})`;
+      queryParams = [...queryParams, ...routePrefixes.map(prefix => prefix + '%')];
+      console.log(`[MenuRoutes] Filtering sidebar to routes: ${routePrefixes.join(', ')}`);
+    }
+    
+    if (sidebarModules) {
+      console.log(`[MenuRoutes] Filtering sidebar to modules: ${sidebarModules.join(', ')}`);
+    }
 
     // =========================================================================
-    // Query 1: Get all modules this role has access to
+    // Query 1: Get all modules this role has access to (filtered for sidebar)
     // =========================================================================
     const modulesResult = await client.query(`
       SELECT DISTINCT 
@@ -59,11 +116,13 @@ router.get('/menu', authenticate, async (req, res) => {
         AND m.is_hidden = FALSE
         AND p.is_active = TRUE
         AND p.show_in_sidebar = TRUE
+        ${moduleFilter}
+        ${routeFilter}
       ORDER BY m.sort_order, m.display_name
-    `, [userRole]);
+    `, queryParams);
 
     // =========================================================================
-    // Query 2: Get all pages this role has access to
+    // Query 2: Get all pages this role has access to (filtered for sidebar)
     // =========================================================================
     const pagesResult = await client.query(`
       SELECT 
@@ -87,8 +146,11 @@ router.get('/menu', authenticate, async (req, res) => {
         AND rpa.can_view = TRUE
         AND p.is_active = TRUE
         AND m.is_active = TRUE
+        AND p.show_in_sidebar = TRUE
+        ${moduleFilter}
+        ${routeFilter}
       ORDER BY p.sort_order, p.display_name
-    `, [userRole]);
+    `, queryParams);
 
     // =========================================================================
     // Build hierarchical menu structure

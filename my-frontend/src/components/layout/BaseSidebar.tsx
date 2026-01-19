@@ -3,7 +3,7 @@
 import React, { useEffect } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
-import { X, Shield, Loader2, AlertCircle } from "lucide-react";
+import { X, Loader2, AlertCircle } from "lucide-react";
 import { getIcon } from '../../utils/iconMap';
 import { safeComponent } from '@/lib/safeComponent';
 import { useMenu } from '../../hooks/useMenu';
@@ -83,17 +83,9 @@ const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, 
 				aria-label="Main navigation"
 				role="navigation"
 			>
-				{/* Sidebar Header */}
-				<div className="p-4 border-b border-gray-800 flex items-center justify-between">
-					{(!collapsed || isMobile) && (
-						<div className="flex items-center gap-2">
-							<div className="w-8 h-8 bg-gradient-to-br from-indigo-500 to-purple-600 rounded-lg flex items-center justify-center">
-								<Shield size={20} className="text-white" />
-							</div>
-							<span className="font-bold text-white">BISMAN</span>
-						</div>
-					)}
-					{isMobile && (
+				{/* Mobile Close Button Only - Logo is in TopNavbar */}
+				{isMobile && (
+					<div className="p-4 border-b border-gray-800 flex items-center justify-end">
 						<button
 							onClick={() => onCollapse(true)}
 							className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
@@ -101,8 +93,8 @@ const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, 
 						>
 							<X size={20} className="text-white" />
 						</button>
-					)}
-				</div>
+					</div>
+				)}
 				{/* Sidebar Navigation */}
 								<nav className="flex-1 overflow-y-auto p-4 space-y-1" aria-label="Sidebar menu">
 									{/* Loading State */}
