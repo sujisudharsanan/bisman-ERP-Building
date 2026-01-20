@@ -179,6 +179,9 @@ router.get('/menu', authenticate, async (req, res) => {
       });
     }
 
+    // Get excluded routes for this role
+    const excludedRoutes = EXCLUDED_SIDEBAR_ROUTES[userRole] || [];
+
     // Build final menu structure
     const menu = modules.map(mod => ({
       id: mod.id,
@@ -191,7 +194,7 @@ router.get('/menu', authenticate, async (req, res) => {
       layoutGroup: mod.layout_group,
       sortOrder: mod.sort_order,
       pages: (pagesByModule[mod.id] || [])
-        .filter(p => p.showInSidebar)
+        .filter(p => p.showInSidebar && !excludedRoutes.some(excluded => p.route.startsWith(excluded)))
         .sort((a, b) => a.sortOrder - b.sortOrder)
     })).filter(mod => mod.pages.length > 0);
 
