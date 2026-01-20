@@ -818,6 +818,10 @@ export default function SubscriptionAccessControlPage() {
                   const isExpanded = expandedPlans.has(plan.id);
                   const planControls = draftControls.filter(c => c.plan_id === plan.id);
                   const dirtyCount = planControls.filter(c => c.is_dirty).length;
+                  // Count allowed features: lock_mode is 'none' and has a positive limit or unlimited (-1)
+                  const allowedCount = planControls.filter(c => 
+                    c.lock_mode === 'none' && (c.free_limit > 0 || c.free_limit === -1)
+                  ).length;
 
                   return (
                     <div key={plan.id} className="border border-slate-700 rounded-xl overflow-hidden">
@@ -850,53 +854,94 @@ export default function SubscriptionAccessControlPage() {
                           )}
                         </div>
                         <span className="text-sm text-slate-500">
-                          {planControls.length} features configured
+                          <span className="text-emerald-400 font-medium">{allowedCount}</span>
+                          <span className="text-slate-600"> / </span>
+                          <span>{planControls.length}</span>
+                          <span className="ml-1">features allowed</span>
                         </span>
                       </button>
 
                       {/* Feature Controls */}
                       {isExpanded && (
                         <div className="divide-y divide-slate-800">
-                          {Object.entries(groupedFeatures).map(([category, feats]) => (
+                          {Object.entries(groupedFeatures).map(([category, feats]) => {
+                            // Sort features: allowed first (lock_mode='none' with limit), locked at bottom
+                            const sortedFeats = [...feats].sort((a, b) => {
+                              const controlA = planControls.find(c => c.feature_code === a.feature_code);
+                              const controlB = planControls.find(c => c.feature_code === b.feature_code);
+                              const isAllowedA = controlA && controlA.lock_mode === 'none' && (controlA.free_limit > 0 || controlA.free_limit === -1);
+                              const isAllowedB = controlB && controlB.lock_mode === 'none' && (controlB.free_limit > 0 || controlB.free_limit === -1);
+                              if (isAllowedA && !isAllowedB) return -1;
+                              if (!isAllowedA && isAllowedB) return 1;
+                              return 0;
+                            });
+
+                            return (
                             <div key={category} className="p-4">
                               <div className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-3">
                                 {category}
                               </div>
                               <div className="space-y-2">
-                                {feats.map(feat => {
+                                {sortedFeats.map(feat => {
                                   const control = planControls.find(c => c.feature_code === feat.feature_code);
                                   if (!control) return null;
+                                  const isAllowed = control.lock_mode === 'none' && (control.free_limit > 0 || control.free_limit === -1);
+                                  const isUnlimited = control.free_limit === -1;
 
                                   return (
                                     <div 
                                       key={feat.feature_code}
                                       className={`
-                                        flex items-center justify-between px-4 py-3 rounded-lg bg-slate-800/50
+                                        flex items-center justify-between px-4 py-3 rounded-lg
+                                        ${isAllowed ? 'bg-slate-800/50' : 'bg-slate-900/50 opacity-60'}
                                         ${control.is_dirty ? 'ring-1 ring-blue-500/50' : ''}
                                       `}
                                     >
                                       <div className="flex items-center gap-3">
-                                        <div className="w-8 h-8 rounded-lg bg-slate-700 flex items-center justify-center">
-                                          <Key className="w-4 h-4 text-slate-400" />
+                                        <div className={`w-8 h-8 rounded-lg flex items-center justify-center ${isAllowed ? 'bg-emerald-900/50' : 'bg-slate-700'}`}>
+                                          {isAllowed ? (
+                                            <Check className="w-4 h-4 text-emerald-400" />
+                                          ) : (
+                                            <Ban className="w-4 h-4 text-slate-500" />
+                                          )}
                                         </div>
                                         <div>
-                                          <div className="text-sm font-medium text-slate-200">{feat.feature_name}</div>
+                                          <div className={`text-sm font-medium ${isAllowed ? 'text-slate-200' : 'text-slate-400'}`}>{feat.feature_name}</div>
                                           <div className="text-xs text-slate-500">{feat.feature_code}</div>
                                         </div>
                                       </div>
 
                                       <div className="flex items-center gap-6">
-                                        {/* Limit Input */}
+                                        {/* Limit Input - Show ∞ for unlimited */}
                                         <div className="flex items-center gap-2">
                                           <span className="text-xs text-slate-500">Limit:</span>
-                                          <Input
-                                            type="number"
-                                            value={control.free_limit}
-                                            onChange={(e) => updateFeatureLimit(plan.id, feat.feature_code, { 
-                                              free_limit: parseInt(e.target.value) || 0 
-                                            })}
-                                            className="w-20 h-8 text-sm bg-slate-700 border-slate-600"
-                                          />
+                                          {isUnlimited ? (
+                                            <button
+                                              onClick={() => updateFeatureLimit(plan.id, feat.feature_code, { free_limit: 100 })}
+                                              className="w-20 h-8 text-lg font-bold text-emerald-400 bg-slate-700 border border-slate-600 rounded-md hover:bg-slate-600 transition-colors flex items-center justify-center"
+                                              title="Unlimited - Click to set a specific limit"
+                                            >
+                                              ∞
+                                            </button>
+                                          ) : (
+                                            <div className="relative">
+                                              <Input
+                                                type="number"
+                                                value={control.free_limit}
+                                                onChange={(e) => updateFeatureLimit(plan.id, feat.feature_code, { 
+                                                  free_limit: parseInt(e.target.value) || 0 
+                                                })}
+                                                className="w-20 h-8 text-sm bg-slate-700 border-slate-600 pr-7"
+                                              />
+                                              <button
+                                                onClick={() => updateFeatureLimit(plan.id, feat.feature_code, { free_limit: -1 })}
+                                                className="absolute right-1 top-1/2 -translate-y-1/2 w-5 h-5 text-xs text-slate-400 hover:text-emerald-400 transition-colors"
+                                                title="Set unlimited"
+                                              >
+                                                ∞
+                                              </button>
+                                            </div>
+                                          )}
                                         </div>
 
                                         {/* Lock Mode */}
@@ -927,7 +972,8 @@ export default function SubscriptionAccessControlPage() {
                                 })}
                               </div>
                             </div>
-                          ))}
+                          );
+                          })}
                         </div>
                       )}
                     </div>

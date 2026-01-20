@@ -35,6 +35,7 @@
     "pm2:restart": "pm2 restart ecosystem.config.js --env production",
     "pm2:delete": "pm2 delete ecosystem.config.js || true",
     "deploy:prod": "bash scripts/start-prod.sh",
+    "deploy:check": "node scripts/deploy-checklist.js",
     "start:api": "npm run start:backend",
     "test": "jest",
     "test:tenant": "jest my-backend/tests/tenant-isolation.test.js",

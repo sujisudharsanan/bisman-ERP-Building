@@ -408,7 +408,6 @@ export default function EnterpriseAdminDashboard() {
               { icon: Users, label: 'Manage Super Admins', href: '/enterprise-admin/super-admins' },
               { icon: Layers, label: 'Module Management', href: '/enterprise-admin/modules' },
               { icon: Building, label: 'Organizations', href: '/enterprise-admin/organizations' },
-              { icon: Settings, label: 'Settings', href: '/enterprise-admin/settings' },
             ].map((action) => (
               <button
                 key={action.href}

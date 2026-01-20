@@ -617,18 +617,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 6,
   },
   {
-    id: 'enterprise-admin-settings',
-    name: 'Enterprise Settings',
-    path: '/enterprise-admin/settings',
-    iconKey: "Settings",
-    module: 'enterprise-admin',
-    permissions: ['enterprise-admin'],
-    roles: ['ENTERPRISE_ADMIN'],
-    status: 'active',
-    description: 'Configure enterprise-wide settings',
-    order: 7,
-  },
-  {
     id: 'enterprise-admin-monitoring',
     name: 'System Monitoring',
     path: '/enterprise-admin/monitoring',
@@ -2013,19 +2001,32 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 5,
     showInSidebar: false, // Hidden - payment requests are now created via Task form
   },
-  // REMOVED: Task Clarifications and Task Reviews pages deleted
-  // {
-  //   id: 'task-clarifications',
-  //   name: 'Task Clarifications',
-  //   path: '/tasks/clarifications',
-  //   ...
-  // },
-  // {
-  //   id: 'task-reviews',
-  //   name: 'Task Reviews',
-  //   path: '/tasks/reviews',
-  //   ...
-  // },
+  {
+    id: 'task-clarifications',
+    name: 'Task Clarifications',
+    path: '/tasks/clarifications',
+    iconKey: "MessageCircle",
+    module: 'system',
+    permissions: ['tasks:view'],
+    roles: ['ADMIN', 'MANAGER', 'ENTERPRISE_ADMIN'],
+    status: 'active',
+    description: 'View and respond to task clarification requests',
+    order: 6,
+    showInSidebar: false,
+  },
+  {
+    id: 'task-reviews',
+    name: 'Task Reviews',
+    path: '/tasks/reviews',
+    iconKey: "Eye",
+    module: 'system',
+    permissions: ['tasks:view'],
+    roles: ['ADMIN', 'MANAGER', 'ENTERPRISE_ADMIN'],
+    status: 'active',
+    description: 'Review completed tasks',
+    order: 7,
+    showInSidebar: false,
+  },
   {
     id: 'approvals',
     name: 'Task Management',
@@ -2868,18 +2869,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 12,
   },
   {
-    id: 'enterprise-admin-support',
-    name: 'Support Management',
-    path: '/enterprise-admin/support',
-    iconKey: "HelpCircle",
-    module: 'enterprise-admin',
-    permissions: ['enterprise-admin'],
-    roles: ['ENTERPRISE_ADMIN'],
-    status: 'active',
-    description: 'Manage support tickets and requests',
-    order: 13,
-  },
-  {
     id: 'enterprise-admin-rbac-security',
     name: 'RBAC Security',
     path: '/enterprise-admin/rbac-security',
@@ -3305,8 +3294,8 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     permissions: ['enterprise:admin:access'],
     roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN'],
     status: 'active',
-    showInSidebar: false,
-    description: 'Production readiness documentation',
+    showInSidebar: true,
+    description: 'Deployment verification, release traceability, and operational readiness',
     order: 50,
   },
 
@@ -3595,19 +3584,8 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   },
 
   // ==================== ADMIN PAGES ====================
-  {
-    id: 'admin-client-dashboard',
-    name: 'Client Dashboard',
-    path: '/admin/client-dashboard',
-    iconKey: "LayoutDashboard",
-    module: 'admin',
-    permissions: ['admin:clients:view'],
-    roles: ['ADMIN', 'SUPER_ADMIN'],
-    status: 'active',
-    showInSidebar: true,
-    description: 'Admin client dashboard',
-    order: 1,
-  },
+  // Note: admin-client-dashboard is defined earlier in this file (line ~2212)
+  // Removed duplicate entry that had path: '/admin/client-dashboard'
   {
     id: 'admin-users',
     name: 'Users',
@@ -3779,32 +3757,10 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'System configuration settings',
     order: 22,
   },
-  {
-    id: 'super-admin-system-health',
-    name: 'System Health',
-    path: '/super-admin/system/system-health',
-    iconKey: "Activity",
-    module: 'super-admin',
-    permissions: ['system:health:view'],
-    roles: ['SUPER_ADMIN'],
-    status: 'active',
-    showInSidebar: true,
-    description: 'System health monitoring',
-    order: 23,
-  },
-  {
-    id: 'super-admin-about-me',
-    name: 'About Me',
-    path: '/super-admin/about-me',
-    iconKey: "User",
-    module: 'super-admin',
-    permissions: [],
-    roles: ['SUPER_ADMIN'],
-    status: 'active',
-    showInSidebar: false,
-    description: 'Super admin profile',
-    order: 99,
-  },
+  // Note: super-admin-system-health is defined earlier in this file (line ~644)
+  // Removed duplicate entry with path: '/super-admin/system/system-health'
+  // Note: super-admin-about-me is defined earlier in this file (line ~680)
+  // Removed duplicate entry with path: '/super-admin/about-me'
 
   // ==================== SYSTEM PAGES ====================
   {
@@ -3887,19 +3843,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'Enterprise audit logs',
     order: 6,
   },
-  {
-    id: 'enterprise-admin-system-health',
-    name: 'System Health',
-    path: '/enterprise-admin/monitoring/system-health',
-    iconKey: "Activity",
-    module: 'enterprise-admin',
-    permissions: ['enterprise:monitoring:view'],
-    roles: ['ENTERPRISE_ADMIN'],
-    status: 'active',
-    showInSidebar: true,
-    description: 'Enterprise system health monitoring',
-    order: 7,
-  },
 ];
 
 /**
@@ -3915,9 +3858,13 @@ export function getPagesByModule(moduleId: string): PageMetadata[] {
 // export const CONTRACTS_PAGE = { ... }
 
 /**
+ * @deprecated Use useSidebarMenu hook instead - DB is now source of truth for navigation
+ * This function is kept for backward compatibility only.
+ * 
  * Get pages accessible by a user's permissions
  */
 export function getAccessiblePages(userPermissions: string[]): PageMetadata[] {
+  console.warn('[DEPRECATED] getAccessiblePages() - use useSidebarMenu hook instead');
   return PAGE_REGISTRY.filter(page =>
     page.permissions.some(perm => 
       perm === 'authenticated' || userPermissions.includes(perm)
@@ -3926,9 +3873,13 @@ export function getAccessiblePages(userPermissions: string[]): PageMetadata[] {
 }
 
 /**
+ * @deprecated Use useSidebarMenu hook instead - DB is now source of truth for navigation
+ * This function is kept for backward compatibility only.
+ * 
  * Get pages by role
  */
 export function getPagesByRole(roleName: string): PageMetadata[] {
+  console.warn('[DEPRECATED] getPagesByRole() - use useSidebarMenu hook instead');
   const normalizedRole = roleName.toUpperCase();
   return PAGE_REGISTRY.filter(page =>
     page.roles.some(role => role.toUpperCase() === normalizedRole)
@@ -3950,9 +3901,13 @@ export function getPageByPath(path: string): PageMetadata | undefined {
 }
 
 /**
+ * @deprecated Use useSidebarMenu hook instead - DB is now source of truth for navigation
+ * This function is kept for backward compatibility only.
+ * 
  * Get navigation structure grouped by module
  */
 export function getNavigationStructure(userPermissions: string[]): Record<string, PageMetadata[]> {
+  console.warn('[DEPRECATED] getNavigationStructure() - use useSidebarMenu hook instead');
   const accessiblePages = getAccessiblePages(userPermissions);
   const grouped: Record<string, PageMetadata[]> = {};
 

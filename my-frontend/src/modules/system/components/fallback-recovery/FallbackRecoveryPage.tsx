@@ -26,6 +26,7 @@ import {
 } from '@/lib/ssr-safe-icons';
 import { getEnvironmentInfo } from '@/services/fallbackService';
 import type { Environment } from '@/types/fallback';
+import { usePageRefresh, useRefreshTrigger } from '@/contexts/RefreshContext';
 
 // Import tab components
 import IncidentSummaryTab from './IncidentSummaryTab';
@@ -105,6 +106,7 @@ function EnvironmentBadge({
 
 export default function FallbackRecoveryPage() {
   const { hasAccess } = useAuth();
+  const { isRefreshing, lastRefresh: globalLastRefresh } = useRefreshTrigger();
   const [activeTab, setActiveTab] = useState<TabId>('incidents');
   const [environment, setEnvironment] = useState<Environment | null>(null);
   const [envLoading, setEnvLoading] = useState(true);
@@ -129,11 +131,14 @@ export default function FallbackRecoveryPage() {
     fetchEnvironment();
   }, [fetchEnvironment]);
 
-  // Global refresh handler
+  // Global refresh handler - register with global context
   const handleRefresh = useCallback(() => {
     setRefreshKey(prev => prev + 1);
     fetchEnvironment();
   }, [fetchEnvironment]);
+
+  // Register this page's refresh handler with global context
+  usePageRefresh('fallback-recovery-page', handleRefresh);
 
   // Access check
   if (!hasAccess('system-settings')) {
@@ -201,13 +206,12 @@ export default function FallbackRecoveryPage() {
               Investigate failures, roll back to safety, and restore system stability.
             </p>
           </div>
-          <button
-            onClick={handleRefresh}
-            className="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 dark:bg-blue-500 text-white rounded-lg hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors text-sm font-medium"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Refresh All
-          </button>
+          <div className="flex items-center gap-2 text-sm text-gray-500 dark:text-gray-400">
+            {globalLastRefresh && (
+              <span>Last refresh: {globalLastRefresh.toLocaleTimeString()}</span>
+            )}
+            {isRefreshing && <RefreshCw className="w-4 h-4 animate-spin text-blue-600" />}
+          </div>
         </div>
 
         {/* Tab Navigation */}

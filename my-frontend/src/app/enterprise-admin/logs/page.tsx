@@ -7,7 +7,6 @@ import {
   FiActivity,
   FiShield,
   FiSearch,
-  FiFilter,
   FiDownload,
   FiAlertTriangle,
   FiInfo,
@@ -16,7 +15,6 @@ import {
   FiClock,
   FiUser,
   FiServer,
-  FiDatabase,
   FiLock,
   FiUnlock,
   FiEye,
@@ -26,6 +24,7 @@ import {
   FiLogOut,
 } from "react-icons/fi";
 import { format } from "date-fns";
+import { usePageRefresh, useRefreshTrigger } from "@/contexts/RefreshContext";
 
 // ============================================================================
 // TYPES
@@ -552,6 +551,7 @@ type TabType = "system" | "activity" | "security";
 export default function UnifiedLogsPage() {
   const [activeTab, setActiveTab] = useState<TabType>("system");
   const [lastRefresh, setLastRefresh] = useState(new Date());
+  const { isRefreshing, lastRefresh: globalLastRefresh } = useRefreshTrigger();
 
   const tabs: { id: TabType; label: string; icon: React.ReactNode }[] = [
     { id: "system", label: "System Logs", icon: <FiServer className="h-4 w-4" /> },
@@ -559,9 +559,12 @@ export default function UnifiedLogsPage() {
     { id: "security", label: "Security Operations", icon: <FiShield className="h-4 w-4" /> },
   ];
 
-  const handleRefreshAll = () => {
+  // Register this page's refresh handler with global context
+  const handleRefreshAll = useCallback(() => {
     setLastRefresh(new Date());
-  };
+  }, []);
+
+  usePageRefresh("enterprise-admin-logs", handleRefreshAll);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -580,15 +583,11 @@ export default function UnifiedLogsPage() {
             </div>
             <div className="flex items-center gap-4">
               <span className="text-sm text-gray-500">
-                Last refresh: {format(lastRefresh, "HH:mm:ss")}
+                Last refresh: {format(globalLastRefresh || lastRefresh, "HH:mm:ss")}
               </span>
-              <button
-                onClick={handleRefreshAll}
-                className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-              >
-                <FiRefreshCw className="h-4 w-4" />
-                Refresh All
-              </button>
+              {isRefreshing && (
+                <FiRefreshCw className="h-4 w-4 text-blue-600 animate-spin" />
+              )}
             </div>
           </div>
 

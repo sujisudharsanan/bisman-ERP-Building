@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 import { 
   FiFileText, 
   FiDatabase, 
@@ -15,6 +15,7 @@ import {
 } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
 import { PAGE_REGISTRY, MODULES } from "@/common/config/page-registry";
+import { usePageRefresh, useRefreshTrigger } from "@/contexts/RefreshContext";
 
 type BackendPage = {
   key: string;
@@ -42,6 +43,7 @@ type PageStatus = {
 
 export default function PagesReportPage() {
   useAuth();
+  const { isRefreshing, lastRefresh: globalLastRefresh } = useRefreshTrigger();
   
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -51,41 +53,45 @@ export default function PagesReportPage() {
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const [filterStatus, setFilterStatus] = useState<'all' | 'synced' | 'missing-backend' | 'missing-registry' | 'unmapped'>('all');
 
-  // Fetch data
-  useEffect(() => {
-    const fetchData = async () => {
-      try {
-        setLoading(true);
-        setError(null);
+  // Refetch data function for global refresh
+  const fetchData = useCallback(async () => {
+    try {
+      setLoading(true);
+      setError(null);
 
-        const [pagesRes, modulesRes] = await Promise.all([
-          fetch('/api/pages', { credentials: 'include' }),
-          fetch('/api/enterprise-admin/master-modules', { credentials: 'include' })
-        ]);
+      const [pagesRes, modulesRes] = await Promise.all([
+        fetch('/api/pages', { credentials: 'include' }),
+        fetch('/api/enterprise-admin/master-modules', { credentials: 'include' })
+      ]);
 
-        if (pagesRes.ok) {
-          const pagesJson = await pagesRes.json();
-          if (pagesJson.success && Array.isArray(pagesJson.data)) {
-            setBackendPages(pagesJson.data);
-          }
+      if (pagesRes.ok) {
+        const pagesJson = await pagesRes.json();
+        if (pagesJson.success && Array.isArray(pagesJson.data)) {
+          setBackendPages(pagesJson.data);
         }
-
-        if (modulesRes.ok) {
-          const modulesJson = await modulesRes.json();
-          if (Array.isArray(modulesJson.modules)) {
-            setModulesWithPages(modulesJson.modules);
-          }
-        }
-      } catch (err) {
-        console.error('Error fetching data:', err);
-        setError(err instanceof Error ? err.message : 'Failed to load data');
-      } finally {
-        setLoading(false);
       }
-    };
 
-    fetchData();
+      if (modulesRes.ok) {
+        const modulesJson = await modulesRes.json();
+        if (Array.isArray(modulesJson.modules)) {
+          setModulesWithPages(modulesJson.modules);
+        }
+      }
+    } catch (err) {
+      console.error('Error fetching data:', err);
+      setError(err instanceof Error ? err.message : 'Failed to load data');
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  // Register refresh handler with global context
+  usePageRefresh('enterprise-admin-pages-report', fetchData);
+
+  // Initial fetch
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
 
   // Get all pages mapped under modules
   const modulesMappedPages = useMemo(() => {
@@ -250,13 +256,12 @@ export default function PagesReportPage() {
             Compare pages across Registry, Backend, and Module mappings
           </p>
         </div>
-        <button
-          onClick={() => window.location.reload()}
-          className="flex items-center gap-2 px-3 py-2 text-sm bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700 rounded-lg transition"
-        >
-          <FiRefreshCw className="w-4 h-4" />
-          Refresh
-        </button>
+        <div className="flex items-center gap-2 text-sm text-gray-500">
+          {globalLastRefresh && (
+            <span>Last refresh: {globalLastRefresh.toLocaleTimeString()}</span>
+          )}
+          {isRefreshing && <FiRefreshCw className="w-4 h-4 animate-spin text-purple-600" />}
+        </div>
       </div>
 
       {/* Stats Cards */}

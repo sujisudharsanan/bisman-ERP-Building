@@ -807,6 +807,20 @@ const governanceRoutes = require('./routes/governanceRoutes')
 app.use('/api/governance', governanceRoutes)
 console.log('✅ Governance routes loaded at /api/governance')
 
+// ===================================================================
+// PAGE SYNC AUDIT - Detect drift between DB, Registry, and Filesystem
+// ===================================================================
+const pageSyncAuditRoutes = require('./routes/pageSyncAudit')
+app.use('/api/page-sync', authenticate, pageSyncAuditRoutes)
+console.log('✅ Page Sync Audit routes loaded at /api/page-sync')
+
+// ===================================================================
+// DB-DRIVEN MENU API - Single source of truth for sidebar menus
+// ===================================================================
+const dbMenuRoutes = require('./routes/dbMenuRoutes')
+app.use('/api/menu', dbMenuRoutes)
+console.log('✅ DB Menu routes loaded at /api/menu')
+
 // Calendar routes for event management
 try {
   const calendarRoutes = require('./routes/calendar')
@@ -1391,10 +1405,8 @@ try {
   const enterpriseAdminLogs = require('./routes/enterprise-admin-Logs')
   const enterpriseAdminUsers = require('./routes/enterprise-admin-Users')
   const enterpriseAdminSuperAdmins = require('./routes/enterprise-admin-SuperAdmins')
-  const enterpriseAdminSettings = require('./routes/enterprise-admin-Settings')
   const enterpriseAdminIntegrations = require('./routes/enterprise-admin-Integrations')
   const enterpriseAdminNotifications = require('./routes/enterprise-admin-Notifications')
-  const enterpriseAdminSupport = require('./routes/enterprise-admin-Support')
   
   // Admin Creation with Subscription Assignment routes
   const adminWithSubscription = require('./routes/adminWithSubscription')
@@ -1409,15 +1421,13 @@ try {
   app.use('/api/enterprise-admin/logs', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminLogs)
   app.use('/api/enterprise-admin/users', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminUsers)
   app.use('/api/enterprise-admin/super-admins', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminSuperAdmins)
-  app.use('/api/enterprise-admin/settings', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminSettings)
   app.use('/api/enterprise-admin/integrations', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminIntegrations)
   app.use('/api/enterprise-admin/notifications', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminNotifications)
-  app.use('/api/enterprise-admin/support', authenticate, adminIpAllowlist, setTenantContext, enterpriseAdminSupport)
   
   // Admin Creation with Subscription - accessible for creating new organizations with subscriptions
   app.use('/api/admin-creation', adminWithSubscription)
   
-  console.log('✅ Enterprise Admin Management routes loaded (14 modules + Admin Creation)')
+  console.log('✅ Enterprise Admin Management routes loaded (12 modules + Admin Creation)')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Enterprise Admin Management routes not loaded:', e && e.message)

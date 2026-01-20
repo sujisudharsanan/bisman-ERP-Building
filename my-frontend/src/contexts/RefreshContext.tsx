@@ -41,9 +41,9 @@ export function RefreshProvider({ children }: { children: React.ReactNode }) {
     const handlers = Array.from(refreshHandlers.current.values());
     
     if (handlers.length === 0) {
-      // No handlers registered, fall back to page reload
-      console.log('[RefreshContext] No refresh handlers registered, using page reload');
-      window.location.reload();
+      // No handlers registered - just update timestamp, don't reload page
+      console.log('[RefreshContext] No refresh handlers registered, updating timestamp only');
+      setLastRefresh(new Date());
       return;
     }
 
@@ -132,9 +132,9 @@ export function useRefreshTrigger() {
   const context = useRefreshContextSafe();
   
   if (!context) {
-    // Not wrapped in RefreshProvider, return fallback that does page reload
+    // Not wrapped in RefreshProvider, return fallback that updates timestamp only (no page reload)
     return {
-      refreshAll: async () => { window.location.reload(); },
+      refreshAll: async () => { console.log('[RefreshTrigger] No RefreshProvider - refresh skipped'); },
       isRefreshing: false,
       lastRefresh: null,
       registeredCount: 0,

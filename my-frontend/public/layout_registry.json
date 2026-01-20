@@ -247,21 +247,6 @@
       ]
     },
     {
-      "id": "enterprise-admin-settings",
-      "name": "Enterprise Settings",
-      "path": "/enterprise-admin/settings",
-      "module": "enterprise-admin",
-      "status": "active",
-      "description": "Configure enterprise-wide settings",
-      "order": 7,
-      "permissions": [
-        "enterprise-admin"
-      ],
-      "roles": [
-        "ENTERPRISE_ADMIN"
-      ]
-    },
-    {
       "id": "enterprise-admin-monitoring",
       "name": "System Monitoring",
       "path": "/enterprise-admin/monitoring",

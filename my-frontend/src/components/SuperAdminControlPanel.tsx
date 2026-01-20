@@ -58,6 +58,7 @@ import {
   LayoutDashboard,
   Package,
 } from 'lucide-react';
+import { useRefreshTrigger } from '@/contexts/RefreshContext';
 
 // ✅ PERFORMANCE: Lazy load heavy components with dynamic imports
 // This reduces initial bundle size from 12MB to ~3-4MB
@@ -198,6 +199,7 @@ type UIRole = UserRole & { is_active?: boolean }
 const SuperAdminControlPanel: React.FC = () => {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const { refreshAll, isRefreshing } = useRefreshTrigger();
   
   // Get initial tab from URL or default to 'dashboard'
   const initialTab = (searchParams?.get('tab')) || 'dashboard';
@@ -1192,13 +1194,14 @@ const SuperAdminControlPanel: React.FC = () => {
                 </div>
               )}
               <button
-                onClick={() => window.location.reload()}
-                className="bg-blue-600 dark:bg-blue-500 text-white px-2 sm:px-3 py-1.5 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center gap-1.5 text-xs font-medium shadow-sm"
-                aria-label="Refresh"
-                title="Refresh"
+                onClick={refreshAll}
+                disabled={isRefreshing}
+                className={`bg-blue-600 dark:bg-blue-500 text-white px-2 sm:px-3 py-1.5 rounded-md hover:bg-blue-700 dark:hover:bg-blue-600 transition-colors flex items-center gap-1.5 text-xs font-medium shadow-sm ${isRefreshing ? 'opacity-75 cursor-wait' : ''}`}
+                aria-label="Refresh data"
+                title="Refresh live data (no page reload)"
               >
-                <RefreshCw className="w-3.5 h-3.5" />
-                <span className="hidden sm:inline">Refresh</span>
+                <RefreshCw className={`w-3.5 h-3.5 ${isRefreshing ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">{isRefreshing ? 'Refreshing...' : 'Refresh'}</span>
               </button>
               <button
                 onClick={handleLogout}

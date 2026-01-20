@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation';
 export default function MonitoringPage() {
   const router = useRouter();
 
-  // Redirect to System Health Dashboard by default
+  // Redirect to Live Monitoring by default
   useEffect(() => {
-    router.replace('/enterprise-admin/monitoring/system-health');
+    router.replace('/enterprise-admin/monitoring/live');
   }, [router]);
 
   // Minimal loading state while redirecting
