@@ -15,6 +15,26 @@ const { getPrisma } = require('../lib/prisma');
 const prisma = getPrisma();
 
 // ============================================================================
+// HELPER FUNCTIONS
+// ============================================================================
+
+/**
+ * Map DB enum value to frontend value
+ * DB uses 'read_only', frontend expects 'read'
+ */
+function mapAccessLevelToFrontend(level) {
+  return level === 'read_only' ? 'read' : level;
+}
+
+/**
+ * Map frontend value to DB enum value
+ * Frontend sends 'read', DB expects 'read_only'
+ */
+function mapAccessLevelToDB(level) {
+  return level === 'read' ? 'read_only' : level;
+}
+
+// ============================================================================
 // AUTHORIZATION MIDDLEWARE
 // ============================================================================
 // TODO: Uncomment in production
@@ -68,13 +88,23 @@ router.get('/module-matrix', async (req, res) => {
       SELECT COUNT(*) as count FROM plan_module_access_draft WHERE is_dirty = true
     `;
 
+    // Map access levels from DB enum to frontend values
+    const mappedDraftAccess = draftAccess.map(a => ({
+      ...a,
+      access_level: mapAccessLevelToFrontend(a.access_level)
+    }));
+    const mappedProdAccess = prodAccess.map(a => ({
+      ...a,
+      access_level: mapAccessLevelToFrontend(a.access_level)
+    }));
+
     res.json({
       success: true,
       data: {
         plans,
         modules,
-        draftAccess,
-        prodAccess,
+        draftAccess: mappedDraftAccess,
+        prodAccess: mappedProdAccess,
         pendingChanges: Number(dirtyCount[0]?.count || 0)
       }
     });
@@ -99,7 +129,7 @@ router.put('/module-access', async (req, res) => {
       });
     }
 
-    // Validate access level
+    // Validate access level - frontend uses 'read', DB enum uses 'read_only'
     const validLevels = ['none', 'read', 'full'];
     if (!validLevels.includes(accessLevel)) {
       return res.status(400).json({ 
@@ -108,15 +138,18 @@ router.put('/module-access', async (req, res) => {
       });
     }
 
+    // Map frontend values to DB enum values
+    const dbAccessLevel = accessLevel === 'read' ? 'read_only' : accessLevel;
+
     // Upsert into draft table
     await prisma.$executeRaw`
       INSERT INTO plan_module_access_draft 
         (plan_id, module_id, access_level, is_dirty, draft_action, modified_by, updated_at)
       VALUES 
-        (${planId}, ${moduleId}, ${accessLevel}::module_access_level, true, 'update', ${modifiedBy}, NOW())
+        (${planId}, ${moduleId}, ${dbAccessLevel}::module_access_level, true, 'update', ${modifiedBy}, NOW())
       ON CONFLICT (plan_id, module_id) 
       DO UPDATE SET 
-        access_level = ${accessLevel}::module_access_level,
+        access_level = ${dbAccessLevel}::module_access_level,
         is_dirty = true,
         draft_action = 'update',
         modified_by = ${modifiedBy},
@@ -148,14 +181,16 @@ router.post('/module-access/bulk', async (req, res) => {
     let updated = 0;
     for (const change of changes) {
       const { planId, moduleId, accessLevel } = change;
+      // Map frontend values to DB enum values
+      const dbAccessLevel = accessLevel === 'read' ? 'read_only' : accessLevel;
       await prisma.$executeRaw`
         INSERT INTO plan_module_access_draft 
           (plan_id, module_id, access_level, is_dirty, draft_action, modified_by, updated_at)
         VALUES 
-          (${planId}, ${moduleId}, ${accessLevel}::module_access_level, true, 'update', ${modifiedBy}, NOW())
+          (${planId}, ${moduleId}, ${dbAccessLevel}::module_access_level, true, 'update', ${modifiedBy}, NOW())
         ON CONFLICT (plan_id, module_id) 
         DO UPDATE SET 
-          access_level = ${accessLevel}::module_access_level,
+          access_level = ${dbAccessLevel}::module_access_level,
           is_dirty = true,
           draft_action = 'update',
           modified_by = ${modifiedBy},
@@ -425,17 +460,20 @@ router.post('/tenants/:tenantId/override', async (req, res) => {
       });
     }
 
+    // Map frontend values to DB enum values
+    const dbAccessLevel = accessLevel === 'read' ? 'read_only' : accessLevel;
+
     await prisma.$executeRaw`
       INSERT INTO tenant_module_overrides 
         (tenant_id, module_id, access_level, override_type, override_reason, 
          granted_by, granted_at, end_date, is_active)
       VALUES 
-        (${tenantId}::uuid, ${moduleId}, ${accessLevel}::module_access_level, 
+        (${tenantId}::uuid, ${moduleId}, ${dbAccessLevel}::module_access_level, 
          ${overrideType || 'grant'}, ${overrideReason}, ${grantedBy}, NOW(), 
          ${endDate ? endDate : null}::timestamptz, true)
       ON CONFLICT (tenant_id, module_id) 
       DO UPDATE SET 
-        access_level = ${accessLevel}::module_access_level,
+        access_level = ${dbAccessLevel}::module_access_level,
         override_type = ${overrideType || 'grant'},
         override_reason = ${overrideReason},
         granted_by = ${grantedBy},
