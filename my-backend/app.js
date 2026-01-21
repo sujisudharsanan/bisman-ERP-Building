@@ -2149,7 +2149,8 @@ app.get('/api/enterprise-admin/master-modules', authenticate, requireRole(['ENTE
   if (req.user.userType === 'SUPER_ADMIN') {
       // Super Admin should only see modules assigned by Enterprise Admin
       // PLUS always-accessible modules (common, chat)
-      console.log('[master-modules] Super Admin access - filtering by assigned modules + always-accessible');
+      // PLUS protected/core modules that Super Admins always have access to
+      console.log('[master-modules] Super Admin access - filtering by assigned modules + always-accessible + protected');
       console.log('[master-modules] Super Admin ID:', req.user.id);
       console.log('[master-modules] Assigned modules:', req.user.assignedModules);
       
@@ -2162,19 +2163,28 @@ app.get('/api/enterprise-admin/master-modules', authenticate, requireRole(['ENTE
       const assignedModuleIds = moduleAssignments.map(ma => ma.module_id);
       console.log('[master-modules] Assigned module IDs:', assignedModuleIds);
       
-      // Fetch assigned modules OR always-accessible modules
+      // Protected module patterns for SUPER_ADMIN (matches frontend protected-access.ts)
+      // These are modules Super Admins always have access to regardless of assignment
+      // Note: Use exact matches to avoid matching similar names (e.g., 'system' != 'system-health')
+      const protectedModuleNames = ['super-admin', 'system', 'enterprise-admin', 'common', 'chat'];
+      
+      // Fetch assigned modules OR always-accessible modules OR protected modules
       dbModules = await prisma.modules.findMany({
         where: {
           OR: [
-            { id: { in: assignedModuleIds } },
-            { is_always_accessible: true }
+            // Explicitly assigned modules
+            ...(assignedModuleIds.length > 0 ? [{ id: { in: assignedModuleIds } }] : []),
+            // Database-flagged always-accessible modules
+            { is_always_accessible: true },
+            // Protected modules by exact module_name match
+            { module_name: { in: protectedModuleNames } },
           ]
         },
         orderBy: {
           id: 'asc'
         }
       });
-      console.log('[master-modules] Including always-accessible modules. Total:', dbModules.length);
+      console.log('[master-modules] Including always-accessible + protected modules. Total:', dbModules.length);
     } else {
       // Enterprise Admin and Admin can see all modules
       console.log('[master-modules] Admin/Enterprise Admin access - showing all modules');

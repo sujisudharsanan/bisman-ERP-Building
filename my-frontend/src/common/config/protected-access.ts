@@ -57,21 +57,24 @@ export function isModuleProtected(moduleKey: string, userRole: string): boolean 
     return true;
   }
   
+  // Helper function to check if a key matches a protected module
+  // Uses exact match or prefix match (e.g., 'super-admin' matches 'super-admin-dashboard')
+  // Does NOT use contains match to avoid 'system-health' matching 'system'
+  const matchesProtected = (protectedModules: string[]) => {
+    return protectedModules.some(m => 
+      key === m || key.startsWith(m + '-')
+    );
+  };
+  
   switch (role) {
     case 'SUPER_ADMIN':
-      return SUPER_ADMIN_PROTECTED_MODULES.some(m => 
-        key === m || key.startsWith(m + '-') || key.includes(m)
-      );
+      return matchesProtected(SUPER_ADMIN_PROTECTED_MODULES);
     case 'ENTERPRISE_ADMIN':
-      return ENTERPRISE_ADMIN_PROTECTED_MODULES.some(m => 
-        key === m || key.startsWith(m + '-') || key.includes(m)
-      );
+      return matchesProtected(ENTERPRISE_ADMIN_PROTECTED_MODULES);
     default:
       // For other admin roles, protect admin and common
       if (role.includes('ADMIN')) {
-        return ADMIN_PROTECTED_MODULES.some(m => 
-          key === m || key.startsWith(m + '-') || key.includes(m)
-        );
+        return matchesProtected(ADMIN_PROTECTED_MODULES);
       }
       // For regular users, only common is protected
       return ALWAYS_ACCESSIBLE_MODULES.includes(key);
@@ -100,18 +103,23 @@ export function isRoleProtected(roleName: string, userRole: string): boolean {
  * Get a user-friendly message when trying to remove a protected module
  */
 export function getProtectedModuleMessage(moduleKey: string, userRole: string): string {
-  const key = (moduleKey || '').toLowerCase();
+  const key = (moduleKey || '').toLowerCase().replace(/_/g, '-');
   const role = (userRole || '').toUpperCase();
+  
+  // Helper function to check if a key matches a protected module
+  const matchesProtected = (protectedModules: string[]) => {
+    return protectedModules.some(m => key === m || key.startsWith(m + '-'));
+  };
   
   if (ALWAYS_ACCESSIBLE_MODULES.includes(key)) {
     return `The "${moduleKey}" module is always accessible to all users and cannot be removed.`;
   }
   
-  if (role === 'SUPER_ADMIN' && SUPER_ADMIN_PROTECTED_MODULES.some(m => key.includes(m))) {
+  if (role === 'SUPER_ADMIN' && matchesProtected(SUPER_ADMIN_PROTECTED_MODULES)) {
     return `The "${moduleKey}" module is a core module for Super Admins and cannot be removed.`;
   }
   
-  if (role === 'ENTERPRISE_ADMIN' && ENTERPRISE_ADMIN_PROTECTED_MODULES.some(m => key.includes(m))) {
+  if (role === 'ENTERPRISE_ADMIN' && matchesProtected(ENTERPRISE_ADMIN_PROTECTED_MODULES)) {
     return `The "${moduleKey}" module is a core module for Enterprise Admins and cannot be removed.`;
   }
   

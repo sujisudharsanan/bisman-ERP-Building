@@ -195,6 +195,15 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
 
         const assignedModules = moduleAssignments.map(ma => ma.modules?.module_name).filter(Boolean);
         
+        // Add protected/core modules that Super Admins always have access to
+        // (matches frontend protected-access.ts SUPER_ADMIN_PROTECTED_MODULES)
+        const protectedModules = ['super-admin', 'system', 'common', 'chat'];
+        protectedModules.forEach(pm => {
+          if (!assignedModules.includes(pm)) {
+            assignedModules.push(pm);
+          }
+        });
+        
         // Build pagePermissions object: { moduleName: [pageIds] }
         const pagePermissions = {};
         moduleAssignments.forEach(ma => {
