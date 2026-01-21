@@ -52,6 +52,9 @@ export default function RolesUsersReportPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role?.toUpperCase() === 'SUPER_ADMIN' || user?.userType === 'SUPER_ADMIN';
 
+  // Roles to hide from SUPER_ADMIN (they shouldn't be able to assign these to clients)
+  const HIDDEN_ROLES = ['SUPER_ADMIN', 'ENTERPRISE_ADMIN'];
+
   // Loading states
   const [loading, setLoading] = useState(true);
   const [isDataRefreshing, setIsDataRefreshing] = useState(false);
@@ -103,6 +106,14 @@ export default function RolesUsersReportPage() {
 
   // Ref to track if roles were loaded (to prevent overwrite on load)
   const isRolesInitializedRef = useRef<boolean>(false);
+
+  // Filter out SUPER_ADMIN and ENTERPRISE_ADMIN roles for display
+  const visibleRoles = useMemo(() => {
+    return allRoles.filter(role => {
+      const roleName = (role.name || '').toUpperCase();
+      return !HIDDEN_ROLES.includes(roleName);
+    });
+  }, [allRoles]);
 
   // Get selected client
   const selectedClient = useMemo(() => {
@@ -534,15 +545,15 @@ export default function RolesUsersReportPage() {
               <FiShield className="text-purple-600" />
               Roles
               <span className="text-xs font-normal text-gray-500">
-                {selectedClientId ? `(${assignedRoleIds.length}/${allRoles.length} assigned)` : `${allRoles.length} total`}
+                {selectedClientId ? `(${assignedRoleIds.length}/${visibleRoles.length} assigned)` : `${visibleRoles.length} total`}
               </span>
             </div>
             
             {/* Action buttons for role assignment */}
-            {selectedClientId && allRoles.length > 0 && (
+            {selectedClientId && visibleRoles.length > 0 && (
               <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
                 <button
-                  onClick={() => setAssignedRoleIds(allRoles.map(r => r.id))}
+                  onClick={() => setAssignedRoleIds(visibleRoles.map(r => r.id))}
                   className="text-[10px] px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200"
                 >
                   Select All
@@ -578,12 +589,12 @@ export default function RolesUsersReportPage() {
                 <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
                   ⚠️ Select a Client to assign roles
                 </div>
-              ) : allRoles.length === 0 ? (
+              ) : visibleRoles.length === 0 ? (
                 <div className="text-xs text-gray-500 text-center py-4">
                   No roles available in the system.
                 </div>
               ) : (
-                allRoles.map(role => {
+                visibleRoles.map(role => {
                   const isSelectedForViewing = selectedRoleId === role.id;
                   const isAssigned = assignedRoleIds.includes(role.id);
                   const userCount = role.userCount || role.users?.length || 0;
@@ -776,7 +787,7 @@ export default function RolesUsersReportPage() {
               <FiShield className="text-white w-4 h-4" />
             </div>
             <span className="text-sm font-bold text-gray-800 dark:text-gray-100">All Roles Overview</span>
-            <span className="text-xs text-gray-500">({allRoles.length} roles)</span>
+            <span className="text-xs text-gray-500">({visibleRoles.length} roles)</span>
             {/* Filter buttons */}
             <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 ml-2" onClick={(e) => e.stopPropagation()}>
               <button
@@ -815,7 +826,7 @@ export default function RolesUsersReportPage() {
               </span>
               <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-red-100 dark:bg-red-900/30 rounded-full">
                 <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                <span className="text-red-700 dark:text-red-400">{allRoles.length - assignedRoleIds.length}</span>
+                <span className="text-red-700 dark:text-red-400">{visibleRoles.length - assignedRoleIds.length}</span>
               </span>
             </div>
             {/* Add/Remove button */}
@@ -835,7 +846,7 @@ export default function RolesUsersReportPage() {
             <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
               <FiUsers className="w-3.5 h-3.5 text-blue-600" />
               <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                {allRoles.reduce((sum, r) => sum + (r.userCount || r.users?.length || 0), 0)} users
+                {visibleRoles.reduce((sum, r) => sum + (r.userCount || r.users?.length || 0), 0)} users
               </span>
             </div>
             {/* Expand/Collapse button */}
@@ -852,7 +863,7 @@ export default function RolesUsersReportPage() {
         {/* Always Visible: One Row of Roles */}
         <div className="px-4 py-3 bg-white/50 dark:bg-gray-900/50">
           <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-2">
-            {allRoles
+            {visibleRoles
               .filter((role) => {
                 const isAssigned = assignedRoleIds.includes(role.id);
                 return rolesFilter === 'all' || 
@@ -935,7 +946,7 @@ export default function RolesUsersReportPage() {
                 );
               })}
             {/* Show more indicator */}
-            {allRoles.filter((role) => {
+            {visibleRoles.filter((role) => {
               const isAssigned = assignedRoleIds.includes(role.id);
               return rolesFilter === 'all' || 
                 (rolesFilter === 'assigned' && isAssigned) ||
@@ -945,7 +956,7 @@ export default function RolesUsersReportPage() {
                 onClick={() => setIsRolesDrawerExpanded(true)}
                 className="flex items-center justify-center rounded-lg border border-dashed border-gray-300 dark:border-gray-600 px-2 py-1.5 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
               >
-                +{allRoles.filter((role) => {
+                +{visibleRoles.filter((role) => {
                   const isAssigned = assignedRoleIds.includes(role.id);
                   return rolesFilter === 'all' || 
                     (rolesFilter === 'assigned' && isAssigned) ||
@@ -964,7 +975,7 @@ export default function RolesUsersReportPage() {
             {/* Remaining Roles Grid (skip first 9 shown above) */}
             <div className="max-h-[30vh] overflow-y-auto pr-1">
               <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-2">
-                {allRoles
+                {visibleRoles
                   .filter((role) => {
                     const isAssigned = assignedRoleIds.includes(role.id);
                     return rolesFilter === 'all' || 
