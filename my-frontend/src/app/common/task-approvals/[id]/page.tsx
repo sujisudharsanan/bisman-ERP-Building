@@ -292,7 +292,7 @@ export default function TaskDetailPage({ params }: any) {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="flex items-center justify-center h-64 bg-gray-50">
         <div className="text-center">
           <div className="inline-block animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600"></div>
           <p className="mt-4 text-gray-600">Loading task details...</p>
@@ -303,8 +303,8 @@ export default function TaskDetailPage({ params }: any) {
 
   if (error || !task) {
     return (
-      <div className="min-h-screen bg-gray-50 p-6">
-        <div className="max-w-4xl mx-auto">
+      <div className="w-full bg-gray-50 p-6">
+        <div className="w-full">
           <button
             onClick={() => router.back()}
             className="flex items-center gap-2 text-gray-600 hover:text-gray-800 mb-6"
@@ -322,7 +322,7 @@ export default function TaskDetailPage({ params }: any) {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 p-6">
+    <div className="w-full bg-gray-50 p-6">
       <div className="w-full">
         {/* Header */}
         <div className="mb-6">

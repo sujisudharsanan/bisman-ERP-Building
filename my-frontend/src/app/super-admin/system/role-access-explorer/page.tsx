@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 
 export default function RoleAccessExplorerPage() {
   return (
-    <div className="container mx-auto p-6">
+    <div className="w-full">
       <PageHeader
         title="Role Access Explorer"
         description="Explore and manage role-based access permissions"

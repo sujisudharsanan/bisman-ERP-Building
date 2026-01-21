@@ -1226,15 +1226,15 @@ export default function SuperAdminCouponsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center h-64">
         <RefreshCw className="w-8 h-8 animate-spin text-amber-500" />
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
-      <div className="max-w-7xl mx-auto space-y-6">
+    <div className="w-full bg-gray-50 dark:bg-gray-900">
+      <div className="w-full space-y-6">
         {/* Header */}
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-4">

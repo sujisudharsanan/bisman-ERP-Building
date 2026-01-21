@@ -232,7 +232,7 @@ export default function UnifiedDashboardPage() {
   // If user is null (not authenticated), immediately redirect instead of showing loading
   if (authLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+      <div className="flex items-center justify-center h-64 bg-gray-50 dark:bg-slate-900">
         <div className="text-center">
           <div className={`animate-spin rounded-full h-12 w-12 border-4 ${config.accentColor} border-t-transparent mx-auto mb-4`}></div>
           <p className="text-gray-600 dark:text-gray-400">Checking authentication...</p>
@@ -249,7 +249,7 @@ export default function UnifiedDashboardPage() {
   // Data loading state (only shown when authenticated)
   if (dataLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center">
+      <div className="flex items-center justify-center h-64 bg-gray-50 dark:bg-slate-900">
         <div className="text-center">
           <div className={`animate-spin rounded-full h-12 w-12 border-4 ${config.accentColor} border-t-transparent mx-auto mb-4`}></div>
           <p className="text-gray-600 dark:text-gray-400">{config.loadingText}</p>

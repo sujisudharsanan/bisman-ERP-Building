@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 
 export default function SystemClientsPage() {
   return (
-    <div className="container mx-auto p-6">
+    <div className="w-full p-6">
       <PageHeader
         title="System Clients"
         description="Manage system clients and configurations"

@@ -18,30 +18,38 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
   const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  // Sidebar widths matching BaseSidebar: w-52 (208px) expanded, w-16 (64px) collapsed
+  const sidebarWidth = sidebarOpen ? '208px' : '64px';
+
   return (
     <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'SYSTEM_ADMIN', 'HR', 'HR_MANAGER']}>
       <ThemeProvider>
         <DockProvider>
           <RefreshProvider>
-            <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-              <WelcomePopup userName={user?.name || user?.username} />
-              
-              {/* Top Navigation */}
-              <TopNavbar showThemeToggle={true} fixed={true} />
-              
-              {/* Sidebar with toggle */}
-              <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
-              
-              {/* Main content */}
-              <main 
-                className="min-h-[calc(100vh-3.5rem)] w-full bg-gray-50 dark:bg-slate-900 transition-all duration-300"
-                style={{ marginLeft: sidebarOpen ? '13rem' : '3.5rem', marginTop: '3.5rem' }}
-              >
-                <div className="p-3 sm:p-4 lg:p-4 w-full">
-                  {children}
-                </div>
-              </main>
-            </div>
+            <WelcomePopup userName={user?.name || user?.username} />
+            
+            {/* Fixed Top Navigation */}
+            <TopNavbar showThemeToggle={true} fixed={true} />
+            
+            {/* Fixed Sidebar - positioned below navbar */}
+            <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+            
+            {/* Main content area - fixed positioning */}
+            <main 
+              className="bg-gray-50 dark:bg-slate-900 transition-all duration-300"
+              style={{ 
+                position: 'fixed',
+                top: 'var(--navbar-height, 52px)',
+                left: sidebarWidth,
+                right: 0,
+                bottom: 0,
+                overflow: 'auto'
+              }}
+            >
+              <div className="p-4 w-full">
+                {children}
+              </div>
+            </main>
           </RefreshProvider>
         </DockProvider>
       </ThemeProvider>

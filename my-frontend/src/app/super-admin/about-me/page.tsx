@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/Card';
 
 export default function SuperAdminAboutMePage() {
   return (
-    <div className="container mx-auto p-6">
+    <div className="w-full">
       <PageHeader
         title="About Me"
         description="Super admin profile and information"

@@ -19,7 +19,7 @@ export default function Page() {
   }, [router]);
   
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 flex items-center justify-center p-6">
+    <div className="flex items-center justify-center h-64 bg-gray-50 dark:bg-slate-900 p-6">
       <div className="text-center">
         <p className="text-gray-600 dark:text-gray-400">Redirecting to Task Approvals...</p>
       </div>

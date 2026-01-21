@@ -199,7 +199,7 @@ export default function RequestsPage() {
   // Loading state
   if (authLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
+      <div className="flex items-center justify-center h-64 bg-gray-50 dark:bg-slate-900">
         <div className="text-center">
           <Loader2 className="w-8 h-8 animate-spin text-purple-600 mx-auto mb-3" />
           <p className="text-gray-600 dark:text-gray-400">Loading...</p>
@@ -209,10 +209,10 @@ export default function RequestsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
+    <div className="w-full bg-gray-50 dark:bg-slate-900">
       {/* Header */}
       <div className="bg-white dark:bg-slate-800 border-b border-gray-200 dark:border-slate-700 sticky top-0 z-10">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="w-full px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
               <button
@@ -244,7 +244,7 @@ export default function RequestsPage() {
 
       {/* Error Banner */}
       {error && (
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 mt-4">
+        <div className="w-full px-4 sm:px-6 lg:px-8 mt-4">
           <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg p-4 flex items-center gap-3">
             <AlertCircle className="w-5 h-5 text-red-600 dark:text-red-400 flex-shrink-0" />
             <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
@@ -259,7 +259,7 @@ export default function RequestsPage() {
       )}
 
       {/* Main Content */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6">
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-200 dark:border-slate-700 overflow-hidden min-h-[600px]">
           <MyRequestsView
             incomingRequests={incomingRequests}
