@@ -35,7 +35,7 @@ WHERE route IN (
 
 -- Store page IDs in a temp table for RBAC cleanup
 CREATE TEMP TABLE pages_to_delete AS
-SELECT id, page_name, route FROM pages_master
+SELECT id, display_name, route FROM pages_master
 WHERE route IN (
   '/super-admin/system/deployment-tools',
   '/super-admin/system/fallback-recovery',
@@ -64,9 +64,9 @@ WHERE route IN (
 DELETE FROM role_page_access 
 WHERE page_id IN (SELECT id FROM pages_to_delete);
 
--- Delete from rbac_user_permissions if exists
+-- Delete from rbac_user_permissions (uses page_key column, not page_id)
 DELETE FROM rbac_user_permissions
-WHERE page_id IN (SELECT id FROM pages_to_delete);
+WHERE page_key IN (SELECT route FROM pages_to_delete);
 
 -- =====================================================
 -- STEP 4: Show what was affected
