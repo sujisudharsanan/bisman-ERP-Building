@@ -34,14 +34,15 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
               
               {/* Main content */}
               <main 
-                className="min-h-[calc(100vh-3.5rem)] bg-gray-50 dark:bg-slate-900 transition-all duration-300 overflow-x-hidden"
+                className="bg-gray-50 dark:bg-slate-900 transition-all duration-300 overflow-x-hidden"
                 style={{ 
-                  marginLeft: sidebarOpen ? '13rem' : '3.5rem', 
-                  marginTop: '3.5rem',
-                  width: sidebarOpen ? 'calc(100% - 13rem)' : 'calc(100% - 3.5rem)'
+                  marginLeft: sidebarOpen ? '13rem' : '4rem', 
+                  marginTop: 'var(--navbar-height, 52px)',
+                  minHeight: 'calc(100vh - var(--navbar-height, 52px))',
+                  width: sidebarOpen ? 'calc(100% - 13rem)' : 'calc(100% - 4rem)'
                 }}
               >
-                <div className="p-2 sm:p-3 lg:py-3 lg:pr-3 lg:pl-1 w-full max-w-full overflow-x-hidden">
+                <div className="p-4 w-full max-w-full overflow-x-hidden">
                   {children}
                 </div>
               </main>

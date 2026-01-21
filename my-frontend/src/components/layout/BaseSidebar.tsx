@@ -72,13 +72,17 @@ const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, 
 			{/* Sidebar */}
 			<aside
 				className={`
-					fixed md:sticky top-0 left-0 h-screen z-50
+					fixed md:sticky left-0 z-40
 					bg-gray-900/95 backdrop-blur-sm border-r border-gray-800
 					transition-all duration-300 ease-in-out
 					${collapsed && !isMobile ? 'w-16' : 'w-52'}
 					${isMobile && collapsed ? '-translate-x-full' : 'translate-x-0'}
 					flex flex-col
 				`}
+				style={{
+					top: 'var(--navbar-height, 52px)',
+					height: 'calc(100vh - var(--navbar-height, 52px))'
+				}}
 				data-component="base-sidebar"
 				aria-label="Main navigation"
 				role="navigation"
