@@ -45,7 +45,6 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
       { id: 'roles-users', label: 'Roles & Users', href: '/super-admin/system/roles-users-report', icon: 'FileText' },
       { id: 'permission-manager', label: 'Permissions', href: '/super-admin/system/permission-manager', icon: 'Lock' },
       { id: 'system-flow', label: 'User Flow & Management', href: '/admin/system-flow', icon: 'Workflow' },
-      { id: 'system-settings', label: 'Settings', href: '/super-admin/system/system-settings', icon: 'Settings' },
       { id: 'backup-restore', label: 'Backup', href: '/super-admin/system/backup-restore', icon: 'Database' },
     ],
     allowedPages: ['*'], // Super admin can access everything
@@ -75,13 +74,12 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
     menuItems: [
       { id: 'dashboard', label: 'Dashboard', href: '/operations-manager', icon: 'Home' },
       { id: 'tasks', label: 'Tasks', href: '/operations-manager/tasks', icon: 'CheckSquare', badge: 5 },
-      { id: 'requests', label: 'My Requests', href: '/dashboard/requests', icon: 'GitPullRequest' },
       { id: 'team', label: 'Team', href: '/operations-manager/team', icon: 'Users' },
       { id: 'reports', label: 'Reports', href: '/operations-manager/reports', icon: 'BarChart2' },
       { id: 'calendar', label: 'Calendar', href: '/operations-manager/calendar', icon: 'Calendar' },
       { id: 'settings', label: 'Settings', href: '/operations-manager/settings', icon: 'Settings' },
     ],
-    allowedPages: ['/operations-manager', '/operations-manager/*', '/reports', '/finance', '/dashboard/requests'],
+    allowedPages: ['/operations-manager', '/operations-manager/*', '/reports', '/finance'],
   },
 
   STAFF: {
@@ -91,7 +89,6 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
     menuItems: [
       { id: 'dashboard', label: 'Dashboard', href: '/hub-incharge', icon: 'Home' },
       { id: 'tasks', label: 'My Tasks', href: '/hub-incharge/tasks', icon: 'CheckSquare', badge: 8 },
-      { id: 'requests', label: 'My Requests', href: '/dashboard/requests', icon: 'GitPullRequest' },
       { id: 'inventory', label: 'Inventory', href: '/hub-incharge/inventory', icon: 'ShoppingCart' },
       { id: 'sales', label: 'Sales', href: '/hub-incharge/sales', icon: 'Wallet' },
       { id: 'approvals', label: 'Task Management', href: '/hub-incharge/approvals', icon: 'FileText' },
@@ -107,7 +104,6 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
     menuItems: [
       { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: 'Home' },
       { id: 'tasks', label: 'My Tasks', href: '/dashboard/tasks', icon: 'CheckSquare' },
-      { id: 'requests', label: 'My Requests', href: '/dashboard/requests', icon: 'GitPullRequest' },
       { id: 'inventory', label: 'Inventory', href: '/dashboard/inventory', icon: 'Package' },
       { id: 'sales', label: 'Sales', href: '/dashboard/sales', icon: 'TrendingUp' },
       { id: 'approvals', label: 'Task Management', href: '/common/task-approvals', icon: 'FileCheck' },
@@ -123,7 +119,6 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
     menuItems: [
       { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: 'Home' },
       { id: 'tasks', label: 'My Tasks', href: '/dashboard/tasks', icon: 'CheckSquare' },
-      { id: 'requests', label: 'My Requests', href: '/dashboard/requests', icon: 'GitPullRequest' },
       { id: 'inventory', label: 'Inventory', href: '/dashboard/inventory', icon: 'Package' },
       { id: 'sales', label: 'Sales', href: '/dashboard/sales', icon: 'TrendingUp' },
       { id: 'approvals', label: 'Task Management', href: '/common/task-approvals', icon: 'FileCheck' },
@@ -185,7 +180,6 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
     menuItems: [
       { id: 'dashboard', label: 'Dashboard', href: '/dashboard', icon: 'Home' },
       { id: 'tasks', label: 'Tasks', href: '/dashboard/tasks', icon: 'CheckSquare' },
-      { id: 'requests', label: 'My Requests', href: '/dashboard/requests', icon: 'GitPullRequest' },
       { id: 'reports', label: 'Reports', href: '/dashboard/reports', icon: 'BarChart2' },
       { id: 'settings', label: 'Settings', href: '/dashboard/settings', icon: 'Settings' },
     ],

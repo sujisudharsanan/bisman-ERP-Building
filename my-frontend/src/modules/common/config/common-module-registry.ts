@@ -53,18 +53,6 @@ export const COMMON_PAGES: CommonPageMetadata[] = [
   
   // Security Pages
   {
-    id: 'common-change-password',
-    name: 'Change Password',
-    path: '/common/change-password',
-    icon: Key,
-    description: 'Update your account password',
-    category: 'security',
-    order: 2,
-    isActive: true,
-    requiresAuth: true,
-    autoRegister: true,
-  },
-  {
   // Removed per request
   id: 'common-security-settings',
   name: 'Security Settings',

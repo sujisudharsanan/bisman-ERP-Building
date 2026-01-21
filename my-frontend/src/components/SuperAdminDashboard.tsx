@@ -374,7 +374,7 @@ export const SuperAdminDashboard: React.FC = () => {
           subtext={`${data?.incidents.criticalOpen || 0} critical`}
           icon={<Icons.Alert />}
           loading={loading}
-          onClick={navigateTo('/super-admin/system/fallback-recovery')}
+          onClick={navigateTo('/super-admin/backup/backup-recovery')}
         />
         <KPICard
           title="Deployments Today"
@@ -382,7 +382,7 @@ export const SuperAdminDashboard: React.FC = () => {
           subtext={`${data?.deployments.failedDeployments || 0} failed`}
           icon={<Icons.Rocket />}
           loading={loading}
-          onClick={navigateTo('/super-admin/system/deployment-tools')}
+          onClick={navigateTo('/super-admin/system/health-dashboard')}
         />
       </KPIGrid>
 
@@ -571,16 +571,16 @@ export const SuperAdminDashboard: React.FC = () => {
           </div>
           <div className="grid grid-cols-2 gap-2 mt-4">
             <button
-              onClick={navigateTo('/super-admin/system/fallback-recovery')}
-              className="px-3 py-2 text-sm text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
-            >
-              Recovery →
-            </button>
-            <button
               onClick={navigateTo('/super-admin/backup/backup-recovery')}
               className="px-3 py-2 text-sm text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
             >
               Backups →
+            </button>
+            <button
+              onClick={navigateTo('/super-admin/system/health-dashboard')}
+              className="px-3 py-2 text-sm text-blue-600 bg-blue-50 rounded-lg hover:bg-blue-100"
+            >
+              Health →
             </button>
           </div>
         </ChartCard>
@@ -592,12 +592,10 @@ export const SuperAdminDashboard: React.FC = () => {
         {[
           { label: 'Tenants', path: '/super-admin/tenants', icon: <Icons.Users /> },
           { label: 'Billing', path: '/super-admin/billing', icon: <Icons.Dollar /> },
-          { label: 'Deployments', path: '/super-admin/system/deployment-tools', icon: <Icons.Rocket /> },
           { label: 'Health', path: '/super-admin/system/health-dashboard', icon: <Icons.Health /> },
           { label: 'Security', path: '/super-admin/security/security-center', icon: <Icons.Shield /> },
           { label: 'Audit Logs', path: '/super-admin/audit/audit-logs', icon: <Icons.Document /> },
           { label: 'AI Config', path: '/super-admin/ai-config', icon: <Icons.AI /> },
-          { label: 'Recovery', path: '/super-admin/system/fallback-recovery', icon: <Icons.Alert /> },
           { label: 'Backups', path: '/super-admin/backup/backup-recovery', icon: <Icons.Database /> },
           { label: 'Integrations', path: '/super-admin/integrations', icon: <Icons.Rocket /> },
           { label: 'QA Dashboard', path: '/super-admin/qa-dashboard', icon: <Icons.Health /> },

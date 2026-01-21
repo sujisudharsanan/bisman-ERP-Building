@@ -30,14 +30,14 @@ export default function SecuritySettingsPage() {
         <div className="space-y-6">
           {/* Quick Actions */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <a
-              href="/common/change-password"
-              className="bg-white dark:bg-gray-900 rounded-lg shadow border border-gray-200 dark:border-gray-800 p-6 hover:shadow-lg transition-all"
-            >
+            <div className="bg-white dark:bg-gray-900 rounded-lg shadow border border-gray-200 dark:border-gray-800 p-6">
               <Key className="w-8 h-8 text-blue-600 dark:text-blue-400 mb-3" />
               <h3 className="font-semibold text-gray-900 dark:text-gray-100 mb-1">Change Password</h3>
               <p className="text-sm text-gray-600 dark:text-gray-400">Update your account password</p>
-            </a>
+              <button className="mt-3 text-sm text-blue-600 dark:text-blue-400 font-medium">
+                Change Password →
+              </button>
+            </div>
 
             <div className="bg-white dark:bg-gray-900 rounded-lg shadow border border-gray-200 dark:border-gray-800 p-6">
               <Smartphone className="w-8 h-8 text-green-600 dark:text-green-400 mb-3" />
