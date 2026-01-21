@@ -1,0 +1,2588 @@
+{
+  "timestamp": "2026-01-21T07:21:27.745Z",
+  "counts": {
+    "fs_real_pages": 301,
+    "db_pages": 310,
+    "registry_pages": 264,
+    "ok_matched": 300,
+    "file_only": 1,
+    "db_only": 10,
+    "registry_only": 2,
+    "broken_routes": 11
+  },
+  "lists": {
+    "OK_MATCHED": [
+      {
+        "route": "/admin/api-management",
+        "page_code": "ADMIN_API_MANAGEMENT",
+        "display_name": "Api Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/roles-permissions",
+        "page_code": "ADMIN_ROLES_PERMISSIONS",
+        "display_name": "Roles Permissions",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/subscription-billing",
+        "page_code": "ADMIN_SUBSCRIPTION_BILLING",
+        "display_name": "Subscription Billing",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/system-configuration",
+        "page_code": "ADMIN_SYSTEM_CONFIGURATION",
+        "display_name": "System Configuration",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/tenant-management",
+        "page_code": "ADMIN_TENANT_MANAGEMENT",
+        "display_name": "Tenant Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/user-management",
+        "page_code": "ADMIN_USER_MANAGEMENT",
+        "display_name": "User Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/assets/maintenance-scheduling",
+        "page_code": "ASSETS_MAINTENANCE_SCHEDULING",
+        "display_name": "Maintenance Scheduling",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/communication/internal-chat",
+        "page_code": "COMMUNICATION_INTERNAL_CHAT",
+        "display_name": "Internal Chat",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/inventory/barcode-scanning",
+        "page_code": "INVENTORY_BARCODE_SCANNING",
+        "display_name": "Barcode Scanning",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/inventory/category-management",
+        "page_code": "INVENTORY_CATEGORY_MANAGEMENT",
+        "display_name": "Category Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/inventory/reorder-rules",
+        "page_code": "INVENTORY_REORDER_RULES",
+        "display_name": "Reorder Rules",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/inventory/reports",
+        "page_code": "INVENTORY_REPORTS",
+        "display_name": "Reports",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/notifications",
+        "page_code": "NOTIFICATIONS",
+        "display_name": "Notifications",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/production/analytics",
+        "page_code": "PRODUCTION_ANALYTICS",
+        "display_name": "Analytics",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/production/machine-management",
+        "page_code": "PRODUCTION_MACHINE_MANAGEMENT",
+        "display_name": "Machine Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/production/scheduling",
+        "page_code": "PRODUCTION_SCHEDULING",
+        "display_name": "Scheduling",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/production/workflow",
+        "page_code": "PRODUCTION_WORKFLOW",
+        "display_name": "Workflow",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/sales/customer-master",
+        "page_code": "SALES_CUSTOMER_MASTER",
+        "display_name": "Customer Master",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/sales/quotation-management",
+        "page_code": "SALES_QUOTATION_MANAGEMENT",
+        "display_name": "Quotation Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/shipping/carrier-management",
+        "page_code": "SHIPPING_CARRIER_MANAGEMENT",
+        "display_name": "Carrier Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/shipping/shipment-tracking",
+        "page_code": "SHIPPING_SHIPMENT_TRACKING",
+        "display_name": "Shipment Tracking",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/warehouse/bin-location",
+        "page_code": "WAREHOUSE_BIN_LOCATION",
+        "display_name": "Bin Location",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/landing",
+        "page_code": "PUBLIC_LANDING",
+        "display_name": "Landing Page",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/access-denied",
+        "page_code": "PUBLIC_ACCESS_DENIED",
+        "display_name": "Access Denied",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/accounts",
+        "page_code": "ACCOUNTS",
+        "display_name": "Accounts",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/accounts-payable",
+        "page_code": "ACCOUNTS_PAYABLE",
+        "display_name": "Accounts Payable",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/ai",
+        "page_code": "ADMIN_AI",
+        "display_name": "Ai",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/ai-analytics",
+        "page_code": "ADMIN_AI_ANALYTICS",
+        "display_name": "AI Analytics",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/audit",
+        "page_code": "ADMIN_AUDIT",
+        "display_name": "Audit",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/bank-templates",
+        "page_code": "ADMIN_BANK_TEMPLATES",
+        "display_name": "Bank Templates",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/billing",
+        "page_code": "ADMIN_BILLING",
+        "display_name": "Billing",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/billing/tenants/[id]",
+        "page_code": "ADMIN_BILLING_TENANT_DETAIL",
+        "display_name": "Billing Tenant Detail",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/billing/tenants",
+        "page_code": "ADMIN_BILLING_TENANTS",
+        "display_name": "Tenants",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/branches/create",
+        "page_code": "ADMIN_BRANCHES_CREATE",
+        "display_name": "Create Branch",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/branches",
+        "page_code": "ADMIN_BRANCHES",
+        "display_name": "Branches",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/client-dashboard",
+        "page_code": "ADMIN_CLIENT_DASHBOARD",
+        "display_name": "Client Dashboard",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/clients/[id]/permissions",
+        "page_code": "ADMIN_CLIENT_PERMISSIONS",
+        "display_name": "Client Permissions",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/clients",
+        "page_code": "ADMIN_CLIENTS",
+        "display_name": "Clients",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/contracts/create",
+        "page_code": "ADMIN_CONTRACTS_CREATE",
+        "display_name": "Create",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/contracts",
+        "page_code": "ADMIN_CONTRACTS",
+        "display_name": "Contracts",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/developer",
+        "page_code": "ADMIN_DEVELOPER",
+        "display_name": "Developer",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/integrations",
+        "page_code": "ADMIN_INTEGRATIONS",
+        "display_name": "Integrations",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/modules",
+        "page_code": "ADMIN_MODULES",
+        "display_name": "Modules",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/notifications",
+        "page_code": "ADMIN_NOTIFICATIONS",
+        "display_name": "Notifications",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/organizations",
+        "page_code": "ADMIN_ORGANIZATIONS",
+        "display_name": "Organizations",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/permissions",
+        "page_code": "ADMIN_PERMISSIONS",
+        "display_name": "Permissions",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/rag-sources",
+        "page_code": "ADMIN_RAG_SOURCES",
+        "display_name": "RAG Sources",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/reports",
+        "page_code": "ADMIN_REPORTS",
+        "display_name": "Reports",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/settings",
+        "page_code": "ADMIN_SETTINGS",
+        "display_name": "Settings",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/sla",
+        "page_code": "ADMIN_SLA",
+        "display_name": "SLA Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/subscription",
+        "page_code": "ADMIN_SUBSCRIPTION",
+        "display_name": "Subscription",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/support",
+        "page_code": "ADMIN_SUPPORT",
+        "display_name": "Support",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/system-flow",
+        "page_code": "ADMIN_SYSTEM_FLOW",
+        "display_name": "System Flow",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/task-approvals/[taskId]",
+        "page_code": "ADMIN_TASK_APPROVAL_DETAIL",
+        "display_name": "Task Approval Detail",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/task-approvals",
+        "page_code": "ADMIN_TASK_APPROVALS",
+        "display_name": "Task Approvals",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/usage",
+        "page_code": "ADMIN_USAGE",
+        "display_name": "Usage",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/user-usage/[id]",
+        "page_code": "ADMIN_USER_USAGE_DETAIL",
+        "display_name": "User Usage Detail",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/user-usage",
+        "page_code": "ADMIN_USER_USAGE",
+        "display_name": "User Usage",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/users/create",
+        "page_code": "ADMIN_USERS_CREATE",
+        "display_name": "Create User",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/admin/users",
+        "page_code": "ADMIN_USERS",
+        "display_name": "Users",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/ai-training",
+        "page_code": "COMMON_AI_TRAINING",
+        "display_name": "AI Training",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/analytics",
+        "page_code": "COMMON_ANALYTICS",
+        "display_name": "Analytics",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/approvals",
+        "page_code": "COMMON_APPROVALS",
+        "display_name": "Approvals",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/assistant",
+        "page_code": "COMMON_ASSISTANT",
+        "display_name": "AI Assistant",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/auth/forgot-password",
+        "page_code": "AUTH_FORGOT_PASSWORD",
+        "display_name": "Forgot Password",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/auth/hub-incharge-login",
+        "page_code": "AUTH_HUB_INCHARGE_LOGIN",
+        "display_name": "Hub Incharge Login",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/auth/login",
+        "page_code": "AUTH_LOGIN",
+        "display_name": "Login",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/auth/portals",
+        "page_code": "AUTH_PORTALS",
+        "display_name": "Login Portals",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/auth/reset-password",
+        "page_code": "AUTH_RESET_PASSWORD",
+        "display_name": "Reset Password",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/auth/standard-login",
+        "page_code": "AUTH_STANDARD_LOGIN",
+        "display_name": "Standard Login",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/banker",
+        "page_code": "BANKER",
+        "display_name": "Banker",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/billing/invoices",
+        "page_code": "BILLING_INVOICES",
+        "display_name": "Invoices",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/calendar",
+        "page_code": "COMMON_CALENDAR_ROOT",
+        "display_name": "Calendar",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/cfo-dashboard",
+        "page_code": "CFO_DASHBOARD",
+        "display_name": "Cfo Dashboard",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/clients/create",
+        "page_code": "COMMON_CLIENTS_CREATE",
+        "display_name": "Create Client",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/clients/usage-dashboard",
+        "page_code": "COMMON_CLIENTS_USAGE_DASHBOARD",
+        "display_name": "Client Usage Dashboard",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/common/about-me",
+        "page_code": "COMMON_ABOUT_ME",
+        "display_name": "About Me",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/common/bank-accounts",
+        "page_code": "COMMON_BANK_ACCOUNTS",
+        "display_name": "Bank Accounts",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/common/calendar",
+        "page_code": "COMMON_CALENDAR",
+        "display_name": "Calendar",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/common/change-password",
+        "page_code": "COMMON_CHANGE_PASSWORD",
+        "display_name": "Change Password",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/common/documentation",
+        "page_code": "COMMON_DOCUMENTATION",
+        "display_name": "Documentation",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/common/help-center",
+        "page_code": "COMMON_HELP_CENTER",
+        "display_name": "Help Center",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/common/hr-policy",
+        "page_code": "COMMON_HR_POLICY",
+        "display_name": "HR Policy",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/common/notifications",
+        "page_code": "COMMON_NOTIFICATIONS",
+        "display_name": "Notifications",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/common/payment-request",
+        "page_code": "COMMON_PAYMENT_REQUEST",
+        "display_name": "Payment Request",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/common/payment-requests/create",
+        "page_code": "COMMON_PAYMENT_REQUESTS_CREATE",
+        "display_name": "Create",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/common/security-settings",
+        "page_code": "COMMON_SECURITY_SETTINGS",
+        "display_name": "Security Settings",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/common/task-approvals/[id]",
+        "page_code": "COMMON_TASK_APPROVAL_DETAIL",
+        "display_name": "Task Approval Detail",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/common/task-approvals",
+        "page_code": "COMMON_TASK_APPROVALS",
+        "display_name": "Task Approvals",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/common/user-creation",
+        "page_code": "COMMON_USER_CREATION",
+        "display_name": "User Creation",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/common/user-settings",
+        "page_code": "COMMON_USER_SETTINGS",
+        "display_name": "User Settings",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/compliance/approval-workflow-view",
+        "page_code": "COMPLIANCE_APPROVAL_WORKFLOW_VIEW",
+        "display_name": "Approval Workflow View",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/compliance/audit-trail",
+        "page_code": "COMPLIANCE_AUDIT_TRAIL",
+        "display_name": "Audit Trail",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/compliance/compliance-dashboard",
+        "page_code": "COMPLIANCE_DASHBOARD",
+        "display_name": "Compliance Dashboard",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/compliance/contract-management",
+        "page_code": "COMPLIANCE_CONTRACT_MANAGEMENT",
+        "display_name": "Contract Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/compliance/document-management",
+        "page_code": "COMPLIANCE_DOCUMENT_MANAGEMENT",
+        "display_name": "Document Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/compliance/document-repository-view",
+        "page_code": "COMPLIANCE_DOCUMENT_REPOSITORY_VIEW",
+        "display_name": "Document Repository View",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/compliance/legal-case-management",
+        "page_code": "COMPLIANCE_LEGAL_CASES",
+        "display_name": "Legal Case Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/compliance/litigation-tracker",
+        "page_code": "COMPLIANCE_LITIGATION_TRACKER",
+        "display_name": "Litigation Tracker",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/compliance/policy-management",
+        "page_code": "COMPLIANCE_POLICY_MANAGEMENT",
+        "display_name": "Policy Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/compliance/regulatory-compliance",
+        "page_code": "COMPLIANCE_REGULATORY_COMPLIANCE",
+        "display_name": "Regulatory Compliance",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/compliance/regulatory-report-templates",
+        "page_code": "COMPLIANCE_REGULATORY_REPORT_TEMPLATES",
+        "display_name": "Regulatory Report Templates",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/compliance/risk-management",
+        "page_code": "COMPLIANCE_RISK_MANAGEMENT",
+        "display_name": "Risk Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/compliance/vendor-customer-master-legal",
+        "page_code": "COMPLIANCE_VENDOR_CUSTOMER_MASTER_LEGAL",
+        "display_name": "Vendor Customer Master Legal",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/compliance-officer",
+        "page_code": "COMPLIANCE_OFFICER",
+        "display_name": "Compliance Officer",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/contact-sales",
+        "page_code": "CONTACT_SALES",
+        "display_name": "Contact Sales",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/dashboard",
+        "page_code": "DASHBOARD_HOME",
+        "display_name": "Dashboard",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/dashboard/requests",
+        "page_code": "DASHBOARD_REQUESTS",
+        "display_name": "My Requests",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/dashboard/workbench",
+        "page_code": "DASHBOARD_WORKBENCH",
+        "display_name": "Workbench",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/docs/sla",
+        "page_code": "DOCS_SLA",
+        "display_name": "Sla",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/activity-logs",
+        "page_code": "ENTERPRISE_ADMIN_ACTIVITY_LOGS",
+        "display_name": "Activity Logs",
+        "is_active": false,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/audit",
+        "page_code": "ENTERPRISE_ADMIN_AUDIT",
+        "display_name": "Audit",
+        "is_active": false,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/billing",
+        "page_code": "ENTERPRISE_ADMIN_BILLING",
+        "display_name": "Billing Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/dashboard",
+        "page_code": "ENTERPRISE_ADMIN_DASHBOARD",
+        "display_name": "Enterprise Dashboard",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/docs/production-ready",
+        "page_code": "EA_DOCS_PRODUCTION_READY",
+        "display_name": "Production Ready Docs",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/integrations",
+        "page_code": "ENTERPRISE_ADMIN_INTEGRATIONS",
+        "display_name": "Integrations",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/logs",
+        "page_code": "ENTERPRISE_ADMIN_LOGS",
+        "display_name": "Logs & Monitoring",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/modules",
+        "page_code": "ENTERPRISE_ADMIN_MODULES",
+        "display_name": "Module Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/monitoring/database",
+        "page_code": "EA_MONITORING_DATABASE",
+        "display_name": "Database Monitoring",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/monitoring/live",
+        "page_code": "EA_MONITORING_LIVE",
+        "display_name": "Live Monitoring",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/monitoring",
+        "page_code": "ENTERPRISE_ADMIN_MONITORING",
+        "display_name": "System Monitoring",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/monitoring/performance",
+        "page_code": "EA_MONITORING_PERFORMANCE",
+        "display_name": "Performance Monitoring",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/notifications",
+        "page_code": "ENTERPRISE_ADMIN_NOTIFICATIONS",
+        "display_name": "Notifications",
+        "is_active": false,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/organizations",
+        "page_code": "ENTERPRISE_ADMIN_ORGANIZATIONS",
+        "display_name": "Organizations",
+        "is_active": false,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/page-governance",
+        "page_code": "ENTERPRISE_ADMIN_PAGE_GOVERNANCE",
+        "display_name": "Page Governance",
+        "is_active": false,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/pages-report",
+        "page_code": "ENTERPRISE_ADMIN_PAGES_REPORT",
+        "display_name": "Pages Report",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/rbac-security",
+        "page_code": "ENTERPRISE_ADMIN_RBAC_SECURITY",
+        "display_name": "RBAC Security",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/reports",
+        "page_code": "ENTERPRISE_ADMIN_REPORTS",
+        "display_name": "Reports",
+        "is_active": false,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/roles",
+        "page_code": "ENTERPRISE_ADMIN_ROLES",
+        "display_name": "Role Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/security-operations",
+        "page_code": "ENTERPRISE_ADMIN_SECURITY_OPS",
+        "display_name": "Security Operations",
+        "is_active": false,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/subscription-access",
+        "page_code": "ENTERPRISE_ADMIN_SUBSCRIPTION_ACCESS",
+        "display_name": "Subscription Access Control",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/subscriptions",
+        "page_code": "ENTERPRISE_ADMIN_SUBSCRIPTIONS",
+        "display_name": "Subscriptions",
+        "is_active": false,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/super-admins/create",
+        "page_code": "EA_SUPER_ADMINS_CREATE",
+        "display_name": "Create Super Admin",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/super-admins",
+        "page_code": "ENTERPRISE_ADMIN_SUPER_ADMINS",
+        "display_name": "Super Admins",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/system/pages-roles-report",
+        "page_code": "EA_PAGES_ROLES_REPORT",
+        "display_name": "Pages & Roles Report",
+        "is_active": false,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/enterprise-admin/users",
+        "page_code": "ENTERPRISE_ADMIN_USERS",
+        "display_name": "Users",
+        "is_active": false,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/accounts-payable-summary",
+        "page_code": "FINANCE_ACCOUNTS_PAYABLE",
+        "display_name": "Accounts Payable",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/accounts-receivable-summary",
+        "page_code": "FINANCE_ACCOUNTS_RECEIVABLE",
+        "display_name": "Accounts Receivable",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/approval-details/[taskId]",
+        "page_code": "FINANCE_APPROVAL_DETAIL",
+        "display_name": "Approval Detail",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/approval-structure-overview",
+        "page_code": "FINANCE_APPROVAL_STRUCTURE",
+        "display_name": "Approval Structure",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/bank-reconciliation",
+        "page_code": "FINANCE_BANK_RECONCILIATION",
+        "display_name": "Bank Reconciliation",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/bank-reconciliation-execute",
+        "page_code": "FINANCE_BANK_RECONCILIATION_EXECUTE",
+        "display_name": "Bank Reconciliation Execute",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/bank-statement-upload",
+        "page_code": "FINANCE_BANK_STATEMENT_UPLOAD",
+        "display_name": "Bank Statement Upload",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/budget-approval",
+        "page_code": "FINANCE_BUDGET_APPROVAL",
+        "display_name": "Budget Approval",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/budgeting-forecasting",
+        "page_code": "FINANCE_BUDGETING_FORECASTING",
+        "display_name": "Budgeting Forecasting",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/cash-flow-forecast",
+        "page_code": "FINANCE_CASH_FLOW_FORECAST",
+        "display_name": "Cash Flow Forecast",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/cash-flow-statement",
+        "page_code": "FINANCE_CASH_FLOW_STATEMENT",
+        "display_name": "Cash Flow Statement",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/chart-of-accounts",
+        "page_code": "FINANCE_CHART_OF_ACCOUNTS",
+        "display_name": "Chart Of Accounts",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/company-dashboard",
+        "page_code": "FINANCE_COMPANY_DASHBOARD",
+        "display_name": "Company Dashboard",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/cost-center-analysis",
+        "page_code": "FINANCE_COST_CENTER_ANALYSIS",
+        "display_name": "Cost Center Analysis",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/executive-dashboard",
+        "page_code": "FINANCE_EXECUTIVE_DASHBOARD",
+        "display_name": "Executive Dashboard",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/expense-report",
+        "page_code": "FINANCE_EXPENSE_REPORT",
+        "display_name": "Expense Report",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/financial-statements",
+        "page_code": "FINANCE_FINANCIAL_STATEMENTS",
+        "display_name": "Financial Statements",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/fixed-asset-register",
+        "page_code": "FINANCE_FIXED_ASSET_REGISTER",
+        "display_name": "Fixed Asset Register",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/foreign-exchange-management",
+        "page_code": "FINANCE_FOREIGN_EXCHANGE_MANAGEMENT",
+        "display_name": "Foreign Exchange Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/general-ledger",
+        "page_code": "FINANCE_GENERAL_LEDGER",
+        "display_name": "General Ledger",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/inter-company-reconciliation",
+        "page_code": "FINANCE_INTER_COMPANY_RECONCILIATION",
+        "display_name": "Inter Company Reconciliation",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/invoice-posting",
+        "page_code": "FINANCE_INVOICE_POSTING",
+        "display_name": "Invoice Posting",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/journal-entries",
+        "page_code": "FINANCE_JOURNAL_ENTRIES",
+        "display_name": "Journal Entries",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/journal-entries-approval",
+        "page_code": "FINANCE_JOURNAL_ENTRIES_APPROVAL",
+        "display_name": "Journal Entries Approval",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/loan-management",
+        "page_code": "FINANCE_LOAN_MANAGEMENT",
+        "display_name": "Loan Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/payment-approval-queue",
+        "page_code": "FINANCE_PAYMENT_APPROVAL_QUEUE",
+        "display_name": "Payment Approval Queue",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/payment-batch-processing",
+        "page_code": "FINANCE_PAYMENT_BATCH_PROCESSING",
+        "display_name": "Payment Batch Processing",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/payment-entry",
+        "page_code": "FINANCE_PAYMENT_ENTRY",
+        "display_name": "Payment Entry",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/payment-entry-view",
+        "page_code": "FINANCE_PAYMENT_ENTRY_VIEW",
+        "display_name": "Payment Entry View",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/payment-gateway-integration",
+        "page_code": "FINANCE_PAYMENT_GATEWAY_INTEGRATION",
+        "display_name": "Payment Gateway Integration",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/period-end-adjustment-entries",
+        "page_code": "FINANCE_PERIOD_END_ADJUSTMENT_ENTRIES",
+        "display_name": "Period End Adjustment Entries",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/period-end-closing",
+        "page_code": "FINANCE_PERIOD_END_CLOSING",
+        "display_name": "Period End Closing",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/purchase-invoice",
+        "page_code": "FINANCE_PURCHASE_INVOICE",
+        "display_name": "Purchase Invoice",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/tax-reports",
+        "page_code": "FINANCE_TAX_REPORTS",
+        "display_name": "Tax Reports",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/trial-balance",
+        "page_code": "FINANCE_TRIAL_BALANCE",
+        "display_name": "Trial Balance",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance/vendor-master",
+        "page_code": "FINANCE_VENDOR_MASTER",
+        "display_name": "Vendor Master",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/finance-controller",
+        "page_code": "FINANCE_CONTROLLER",
+        "display_name": "Finance Controller",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/governance/audit-integrity",
+        "page_code": "GOVERNANCE_AUDIT_INTEGRITY",
+        "display_name": "Audit Integrity",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/governance/rbac-structure",
+        "page_code": "GOVERNANCE_RBAC_STRUCTURE",
+        "display_name": "RBAC Structure",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/governance/security-overview",
+        "page_code": "GOVERNANCE_SECURITY_OVERVIEW",
+        "display_name": "Security Overview",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/governance/security-violations",
+        "page_code": "GOVERNANCE_SECURITY_VIOLATIONS",
+        "display_name": "Security Violations",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/hr/attendance-tracking",
+        "page_code": "HR_ATTENDANCE_TRACKING",
+        "display_name": "Attendance Tracking",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/hr/performance-review",
+        "page_code": "HR_PERFORMANCE_REVIEW",
+        "display_name": "Performance Review",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/hr/policy",
+        "page_code": "HR_POLICY",
+        "display_name": "HR Policy",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/hr/training",
+        "page_code": "HR_TRAINING",
+        "display_name": "Training",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/hr/user-creation",
+        "page_code": "HR_USER_CREATION",
+        "display_name": "User Creation",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/hub-incharge",
+        "page_code": "HUB_INCHARGE",
+        "display_name": "Hub Incharge",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/internal/customers",
+        "page_code": "INTERNAL_CUSTOMERS",
+        "display_name": "Customer Assistance",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/internal/playbooks",
+        "page_code": "INTERNAL_PLAYBOOKS",
+        "display_name": "Support Playbooks",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/internal/support-sessions",
+        "page_code": "INTERNAL_SUPPORT_SESSIONS",
+        "display_name": "Support Sessions",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/internal/teams",
+        "page_code": "INTERNAL_TEAMS",
+        "display_name": "Internal Teams",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/legal/agreements",
+        "page_code": "PUBLIC_LEGAL_AGREEMENTS",
+        "display_name": "Legal Agreements",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/legal",
+        "page_code": "LEGAL",
+        "display_name": "Legal",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/login",
+        "page_code": "PUBLIC_LOGIN",
+        "display_name": "Login",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/onboarding/clients/new",
+        "page_code": "ONBOARDING_CLIENTS_NEW",
+        "display_name": "New Client Onboarding",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/operations/asset-register-hub",
+        "page_code": "OPERATIONS_ASSET_REGISTER_HUB",
+        "display_name": "Asset Register Hub",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/operations/bom-view",
+        "page_code": "OPERATIONS_BOM_VIEW",
+        "display_name": "Bom View",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/operations/delivery-note",
+        "page_code": "OPERATIONS_DELIVERY_NOTE",
+        "display_name": "Delivery Note",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/operations/inventory-management",
+        "page_code": "OPERATIONS_INVENTORY",
+        "display_name": "Inventory Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/operations/item-master-limited",
+        "page_code": "OPERATIONS_ITEM_MASTER_LIMITED",
+        "display_name": "Item Master Limited",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/operations/kpi-dashboard",
+        "page_code": "OPERATIONS_KPI_DASHBOARD",
+        "display_name": "KPI Dashboard",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/operations/quality-inspection",
+        "page_code": "OPERATIONS_QUALITY_INSPECTION",
+        "display_name": "Quality Inspection",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/operations/sales-order",
+        "page_code": "OPERATIONS_SALES_ORDER",
+        "display_name": "Sales Order",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/operations/sales-order-view",
+        "page_code": "OPERATIONS_SALES_ORDER_VIEW",
+        "display_name": "Sales Order View",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/operations/shipping-logistics",
+        "page_code": "OPERATIONS_SHIPPING_LOGISTICS",
+        "display_name": "Shipping Logistics",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/operations/stock-entry",
+        "page_code": "OPERATIONS_STOCK_ENTRY",
+        "display_name": "Stock Entry",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/operations/stock-entry-transfer",
+        "page_code": "OPERATIONS_STOCK_ENTRY_TRANSFER",
+        "display_name": "Stock Entry Transfer",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/operations/stock-ledger",
+        "page_code": "OPERATIONS_STOCK_LEDGER",
+        "display_name": "Stock Ledger",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/operations/work-order",
+        "page_code": "OPERATIONS_WORK_ORDER",
+        "display_name": "Work Order",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/operations-manager",
+        "page_code": "OPERATIONS_MANAGER",
+        "display_name": "Operations Manager",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/pricing",
+        "page_code": "PUBLIC_PRICING",
+        "display_name": "Pricing",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/privacy",
+        "page_code": "PRIVACY",
+        "display_name": "Privacy",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/procurement/goods-receipt",
+        "page_code": "PROCUREMENT_GOODS_RECEIPT",
+        "display_name": "Goods Receipt",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/procurement/material-request",
+        "page_code": "PROCUREMENT_MATERIAL_REQUEST",
+        "display_name": "Material Request",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/procurement/purchase-order",
+        "page_code": "PROCUREMENT_PURCHASE_ORDER",
+        "display_name": "Purchase Order",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/procurement/purchase-orders",
+        "page_code": "PROCUREMENT_PURCHASE_ORDERS",
+        "display_name": "Purchase Orders",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/procurement/purchase-request",
+        "page_code": "PROCUREMENT_PURCHASE_REQUEST",
+        "display_name": "Purchase Request",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/procurement/rfq",
+        "page_code": "PROCUREMENT_RFQ",
+        "display_name": "Rfq",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/procurement/supplier-master",
+        "page_code": "PROCUREMENT_SUPPLIER_MASTER",
+        "display_name": "Supplier Master",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/procurement/supplier-quotation",
+        "page_code": "PROCUREMENT_SUPPLIER_QUOTATION",
+        "display_name": "Supplier Quotation",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/procurement-officer",
+        "page_code": "PROCUREMENT_OFFICER",
+        "display_name": "Procurement Officer",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/pump-management/server-logs",
+        "page_code": "PUMP_MANAGEMENT_SERVER_LOGS",
+        "display_name": "Server Logs",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/qa/issues/[id]",
+        "page_code": "QA_ISSUE_DETAIL",
+        "display_name": "Issue Detail",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/qa/issues/new",
+        "page_code": "QA_ISSUE_NEW",
+        "display_name": "New Issue",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/qa/issues",
+        "page_code": "QA_ISSUES",
+        "display_name": "Issues",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/qa/login",
+        "page_code": "QA_LOGIN",
+        "display_name": "QA Login",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/qa/role-access-explorer",
+        "page_code": "QA_ROLE_ACCESS_EXPLORER",
+        "display_name": "Role Access Explorer",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/qa/test-tasks/[id]",
+        "page_code": "QA_TEST_TASK_DETAIL",
+        "display_name": "Test Task Detail",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/qa/test-tasks/new",
+        "page_code": "QA_TEST_TASK_NEW",
+        "display_name": "New Test Task",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/qa/test-tasks",
+        "page_code": "QA_TEST_TASKS",
+        "display_name": "Test Tasks",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/reconciliation/[id]",
+        "page_code": "RECONCILIATION_DETAIL",
+        "display_name": "Reconciliation Detail",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/reconciliation",
+        "page_code": "RECONCILIATION_DASHBOARD",
+        "display_name": "Bank Reconciliation",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/reconciliation/upload",
+        "page_code": "RECONCILIATION_UPLOAD",
+        "display_name": "Upload Statement",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/reports/payment-summary",
+        "page_code": "REPORTS_PAYMENT_SUMMARY",
+        "display_name": "Payment Summary",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/reports/settlement-audit",
+        "page_code": "REPORTS_SETTLEMENT_AUDIT",
+        "display_name": "Settlement Audit",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/settings",
+        "page_code": "COMMON_SETTINGS",
+        "display_name": "Settings",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/settings/security",
+        "page_code": "COMMON_SETTINGS_SECURITY",
+        "display_name": "Security Settings",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/settlements/[id]",
+        "page_code": "SETTLEMENT_DETAIL",
+        "display_name": "Settlement Detail",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/settlements",
+        "page_code": "SETTLEMENTS_DASHBOARD",
+        "display_name": "Settlements",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/signup",
+        "page_code": "PUBLIC_SIGNUP",
+        "display_name": "Sign Up",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/staff",
+        "page_code": "STAFF",
+        "display_name": "Staff",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/status",
+        "page_code": "PUBLIC_STATUS",
+        "display_name": "System Status",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/status/rss",
+        "page_code": "STATUS_RSS",
+        "display_name": "Rss",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/status/subscribe",
+        "page_code": "STATUS_SUBSCRIBE",
+        "display_name": "Subscribe",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/store-incharge",
+        "page_code": "STORE_INCHARGE_DASHBOARD",
+        "display_name": "Store Incharge Dashboard",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/about-me",
+        "page_code": "SUPER_ADMIN_ABOUT_ME",
+        "display_name": "About Me",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/decision-load",
+        "page_code": "SUPER_ADMIN_DECISION_LOAD",
+        "display_name": "Decision Load",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/orders",
+        "page_code": "SA_ORDERS",
+        "display_name": "Orders",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/security",
+        "page_code": "SUPER_ADMIN_SECURITY",
+        "display_name": "Security Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/subscription",
+        "page_code": "SA_SUBSCRIPTION",
+        "display_name": "Subscription Overview",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/subscriptions/audit",
+        "page_code": "SUBSCRIPTION_AUDIT",
+        "display_name": "Subscription Audit",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/subscriptions/billing",
+        "page_code": "SUBSCRIPTION_BILLING",
+        "display_name": "Billing Overrides",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/subscriptions/coupons",
+        "page_code": "SUBSCRIPTION_COUPONS",
+        "display_name": "Coupons",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/subscriptions/micro-unlock",
+        "page_code": "SUBSCRIPTION_MICRO_UNLOCK",
+        "display_name": "Micro Unlock",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/subscriptions",
+        "page_code": "SUPER_ADMIN_SUBSCRIPTIONS",
+        "display_name": "Subscriptions",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/subscriptions/plans",
+        "page_code": "SUBSCRIPTION_PLANS",
+        "display_name": "Plan Management",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/subscriptions/settings",
+        "page_code": "SA_SUBSCRIPTIONS_SETTINGS",
+        "display_name": "Subscription Settings",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/subscriptions/tenants",
+        "page_code": "SUBSCRIPTION_TENANTS",
+        "display_name": "Tenant Subscriptions",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/system/about-me",
+        "page_code": "SA_SYSTEM_ABOUT_ME",
+        "display_name": "About Me",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/system/backup-restore",
+        "page_code": "SUPER_ADMIN_BACKUP_RESTORE",
+        "display_name": "Backup & Restore",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/system/deployment-tools",
+        "page_code": "SUPER_ADMIN_DEPLOYMENT_TOOLS",
+        "display_name": "Deployment Tools",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/system/fallback-recovery",
+        "page_code": "SUPER_ADMIN_FALLBACK_RECOVERY",
+        "display_name": "Fallback & Recovery",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/system/integration-settings",
+        "page_code": "SUPER_ADMIN_INTEGRATION_SETTINGS",
+        "display_name": "Integration Settings",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/system/it-admin",
+        "page_code": "SUPER_ADMIN_SYSTEM_IT_ADMIN",
+        "display_name": "It Admin",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/system",
+        "page_code": "SA_SYSTEM",
+        "display_name": "System Overview",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/system/pages-roles-report",
+        "page_code": "SA_PAGES_ROLES_REPORT",
+        "display_name": "Pages & Roles Report",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/system/permission-manager",
+        "page_code": "SUPER_ADMIN_PERMISSION_MANAGER",
+        "display_name": "Permission Manager",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/system/role-access-explorer",
+        "page_code": "SUPER_ADMIN_SYSTEM_ROLE_ACCESS_EXPLORER",
+        "display_name": "Role Access Explorer",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/system/roles-users-report",
+        "page_code": "SUPER_ADMIN_ROLES_USERS",
+        "display_name": "Modules & Roles",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/system/system-health",
+        "page_code": "SUPER_ADMIN_SYSTEM_SYSTEM_HEALTH",
+        "display_name": "System Health",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/system/system-health-dashboard",
+        "page_code": "SUPER_ADMIN_SYSTEM_HEALTH",
+        "display_name": "System Health",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/system/system-settings",
+        "page_code": "SUPER_ADMIN_SYSTEM_SYSTEM_SETTINGS",
+        "display_name": "System Settings",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/super-admin/system/user-management",
+        "page_code": "SUPER_ADMIN_CLIENT_MANAGEMENT",
+        "display_name": "Client Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/support",
+        "page_code": "SUPPORT",
+        "display_name": "Support",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/system/about-me",
+        "page_code": "SYSTEM_ABOUT_ME",
+        "display_name": "About Me",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/system/audit-integrity-dashboard",
+        "page_code": "SYSTEM_AUDIT_INTEGRITY_DASHBOARD",
+        "display_name": "Audit Integrity Dashboard",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/system/audit-logs",
+        "page_code": "SYSTEM_AUDIT_LOGS",
+        "display_name": "Audit Logs",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/system/backup-restore",
+        "page_code": "SYSTEM_BACKUP_RESTORE",
+        "display_name": "Backup & Restore",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/system/clients/[id]/edit",
+        "page_code": "SYSTEM_CLIENT_EDIT",
+        "display_name": "Edit Client",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/system/clients/new",
+        "page_code": "SYSTEM_CLIENT_NEW",
+        "display_name": "New Client",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/system/clients",
+        "page_code": "SYSTEM_CLIENTS",
+        "display_name": "Clients",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/system/deployment-tools",
+        "page_code": "SYSTEM_DEPLOYMENT_TOOLS",
+        "display_name": "Deployment Tools",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/system/error-logs",
+        "page_code": "SYSTEM_ERROR_LOGS",
+        "display_name": "Error Logs",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/system/integration-settings",
+        "page_code": "SYSTEM_INTEGRATION_SETTINGS",
+        "display_name": "Integration Settings",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/system/pages-roles-report",
+        "page_code": "SYSTEM_PAGES_ROLES_REPORT",
+        "display_name": "Pages & Roles Report",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/system/permission-manager",
+        "page_code": "SYSTEM_PERMISSION_MANAGER",
+        "display_name": "Permission Manager",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/system/role-access-explorer",
+        "page_code": "SYSTEM_ROLE_ACCESS_EXPLORER",
+        "display_name": "Role & Access Explorer",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/system/roles-users-report",
+        "page_code": "SYSTEM_ROLES_USERS_REPORT",
+        "display_name": "Modules & Roles",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/system/server-logs",
+        "page_code": "SYSTEM_SERVER_LOGS",
+        "display_name": "Server Logs",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/system/system-health-dashboard",
+        "page_code": "SYSTEM_HEALTH",
+        "display_name": "System Health",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/system/user-creation",
+        "page_code": "SYSTEM_USER_CREATION",
+        "display_name": "Create New User",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/system/user-management",
+        "page_code": "SYSTEM_USER_MANAGEMENT",
+        "display_name": "Client Management",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/task-dashboard",
+        "page_code": "COMMON_TASK_DASHBOARD",
+        "display_name": "Task Dashboard",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/tasks/clarifications",
+        "page_code": "TASKS_CLARIFICATIONS",
+        "display_name": "Clarifications",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/tasks/create",
+        "page_code": "COMMON_TASKS_CREATE",
+        "display_name": "Create Task",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/tasks/reviews",
+        "page_code": "TASKS_REVIEWS",
+        "display_name": "Reviews",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/terms",
+        "page_code": "TERMS",
+        "display_name": "Terms",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/trace",
+        "page_code": "COMMON_TRACE",
+        "display_name": "Trace",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/trust-security",
+        "page_code": "PUBLIC_TRUST_SECURITY",
+        "display_name": "Trust & Security",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/unauthorized",
+        "page_code": "PUBLIC_UNAUTHORIZED",
+        "display_name": "Unauthorized",
+        "is_active": true,
+        "show_in_sidebar": false,
+        "status": "OK"
+      },
+      {
+        "route": "/upgrade-required",
+        "page_code": "UPGRADE_REQUIRED",
+        "display_name": "Upgrade Required",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/welcome/branding",
+        "page_code": "WELCOME_BRANDING",
+        "display_name": "Welcome Branding",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/welcome/launching",
+        "page_code": "WELCOME_LAUNCHING",
+        "display_name": "Welcome Launching",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      },
+      {
+        "route": "/welcome",
+        "page_code": "WELCOME",
+        "display_name": "Welcome",
+        "is_active": true,
+        "show_in_sidebar": true,
+        "status": "OK"
+      }
+    ],
+    "FILE_ONLY": [
+      {
+        "route": "/page.tsx",
+        "filePath": "src/app/page.tsx",
+        "status": "NEEDS_DB_INSERT",
+        "suggestion": "Add to pages_master or mark as dev-only"
+      }
+    ],
+    "DB_ONLY": [
+      {
+        "route": "/",
+        "page_code": "ROOT_DASHBOARD",
+        "display_name": "Dashboard",
+        "is_active": true,
+        "status": "ORPHAN_DB_ENTRY",
+        "suggestion": "Mark inactive or fix route path"
+      },
+      {
+        "route": "/auth/admin-login",
+        "page_code": "AUTH_ADMIN_LOGIN",
+        "display_name": "Admin Login",
+        "is_active": true,
+        "status": "ORPHAN_DB_ENTRY",
+        "suggestion": "Mark inactive or fix route path"
+      },
+      {
+        "route": "/common/messages",
+        "page_code": "COMMON_MESSAGES",
+        "display_name": "Messages",
+        "is_active": true,
+        "status": "ORPHAN_DB_ENTRY",
+        "suggestion": "Mark inactive or fix route path"
+      },
+      {
+        "route": "/enterprise-admin/monitoring/system-health",
+        "page_code": "ENTERPRISE_ADMIN_MONITORING_SYSTEM_HEALTH",
+        "display_name": "System Health",
+        "is_active": false,
+        "status": "ORPHAN_DB_ENTRY",
+        "suggestion": "Mark inactive or fix route path"
+      },
+      {
+        "route": "/enterprise-admin/user-usage/[id]",
+        "page_code": "EA_USER_USAGE_DETAIL",
+        "display_name": "User Usage Detail",
+        "is_active": true,
+        "status": "ORPHAN_DB_ENTRY",
+        "suggestion": "Mark inactive or fix route path"
+      },
+      {
+        "route": "/get-started",
+        "page_code": "PUBLIC_GET_STARTED",
+        "display_name": "Get Started",
+        "is_active": true,
+        "status": "ORPHAN_DB_ENTRY",
+        "suggestion": "Mark inactive or fix route path"
+      },
+      {
+        "route": "/onboarding/trial",
+        "page_code": "ONBOARDING_TRIAL",
+        "display_name": "Start Trial",
+        "is_active": true,
+        "status": "ORPHAN_DB_ENTRY",
+        "suggestion": "Mark inactive or fix route path"
+      },
+      {
+        "route": "/onboarding/trial/quick",
+        "page_code": "ONBOARDING_TRIAL_QUICK",
+        "display_name": "Quick Trial",
+        "is_active": true,
+        "status": "ORPHAN_DB_ENTRY",
+        "suggestion": "Mark inactive or fix route path"
+      },
+      {
+        "route": "/onboarding/trial/resume/[token]",
+        "page_code": "ONBOARDING_TRIAL_RESUME",
+        "display_name": "Resume Trial",
+        "is_active": true,
+        "status": "ORPHAN_DB_ENTRY",
+        "suggestion": "Mark inactive or fix route path"
+      },
+      {
+        "route": "/super-admin/user-usage/[id]",
+        "page_code": "SA_USER_USAGE_DETAIL",
+        "display_name": "User Usage Detail",
+        "is_active": true,
+        "status": "ORPHAN_DB_ENTRY",
+        "suggestion": "Mark inactive or fix route path"
+      }
+    ],
+    "REGISTRY_ONLY": [
+      {
+        "route": "/",
+        "in_database": true,
+        "status": "REGISTRY_ORPHAN",
+        "suggestion": "Remove from PAGE_REGISTRY or create page file"
+      },
+      {
+        "route": "/chat/ai",
+        "in_database": false,
+        "status": "REGISTRY_ORPHAN",
+        "suggestion": "Remove from PAGE_REGISTRY or create page file"
+      }
+    ],
+    "BROKEN_ROUTES": [
+      {
+        "route": "/",
+        "source": "database",
+        "page_code": "ROOT_DASHBOARD",
+        "display_name": "Dashboard"
+      },
+      {
+        "route": "/auth/admin-login",
+        "source": "database",
+        "page_code": "AUTH_ADMIN_LOGIN",
+        "display_name": "Admin Login"
+      },
+      {
+        "route": "/common/messages",
+        "source": "database",
+        "page_code": "COMMON_MESSAGES",
+        "display_name": "Messages"
+      },
+      {
+        "route": "/enterprise-admin/monitoring/system-health",
+        "source": "database",
+        "page_code": "ENTERPRISE_ADMIN_MONITORING_SYSTEM_HEALTH",
+        "display_name": "System Health"
+      },
+      {
+        "route": "/enterprise-admin/user-usage/[id]",
+        "source": "database",
+        "page_code": "EA_USER_USAGE_DETAIL",
+        "display_name": "User Usage Detail"
+      },
+      {
+        "route": "/get-started",
+        "source": "database",
+        "page_code": "PUBLIC_GET_STARTED",
+        "display_name": "Get Started"
+      },
+      {
+        "route": "/onboarding/trial",
+        "source": "database",
+        "page_code": "ONBOARDING_TRIAL",
+        "display_name": "Start Trial"
+      },
+      {
+        "route": "/onboarding/trial/quick",
+        "source": "database",
+        "page_code": "ONBOARDING_TRIAL_QUICK",
+        "display_name": "Quick Trial"
+      },
+      {
+        "route": "/onboarding/trial/resume/[token]",
+        "source": "database",
+        "page_code": "ONBOARDING_TRIAL_RESUME",
+        "display_name": "Resume Trial"
+      },
+      {
+        "route": "/super-admin/user-usage/[id]",
+        "source": "database",
+        "page_code": "SA_USER_USAGE_DETAIL",
+        "display_name": "User Usage Detail"
+      },
+      {
+        "route": "/chat/ai",
+        "source": "registry",
+        "in_database": false
+      }
+    ]
+  }
+}

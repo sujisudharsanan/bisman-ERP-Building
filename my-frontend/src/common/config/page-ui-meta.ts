@@ -98,11 +98,6 @@ export const PAGE_UI_META: Record<string, PageUIMeta> = {
     description: 'Billing and subscription management',
     displayName: 'Billing Management',
   },
-  'enterprise-admin-settings': {
-    iconKey: 'Settings',
-    description: 'Enterprise settings',
-    displayName: 'Enterprise Settings',
-  },
   'enterprise-admin-monitoring': {
     iconKey: 'Activity',
     description: 'System monitoring dashboard',

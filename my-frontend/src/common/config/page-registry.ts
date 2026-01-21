@@ -296,6 +296,9 @@ export interface ModuleMetadata {
   color: string; // Tailwind color class
   order: number;
   hidden?: boolean; // Hide module from sidebar navigation
+  isProtected?: boolean; // If true, this module cannot be unassigned from protected roles
+  protectedForRoles?: string[]; // Roles for which this module is always assigned and cannot be removed
+  alwaysAccessible?: boolean; // If true, this module is accessible to ALL users regardless of assignment
 }
 
 /**
@@ -309,6 +312,8 @@ export const MODULES: Record<string, ModuleMetadata> = {
     description: 'System management and configuration',
     color: 'blue',
     order: 1,
+    isProtected: true,
+    protectedForRoles: ['SUPER_ADMIN'],
   },
   finance: {
     id: 'finance',
@@ -373,6 +378,8 @@ export const MODULES: Record<string, ModuleMetadata> = {
     description: 'Platform administration and monitoring',
     color: 'slate',
     order: 9,
+    isProtected: true,
+    protectedForRoles: ['ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN'],
   },
   qa: {
     id: 'qa',
@@ -390,6 +397,8 @@ export const MODULES: Record<string, ModuleMetadata> = {
     description: 'Security monitoring, RBAC structure, and audit integrity',
     color: 'purple',
     order: 0, // Show at top for Enterprise/Super Admins
+    isProtected: true,
+    protectedForRoles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN'],
   },
   internal: {
     id: 'internal',
@@ -407,6 +416,8 @@ export const MODULES: Record<string, ModuleMetadata> = {
     description: 'Super Admin management, client oversight and system tools',
     color: 'indigo',
     order: -2, // Show near top for Super Admins
+    isProtected: true,
+    protectedForRoles: ['SUPER_ADMIN'],
   },
   'enterprise-admin': {
     id: 'enterprise-admin',
@@ -415,6 +426,8 @@ export const MODULES: Record<string, ModuleMetadata> = {
     description: 'Enterprise-level administration and multi-tenant management',
     color: 'violet',
     order: -3, // Show at very top for Enterprise Admins
+    isProtected: true,
+    protectedForRoles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN'],
   },
   common: {
     id: 'common',
@@ -423,6 +436,9 @@ export const MODULES: Record<string, ModuleMetadata> = {
     description: 'Pages available to all users',
     color: 'gray',
     order: 999, // Show at bottom of sidebar
+    isProtected: true,
+    alwaysAccessible: true, // Available to ALL users
+    protectedForRoles: ['*'], // Protected for all roles - cannot be removed
   },
 };
 
@@ -2845,18 +2861,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 10,
   },
   {
-    id: 'enterprise-admin-live-dashboard',
-    name: 'Live Dashboard',
-    path: '/enterprise-admin/live-dashboard',
-    iconKey: "Activity",
-    module: 'enterprise-admin',
-    permissions: ['enterprise-admin'],
-    roles: ['ENTERPRISE_ADMIN'],
-    status: 'active',
-    description: 'Real-time system monitoring',
-    order: 11,
-  },
-  {
     id: 'enterprise-admin-subscriptions',
     name: 'Subscriptions',
     path: '/enterprise-admin/subscriptions',
@@ -3480,9 +3484,9 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     module: 'common',
     permissions: [],
     roles: ['ALL'],
-    status: 'active',
+    status: 'planned',  // No page.tsx exists yet - marked as planned
     showInSidebar: false,
-    description: 'AI-powered chat assistant',
+    description: 'AI-powered chat assistant (coming soon)',
     order: 11,
   },
 

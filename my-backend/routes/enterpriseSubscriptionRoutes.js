@@ -139,7 +139,7 @@ router.put('/module-access', async (req, res) => {
     }
 
     // Map frontend values to DB enum values
-    const dbAccessLevel = accessLevel === 'read' ? 'read_only' : accessLevel;
+    const dbAccessLevel = mapAccessLevelToDB(accessLevel);
 
     // Upsert into draft table
     await prisma.$executeRaw`
@@ -182,7 +182,7 @@ router.post('/module-access/bulk', async (req, res) => {
     for (const change of changes) {
       const { planId, moduleId, accessLevel } = change;
       // Map frontend values to DB enum values
-      const dbAccessLevel = accessLevel === 'read' ? 'read_only' : accessLevel;
+      const dbAccessLevel = mapAccessLevelToDB(accessLevel);
       await prisma.$executeRaw`
         INSERT INTO plan_module_access_draft 
           (plan_id, module_id, access_level, is_dirty, draft_action, modified_by, updated_at)
@@ -461,7 +461,7 @@ router.post('/tenants/:tenantId/override', async (req, res) => {
     }
 
     // Map frontend values to DB enum values
-    const dbAccessLevel = accessLevel === 'read' ? 'read_only' : accessLevel;
+    const dbAccessLevel = mapAccessLevelToDB(accessLevel);
 
     await prisma.$executeRaw`
       INSERT INTO tenant_module_overrides 

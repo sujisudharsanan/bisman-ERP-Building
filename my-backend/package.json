@@ -45,6 +45,13 @@
     "permissions:generate": "node scripts/generate-permission-templates.js",
     "permissions:generate:multi-role": "node scripts/generate-multi-role-crud-permissions.js",
     "repair:rbac-actions-seq": "node scripts/repair-rbac-actions-sequence.js",
+    "audit:pages": "node scripts/audit-pages.js",
+    "audit:pages:json": "node scripts/audit-pages.js --json",
+    "audit:pages:sql": "node scripts/audit-pages.js --sql",
+    "audit:pages:fix": "node scripts/audit-pages.js --fix --commit",
+    "audit:real-pages": "node scripts/real-pages-report.js",
+    "audit:real-pages:json": "node scripts/real-pages-report.js --json",
+    "ci:page-check": "node scripts/ci-page-check.js",
     "test": "jest --runInBand"
   },
   "dependencies": {

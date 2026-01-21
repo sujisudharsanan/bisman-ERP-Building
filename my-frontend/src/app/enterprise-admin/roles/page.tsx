@@ -1,12 +1,14 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { FiUsers, FiPackage, FiGrid, FiCheckCircle, FiUnlock, FiExternalLink, FiShield, FiPlus, FiX, FiChevronUp, FiChevronDown, FiSearch } from "react-icons/fi";
+import { FiUsers, FiPackage, FiGrid, FiCheckCircle, FiUnlock, FiExternalLink, FiShield, FiPlus, FiX, FiChevronUp, FiChevronDown, FiSearch, FiLock } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePageRefresh } from "@/contexts/RefreshContext";
+import { isModuleProtected, getProtectedModuleMessage, isRoleProtected, getProtectedRoleMessage, getDefaultRoleNames } from "@/common/config/protected-access";
 
 type Module = {
   id: number | string;
+  module_name?: string; // The module key like 'enterprise-admin'
   moduleKey: string;
   name: string;
   productType?: string;
@@ -211,6 +213,42 @@ export default function Page() {
   const rolesSaveTimerRef = useRef<NodeJS.Timeout | null>(null); // Debounce timer for role saves
   const lastLoadedAdminIdRef = useRef<number | null>(null); // Track which admin's roles we last loaded
 
+  // Toast notification state for protected module warnings
+  const [toastMessage, setToastMessage] = useState<{ message: string; type: 'warning' | 'error' | 'info' } | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Show toast message
+  const showToast = useCallback((message: string, type: 'warning' | 'error' | 'info' = 'warning') => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setToastMessage({ message, type });
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+    }, 4000);
+  }, []);
+
+  // Helper function to toggle role assignment with protection check
+  const toggleRoleAssignment = useCallback((roleId: number, roleName: string) => {
+    const selectedAdmin = superAdmins.find(a => a.id === selectedAdminId);
+    const adminRole = selectedAdmin?.role || 'SUPER_ADMIN';
+    
+    // Check if this is an attempt to remove a protected role
+    const isCurrentlyAssigned = assignedRoleIds.includes(roleId);
+    if (isCurrentlyAssigned && isRoleProtected(roleName, adminRole)) {
+      const message = getProtectedRoleMessage(roleName, adminRole);
+      showToast(message, 'warning');
+      return;
+    }
+    
+    // Otherwise, toggle the role
+    setAssignedRoleIds(prev => 
+      prev.includes(roleId) 
+        ? prev.filter(id => id !== roleId)
+        : [...prev, roleId]
+    );
+  }, [selectedAdminId, superAdmins, assignedRoleIds, showToast]);
+
   // Load role assignments when a Super Admin is selected
   useEffect(() => {
     if (!selectedAdminId) {
@@ -227,25 +265,43 @@ export default function Page() {
     
     const loadRolesForAdmin = async () => {
       try {
-        console.log('� Loading roles for Super Admin:', selectedAdminId);
+        console.log('📋 Loading roles for Super Admin:', selectedAdminId);
+        
+        // Get the admin's role type to determine default roles
+        const selectedAdmin = superAdmins.find(a => a.id === selectedAdminId);
+        const adminRoleType = selectedAdmin?.role || 'SUPER_ADMIN';
+        const defaultRoleNames = getDefaultRoleNames(adminRoleType);
+        
         const response = await fetch(`/api/enterprise-admin/super-admins/${selectedAdminId}/roles`, {
           credentials: 'include'
         });
         
+        let loadedRoleIds: number[] = [];
+        
         if (response.ok) {
           const data = await response.json();
           if (data.ok && Array.isArray(data.roleIds)) {
-            setAssignedRoleIds(data.roleIds);
-            console.log('✅ Loaded', data.roleIds.length, 'roles for Super Admin');
-          } else {
-            // No roles assigned yet - start with empty
-            setAssignedRoleIds([]);
-            console.log('📋 No roles assigned to Super Admin yet');
+            loadedRoleIds = data.roleIds;
+            console.log('✅ Loaded', loadedRoleIds.length, 'roles from database');
           }
-        } else {
-          console.warn('⚠️ Failed to load roles, starting with empty');
-          setAssignedRoleIds([]);
         }
+        
+        // Always include default/protected roles based on admin's role type
+        // Find role IDs for the default role names
+        const defaultRoleIds = allRoles
+          .filter(r => defaultRoleNames.some(name => 
+            r.name.toUpperCase() === name.toUpperCase() || 
+            (r.display_name || '').toUpperCase() === name.toUpperCase()
+          ))
+          .map(r => r.id);
+        
+        // Merge default roles with loaded roles (avoiding duplicates)
+        const mergedRoleIds = [...new Set([...defaultRoleIds, ...loadedRoleIds])];
+        
+        console.log('🔒 Default roles for', adminRoleType, ':', defaultRoleNames, '→ IDs:', defaultRoleIds);
+        console.log('📋 Final assigned roles:', mergedRoleIds);
+        
+        setAssignedRoleIds(mergedRoleIds);
         
         lastLoadedAdminIdRef.current = selectedAdminId;
         isRolesInitializedRef.current = true;
@@ -255,8 +311,11 @@ export default function Page() {
       }
     };
     
-    loadRolesForAdmin();
-  }, [selectedAdminId]);
+    // Only load if allRoles has been populated
+    if (allRoles.length > 0) {
+      loadRolesForAdmin();
+    }
+  }, [selectedAdminId, superAdmins, allRoles]);
 
   // Save assigned role IDs to database for the selected Super Admin (debounced)
   useEffect(() => {
@@ -1149,6 +1208,21 @@ export default function Page() {
 
   const unassignPages = async () => {
     if (!selectedAdminId || !selectedModuleId) return;
+    
+    // Get the selected admin's role and the module key to check protection
+    const selectedAdmin = superAdmins.find(a => a.id === selectedAdminId);
+    const selectedModule = modules.find(m => m.id === selectedModuleId || Number(m.id) === Number(selectedModuleId));
+    const adminRole = selectedAdmin?.role || 'SUPER_ADMIN';
+    // Backend sends module_name as the key (e.g. 'enterprise-admin'), id is numeric database ID
+    const moduleKey = selectedModule?.module_name || selectedModule?.moduleKey || selectedModule?.name || '';
+    
+    // Check if this module is protected for the admin's role
+    if (isModuleProtected(moduleKey, adminRole)) {
+      const message = getProtectedModuleMessage(moduleKey, adminRole);
+      showToast(message, 'warning');
+      return;
+    }
+    
     try {
       setSaving(true);
       const resUnassign = await fetch(`/api/enterprise-admin/super-admins/${selectedAdminId}/unassign-module`, {
@@ -1942,6 +2016,9 @@ export default function Page() {
               const isSelected = selectedRoleId === role.id;
               const userCount = role.userCount || role.users?.length || 0;
               const isAssigned = assignedRoleIds.includes(role.id);
+              const selectedAdmin = superAdmins.find(a => a.id === selectedAdminId);
+              const adminRole = selectedAdmin?.role || 'SUPER_ADMIN';
+              const isProtectedRole = isRoleProtected(role.name, adminRole);
               
               return (
                 <div key={role.id} className="relative">
@@ -1949,29 +2026,24 @@ export default function Page() {
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
-                        setAssignedRoleIds(prev => 
-                          prev.includes(role.id) 
-                            ? prev.filter(id => id !== role.id)
-                            : [...prev, role.id]
-                        );
+                        toggleRoleAssignment(role.id, role.name);
                       }}
                       className={`absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-transform hover:scale-110 ${
-                        isAssigned 
+                        isProtectedRole && isAssigned
+                          ? "bg-amber-500 hover:bg-amber-600 text-white cursor-not-allowed"
+                          : isAssigned 
                           ? "bg-red-500 hover:bg-red-600 text-white"
                           : "bg-green-500 hover:bg-green-600 text-white"
                       }`}
+                      title={isProtectedRole && isAssigned ? 'This role is protected and cannot be removed' : undefined}
                     >
-                      {isAssigned ? '−' : '+'}
+                      {isProtectedRole && isAssigned ? '🔒' : isAssigned ? '−' : '+'}
                     </button>
                   )}
                   <button
                     onClick={() => {
                       if (isRoleAssignMode && selectedAdminId) {
-                        setAssignedRoleIds(prev => 
-                          prev.includes(role.id) 
-                            ? prev.filter(id => id !== role.id)
-                            : [...prev, role.id]
-                        );
+                        toggleRoleAssignment(role.id, role.name);
                       } else {
                         setSelectedRoleId(role.id);
                       }
@@ -1979,20 +2051,31 @@ export default function Page() {
                     className={`w-full text-left rounded-lg border px-2 py-1.5 text-xs cursor-pointer transition-all duration-200 hover:shadow-md ${
                       isSelected
                         ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-300"
+                        : isProtectedRole && isAssigned
+                        ? "border-amber-400 bg-amber-50/80 dark:bg-amber-900/20 hover:bg-amber-100"
                         : isAssigned
                         ? "border-green-400 bg-green-50/80 dark:bg-green-900/20 hover:bg-green-100"
                         : "border-red-300 bg-red-50/50 dark:bg-red-900/10 hover:bg-red-100"
                     }`}
-                    title={`${role.description || role.name} (Level ${role.level || 0})`}
+                    title={isProtectedRole && isAssigned ? `Core role for ${adminRole} - cannot be removed` : `${role.description || role.name} (Level ${role.level || 0})`}
                   >
                     <div className="flex items-center gap-1">
-                      {isAssigned ? (
+                      {isProtectedRole && isAssigned ? (
+                        <span className="text-amber-600 text-xs">🔒</span>
+                      ) : isAssigned ? (
                         <span className="text-green-600 text-xs">✓</span>
                       ) : (
                         <span className="text-red-500 text-xs">✗</span>
                       )}
                       <div className="min-w-0 flex-1">
-                        <div className="truncate font-medium text-[11px]">{role.display_name || role.name}</div>
+                        <div className="truncate font-medium text-[11px] flex items-center gap-1">
+                          {role.display_name || role.name}
+                          {isProtectedRole && isAssigned && (
+                            <span className="text-[8px] px-1 py-0.5 rounded bg-amber-200 text-amber-800 dark:bg-amber-800 dark:text-amber-200 font-bold">
+                              CORE
+                            </span>
+                          )}
+                        </div>
                         <div className="flex items-center justify-between">
                           <span className="text-[9px] text-gray-500">{userCount} users</span>
                           {role.level !== undefined && (
@@ -2054,6 +2137,9 @@ export default function Page() {
                     const isSelected = selectedRoleId === role.id;
                     const userCount = role.userCount || role.users?.length || 0;
                     const isAssigned = assignedRoleIds.includes(role.id);
+                    const selectedAdmin = superAdmins.find(a => a.id === selectedAdminId);
+                    const adminRole = selectedAdmin?.role || 'SUPER_ADMIN';
+                    const isProtectedRole = isRoleProtected(role.name, adminRole);
                     
                     return (
                       <div key={role.id} className="relative">
@@ -2061,29 +2147,24 @@ export default function Page() {
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
-                              setAssignedRoleIds(prev => 
-                                prev.includes(role.id) 
-                                  ? prev.filter(id => id !== role.id)
-                                  : [...prev, role.id]
-                              );
+                              toggleRoleAssignment(role.id, role.name);
                             }}
                             className={`absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-transform hover:scale-110 ${
-                              isAssigned 
+                              isProtectedRole && isAssigned
+                                ? "bg-amber-500 hover:bg-amber-600 text-white cursor-not-allowed"
+                                : isAssigned 
                                 ? "bg-red-500 hover:bg-red-600 text-white"
                                 : "bg-green-500 hover:bg-green-600 text-white"
                             }`}
+                            title={isProtectedRole && isAssigned ? 'This role is protected and cannot be removed' : undefined}
                           >
-                            {isAssigned ? '−' : '+'}
+                            {isProtectedRole && isAssigned ? '🔒' : isAssigned ? '−' : '+'}
                           </button>
                         )}
                         <button
                           onClick={() => {
                             if (isRoleAssignMode && selectedAdminId) {
-                              setAssignedRoleIds(prev => 
-                                prev.includes(role.id) 
-                                  ? prev.filter(id => id !== role.id)
-                                  : [...prev, role.id]
-                              );
+                              toggleRoleAssignment(role.id, role.name);
                             } else {
                               setSelectedRoleId(role.id);
                             }
@@ -2091,20 +2172,31 @@ export default function Page() {
                           className={`w-full text-left rounded-lg border px-2 py-1.5 text-xs cursor-pointer transition-all duration-200 hover:shadow-md ${
                             isSelected
                               ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-300"
+                              : isProtectedRole && isAssigned
+                              ? "border-amber-400 bg-amber-50/80 dark:bg-amber-900/20 hover:bg-amber-100"
                               : isAssigned
                               ? "border-green-400 bg-green-50/80 dark:bg-green-900/20 hover:bg-green-100"
                               : "border-red-300 bg-red-50/50 dark:bg-red-900/10 hover:bg-red-100"
                           }`}
-                          title={`${role.description || role.name} (Level ${role.level || 0})`}
+                          title={isProtectedRole && isAssigned ? `Core role for ${adminRole} - cannot be removed` : `${role.description || role.name} (Level ${role.level || 0})`}
                         >
                           <div className="flex items-center gap-1">
-                            {isAssigned ? (
+                            {isProtectedRole && isAssigned ? (
+                              <span className="text-amber-600 text-xs">🔒</span>
+                            ) : isAssigned ? (
                               <span className="text-green-600 text-xs">✓</span>
                             ) : (
                               <span className="text-red-500 text-xs">✗</span>
                             )}
                             <div className="min-w-0 flex-1">
-                              <div className="truncate font-medium text-[11px]">{role.display_name || role.name}</div>
+                              <div className="truncate font-medium text-[11px] flex items-center gap-1">
+                                {role.display_name || role.name}
+                                {isProtectedRole && isAssigned && (
+                                  <span className="text-[8px] px-1 py-0.5 rounded bg-amber-200 text-amber-800 dark:bg-amber-800 dark:text-amber-200 font-bold">
+                                    CORE
+                                  </span>
+                                )}
+                              </div>
                               <div className="flex items-center justify-between">
                                 <span className="text-[9px] text-gray-500">{userCount} users</span>
                                 {role.level !== undefined && (
@@ -2231,6 +2323,31 @@ export default function Page() {
               </div>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast Notification for Protected Modules */}
+      {toastMessage && (
+        <div className={`fixed bottom-4 right-4 z-50 max-w-md px-4 py-3 rounded-lg shadow-lg animate-slide-up flex items-start gap-3 ${
+          toastMessage.type === 'warning' 
+            ? 'bg-yellow-50 border border-yellow-300 text-yellow-800 dark:bg-yellow-900/90 dark:border-yellow-700 dark:text-yellow-200'
+            : toastMessage.type === 'error'
+            ? 'bg-red-50 border border-red-300 text-red-800 dark:bg-red-900/90 dark:border-red-700 dark:text-red-200'
+            : 'bg-blue-50 border border-blue-300 text-blue-800 dark:bg-blue-900/90 dark:border-blue-700 dark:text-blue-200'
+        }`}>
+          <FiLock className={`w-5 h-5 shrink-0 mt-0.5 ${
+            toastMessage.type === 'warning' ? 'text-yellow-600' : toastMessage.type === 'error' ? 'text-red-600' : 'text-blue-600'
+          }`} />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Protected Module</p>
+            <p className="text-xs mt-0.5">{toastMessage.message}</p>
+          </div>
+          <button 
+            onClick={() => setToastMessage(null)}
+            className="p-1 hover:bg-black/10 rounded"
+          >
+            <FiX className="w-4 h-4" />
+          </button>
         </div>
       )}
     </div>

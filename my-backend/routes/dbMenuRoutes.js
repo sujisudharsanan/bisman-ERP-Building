@@ -1,8 +1,16 @@
 /**
- * DB-Driven Menu API
- * Single source of truth for sidebar/menu - reads from pages_master
+ * DB-Driven Menu API with RBAC Enforcement
+ * Single source of truth for sidebar navigation
  * 
- * This replaces the frontend PAGE_REGISTRY dependency for menu generation
+ * Tables used:
+ * - pages_master: page definitions (page_code, display_name, route, module_id, icon, sort_order, is_active, show_in_sidebar)
+ * - modules_master: module definitions (module_code, display_name, sort_order, is_active)
+ * - role_page_access: RBAC permissions (role_name, page_id, can_view, can_edit, can_delete)
+ * 
+ * Access Control Flow:
+ * 1. Super Admin / Enterprise Admin → scope-based (super-admin/*, enterprise-admin/*)
+ * 2. Regular users → role_page_access.can_view = true
+ * 3. Plan/module restrictions → checked via tenant subscription (if applicable)
  */
 
 const express = require('express');
@@ -10,119 +18,219 @@ const router = express.Router();
 const { getPrisma } = require('../lib/prisma');
 const { authenticate } = require('../middleware/auth');
 
+// Feature flag for DB menu (allows rollback to PAGE_REGISTRY)
+const USE_DB_MENU = process.env.USE_DB_MENU !== 'false'; // Default true
+
 /**
  * GET /api/menu/sidebar
- * Returns menu items from DB based on user role and permissions
+ * Returns ONLY authorized menu items for the logged-in user
+ * RBAC is enforced here - frontend should NOT filter again
  */
 router.get('/sidebar', authenticate, async (req, res) => {
   try {
+    // Feature flag check
+    if (!USE_DB_MENU) {
+      return res.json({
+        ok: false,
+        error: 'DB menu disabled',
+        fallback: true,
+        message: 'Use PAGE_REGISTRY fallback'
+      });
+    }
+
     const prisma = getPrisma();
     const userId = req.user?.id;
-    const userRole = req.user?.role || req.user?.roleName || '';
+    const userRole = (req.user?.role || req.user?.roleName || '').toUpperCase();
     const tenantId = req.user?.tenantId || req.user?.tenant_id;
     
-    // Super Admin and Enterprise Admin get all pages for their scope
-    const isSystemAdmin = ['SUPER_ADMIN', 'ENTERPRISE_ADMIN'].includes(userRole.toUpperCase());
+    console.log(`[Menu API] Sidebar request - User: ${userId}, Role: ${userRole}, Tenant: ${tenantId}`);
+    
+    if (!userId) {
+      return res.status(401).json({ ok: false, error: 'Not authenticated' });
+    }
     
     let menuItems = [];
+    let menuType = 'user';
     
-    if (isSystemAdmin) {
-      // System admins get pages based on their admin type
-      const adminPrefix = userRole.toUpperCase() === 'SUPER_ADMIN' ? 'super-admin' : 'enterprise-admin';
+    // ========== SUPER ADMIN ==========
+    if (userRole === 'SUPER_ADMIN') {
+      menuType = 'super-admin';
       
+      // Super Admin sees all super-admin/* pages + common pages
       menuItems = await prisma.$queryRaw`
         SELECT 
           pm.id,
-          pm.page_code as id,
-          pm.page_name as name,
-          pm.page_path as path,
-          pm.icon_key as "iconKey",
-          mm.module_name as module,
+          pm.page_code as "pageCode",
+          pm.display_name as name,
+          pm.route as path,
+          pm.icon as "iconKey",
+          mm.module_code as module,
+          mm.display_name as "moduleName",
           pm.show_in_sidebar as "showInSidebar",
           pm.sort_order as "order",
           pm.description,
-          pm.status
+          mm.sort_order as "moduleOrder"
         FROM pages_master pm
         LEFT JOIN modules_master mm ON pm.module_id = mm.id
-        WHERE pm.show_in_sidebar = true
-          AND pm.status = 'active'
+        WHERE pm.is_active = true
+          AND pm.show_in_sidebar = true
           AND (
-            pm.page_code LIKE ${adminPrefix + '%'}
-            OR mm.module_name = 'common'
+            pm.route LIKE '/super-admin%'
+            OR pm.route LIKE '/system%'
+            OR mm.module_code = 'COMMON'
           )
-        ORDER BY mm.sort_order, pm.sort_order, pm.page_name
-      `;
-    } else if (userId && tenantId) {
-      // Regular users: get pages based on role_page_access
-      menuItems = await prisma.$queryRaw`
-        SELECT DISTINCT
-          pm.id,
-          pm.page_code as id,
-          pm.page_name as name,
-          pm.page_path as path,
-          pm.icon_key as "iconKey",
-          mm.module_name as module,
-          pm.show_in_sidebar as "showInSidebar",
-          pm.sort_order as "order",
-          pm.description,
-          rpa.can_view,
-          rpa.can_edit,
-          rpa.can_delete
-        FROM pages_master pm
-        LEFT JOIN modules_master mm ON pm.module_id = mm.id
-        INNER JOIN role_page_access rpa ON rpa.page_id = pm.id
-        INNER JOIN client_role_assignments cra ON cra.role_id = rpa.role_id
-        WHERE pm.show_in_sidebar = true
-          AND pm.status = 'active'
-          AND cra.user_id = ${userId}
-          AND rpa.can_view = true
-        ORDER BY mm.sort_order, pm.sort_order, pm.page_name
-      `;
-    } else {
-      // Fallback: common pages only
-      menuItems = await prisma.$queryRaw`
-        SELECT 
-          pm.id,
-          pm.page_code as id,
-          pm.page_name as name,
-          pm.page_path as path,
-          pm.icon_key as "iconKey",
-          mm.module_name as module,
-          pm.show_in_sidebar as "showInSidebar",
-          pm.sort_order as "order",
-          pm.description
-        FROM pages_master pm
-        LEFT JOIN modules_master mm ON pm.module_id = mm.id
-        WHERE pm.show_in_sidebar = true
-          AND pm.status = 'active'
-          AND mm.module_name = 'common'
-        ORDER BY pm.sort_order, pm.page_name
+        ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
       `;
     }
     
-    // Group by module for nested menu structure
+    // ========== ENTERPRISE ADMIN ==========
+    else if (userRole === 'ENTERPRISE_ADMIN') {
+      menuType = 'enterprise-admin';
+      
+      // Enterprise Admin sees enterprise-admin/* pages + common pages
+      menuItems = await prisma.$queryRaw`
+        SELECT 
+          pm.id,
+          pm.page_code as "pageCode",
+          pm.display_name as name,
+          pm.route as path,
+          pm.icon as "iconKey",
+          mm.module_code as module,
+          mm.display_name as "moduleName",
+          pm.show_in_sidebar as "showInSidebar",
+          pm.sort_order as "order",
+          pm.description,
+          mm.sort_order as "moduleOrder"
+        FROM pages_master pm
+        LEFT JOIN modules_master mm ON pm.module_id = mm.id
+        WHERE pm.is_active = true
+          AND pm.show_in_sidebar = true
+          AND (
+            pm.route LIKE '/enterprise-admin%'
+            OR pm.route LIKE '/enterprise%'
+            OR mm.module_code = 'COMMON'
+          )
+        ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
+      `;
+    }
+    
+    // ========== REGULAR USERS (RBAC-based) ==========
+    else {
+      menuType = 'user';
+      
+      // Get pages where user's role has can_view = true
+      // role_page_access uses role_name (string), not role_id
+      menuItems = await prisma.$queryRaw`
+        SELECT DISTINCT
+          pm.id,
+          pm.page_code as "pageCode",
+          pm.display_name as name,
+          pm.route as path,
+          pm.icon as "iconKey",
+          mm.module_code as module,
+          mm.display_name as "moduleName",
+          pm.show_in_sidebar as "showInSidebar",
+          pm.sort_order as "order",
+          pm.description,
+          mm.sort_order as "moduleOrder",
+          rpa.can_view,
+          rpa.can_edit,
+          rpa.can_delete,
+          rpa.can_export
+        FROM pages_master pm
+        LEFT JOIN modules_master mm ON pm.module_id = mm.id
+        INNER JOIN role_page_access rpa ON rpa.page_id = pm.id
+        WHERE pm.is_active = true
+          AND pm.show_in_sidebar = true
+          AND rpa.role_name = ${userRole}
+          AND rpa.can_view = true
+        ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
+      `;
+      
+      // Also include common pages that are public (no RBAC needed)
+      const commonPages = await prisma.$queryRaw`
+        SELECT 
+          pm.id,
+          pm.page_code as "pageCode",
+          pm.display_name as name,
+          pm.route as path,
+          pm.icon as "iconKey",
+          'COMMON' as module,
+          'Common' as "moduleName",
+          pm.show_in_sidebar as "showInSidebar",
+          pm.sort_order as "order",
+          pm.description,
+          999 as "moduleOrder"
+        FROM pages_master pm
+        WHERE pm.is_active = true
+          AND pm.show_in_sidebar = true
+          AND pm.is_public = true
+      `;
+      
+      // Merge without duplicates
+      const existingIds = new Set(menuItems.map(m => m.id));
+      for (const cp of commonPages) {
+        if (!existingIds.has(cp.id)) {
+          menuItems.push(cp);
+        }
+      }
+    }
+    
+    // ========== GROUP BY MODULE ==========
     const grouped = {};
-    const modules = [];
+    const moduleOrder = new Map();
     
     for (const item of menuItems) {
-      const moduleName = item.module || 'common';
-      if (!grouped[moduleName]) {
-        grouped[moduleName] = {
-          id: moduleName,
-          name: moduleName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      const moduleCode = item.module || 'COMMON';
+      const moduleName = item.moduleName || moduleCode.replace(/_/g, ' ');
+      
+      if (!grouped[moduleCode]) {
+        grouped[moduleCode] = {
+          id: moduleCode.toLowerCase(),
+          code: moduleCode,
+          name: moduleName,
+          order: item.moduleOrder || 999,
           items: []
         };
-        modules.push(grouped[moduleName]);
+        moduleOrder.set(moduleCode, item.moduleOrder || 999);
       }
-      grouped[moduleName].items.push({
-        id: item.id,
+      
+      grouped[moduleCode].items.push({
+        id: item.pageCode,
         name: item.name,
         path: item.path,
         iconKey: item.iconKey || 'Circle',
         order: item.order || 0,
-        description: item.description
+        description: item.description,
+        permissions: item.can_view ? {
+          canView: item.can_view || false,
+          canEdit: item.can_edit || false,
+          canDelete: item.can_delete || false,
+          canExport: item.can_export || false
+        } : undefined
       });
     }
+    
+    // Sort modules by order, then sort items within each module
+    const modules = Object.values(grouped)
+      .sort((a, b) => (a.order || 999) - (b.order || 999))
+      .map(mod => ({
+        ...mod,
+        items: mod.items.sort((a, b) => (a.order || 0) - (b.order || 0))
+      }));
+    
+    // Create flat items list
+    const flatItems = [];
+    for (const mod of modules) {
+      for (const item of mod.items) {
+        flatItems.push({
+          ...item,
+          module: mod.code
+        });
+      }
+    }
+    
+    console.log(`[Menu API] Returning ${flatItems.length} pages in ${modules.length} modules for ${userRole}`);
     
     res.json({
       ok: true,
@@ -131,28 +239,27 @@ router.get('/sidebar', authenticate, async (req, res) => {
         role: userRole,
         tenantId
       },
-      menuType: isSystemAdmin ? 'admin' : 'user',
+      menuType,
       modules,
-      flatItems: menuItems.map(item => ({
-        id: item.id,
-        name: item.name,
-        path: item.path,
-        iconKey: item.iconKey || 'Circle',
-        module: item.module,
-        order: item.order || 0
-      })),
-      totalItems: menuItems.length
+      flatItems,
+      totalItems: flatItems.length,
+      source: 'database'
     });
     
   } catch (error) {
     console.error('[Menu API] Error fetching sidebar:', error);
-    res.status(500).json({ ok: false, error: error.message });
+    res.status(500).json({ 
+      ok: false, 
+      error: error.message,
+      fallback: true,
+      message: 'Use PAGE_REGISTRY fallback'
+    });
   }
 });
 
 /**
  * GET /api/menu/modules
- * Returns all modules with their page counts
+ * Returns all active modules with their page counts
  */
 router.get('/modules', authenticate, async (req, res) => {
   try {
@@ -161,27 +268,23 @@ router.get('/modules', authenticate, async (req, res) => {
     const modules = await prisma.$queryRaw`
       SELECT 
         mm.id,
-        mm.module_name as code,
+        mm.module_code as code,
         mm.display_name as name,
         mm.icon,
         mm.sort_order as "order",
         mm.description,
-        COUNT(pm.id) as page_count,
-        SUM(CASE WHEN pm.show_in_sidebar THEN 1 ELSE 0 END) as visible_pages
+        COUNT(pm.id)::int as "pageCount",
+        SUM(CASE WHEN pm.show_in_sidebar THEN 1 ELSE 0 END)::int as "visiblePages"
       FROM modules_master mm
-      LEFT JOIN pages_master pm ON pm.module_id = mm.id AND pm.status = 'active'
-      WHERE mm.status = 'active'
-      GROUP BY mm.id, mm.module_name, mm.display_name, mm.icon, mm.sort_order, mm.description
-      ORDER BY mm.sort_order, mm.module_name
+      LEFT JOIN pages_master pm ON pm.module_id = mm.id AND pm.is_active = true
+      WHERE mm.is_active = true
+      GROUP BY mm.id, mm.module_code, mm.display_name, mm.icon, mm.sort_order, mm.description
+      ORDER BY mm.sort_order, mm.module_code
     `;
     
     res.json({
       ok: true,
-      modules: modules.map(m => ({
-        ...m,
-        page_count: Number(m.page_count),
-        visible_pages: Number(m.visible_pages)
-      }))
+      modules
     });
     
   } catch (error) {
@@ -192,59 +295,202 @@ router.get('/modules', authenticate, async (req, res) => {
 
 /**
  * GET /api/menu/check-access/:pageCode
- * Check if current user can access a specific page
+ * Check if current user can access a specific page (for direct URL access)
+ * This is the AUTHORITATIVE check - use this in route guards
  */
 router.get('/check-access/:pageCode', authenticate, async (req, res) => {
   try {
     const prisma = getPrisma();
     const { pageCode } = req.params;
     const userId = req.user?.id;
-    const userRole = req.user?.role || req.user?.roleName || '';
+    const userRole = (req.user?.role || req.user?.roleName || '').toUpperCase();
     
-    // System admins have full access to their scope
-    if (['SUPER_ADMIN', 'ENTERPRISE_ADMIN'].includes(userRole.toUpperCase())) {
-      const prefix = userRole.toUpperCase() === 'SUPER_ADMIN' ? 'super-admin' : 'enterprise-admin';
-      const hasAccess = pageCode.startsWith(prefix) || pageCode.startsWith('common');
+    if (!userId) {
+      return res.status(401).json({ 
+        ok: false, 
+        hasAccess: false, 
+        error: 'Not authenticated' 
+      });
+    }
+    
+    // Get the page info first
+    const pageInfo = await prisma.$queryRaw`
+      SELECT 
+        pm.id,
+        pm.page_code,
+        pm.route,
+        pm.is_active,
+        pm.is_public,
+        mm.module_code
+      FROM pages_master pm
+      LEFT JOIN modules_master mm ON pm.module_id = mm.id
+      WHERE pm.page_code = ${pageCode}
+      LIMIT 1
+    `;
+    
+    if (pageInfo.length === 0) {
+      return res.json({
+        ok: true,
+        pageCode,
+        hasAccess: false,
+        accessLevel: 'none',
+        reason: 'Page not found in database'
+      });
+    }
+    
+    const page = pageInfo[0];
+    
+    // Check if page is inactive
+    if (!page.is_active) {
+      return res.json({
+        ok: true,
+        pageCode,
+        hasAccess: false,
+        accessLevel: 'none',
+        reason: 'Page is inactive'
+      });
+    }
+    
+    // Public pages are accessible to all authenticated users
+    if (page.is_public) {
+      return res.json({
+        ok: true,
+        pageCode,
+        hasAccess: true,
+        accessLevel: 'view',
+        reason: 'Public page'
+      });
+    }
+    
+    // Super Admin: scope-based access
+    if (userRole === 'SUPER_ADMIN') {
+      const hasAccess = page.route?.startsWith('/super-admin') || 
+                       page.route?.startsWith('/system') ||
+                       page.module_code === 'COMMON';
       
       return res.json({
         ok: true,
         pageCode,
         hasAccess,
         accessLevel: hasAccess ? 'full' : 'none',
-        reason: hasAccess ? 'Admin scope access' : 'Outside admin scope'
+        reason: hasAccess ? 'Super Admin scope' : 'Outside Super Admin scope'
       });
     }
     
-    // Check role_page_access for regular users
+    // Enterprise Admin: scope-based access
+    if (userRole === 'ENTERPRISE_ADMIN') {
+      const hasAccess = page.route?.startsWith('/enterprise') ||
+                       page.module_code === 'COMMON';
+      
+      return res.json({
+        ok: true,
+        pageCode,
+        hasAccess,
+        accessLevel: hasAccess ? 'full' : 'none',
+        reason: hasAccess ? 'Enterprise Admin scope' : 'Outside Enterprise Admin scope'
+      });
+    }
+    
+    // Regular users: check role_page_access
     const access = await prisma.$queryRaw`
       SELECT 
-        rpa.can_view,
-        rpa.can_edit,
-        rpa.can_delete
-      FROM role_page_access rpa
-      INNER JOIN pages_master pm ON pm.id = rpa.page_id
-      INNER JOIN client_role_assignments cra ON cra.role_id = rpa.role_id
-      WHERE pm.page_code = ${pageCode}
-        AND cra.user_id = ${userId}
+        can_view,
+        can_edit,
+        can_delete,
+        can_export
+      FROM role_page_access
+      WHERE page_id = ${page.id}
+        AND role_name = ${userRole}
       LIMIT 1
     `;
     
-    const hasAccess = access.length > 0 && access[0].can_view;
+    if (access.length === 0 || !access[0].can_view) {
+      return res.json({
+        ok: true,
+        pageCode,
+        hasAccess: false,
+        accessLevel: 'none',
+        reason: 'No RBAC permission for this role'
+      });
+    }
+    
+    // Determine access level
+    const perms = access[0];
+    let accessLevel = 'view';
+    if (perms.can_delete) accessLevel = 'full';
+    else if (perms.can_edit) accessLevel = 'edit';
     
     res.json({
       ok: true,
       pageCode,
-      hasAccess,
-      accessLevel: access.length > 0 ? (
-        access[0].can_delete ? 'full' :
-        access[0].can_edit ? 'edit' :
-        access[0].can_view ? 'view' : 'none'
-      ) : 'none',
-      permissions: access[0] || { can_view: false, can_edit: false, can_delete: false }
+      hasAccess: true,
+      accessLevel,
+      permissions: {
+        canView: perms.can_view,
+        canEdit: perms.can_edit,
+        canDelete: perms.can_delete,
+        canExport: perms.can_export
+      },
+      reason: 'RBAC permission granted'
     });
     
   } catch (error) {
     console.error('[Menu API] Error checking access:', error);
+    res.status(500).json({ ok: false, error: error.message });
+  }
+});
+
+/**
+ * GET /api/menu/my-permissions
+ * Returns all page permissions for the current user
+ * Useful for frontend caching
+ */
+router.get('/my-permissions', authenticate, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const userId = req.user?.id;
+    const userRole = (req.user?.role || req.user?.roleName || '').toUpperCase();
+    
+    if (!userId) {
+      return res.status(401).json({ ok: false, error: 'Not authenticated' });
+    }
+    
+    // Get all permissions for this role
+    const permissions = await prisma.$queryRaw`
+      SELECT 
+        pm.page_code as "pageCode",
+        pm.route as path,
+        rpa.can_view as "canView",
+        rpa.can_edit as "canEdit",
+        rpa.can_delete as "canDelete",
+        rpa.can_export as "canExport"
+      FROM role_page_access rpa
+      INNER JOIN pages_master pm ON pm.id = rpa.page_id
+      WHERE rpa.role_name = ${userRole}
+        AND pm.is_active = true
+    `;
+    
+    // Create a lookup map
+    const permissionMap = {};
+    for (const p of permissions) {
+      permissionMap[p.pageCode] = {
+        path: p.path,
+        canView: p.canView,
+        canEdit: p.canEdit,
+        canDelete: p.canDelete,
+        canExport: p.canExport
+      };
+    }
+    
+    res.json({
+      ok: true,
+      role: userRole,
+      totalPages: permissions.length,
+      permissions: permissionMap
+    });
+    
+  } catch (error) {
+    console.error('[Menu API] Error fetching permissions:', error);
     res.status(500).json({ ok: false, error: error.message });
   }
 });

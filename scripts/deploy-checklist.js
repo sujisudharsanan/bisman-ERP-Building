@@ -206,7 +206,7 @@ function checkVulnerabilities() {
     } else {
       check('No high/critical vulnerabilities', true);
     }
-  } catch (e) {
+  } catch {
     log(`   ${YELLOW}⚠ Could not parse audit results${RESET}`);
   }
 }

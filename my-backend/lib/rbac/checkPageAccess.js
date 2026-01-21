@@ -182,7 +182,7 @@ async function getRolePageAccess(pool, pageId, roleName) {
  *   - page: object|null
  *   - permissions: object|null
  */
-async function checkPageAccess({ route, roleName, userId, tenantId }) {
+async function checkPageAccess({ route, roleName, _userId, _tenantId }) {
   const pool = getPool();
   const client = await pool.connect();
   

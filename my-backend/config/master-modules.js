@@ -53,7 +53,6 @@ const MASTER_MODULES = [
       { id: 'enterprise-admin-billing', name: 'Billing Management', path: '/enterprise-admin/billing' },
       { id: 'enterprise-admin-monitoring', name: 'System Monitoring', path: '/enterprise-admin/monitoring' },
       { id: 'enterprise-admin-integrations', name: 'Integrations', path: '/enterprise-admin/integrations' },
-      { id: 'enterprise-admin-live-dashboard', name: 'Live Dashboard', path: '/enterprise-admin/live-dashboard' },
       { id: 'enterprise-admin-subscriptions', name: 'Subscriptions', path: '/enterprise-admin/subscriptions' },
       { id: 'enterprise-admin-rbac-security', name: 'RBAC Security', path: '/enterprise-admin/rbac-security' },
       { id: 'enterprise-admin-security-operations', name: 'Security Operations', path: '/enterprise-admin/security-operations' },

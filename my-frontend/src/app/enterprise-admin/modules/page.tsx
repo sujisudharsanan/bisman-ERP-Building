@@ -1,9 +1,11 @@
 "use client";
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
 import { FiPackage, FiGrid, FiUsers, FiCheckCircle, FiSearch, FiChevronUp, FiLock, FiPlus, FiX, FiExternalLink } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
 import Link from "next/link";
+import { isModuleProtected, getProtectedModuleMessage } from "@/common/config/protected-access";
+import { getSidebarPageCount, getTotalPageCount, ModuleKey } from "@/common/config/page-mapping";
 
 type ModulePage = {
   id: string;
@@ -12,7 +14,7 @@ type ModulePage = {
 };
 
 type Module = {
-  id: number;
+  id: number | string; // Can be numeric ID or string key like 'enterprise-admin'
   module_name: string;
   display_name: string;
   name?: string;
@@ -102,7 +104,7 @@ export default function ModuleManagementPage() {
   const [superAdmins, setSuperAdmins] = useState<SuperAdmin[]>([]);
   
   const [category, setCategory] = useState<'business' | 'pump'>('business');
-  const [selectedModuleId, setSelectedModuleId] = useState<number | null>(null);
+  const [selectedModuleId, setSelectedModuleId] = useState<number | string | null>(null);
   const [moduleSearchQuery, setModuleSearchQuery] = useState('');
   
   // Drawer state for Pages Preview
@@ -116,14 +118,29 @@ export default function ModuleManagementPage() {
   const [selectedAdminId, setSelectedAdminId] = useState<number | null>(null);
   
   // Checked unassigned modules (for showing pages in overview)
-  const [checkedUnassignedModules, setCheckedUnassignedModules] = useState<Set<number>>(new Set());
+  const [checkedUnassignedModules, setCheckedUnassignedModules] = useState<Set<number | string>>(new Set());
   
   // Assign mode state
   const [isAssignMode, setIsAssignMode] = useState(false);
   const [assigningModules, setAssigningModules] = useState(false);
   
   // Selected module for pages preview (from either assigned or unassigned)
-  const [selectedPreviewModuleId, setSelectedPreviewModuleId] = useState<number | null>(null);
+  const [selectedPreviewModuleId, setSelectedPreviewModuleId] = useState<number | string | null>(null);
+
+  // Toast notification state for protected module warnings
+  const [toastMessage, setToastMessage] = useState<{ message: string; type: 'warning' | 'error' | 'info' } | null>(null);
+  const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Show toast message
+  const showToast = useCallback((message: string, type: 'warning' | 'error' | 'info' = 'warning') => {
+    if (toastTimeoutRef.current) {
+      clearTimeout(toastTimeoutRef.current);
+    }
+    setToastMessage({ message, type });
+    toastTimeoutRef.current = setTimeout(() => {
+      setToastMessage(null);
+    }, 4000);
+  }, []);
 
   // Fetch data on mount
   useEffect(() => {
@@ -262,18 +279,31 @@ export default function ModuleManagementPage() {
     return superAdmins.find(a => a.id === selectedAdminId) || null;
   }, [superAdmins, selectedAdminId]);
 
-  // Get assigned modules for selected admin
+  // Get assigned modules for selected admin (includes protected modules that are always assigned)
   const selectedAdminAssignedModules = useMemo(() => {
     if (!selectedAdmin) return [];
     const assigned = selectedAdmin.assignedModules || [];
+    const adminRole = selectedAdmin.role || 'SUPER_ADMIN';
+    
     return modules.filter(m => {
+      // Get the module key - backend sends module_name as the key (e.g. 'enterprise-admin')
+      // id is the numeric database ID, so use module_name first
+      const moduleKey = m.module_name || m.name || m.display_name || '';
+      
+      // Protected modules are always considered "assigned"
+      if (isModuleProtected(moduleKey, adminRole)) {
+        return true;
+      }
+      
       return assigned.some(v => {
         if (typeof v === 'number') return v === m.id;
         if (typeof v === 'string') {
           const n = Number(v);
           if (Number.isFinite(n)) return n === m.id;
           const keyLc = String(v).toLowerCase();
-          return (m.module_name || '').toLowerCase() === keyLc || 
+          // Check against module_name, name, and display_name
+          return moduleKey.toLowerCase() === keyLc ||
+                 (m.module_name || '').toLowerCase() === keyLc || 
                  (m.display_name || '').toLowerCase() === keyLc;
         }
         return false;
@@ -304,7 +334,7 @@ export default function ModuleManagementPage() {
   }, [selectedPreviewModule]);
 
   // Toggle unassigned module checkbox
-  const toggleUnassignedModule = (moduleId: number) => {
+  const toggleUnassignedModule = (moduleId: number | string) => {
     setCheckedUnassignedModules(prev => {
       const next = new Set(prev);
       if (next.has(moduleId)) {
@@ -585,9 +615,15 @@ export default function ModuleManagementPage() {
                 </div>
               ) : (
                 selectedAdminAssignedModules.map((m) => {
-                  const pageCount = m.pages?.length || 0;
+                  const totalPages = m.pages?.length || 0;
+                  const moduleKey = m.module_name || m.name || m.display_name || '';
+                  // Get sidebar page count from unified mapping, fallback to total
+                  const sidebarPages = getSidebarPageCount(moduleKey as ModuleKey) || totalPages;
                   const isAlwaysAccessible = m.alwaysAccessible || m.is_always_accessible;
                   const isSelected = selectedPreviewModuleId === m.id;
+                  // Get the module key - backend sends module_name as key (e.g. 'enterprise-admin')
+                  const adminRole = selectedAdmin?.role || 'SUPER_ADMIN';
+                  const isProtected = isModuleProtected(moduleKey, adminRole);
                   
                   return (
                     <button
@@ -596,20 +632,32 @@ export default function ModuleManagementPage() {
                       className={`w-full text-left flex items-center gap-2 p-2 rounded-md border transition ${
                         isSelected
                           ? "border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300 shadow-sm"
+                          : isProtected
+                          ? "border-amber-300 dark:border-amber-700 bg-amber-50 dark:bg-amber-900/20 hover:border-amber-400"
                           : isAlwaysAccessible
                           ? "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 hover:border-green-400"
                           : "border-blue-200 dark:border-blue-800 bg-blue-50 dark:bg-blue-900/20 hover:border-blue-400"
                       }`}
+                      title={isProtected ? `Core module for ${adminRole} - cannot be removed` : `${sidebarPages} sidebar / ${totalPages} total pages`}
                     >
-                      <FiCheckCircle className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-purple-600' : isAlwaysAccessible ? 'text-green-500' : 'text-blue-500'}`} />
+                      {isProtected ? (
+                        <FiLock className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-purple-600' : 'text-amber-500'}`} />
+                      ) : (
+                        <FiCheckCircle className={`w-3.5 h-3.5 shrink-0 ${isSelected ? 'text-purple-600' : isAlwaysAccessible ? 'text-green-500' : 'text-blue-500'}`} />
+                      )}
                       <div className="flex-1 min-w-0">
-                        <div className={`text-xs font-medium truncate ${isSelected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-900 dark:text-gray-100'}`}>
+                        <div className={`text-xs font-medium truncate flex items-center gap-1 ${isSelected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-900 dark:text-gray-100'}`}>
                           {m.display_name || m.name || m.module_name}
+                          {isProtected && (
+                            <span className="text-[9px] px-1 py-0.5 rounded bg-amber-200 text-amber-800 dark:bg-amber-800 dark:text-amber-200 font-bold">
+                              CORE
+                            </span>
+                          )}
                         </div>
                         <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
                           <FiGrid className="w-2.5 h-2.5" />
-                          {pageCount} pages
-                          {isAlwaysAccessible && (
+                          {sidebarPages !== totalPages ? `${sidebarPages} menu / ${totalPages} total` : `${totalPages} pages`}
+                          {isAlwaysAccessible && !isProtected && (
                             <span className="ml-1 text-green-600 dark:text-green-400 flex items-center gap-0.5">
                               <FiLock className="w-2.5 h-2.5" />
                               Always
@@ -659,7 +707,9 @@ export default function ModuleManagementPage() {
               ) : (
                 selectedAdminUnassignedModules.map((m) => {
                   const isChecked = checkedUnassignedModules.has(m.id);
-                  const pageCount = m.pages?.length || 0;
+                  const totalPages = m.pages?.length || 0;
+                  const moduleKey = m.module_name || m.name || m.display_name || '';
+                  const sidebarPages = getSidebarPageCount(moduleKey as ModuleKey) || totalPages;
                   const isSelected = selectedPreviewModuleId === m.id;
                   
                   return (
@@ -679,6 +729,7 @@ export default function ModuleManagementPage() {
                           setSelectedPreviewModuleId(isSelected ? null : m.id);
                         }
                       }}
+                      title={`${sidebarPages} sidebar / ${totalPages} total pages`}
                     >
                       {isAssignMode && (
                         <input
@@ -695,7 +746,7 @@ export default function ModuleManagementPage() {
                         </div>
                         <div className="text-[10px] text-gray-500 dark:text-gray-400 flex items-center gap-1">
                           <FiGrid className="w-2.5 h-2.5" />
-                          {pageCount} pages
+                          {sidebarPages !== totalPages ? `${sidebarPages} menu / ${totalPages} total` : `${totalPages} pages`}
                         </div>
                       </div>
                     </div>
@@ -883,6 +934,31 @@ export default function ModuleManagementPage() {
               </button>
             </div>
           </div>
+        </div>
+      )}
+
+      {/* Toast Notification for Protected Modules */}
+      {toastMessage && (
+        <div className={`fixed bottom-4 right-4 z-50 max-w-md px-4 py-3 rounded-lg shadow-lg animate-slide-up flex items-start gap-3 ${
+          toastMessage.type === 'warning' 
+            ? 'bg-yellow-50 border border-yellow-300 text-yellow-800 dark:bg-yellow-900/90 dark:border-yellow-700 dark:text-yellow-200'
+            : toastMessage.type === 'error'
+            ? 'bg-red-50 border border-red-300 text-red-800 dark:bg-red-900/90 dark:border-red-700 dark:text-red-200'
+            : 'bg-blue-50 border border-blue-300 text-blue-800 dark:bg-blue-900/90 dark:border-blue-700 dark:text-blue-200'
+        }`}>
+          <FiLock className={`w-5 h-5 shrink-0 mt-0.5 ${
+            toastMessage.type === 'warning' ? 'text-yellow-600' : toastMessage.type === 'error' ? 'text-red-600' : 'text-blue-600'
+          }`} />
+          <div className="flex-1">
+            <p className="text-sm font-medium">Protected Module</p>
+            <p className="text-xs mt-0.5">{toastMessage.message}</p>
+          </div>
+          <button 
+            onClick={() => setToastMessage(null)}
+            className="p-1 hover:bg-black/10 rounded"
+          >
+            <FiX className="w-4 h-4" />
+          </button>
         </div>
       )}
     </div>

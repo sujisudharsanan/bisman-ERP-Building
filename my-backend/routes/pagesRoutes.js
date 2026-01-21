@@ -118,7 +118,6 @@ const SYSTEM_PAGES = [
   { key: 'enterprise-admin-billing', name: 'Billing Management', module: 'enterprise-admin' },
   { key: 'enterprise-admin-monitoring', name: 'System Monitoring', module: 'enterprise-admin' },
   { key: 'enterprise-admin-integrations', name: 'Integrations', module: 'enterprise-admin' },
-  { key: 'enterprise-admin-live-dashboard', name: 'Live Dashboard', module: 'enterprise-admin' },
   { key: 'enterprise-admin-subscriptions', name: 'Subscriptions', module: 'enterprise-admin' },
   { key: 'enterprise-admin-rbac-security', name: 'RBAC Security', module: 'enterprise-admin' },
   { key: 'enterprise-admin-security-operations', name: 'Security Operations', module: 'enterprise-admin' },
