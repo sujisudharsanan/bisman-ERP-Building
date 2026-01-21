@@ -70,9 +70,6 @@ const PAGES = [
   { page_code: 'SUPER_ADMIN_BACKUP_RESTORE', display_name: 'Backup & Restore', route: '/super-admin/system/backup-restore', module_code: 'SUPER_ADMIN', icon: 'Database', sort_order: 6, roles: ['SUPER_ADMIN'] },
   { page_code: 'SUPER_ADMIN_SYSTEM_HEALTH', display_name: 'System Health', route: '/super-admin/system/system-health-dashboard', module_code: 'SUPER_ADMIN', icon: 'Activity', sort_order: 7, roles: ['SUPER_ADMIN'] },
   { page_code: 'SUPER_ADMIN_INTEGRATION_SETTINGS', display_name: 'Integration Settings', route: '/super-admin/system/integration-settings', module_code: 'SUPER_ADMIN', icon: 'Route', sort_order: 8, roles: ['SUPER_ADMIN'] },
-  { page_code: 'SUPER_ADMIN_DEPLOYMENT_TOOLS', display_name: 'Deployment Tools', route: '/super-admin/system/deployment-tools', module_code: 'SUPER_ADMIN', icon: 'Upload', sort_order: 9, roles: ['SUPER_ADMIN'] },
-  { page_code: 'SUPER_ADMIN_FALLBACK_RECOVERY', display_name: 'Fallback & Recovery', route: '/super-admin/system/fallback-recovery', module_code: 'SUPER_ADMIN', icon: 'AlertTriangle', sort_order: 10, roles: ['SUPER_ADMIN'] },
-  { page_code: 'SUPER_ADMIN_DECISION_LOAD', display_name: 'Decision Load', route: '/super-admin/decision-load', module_code: 'SUPER_ADMIN', icon: 'TrendingUp', sort_order: 11, roles: ['SUPER_ADMIN'] },
 
   // SUBSCRIPTIONS (Sub-pages)
   { page_code: 'SUBSCRIPTION_PLANS', display_name: 'Plan Management', route: '/super-admin/subscriptions/plans', module_code: 'SUBSCRIPTIONS', icon: 'Package', sort_order: 1, show_in_sidebar: false, roles: ['SUPER_ADMIN'] },
@@ -157,7 +154,6 @@ const PAGES = [
 
   // DASHBOARD
   { page_code: 'DASHBOARD_HOME', display_name: 'Dashboard', route: '/dashboard', module_code: 'DASHBOARD', icon: 'LayoutDashboard', sort_order: 0, roles: ['ADMIN', 'MANAGER', 'STAFF', 'HUB_INCHARGE', 'STORE_INCHARGE', 'OPERATIONS_MANAGER'] },
-  { page_code: 'DASHBOARD_REQUESTS', display_name: 'My Requests', route: '/dashboard/requests', module_code: 'DASHBOARD', icon: 'GitPullRequest', sort_order: 1, roles: ['ADMIN', 'MANAGER', 'STAFF', 'HUB_INCHARGE', 'STORE_INCHARGE', 'OPERATIONS_MANAGER'] },
   { page_code: 'DASHBOARD_WORKBENCH', display_name: 'Workbench', route: '/dashboard/workbench', module_code: 'DASHBOARD', icon: 'Briefcase', sort_order: 2, roles: ['ADMIN', 'MANAGER', 'STAFF', 'HUB_INCHARGE', 'STORE_INCHARGE'] },
 
   // RECONCILIATION

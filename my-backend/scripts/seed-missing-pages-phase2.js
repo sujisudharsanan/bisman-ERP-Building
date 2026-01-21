@@ -116,7 +116,6 @@ const MISSING_PAGES = [
   { page_code: 'COMMON_CLIENTS_CREATE', display_name: 'Create Client', route: '/clients/create', module_code: 'COMMON', sort_order: 25, show_in_sidebar: false, roles: ['ADMIN', 'SUPER_ADMIN'] },
   { page_code: 'COMMON_CLIENTS_USAGE_DASHBOARD', display_name: 'Client Usage Dashboard', route: '/clients/usage-dashboard', module_code: 'COMMON', sort_order: 26, roles: ['ADMIN', 'SUPER_ADMIN'] },
   { page_code: 'COMMON_DOCUMENTATION', display_name: 'Documentation', route: '/common/documentation', module_code: 'COMMON', sort_order: 27, roles: ['*'] },
-  { page_code: 'COMMON_HR_POLICY', display_name: 'HR Policy', route: '/common/hr-policy', module_code: 'COMMON', sort_order: 28, roles: ['*'] },
   { page_code: 'COMMON_TASK_APPROVAL_DETAIL', display_name: 'Task Approval Detail', route: '/common/task-approvals/[id]', module_code: 'COMMON', sort_order: 29, show_in_sidebar: false, roles: ['ADMIN', 'MANAGER', 'STAFF', 'CFO', 'FINANCE_CONTROLLER', 'OPERATIONS_MANAGER', 'HUB_INCHARGE', 'STORE_INCHARGE'] },
   { page_code: 'COMMON_USER_CREATION', display_name: 'User Creation', route: '/common/user-creation', module_code: 'COMMON', sort_order: 30, show_in_sidebar: false, roles: ['ADMIN', 'HR_MANAGER'] },
   { page_code: 'COMMON_SETTINGS', display_name: 'Settings', route: '/settings', module_code: 'COMMON', sort_order: 31, roles: ['*'] },
@@ -166,13 +165,13 @@ const MISSING_ROLE_ASSIGNMENTS = {
   
   // ADMIN_OPS - Admin operational role
   'ADMIN_OPS': [
-    '/admin', '/admin/clients', '/admin/task-approvals', '/dashboard', '/dashboard/requests',
+    '/admin', '/admin/clients', '/admin/task-approvals', '/dashboard',
     '/common/task-approvals', '/common/calendar', '/common/notifications', '/common/about-me'
   ],
   
   // BRANCH_INCHARGE - Branch supervisory role
   'BRANCH_INCHARGE': [
-    '/dashboard', '/dashboard/requests', '/dashboard/workbench', '/operations/inventory-management',
+    '/dashboard', '/dashboard/workbench', '/operations/inventory-management',
     '/common/task-approvals', '/common/payment-request', '/common/calendar', '/common/notifications',
     '/common/about-me', '/task-dashboard'
   ],
@@ -193,13 +192,13 @@ const MISSING_ROLE_ASSIGNMENTS = {
   
   // DATA_ENTRY - Operational role
   'DATA_ENTRY': [
-    '/dashboard', '/dashboard/requests', '/common/task-approvals', '/common/calendar',
+    '/dashboard', '/common/task-approvals', '/common/calendar',
     '/common/notifications', '/common/about-me'
   ],
   
   // HUB_INCHARGE_SR - Senior hub role
   'HUB_INCHARGE_SR': [
-    '/dashboard', '/dashboard/requests', '/dashboard/workbench', '/operations/inventory-management',
+    '/dashboard', '/dashboard/workbench', '/operations/inventory-management',
     '/operations/kpi-dashboard', '/common/task-approvals', '/common/payment-request',
     '/common/calendar', '/common/notifications', '/common/about-me', '/task-dashboard',
     '/reports/payment-summary'
@@ -208,19 +207,19 @@ const MISSING_ROLE_ASSIGNMENTS = {
   // INTERN - Trainee role (read-only)
   'INTERN': [
     '/dashboard', '/common/calendar', '/common/notifications', '/common/about-me',
-    '/common/hr-policy', '/common/documentation'
+    '/common/documentation'
   ],
   
   // PROCUREMENT_OFFICER - Procurement role
   'PROCUREMENT_OFFICER': [
-    '/dashboard', '/dashboard/requests', '/procurement/purchase-orders',
+    '/dashboard', '/procurement/purchase-orders',
     '/common/task-approvals', '/common/payment-request', '/common/calendar',
     '/common/notifications', '/common/about-me', '/task-dashboard'
   ],
   
   // STORE_INCHARGE_SR - Senior store role
   'STORE_INCHARGE_SR': [
-    '/dashboard', '/dashboard/requests', '/dashboard/workbench', '/store-incharge',
+    '/dashboard', '/dashboard/workbench', '/store-incharge',
     '/operations/inventory-management', '/operations/kpi-dashboard',
     '/common/task-approvals', '/common/calendar', '/common/notifications',
     '/common/about-me', '/task-dashboard', '/reports/payment-summary'
@@ -228,7 +227,7 @@ const MISSING_ROLE_ASSIGNMENTS = {
   
   // SUPERVISOR - Supervisory role
   'SUPERVISOR': [
-    '/dashboard', '/dashboard/requests', '/dashboard/workbench', '/common/task-approvals',
+    '/dashboard', '/dashboard/workbench', '/common/task-approvals',
     '/common/calendar', '/common/notifications', '/common/about-me', '/task-dashboard',
     '/approvals'
   ],
