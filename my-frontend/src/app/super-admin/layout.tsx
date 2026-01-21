@@ -18,35 +18,38 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
   const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  // Sidebar widths matching BaseSidebar: w-52 (208px) expanded, w-16 (64px) collapsed
+  const sidebarWidth = sidebarOpen ? '208px' : '64px';
+
   return (
     <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ENTERPRISE_ADMIN']}>
       <ThemeProvider>
         <DockProvider>
           <RefreshProvider>
-            <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
-              <WelcomePopup userName={user?.name || user?.username} />
-              
-              {/* Top Navigation */}
-              <TopNavbar showThemeToggle={true} fixed={true} />
-              
-              {/* Sidebar with toggle */}
-              <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
-              
-              {/* Main content */}
-              <main 
-                className="bg-gray-50 dark:bg-slate-900 transition-all duration-300 overflow-x-hidden"
-                style={{ 
-                  marginLeft: sidebarOpen ? '13rem' : '4rem', 
-                  marginTop: 'var(--navbar-height, 52px)',
-                  minHeight: 'calc(100vh - var(--navbar-height, 52px))',
-                  width: sidebarOpen ? 'calc(100% - 13rem)' : 'calc(100% - 4rem)'
-                }}
-              >
-                <div className="p-4 w-full max-w-full overflow-x-hidden">
-                  {children}
-                </div>
-              </main>
-            </div>
+            <WelcomePopup userName={user?.name || user?.username} />
+            
+            {/* Fixed Top Navigation */}
+            <TopNavbar showThemeToggle={true} fixed={true} />
+            
+            {/* Fixed Sidebar - positioned below navbar */}
+            <Sidebar isOpen={sidebarOpen} onToggle={() => setSidebarOpen(!sidebarOpen)} />
+            
+            {/* Main content area - full width minus sidebar */}
+            <main 
+              className="bg-gray-50 dark:bg-slate-900 transition-all duration-300"
+              style={{ 
+                position: 'fixed',
+                top: 'var(--navbar-height, 52px)',
+                left: sidebarWidth,
+                right: 0,
+                bottom: 0,
+                overflow: 'auto'
+              }}
+            >
+              <div className="p-4 w-full">
+                {children}
+              </div>
+            </main>
           </RefreshProvider>
         </DockProvider>
       </ThemeProvider>
