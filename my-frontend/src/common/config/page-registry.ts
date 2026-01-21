@@ -3484,7 +3484,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     module: 'common',
     permissions: [],
     roles: ['ALL'],
-    status: 'planned',  // No page.tsx exists yet - marked as planned
+    status: 'coming-soon',  // No page.tsx exists yet - marked as coming-soon
     showInSidebar: false,
     description: 'AI-powered chat assistant (coming soon)',
     order: 11,
