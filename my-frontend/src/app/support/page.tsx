@@ -76,18 +76,7 @@ export default function SupportPage() {
 
       <main className="max-w-6xl mx-auto px-6 py-12">
         {/* Quick Links */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-12">
-          <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
-            <div className="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg w-fit mb-4">
-              <BookOpen className="w-6 h-6 text-blue-600 dark:text-blue-400" />
-            </div>
-            <h3 className="font-semibold text-gray-900 dark:text-white mb-2">Documentation</h3>
-            <p className="text-sm text-gray-600 dark:text-gray-400 mb-4">Browse our comprehensive guides and API documentation</p>
-            <Link href="/common/documentation" className="text-blue-600 hover:text-blue-700 dark:text-blue-400 text-sm inline-flex items-center gap-1">
-              View Docs <ExternalLink className="w-3 h-3" />
-            </Link>
-          </div>
-
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-12">
           <div className="bg-white dark:bg-gray-800 rounded-xl p-6 border border-gray-200 dark:border-gray-700 hover:shadow-lg transition-shadow">
             <div className="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg w-fit mb-4">
               <Video className="w-6 h-6 text-green-600 dark:text-green-400" />

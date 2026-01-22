@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
-import { FiUsers, FiPackage, FiGrid, FiShield, FiRefreshCw, FiChevronUp } from "react-icons/fi";
+import { FiUsers, FiPackage, FiGrid, FiShield, FiRefreshCw, FiChevronUp, FiCreditCard } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
 import ClientManagementTabs from "@/components/common/ClientManagementTabs";
 // Note: Layout is provided by /app/system/layout.tsx
@@ -48,6 +48,18 @@ type RolePage = {
   granted?: boolean;
 };
 
+type SubscriptionPlan = {
+  id: number;
+  plan_code: string;
+  name: string;
+  description?: string;
+  price_monthly?: number;
+  price_yearly?: number;
+  is_active?: boolean;
+  is_popular?: boolean;
+  sort_order?: number;
+};
+
 export default function RolesUsersReportPage() {
   const { user } = useAuth();
   const isSuperAdmin = user?.role?.toUpperCase() === 'SUPER_ADMIN' || user?.userType === 'SUPER_ADMIN';
@@ -64,13 +76,34 @@ export default function RolesUsersReportPage() {
   const [modules, setModules] = useState<Module[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [allRoles, setAllRoles] = useState<Role[]>([]);
+  const [subscriptionPlans, setSubscriptionPlans] = useState<SubscriptionPlan[]>([]);
 
   // Selection states
   const [selectedClientId, setSelectedClientId] = useState<string | number | null>(null);
+  const [selectedPlanId, setSelectedPlanId] = useState<number | null>(null);
   const [selectedRoleId, setSelectedRoleId] = useState<number | null>(null);
   // Track assigned roles PER CLIENT using a Map
   const [clientRolesMap, setClientRolesMap] = useState<Record<string, number[]>>({});
+  // Track current subscription plan PER CLIENT
+  const [clientPlanMap, setClientPlanMap] = useState<Record<string, number | null>>({});
   const [isRoleAssignMode, setIsRoleAssignMode] = useState(false);
+  
+  // Edit mode states for roles and pages
+  const [isRoleEditMode, setIsRoleEditMode] = useState(false);
+  const [isPageEditMode, setIsPageEditMode] = useState(false);
+  const [isSubEditMode, setIsSubEditMode] = useState(false);
+
+  // Get current plan for selected client
+  const clientCurrentPlanId = useMemo(() => {
+    if (!selectedClientId) return null;
+    return clientPlanMap[String(selectedClientId)] ?? null;
+  }, [selectedClientId, clientPlanMap]);
+
+  // Get current plan details
+  const clientCurrentPlan = useMemo(() => {
+    if (!clientCurrentPlanId) return null;
+    return subscriptionPlans.find(p => p.id === clientCurrentPlanId) || null;
+  }, [clientCurrentPlanId, subscriptionPlans]);
 
   // Get assigned roles for current client
   const assignedRoleIds = useMemo(() => {
@@ -211,6 +244,26 @@ export default function RolesUsersReportPage() {
         console.warn('[RolesUsersReport] Could not load roles:', rolesErr);
       }
 
+      // Fetch subscription plans (SuperAdmin only)
+      if (isSuperAdmin) {
+        try {
+          const plansRes = await fetch(`/api/super-admin/subscriptions/plans${cacheBuster}`, { 
+            credentials: 'include',
+            cache: forceRefresh ? 'no-store' : 'default'
+          });
+          if (plansRes.ok) {
+            const plansData = await plansRes.json();
+            const plansList: SubscriptionPlan[] = plansData.ok && Array.isArray(plansData.plans)
+              ? plansData.plans
+              : [];
+            console.log('[RolesUsersReport] Loaded', plansList.length, 'subscription plans');
+            setSubscriptionPlans(plansList);
+          }
+        } catch (plansErr) {
+          console.warn('[RolesUsersReport] Could not load subscription plans:', plansErr);
+        }
+      }
+
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : String(err);
       setError(msg);
@@ -283,6 +336,57 @@ export default function RolesUsersReportPage() {
 
     loadClientRoles();
   }, [selectedClientId, clientRolesMap]);
+
+  // Load client's current subscription when client is selected
+  useEffect(() => {
+    if (!selectedClientId || !isSuperAdmin) return;
+
+    // Check if we already have plan for this client in the map
+    const existingPlan = clientPlanMap[String(selectedClientId)];
+    if (existingPlan !== undefined) {
+      // Already loaded, reset selectedPlanId to current plan
+      setSelectedPlanId(existingPlan);
+      return;
+    }
+
+    // Load current subscription for client from backend
+    const loadClientSubscription = async () => {
+      try {
+        console.log('🔄 Loading subscription for client:', selectedClientId);
+        const response = await fetch(`/api/system/clients/${selectedClientId}/subscription`, {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          const planId = data.plan_id || data.planId || null;
+          // Store in the map for this client
+          setClientPlanMap(prev => ({
+            ...prev,
+            [String(selectedClientId)]: planId
+          }));
+          setSelectedPlanId(planId);
+          console.log('✅ Loaded subscription plan:', planId);
+        } else {
+          // Initialize with null if backend fails
+          setClientPlanMap(prev => ({
+            ...prev,
+            [String(selectedClientId)]: null
+          }));
+          setSelectedPlanId(null);
+        }
+      } catch (error) {
+        console.warn('⚠️ Could not load client subscription:', error);
+        setClientPlanMap(prev => ({
+          ...prev,
+          [String(selectedClientId)]: null
+        }));
+        setSelectedPlanId(null);
+      }
+    };
+
+    loadClientSubscription();
+  }, [selectedClientId, clientPlanMap, isSuperAdmin]);
 
   // State for role saving
   const [rolesSaving, setRolesSaving] = useState(false);
@@ -489,9 +593,9 @@ export default function RolesUsersReportPage() {
         </button>
       </div>
 
-      {/* Main 3-Column Grid - takes 45% of remaining space */}
+      {/* Main 4-Column Grid - takes 45% of remaining space */}
       <div className="flex-[45] min-h-0 overflow-hidden">
-        <div className="grid grid-cols-3 gap-2 h-full">
+        <div className="grid grid-cols-4 gap-2 h-full">
           {/* Column 1: Clients */}
           <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-2 flex flex-col h-full overflow-hidden">
             <div className="text-sm font-semibold mb-1 flex items-center gap-2 flex-shrink-0">
@@ -539,7 +643,164 @@ export default function RolesUsersReportPage() {
             </div>
           </div>
 
-          {/* Column 2: Roles */}
+          {/* Column 2: Subscriptions */}
+          <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-2 flex flex-col h-full overflow-hidden">
+            <div className="text-sm font-semibold mb-1 flex items-center gap-2 flex-shrink-0">
+              <FiCreditCard className="text-orange-600" />
+              Subscriptions
+              <span className="text-xs font-normal text-gray-500">{subscriptionPlans.length}</span>
+            </div>
+            
+            {/* Action buttons for subscription assignment */}
+            {selectedClientId && subscriptionPlans.length > 0 && (
+              <div className="flex items-center gap-2 mb-2 pb-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
+                {isSubEditMode ? (
+                  <>
+                    <div className="flex-1" />
+                    <button
+                      onClick={() => {
+                        // TODO: Save subscription assignment to backend
+                        // For now, update the local map
+                        if (selectedClientId && selectedPlanId !== null) {
+                          setClientPlanMap(prev => ({
+                            ...prev,
+                            [String(selectedClientId)]: selectedPlanId
+                          }));
+                        }
+                        setIsSubEditMode(false);
+                      }}
+                      className="text-xs px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700"
+                    >
+                      Save
+                    </button>
+                    <button
+                      onClick={() => {
+                        // Reset selection to current plan
+                        setSelectedPlanId(clientCurrentPlanId);
+                        setIsSubEditMode(false);
+                      }}
+                      className="text-xs px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex-1" />
+                    <button
+                      onClick={() => setIsSubEditMode(true)}
+                      className="text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                    >
+                      Edit
+                    </button>
+                  </>
+                )}
+              </div>
+            )}
+            
+            <div className="space-y-1 flex-1 overflow-y-auto min-h-0">
+              {!selectedClientId ? (
+                <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
+                  ⚠️ Select a Client to view plans
+                </div>
+              ) : subscriptionPlans.length === 0 ? (
+                <div className="text-xs text-gray-500 text-center py-4">
+                  No subscription plans available.
+                </div>
+              ) : !isSubEditMode ? (
+                // VIEW MODE: Show only current plan
+                clientCurrentPlan ? (
+                  <div className="p-3 rounded-md border border-orange-500 bg-orange-50 dark:bg-orange-900/30">
+                    <div className="flex items-center gap-2">
+                      <span className="text-orange-600 text-sm">✓</span>
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-semibold text-sm text-orange-800 dark:text-orange-200">{clientCurrentPlan.name}</span>
+                            {clientCurrentPlan.is_popular && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-bold">
+                                Popular
+                              </span>
+                            )}
+                          </div>
+                          {clientCurrentPlan.price_monthly !== undefined && (
+                            <span className="text-xs text-orange-700 dark:text-orange-300 font-medium">
+                              ${clientCurrentPlan.price_monthly}/mo
+                            </span>
+                          )}
+                        </div>
+                        {clientCurrentPlan.description && (
+                          <div className="text-[10px] text-orange-600 dark:text-orange-400 mt-1">{clientCurrentPlan.description}</div>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-xs text-gray-500 text-center py-4 bg-gray-50 dark:bg-gray-800 rounded border border-dashed border-gray-300 dark:border-gray-600">
+                    No subscription assigned.
+                    <br />
+                    <span className="text-[10px]">Click Edit to assign a plan.</span>
+                  </div>
+                )
+              ) : (
+                // EDIT MODE: Show all active plans
+                subscriptionPlans.filter(p => p.is_active !== false).map(plan => {
+                  const isSelected = selectedPlanId === plan.id;
+                  const isCurrentPlan = clientCurrentPlanId === plan.id;
+                  return (
+                    <div
+                      key={plan.id}
+                      onClick={() => setSelectedPlanId(plan.id)}
+                      className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer transition ${
+                        isSelected
+                          ? 'border-orange-500 bg-orange-100 dark:bg-orange-900/40 ring-2 ring-orange-300'
+                          : 'border-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50'
+                      }`}
+                    >
+                      {/* Radio button for single selection */}
+                      <input
+                        type="radio"
+                        name="subscription-plan"
+                        checked={isSelected}
+                        onChange={() => setSelectedPlanId(plan.id)}
+                        className="w-4 h-4 text-orange-600 border-gray-300 focus:ring-orange-500 cursor-pointer"
+                        onClick={(e) => e.stopPropagation()}
+                      />
+                      
+                      {/* Plan info */}
+                      <div className="flex-1">
+                        <div className="flex items-center justify-between">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-xs truncate">{plan.name}</span>
+                            {isCurrentPlan && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-green-100 text-green-700 font-bold">
+                                Current
+                              </span>
+                            )}
+                            {plan.is_popular && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-orange-100 text-orange-700 font-bold">
+                                Popular
+                              </span>
+                            )}
+                          </div>
+                          {plan.price_monthly !== undefined && (
+                            <span className="text-[10px] text-gray-500">
+                              ${plan.price_monthly}/mo
+                            </span>
+                          )}
+                        </div>
+                        {plan.description && (
+                          <div className="text-[10px] text-gray-500 truncate mt-0.5">{plan.description}</div>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+          </div>
+
+          {/* Column 3: Roles */}
           <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3 flex flex-col h-full overflow-hidden">
             <div className="text-sm font-semibold mb-2 flex items-center gap-2 flex-shrink-0">
               <FiShield className="text-purple-600" />
@@ -552,35 +813,56 @@ export default function RolesUsersReportPage() {
             {/* Action buttons for role assignment */}
             {selectedClientId && visibleRoles.length > 0 && (
               <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-                <button
-                  onClick={() => setAssignedRoleIds(visibleRoles.map(r => r.id))}
-                  className="text-[10px] px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200"
-                >
-                  Select All
-                </button>
-                <button
-                  onClick={() => setAssignedRoleIds([])}
-                  className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
-                >
-                  Deselect All
-                </button>
-                <div className="flex-1" />
-                {rolesSaveStatus === 'success' && (
-                  <span className="text-[10px] text-green-600 font-medium">✓ Saved!</span>
+                {isRoleEditMode ? (
+                  <>
+                    <button
+                      onClick={() => setAssignedRoleIds(visibleRoles.map(r => r.id))}
+                      className="text-[10px] px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={() => setAssignedRoleIds([])}
+                      className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    >
+                      Deselect All
+                    </button>
+                    <div className="flex-1" />
+                    {rolesSaveStatus === 'success' && (
+                      <span className="text-[10px] text-green-600 font-medium">✓ Saved!</span>
+                    )}
+                    <button
+                      onClick={async () => {
+                        await handleSaveClientRoles();
+                        setIsRoleEditMode(false);
+                      }}
+                      disabled={rolesSaving}
+                      className={`text-xs px-3 py-1 rounded font-medium transition ${
+                        rolesSaving
+                          ? 'bg-gray-400 text-white cursor-wait'
+                          : 'bg-green-600 text-white hover:bg-green-700'
+                      }`}
+                    >
+                      {rolesSaving ? 'Saving...' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => setIsRoleEditMode(false)}
+                      className="text-xs px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex-1" />
+                    <button
+                      onClick={() => setIsRoleEditMode(true)}
+                      className="text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                    >
+                      Edit
+                    </button>
+                  </>
                 )}
-                <button
-                  onClick={handleSaveClientRoles}
-                  disabled={rolesSaving}
-                  className={`text-xs px-3 py-1 rounded font-medium transition ${
-                    rolesSaving
-                      ? 'bg-gray-400 text-white cursor-wait'
-                      : rolesSaveStatus === 'success'
-                      ? 'bg-green-500 text-white'
-                      : 'bg-green-600 text-white hover:bg-green-700'
-                  }`}
-                >
-                  {rolesSaving ? 'Saving...' : rolesSaveStatus === 'success' ? '✓ Saved' : 'Save'}
-                </button>
               </div>
             )}
             
@@ -609,20 +891,27 @@ export default function RolesUsersReportPage() {
                           : 'border-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50'
                       }`}
                     >
-                      {/* Checkbox for assigning role */}
-                      <input
-                        type="checkbox"
-                        checked={isAssigned}
-                        onChange={() => {
-                          setAssignedRoleIds(prev =>
-                            prev.includes(role.id)
-                              ? prev.filter(id => id !== role.id)
-                              : [...prev, role.id]
-                          );
-                        }}
-                        className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer"
-                        onClick={(e) => e.stopPropagation()}
-                      />
+                      {/* Checkbox only in edit mode */}
+                      {isRoleEditMode && (
+                        <input
+                          type="checkbox"
+                          checked={isAssigned}
+                          onChange={() => {
+                            setAssignedRoleIds(prev =>
+                              prev.includes(role.id)
+                                ? prev.filter(id => id !== role.id)
+                                : [...prev, role.id]
+                            );
+                          }}
+                          className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      )}
+                      
+                      {/* Checkmark indicator when not in edit mode */}
+                      {!isRoleEditMode && isAssigned && (
+                        <span className="text-green-600 text-sm">✓</span>
+                      )}
                       
                       {/* Role info - click to select for viewing pages */}
                       <button
@@ -661,7 +950,7 @@ export default function RolesUsersReportPage() {
             </div>
           </div>
 
-          {/* Column 3: Pages */}
+          {/* Column 4: Pages */}
           <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3 flex flex-col h-full overflow-hidden">
             <div className="text-sm font-semibold mb-1 flex items-center justify-between flex-shrink-0">
               <div className="flex items-center gap-2">
@@ -691,30 +980,56 @@ export default function RolesUsersReportPage() {
             {/* Action buttons */}
             {selectedRoleId && rolePages.length > 0 && (
               <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-                <button
-                  onClick={handleSelectAllRolePages}
-                  className="text-[10px] px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
-                >
-                  Select All
-                </button>
-                <button
-                  onClick={handleDeselectAllRolePages}
-                  className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
-                >
-                  Deselect All
-                </button>
-                <div className="flex-1" />
-                <button
-                  onClick={handleSaveRolePages}
-                  disabled={!rolePagesHasChanges || rolePagesSaving}
-                  className={`text-xs px-3 py-1 rounded font-medium transition ${
-                    rolePagesHasChanges && !rolePagesSaving
-                      ? 'bg-green-600 text-white hover:bg-green-700'
-                      : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                  }`}
-                >
-                  {rolePagesSaving ? 'Saving...' : rolePagesHasChanges ? 'Save' : 'Saved'}
-                </button>
+                {isPageEditMode ? (
+                  <>
+                    <button
+                      onClick={handleSelectAllRolePages}
+                      className="text-[10px] px-2 py-1 rounded bg-blue-100 text-blue-700 hover:bg-blue-200"
+                    >
+                      Select All
+                    </button>
+                    <button
+                      onClick={handleDeselectAllRolePages}
+                      className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
+                    >
+                      Deselect All
+                    </button>
+                    <div className="flex-1" />
+                    <button
+                      onClick={async () => {
+                        await handleSaveRolePages();
+                        setIsPageEditMode(false);
+                      }}
+                      disabled={rolePagesSaving}
+                      className={`text-xs px-3 py-1 rounded font-medium transition ${
+                        rolePagesSaving
+                          ? 'bg-gray-400 text-white cursor-wait'
+                          : 'bg-green-600 text-white hover:bg-green-700'
+                      }`}
+                    >
+                      {rolePagesSaving ? 'Saving...' : 'Save'}
+                    </button>
+                    <button
+                      onClick={() => setIsPageEditMode(false)}
+                      className="text-xs px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
+                    >
+                      Cancel
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex-1" />
+                    <span className="text-[10px] text-gray-500">
+                      {rolePagesHasChanges ? '' : 'Saved'}
+                    </span>
+                    <button
+                      onClick={() => setIsPageEditMode(true)}
+                      className="text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
+                    >
+                      Edit
+                    </button>
+                  </>
+                )}
               </div>
             )}
 
@@ -739,20 +1054,28 @@ export default function RolesUsersReportPage() {
                   return (
                     <div
                       key={uniqueKey}
-                      onClick={() => toggleRolePageSelection(page.id)}
-                      className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer transition ${
+                      onClick={() => isPageEditMode && toggleRolePageSelection(page.id)}
+                      className={`flex items-center gap-2 p-2 rounded-md border transition ${
+                        isPageEditMode ? 'cursor-pointer' : 'cursor-default'
+                      } ${
                         isSelected
                           ? 'border-green-300 bg-green-50 dark:bg-green-900/20'
                           : 'border-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50'
                       }`}
                     >
-                      <input
-                        type="checkbox"
-                        checked={isSelected}
-                        onChange={() => toggleRolePageSelection(page.id)}
-                        className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer"
-                        onClick={(e) => e.stopPropagation()}
-                      />
+                      {/* Checkbox only in edit mode */}
+                      {isPageEditMode ? (
+                        <input
+                          type="checkbox"
+                          checked={isSelected}
+                          onChange={() => toggleRolePageSelection(page.id)}
+                          className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer"
+                          onClick={(e) => e.stopPropagation()}
+                        />
+                      ) : (
+                        /* Checkmark indicator when not in edit mode */
+                        isSelected && <span className="text-green-600 text-sm">✓</span>
+                      )}
                       <div className="flex-1 min-w-0">
                         <div className="text-xs font-medium text-gray-900 dark:text-gray-100 truncate">
                           {page.name || page.path || page.id}

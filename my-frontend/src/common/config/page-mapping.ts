@@ -241,17 +241,6 @@ export const PAGE_DEFINITIONS: PageDefinition[] = [
     order: 1,
   },
   {
-    id: 'enterprise-admin-modules',
-    name: 'Module Management',
-    route: '/enterprise-admin/modules',
-    module: 'enterprise-admin',
-    icon: 'Layers',
-    showInSidebar: true,
-    showInModulePages: true,
-    roles: ['ENTERPRISE_ADMIN'],
-    order: 2,
-  },
-  {
     id: 'enterprise-admin-roles',
     name: 'Role Management',
     route: '/enterprise-admin/roles',
@@ -537,16 +526,7 @@ export const PAGE_DEFINITIONS: PageDefinition[] = [
     showInModulePages: true,
     roles: ['*'],
   },
-  {
-    id: 'common-notifications',
-    name: 'Notifications',
-    route: '/notifications',
-    module: 'common',
-    icon: 'Bell',
-    showInSidebar: false, // Accessed from header
-    showInModulePages: true,
-    roles: ['*'],
-  },
+  // Removed: common-notifications
   {
     id: 'common-help',
     name: 'Help & Support',

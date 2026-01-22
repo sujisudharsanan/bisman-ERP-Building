@@ -92,20 +92,7 @@ export const COMMON_PAGES: CommonPageMetadata[] = [
   //   autoRegister: false,
   // },
   
-  // Support Pages
-  {
-  // Removed per request
-  id: 'common-documentation',
-  name: 'Documentation',
-  path: '/common/documentation',
-  icon: FileText,
-  description: 'System documentation and guides',
-  category: 'support',
-  order: 7,
-  isActive: false,
-  requiresAuth: true,
-  autoRegister: false,
-  },
+  // Support Pages - Documentation removed per request
   
   // Settings Pages - User Settings removed, functionality merged into Billing page
   // {

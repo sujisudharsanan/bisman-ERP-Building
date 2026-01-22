@@ -406,7 +406,7 @@ export default function EnterpriseAdminDashboard() {
           <div className="space-y-1.5">
             {[
               { icon: Users, label: 'Manage Super Admins', href: '/enterprise-admin/super-admins' },
-              { icon: Layers, label: 'Module Management', href: '/enterprise-admin/modules' },
+              { icon: Layers, label: 'Role Management', href: '/enterprise-admin/roles' },
               { icon: Building, label: 'Organizations', href: '/enterprise-admin/organizations' },
             ].map((action) => (
               <button

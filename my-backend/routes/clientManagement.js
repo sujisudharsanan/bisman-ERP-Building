@@ -705,16 +705,16 @@ router.post('/clients/:id/roles', authMiddleware, async (req, res) => {
     
     console.log('[clientManagement] Saving roles for client:', clientId, 'roleIds:', roleIdsArray);
     
-    // Use ClientRoleAssignment table
+    // Use client_role_assignments table
     try {
       // Delete existing assignments
-      await prisma.clientRoleAssignment.deleteMany({
+      await prisma.client_role_assignments.deleteMany({
         where: { client_id: clientId }
       });
       
       // Create new assignments
       if (roleIdsArray.length > 0) {
-        await prisma.clientRoleAssignment.createMany({
+        await prisma.client_role_assignments.createMany({
           data: roleIdsArray.map(roleId => ({
             client_id: clientId,
             role_id: roleId,
@@ -739,6 +739,65 @@ router.post('/clients/:id/roles', authMiddleware, async (req, res) => {
   } catch (e) {
     console.error('[clientManagement] Error saving client roles:', e);
     res.status(500).json({ error: 'Failed to save client roles', details: e.message });
+  }
+});
+
+// ============================================
+// GET SUBSCRIPTION FOR A CLIENT
+// Returns the current subscription plan for this client
+// ============================================
+router.get('/clients/:id/subscription', authMiddleware, async (req, res) => {
+  try {
+    const user = req.user;
+    const { id } = req.params;
+    
+    const clientId = id;
+    
+    if (!clientId) {
+      return res.status(400).json({ error: 'Invalid client ID' });
+    }
+    
+    // Use scope-based authorization - only CROSS_TENANT can view client subscriptions
+    if (!hasCrossTenantScope(user)) {
+      return res.status(403).json({ error: 'Cross-tenant access required' });
+    }
+    
+    // Get current subscription
+    let subscription = null;
+    let planInfo = null;
+    
+    try {
+      subscription = await prisma.client_subscriptions.findUnique({
+        where: { client_id: clientId },
+      });
+      
+      if (subscription && subscription.plan_id) {
+        planInfo = await prisma.subscription_plans.findUnique({
+          where: { id: subscription.plan_id },
+          select: { id: true, plan_code: true, name: true, price_monthly: true, price_yearly: true },
+        });
+      }
+    } catch (subErr) {
+      console.error('[clientManagement] Subscription fetch error:', subErr.message);
+    }
+    
+    res.json({ 
+      success: true, 
+      clientId,
+      plan_id: subscription?.plan_id || null,
+      planId: subscription?.plan_id || null,
+      planCode: planInfo?.plan_code || null,
+      planName: planInfo?.name || null,
+      priceMonthly: planInfo?.price_monthly || null,
+      priceYearly: planInfo?.price_yearly || null,
+      state: subscription?.state || null,
+      startedAt: subscription?.started_at || null,
+      expiresAt: subscription?.expires_at || null,
+      isActive: subscription?.is_active ?? false,
+    });
+  } catch (e) {
+    console.error('[clientManagement] Error fetching client subscription:', e);
+    res.status(500).json({ error: 'Failed to fetch client subscription', details: e.message });
   }
 });
 

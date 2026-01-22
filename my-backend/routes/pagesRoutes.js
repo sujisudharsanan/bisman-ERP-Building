@@ -108,7 +108,6 @@ const SYSTEM_PAGES = [
   // enterprise-admin Pages
   { key: 'enterprise-admin-pages-roles-report', name: 'All Pages & Roles Report', module: 'enterprise-admin' },
   { key: 'enterprise-admin-dashboard', name: 'Enterprise Dashboard', module: 'enterprise-admin' },
-  { key: 'enterprise-admin-modules', name: 'Module Management', module: 'enterprise-admin' },
   { key: 'enterprise-admin-roles', name: 'Role Management', module: 'enterprise-admin' },
   { key: 'enterprise-admin-subscription-access', name: 'Subscription Access Control', module: 'enterprise-admin' },
   { key: 'enterprise-admin-super-admins', name: 'Super Admins', module: 'enterprise-admin' },

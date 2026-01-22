@@ -19,8 +19,11 @@ import {
   EyeOff,
   Save,
   Camera,
-  CheckCircle
+  CheckCircle,
+  Building,
+  ChevronRight
 } from 'lucide-react';
+import Link from 'next/link';
 
 // ============================================================================
 // Type Definitions
@@ -309,6 +312,26 @@ export default function UserSettingsPage() {
                     ))}
                   </select>
                 </div>
+              </div>
+
+              {/* Bank Accounts Link */}
+              <div className="mt-6 pt-6 border-t border-gray-200 dark:border-gray-700">
+                <h3 className="font-semibold text-gray-900 dark:text-white mb-3">Financial Settings</h3>
+                <Link
+                  href="/common/bank-accounts"
+                  className="flex items-center justify-between p-4 border border-gray-200 dark:border-gray-700 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors group"
+                >
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                      <Building className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900 dark:text-white">Bank Accounts</p>
+                      <p className="text-sm text-gray-500 dark:text-gray-400">Manage your bank accounts for payments</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300 transition-colors" />
+                </Link>
               </div>
             </div>
           )}

@@ -46,7 +46,7 @@ const getPageName = (pathname: string): string => {
   
   const pageNames: Record<string, string> = {
     'dashboard': 'Dashboard',
-    'modules': 'Module Management',
+    'roles': 'Role Management',
     'users': 'User Management',
     'organizations': 'Organizations',
     'billing': 'Billing',
@@ -209,8 +209,8 @@ export default function EnterpriseAdminNavbar({ onMenuToggle, onRefresh }: Enter
     if (result.type === 'page' && result.path) {
       router.push(result.path);
     } else if (result.type === 'role') {
-      // Navigate to modules page with role selected (or just go to modules page)
-      router.push('/enterprise-admin/modules');
+      // Navigate to roles page with role selected
+      router.push('/enterprise-admin/roles');
     }
     setSearchOpen(false);
     setSearchQuery('');

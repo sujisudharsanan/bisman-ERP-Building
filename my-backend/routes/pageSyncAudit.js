@@ -124,7 +124,7 @@ function filePathToRoute(filePath, appDir) {
   relativePath = relativePath.replace(/[/\\]page\.tsx$/, '');
   
   // Handle route groups: (groupName)/... → ...
-  relativePath = relativePath.replace(/\([^)]+\)[\/\\]?/g, '');
+  relativePath = relativePath.replace(/\([^)]+\)[/\\]?/g, '');
   
   // Convert backslashes to forward slashes
   relativePath = relativePath.replace(/\\/g, '/');
@@ -938,7 +938,7 @@ function isPlaceholderPage(filePath) {
   try {
     const content = fs.readFileSync(filePath, 'utf8').slice(0, 2000);
     return PLACEHOLDER_PATTERNS.some(pattern => pattern.test(content));
-  } catch (err) {
+  } catch {
     return false;
   }
 }

@@ -173,7 +173,6 @@ router.get('/audit', async (req, res) => {
     
     // 3. Load registry routes
     const registryRoutes = extractRegistryRoutes(PAGE_REGISTRY_PATH);
-    const registryRouteSet = new Set(registryRoutes.map(r => r.route));
     
     // 4. Perform comparisons
     const results = {

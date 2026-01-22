@@ -62,16 +62,29 @@ export default function DBDrivenSidebar({ className = '', collapsed = false }: D
     return () => { mounted = false; };
   }, []);
 
-  // Check if current path matches
+  // Check if current path matches - strict matching to avoid multiple selections
   const isActivePath = (path: string) => {
-    const dashboardPaths = ['/super-admin', '/admin', '/enterprise-admin', '/dashboard'];
-    const isDashboardPath = dashboardPaths.includes(path);
+    // Exact match only - no more multiple selection issues
+    if (pathname === path) return true;
     
-    if (isDashboardPath) {
+    // Special handling for root paths - must match exactly
+    const rootPaths = ['/super-admin', '/admin', '/enterprise-admin', '/dashboard', '/'];
+    if (rootPaths.includes(path)) {
       return pathname === path;
     }
     
-    return pathname === path || pathname?.startsWith(`${path}/`);
+    // For nested paths, only match if it's a direct child route
+    // e.g., /admin/users should NOT match /admin
+    // But /admin/users/123 should match /admin/users
+    if (pathname?.startsWith(`${path}/`)) {
+      // Count path segments to avoid parent path matching
+      const pathSegments = path.split('/').filter(Boolean).length;
+      const currentSegments = pathname.split('/').filter(Boolean).length;
+      // Only match if we're in a deeper level (child route)
+      return currentSegments > pathSegments;
+    }
+    
+    return false;
   };
 
   // Get profile picture URL
@@ -176,7 +189,7 @@ export default function DBDrivenSidebar({ className = '', collapsed = false }: D
 
     // Expanded mode - full link with enhanced hover effects
     const linkClasses = `
-      group flex items-center space-x-2 px-3 py-1.5 rounded-xl text-xs 
+      group flex items-center space-x-2 px-3 py-1 rounded-xl text-xs 
       transition-all duration-200 ease-out
       ${isActive
         ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white font-medium shadow-md shadow-blue-500/20'
@@ -268,7 +281,7 @@ export default function DBDrivenSidebar({ className = '', collapsed = false }: D
       {/* Page list */}
       {!isLoading && (
         <div 
-          className={`${collapsed ? 'space-y-1 py-2' : 'space-y-0.5 px-1.5'}`}
+          className={`${collapsed ? 'space-y-1 py-2' : 'space-y-px px-1.5'}`}
           onMouseLeave={() => setHoveredIndex(null)}
         >
           {visiblePages.map((item, index) => renderPageLink(item, index))}

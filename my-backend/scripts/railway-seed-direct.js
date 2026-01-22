@@ -41,7 +41,7 @@ const MODULES = [
 // PAGES (key ones from Phase 1)
 const PAGES = [
   { page_code: 'ENTERPRISE_ADMIN_DASHBOARD', display_name: 'Enterprise Dashboard', route: '/enterprise-admin/dashboard', module_code: 'ENTERPRISE_ADMIN', icon: 'LayoutDashboard', sort_order: 1, roles: ['ENTERPRISE_ADMIN'] },
-  { page_code: 'ENTERPRISE_ADMIN_MODULES', display_name: 'Module Management', route: '/enterprise-admin/modules', module_code: 'ENTERPRISE_ADMIN', icon: 'Layers', sort_order: 2, roles: ['ENTERPRISE_ADMIN'] },
+  { page_code: 'ENTERPRISE_ADMIN_ROLES', display_name: 'Role Management', route: '/enterprise-admin/roles', module_code: 'ENTERPRISE_ADMIN', icon: 'Shield', sort_order: 2, roles: ['ENTERPRISE_ADMIN'] },
   { page_code: 'ENTERPRISE_ADMIN_USERS', display_name: 'User Management', route: '/enterprise-admin/users', module_code: 'ENTERPRISE_ADMIN', icon: 'Users', sort_order: 3, roles: ['ENTERPRISE_ADMIN'] },
   { page_code: 'ENTERPRISE_ADMIN_HUBS', display_name: 'Hub Management', route: '/enterprise-admin/hubs', module_code: 'ENTERPRISE_ADMIN', icon: 'Building', sort_order: 4, roles: ['ENTERPRISE_ADMIN'] },
   { page_code: 'ENTERPRISE_ADMIN_BILLING', display_name: 'Billing & Subscription', route: '/enterprise-admin/billing', module_code: 'ENTERPRISE_ADMIN', icon: 'CreditCard', sort_order: 5, roles: ['ENTERPRISE_ADMIN'] },

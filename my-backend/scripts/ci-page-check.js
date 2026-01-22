@@ -92,7 +92,6 @@ async function runCheck() {
   
   // Load database pages
   let dbPages = [];
-  let dbError = null;
   try {
     const { PrismaClient } = require('@prisma/client');
     const prisma = new PrismaClient();
@@ -107,7 +106,6 @@ async function runCheck() {
       is_active: p.is_active
     }));
   } catch (err) {
-    dbError = err.message;
     console.warn(`⚠️  Database connection failed: ${err.message}`);
     console.log('   Continuing with filesystem-only check...\n');
   }

@@ -78,11 +78,6 @@ export const PAGE_UI_META: Record<string, PageUIMeta> = {
     description: 'Enterprise Admin overview',
     displayName: 'Dashboard',
   },
-  'enterprise-admin-modules': {
-    iconKey: 'Puzzle',
-    description: 'Manage enterprise modules',
-    displayName: 'Module Management',
-  },
   'enterprise-admin-roles': {
     iconKey: 'Shield',
     description: 'Configure enterprise roles',
@@ -286,11 +281,6 @@ export const PAGE_UI_META: Record<string, PageUIMeta> = {
     iconKey: 'Key',
     description: 'Configure permissions',
     displayName: 'Permission Manager',
-  },
-  'audit-logs': {
-    iconKey: 'FileText',
-    description: 'System audit logs',
-    displayName: 'Audit Logs',
   },
   'system-health': {
     iconKey: 'Activity',

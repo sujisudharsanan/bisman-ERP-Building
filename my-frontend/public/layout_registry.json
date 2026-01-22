@@ -157,28 +157,13 @@
       ]
     },
     {
-      "id": "enterprise-admin-modules",
-      "name": "Module Management",
-      "path": "/enterprise-admin/modules",
-      "module": "enterprise-admin",
-      "status": "active",
-      "description": "Manage ERP modules and features",
-      "order": 2,
-      "permissions": [
-        "enterprise-admin"
-      ],
-      "roles": [
-        "ENTERPRISE_ADMIN"
-      ]
-    },
-    {
       "id": "enterprise-admin-super-admins",
       "name": "Super Admins",
       "path": "/enterprise-admin/super-admins",
       "module": "enterprise-admin",
       "status": "active",
       "description": "Manage super admin accounts",
-      "order": 3,
+      "order": 2,
       "permissions": [
         "enterprise-admin"
       ],
@@ -364,6 +349,7 @@
       "status": "active",
       "description": "Manage system permissions",
       "order": 3,
+      "showInSidebar": false,
       "permissions": [
         "user-management"
       ],
@@ -381,6 +367,7 @@
       "status": "active",
       "description": "View comprehensive report of all roles and assigned users",
       "order": 4,
+      "showInSidebar": false,
       "permissions": [
         "user-management"
       ],
@@ -406,42 +393,6 @@
         "SUPER_ADMIN",
         "SYSTEM_ADMIN",
         "SYSTEM ADMINISTRATOR"
-      ]
-    },
-    {
-      "id": "role-access-explorer",
-      "name": "Role & Access Explorer",
-      "path": "/system/role-access-explorer",
-      "module": "system",
-      "status": "active",
-      "description": "Interactive matrix and visual explorer for roles, workflows, and test scenarios",
-      "order": 5,
-      "permissions": [
-        "user-management",
-        "system-settings"
-      ],
-      "roles": [
-        "SUPER_ADMIN",
-        "SYSTEM_ADMIN",
-        "SYSTEM ADMINISTRATOR"
-      ]
-    },
-    {
-      "id": "audit-logs",
-      "name": "Audit Logs",
-      "path": "/system/audit-logs",
-      "module": "system",
-      "status": "active",
-      "description": "View system activity and audit trails",
-      "order": 5,
-      "permissions": [
-        "system-settings"
-      ],
-      "roles": [
-        "SUPER_ADMIN",
-        "SYSTEM_ADMIN",
-        "SYSTEM ADMINISTRATOR",
-        "IT ADMIN"
       ]
     },
     {
@@ -749,26 +700,6 @@
       ],
       "roles": [
         "SUPER_ADMIN"
-      ]
-    },
-    {
-      "id": "server-logs",
-      "name": "Server Logs",
-      "path": "/system/server-logs",
-      "module": "system",
-      "status": "active",
-      "description": "Access server logs and diagnostics",
-      "order": 1,
-      "permissions": [
-        "system-settings",
-        "pump:common",
-        "pump-management-common",
-        "pump-management"
-      ],
-      "roles": [
-        "SUPER_ADMIN",
-        "SYSTEM_ADMIN",
-        "SYSTEM ADMINISTRATOR"
       ]
     },
     {
@@ -1951,23 +1882,6 @@
       "status": "active",
       "description": "View your task dashboard with Kanban board",
       "order": 0,
-      "permissions": [
-        "authenticated"
-      ],
-      "roles": [
-        "ALL",
-        "ADMIN",
-        "SUPER_ADMIN"
-      ]
-    },
-    {
-      "id": "task-workbench",
-      "name": "Task Workbench",
-      "path": "/dashboard/workbench",
-      "module": "common",
-      "status": "active",
-      "description": "Manage your tasks with draft, in-progress, needs attention, and done views",
-      "order": 1,
       "permissions": [
         "authenticated"
       ],

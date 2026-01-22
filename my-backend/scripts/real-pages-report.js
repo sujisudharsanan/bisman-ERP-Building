@@ -131,7 +131,7 @@ function isPlaceholderPage(filePath) {
     // Check first 2000 chars for placeholder patterns
     const snippet = content.slice(0, 2000);
     return PLACEHOLDER_PATTERNS.some(pattern => pattern.test(snippet));
-  } catch (err) {
+  } catch {
     return false;
   }
 }
@@ -187,8 +187,8 @@ async function getDatabasePages() {
 // MAIN CLASSIFICATION FUNCTION
 // ─────────────────────────────────────────────────────────────────────────────
 
-async function generateRealPagesReport(options = {}) {
-  const { json = false, module: filterModule = null } = options;
+async function generateRealPagesReport(_options = {}) {
+  // Note: _options.module could be used for filtering in the future
   
   // 1. Scan filesystem
   const pageFiles = findPageFiles(FRONTEND_APP_DIR);

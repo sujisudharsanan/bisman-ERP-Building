@@ -47,17 +47,16 @@ const MODULES = [
 const PAGES = [
   // ENTERPRISE ADMIN
   { page_code: 'ENTERPRISE_ADMIN_DASHBOARD', display_name: 'Enterprise Dashboard', route: '/enterprise-admin/dashboard', module_code: 'ENTERPRISE_ADMIN', icon: 'LayoutDashboard', sort_order: 1, roles: ['ENTERPRISE_ADMIN'] },
-  { page_code: 'ENTERPRISE_ADMIN_MODULES', display_name: 'Module Management', route: '/enterprise-admin/modules', module_code: 'ENTERPRISE_ADMIN', icon: 'Layers', sort_order: 2, roles: ['ENTERPRISE_ADMIN'] },
-  { page_code: 'ENTERPRISE_ADMIN_ROLES', display_name: 'Role Management', route: '/enterprise-admin/roles', module_code: 'ENTERPRISE_ADMIN', icon: 'Shield', sort_order: 3, roles: ['ENTERPRISE_ADMIN'] },
-  { page_code: 'ENTERPRISE_ADMIN_SUPER_ADMINS', display_name: 'Super Admins', route: '/enterprise-admin/super-admins', module_code: 'ENTERPRISE_ADMIN', icon: 'Users', sort_order: 4, roles: ['ENTERPRISE_ADMIN'] },
-  { page_code: 'ENTERPRISE_ADMIN_LOGS', display_name: 'System Logs', route: '/enterprise-admin/logs', module_code: 'ENTERPRISE_ADMIN', icon: 'ScrollText', sort_order: 5, roles: ['ENTERPRISE_ADMIN'] },
-  { page_code: 'ENTERPRISE_ADMIN_ACTIVITY_LOGS', display_name: 'Activity Logs', route: '/enterprise-admin/activity-logs', module_code: 'ENTERPRISE_ADMIN', icon: 'Activity', sort_order: 6, roles: ['ENTERPRISE_ADMIN'] },
-  { page_code: 'ENTERPRISE_ADMIN_BILLING', display_name: 'Billing Management', route: '/enterprise-admin/billing', module_code: 'ENTERPRISE_ADMIN', icon: 'CreditCard', sort_order: 7, roles: ['ENTERPRISE_ADMIN'] },
-  { page_code: 'ENTERPRISE_ADMIN_MONITORING', display_name: 'System Monitoring', route: '/enterprise-admin/monitoring', module_code: 'ENTERPRISE_ADMIN', icon: 'Monitor', sort_order: 8, roles: ['ENTERPRISE_ADMIN'] },
-  { page_code: 'ENTERPRISE_ADMIN_PAGE_GOVERNANCE', display_name: 'Page Governance', route: '/enterprise-admin/page-governance', module_code: 'ENTERPRISE_ADMIN', icon: 'Shield', sort_order: 9, roles: ['ENTERPRISE_ADMIN'] },
-  { page_code: 'ENTERPRISE_ADMIN_INTEGRATIONS', display_name: 'Integrations', route: '/enterprise-admin/integrations', module_code: 'ENTERPRISE_ADMIN', icon: 'Package', sort_order: 10, roles: ['ENTERPRISE_ADMIN'] },
-  { page_code: 'ENTERPRISE_ADMIN_RBAC_SECURITY', display_name: 'RBAC Security', route: '/enterprise-admin/rbac-security', module_code: 'ENTERPRISE_ADMIN', icon: 'Lock', sort_order: 11, roles: ['ENTERPRISE_ADMIN'] },
-  { page_code: 'ENTERPRISE_ADMIN_SECURITY_OPS', display_name: 'Security Operations', route: '/enterprise-admin/security-operations', module_code: 'ENTERPRISE_ADMIN', icon: 'Shield', sort_order: 12, roles: ['ENTERPRISE_ADMIN'] },
+  { page_code: 'ENTERPRISE_ADMIN_ROLES', display_name: 'Role Management', route: '/enterprise-admin/roles', module_code: 'ENTERPRISE_ADMIN', icon: 'Shield', sort_order: 2, roles: ['ENTERPRISE_ADMIN'] },
+  { page_code: 'ENTERPRISE_ADMIN_SUPER_ADMINS', display_name: 'Super Admins', route: '/enterprise-admin/super-admins', module_code: 'ENTERPRISE_ADMIN', icon: 'Users', sort_order: 3, roles: ['ENTERPRISE_ADMIN'] },
+  { page_code: 'ENTERPRISE_ADMIN_LOGS', display_name: 'System Logs', route: '/enterprise-admin/logs', module_code: 'ENTERPRISE_ADMIN', icon: 'ScrollText', sort_order: 4, roles: ['ENTERPRISE_ADMIN'] },
+  { page_code: 'ENTERPRISE_ADMIN_ACTIVITY_LOGS', display_name: 'Activity Logs', route: '/enterprise-admin/activity-logs', module_code: 'ENTERPRISE_ADMIN', icon: 'Activity', sort_order: 5, roles: ['ENTERPRISE_ADMIN'] },
+  { page_code: 'ENTERPRISE_ADMIN_BILLING', display_name: 'Billing Management', route: '/enterprise-admin/billing', module_code: 'ENTERPRISE_ADMIN', icon: 'CreditCard', sort_order: 6, roles: ['ENTERPRISE_ADMIN'] },
+  { page_code: 'ENTERPRISE_ADMIN_MONITORING', display_name: 'System Monitoring', route: '/enterprise-admin/monitoring', module_code: 'ENTERPRISE_ADMIN', icon: 'Monitor', sort_order: 7, roles: ['ENTERPRISE_ADMIN'] },
+  { page_code: 'ENTERPRISE_ADMIN_PAGE_GOVERNANCE', display_name: 'Page Governance', route: '/enterprise-admin/page-governance', module_code: 'ENTERPRISE_ADMIN', icon: 'Shield', sort_order: 8, roles: ['ENTERPRISE_ADMIN'] },
+  { page_code: 'ENTERPRISE_ADMIN_INTEGRATIONS', display_name: 'Integrations', route: '/enterprise-admin/integrations', module_code: 'ENTERPRISE_ADMIN', icon: 'Package', sort_order: 9, roles: ['ENTERPRISE_ADMIN'] },
+  { page_code: 'ENTERPRISE_ADMIN_RBAC_SECURITY', display_name: 'RBAC Security', route: '/enterprise-admin/rbac-security', module_code: 'ENTERPRISE_ADMIN', icon: 'Lock', sort_order: 10, roles: ['ENTERPRISE_ADMIN'] },
+  { page_code: 'ENTERPRISE_ADMIN_SECURITY_OPS', display_name: 'Security Operations', route: '/enterprise-admin/security-operations', module_code: 'ENTERPRISE_ADMIN', icon: 'Shield', sort_order: 11, roles: ['ENTERPRISE_ADMIN'] },
   { page_code: 'ENTERPRISE_ADMIN_SUBSCRIPTIONS', display_name: 'Subscriptions', route: '/enterprise-admin/subscriptions', module_code: 'ENTERPRISE_ADMIN', icon: 'CreditCard', sort_order: 13, roles: ['ENTERPRISE_ADMIN'] },
 
   // SUPER ADMIN
@@ -82,19 +81,17 @@ const PAGES = [
   // SYSTEM (Admin)
   { page_code: 'SYSTEM_USER_MANAGEMENT', display_name: 'Client Management', route: '/system/user-management', module_code: 'SYSTEM', icon: 'Users', sort_order: 1, roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN', 'ADMIN'] },
   { page_code: 'SYSTEM_USER_CREATION', display_name: 'Create New User', route: '/system/user-creation', module_code: 'SYSTEM', icon: 'UserPlus', sort_order: 2, show_in_sidebar: false, roles: ['SYSTEM_ADMIN', 'ADMIN', 'HR', 'HR_MANAGER'] },
-  { page_code: 'SYSTEM_PERMISSION_MANAGER', display_name: 'Permission Manager', route: '/system/permission-manager', module_code: 'SYSTEM', icon: 'Key', sort_order: 3, roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] },
-  { page_code: 'SYSTEM_ROLES_USERS_REPORT', display_name: 'Modules & Roles', route: '/system/roles-users-report', module_code: 'SYSTEM', icon: 'FileText', sort_order: 4, roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] },
-  { page_code: 'SYSTEM_PAGES_ROLES_REPORT', display_name: 'Pages & Roles Report', route: '/system/pages-roles-report', module_code: 'SYSTEM', icon: 'FileText', sort_order: 5, roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] },
-  { page_code: 'SYSTEM_ROLE_ACCESS_EXPLORER', display_name: 'Role & Access Explorer', route: '/system/role-access-explorer', module_code: 'SYSTEM', icon: 'FileText', sort_order: 6, roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] },
-  { page_code: 'SYSTEM_BACKUP_RESTORE', display_name: 'Backup & Restore', route: '/system/backup-restore', module_code: 'SYSTEM', icon: 'Database', sort_order: 7, roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] },
-  { page_code: 'SYSTEM_HEALTH', display_name: 'System Health', route: '/system/system-health-dashboard', module_code: 'SYSTEM', icon: 'Activity', sort_order: 8, roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN', 'IT_ADMIN'] },
-  { page_code: 'SYSTEM_INTEGRATION_SETTINGS', display_name: 'Integration Settings', route: '/system/integration-settings', module_code: 'SYSTEM', icon: 'Route', sort_order: 9, roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] },
-  { page_code: 'SYSTEM_SERVER_LOGS', display_name: 'Server Logs', route: '/system/server-logs', module_code: 'SYSTEM', icon: 'Server', sort_order: 10, roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] },
+  { page_code: 'SYSTEM_PERMISSION_MANAGER', display_name: 'Permission Manager', route: '/system/permission-manager', module_code: 'SYSTEM', icon: 'Key', sort_order: 3, show_in_sidebar: false, roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] },
+  { page_code: 'SYSTEM_ROLES_USERS_REPORT', display_name: 'Modules & Roles', route: '/system/roles-users-report', module_code: 'SYSTEM', icon: 'FileText', sort_order: 4, show_in_sidebar: false, roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] },
+  { page_code: 'SYSTEM_PAGES_ROLES_REPORT', display_name: 'Pages & Roles Report', route: '/system/pages-roles-report', module_code: 'SYSTEM', icon: 'FileText', sort_order: 5, show_in_sidebar: false, roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] },
+  { page_code: 'SYSTEM_BACKUP_RESTORE', display_name: 'Backup & Restore', route: '/system/backup-restore', module_code: 'SYSTEM', icon: 'Database', sort_order: 6, roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] },
+  { page_code: 'SYSTEM_HEALTH', display_name: 'System Health', route: '/system/system-health-dashboard', module_code: 'SYSTEM', icon: 'Activity', sort_order: 7, roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN', 'IT_ADMIN'] },
+  { page_code: 'SYSTEM_INTEGRATION_SETTINGS', display_name: 'Integration Settings', route: '/system/integration-settings', module_code: 'SYSTEM', icon: 'Route', sort_order: 8, roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN'] },
 
   // ADMIN MODULE
   { page_code: 'ADMIN_DASHBOARD', display_name: 'Admin Dashboard', route: '/admin', module_code: 'ADMIN', icon: 'LayoutDashboard', sort_order: 0, roles: ['ADMIN', 'SUPER_ADMIN'] },
   { page_code: 'ADMIN_CLIENTS', display_name: 'Clients', route: '/admin/clients', module_code: 'ADMIN', icon: 'Building', sort_order: 1, roles: ['ADMIN', 'SUPER_ADMIN'] },
-  { page_code: 'ADMIN_PERMISSIONS', display_name: 'Permissions', route: '/admin/permissions', module_code: 'ADMIN', icon: 'Shield', sort_order: 2, roles: ['ADMIN'] },
+  { page_code: 'ADMIN_PERMISSIONS', display_name: 'Permissions', route: '/admin/permissions', module_code: 'ADMIN', icon: 'Shield', sort_order: 2, show_in_sidebar: false, roles: ['ADMIN'] },
   { page_code: 'ADMIN_SETTINGS', display_name: 'Settings', route: '/admin/settings', module_code: 'ADMIN', icon: 'Settings', sort_order: 3, roles: ['ADMIN'] },
   { page_code: 'ADMIN_USAGE', display_name: 'Usage', route: '/admin/usage', module_code: 'ADMIN', icon: 'BarChart3', sort_order: 4, roles: ['ADMIN'] },
   { page_code: 'ADMIN_AUDIT', display_name: 'Audit', route: '/admin/audit', module_code: 'ADMIN', icon: 'FileText', sort_order: 5, roles: ['ADMIN'] },
@@ -146,15 +143,15 @@ const PAGES = [
   { page_code: 'COMMON_TASK_APPROVALS', display_name: 'Task Approvals', route: '/common/task-approvals', module_code: 'COMMON', icon: 'CheckSquare', sort_order: 1, roles: ['ADMIN', 'MANAGER', 'STAFF', 'CFO', 'FINANCE_CONTROLLER', 'OPERATIONS_MANAGER', 'HUB_INCHARGE', 'STORE_INCHARGE'] },
   { page_code: 'COMMON_PAYMENT_REQUEST', display_name: 'Payment Request', route: '/common/payment-request', module_code: 'COMMON', icon: 'CreditCard', sort_order: 2, roles: ['ADMIN', 'MANAGER', 'STAFF', 'CFO', 'FINANCE_CONTROLLER', 'OPERATIONS_MANAGER', 'HUB_INCHARGE'] },
   { page_code: 'COMMON_CALENDAR', display_name: 'Calendar', route: '/common/calendar', module_code: 'COMMON', icon: 'Calendar', sort_order: 3, roles: ['ADMIN', 'MANAGER', 'STAFF', 'CFO', 'FINANCE_CONTROLLER', 'OPERATIONS_MANAGER', 'HUB_INCHARGE', 'STORE_INCHARGE'] },
-  { page_code: 'COMMON_NOTIFICATIONS', display_name: 'Notifications', route: '/common/notifications', module_code: 'COMMON', icon: 'Bell', sort_order: 4, roles: ['ADMIN', 'MANAGER', 'STAFF', 'CFO', 'FINANCE_CONTROLLER', 'OPERATIONS_MANAGER', 'HUB_INCHARGE', 'STORE_INCHARGE'] },
+  // Removed: COMMON_NOTIFICATIONS
   // Removed: COMMON_MESSAGES (use /chat instead)
-  { page_code: 'COMMON_ABOUT_ME', display_name: 'About Me', route: '/common/about-me', module_code: 'COMMON', icon: 'User', sort_order: 6, show_in_sidebar: false, roles: ['*'] },
-  { page_code: 'COMMON_BANK_ACCOUNTS', display_name: 'Bank Accounts', route: '/common/bank-accounts', module_code: 'COMMON', icon: 'Building', sort_order: 7, roles: ['CFO', 'FINANCE_CONTROLLER', 'ACCOUNTS', 'BANKER'] },
-  { page_code: 'COMMON_SECURITY_SETTINGS', display_name: 'Security Settings', route: '/common/security-settings', module_code: 'COMMON', icon: 'Shield', sort_order: 8, show_in_sidebar: false, roles: ['*'] },
+  { page_code: 'COMMON_ABOUT_ME', display_name: 'About Me', route: '/common/about-me', module_code: 'COMMON', icon: 'User', sort_order: 4, show_in_sidebar: false, roles: ['*'] },
+  { page_code: 'COMMON_BANK_ACCOUNTS', display_name: 'Bank Accounts', route: '/common/bank-accounts', module_code: 'COMMON', icon: 'Building', sort_order: 5, roles: ['CFO', 'FINANCE_CONTROLLER', 'ACCOUNTS', 'BANKER'] },
+  { page_code: 'COMMON_SECURITY_SETTINGS', display_name: 'Security Settings', route: '/common/security-settings', module_code: 'COMMON', icon: 'Shield', sort_order: 6, show_in_sidebar: false, roles: ['*'] },
 
   // DASHBOARD
   { page_code: 'DASHBOARD_HOME', display_name: 'Dashboard', route: '/dashboard', module_code: 'DASHBOARD', icon: 'LayoutDashboard', sort_order: 0, roles: ['ADMIN', 'MANAGER', 'STAFF', 'HUB_INCHARGE', 'STORE_INCHARGE', 'OPERATIONS_MANAGER'] },
-  { page_code: 'DASHBOARD_WORKBENCH', display_name: 'Workbench', route: '/dashboard/workbench', module_code: 'DASHBOARD', icon: 'Briefcase', sort_order: 2, roles: ['ADMIN', 'MANAGER', 'STAFF', 'HUB_INCHARGE', 'STORE_INCHARGE'] },
+  // Removed: DASHBOARD_WORKBENCH
 
   // RECONCILIATION
   { page_code: 'RECONCILIATION_DASHBOARD', display_name: 'Bank Reconciliation', route: '/reconciliation', module_code: 'FINANCE', icon: 'Scale', sort_order: 10, roles: ['CFO', 'FINANCE_CONTROLLER', 'ACCOUNTS', 'BANKER'] },

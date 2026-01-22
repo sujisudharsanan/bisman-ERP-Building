@@ -72,7 +72,7 @@ function filePathToRoute(filePath, appDir) {
   let relativePath = path.relative(appDir, filePath);
   
   // Remove page.tsx suffix (handle both /page.tsx and just page.tsx for root)
-  relativePath = relativePath.replace(/[\/]?page\.tsx$/, '');
+  relativePath = relativePath.replace(/[/]?page\.tsx$/, '');
   
   // Handle route groups (folders starting with parentheses)
   relativePath = relativePath.replace(/\([^)]+\)\//g, '');
@@ -284,7 +284,6 @@ async function runAudit(options = {}) {
   // 3. Load registry routes
   const registryRoutes = extractRegistryRoutes(PAGE_REGISTRY_PATH);
   const registryRealRoutes = registryRoutes.filter(r => !isModulePlaceholder(r.route));
-  const registryRouteSet = new Set(registryRealRoutes.map(r => r.route));
   
   // 4. Perform comparisons
   const results = {

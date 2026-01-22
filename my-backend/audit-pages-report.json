@@ -949,14 +949,6 @@
         "status": "OK"
       },
       {
-        "route": "/enterprise-admin/modules",
-        "page_code": "ENTERPRISE_ADMIN_MODULES",
-        "display_name": "Module Management",
-        "is_active": true,
-        "show_in_sidebar": true,
-        "status": "OK"
-      },
-      {
         "route": "/enterprise-admin/monitoring/database",
         "page_code": "EA_MONITORING_DATABASE",
         "display_name": "Database Monitoring",

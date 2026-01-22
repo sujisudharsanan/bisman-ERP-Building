@@ -73,7 +73,7 @@ const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, 
 			<aside
 				className={`
 					fixed md:sticky left-0 z-40
-					bg-gray-900/95 backdrop-blur-sm border-r border-gray-800
+					bg-white dark:bg-gray-900/95 backdrop-blur-sm border-r border-gray-200 dark:border-gray-800
 					transition-all duration-300 ease-in-out
 					${collapsed && !isMobile ? 'w-16' : 'w-52'}
 					${isMobile && collapsed ? '-translate-x-full' : 'translate-x-0'}
@@ -89,13 +89,13 @@ const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, 
 			>
 				{/* Mobile Close Button Only - Logo is in TopNavbar */}
 				{isMobile && (
-					<div className="p-4 border-b border-gray-800 flex items-center justify-end">
+					<div className="p-4 border-b border-gray-200 dark:border-gray-800 flex items-center justify-end">
 						<button
 							onClick={() => onCollapse(true)}
-							className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+							className="p-2 hover:bg-gray-100 dark:hover:bg-gray-800 rounded-lg transition-colors"
 							aria-label="Close sidebar"
 						>
-							<X size={20} className="text-white" />
+							<X size={20} className="text-gray-700 dark:text-white" />
 						</button>
 					</div>
 				)}
@@ -103,7 +103,7 @@ const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, 
 								<nav className="flex-1 overflow-y-auto p-4 space-y-1" aria-label="Sidebar menu">
 									{/* Loading State */}
 									{isLoading && (
-										<div className="flex flex-col items-center justify-center py-8 text-gray-400">
+										<div className="flex flex-col items-center justify-center py-8 text-gray-500 dark:text-gray-400">
 											<Loader2 size={24} className="animate-spin mb-2" />
 											{(!collapsed || isMobile) && <span className="text-xs">Loading menu...</span>}
 										</div>
@@ -111,7 +111,7 @@ const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, 
 									
 									{/* Error State */}
 									{error && !isLoading && (
-										<div className="flex flex-col items-center justify-center py-8 text-red-400">
+										<div className="flex flex-col items-center justify-center py-8 text-red-500 dark:text-red-400">
 											<AlertCircle size={24} className="mb-2" />
 											{(!collapsed || isMobile) && (
 												<span className="text-xs text-center px-2">Unable to load menu</span>
@@ -131,8 +131,8 @@ const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, 
 													flex items-center gap-3 px-3 py-3 rounded-lg
 													transition-all duration-200
 													${isActive
-														? 'bg-indigo-500/20 border border-indigo-500/50 text-white shadow-lg shadow-indigo-500/30'
-														: 'text-gray-400 hover:text-white hover:bg-gray-800/50'
+														? 'bg-indigo-100 dark:bg-indigo-500/20 border border-indigo-400 dark:border-indigo-500/50 text-indigo-700 dark:text-white shadow-lg shadow-indigo-500/20 dark:shadow-indigo-500/30'
+														: 'text-gray-600 dark:text-gray-400 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-800/50'
 													}
 													${collapsed && !isMobile ? 'justify-center' : ''}
 												`}
@@ -140,7 +140,7 @@ const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, 
 												aria-current={isActive ? 'page' : undefined}
 												tabIndex={0}
 											>
-												<IconComp size={20} className={isActive ? 'text-indigo-400' : ''} aria-hidden="true" />
+												<IconComp size={20} className={isActive ? 'text-indigo-600 dark:text-indigo-400' : ''} aria-hidden="true" />
 												{(!collapsed || isMobile) && (
 													<span className="text-sm font-medium">{item.label}</span>
 												)}
@@ -149,11 +149,11 @@ const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, 
 									})}
 								</nav>
 				{/* Sidebar Footer */}
-								<div className="p-4 border-t border-gray-800">
+								<div className="p-4 border-t border-gray-200 dark:border-gray-800">
 									{(!collapsed || isMobile) && user && (
-										<div className="text-xs text-gray-500 space-y-1">
-											<p>Role: <span className="text-gray-400">{user.roleName || 'Unknown'}</span></p>
-											<p>Version: <span className="text-gray-400">{process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'}</span></p>
+										<div className="text-xs text-gray-500 dark:text-gray-500 space-y-1">
+											<p>Role: <span className="text-gray-700 dark:text-gray-400">{user.roleName || 'Unknown'}</span></p>
+											<p>Version: <span className="text-gray-700 dark:text-gray-400">{process.env.NEXT_PUBLIC_APP_VERSION || '1.0.0'}</span></p>
 										</div>
 									)}
 								</div>

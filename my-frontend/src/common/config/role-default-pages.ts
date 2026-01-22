@@ -31,7 +31,6 @@ export const ROLE_DEFAULT_PAGES: RoleDefaultPages[] = [
       'system-settings',
       'user-management',
       'permission-manager',
-      'audit-logs',
       'backup-restore',
       'system-health',
       'integration-settings',
@@ -46,7 +45,6 @@ export const ROLE_DEFAULT_PAGES: RoleDefaultPages[] = [
       'admin',
       'system-settings',
       'user-management',
-      'audit-logs',
       'backup-restore',
       'scheduler',
       'system-health',
@@ -58,11 +56,9 @@ export const ROLE_DEFAULT_PAGES: RoleDefaultPages[] = [
     description: 'IT support and system maintenance',
     defaultPages: [
       'dashboard',
-      'it-admin',
       'system-settings',
       'system-health',
       'error-logs',
-      'server-logs',
     ],
   },
 

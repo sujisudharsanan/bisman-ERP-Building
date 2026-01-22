@@ -20,8 +20,7 @@ const MASTER_MODULES = [
       { id: 'super-admin-integration-settings', name: 'Integration Settings', path: '/super-admin/system/integration-settings' },
       { id: 'security', name: 'Security Management', path: '/super-admin/security' },
       { id: 'super-admin-orders', name: 'Orders', path: '/super-admin/orders' },
-      { id: 'super-admin-subscription-page', name: 'Subscription', path: '/super-admin/subscription' },
-      { id: 'super-admin-it-admin', name: 'IT Administration', path: '/super-admin/system/it-admin' }
+      { id: 'super-admin-subscription-page', name: 'Subscription', path: '/super-admin/subscription' }
     ],
   },
   {
@@ -33,7 +32,6 @@ const MASTER_MODULES = [
     pages: [
       { id: 'enterprise-admin-pages-roles-report', name: 'All Pages & Roles Report', path: '/enterprise-admin/system/pages-roles-report' },
       { id: 'enterprise-admin-dashboard', name: 'Enterprise Dashboard', path: '/enterprise-admin/dashboard' },
-      { id: 'enterprise-admin-modules', name: 'Module Management', path: '/enterprise-admin/modules' },
       { id: 'enterprise-admin-roles', name: 'Role Management', path: '/enterprise-admin/roles' },
       { id: 'enterprise-admin-subscription-access', name: 'Subscription Access Control', path: '/enterprise-admin/subscription-access' },
       { id: 'enterprise-admin-super-admins', name: 'Super Admins', path: '/enterprise-admin/super-admins' },
@@ -70,14 +68,11 @@ const MASTER_MODULES = [
       { id: 'user-creation', name: 'Create New User', path: '/system/user-creation' },
       { id: 'permission-manager', name: 'Permission Manager', path: '/system/permission-manager' },
       { id: 'roles-users-report', name: 'Modules & Roles', path: '/system/roles-users-report' },
-      { id: 'role-access-explorer', name: 'Role & Access Explorer', path: '/system/role-access-explorer' },
-      { id: 'audit-logs', name: 'Audit Logs', path: '/system/audit-logs' },
       { id: 'audit-integrity', name: 'Audit Integrity', path: '/system/audit-integrity-dashboard' },
       { id: 'backup-restore', name: 'Backup & Restore', path: '/system/backup-restore' },
       { id: 'system-health', name: 'System Health', path: '/system/system-health-dashboard' },
       { id: 'integration-settings', name: 'Integration Settings', path: '/system/integration-settings' },
       { id: 'trust-security', name: 'Trust & Security', path: '/trust-security' },
-      { id: 'server-logs', name: 'Server Logs', path: '/system/server-logs' },
       { id: 'ai-training', name: 'AI Training', path: '/ai-training' },
       { id: 'trace', name: 'Trace', path: '/trace' },
       { id: 'task-clarifications', name: 'Task Clarifications', path: '/task-clarifications' },
@@ -286,13 +281,11 @@ const MASTER_MODULES = [
       { id: 'task-create', name: 'Create Task', path: '/tasks/create' },
       { id: 'global-calendar', name: 'Calendar', path: '/calendar' },
       { id: 'dashboard', name: 'Dashboard', path: '/dashboard' },
-      { id: 'task-workbench', name: 'Task Workbench', path: '/dashboard/workbench' },
       { id: 'communication-internal-chat', name: 'Internal Chat', path: '/communication/internal-chat' },
       { id: 'dashboard-notifications', name: 'Notifications', path: '/notifications' },
       { id: 'common-bank-accounts', name: 'Bank Accounts', path: '/common/bank-accounts' },
       { id: 'common-calendar', name: 'Calendar', path: '/common/calendar' },
-      { id: 'common-documentation', name: 'Documentation', path: '/common/documentation' },
-      { id: 'common-notifications', name: 'Notifications', path: '/common/notifications' },
+      // Removed: common-documentation - page deleted per request
       { id: 'common-security-settings', name: 'Security Settings', path: '/common/security-settings' },
       { id: 'common-user-creation', name: 'User Creation', path: '/common/user-creation' },
       { id: 'system-about-me', name: 'About Me', path: '/system/about-me' },
@@ -301,7 +294,6 @@ const MASTER_MODULES = [
       { id: 'home', name: 'Home', path: '/' },
       { id: 'settings', name: 'Settings', path: '/settings' },
       { id: 'settings-security', name: 'Security Settings', path: '/settings/security' },
-      { id: 'create-payment-request', name: 'Create Payment Request', path: '/common/payment-requests/create' },
       { id: 'access-denied', name: 'Access Denied', path: '/access-denied' },
       { id: 'chat', name: 'Chat', path: '/chat' },
       { id: 'chat-ai', name: 'AI Assistant', path: '/chat/ai' }

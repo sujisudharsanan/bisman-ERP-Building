@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+/* eslint-disable no-undef */
 /**
  * Run delete-pages migration on Railway database
  * Usage: node run-delete-pages.js

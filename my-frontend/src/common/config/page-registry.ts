@@ -535,18 +535,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 1,
   },
   {
-    id: 'enterprise-admin-modules',
-    name: 'Module Management',
-    path: '/enterprise-admin/modules',
-    iconKey: "Layers",
-    module: 'enterprise-admin',
-    permissions: ['enterprise-admin'],
-    roles: ['ENTERPRISE_ADMIN'],
-    status: 'active',
-    description: 'View and manage ERP modules, pages, and role assignments',
-    order: 2,
-  },
-  {
     id: 'enterprise-admin-roles',
     name: 'Role Management',
     path: '/enterprise-admin/roles',
@@ -556,7 +544,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     roles: ['ENTERPRISE_ADMIN'],
     status: 'active',
     description: 'Assign roles and modules to Super Admins',
-    order: 3,
+    order: 2,
   },
   {
     id: 'enterprise-admin-subscription-access',
@@ -743,6 +731,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     description: 'Manage system permissions',
     order: 3,
+    showInSidebar: false, // Tab inside Client Management
   },
   {
     id: 'roles-users-report',
@@ -755,6 +744,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     description: 'View comprehensive report of all roles and assigned users',
     order: 4,
+    showInSidebar: false, // Tab inside Client Management
   },
   {
     id: 'pages-roles-report',
@@ -768,18 +758,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'View all pages and their assigned roles, identify orphan pages',
     order: 5,
   },
-  {
-    id: 'role-access-explorer',
-    name: 'Role & Access Explorer',
-    path: '/system/role-access-explorer',
-  iconKey: "FileText",
-    module: 'system',
-    permissions: ['user-management', 'system-settings'],
-    roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR'],
-    status: 'active',
-    description: 'Interactive matrix and visual explorer for roles, workflows, and test scenarios',
-    order: 5.5,
-  },
   // ==================== COMPLIANCE & LEGAL (Agreements) ====================
   {
     id: 'admin-branches',
@@ -792,18 +770,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     status: 'active',
     description: 'Branch details, agreements, compliance & financial exposure',
     order: 20,
-  },
-  {
-    id: 'audit-logs',
-    name: 'Audit Logs',
-    path: '/system/audit-logs',
-  iconKey: "Activity",
-    module: 'system',
-    permissions: ['system-settings'],
-  roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR', 'IT ADMIN'],
-    status: 'active',
-    description: 'View system activity and audit trails',
-    order: 5,
   },
   {
     id: 'audit-integrity',
@@ -1087,24 +1053,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'Manage subscription activation coupons',
     order: 4,
     showInSidebar: false, // Sub-page of subscriptions
-  },
-  {
-    id: 'server-logs',
-    name: 'Server Logs',
-    path: '/system/server-logs',
-  iconKey: "Server",
-    module: 'system',
-    // Allow via System Settings
-    permissions: [
-      'system-settings',
-      'pump:common',
-      'pump-management-common',
-      'pump-management'
-    ],
-  roles: ['SUPER_ADMIN', 'SYSTEM_ADMIN', 'SYSTEM ADMINISTRATOR'],
-    status: 'active',
-    description: 'Access server logs and diagnostics',
-    order: 1,
   },
   {
     id: 'deployment-tools',
@@ -2093,19 +2041,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'View your task dashboard with Kanban board',
     order: 0, // Show at very top
   },
-  {
-    id: 'task-workbench',
-    name: 'Task Workbench',
-    path: '/dashboard/workbench',
-    iconKey: "LayoutDashboard",
-    module: 'common',
-    permissions: ['authenticated'],
-    roles: ['ALL', 'ADMIN', 'SUPER_ADMIN'],
-    status: 'active',
-    description: 'Manage your tasks with draft, in-progress, needs attention, and done views',
-    order: 1, // Show at top of common pages
-    showInSidebar: false, // Hidden - functionality now integrated into main Dashboard
-  },
 
   // ==================== BILLING PAGES ====================
   {
@@ -3052,19 +2987,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'Personal calendar view',
     order: 21,
   },
-  {
-    id: 'common-documentation',
-    name: 'Documentation',
-    path: '/common/documentation',
-    iconKey: "BookOpen",
-    module: 'common',
-    permissions: ['authenticated'],
-    roles: ['ALL'],
-    status: 'active',
-    showInSidebar: false,
-    description: 'System documentation and help',
-    order: 22,
-  },
+  // Removed: common-documentation - page deleted per request
   {
     id: 'common-hr-policy',
     name: 'HR Policy',
@@ -3079,19 +3002,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 23,
   },
   // Removed: common-messages (use /chat instead)
-  {
-    id: 'common-notifications',
-    name: 'Notifications',
-    path: '/common/notifications',
-    iconKey: "Bell",
-    module: 'common',
-    permissions: ['authenticated'],
-    roles: ['ALL'],
-    status: 'active',
-    showInSidebar: false,
-    description: 'View all notifications',
-    order: 25,
-  },
+  // Removed: common-notifications
   {
     id: 'common-security-settings',
     name: 'Security Settings',
@@ -3436,19 +3347,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 2,
   },
   {
-    id: 'create-payment-request',
-    name: 'Create Payment Request',
-    path: '/common/payment-requests/create',
-    iconKey: "CreditCard",
-    module: 'common',
-    permissions: ['payment-request:create'],
-    roles: ['ALL'],
-    status: 'active',
-    showInSidebar: false,
-    description: 'Create a new payment request',
-    order: 3,
-  },
-  {
     id: 'access-denied',
     name: 'Access Denied',
     path: '/access-denied',
@@ -3722,32 +3620,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   },
 
   // ==================== SUPER ADMIN SYSTEM PAGES ====================
-  {
-    id: 'super-admin-it-admin',
-    name: 'IT Administration',
-    path: '/super-admin/system/it-admin',
-    iconKey: "Server",
-    module: 'super-admin',
-    permissions: ['system:it:admin'],
-    roles: ['SUPER_ADMIN'],
-    status: 'active',
-    showInSidebar: true,
-    description: 'IT administration tools',
-    order: 20,
-  },
-  {
-    id: 'super-admin-role-access-explorer',
-    name: 'Role Access Explorer',
-    path: '/super-admin/system/role-access-explorer',
-    iconKey: "Key",
-    module: 'super-admin',
-    permissions: ['system:roles:view'],
-    roles: ['SUPER_ADMIN'],
-    status: 'active',
-    showInSidebar: true,
-    description: 'Explore role-based access',
-    order: 21,
-  },
   {
     id: 'super-admin-system-settings',
     name: 'System Settings',

@@ -26,12 +26,6 @@ export default function PermissionManagerContent() {
           >
             Pages & Roles Report
           </Link>
-          <Link
-            href="/system/role-access-explorer"
-            className="inline-flex items-center px-4 py-2 text-sm font-medium text-blue-700 dark:text-blue-300 bg-white dark:bg-blue-900/40 border border-blue-300 dark:border-blue-700 rounded-md hover:bg-blue-50 dark:hover:bg-blue-900/60 transition-colors"
-          >
-            Role & Access Explorer
-          </Link>
         </div>
       </div>
 
