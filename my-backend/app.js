@@ -1611,6 +1611,7 @@ try {
   const subscriptionCouponRoutes = require('./routes/subscriptionCouponRoutes')
   const subscriptionRedemptionRoutes = require('./routes/subscriptionRedemptionRoutes')
   const enterpriseSubscriptionRoutes = require('./routes/enterpriseSubscriptionRoutes')
+  const effectiveAccessRoutes = require('./routes/effectiveAccessRoutes')
   
   // Public subscription endpoints (pricing, plans) - no auth required for GET
   // Tenant subscription management - requires authentication
@@ -1631,10 +1632,14 @@ try {
   // Enterprise Admin Subscription Access Control - module/feature matrix management
   app.use('/api/enterprise-admin/subscriptions', authenticate, adminIpAllowlist, setTenantContext, enterpriseSubscriptionRoutes)
   
+  // Effective Access API - three-layer permission system (subscription ∩ enterprise ∩ superadmin)
+  app.use('/api/access', effectiveAccessRoutes)
+  
   console.log('✅ Subscription Management routes loaded')
   console.log('✅ Subscription Control ("God Mode") routes loaded')
   console.log('✅ Subscription Coupon routes loaded')
   console.log('✅ Enterprise Subscription Access Control routes loaded')
+  console.log('✅ Effective Access API routes loaded')
 } catch (e) {
   if (process.env.NODE_ENV !== 'production') {
     console.warn('Subscription routes not loaded:', e && e.message)

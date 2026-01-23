@@ -19,6 +19,15 @@ const { v4: uuidv4 } = require('uuid');
 
 const prisma = new PrismaClient();
 
+// Import auto-grant service for subscription-based page permissions
+let grantPagesForNewUser;
+try {
+  grantPagesForNewUser = require('./subscriptionPageGrant').grantPagesForNewUser;
+} catch (err) {
+  console.warn('[UserService] subscriptionPageGrant not available:', err.message);
+  grantPagesForNewUser = null;
+}
+
 // ============================================================================
 // CONSTANTS
 // ============================================================================
@@ -464,6 +473,18 @@ const UserService = {
         });
       } catch (auditError) {
         console.error('[UserService] Audit log failed (non-blocking):', auditError.message);
+      }
+
+      // ========== AUTO-GRANT SUBSCRIPTION PAGES ==========
+      // When a new user is created, automatically grant pages based on tenant's subscription
+      // This ensures no manual Super Admin intervention is needed!
+      if (newUser.legacy_id && newUser.tenant_id && grantPagesForNewUser) {
+        try {
+          const grantResult = await grantPagesForNewUser(newUser.legacy_id, newUser.tenant_id);
+          console.log(`[UserService] Auto-granted pages for new user:`, grantResult);
+        } catch (grantError) {
+          console.error('[UserService] Failed to auto-grant pages (non-blocking):', grantError.message);
+        }
       }
 
       console.log(`[UserService] User created: ${newUser.username} (${newUser.id}) at L${newUser.business_level}`);

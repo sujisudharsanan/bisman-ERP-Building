@@ -1,7 +1,8 @@
 /**
  * Dynamic Sidebar Navigation
- * Automatically generates navigation from page registry based on user permissions from database
- * and subscription-based module access (Free vs Paid enforcement)
+ * Automatically generates navigation from page registry based on:
+ * - THREE-LAYER EFFECTIVE ACCESS: subscriptionPages ∩ enterpriseApproved ∩ superadminApproved
+ * - User role and permissions from database
  */
 
 "use client";
@@ -16,6 +17,7 @@ import { safeComponent } from '@/lib/safeComponent';
 import { useAuth } from '@/common/hooks/useAuth';
 import { getRoleDisplayName } from '@/utils/roleDisplay';
 import { useModuleAccess } from '@/hooks/useModuleAccess';
+import { useEffectiveAccess } from '@/hooks/useEffectiveAccess';
 import {
   PAGE_REGISTRY,
   type PageMetadata,
@@ -48,20 +50,25 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
   const { user, loading: authLoading } = useAuth();
   const pathname = usePathname();
   const router = useRouter();
-  const [userAllowedPages, setUserAllowedPages] = useState<string[]>([]);
   const [superAdminModules, setSuperAdminModules] = useState<string[]>([]);
-  const [isLoadingPermissions, setIsLoadingPermissions] = useState(true);
   const [iconMap, setIconMap] = useState<Record<string, IconComponent>>({});
   
   // Module access hook for Free vs Paid enforcement
   const { hasAccess: hasModuleAccess, getAccessLevel, loading: moduleAccessLoading, planName } = useModuleAccess();
   
+  // THREE-LAYER EFFECTIVE ACCESS: subscriptionPages ∩ enterpriseApproved ∩ superadminApproved
+  const { 
+    effectivePages, 
+    loading: effectiveAccessLoading,
+    hasPageAccess: checkEffectivePageAccess 
+  } = useEffectiveAccess();
+  
+  // Convert effectivePages to userAllowedPages for backward compatibility with existing logic
+  const userAllowedPages = useMemo(() => effectivePages, [effectivePages]);
+  const isLoadingPermissions = effectiveAccessLoading || authLoading;
+  
   // Magnification effect state (macOS Dock style)
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
-  
-  // Cache permissions in sessionStorage for faster subsequent loads
-  // Version 4: Removed user-management from ADMIN role - only SUPER_ADMIN/SYSTEM_ADMIN can access Client Management
-  const cacheKey = user?.id ? `sidebar_perms_v4_${user.id}` : null;
   
   // Clear old cache keys on mount
   useEffect(() => {
@@ -71,6 +78,7 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
         localStorage.removeItem(`sidebar_perms_${user.id}`);
         localStorage.removeItem(`sidebar_perms_v2_${user.id}`);
         localStorage.removeItem(`sidebar_perms_v3_${user.id}`);
+        localStorage.removeItem(`sidebar_perms_v4_${user.id}`);
       } catch (e) {}
     }
   }, [user?.id]);
@@ -106,191 +114,12 @@ export default function DynamicSidebar({ className = '', collapsed = false }: Dy
     return roleName === 'SUPER_ADMIN';
   }, [user?.roleName, user?.role]);
 
-  // Fetch user permissions from database
+  // Set super admin modules for Enterprise Admin
   useEffect(() => {
-    // Create abort controller for cleanup
-    const abortController = new AbortController();
-    let isMounted = true;
-
-    const fetchUserPermissions = async () => {
-      // Wait for auth to complete loading before checking user
-      if (authLoading) {
-        return; // Don't do anything while auth is loading
-      }
-      
-      if (!user?.id) {
-        if (isMounted) setIsLoadingPermissions(false);
-        // Don't redirect from sidebar - let the page handle auth redirects
-        return;
-      }
-
-      // Try to load from localStorage cache first for instant display (persists across logout)
-      if (cacheKey && typeof localStorage !== 'undefined') {
-        try {
-          const cached = localStorage.getItem(cacheKey);
-          if (cached) {
-            const { pages, modules, timestamp } = JSON.parse(cached);
-            // Cache valid for 24 hours (persists across sessions for faster login)
-            if (Date.now() - timestamp < 24 * 60 * 60 * 1000) {
-              console.log('[Sidebar] Using localStorage cached permissions (instant load)');
-              if (isMounted) {
-                setUserAllowedPages(pages || []);
-                setSuperAdminModules(modules || []);
-                setIsLoadingPermissions(false);
-              }
-              
-              // Background refresh if cache is older than 5 minutes (stale-while-revalidate pattern)
-              if (Date.now() - timestamp > 5 * 60 * 1000) {
-                console.log('[Sidebar] Cache stale, refreshing in background...');
-                // Continue to fetch fresh data in background (don't return)
-              } else {
-                return; // Cache is fresh, skip API call
-              }
-            }
-          }
-        } catch (e) {
-          // Ignore cache errors
-        }
-      }
-
-      // Enterprise Admin: Set enterprise modules directly
-      if (user.role === 'ENTERPRISE_ADMIN' || user?.roleName === 'ENTERPRISE_ADMIN') {
-        console.log('[Sidebar] Enterprise Admin detected - setting enterprise modules');
-        if (isMounted) {
-          setSuperAdminModules(['enterprise-management']);
-          setUserAllowedPages([]); // Enterprise admin doesn't use page-level permissions
-          setIsLoadingPermissions(false);
-          // Cache it in localStorage (persists across logout)
-          if (cacheKey) {
-            try {
-              localStorage.setItem(cacheKey, JSON.stringify({
-                pages: [],
-                modules: ['enterprise-management'],
-                timestamp: Date.now()
-              }));
-            } catch (e) {}
-          }
-        }
-        return;
-      }
-
-      // Super Admin: Fetch assigned modules from backend
-      if (isSuperAdmin) {
-        console.log('[Sidebar] Super Admin detected - fetching assigned modules');
-        try {
-          // Use relative URL when NEXT_PUBLIC_API_URL is not set (same-origin in Railway)
-          const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
-          const response = await safeFetch(`${baseURL}/api/auth/me/permissions`, {
-            credentials: 'include',
-            timeoutMs: 3000, // Reduced timeout for faster failure
-            signal: abortController.signal,
-          });
-
-          if (!isMounted) return;
-          
-          if (response.ok) {
-            const result = await response.json();
-            console.log('[Sidebar] Super Admin permissions:', result);
-            
-            const assignedModules = result.user?.permissions?.assignedModules || [];
-            const pagePermissions = result.user?.permissions?.pagePermissions || {};
-            if (isMounted) {
-              setSuperAdminModules(assignedModules);
-            
-              // Use specific page permissions from Enterprise Admin assignment
-              // Only grant pages that are explicitly assigned, not all pages from modules
-              const allowedPageKeys: string[] = [];
-              Object.entries(pagePermissions).forEach(([moduleName, pages]) => {
-                if (Array.isArray(pages)) {
-                  allowedPageKeys.push(...pages);
-                }
-              });
-            
-              console.log('[Sidebar] Assigned modules:', assignedModules);
-              console.log('[Sidebar] Page permissions by module:', pagePermissions);
-              console.log('[Sidebar] Allowed pages:', allowedPageKeys.length, allowedPageKeys);
-              setUserAllowedPages(allowedPageKeys);
-              
-              // Cache the result in localStorage (persists across logout)
-              if (cacheKey) {
-                try {
-                  localStorage.setItem(cacheKey, JSON.stringify({
-                    pages: allowedPageKeys,
-                    modules: assignedModules,
-                    timestamp: Date.now()
-                  }));
-                } catch (e) {}
-              }
-            }
-          } else {
-            console.error('[Sidebar] Failed to fetch Super Admin permissions:', response.status);
-            // Security: DO NOT grant access if API fails - show empty sidebar
-            if (isMounted) setUserAllowedPages([]);
-          }
-        } catch (error: any) {
-          // Ignore abort errors - they're expected during cleanup
-          if (error?.name === 'AbortError') return;
-          console.error('[Sidebar] Error fetching Super Admin permissions:', error);
-          // Security: DO NOT grant access if API fails - show empty sidebar
-          if (isMounted) setUserAllowedPages([]);
-        }
-        if (isMounted) setIsLoadingPermissions(false);
-        return;
-      }
-
-      // Regular users: Fetch page permissions from database
-      try {
-        // Use relative URL to leverage Next.js API proxy
-        const response = await safeFetch(`/api/permissions?userId=${user.id}`, {
-          credentials: 'include',
-          timeoutMs: 3000, // Reduced timeout for faster failure
-          signal: abortController.signal,
-        });
-
-        if (!isMounted) return;
-
-        if (response.ok) {
-          const result = await response.json();
-          console.log('[Sidebar] User permissions from DB:', result);
-          
-          // Backend returns: { success: true, data: { userId, allowedPages } }
-          const allowedPages = result.data?.allowedPages || result.allowedPages || [];
-          console.log('[Sidebar] Extracted allowed pages:', allowedPages);
-          if (isMounted) {
-            setUserAllowedPages(allowedPages);
-            // Cache the result in localStorage (persists across logout for faster next login)
-            if (cacheKey) {
-              try {
-                localStorage.setItem(cacheKey, JSON.stringify({
-                  pages: allowedPages,
-                  modules: [],
-                  timestamp: Date.now()
-                }));
-              } catch (e) {}
-            }
-          }
-        } else {
-          console.error('[Sidebar] Failed to fetch permissions:', response.status);
-          if (isMounted) setUserAllowedPages([]);
-        }
-      } catch (error: any) {
-        // Ignore abort errors - they're expected during cleanup
-        if (error?.name === 'AbortError') return;
-        console.error('[Sidebar] Error fetching permissions:', error);
-        if (isMounted) setUserAllowedPages([]);
-      } finally {
-        if (isMounted) setIsLoadingPermissions(false);
-      }
-    };
-
-    fetchUserPermissions();
-    
-    // Cleanup function to abort fetch and prevent state updates
-    return () => {
-      isMounted = false;
-      abortController.abort();
-    };
-  }, [user?.id, user?.role, user?.roleName, isSuperAdmin, authLoading, cacheKey]);
+    if (user?.role === 'ENTERPRISE_ADMIN' || user?.roleName === 'ENTERPRISE_ADMIN') {
+      setSuperAdminModules(['enterprise-management']);
+    }
+  }, [user?.role, user?.roleName]);
 
   // Get user permissions based on database permissions
   const userPermissions = useMemo(() => {

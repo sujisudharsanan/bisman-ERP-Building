@@ -72,6 +72,102 @@ model admin_role_assignments {
   @@index([role_id], map: "idx_admin_role_assign_role")
 }
 
+/// Three-layer page access control: Enterprise Admin → Superadmin → Client
+model admin_page_assignments {
+  id            Int       @id @default(autoincrement())
+  assigner_id   Int
+  assigner_type String    @db.VarChar(50)
+  assignee_id   Int
+  assignee_type String    @db.VarChar(50)
+  page_id       Int?
+  page_key      String    @db.VarChar(255)
+  tenant_id     String?   @db.VarChar(100)
+  is_active     Boolean   @default(true)
+  granted_at    DateTime? @default(now()) @db.Timestamptz(6)
+  revoked_at    DateTime? @db.Timestamptz(6)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime? @default(now()) @db.Timestamptz(6)
+  notes         String?
+
+  @@unique([assigner_id, assigner_type, assignee_id, page_key])
+  @@index([assigner_id, assigner_type], map: "idx_admin_page_assignments_assigner")
+  @@index([assignee_id, assignee_type], map: "idx_admin_page_assignments_assignee")
+  @@index([page_key], map: "idx_admin_page_assignments_page")
+  @@index([tenant_id], map: "idx_admin_page_assignments_tenant")
+}
+
+/// Three-layer role grants: Enterprise Admin → Superadmin → Client
+model admin_role_grants {
+  id            Int       @id @default(autoincrement())
+  assigner_id   Int
+  assigner_type String    @db.VarChar(50)
+  assignee_id   Int
+  assignee_type String    @db.VarChar(50)
+  role_id       Int?
+  role_name     String    @db.VarChar(100)
+  tenant_id     String?   @db.VarChar(100)
+  is_active     Boolean   @default(true)
+  granted_at    DateTime? @default(now()) @db.Timestamptz(6)
+  revoked_at    DateTime? @db.Timestamptz(6)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime? @default(now()) @db.Timestamptz(6)
+  notes         String?
+
+  @@unique([assigner_id, assigner_type, assignee_id, role_name])
+  @@index([assigner_id, assigner_type], map: "idx_admin_role_grants_assigner")
+  @@index([assignee_id, assignee_type], map: "idx_admin_role_grants_assignee")
+}
+
+/// Audit log for subscription access changes
+model subscription_access_audit_log {
+  id             Int       @id @default(autoincrement())
+  action         String    @db.VarChar(50)
+  actor_id       Int
+  actor_type     String    @db.VarChar(50)
+  actor_email    String?   @db.VarChar(255)
+  target_id      Int?
+  target_type    String?   @db.VarChar(50)
+  target_email   String?   @db.VarChar(255)
+  resource_type  String    @db.VarChar(50)
+  resource_id    String?   @db.VarChar(255)
+  resource_name  String?   @db.VarChar(255)
+  tenant_id      String?   @db.VarChar(100)
+  plan_id        Int?
+  old_state      Json?
+  new_state      Json?
+  ip_address     String?   @db.VarChar(45)
+  user_agent     String?
+  request_id     String?   @db.VarChar(100)
+  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([actor_id, actor_type], map: "idx_subscription_audit_actor")
+  @@index([target_id, target_type], map: "idx_subscription_audit_target")
+  @@index([tenant_id], map: "idx_subscription_audit_tenant")
+  @@index([action], map: "idx_subscription_audit_action")
+  @@index([created_at(sort: Desc)], map: "idx_subscription_audit_created")
+}
+
+/// Cache for computed effective access (performance optimization)
+model effective_access_cache {
+  id              Int       @id @default(autoincrement())
+  user_id         Int
+  tenant_id       String    @db.VarChar(100)
+  plan_id         Int?
+  effective_pages String[]  @default([])
+  effective_roles String[]  @default([])
+  computed_at     DateTime? @default(now()) @db.Timestamptz(6)
+  expires_at      DateTime? @db.Timestamptz(6)
+  is_valid        Boolean   @default(true)
+  layer1_count    Int       @default(0)
+  layer2_count    Int       @default(0)
+  layer3_count    Int       @default(0)
+
+  @@unique([user_id, tenant_id])
+  @@index([user_id], map: "idx_effective_cache_user")
+  @@index([tenant_id], map: "idx_effective_cache_tenant")
+  @@index([is_valid, expires_at], map: "idx_effective_cache_valid")
+}
+
 model ai_usage_logs {
   id                Int      @id @default(autoincrement())
   client_id         String?  @db.Uuid

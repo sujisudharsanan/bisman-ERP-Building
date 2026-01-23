@@ -1,9 +1,11 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
-import { FiUsers, FiPackage, FiGrid, FiShield, FiRefreshCw, FiChevronUp, FiCreditCard } from "react-icons/fi";
+import { FiUsers, FiPackage, FiGrid, FiShield, FiRefreshCw, FiChevronUp, FiCreditCard, FiFile, FiExternalLink, FiCheckCircle, FiMinus } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
 import ClientManagementTabs from "@/components/common/ClientManagementTabs";
+import { PAGE_REGISTRY, MODULES } from "@/common/config/page-registry";
+import Link from "next/link";
 // Note: Layout is provided by /app/system/layout.tsx
 
 // Types
@@ -136,6 +138,13 @@ export default function RolesUsersReportPage() {
   // Collapsible Roles Drawer state
   const [isRolesDrawerExpanded, setIsRolesDrawerExpanded] = useState(false);
   const [rolesFilter, setRolesFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
+  
+  // Bottom section context - toggle between roles and pages
+  const [bottomSectionContext, setBottomSectionContext] = useState<'roles' | 'pages'>('roles');
+  const [isPagesDrawerExpanded, setIsPagesDrawerExpanded] = useState(false);
+  const [pagesAssignedFilter, setPagesAssignedFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
+  const [selectedModuleFilter, setSelectedModuleFilter] = useState<string | null>(null);
+  const [bottomSelectedPageId, setBottomSelectedPageId] = useState<string | null>(null);
 
   // Ref to track if roles were loaded (to prevent overwrite on load)
   const isRolesInitializedRef = useRef<boolean>(false);
@@ -159,6 +168,66 @@ export default function RolesUsersReportPage() {
     if (!selectedRoleId) return null;
     return allRoles.find(r => r.id === selectedRoleId) || null;
   }, [allRoles, selectedRoleId]);
+
+  // Get all pages grouped by module for the Pages Overview section (using PAGE_REGISTRY)
+  const allPagesGroupedByModule = useMemo(() => {
+    // Group pages from PAGE_REGISTRY by module
+    const moduleMap = new Map<string, { moduleId: string; moduleName: string; pages: { id: string; name: string; path: string; status: string }[] }>();
+    
+    for (const page of PAGE_REGISTRY) {
+      if (page.status !== 'active') continue; // Skip disabled/coming-soon pages
+      
+      const moduleId = page.module;
+      if (!moduleMap.has(moduleId)) {
+        const moduleMeta = MODULES[moduleId];
+        moduleMap.set(moduleId, {
+          moduleId,
+          moduleName: moduleMeta?.name || moduleId,
+          pages: []
+        });
+      }
+      moduleMap.get(moduleId)!.pages.push({
+        id: page.id,
+        name: page.name,
+        path: page.path,
+        status: page.status
+      });
+    }
+    
+    // Convert to array and sort by module name
+    return Array.from(moduleMap.values()).sort((a, b) => a.moduleName.localeCompare(b.moduleName));
+  }, []);
+
+  // Filtered pages based on selected module filter and assigned filter
+  const filteredPagesForOverview = useMemo(() => {
+    let groups = allPagesGroupedByModule;
+    
+    // Filter by module
+    if (selectedModuleFilter) {
+      groups = groups.filter(g => 
+        g.moduleId === selectedModuleFilter || 
+        g.moduleName.toLowerCase().includes(selectedModuleFilter.toLowerCase())
+      );
+    }
+    
+    // Filter by assigned status (check against rolePagesSelectedIds)
+    if (pagesAssignedFilter !== 'all' && selectedRoleId) {
+      groups = groups.map(g => ({
+        ...g,
+        pages: g.pages.filter(page => {
+          const isAssigned = rolePagesSelectedIds.has(page.id) || rolePagesSelectedIds.has(page.path);
+          return pagesAssignedFilter === 'assigned' ? isAssigned : !isAssigned;
+        })
+      })).filter(g => g.pages.length > 0);
+    }
+    
+    return groups;
+  }, [allPagesGroupedByModule, selectedModuleFilter, pagesAssignedFilter, rolePagesSelectedIds, selectedRoleId]);
+
+  // Total pages count
+  const totalPagesCount = useMemo(() => {
+    return allPagesGroupedByModule.reduce((sum, g) => sum + g.pages.length, 0);
+  }, [allPagesGroupedByModule]);
 
   // Load initial data
   const loadData = async (forceRefresh = false) => {
@@ -806,118 +875,40 @@ export default function RolesUsersReportPage() {
               <FiShield className="text-purple-600" />
               Roles
               <span className="text-xs font-normal text-gray-500">
-                {selectedClientId ? `(${assignedRoleIds.length}/${visibleRoles.length} assigned)` : `${visibleRoles.length} total`}
+                {selectedClientId ? `(${assignedRoleIds.length} assigned)` : ''}
               </span>
             </div>
-            
-            {/* Action buttons for role assignment */}
-            {selectedClientId && visibleRoles.length > 0 && (
-              <div className="flex items-center gap-2 mb-3 pb-2 border-b border-gray-200 dark:border-gray-700 flex-shrink-0">
-                {isRoleEditMode ? (
-                  <>
-                    <button
-                      onClick={() => setAssignedRoleIds(visibleRoles.map(r => r.id))}
-                      className="text-[10px] px-2 py-1 rounded bg-green-100 text-green-700 hover:bg-green-200"
-                    >
-                      Select All
-                    </button>
-                    <button
-                      onClick={() => setAssignedRoleIds([])}
-                      className="text-[10px] px-2 py-1 rounded bg-gray-100 text-gray-700 hover:bg-gray-200"
-                    >
-                      Deselect All
-                    </button>
-                    <div className="flex-1" />
-                    {rolesSaveStatus === 'success' && (
-                      <span className="text-[10px] text-green-600 font-medium">✓ Saved!</span>
-                    )}
-                    <button
-                      onClick={async () => {
-                        await handleSaveClientRoles();
-                        setIsRoleEditMode(false);
-                      }}
-                      disabled={rolesSaving}
-                      className={`text-xs px-3 py-1 rounded font-medium transition ${
-                        rolesSaving
-                          ? 'bg-gray-400 text-white cursor-wait'
-                          : 'bg-green-600 text-white hover:bg-green-700'
-                      }`}
-                    >
-                      {rolesSaving ? 'Saving...' : 'Save'}
-                    </button>
-                    <button
-                      onClick={() => setIsRoleEditMode(false)}
-                      className="text-xs px-3 py-1 rounded bg-gray-200 text-gray-700 hover:bg-gray-300"
-                    >
-                      Cancel
-                    </button>
-                  </>
-                ) : (
-                  <>
-                    <div className="flex-1" />
-                    <button
-                      onClick={() => setIsRoleEditMode(true)}
-                      className="text-xs px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700"
-                    >
-                      Edit
-                    </button>
-                  </>
-                )}
-              </div>
-            )}
             
             <div className="space-y-1 flex-1 overflow-y-auto min-h-0">
               {!selectedClientId ? (
                 <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
                   ⚠️ Select a Client to assign roles
                 </div>
-              ) : visibleRoles.length === 0 ? (
-                <div className="text-xs text-gray-500 text-center py-4">
-                  No roles available in the system.
+              ) : assignedRoleIds.length === 0 ? (
+                <div className="text-xs text-gray-500 text-center py-4 bg-gray-50 dark:bg-gray-800 rounded border border-dashed border-gray-300 dark:border-gray-600">
+                  No roles assigned to this client.
+                  <br />
+                  <span className="text-[10px]">Use the bottom section to assign roles.</span>
                 </div>
               ) : (
-                visibleRoles.map(role => {
+                visibleRoles.filter(role => assignedRoleIds.includes(role.id)).map(role => {
                   const isSelectedForViewing = selectedRoleId === role.id;
-                  const isAssigned = assignedRoleIds.includes(role.id);
                   const userCount = role.userCount || role.users?.length || 0;
                   return (
-                    <div
+                    <button
                       key={role.id}
-                      className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer transition ${
+                      onClick={() => setSelectedRoleId(role.id)}
+                      className={`w-full flex items-center gap-2 p-2 rounded-md border cursor-pointer transition ${
                         isSelectedForViewing
                           ? 'border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300'
-                          : isAssigned
-                          ? 'border-green-300 bg-green-50 dark:bg-green-900/20 hover:bg-green-100'
-                          : 'border-gray-200 bg-white dark:bg-gray-800 hover:bg-gray-50'
+                          : 'border-green-300 bg-green-50 dark:bg-green-900/20 hover:bg-green-100'
                       }`}
                     >
-                      {/* Checkbox only in edit mode */}
-                      {isRoleEditMode && (
-                        <input
-                          type="checkbox"
-                          checked={isAssigned}
-                          onChange={() => {
-                            setAssignedRoleIds(prev =>
-                              prev.includes(role.id)
-                                ? prev.filter(id => id !== role.id)
-                                : [...prev, role.id]
-                            );
-                          }}
-                          className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer"
-                          onClick={(e) => e.stopPropagation()}
-                        />
-                      )}
-                      
-                      {/* Checkmark indicator when not in edit mode */}
-                      {!isRoleEditMode && isAssigned && (
-                        <span className="text-green-600 text-sm">✓</span>
-                      )}
+                      {/* Checkmark indicator */}
+                      <span className="text-green-600 text-sm">✓</span>
                       
                       {/* Role info - click to select for viewing pages */}
-                      <button
-                        onClick={() => setSelectedRoleId(role.id)}
-                        className="flex-1 text-left"
-                      >
+                      <div className="flex-1 text-left">
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <span className="font-medium text-xs truncate">{role.display_name || role.name}</span>
@@ -942,8 +933,8 @@ export default function RolesUsersReportPage() {
                             )}
                           </div>
                         </div>
-                      </button>
-                    </div>
+                      </div>
+                    </button>
                   );
                 })
               )}
@@ -1098,62 +1089,161 @@ export default function RolesUsersReportPage() {
         </div>
       </div>
 
-      {/* All Roles Overview - Static Bottom Section */}
-      <div className="flex-shrink-0 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950 border-t-2 border-purple-200 dark:border-purple-800 rounded-t-xl shadow-lg">
-        {/* Header Bar with Title, Filter, and Stats */}
+      {/* Unified Bottom Section - Shows Roles or Pages based on context */}
+      <div className={`flex-shrink-0 bg-gradient-to-b from-gray-50 to-white dark:from-gray-900 dark:to-gray-950 border-t-2 ${
+        bottomSectionContext === 'pages' ? 'border-blue-200 dark:border-blue-800' : 'border-purple-200 dark:border-purple-800'
+      } rounded-t-xl shadow-lg`}>
+        {/* Header Bar with Toggle between Roles and Pages */}
         <div 
-          className="flex items-center justify-between px-4 py-2 bg-purple-50 dark:bg-purple-900/30 border-b border-purple-100 dark:border-purple-800 rounded-t-xl cursor-pointer"
-          onClick={() => setIsRolesDrawerExpanded(!isRolesDrawerExpanded)}
+          className={`flex items-center justify-between px-4 py-2 border-b rounded-t-xl ${
+            bottomSectionContext === 'pages' 
+              ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-100 dark:border-blue-800' 
+              : 'bg-purple-50 dark:bg-purple-900/30 border-purple-100 dark:border-purple-800'
+          }`}
         >
-          <div className="flex items-center gap-3">
-            <div className="p-1.5 bg-purple-600 rounded-lg">
-              <FiShield className="text-white w-4 h-4" />
+          <div className="flex items-center gap-3 flex-wrap">
+            {/* Toggle Buttons - Roles / Pages */}
+            <div className="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 rounded-lg p-0.5">
+              <button
+                onClick={() => {
+                  setBottomSectionContext('roles');
+                  setIsRolesDrawerExpanded(true);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  bottomSectionContext === 'roles'
+                    ? 'bg-purple-600 text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                <FiShield className="w-3.5 h-3.5" />
+                All Roles Overview
+              </button>
+              <button
+                onClick={() => {
+                  setBottomSectionContext('pages');
+                  setIsPagesDrawerExpanded(true);
+                }}
+                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                  bottomSectionContext === 'pages'
+                    ? 'bg-blue-600 text-white shadow-sm'
+                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'
+                }`}
+              >
+                <FiFile className="w-3.5 h-3.5" />
+                All Pages
+              </button>
             </div>
-            <span className="text-sm font-bold text-gray-800 dark:text-gray-100">All Roles Overview</span>
-            <span className="text-xs text-gray-500">({visibleRoles.length} roles)</span>
-            {/* Filter buttons */}
-            <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 ml-2" onClick={(e) => e.stopPropagation()}>
-              <button
-                onClick={() => setRolesFilter('all')}
-                className={`px-2 py-0.5 text-xs rounded transition ${
-                  rolesFilter === 'all' ? 'bg-white dark:bg-gray-700 text-purple-600 shadow-sm font-medium' : 'text-gray-600'
-                }`}
-              >
-                All
-              </button>
-              <button
-                onClick={() => setRolesFilter('assigned')}
-                className={`px-2 py-0.5 text-xs rounded transition ${
-                  rolesFilter === 'assigned' ? 'bg-white dark:bg-gray-700 text-green-600 shadow-sm font-medium' : 'text-gray-600'
-                }`}
-              >
-                Assigned
-              </button>
-              <button
-                onClick={() => setRolesFilter('unassigned')}
-                className={`px-2 py-0.5 text-xs rounded transition ${
-                  rolesFilter === 'unassigned' ? 'bg-white dark:bg-gray-700 text-red-600 shadow-sm font-medium' : 'text-gray-600'
-                }`}
-              >
-                Unassigned
-              </button>
-            </div>
+
+            {/* Context-specific filters */}
+            {bottomSectionContext === 'roles' ? (
+              <>
+                <span className="text-xs text-gray-500">({visibleRoles.length} roles)</span>
+                <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 ml-2" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => setRolesFilter('all')}
+                    className={`px-2 py-0.5 text-xs rounded transition ${
+                      rolesFilter === 'all' ? 'bg-white dark:bg-gray-700 text-purple-600 shadow-sm font-medium' : 'text-gray-600'
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    onClick={() => setRolesFilter('assigned')}
+                    className={`px-2 py-0.5 text-xs rounded transition ${
+                      rolesFilter === 'assigned' ? 'bg-white dark:bg-gray-700 text-green-600 shadow-sm font-medium' : 'text-gray-600'
+                    }`}
+                  >
+                    Assigned
+                  </button>
+                  <button
+                    onClick={() => setRolesFilter('unassigned')}
+                    className={`px-2 py-0.5 text-xs rounded transition ${
+                      rolesFilter === 'unassigned' ? 'bg-white dark:bg-gray-700 text-red-600 shadow-sm font-medium' : 'text-gray-600'
+                    }`}
+                  >
+                    Unassigned
+                  </button>
+                </div>
+              </>
+            ) : (
+              <>
+                <span className="text-xs text-gray-500">({totalPagesCount} pages)</span>
+                {selectedRoleId && (
+                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 ml-2" onClick={(e) => e.stopPropagation()}>
+                    <button
+                      onClick={() => setPagesAssignedFilter('all')}
+                      className={`px-2 py-0.5 text-xs rounded transition ${
+                        pagesAssignedFilter === 'all' ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm font-medium' : 'text-gray-600'
+                      }`}
+                    >
+                      All
+                    </button>
+                    <button
+                      onClick={() => setPagesAssignedFilter('assigned')}
+                      className={`px-2 py-0.5 text-xs rounded transition ${
+                        pagesAssignedFilter === 'assigned' ? 'bg-white dark:bg-gray-700 text-green-600 shadow-sm font-medium' : 'text-gray-600'
+                      }`}
+                    >
+                      Assigned
+                    </button>
+                    <button
+                      onClick={() => setPagesAssignedFilter('unassigned')}
+                      className={`px-2 py-0.5 text-xs rounded transition ${
+                        pagesAssignedFilter === 'unassigned' ? 'bg-white dark:bg-gray-700 text-red-600 shadow-sm font-medium' : 'text-gray-600'
+                      }`}
+                    >
+                      Unassigned
+                    </button>
+                  </div>
+                )}
+                <div onClick={(e) => e.stopPropagation()}>
+                  <select
+                    value={selectedModuleFilter || ''}
+                    onChange={(e) => setSelectedModuleFilter(e.target.value || null)}
+                    className="ml-2 text-xs px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                  >
+                    <option value="">All Modules</option>
+                    {allPagesGroupedByModule.map(g => (
+                      <option key={g.moduleId} value={g.moduleId}>
+                        {g.moduleName} ({g.pages.length})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </>
+            )}
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Stats badges */}
+            {/* Stats */}
             <div className="flex items-center gap-2">
-              <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                <span className="text-green-700 dark:text-green-400">{assignedRoleIds.length}</span>
-              </span>
-              <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-red-100 dark:bg-red-900/30 rounded-full">
-                <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                <span className="text-red-700 dark:text-red-400">{visibleRoles.length - assignedRoleIds.length}</span>
-              </span>
+              {bottomSectionContext === 'roles' ? (
+                <>
+                  <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                    <span className="text-green-700 dark:text-green-400">{assignedRoleIds.length}</span>
+                  </span>
+                  <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-red-100 dark:bg-red-900/30 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
+                    <span className="text-red-700 dark:text-red-400">{visibleRoles.length - assignedRoleIds.length}</span>
+                  </span>
+                </>
+              ) : (
+                <>
+                  <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 rounded-full">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                    <span className="text-green-700 dark:text-green-400">{rolePagesSelectedIds.size}</span>
+                  </span>
+                  <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 rounded-full">
+                    <FiPackage className="w-3 h-3 text-blue-600" />
+                    <span className="text-blue-700 dark:text-blue-400">{allPagesGroupedByModule.length} modules</span>
+                  </span>
+                </>
+              )}
             </div>
-            {/* Add/Remove button */}
-            {selectedClientId && (
+            
+            {/* Add/Remove button for roles */}
+            {bottomSectionContext === 'roles' && selectedClientId && (
               <button
                 onClick={(e) => { e.stopPropagation(); setIsRoleAssignMode(!isRoleAssignMode); }}
                 className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm ${
@@ -1165,17 +1255,28 @@ export default function RolesUsersReportPage() {
                 {isRoleAssignMode ? "✓ Done" : "Add/Remove"}
               </button>
             )}
-            {/* Total users */}
-            <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-              <FiUsers className="w-3.5 h-3.5 text-blue-600" />
-              <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                {visibleRoles.reduce((sum, r) => sum + (r.userCount || r.users?.length || 0), 0)} users
-              </span>
-            </div>
+            
+            {/* Total users for roles */}
+            {bottomSectionContext === 'roles' && (
+              <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                <FiUsers className="w-3.5 h-3.5 text-blue-600" />
+                <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                  {visibleRoles.reduce((sum, r) => sum + (r.userCount || r.users?.length || 0), 0)} users
+                </span>
+              </div>
+            )}
+            
             {/* Expand/Collapse button */}
             <button 
+              onClick={() => {
+                if (bottomSectionContext === 'pages') {
+                  setIsPagesDrawerExpanded(!isPagesDrawerExpanded);
+                } else {
+                  setIsRolesDrawerExpanded(!isRolesDrawerExpanded);
+                }
+              }}
               className={`p-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-transform duration-300 hover:bg-gray-50 ${
-                isRolesDrawerExpanded ? 'rotate-180' : ''
+                (bottomSectionContext === 'pages' ? isPagesDrawerExpanded : isRolesDrawerExpanded) ? 'rotate-180' : ''
               }`}
             >
               <FiChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
@@ -1183,120 +1284,11 @@ export default function RolesUsersReportPage() {
           </div>
         </div>
 
-        {/* Always Visible: One Row of Roles */}
-        <div className="px-4 py-3 bg-white/50 dark:bg-gray-900/50">
-          <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-2">
-            {visibleRoles
-              .filter((role) => {
-                const isAssigned = assignedRoleIds.includes(role.id);
-                return rolesFilter === 'all' || 
-                  (rolesFilter === 'assigned' && isAssigned) ||
-                  (rolesFilter === 'unassigned' && !isAssigned);
-              })
-              .slice(0, 9)
-              .map((role) => {
-                const isSelected = selectedRoleId === role.id;
-                const userCount = role.userCount || role.users?.length || 0;
-                const isAssigned = assignedRoleIds.includes(role.id);
-                
-                return (
-                  <div key={role.id} className="relative">
-                    {isRoleAssignMode && selectedClientId && (
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setAssignedRoleIds(prev => 
-                            prev.includes(role.id) 
-                              ? prev.filter(id => id !== role.id)
-                              : [...prev, role.id]
-                          );
-                        }}
-                        className={`absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-transform hover:scale-110 ${
-                          isAssigned 
-                            ? "bg-red-500 hover:bg-red-600 text-white"
-                            : "bg-green-500 hover:bg-green-600 text-white"
-                        }`}
-                      >
-                        {isAssigned ? '−' : '+'}
-                      </button>
-                    )}
-                    <button
-                      onClick={() => {
-                        if (isRoleAssignMode && selectedClientId) {
-                          setAssignedRoleIds(prev => 
-                            prev.includes(role.id) 
-                              ? prev.filter(id => id !== role.id)
-                              : [...prev, role.id]
-                          );
-                        } else {
-                          setSelectedRoleId(role.id);
-                        }
-                      }}
-                      className={`w-full text-left rounded-lg border px-2 py-1.5 text-xs cursor-pointer transition-all duration-200 hover:shadow-md ${
-                        isSelected
-                          ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-300"
-                          : isAssigned
-                          ? "border-green-400 bg-green-50/80 dark:bg-green-900/20 hover:bg-green-100"
-                          : "border-red-300 bg-red-50/50 dark:bg-red-900/10 hover:bg-red-100"
-                      }`}
-                      title={`${role.description || role.name} (Level ${role.level || 0})`}
-                    >
-                      <div className="flex items-center gap-1">
-                        {isAssigned ? (
-                          <span className="text-green-600 text-xs">✓</span>
-                        ) : (
-                          <span className="text-red-500 text-xs">✗</span>
-                        )}
-                        <div className="min-w-0 flex-1">
-                          <div className="truncate font-medium text-[11px]">{role.display_name || role.name}</div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-[9px] text-gray-500">{userCount} users</span>
-                            {role.level !== undefined && (
-                              <span className={`text-[8px] px-1 rounded font-bold ${
-                                role.level >= 9 ? 'bg-purple-100 text-purple-700'
-                                  : role.level >= 7 ? 'bg-blue-100 text-blue-700'
-                                  : role.level >= 5 ? 'bg-green-100 text-green-700'
-                                  : 'bg-gray-100 text-gray-700'
-                              }`}>
-                                L{role.level}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </button>
-                  </div>
-                );
-              })}
-            {/* Show more indicator */}
-            {visibleRoles.filter((role) => {
-              const isAssigned = assignedRoleIds.includes(role.id);
-              return rolesFilter === 'all' || 
-                (rolesFilter === 'assigned' && isAssigned) ||
-                (rolesFilter === 'unassigned' && !isAssigned);
-            }).length > 9 && !isRolesDrawerExpanded && (
-              <button
-                onClick={() => setIsRolesDrawerExpanded(true)}
-                className="flex items-center justify-center rounded-lg border border-dashed border-gray-300 dark:border-gray-600 px-2 py-1.5 text-xs text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800 transition"
-              >
-                +{visibleRoles.filter((role) => {
-                  const isAssigned = assignedRoleIds.includes(role.id);
-                  return rolesFilter === 'all' || 
-                    (rolesFilter === 'assigned' && isAssigned) ||
-                    (rolesFilter === 'unassigned' && !isAssigned);
-                }).length - 9} more
-              </button>
-            )}
-          </div>
-        </div>
-
-        {/* Expanded Content - Additional rows */}
-        <div className={`overflow-hidden transition-all duration-300 ${
-          isRolesDrawerExpanded ? 'max-h-[40vh] opacity-100' : 'max-h-0 opacity-0'
-        }`}>
-          <div className="px-4 py-3 border-t border-gray-200 dark:border-gray-700">
-            {/* Remaining Roles Grid (skip first 9 shown above) */}
-            <div className="max-h-[30vh] overflow-y-auto pr-1">
+        {/* Content Area - Shows Roles or Pages */}
+        {((bottomSectionContext === 'pages' && isPagesDrawerExpanded) || (bottomSectionContext === 'roles' && isRolesDrawerExpanded)) && (
+          <div className="px-4 py-3 bg-white/50 dark:bg-gray-900/50 max-h-64 overflow-y-auto">
+            {/* ROLES CONTENT */}
+            {bottomSectionContext === 'roles' && (
               <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-2">
                 {visibleRoles
                   .filter((role) => {
@@ -1305,7 +1297,6 @@ export default function RolesUsersReportPage() {
                       (rolesFilter === 'assigned' && isAssigned) ||
                       (rolesFilter === 'unassigned' && !isAssigned);
                   })
-                  .slice(9)
                   .map((role) => {
                     const isSelected = selectedRoleId === role.id;
                     const userCount = role.userCount || role.users?.length || 0;
@@ -1381,21 +1372,132 @@ export default function RolesUsersReportPage() {
                     );
                   })}
               </div>
-              
-              {/* Empty state when no additional roles match filter */}
-              {allRoles.filter((role) => {
-                const isAssigned = assignedRoleIds.includes(role.id);
-                return rolesFilter === 'all' || 
-                  (rolesFilter === 'assigned' && isAssigned) ||
-                  (rolesFilter === 'unassigned' && !isAssigned);
-              }).slice(9).length === 0 && (
-                <div className="text-center py-4 text-gray-500">
-                  <p className="text-xs">No additional roles match your filter</p>
-                </div>
-              )}
-            </div>
+            )}
+
+            {/* PAGES CONTENT */}
+            {bottomSectionContext === 'pages' && (
+              <>
+                {/* Show from rolePages when Assigned filter is active and role is selected */}
+                {pagesAssignedFilter === 'assigned' && selectedRoleId && rolePages.length > 0 ? (
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      {/* Header for assigned pages from API */}
+                      <div className="flex items-center gap-2 pb-1 border-b border-green-100 dark:border-green-800">
+                        <FiCheckCircle className="w-3.5 h-3.5 text-green-600" />
+                        <span className="text-xs font-semibold text-green-700 dark:text-green-300">
+                          Assigned Pages for {selectedRole?.display_name || selectedRole?.name}
+                        </span>
+                        <span className="text-[10px] text-gray-500 px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
+                          {rolePages.filter(p => p.granted).length} pages
+                        </span>
+                      </div>
+                      {/* Pages grid from API data */}
+                      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+                        {rolePages.filter(p => p.granted).map((page, idx) => {
+                          const isSelected = bottomSelectedPageId === page.id;
+                          return (
+                            <div
+                              key={`${page.id}-${idx}`}
+                              onClick={() => setBottomSelectedPageId(isSelected ? null : page.id)}
+                              className={`p-2 rounded-lg border cursor-pointer transition-colors group ${
+                                isSelected
+                                  ? 'border-green-500 bg-green-100 dark:bg-green-900/40 ring-2 ring-green-300 shadow-sm'
+                                  : 'border-green-200 dark:border-green-700 bg-green-50 dark:bg-green-900/20 hover:border-green-400 hover:bg-green-100 dark:hover:bg-green-900/30'
+                              }`}
+                            >
+                              <div className="flex items-center justify-between mb-0.5">
+                                <FiCheckCircle className="w-3 h-3 text-green-600" />
+                                <Link href={page.path || '#'} onClick={(e) => e.stopPropagation()}>
+                                  <FiExternalLink className="w-2.5 h-2.5 text-gray-400 hover:text-green-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                </Link>
+                              </div>
+                              <div className={`text-xs font-medium truncate ${isSelected ? 'text-green-700 dark:text-green-300' : 'text-gray-900 dark:text-gray-100'}`}>
+                                {page.name || page.id}
+                              </div>
+                              <div className="text-[9px] text-gray-500 dark:text-gray-400 truncate flex items-center gap-1">
+                                <span>{page.path}</span>
+                                {page.module && (
+                                  <span className="text-[8px] px-1 py-0.5 rounded bg-blue-100 text-blue-700">
+                                    {page.module}
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                ) : filteredPagesForOverview.length === 0 ? (
+                  <div className="text-center py-6">
+                    <FiFile className="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
+                      {pagesAssignedFilter !== 'all' && selectedRoleId 
+                        ? `No ${pagesAssignedFilter} pages found` 
+                        : pagesAssignedFilter !== 'all' && !selectedRoleId
+                        ? 'Select a role to filter by assigned/unassigned'
+                        : 'No pages available'}
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-4">
+                    {filteredPagesForOverview.map(({ moduleId, moduleName, pages }) => (
+                      <div key={moduleId} className="space-y-2">
+                        {/* Module header */}
+                        <div className="flex items-center gap-2 pb-1 border-b border-blue-100 dark:border-blue-800">
+                          <FiPackage className="w-3.5 h-3.5 text-blue-600" />
+                          <span className="text-xs font-semibold text-blue-700 dark:text-blue-300">
+                            {moduleName}
+                          </span>
+                          <span className="text-[10px] text-gray-500 px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
+                            {pages.length} pages
+                          </span>
+                        </div>
+                        {/* Pages grid */}
+                        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+                          {pages.map((page, idx) => {
+                            const isSelected = bottomSelectedPageId === page.id;
+                            const isAssigned = rolePagesSelectedIds.has(page.id) || rolePagesSelectedIds.has(page.path);
+                            return (
+                              <div
+                                key={`${page.id}-${idx}`}
+                                onClick={() => setBottomSelectedPageId(isSelected ? null : page.id)}
+                                className={`p-2 rounded-lg border cursor-pointer transition-colors group ${
+                                  isSelected
+                                    ? 'border-blue-500 bg-blue-100 dark:bg-blue-900/40 ring-2 ring-blue-300 shadow-sm'
+                                    : isAssigned
+                                    ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 hover:border-green-400 hover:bg-green-100'
+                                    : 'border-blue-200 dark:border-blue-700 bg-white dark:bg-gray-800 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between mb-0.5">
+                                  {isAssigned ? (
+                                    <FiCheckCircle className="w-3 h-3 text-green-600" />
+                                  ) : (
+                                    <FiFile className={`w-3 h-3 ${isSelected ? 'text-blue-600' : 'text-blue-500'}`} />
+                                  )}
+                                  <Link href={page.path || '#'} onClick={(e) => e.stopPropagation()}>
+                                    <FiExternalLink className="w-2.5 h-2.5 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                  </Link>
+                                </div>
+                                <div className={`text-xs font-medium truncate ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'}`}>
+                                  {page.name || page.id}
+                                </div>
+                                <div className="text-[9px] text-gray-500 dark:text-gray-400 truncate">
+                                  {page.path}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </>
+            )}
           </div>
-        </div>
+        )}
       </div>
     </div>
   );

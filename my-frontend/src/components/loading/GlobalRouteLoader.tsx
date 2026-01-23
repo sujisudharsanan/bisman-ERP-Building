@@ -1,7 +1,7 @@
 "use client";
 
 import React from 'react';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import BismanLoader from './BismanLoader';
 
 // Simple global loader that appears during route transitions
@@ -14,7 +14,7 @@ export default function GlobalRouteLoader() {
   React.useEffect(() => {
     if (beforePath.current !== null && beforePath.current !== pathname) {
       setLoading(true);
-      const t = setTimeout(() => setLoading(false), 450); // smooth fade window
+      const t = setTimeout(() => setLoading(false), 300); // shorter duration
       return () => clearTimeout(t);
     }
     beforePath.current = pathname;
@@ -22,20 +22,16 @@ export default function GlobalRouteLoader() {
 
   if (!loading) return null;
 
+  // Minimal overlay - just the spinner, transparent background
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        display: 'grid',
-        placeItems: 'center',
-        background: 'rgba(255,255,255,0.6)',
-        backdropFilter: 'blur(2px)',
-        zIndex: 9999,
-      }}
+      className="fixed inset-0 flex items-center justify-center pointer-events-none"
+      style={{ zIndex: 9999 }}
       aria-hidden
     >
-      <BismanLoader size={128} />
+      <div className="bg-white/80 dark:bg-slate-900/80 rounded-xl p-4 shadow-lg backdrop-blur-sm">
+        <BismanLoader size={64} />
+      </div>
     </div>
   );
 }

@@ -250,6 +250,26 @@ router.get('/clients/:id', authMiddleware, async (req, res) => {
       orderBy: { created_at: 'asc' },
     });
     
+    // Fetch ALL users for this client (for total user count)
+    const allUsers = await prisma.users_enhanced.findMany({
+      where: { 
+        tenant_id: clientId,
+      },
+      select: {
+        id: true,
+        email: true,
+        username: true,
+        first_name: true,
+        last_name: true,
+        role: true,
+        is_active: true,
+        created_at: true,
+        updated_at: true,
+        password_hash: true,
+      },
+      orderBy: { created_at: 'asc' },
+    });
+    
     // Fetch the client's current subscription with plan details
     let currentSubscription = null;
     try {
@@ -285,6 +305,23 @@ router.get('/clients/:id', authMiddleware, async (req, res) => {
       data: {
         ...client,
         currentSubscription,
+        // All users for this client
+        users: allUsers.map(u => ({
+          id: u.id,
+          email: u.email,
+          name: u.first_name && u.last_name ? `${u.first_name} ${u.last_name}` : u.username || u.email.split('@')[0],
+          username: u.username,
+          role: u.role || 'User',
+          status: u.is_active ? 'Active' : 'Inactive',
+          is_active: u.is_active,
+          created_at: u.created_at,
+          last_login: u.updated_at, // Using updated_at as proxy for last activity
+          hasPassword: !!(u.password_hash && u.password_hash.length > 0),
+        })),
+        // User counts
+        total_users: allUsers.length,
+        active_users: allUsers.filter(u => u.is_active).length,
+        // Admin users only (for backwards compatibility)
         admin_users: adminUsers.map(u => ({
           email: u.email,
           name: u.first_name && u.last_name ? `${u.first_name} ${u.last_name}` : u.username || u.email.split('@')[0],

@@ -10,6 +10,9 @@
 const { getPrisma } = require('../lib/prisma');
 const crypto = require('crypto');
 
+// Import auto-grant service for automatic page permissions
+const { grantPagesForSubscription } = require('./subscriptionPageGrant');
+
 // ============================================================================
 // CONSTANTS
 // ============================================================================
@@ -882,6 +885,25 @@ async function redeemCoupon(couponCode, tenantId, actor) {
       durationDays: coupon.duration_days,
     },
   });
+  
+  // ========================================================================
+  // AUTO-GRANT PAGES BASED ON SUBSCRIPTION PLAN
+  // ========================================================================
+  // When subscription is activated, automatically grant all pages from the plan
+  // to all users of this tenant. No manual Super Admin intervention needed!
+  const planIdForGrant = result.subscription.plan_id || planId;
+  if (planIdForGrant) {
+    try {
+      const grantResult = await grantPagesForSubscription(tenantId, planIdForGrant, {
+        actorUserId: actor.id,
+        actorRole: actor.role || 'SYSTEM'
+      });
+      console.log(`[redeemCoupon] Auto-granted pages:`, grantResult);
+    } catch (grantError) {
+      // Don't fail the redemption if page grant fails
+      console.error('[redeemCoupon] Failed to auto-grant pages:', grantError.message);
+    }
+  }
   
   return {
     subscription: result.subscription,

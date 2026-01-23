@@ -3,243 +3,121 @@
  * Checks user permissions before rendering page content
  * Redirects to access-denied if user has no permissions
  * 
+ * USES THREE-LAYER INTERSECTION:
+ *   effectivePages = subscriptionPages ∩ enterpriseApproved ∩ superadminApproved
+ * 
  * ORDER OF CHECKS:
- * 1. Subscription/Plan module access (Free users can't access paid modules)
- * 2. RBAC permissions (role-based access control)
+ * 1. Enterprise Admin bypass (full access)
+ * 2. Effective Access API check (3-layer intersection)
+ * 3. Redirect to access-denied or upgrade-required based on block reason
  */
 
 'use client';
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/common/hooks/useAuth';
-import { useModuleAccess } from '@/hooks/useModuleAccess';
+import { useEffectiveAccess } from '@/hooks/useEffectiveAccess';
 
 interface PermissionGuardProps {
   children: React.ReactNode;
   requirePermissions?: boolean; // If true, checks if user has any permissions
-  module?: string; // If provided, checks subscription access to this module
+  pageKey?: string; // If provided, checks access to this specific page
 }
 
-// Map path prefixes to module IDs
-const PATH_TO_MODULE: Record<string, string> = {
-  'finance': 'finance',
-  'billing': 'billing',
-  'procurement': 'procurement',
-  'operations': 'operations',
-  'hr': 'hr',
-  'compliance': 'compliance',
-  'governance': 'governance',
-  'internal': 'internal',
-  'qa': 'qa',
-  'analytics': 'analytics',
-  'reports': 'reports',
-  'admin': 'admin',
-  'system': 'system',
-  'enterprise-admin': 'enterprise-admin',
-  'super-admin': 'super-admin',
-  'task-management': 'task-management',
-  'tasks': 'task-management',
-};
-
-// Modules always accessible regardless of plan
-const ALWAYS_ACCESSIBLE = ['dashboard', 'common', 'chat', 'support', 'help', 'auth', 'public', 'onboarding'];
+// Pages always accessible regardless of permissions
+const ALWAYS_ACCESSIBLE = ['dashboard', 'about-me', 'profile', 'settings', 'help', 'support', 'notifications', 'chat'];
 
 export default function PermissionGuard({ 
   children, 
   requirePermissions = true,
-  module: explicitModule
+  pageKey: explicitPageKey
 }: PermissionGuardProps) {
-  const { user } = useAuth();
+  const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
-  const [isChecking, setIsChecking] = useState(true);
   const [hasAccess, setHasAccess] = useState(false);
-  const { hasAccess: checkModuleAccess, loading: moduleAccessLoading, planName } = useModuleAccess();
-
-  // Infer module from pathname if not explicitly provided
-  const inferredModule = React.useMemo(() => {
-    if (explicitModule) return explicitModule;
+  
+  // Use the new effective access hook (3-layer intersection)
+  const { 
+    hasPageAccess, 
+    getBlockedReason, 
+    loading: effectiveAccessLoading,
+    layers 
+  } = useEffectiveAccess();
+  
+  // Infer page key from pathname if not explicitly provided
+  const pageKey = useMemo(() => {
+    if (explicitPageKey) return explicitPageKey;
     const segments = pathname?.split('/').filter(Boolean) || [];
-    const firstSegment = segments[0] || '';
-    return PATH_TO_MODULE[firstSegment] || firstSegment;
-  }, [pathname, explicitModule]);
-
+    // Use the last segment as page key (e.g., /finance/invoices -> invoices)
+    return segments[segments.length - 1] || 'dashboard';
+  }, [pathname, explicitPageKey]);
+  
   // Check if user is Enterprise Admin (top-most role - has access to everything)
-  const isEnterpriseAdmin = React.useMemo(() => {
+  const isEnterpriseAdmin = useMemo(() => {
     const roleName = String(user?.roleName || user?.role || '').toUpperCase();
     return roleName === 'ENTERPRISE_ADMIN';
   }, [user?.roleName, user?.role]);
 
-  // Check if user is Super Admin (must respect Enterprise Admin page permissions)
-  // Note: Only SUPER_ADMIN role, NOT ADMIN (which is tenant-level admin using rbac_user_permissions)
-  const isSuperAdmin = React.useMemo(() => {
-    const roleName = String(user?.roleName || user?.role || '').toUpperCase();
-    return roleName === 'SUPER_ADMIN';
-  }, [user?.roleName, user?.role]);
-
   useEffect(() => {
-    const checkPermissions = async () => {
-      // Wait for module access to load
-      if (moduleAccessLoading) {
-        return;
-      }
-
-      if (!user?.id) {
-        setIsChecking(false);
-        return;
-      }
-
-      // ==========================================
-      // ENTERPRISE ADMIN BYPASS - FULL ACCESS
-      // ==========================================
-      // Enterprise Admin bypasses all checks
-      if (isEnterpriseAdmin) {
-        console.log('[PermissionGuard] Enterprise Admin - full access');
-        setHasAccess(true);
-        setIsChecking(false);
-        return;
-      }
-
-      // ==========================================
-      // SUPER ADMIN - BYPASS PLAN, CHECK PAGES
-      // ==========================================
-      // Super Admin bypasses subscription checks but has page restrictions
-      if (isSuperAdmin) {
-        // Has full access to /super-admin/* pages
-        if (pathname?.startsWith('/super-admin')) {
-          console.log('[PermissionGuard] Super Admin accessing super-admin page:', pathname);
-          setHasAccess(true);
-          setIsChecking(false);
-          return;
-        }
-        
-        // For other pages, check Enterprise Admin page assignments
-        // (This is handled in the existing Super Admin logic below)
-      }
-
-      // ==========================================
-      // STEP 1: CHECK SUBSCRIPTION/PLAN ACCESS
-      // ==========================================
-      // Skip plan checks for Super Admin (already handled above for page checks)
-      // Check if the module is accessible based on subscription plan
-      // Skip for always-accessible modules
-      if (!isSuperAdmin && inferredModule && !ALWAYS_ACCESSIBLE.includes(inferredModule.toLowerCase())) {
-        const hasModuleAccess = checkModuleAccess(inferredModule);
-        
-        if (!hasModuleAccess) {
-          console.log(`[PermissionGuard] Plan access denied: module=${inferredModule}, plan=${planName}`);
-          router.replace(`/upgrade-required?module=${encodeURIComponent(inferredModule)}&plan=${encodeURIComponent(planName || 'FREE')}`);
-          setHasAccess(false);
-          setIsChecking(false);
-          return;
-        }
-      }
-
-      // ==========================================
-      // STEP 2: CHECK RBAC PERMISSIONS
-      // ==========================================
+    // Wait for effective access to load
+    if (effectiveAccessLoading || authLoading) {
+      return;
+    }
+    
+    // No user - let auth handle redirect
+    if (!user?.id) {
+      setHasAccess(false);
+      return;
+    }
+    
+    // ==========================================
+    // ENTERPRISE ADMIN BYPASS - FULL ACCESS
+    // ==========================================
+    if (isEnterpriseAdmin) {
+      console.log('[PermissionGuard] Enterprise Admin - full access');
+      setHasAccess(true);
+      return;
+    }
+    
+    // ==========================================
+    // ALWAYS ACCESSIBLE PAGES
+    // ==========================================
+    if (ALWAYS_ACCESSIBLE.includes(pageKey)) {
+      setHasAccess(true);
+      return;
+    }
+    
+    // ==========================================
+    // CHECK EFFECTIVE ACCESS (3-LAYER INTERSECTION)
+    // ==========================================
+    if (!requirePermissions) {
+      setHasAccess(true);
+      return;
+    }
+    
+    const hasAccess = hasPageAccess(pageKey);
+    
+    if (!hasAccess) {
+      const reason = getBlockedReason(pageKey);
+      console.log(`[PermissionGuard] Access denied to ${pageKey}:`, reason);
       
-      // If not requiring permission check, grant access
-      if (!requirePermissions) {
-        setHasAccess(true);
-        setIsChecking(false);
-        return;
+      // Determine redirect based on reason
+      if (reason?.includes('subscription') || reason?.includes('plan')) {
+        router.replace(`/upgrade-required?page=${encodeURIComponent(pageKey)}&reason=${encodeURIComponent(reason || 'subscription')}`);
+      } else {
+        router.replace(`/access-denied?page=${encodeURIComponent(pageKey)}&reason=${encodeURIComponent(reason || 'permission')}`);
       }
-
-      // Super Admin: Has full access to /super-admin/* pages
-      if (isSuperAdmin && pathname?.startsWith('/super-admin')) {
-        console.log('[PermissionGuard] Super Admin accessing super-admin page:', pathname);
-        setHasAccess(true);
-        setIsChecking(false);
-        return;
-      }
-
-      // Super Admin: Check page permissions from Enterprise Admin assignment for other pages
-      if (isSuperAdmin) {
-        try {
-          const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
-          const response = await fetch(`${baseURL}/api/auth/me/permissions`, {
-            credentials: 'include',
-          });
-
-          if (response.ok) {
-            const result = await response.json();
-            const pagePermissions = result.user?.permissions?.pagePermissions || {};
-            
-            // Flatten all allowed page IDs
-            const allowedPages: string[] = [];
-            Object.values(pagePermissions).forEach((pages: any) => {
-              if (Array.isArray(pages)) {
-                allowedPages.push(...pages);
-              }
-            });
-
-            // Check if current path is allowed
-            // Extract page id from pathname (e.g., /common/about-me -> about-me)
-            const pathSegments = pathname?.split('/').filter(Boolean) || [];
-            const pageId = pathSegments[pathSegments.length - 1] || '';
-            
-            if (allowedPages.length === 0 || !allowedPages.includes(pageId)) {
-              console.log('[PermissionGuard] Super Admin denied access to:', pageId, 'Allowed:', allowedPages);
-              router.replace('/access-denied');
-              setHasAccess(false);
-            } else {
-              setHasAccess(true);
-            }
-          } else {
-            // API failed - deny access for security
-            router.replace('/access-denied');
-            setHasAccess(false);
-          }
-        } catch (error) {
-          console.error('[PermissionGuard] Error checking Super Admin permissions:', error);
-          router.replace('/access-denied');
-          setHasAccess(false);
-        } finally {
-          setIsChecking(false);
-        }
-        return;
-      }
-
-      // Regular users: Check from rbac_user_permissions
-      try {
-        // Use Next.js API proxy (same-origin, no CORS)
-        const response = await fetch(`/api/permissions?userId=${user.id}`, {
-          credentials: 'include',
-        });
-
-        if (response.ok) {
-          const data = await response.json();
-          const allowedPages = data.data?.allowedPages || data.allowedPages || [];
-          
-          if (allowedPages.length === 0) {
-            // No permissions - redirect
-            router.replace('/access-denied');
-            setHasAccess(false);
-          } else {
-            // Has permissions - allow access
-            setHasAccess(true);
-          }
-        } else {
-          // Error fetching permissions - redirect for safety
-          router.replace('/access-denied');
-          setHasAccess(false);
-        }
-      } catch (error) {
-        console.error('[PermissionGuard] Error checking permissions:', error);
-        router.replace('/access-denied');
-        setHasAccess(false);
-      } finally {
-        setIsChecking(false);
-      }
-    };
-
-    checkPermissions();
-  }, [user?.id, isEnterpriseAdmin, isSuperAdmin, requirePermissions, router, pathname, moduleAccessLoading, inferredModule, checkModuleAccess, planName]);
+      setHasAccess(false);
+    } else {
+      console.log(`[PermissionGuard] Access granted to ${pageKey}`);
+      setHasAccess(true);
+    }
+  }, [user?.id, isEnterpriseAdmin, requirePermissions, pageKey, hasPageAccess, getBlockedReason, router, effectiveAccessLoading, authLoading]);
 
   // Show loading state while checking
-  if (isChecking) {
+  if (effectiveAccessLoading || authLoading) {
     return (
       <div className="flex items-center justify-center h-64 bg-gray-50 dark:bg-gray-900">
         <div className="text-center">

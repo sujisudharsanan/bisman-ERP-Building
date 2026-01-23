@@ -25,10 +25,27 @@ export default function ProtectedRoute({
 }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
-  const [isAuthorized, setIsAuthorized] = useState(false);
   const [hasTimedOut, setHasTimedOut] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const redirectAttempted = useRef(false);
+
+  // Compute authorization synchronously to avoid flash of loading state
+  const isAuthorized = (() => {
+    if (loading) return false;
+    if (!user) return false;
+    
+    // Role check
+    const userRole = user.role || user.roleName;
+    if (allowedRoles && allowedRoles.length > 0) {
+      const hasAccess = allowedRoles.some(role => 
+        userRole?.toLowerCase() === role.toLowerCase()
+      );
+      return hasAccess;
+    }
+    
+    // No specific roles required, user is logged in
+    return true;
+  })();
 
   // Loading timeout to prevent infinite loading state
   useEffect(() => {
@@ -41,38 +58,39 @@ export default function ProtectedRoute({
     }
   }, [loading, loadingTimeout]);
 
+  // Handle redirects when auth check is complete
   useEffect(() => {
     // Skip if already redirecting or redirect was attempted
-    if (isRedirecting || redirectAttempted.current) return;
+    if (isRedirecting || redirectAttempted.current || loading) return;
 
-    if (!loading) {
-      // Not logged in
-      if (!user) {
-        console.log('🚫 ProtectedRoute: No user, redirecting to login');
+    // Not logged in - redirect to login
+    if (!user) {
+      console.log('🚫 ProtectedRoute: No user, redirecting to login');
+      redirectAttempted.current = true;
+      setIsRedirecting(true);
+      router.push('/auth/login');
+      return;
+    }
+
+    // Check role access
+    const userRole = user.role || user.roleName;
+    if (allowedRoles && allowedRoles.length > 0) {
+      const hasAccess = allowedRoles.some(role => 
+        userRole?.toLowerCase() === role.toLowerCase()
+      );
+      
+      if (!hasAccess) {
+        console.log(`🚫 ProtectedRoute: User role "${userRole}" not in allowed roles [${allowedRoles.join(', ')}]`);
         redirectAttempted.current = true;
         setIsRedirecting(true);
-        router.push('/auth/login');
+        router.push('/access-denied');
         return;
       }
+    }
 
-      // Role check
-      const userRole = user.role || user.roleName;
-      if (allowedRoles && allowedRoles.length > 0) {
-        const hasAccess = allowedRoles.some(role => 
-          userRole?.toLowerCase() === role.toLowerCase()
-        );
-        
-        if (!hasAccess) {
-          console.log(`🚫 ProtectedRoute: User role "${userRole}" not in allowed roles [${allowedRoles.join(', ')}]`);
-          redirectAttempted.current = true;
-          setIsRedirecting(true);
-          router.push('/access-denied');
-          return;
-        }
-      }
-
+    // User is authorized - log it once
+    if (!redirectAttempted.current) {
       console.log(`✅ ProtectedRoute: User authorized with role "${userRole}"`);
-      setIsAuthorized(true);
     }
   }, [user, loading, allowedRoles, router, isRedirecting]);
 
@@ -86,16 +104,16 @@ export default function ProtectedRoute({
     }
   }, [hasTimedOut, isRedirecting, router]);
 
-  // Default loading fallback
+  // Default loading fallback - centered on screen
   const defaultFallback = (
-    <div className="flex items-center justify-center h-64 bg-gray-50 dark:bg-slate-900">
+    <div className="fixed inset-0 flex items-center justify-center bg-gray-50/80 dark:bg-slate-900/80 z-50">
       <div className="text-center">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
-        <p className="text-gray-600 dark:text-gray-400">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-600 mx-auto mb-3"></div>
+        <p className="text-gray-600 dark:text-gray-400 text-sm">
           {hasTimedOut ? 'Taking longer than expected...' : 'Loading...'}
         </p>
         {hasTimedOut && (
-          <p className="text-sm text-gray-500 dark:text-gray-500 mt-2">
+          <p className="text-xs text-gray-400 dark:text-gray-500 mt-2">
             Redirecting to login...
           </p>
         )}

@@ -3034,7 +3034,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     name: 'About Me',
     path: '/system/about-me',
     iconKey: "User",
-    module: 'common',
+    module: 'system',
     permissions: ['authenticated'],
     roles: ['ALL'],
     status: 'active',
@@ -3277,7 +3277,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   // Settings Security
   {
     id: 'settings-security',
-    name: 'Security Settings',
+    name: 'Privacy & Security',
     path: '/settings/security',
     iconKey: "Shield",
     module: 'common',

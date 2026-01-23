@@ -339,14 +339,46 @@ export default function ClientManagementPage() {
                       {item.client_type || item.client_code} {item.tax_id ? `• ${item.tax_id}` : ''} {item.sales_representative ? `• Sales: ${item.sales_representative}` : ''}
                     </div>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs px-2 py-1 rounded bg-gray-100 dark:bg-[#071018] text-gray-800 dark:text-gray-200">
+                  <div className="flex items-center gap-3">
+                    {/* Status Badge - Attractive pill with glow effect */}
+                    <span className={`inline-flex items-center gap-1.5 text-sm font-semibold px-3 py-1.5 rounded-full shadow-sm ${
+                      (item?.settings?.enterprise?.status || item.status || 'Active') === 'Active' 
+                        ? 'bg-gradient-to-r from-emerald-500 to-green-500 text-white shadow-emerald-200 dark:shadow-emerald-900/50'
+                        : (item?.settings?.enterprise?.status || item.status) === 'Inactive'
+                        ? 'bg-gradient-to-r from-gray-400 to-gray-500 text-white'
+                        : (item?.settings?.enterprise?.status || item.status) === 'Suspended'
+                        ? 'bg-gradient-to-r from-red-500 to-rose-500 text-white shadow-red-200 dark:shadow-red-900/50'
+                        : 'bg-gradient-to-r from-amber-400 to-yellow-500 text-white shadow-amber-200 dark:shadow-amber-900/50'
+                    }`}>
+                      {(item?.settings?.enterprise?.status || item.status || 'Active') === 'Active' && (
+                        <span className="relative flex h-2 w-2">
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                        </span>
+                      )}
                       {item?.settings?.enterprise?.status || item.status || 'Active'}
                     </span>
-                    <button onClick={() => openEdit(item)} className="inline-flex items-center px-2 py-1 border rounded-md text-xs dark:border-gray-600 dark:text-gray-200">
-                      <svg className="w-3 h-3 mr-1" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
-                        <path d="M11 4h-1a2 2 0 0 0-2 2v1" />
-                        <path d="M21 11l-8 8-4 1 1-4 8-8" />
+                    
+                    {/* View Button - Big and Blue */}
+                    <Link
+                      href={`/system/clients/${item.id}`}
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-blue-500 to-indigo-600 text-white shadow-md shadow-blue-200 dark:shadow-blue-900/50 hover:from-blue-600 hover:to-indigo-700 hover:shadow-lg hover:scale-105 transition-all duration-200"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                        <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z" />
+                        <circle cx="12" cy="12" r="3" />
+                      </svg>
+                      View
+                    </Link>
+                    
+                    {/* Edit Button - Big and Orange */}
+                    <button 
+                      onClick={() => openEdit(item)} 
+                      className="inline-flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-semibold bg-gradient-to-r from-amber-500 to-orange-500 text-white shadow-md shadow-amber-200 dark:shadow-amber-900/50 hover:from-amber-600 hover:to-orange-600 hover:shadow-lg hover:scale-105 transition-all duration-200"
+                    >
+                      <svg className="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2.5}>
+                        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+                        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
                       </svg>
                       Edit
                     </button>
