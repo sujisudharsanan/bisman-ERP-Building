@@ -11,7 +11,7 @@
 -- Run this AFTER backing up your database!
 -- ============================================================================
 
-BEGIN;
+-- Prisma handles transactions, removed BEGIN;
 
 -- ============================================================================
 -- 1. ADD NEW STATUS VALUES TO ENUM (if using enum type)
@@ -240,31 +240,51 @@ CHECK (
 -- (This is enforced in service layer, but adding soft check)
 
 -- ============================================================================
--- 7. ADD AUDIT COLUMNS TO APPROVALS TABLE
+-- 7. ADD AUDIT COLUMNS TO APPROVALS TABLE (SKIP IF TABLE DOESN'T EXIST)
 -- ============================================================================
 
-ALTER TABLE payment_request_approvals 
-ADD COLUMN IF NOT EXISTS action_at TIMESTAMP DEFAULT NOW();
-
-ALTER TABLE payment_request_approvals 
-ADD COLUMN IF NOT EXISTS ip_address INET;
-
-ALTER TABLE payment_request_approvals 
-ADD COLUMN IF NOT EXISTS user_agent TEXT;
-
-ALTER TABLE payment_request_approvals 
-ADD COLUMN IF NOT EXISTS session_id VARCHAR(255);
+-- Note: payment_request_approvals may not exist on all deployments, wrapping in DO block
+DO $$ 
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'payment_request_approvals') THEN
+    ALTER TABLE payment_request_approvals ADD COLUMN IF NOT EXISTS action_at TIMESTAMP DEFAULT NOW();
+    ALTER TABLE payment_request_approvals ADD COLUMN IF NOT EXISTS ip_address INET;
+    ALTER TABLE payment_request_approvals ADD COLUMN IF NOT EXISTS user_agent TEXT;
+    ALTER TABLE payment_request_approvals ADD COLUMN IF NOT EXISTS session_id VARCHAR(255);
+  END IF;
+END $$;
 
 -- ============================================================================
 -- 8. CREATE INDEXES FOR PERFORMANCE
 -- ============================================================================
 
-CREATE INDEX IF NOT EXISTS idx_pr_requested_by ON payment_requests(requested_by);
-CREATE INDEX IF NOT EXISTS idx_pr_approved_by ON payment_requests(approved_by);
-CREATE INDEX IF NOT EXISTS idx_pr_settlement_batch ON payment_requests(settlement_batch_id);
-CREATE INDEX IF NOT EXISTS idx_pr_clarification_deadline ON payment_requests(clarification_deadline) 
-  WHERE clarification_deadline IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_pr_status_tenant ON payment_requests(status, tenant_id);
+-- Wrap index creation in DO block to handle column differences
+DO $$
+BEGIN
+  -- Only create indexes if columns exist
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payment_requests' AND column_name = 'requested_by') THEN
+    CREATE INDEX IF NOT EXISTS idx_pr_requested_by ON payment_requests(requested_by);
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payment_requests' AND column_name = 'approved_by') THEN
+    CREATE INDEX IF NOT EXISTS idx_pr_approved_by ON payment_requests(approved_by);
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payment_requests' AND column_name = 'settlement_batch_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_pr_settlement_batch ON payment_requests(settlement_batch_id);
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payment_requests' AND column_name = 'clarification_deadline') THEN
+    CREATE INDEX IF NOT EXISTS idx_pr_clarification_deadline ON payment_requests(clarification_deadline) WHERE clarification_deadline IS NOT NULL;
+  END IF;
+  
+  -- Use clientId instead of tenant_id if that's the column name
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payment_requests' AND column_name = 'tenant_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_pr_status_tenant ON payment_requests(status, tenant_id);
+  ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payment_requests' AND column_name = 'clientId') THEN
+    CREATE INDEX IF NOT EXISTS idx_pr_status_client ON payment_requests(status, "clientId");
+  END IF;
+END $$;
 
 -- ============================================================================
 -- 9. MIGRATE EXISTING DATA
@@ -290,45 +310,13 @@ WHERE clarification_count IS NULL;
 -- 10. VIEWS FOR REPORTING
 -- ============================================================================
 
-CREATE OR REPLACE VIEW v_payment_requests_summary AS
-SELECT 
-  pr.id,
-  pr."requestId" AS request_number,
-  pr.status,
-  pr.workflow_status,
-  pr."totalAmount" AS total_amount,
-  pr.requested_amount,
-  pr.approved_amount,
-  pr.currency,
-  pr.clarification_count,
-  pr.settlement_batch_id,
-  pr.settlement_utr,
-  
-  -- Creator info
-  creator.full_name AS creator_name,
-  creator.email AS creator_email,
-  
-  -- Approver info
-  approver.full_name AS current_approver_name,
-  
-  -- Batch info
-  batch.batch_number AS settlement_batch_number,
-  batch.status AS batch_status,
-  
-  -- Dates
-  pr."createdAt" AS created_at,
-  pr.approved_at,
-  pr.accounted_at,
-  pr.settled_at,
-  
-  -- Computed flags
-  CASE WHEN pr.clarification_deadline < NOW() THEN true ELSE false END AS clarification_overdue,
-  CASE WHEN pr.status IN ('PAID', 'REJECTED', 'CANCELLED') THEN true ELSE false END AS is_terminal
-  
-FROM payment_requests pr
-LEFT JOIN users creator ON pr.requested_by = creator.id OR pr."createdById"::text = creator.id::text
-LEFT JOIN users approver ON pr.current_approver_id = approver.id
-LEFT JOIN payment_settlement_batches batch ON pr.settlement_batch_id = batch.id;
+-- Note: This view has compatibility issues with different schema versions
+-- Skipping view creation for production deployments with schema differences
+-- The view can be created manually after verifying column compatibility
+
+-- The view requires these columns in payment_requests:
+-- requested_by, current_approver_id, workflow_status, clarification_count, etc.
+-- These may not exist in all deployments
 
 -- ============================================================================
 -- 11. GRANT PERMISSIONS (adjust as needed)
@@ -339,13 +327,13 @@ LEFT JOIN payment_settlement_batches batch ON pr.settlement_batch_id = batch.id;
 -- GRANT ALL ON payment_settlement_batches TO app_user;
 -- GRANT USAGE ON ALL SEQUENCES IN SCHEMA public TO app_user;
 
-COMMIT;
+-- Prisma handles transactions, removed COMMIT;
 
 -- ============================================================================
 -- ROLLBACK SCRIPT (run if migration fails)
 -- ============================================================================
 /*
-BEGIN;
+-- Removed BEGIN; inside comment block
 
 -- Drop new constraints
 ALTER TABLE payment_requests DROP CONSTRAINT IF EXISTS check_approved_amount_required;
@@ -370,5 +358,5 @@ DROP FUNCTION IF EXISTS generate_payment_request_number;
 -- Drop view
 DROP VIEW IF EXISTS v_payment_requests_summary;
 
-COMMIT;
+-- Removed COMMIT for Prisma
 */

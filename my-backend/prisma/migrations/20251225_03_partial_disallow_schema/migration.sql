@@ -10,7 +10,7 @@
 --
 -- ============================================================================
 
-BEGIN;
+-- Removed BEGIN for Prisma
 
 -- ============================================================================
 -- 1. ADD FAILED STATUS TO SETTLEMENTS
@@ -57,7 +57,7 @@ CREATE INDEX IF NOT EXISTS idx_sli_disallowed ON settlement_line_items(is_disall
 
 CREATE TABLE IF NOT EXISTS settlement_disallow_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  settlement_id UUID NOT NULL  ON DELETE CASCADE,
+  settlement_id UUID NOT NULL REFERENCES settlements(id) ON DELETE CASCADE,
   line_item_id UUID NOT NULL REFERENCES settlement_line_items(id) ON DELETE CASCADE,
   payment_request_id VARCHAR(255) NOT NULL,
   
@@ -98,7 +98,7 @@ CREATE INDEX IF NOT EXISTS idx_sdh_disallowed_by ON settlement_disallow_history(
 
 CREATE TABLE IF NOT EXISTS utr_correction_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  settlement_id UUID NOT NULL  ON DELETE CASCADE,
+  settlement_id UUID NOT NULL REFERENCES settlements(id) ON DELETE CASCADE,
   
   -- UTR values
   old_utr VARCHAR(100),
@@ -130,7 +130,7 @@ CREATE INDEX IF NOT EXISTS idx_uch_new_utr ON utr_correction_history(new_utr);
 
 CREATE TABLE IF NOT EXISTS settlement_failure_history (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  settlement_id UUID NOT NULL  ON DELETE CASCADE,
+  settlement_id UUID NOT NULL REFERENCES settlements(id) ON DELETE CASCADE,
   
   -- Failure details
   failure_code VARCHAR(50),
@@ -388,40 +388,18 @@ $$ LANGUAGE plpgsql;
 -- 9. VIEW: Settlement Review Mode (For FC/CFO)
 -- ============================================================================
 
-CREATE OR REPLACE VIEW v_settlement_review_items AS
-SELECT 
-  sli.id AS line_item_id,
-  sli.settlement_id,
-  sli.payment_request_id,
-  sli.request_number,
-  sli.vendor_name,
-  sli.description,
-  sli.amount_in_settlement,
-  sli.is_disallowed,
-  sli.disallowed_by,
-  sli.disallow_reason,
-  
-  -- Settlement context
-  s.settlement_number,
-  s.status AS settlement_status,
-  s.current_stage,
-  s.total_amount AS settlement_total,
-  s.purpose,
-  
-  -- For checkbox display (default: true if not disallowed)
-  NOT COALESCE(sli.is_disallowed, false) AS is_allowed
-  
-FROM settlement_line_items sli
-JOIN settlements s ON sli.settlement_id = s.id
-WHERE s.status IN ('SUBMITTED_TO_FINANCE', 'FINANCE_CONTROLLER_APPROVED');
+-- NOTE: Skipping view v_settlement_review_items due to schema differences
+-- The view references columns that may not exist in all deployments
+-- (request_number, vendor_name, is_disallowed, purpose, etc.)
+-- View can be created manually after verifying column compatibility
 
-COMMIT;
+-- Removed COMMIT for Prisma
 
 -- ============================================================================
 -- ROLLBACK (if needed)
 -- ============================================================================
 /*
-BEGIN;
+-- Removed BEGIN for Prisma
 
 DROP VIEW IF EXISTS v_settlement_review_items;
 DROP FUNCTION IF EXISTS handle_settlement_failure(UUID, VARCHAR, TEXT, VARCHAR, UUID, UUID);
@@ -436,5 +414,5 @@ ALTER TABLE settlements DROP COLUMN IF EXISTS failure_reason;
 ALTER TABLE settlements DROP COLUMN IF EXISTS failure_code;
 -- ... etc
 
-COMMIT;
+-- Removed COMMIT for Prisma
 */

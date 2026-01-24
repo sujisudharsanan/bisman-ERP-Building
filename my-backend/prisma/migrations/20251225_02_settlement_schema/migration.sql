@@ -11,7 +11,7 @@
 -- Run this AFTER the V2 migration!
 -- ============================================================================
 
-BEGIN;
+-- Prisma handles transactions, removed BEGIN;
 
 -- ============================================================================
 -- 1. SETTLEMENT STATUS ENUM
@@ -128,7 +128,7 @@ CREATE INDEX IF NOT EXISTS idx_settlements_utr ON settlements(utr_number);
 
 CREATE TABLE IF NOT EXISTS settlement_line_items (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  settlement_id UUID NOT NULL  ON DELETE CASCADE,
+  settlement_id UUID NOT NULL REFERENCES settlements(id) ON DELETE CASCADE,
   payment_request_id VARCHAR(255) NOT NULL,   -- References payment_requests.id
   
   -- Amounts for THIS settlement (supports partial payments)
@@ -160,10 +160,17 @@ CREATE TABLE IF NOT EXISTS settlement_line_items (
   )
 );
 
--- Indexes
+-- Indexes (wrap in conditional to handle existing tables with different schema)
 CREATE INDEX IF NOT EXISTS idx_sli_settlement ON settlement_line_items(settlement_id);
 CREATE INDEX IF NOT EXISTS idx_sli_payment_request ON settlement_line_items(payment_request_id);
-CREATE INDEX IF NOT EXISTS idx_sli_vendor ON settlement_line_items(vendor_id);
+
+-- Only create vendor_id index if column exists
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'settlement_line_items' AND column_name = 'vendor_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_sli_vendor ON settlement_line_items(vendor_id);
+  END IF;
+END $$;
 
 -- ============================================================================
 -- 4. UPDATE PAYMENT_REQUESTS FOR PARTIAL PAYMENTS
@@ -239,7 +246,7 @@ CREATE INDEX IF NOT EXISTS idx_prpp_utr ON payment_request_partial_payments(utr_
 
 CREATE TABLE IF NOT EXISTS settlement_approvals (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  settlement_id UUID NOT NULL  ON DELETE CASCADE,
+  settlement_id UUID NOT NULL REFERENCES settlements(id) ON DELETE CASCADE,
   
   -- Action
   action VARCHAR(50) NOT NULL,                -- SUBMIT, APPROVE, REJECT, SEND_TO_BANK, EXECUTE
@@ -398,86 +405,39 @@ CREATE TRIGGER trg_settlement_paid
 -- 10. VIEWS FOR ROLE-BASED ACCESS
 -- ============================================================================
 
--- View for Accountant (FULL details)
-CREATE OR REPLACE VIEW v_accountant_pending_requests AS
-SELECT 
-  pr.id,
-  pr."requestId" AS request_number,
-  pr.status,
-  pr."totalAmount" AS total_amount,
-  COALESCE(pr.approved_amount, pr."totalAmount") AS approved_amount,
-  COALESCE(pr.paid_amount_total, 0) AS paid_till_date,
-  COALESCE(pr.remaining_amount, COALESCE(pr.approved_amount, pr."totalAmount") - COALESCE(pr.paid_amount_total, 0)) AS remaining_amount,
-  pr.settlement_count,
-  pr.currency,
-  pr."clientName" AS vendor_name,
-  pr."clientId" AS vendor_id,
-  pr.description,
-  pr.purpose,
-  pr."createdAt" AS created_at,
-  pr.approved_at,
-  pr.tenant_id,
-  
-  -- Partial payment history count
-  (SELECT COUNT(*) FROM payment_request_partial_payments WHERE payment_request_id = pr.id) AS partial_payment_count
-  
-FROM payment_requests pr
-WHERE 
-  pr.status IN ('APPROVED', 'PARTIALLY_APPROVED', 'PARTIALLY_SETTLED')
-  AND COALESCE(pr.remaining_amount, COALESCE(pr.approved_amount, pr."totalAmount") - COALESCE(pr.paid_amount_total, 0)) > 0;
+-- NOTE: Skipping view creation due to schema differences across deployments
+-- These views reference columns that may not exist (purpose, tenant_id, etc.)
+-- Views can be created manually after verifying column compatibility
 
--- View for Non-Accountants (Simplified Settlement Tasks)
-CREATE OR REPLACE VIEW v_settlement_tasks_simplified AS
-SELECT 
-  s.id,
-  s.settlement_number,
-  s.purpose,
-  s.beneficiary_name,
-  s.beneficiary_bank,
-  s.beneficiary_account_masked,
-  s.total_amount,
-  s.currency,
-  s.status,
-  s.current_stage,
-  s.current_approver_id,
-  s.accountant_remarks,
-  s.settlement_date,
-  s.due_date,
-  s.attachments,
-  s.created_at,
-  s.tenant_id,
-  
-  -- DO NOT expose:
-  -- request_count, vendor_count, individual line items, partial breakdowns
-  
-  creator.full_name AS created_by_name,
-  approver.full_name AS current_approver_name
-  
-FROM settlements s
-LEFT JOIN users creator ON s.created_by = creator.id
-LEFT JOIN users approver ON s.current_approver_id = approver.id
-WHERE s.status NOT IN ('DRAFT', 'CANCELLED');
+-- View for Accountant - SKIPPED due to column compatibility issues
+-- View for Non-Accountants - SKIPPED due to column compatibility issues
 
 -- ============================================================================
--- 11. INDEXES FOR PERFORMANCE
+-- 11. INDEXES FOR PERFORMANCE (conditional on column existence)
 -- ============================================================================
 
-CREATE INDEX IF NOT EXISTS idx_pr_remaining_amount ON payment_requests(remaining_amount) 
-  WHERE remaining_amount > 0;
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payment_requests' AND column_name = 'remaining_amount') THEN
+    CREATE INDEX IF NOT EXISTS idx_pr_remaining_amount ON payment_requests(remaining_amount) WHERE remaining_amount > 0;
+  END IF;
   
-CREATE INDEX IF NOT EXISTS idx_pr_owned_by_accounts ON payment_requests(owned_by_accounts) 
-  WHERE owned_by_accounts = true;
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payment_requests' AND column_name = 'owned_by_accounts') THEN
+    CREATE INDEX IF NOT EXISTS idx_pr_owned_by_accounts ON payment_requests(owned_by_accounts) WHERE owned_by_accounts = true;
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payment_requests' AND column_name = 'remaining_amount') THEN
+    CREATE INDEX IF NOT EXISTS idx_pr_status_remaining ON payment_requests(status, remaining_amount) WHERE status IN ('APPROVED', 'PARTIALLY_APPROVED', 'PARTIALLY_SETTLED');
+  END IF;
+END $$;
 
-CREATE INDEX IF NOT EXISTS idx_pr_status_remaining ON payment_requests(status, remaining_amount)
-  WHERE status IN ('APPROVED', 'PARTIALLY_APPROVED', 'PARTIALLY_SETTLED');
-
-COMMIT;
+-- Prisma handles transactions, removed COMMIT;
 
 -- ============================================================================
 -- ROLLBACK (if needed)
 -- ============================================================================
 /*
-BEGIN;
+-- Removed BEGIN; from rollback section
 
 DROP TRIGGER IF EXISTS trg_settlement_paid ON settlements;
 DROP TRIGGER IF EXISTS trg_calc_remaining ON payment_requests;
@@ -506,5 +466,5 @@ ALTER TABLE payment_requests DROP COLUMN IF EXISTS owned_by_accounts;
 ALTER TABLE payment_requests DROP COLUMN IF EXISTS accounts_owner_id;
 ALTER TABLE payment_requests DROP COLUMN IF EXISTS accounts_takeover_at;
 
-COMMIT;
+-- Removed COMMIT for Prisma
 */

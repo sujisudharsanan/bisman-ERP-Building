@@ -14,7 +14,7 @@
 -- 4.3 Background Job Queue
 -- ============================================================================
 
-BEGIN;
+-- Removed BEGIN for Prisma
 
 -- ============================================================================
 -- 1.2 CONCURRENCY & LOCKING
@@ -746,34 +746,67 @@ $$ LANGUAGE plpgsql;
 -- 4.2 DB INDEX STRATEGY
 -- ============================================================================
 
--- Settlement indexes
-CREATE INDEX IF NOT EXISTS idx_settlements_status ON settlements(status);
-CREATE INDEX IF NOT EXISTS idx_settlements_tenant_status ON settlements(tenant_id, status);
-CREATE INDEX IF NOT EXISTS idx_settlements_utr ON settlements(utr_number) WHERE utr_number IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_settlements_created_by ON settlements(created_by);
-CREATE INDEX IF NOT EXISTS idx_settlements_current_approver ON settlements(current_approver_id) 
-  WHERE current_approver_id IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_settlements_date_range ON settlements(created_at, status);
+-- Settlement indexes (wrapped in conditional blocks for schema compatibility)
+DO $$
+BEGIN
+  -- Basic settlement indexes
+  CREATE INDEX IF NOT EXISTS idx_settlements_status ON settlements(status);
+  CREATE INDEX IF NOT EXISTS idx_settlements_utr ON settlements(utr_number) WHERE utr_number IS NOT NULL;
+  CREATE INDEX IF NOT EXISTS idx_settlements_date_range ON settlements(created_at, status);
+  
+  -- Only create tenant_id indexes if column exists
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'settlements' AND column_name = 'tenant_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_settlements_tenant_status ON settlements(tenant_id, status);
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'settlements' AND column_name = 'created_by') THEN
+    CREATE INDEX IF NOT EXISTS idx_settlements_created_by ON settlements(created_by);
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'settlements' AND column_name = 'current_approver_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_settlements_current_approver ON settlements(current_approver_id) WHERE current_approver_id IS NOT NULL;
+  END IF;
+END $$;
 
 -- Settlement line items indexes
 CREATE INDEX IF NOT EXISTS idx_sli_settlement ON settlement_line_items(settlement_id);
 CREATE INDEX IF NOT EXISTS idx_sli_payment_request ON settlement_line_items(payment_request_id);
 CREATE INDEX IF NOT EXISTS idx_sli_composite ON settlement_line_items(settlement_id, payment_request_id);
-CREATE INDEX IF NOT EXISTS idx_sli_disallowed ON settlement_line_items(is_disallowed) 
-  WHERE is_disallowed = true;
 
--- Payment request indexes for settlement queries
-CREATE INDEX IF NOT EXISTS idx_pr_settlement_ready ON payment_requests(status, tenant_id) 
-  WHERE status IN ('APPROVED', 'PARTIALLY_APPROVED', 'PARTIALLY_SETTLED');
-CREATE INDEX IF NOT EXISTS idx_pr_locked ON payment_requests(locked_by) 
-  WHERE locked_by IS NOT NULL;
-CREATE INDEX IF NOT EXISTS idx_pr_tenant_status_date ON payment_requests(tenant_id, status, "createdAt");
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'settlement_line_items' AND column_name = 'is_disallowed') THEN
+    CREATE INDEX IF NOT EXISTS idx_sli_disallowed ON settlement_line_items(is_disallowed) WHERE is_disallowed = true;
+  END IF;
+END $$;
 
--- Partial payments indexes
-CREATE INDEX IF NOT EXISTS idx_partial_payments_request ON payment_request_partial_payments(payment_request_id);
-CREATE INDEX IF NOT EXISTS idx_partial_payments_settlement ON payment_request_partial_payments(settlement_id);
-CREATE INDEX IF NOT EXISTS idx_partial_payments_utr ON payment_request_partial_payments(utr_number) 
-  WHERE utr_number IS NOT NULL;
+-- Payment request indexes for settlement queries (conditional)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payment_requests' AND column_name = 'tenant_id') THEN
+    CREATE INDEX IF NOT EXISTS idx_pr_settlement_ready ON payment_requests(status, tenant_id) WHERE status IN ('APPROVED', 'PARTIALLY_APPROVED', 'PARTIALLY_SETTLED');
+    CREATE INDEX IF NOT EXISTS idx_pr_tenant_status_date ON payment_requests(tenant_id, status, "createdAt");
+  ELSIF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payment_requests' AND column_name = 'clientId') THEN
+    CREATE INDEX IF NOT EXISTS idx_pr_settlement_ready ON payment_requests(status, "clientId") WHERE status IN ('APPROVED', 'PARTIALLY_APPROVED', 'PARTIALLY_SETTLED');
+    CREATE INDEX IF NOT EXISTS idx_pr_client_status_date ON payment_requests("clientId", status, "createdAt");
+  END IF;
+  
+  IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payment_requests' AND column_name = 'locked_by') THEN
+    CREATE INDEX IF NOT EXISTS idx_pr_locked ON payment_requests(locked_by) WHERE locked_by IS NOT NULL;
+  END IF;
+END $$;
+
+-- Partial payments indexes (conditional)
+DO $$
+BEGIN
+  IF EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = 'payment_request_partial_payments') THEN
+    CREATE INDEX IF NOT EXISTS idx_partial_payments_request ON payment_request_partial_payments(payment_request_id);
+    CREATE INDEX IF NOT EXISTS idx_partial_payments_settlement ON payment_request_partial_payments(settlement_id);
+    IF EXISTS (SELECT 1 FROM information_schema.columns WHERE table_name = 'payment_request_partial_payments' AND column_name = 'utr_number') THEN
+      CREATE INDEX IF NOT EXISTS idx_partial_payments_utr ON payment_request_partial_payments(utr_number) WHERE utr_number IS NOT NULL;
+    END IF;
+  END IF;
+END $$;
 
 -- Idempotency key cleanup index
 CREATE INDEX IF NOT EXISTS idx_idempotency_cleanup ON idempotency_keys(expires_at, status);
@@ -986,13 +1019,13 @@ COMMENT ON FUNCTION check_maker_checker IS 'Validates maker-checker rules: creat
 COMMENT ON FUNCTION validate_approval_token IS 'Validates and consumes one-time approval token';
 COMMENT ON FUNCTION log_fraud_signal IS 'Records detected fraud/anomaly signal';
 
-COMMIT;
+-- Removed COMMIT for Prisma
 
 -- ============================================================================
 -- ROLLBACK (if needed)
 -- ============================================================================
 /*
-BEGIN;
+-- Removed BEGIN for Prisma
 
 -- Drop triggers
 DROP TRIGGER IF EXISTS trg_settlement_audit_job ON settlements;
@@ -1048,5 +1081,5 @@ ALTER TABLE payment_requests DROP COLUMN IF EXISTS locked_at;
 ALTER TABLE payment_requests DROP COLUMN IF EXISTS locked_by;
 ALTER TABLE payment_requests DROP COLUMN IF EXISTS version;
 
-COMMIT;
+-- Removed COMMIT for Prisma
 */

@@ -6,7 +6,7 @@
 
 -- 1. Create access_level enum type
 DO $$ BEGIN
-    CREATE TYPE module_access_level AS ENUM ('full', 'read_only', 'none');
+    CREATE TYPE module_access_level AS ENUM ('full', 'read', 'none');
 EXCEPTION
     WHEN duplicate_object THEN NULL;
 END $$;
@@ -112,8 +112,8 @@ BEGIN
 
         -- Limited access modules
         INSERT INTO plan_module_access (plan_id, module_id, access_level) VALUES
-            (v_free_plan_id, 'finance', 'read_only'),
-            (v_free_plan_id, 'admin', 'read_only')
+            (v_free_plan_id, 'finance', 'read'),
+            (v_free_plan_id, 'admin', 'read')
         ON CONFLICT (plan_id, module_id) DO UPDATE SET access_level = EXCLUDED.access_level, updated_at = NOW();
 
         -- Blocked modules
@@ -161,9 +161,9 @@ BEGIN
 
         -- Read-only access modules
         INSERT INTO plan_module_access (plan_id, module_id, access_level) VALUES
-            (v_basic_plan_id, 'operations', 'read_only'),
-            (v_basic_plan_id, 'inventory', 'read_only'),
-            (v_basic_plan_id, 'analytics', 'read_only')
+            (v_basic_plan_id, 'operations', 'read'),
+            (v_basic_plan_id, 'inventory', 'read'),
+            (v_basic_plan_id, 'analytics', 'read')
         ON CONFLICT (plan_id, module_id) DO UPDATE SET access_level = EXCLUDED.access_level, updated_at = NOW();
 
         -- Blocked modules
@@ -213,9 +213,9 @@ BEGIN
 
         -- Read-only access modules
         INSERT INTO plan_module_access (plan_id, module_id, access_level) VALUES
-            (v_standard_plan_id, 'compliance', 'read_only'),
-            (v_standard_plan_id, 'production', 'read_only'),
-            (v_standard_plan_id, 'governance', 'read_only')
+            (v_standard_plan_id, 'compliance', 'read'),
+            (v_standard_plan_id, 'production', 'read'),
+            (v_standard_plan_id, 'governance', 'read')
         ON CONFLICT (plan_id, module_id) DO UPDATE SET access_level = EXCLUDED.access_level, updated_at = NOW();
 
         -- Blocked modules
@@ -268,7 +268,7 @@ BEGIN
 
         -- Read-only access modules
         INSERT INTO plan_module_access (plan_id, module_id, access_level) VALUES
-            (v_premium_plan_id, 'security-management', 'read_only')
+            (v_premium_plan_id, 'security-management', 'read')
         ON CONFLICT (plan_id, module_id) DO UPDATE SET access_level = EXCLUDED.access_level, updated_at = NOW();
 
         -- Blocked modules (internal/enterprise only)
@@ -355,7 +355,7 @@ COMMENT ON FUNCTION check_module_access IS 'Returns the access level (full/read_
 CREATE OR REPLACE VIEW v_tenant_module_access AS
 SELECT 
     cs.client_id AS tenant_id,
-    c.companyName AS tenant_name,
+    c.name AS tenant_name,
     sp.plan_code,
     sp.name AS plan_name,
     pma.module_id,
