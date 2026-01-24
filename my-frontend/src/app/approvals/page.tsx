@@ -28,7 +28,6 @@ import {
   ChevronRight, Play, AlertCircle, Zap, 
   UserCheck, ArrowRight, MessageSquare, Stamp
 } from 'lucide-react';
-import DashboardLayout from '@/components/layout/DashboardLayout';
 import { useToast } from '@/components/ui/toast';
 
 // ============================================================================
@@ -484,16 +483,15 @@ export default function AdminApprovalsPage() {
   }
   
   return (
-    <DashboardLayout role={user?.roleName || user?.role || 'ADMIN'}>
-      <div className="h-full flex flex-col bg-white dark:bg-slate-800">
-        {/* Header */}
-        <div className="flex-shrink-0 px-4 py-4 border-b border-gray-200 dark:border-slate-700">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            {/* Title & Description */}
-            <div>
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
-                  <Shield className="w-5 h-5 text-white" />
+    <div className="h-full flex flex-col bg-white dark:bg-slate-800">
+      {/* Header */}
+      <div className="flex-shrink-0 px-4 py-4 border-b border-gray-200 dark:border-slate-700">
+        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+          {/* Title & Description */}
+          <div>
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
+                <Shield className="w-5 h-5 text-white" />
                 </div>
                 <div>
                   <h1 className="text-2xl font-bold text-gray-900 dark:text-white">
@@ -712,6 +710,5 @@ export default function AdminApprovalsPage() {
           </div>
         )}
       </div>
-    </DashboardLayout>
   );
 }
