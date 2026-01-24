@@ -1245,14 +1245,24 @@ export default function RolesUsersReportPage() {
             {/* Add/Remove button for roles */}
             {bottomSectionContext === 'roles' && selectedClientId && (
               <button
-                onClick={(e) => { e.stopPropagation(); setIsRoleAssignMode(!isRoleAssignMode); }}
+                onClick={async (e) => { 
+                  e.stopPropagation(); 
+                  if (isRoleAssignMode) {
+                    // Save when clicking Done
+                    await handleSaveClientRoles();
+                  }
+                  setIsRoleAssignMode(!isRoleAssignMode); 
+                }}
+                disabled={isRoleAssignMode && rolesSaving}
                 className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm ${
                   isRoleAssignMode
-                    ? "bg-green-600 text-white hover:bg-green-700"
+                    ? rolesSaving 
+                      ? "bg-gray-400 text-white cursor-wait"
+                      : "bg-green-600 text-white hover:bg-green-700"
                     : "bg-purple-600 text-white hover:bg-purple-700"
                 }`}
               >
-                {isRoleAssignMode ? "✓ Done" : "Add/Remove"}
+                {isRoleAssignMode ? (rolesSaving ? "Saving..." : "✓ Save") : "Add/Remove"}
               </button>
             )}
             

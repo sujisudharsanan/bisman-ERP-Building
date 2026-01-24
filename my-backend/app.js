@@ -3290,7 +3290,10 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
     });
     
     // Find route IDs from pageIds (can be paths or numeric IDs)
+    // Auto-create routes for paths that don't exist in the database
     const grantedRouteIds = new Set();
+    const pathsToCreate = [];
+    
     (pageIds || []).forEach(pageId => {
       // Try as path first
       const routeByPathMatch = routeByPath.get(pageId);
@@ -3302,8 +3305,43 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
       const numId = parseInt(pageId);
       if (!isNaN(numId) && routeById.has(numId)) {
         grantedRouteIds.add(numId);
+        return;
+      }
+      // Path doesn't exist - queue for creation
+      if (typeof pageId === 'string' && pageId.startsWith('/')) {
+        pathsToCreate.push(pageId);
       }
     });
+    
+    // Auto-create missing routes
+    if (pathsToCreate.length > 0) {
+      console.log('[RBAC] Auto-creating', pathsToCreate.length, 'missing routes:', pathsToCreate.slice(0, 5));
+      for (const path of pathsToCreate) {
+        try {
+          // Generate a name from the path
+          const pathParts = path.split('/').filter(Boolean);
+          const name = pathParts.map(p => p.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())).join(' - ') || path;
+          
+          const newRoute = await prisma.rbac_routes.create({
+            data: {
+              path: path,
+              name: name,
+              method: 'GET',
+              is_active: true,
+              is_public: false,
+              created_at: new Date(),
+              updated_at: new Date()
+            }
+          });
+          grantedRouteIds.add(newRoute.id);
+          routeByPath.set(path, newRoute);
+          routeById.set(newRoute.id, newRoute);
+          allRoutes.push(newRoute);
+        } catch (createError) {
+          console.warn('[RBAC] Failed to create route for path:', path, createError.message);
+        }
+      }
+    }
     
     console.log('[RBAC] Resolved', grantedRouteIds.size, 'route IDs to grant');
     
