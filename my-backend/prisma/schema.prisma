@@ -3536,9 +3536,9 @@ model subscription_audit_log {
   actor_email     String?  @db.VarChar(255)
   created_at      DateTime @default(now()) @db.Timestamptz(6)
 
-  @@index([action], map: "idx_subscription_audit_action")
-  @@index([client_id], map: "idx_subscription_audit_client")
-  @@index([created_at(sort: Desc)], map: "idx_subscription_audit_created")
+  @@index([action], map: "idx_sub_audit_log_action")
+  @@index([client_id], map: "idx_sub_audit_log_client")
+  @@index([created_at(sort: Desc)], map: "idx_sub_audit_log_created")
   @@index([action])
   @@index([client_id])
   @@index([created_at(sort: Desc)])
