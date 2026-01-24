@@ -35,3 +35,14 @@ deployment-secrets.txt
 .env*
 !.env.example
 SECRETS_GENERATED.md
+
+# Temporary diagnostic scripts
+check-*.js
+fix-*.js
+!scripts/check-*.js
+!scripts/fix-*.js
+!my-backend/scripts/check-*.js
+!my-backend/check-db-status.js
+!my-frontend/scripts/check-*.js
+role-page-report.js
+get-schema.js
