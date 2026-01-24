@@ -2442,7 +2442,11 @@ export default function Page() {
               </div>
             ) : (
               <>
-                {/* Section A: Common Pages (Always Visible) */}
+                {/* Section A: Common Pages (Only show assigned) */}
+                {(() => {
+                  const assignedCommonPages = COMMON_PAGES.filter(p => rolePagesSelectedIds.has(p.path));
+                  if (assignedCommonPages.length === 0) return null;
+                  return (
                 <div className="border border-gray-200 dark:border-gray-700 rounded-lg overflow-hidden">
                   <div className="flex items-center justify-between px-3 py-2 bg-gray-100 dark:bg-gray-800">
                     <div className="flex items-center gap-2">
@@ -2452,14 +2456,14 @@ export default function Page() {
                         Shared
                       </span>
                     </div>
-                    <span className="text-[10px] text-gray-500">{COMMON_PAGES.length}</span>
+                    <span className="text-[10px] text-gray-500">{assignedCommonPages.length}</span>
                   </div>
                   <div className="p-2 space-y-1 bg-gray-50/50 dark:bg-gray-900/30">
                     <div className="text-[9px] text-gray-500 dark:text-gray-400 px-2 py-1 italic flex items-center gap-1">
                       <FiInfo className="w-3 h-3" />
                       These pages apply across all modules.
                     </div>
-                    {COMMON_PAGES.map((page) => {
+                    {assignedCommonPages.map((page) => {
                       const isSelected = rolePagesSelectedIds.has(page.path);
                       return (
                         <div
@@ -2494,9 +2498,14 @@ export default function Page() {
                     })}
                   </div>
                 </div>
+                  );
+                })()}
 
-                {/* Section B: Category Pages (Changes with Category) */}
-                {category !== 'common' && (
+                {/* Section B: Category Pages (Only show assigned) */}
+                {category !== 'common' && (() => {
+                  const assignedCategoryPages = filteredRolePages.filter(p => rolePagesSelectedIds.has(p.path));
+                  if (assignedCategoryPages.length === 0) return null;
+                  return (
                   <div className={`border rounded-lg overflow-hidden ${
                     category === 'pump' ? 'border-orange-200 dark:border-orange-800' : 'border-blue-200 dark:border-blue-800'
                   }`}>
@@ -2511,23 +2520,13 @@ export default function Page() {
                           {category === 'pump' ? 'Pump Management Pages' : 'Business ERP Pages'}
                         </span>
                       </div>
-                      <span className="text-[10px] text-gray-500">{filteredRolePages.length}</span>
+                      <span className="text-[10px] text-gray-500">{assignedCategoryPages.length}</span>
                     </div>
                     
                     <div className={`p-2 space-y-1 ${
                       category === 'pump' ? 'bg-orange-50/30 dark:bg-orange-900/10' : 'bg-blue-50/30 dark:bg-blue-900/10'
                     }`}>
-                      {rolePagesLoading ? (
-                        <div className="text-xs text-blue-700 dark:text-blue-300 bg-blue-50 dark:bg-blue-900/20 p-2 rounded border border-blue-300 dark:border-blue-700 flex items-center gap-2">
-                          <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
-                          Loading pages...
-                        </div>
-                      ) : filteredRolePages.length === 0 ? (
-                        <div className="text-xs text-gray-500 p-2 text-center">
-                          No pages for this category.
-                        </div>
-                      ) : (
-                        filteredRolePages.map((page, pageIndex) => {
+                      {assignedCategoryPages.map((page, pageIndex) => {
                           const isSelected = rolePagesSelectedIds.has(page.path);
                           const uniqueKey = `${page.routeId || pageIndex}-${page.id || page.path}`;
                           const scopeBadge = category === 'pump' ? 'PUMP' : 'ERP';
@@ -2572,9 +2571,17 @@ export default function Page() {
                               </span>
                             </div>
                           );
-                        })
-                      )}
+                        })}
                     </div>
+                  </div>
+                  );
+                })()}
+
+                {/* Show message if no assigned pages */}
+                {rolePagesSelectedIds.size === 0 && (
+                  <div className="text-xs text-gray-500 dark:text-gray-400 p-4 text-center bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+                    <FiInfo className="w-5 h-5 mx-auto mb-2 text-gray-400" />
+                    No pages assigned to this role yet.
                   </div>
                 )}
               </>
