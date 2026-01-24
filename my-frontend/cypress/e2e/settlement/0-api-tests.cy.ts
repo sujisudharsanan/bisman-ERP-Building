@@ -166,12 +166,6 @@ describe('Settlement API Tests', () => {
       cy.url().should('include', '/finance/payment-approval-queue');
       cy.get('body').should('exist');
     });
-
-    it('should load /admin/audit', () => {
-      cy.visit('/admin/audit');
-      cy.url().should('include', '/admin/audit');
-      cy.get('body').should('exist');
-    });
   });
 
   describe('Error Handling', () => {

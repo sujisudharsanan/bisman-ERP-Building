@@ -373,14 +373,5 @@ describe('Bank Reconciliation - RBAC', () => {
         });
       });
     });
-
-    it('should hide template management for non-admins', () => {
-      login('accountant').then(() => {
-        cy.visit('/admin/bank-templates', { failOnStatusCode: false });
-        
-        // Should redirect or show access denied
-        cy.url().should('not.include', '/admin/bank-templates');
-      });
-    });
   });
 });

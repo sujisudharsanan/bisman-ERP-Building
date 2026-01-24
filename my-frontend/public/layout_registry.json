@@ -1785,21 +1785,6 @@
       ]
     },
     {
-      "id": "common-payment-request",
-      "name": "Payment Request",
-      "path": "/common/payment-request",
-      "module": "common",
-      "status": "active",
-      "description": "Submit and track payment requests",
-      "order": 5,
-      "permissions": [
-        "authenticated"
-      ],
-      "roles": [
-        "ALL"
-      ]
-    },
-    {
       "id": "task-clarifications",
       "name": "Task Clarifications",
       "path": "/tasks/clarifications",
@@ -1939,22 +1924,6 @@
       ]
     },
     {
-      "id": "admin-audit-dashboard",
-      "name": "Audit Dashboard",
-      "path": "/admin/audit",
-      "module": "admin",
-      "status": "active",
-      "description": "Comprehensive audit logging and compliance tracking",
-      "order": 12,
-      "permissions": [
-        "admin-audit"
-      ],
-      "roles": [
-        "SUPER_ADMIN",
-        "ENTERPRISE_ADMIN"
-      ]
-    },
-    {
       "id": "admin-system-flow",
       "name": "User Flow & Management",
       "path": "/admin/system-flow",
@@ -2061,40 +2030,6 @@
       ]
     },
     {
-      "id": "admin-contracts-create",
-      "name": "Create Contract",
-      "path": "/admin/contracts/create",
-      "module": "admin",
-      "status": "active",
-      "description": "Create a new contract or agreement",
-      "order": 16,
-      "permissions": [
-        "admin-dashboard"
-      ],
-      "roles": [
-        "SUPER_ADMIN",
-        "ENTERPRISE_ADMIN",
-        "ADMIN"
-      ]
-    },
-    {
-      "id": "admin-users-create",
-      "name": "Create User",
-      "path": "/admin/users/create",
-      "module": "admin",
-      "status": "active",
-      "description": "Create a new user account",
-      "order": 17,
-      "permissions": [
-        "admin-dashboard"
-      ],
-      "roles": [
-        "SUPER_ADMIN",
-        "ENTERPRISE_ADMIN",
-        "ADMIN"
-      ]
-    },
-    {
       "id": "admin-branches-create",
       "name": "Create Branch",
       "path": "/admin/branches/create",
@@ -2108,22 +2043,6 @@
       "roles": [
         "SUPER_ADMIN",
         "ENTERPRISE_ADMIN",
-        "ADMIN"
-      ]
-    },
-    {
-      "id": "admin-bank-templates",
-      "name": "Bank Templates",
-      "path": "/admin/bank-templates",
-      "module": "admin",
-      "status": "active",
-      "description": "Manage bank statement import templates",
-      "order": 19,
-      "permissions": [
-        "admin-dashboard"
-      ],
-      "roles": [
-        "SUPER_ADMIN",
         "ADMIN"
       ]
     },

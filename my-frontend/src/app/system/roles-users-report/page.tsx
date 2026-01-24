@@ -190,7 +190,9 @@ export default function RolesUsersReportPage() {
       const moduleId = page.module;
       
       // For SUPER_ADMIN: Hide enterprise-admin and super-admin modules
-      if (isSuperAdmin && HIDDEN_MODULES.includes(moduleId)) continue;
+      if (isSuperAdmin && HIDDEN_MODULES.includes(moduleId)) {
+        continue;
+      }
       
       // For SUPER_ADMIN with client selected: Only show pages from client's enabled modules
       if (isSuperAdmin && clientEnabledModules && clientEnabledModules.length > 0) {

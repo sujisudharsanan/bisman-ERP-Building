@@ -120,7 +120,7 @@ const mockNotifications: Notification[] = [
     timestamp: '2024-01-15 16:45',
     isRead: true,
     isArchived: false,
-    actionUrl: '/admin/users?status=pending',
+    actionUrl: '/system/roles-users-report',
     actionLabel: 'Review'
   },
   {

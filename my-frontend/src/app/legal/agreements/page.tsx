@@ -99,13 +99,12 @@ export default function AgreementsLegalPage() {
           <p className="text-sm text-gray-500 dark:text-gray-400">Centralized contract lifecycle and compliance management</p>
         </div>
         <div className="flex items-center gap-3">
-          <a 
-            href="/admin/contracts/create" 
+          <button 
             className="flex items-center gap-2 px-4 py-2 bg-violet-600 hover:bg-violet-700 text-white rounded-md transition-colors"
           >
             <Plus className="w-4 h-4" />
             Create Contract
-          </a>
+          </button>
           <button className="flex items-center gap-2 px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors">
             <Download className="w-4 h-4" />
             Export
@@ -225,9 +224,9 @@ export default function AgreementsLegalPage() {
                     <td colSpan={8} className="p-8 text-center text-gray-500 dark:text-gray-400">
                       <FileText className="w-12 h-12 mx-auto mb-4 opacity-50" />
                       <p>No contracts found</p>
-                      <a href="/admin/contracts/create" className="text-violet-600 hover:underline mt-2 inline-block">
+                      <span className="text-violet-600 mt-2 inline-block">
                         Create your first contract
-                      </a>
+                      </span>
                     </td>
                   </tr>
                 ) : (
@@ -257,12 +256,11 @@ export default function AgreementsLegalPage() {
                         {contract.monthly_value ? `₹ ${Number(contract.monthly_value).toLocaleString()}` : '—'}
                       </td>
                       <td className="p-4">
-                        <a 
-                          href={`/admin/contracts/${contract.id}`} 
+                        <button 
                           className="inline-flex items-center gap-1 text-violet-600 hover:text-violet-700 dark:text-violet-400 dark:hover:text-violet-300"
                         >
                           View <ChevronRight className="w-4 h-4" />
-                        </a>
+                        </button>
                       </td>
                     </tr>
                   ))

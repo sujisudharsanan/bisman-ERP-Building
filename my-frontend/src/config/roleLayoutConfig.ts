@@ -56,8 +56,6 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
     showFooter: true,
     menuItems: [
       { id: 'dashboard', label: 'Dashboard', href: '/admin', icon: 'LayoutDashboard' },
-      { id: 'users', label: 'Users', href: '/admin/users', icon: 'Users' },
-      { id: 'permissions', label: 'Permissions', href: '/admin/permissions', icon: 'Shield' },
       { id: 'reconciliation', label: 'Reconciliation', href: '/reconciliation', icon: 'Scale' },
       { id: 'system-flow', label: 'User Flow & Management', href: '/admin/system-flow', icon: 'Workflow' },
       { id: 'reports', label: 'Reports', href: '/admin/reports', icon: 'BarChart2' },
