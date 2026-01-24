@@ -120,10 +120,10 @@ async function getEnterpriseApprovedPages(superadminId) {
 /**
  * Get pages approved by Superadmin for a specific Client/Admin
  * @param {number} clientAdminId - The Client Admin's legacy_id
- * @param {string} tenantId - The tenant/client ID
+ * @param {string} _tenantId - The tenant/client ID (reserved for future use)
  * @returns {Promise<Set<string>>} Set of approved page keys
  */
-async function getSuperadminApprovedPages(clientAdminId, tenantId) {
+async function getSuperadminApprovedPages(clientAdminId, _tenantId) {
   const prisma = getPrisma();
   
   // Check admin_page_assignments where Superadmin assigned to this user
@@ -427,7 +427,7 @@ async function grantEffectivePagesToUser({
   tenantId,
   planId,
   actorUserId = null,
-  actorRole = 'SYSTEM'
+  _actorRole = 'SYSTEM'
 }) {
   const prisma = getPrisma();
   
@@ -459,7 +459,7 @@ async function grantEffectivePagesToUser({
         }
       });
       grantedCount++;
-    } catch (err) {
+    } catch {
       // Ignore duplicates
     }
   }

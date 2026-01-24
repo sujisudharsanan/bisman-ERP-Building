@@ -54,10 +54,10 @@ export default function PermissionGuard({
     return segments[segments.length - 1] || 'dashboard';
   }, [pathname, explicitPageKey]);
   
-  // Check if user is Enterprise Admin (top-most role - has access to everything)
-  const isEnterpriseAdmin = useMemo(() => {
+  // Check if user is Enterprise Admin or Super Admin (top-most roles - have access to everything)
+  const hasFullAccessRole = useMemo(() => {
     const roleName = String(user?.roleName || user?.role || '').toUpperCase();
-    return roleName === 'ENTERPRISE_ADMIN';
+    return roleName === 'ENTERPRISE_ADMIN' || roleName === 'SUPER_ADMIN';
   }, [user?.roleName, user?.role]);
 
   useEffect(() => {
@@ -73,10 +73,11 @@ export default function PermissionGuard({
     }
     
     // ==========================================
-    // ENTERPRISE ADMIN BYPASS - FULL ACCESS
+    // ENTERPRISE ADMIN / SUPER ADMIN BYPASS - FULL ACCESS
     // ==========================================
-    if (isEnterpriseAdmin) {
-      console.log('[PermissionGuard] Enterprise Admin - full access');
+    if (hasFullAccessRole) {
+      const roleName = String(user?.roleName || user?.role || '').toUpperCase();
+      console.log(`[PermissionGuard] ${roleName} - full access`);
       setHasAccess(true);
       return;
     }
@@ -114,7 +115,7 @@ export default function PermissionGuard({
       console.log(`[PermissionGuard] Access granted to ${pageKey}`);
       setHasAccess(true);
     }
-  }, [user?.id, isEnterpriseAdmin, requirePermissions, pageKey, hasPageAccess, getBlockedReason, router, effectiveAccessLoading, authLoading]);
+  }, [user?.id, hasFullAccessRole, requirePermissions, pageKey, hasPageAccess, getBlockedReason, router, effectiveAccessLoading, authLoading]);
 
   // Show loading state while checking
   if (effectiveAccessLoading || authLoading) {

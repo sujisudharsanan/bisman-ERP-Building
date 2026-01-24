@@ -118,10 +118,10 @@ export function useEffectiveAccess(): UseEffectiveAccessResult {
     return `${CACHE_KEY_PREFIX}${user.id}`;
   }, [user?.id]);
   
-  // Check if user is Enterprise Admin (full access)
-  const isEnterpriseAdmin = useMemo(() => {
+  // Check if user is Enterprise Admin or Super Admin (full access)
+  const hasFullAccessRole = useMemo(() => {
     const roleName = String(user?.roleName || user?.role || '').toUpperCase();
-    return roleName === 'ENTERPRISE_ADMIN';
+    return roleName === 'ENTERPRISE_ADMIN' || roleName === 'SUPER_ADMIN';
   }, [user?.roleName, user?.role]);
   
   // Fetch effective access from API
@@ -131,8 +131,10 @@ export function useEffectiveAccess(): UseEffectiveAccessResult {
       return;
     }
     
-    // Enterprise Admin bypasses - they have full access
-    if (isEnterpriseAdmin) {
+    // Enterprise Admin and Super Admin bypass - they have full access
+    if (hasFullAccessRole) {
+      const roleName = String(user?.roleName || user?.role || '').toUpperCase();
+      console.log(`[useEffectiveAccess] ${roleName} bypass - full access granted`);
       setData({
         effectivePages: ['*'], // Special wildcard for full access
         effectiveRoles: ['*'],
@@ -245,7 +247,7 @@ export function useEffectiveAccess(): UseEffectiveAccessResult {
     } finally {
       setLoading(false);
     }
-  }, [user?.id, isEnterpriseAdmin, cacheKey]);
+  }, [user?.id, user?.roleName, user?.role, hasFullAccessRole, cacheKey]);
   
   // Initial fetch on mount
   useEffect(() => {
@@ -266,8 +268,8 @@ export function useEffectiveAccess(): UseEffectiveAccessResult {
       return true;
     }
     
-    // Enterprise Admin has full access
-    if (isEnterpriseAdmin) {
+    // Enterprise Admin and Super Admin have full access
+    if (hasFullAccessRole) {
       return true;
     }
     
@@ -280,11 +282,11 @@ export function useEffectiveAccess(): UseEffectiveAccessResult {
     }
     
     return data.effectivePages.includes(pageKey);
-  }, [data, isEnterpriseAdmin]);
+  }, [data, hasFullAccessRole]);
   
   // Check if user has access to a specific role
   const hasRoleAccess = useCallback((roleName: string): boolean => {
-    if (isEnterpriseAdmin) {
+    if (hasFullAccessRole) {
       return true;
     }
     
@@ -295,7 +297,7 @@ export function useEffectiveAccess(): UseEffectiveAccessResult {
     }
     
     return data.effectiveRoles.includes(roleName);
-  }, [data, isEnterpriseAdmin]);
+  }, [data, hasFullAccessRole]);
   
   // Get blocked reason for a page
   const getBlockedReason = useCallback((pageKey: string): string | null => {

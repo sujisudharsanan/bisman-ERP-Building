@@ -234,6 +234,9 @@ export default function Page() {
   const [pagesModuleFilter, setPagesModuleFilter] = useState<string | null>(null);
   const [pagesAssignedFilter, setPagesAssignedFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
   const [bottomSelectedPageId, setBottomSelectedPageId] = useState<string | null>(null);
+  // Pages grouping mode: 'module' or 'role'
+  const [pagesGroupBy, setPagesGroupBy] = useState<'module' | 'role'>('role');
+  const [pagesRoleFilter, setPagesRoleFilter] = useState<string | null>(null);
   
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedRef = useRef<string>(''); // Track last saved state to avoid duplicate saves
@@ -256,6 +259,47 @@ export default function Page() {
     toastTimeoutRef.current = setTimeout(() => {
       setToastMessage(null);
     }, 4000);
+  }, []);
+
+  // ============================================================================
+  // CASCADE RESET HANDLERS - Ensure proper state cleanup on parent selection change
+  // ============================================================================
+  
+  // Handle category change with cascade reset
+  const handleCategoryChange = useCallback((newCategory: typeof category) => {
+    if (newCategory === category) return; // No change
+    setCategory(newCategory);
+    // Cascade reset: clear all downstream selections
+    setSelectedAdminId(null);
+    setSelectedRoleId(null);
+    setRolePagesSelectedIds(new Set());
+    setRolePagesInitialIds(new Set());
+    setRolePages([]);
+    setPagesAssignedFilter('all');
+    setBottomSelectedPageId(null);
+    console.log('[CASCADE] Category changed to:', newCategory, '→ Reset SA, Role, Pages');
+  }, [category]);
+
+  // Handle SuperAdmin selection with cascade reset
+  const handleAdminChange = useCallback((adminId: number | null) => {
+    if (adminId === selectedAdminId) return; // No change
+    setSelectedAdminId(adminId);
+    // Cascade reset: clear role and page selections
+    setSelectedRoleId(null);
+    setRolePagesSelectedIds(new Set());
+    setRolePagesInitialIds(new Set());
+    setRolePages([]);
+    setPagesAssignedFilter('all');
+    setBottomSelectedPageId(null);
+    console.log('[CASCADE] Admin changed to:', adminId, '→ Reset Role, Pages');
+  }, [selectedAdminId]);
+
+  // Handle Role selection (no cascade needed, just load pages)
+  const handleRoleChange = useCallback((roleId: number | null) => {
+    setSelectedRoleId(roleId);
+    setPagesAssignedFilter('all');
+    setBottomSelectedPageId(null);
+    console.log('[CASCADE] Role changed to:', roleId);
   }, []);
 
   // Helper function to toggle role assignment with protection check
@@ -396,7 +440,7 @@ export default function Page() {
     };
   }, [assignedRoleIds, selectedAdminId]);
 
-  // Load pages for the selected role
+  // Load pages for the selected role (with race condition protection)
   useEffect(() => {
     if (!selectedRoleId) {
       setRolePages([]);
@@ -406,26 +450,37 @@ export default function Page() {
       return;
     }
     
+    // AbortController for race condition protection during rapid role switching
+    const abortController = new AbortController();
+    const currentRoleId = selectedRoleId; // Capture for stale closure check
+    
     const loadRolePages = async () => {
       setRolePagesLoading(true);
       try {
         console.log('📄 Loading pages for role:', selectedRoleId);
         const response = await fetch(`/api/rbac/roles/${selectedRoleId}/pages`, {
-          credentials: 'include'
+          credentials: 'include',
+          signal: abortController.signal
         });
+        
+        // Stale response check - if role changed during fetch, ignore result
+        if (currentRoleId !== selectedRoleId) {
+          console.log('⚠️ Stale response ignored for role:', currentRoleId);
+          return;
+        }
         
         if (response.ok) {
           const data = await response.json();
           if (data.success && Array.isArray(data.pages)) {
             setRolePages(data.pages);
-            // Track which pages are granted (selected)
-            const grantedIds = new Set<string>(
-              data.pages.filter((p: { granted?: boolean }) => p.granted).map((p: { id: string }) => p.id)
+            // Track which pages are granted (selected) - use path for consistent matching
+            const grantedPaths = new Set<string>(
+              data.pages.filter((p: { granted?: boolean }) => p.granted).map((p: { path: string }) => p.path)
             );
-            setRolePagesSelectedIds(grantedIds);
-            setRolePagesInitialIds(new Set(grantedIds));
+            setRolePagesSelectedIds(grantedPaths);
+            setRolePagesInitialIds(new Set(grantedPaths));
             setRolePagesHasChanges(false);
-            console.log('✅ Loaded', data.pages.length, 'pages,', grantedIds.size, 'granted for role');
+            console.log('✅ Loaded', data.pages.length, 'pages,', grantedPaths.size, 'granted for role');
           } else {
             setRolePages([]);
             setRolePagesSelectedIds(new Set());
@@ -438,16 +493,29 @@ export default function Page() {
           setRolePagesInitialIds(new Set());
         }
       } catch (error) {
+        // Ignore abort errors (expected during rapid switching)
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('🔄 Fetch aborted for role:', currentRoleId, '(rapid switch)');
+          return;
+        }
         console.error('❌ Error loading role pages:', error);
         setRolePages([]);
         setRolePagesSelectedIds(new Set());
         setRolePagesInitialIds(new Set());
       } finally {
-        setRolePagesLoading(false);
+        // Only clear loading if this is still the current request
+        if (currentRoleId === selectedRoleId) {
+          setRolePagesLoading(false);
+        }
       }
     };
     
     loadRolePages();
+    
+    // Cleanup: abort fetch if role changes before response arrives
+    return () => {
+      abortController.abort();
+    };
   }, [selectedRoleId]);
 
   // Track changes for role pages
@@ -491,27 +559,27 @@ export default function Page() {
     }
   };
 
-  // Toggle page selection for role
-  const toggleRolePageSelection = (pageId: string) => {
+  // Toggle page selection for role - uses path for consistent matching
+  const toggleRolePageSelection = (pagePath: string) => {
     setRolePagesSelectedIds(prev => {
       const newSet = new Set(prev);
-      if (newSet.has(pageId)) {
-        newSet.delete(pageId);
+      if (newSet.has(pagePath)) {
+        newSet.delete(pagePath);
       } else {
-        newSet.add(pageId);
+        newSet.add(pagePath);
       }
       return newSet;
     });
   };
 
-  // Select all / Deselect all for role pages (including common pages)
+  // Select all / Deselect all for role pages (including common pages) - use paths
   const handleSelectAllRolePages = () => {
-    // Include both category-specific pages AND common pages
-    const allIds = new Set([
-      ...rolePages.map(p => p.id),
-      ...COMMON_PAGES.map(p => p.id)
+    // Include both category-specific pages AND common pages - use path for consistency
+    const allPaths = new Set([
+      ...rolePages.map(p => p.path),
+      ...COMMON_PAGES.map(p => p.path)
     ]);
-    setRolePagesSelectedIds(allIds);
+    setRolePagesSelectedIds(allPaths);
   };
 
   const handleDeselectAllRolePages = () => {
@@ -882,6 +950,123 @@ export default function Page() {
     console.log(`📋 Page filtering: Total in registry: ${PAGE_REGISTRY.length}, Skipped: ${skippedCount}, Showing: ${totalPages} pages in ${result.length} modules`);
     return result;
   }, []);
+
+  // Get all pages grouped by ROLE for the Pages Overview section (using PAGE_REGISTRY)
+  const allPagesGroupedByRole = useMemo(() => {
+    const roleMap = new Map<string, { roleId: string; roleName: string; pages: { id: string; name: string; path: string; status: string; module: string }[] }>();
+    
+    for (const page of PAGE_REGISTRY) {
+      if (page.status !== 'active') continue;
+      
+      // Only skip hidden modules based on MODULES metadata
+      const moduleMeta = MODULES[page.module];
+      if (moduleMeta?.hidden) continue;
+      
+      // Get roles for this page (default to empty array if not defined)
+      const pageRoles = (page as any).roles || [];
+      
+      // If no roles defined, put in "Unassigned" group
+      if (pageRoles.length === 0) {
+        const roleKey = '_unassigned';
+        if (!roleMap.has(roleKey)) {
+          roleMap.set(roleKey, {
+            roleId: roleKey,
+            roleName: 'Unassigned (No Role)',
+            pages: []
+          });
+        }
+        roleMap.get(roleKey)!.pages.push({
+          id: page.id,
+          name: page.name,
+          path: page.path,
+          status: page.status,
+          module: page.module
+        });
+      } else {
+        // Add page to each role it belongs to
+        for (const roleName of pageRoles) {
+          const roleKey = String(roleName).toUpperCase();
+          if (!roleMap.has(roleKey)) {
+            roleMap.set(roleKey, {
+              roleId: roleKey,
+              roleName: roleKey.replace(/_/g, ' '),
+              pages: []
+            });
+          }
+          roleMap.get(roleKey)!.pages.push({
+            id: page.id,
+            name: page.name,
+            path: page.path,
+            status: page.status,
+            module: page.module
+          });
+        }
+      }
+    }
+    
+    // Sort: put unassigned at the end, rest alphabetically
+    const result = Array.from(roleMap.values()).sort((a, b) => {
+      if (a.roleId === '_unassigned') return 1;
+      if (b.roleId === '_unassigned') return -1;
+      return a.roleName.localeCompare(b.roleName);
+    });
+    
+    return result;
+  }, []);
+
+  // Filtered pages based on selected role filter
+  const filteredPagesForOverviewByRole = useMemo(() => {
+    if (!pagesRoleFilter) return allPagesGroupedByRole;
+    return allPagesGroupedByRole.filter(g => 
+      g.roleId === pagesRoleFilter || 
+      g.roleName.toLowerCase().includes(pagesRoleFilter.toLowerCase())
+    );
+  }, [allPagesGroupedByRole, pagesRoleFilter]);
+
+  // ============================================================================
+  // SCOPED PAGES FOR SELECTED ROLE (Critical fix for bottom section)
+  // When a role is selected in the bottom drawer, show ONLY pages for that role
+  // ============================================================================
+  const pagesForSelectedRoleInBottom = useMemo(() => {
+    // If no role selected in bottom section, return empty (user must select a role first)
+    if (!selectedRoleId) {
+      return { all: [], assigned: [], unassigned: [], roleSelected: false };
+    }
+    
+    // Find the selected role's name
+    const selectedRole = allRoles.find(r => r.id === selectedRoleId);
+    const selectedRoleName = selectedRole?.name?.toUpperCase() || '';
+    
+    // Get pages from registry that belong to this role
+    const rolePages = PAGE_REGISTRY.filter(page => {
+      if (page.status !== 'active') return false;
+      const pageRoles = ((page as any).roles || []).map((r: string) => r.toUpperCase());
+      return pageRoles.includes(selectedRoleName) || pageRoles.includes('ALL');
+    }).map(page => ({
+      id: page.id,
+      name: page.name,
+      path: page.path,
+      status: page.status,
+      module: page.module
+    }));
+    
+    // Split into assigned/unassigned based on rolePagesSelectedIds
+    // Now we consistently store paths, so only check page.path
+    const assigned = rolePages.filter(page => 
+      rolePagesSelectedIds.has(page.path)
+    );
+    const unassigned = rolePages.filter(page => 
+      !rolePagesSelectedIds.has(page.path)
+    );
+    
+    return {
+      all: rolePages,
+      assigned,
+      unassigned,
+      roleSelected: true,
+      roleName: selectedRoleName
+    };
+  }, [selectedRoleId, allRoles, rolePagesSelectedIds]);
 
   // Filtered pages based on selected module filter
   const filteredPagesForOverview = useMemo(() => {
@@ -1665,7 +1850,7 @@ export default function Page() {
           <div className="space-y-1">
             {/* Common / Shared Option */}
             <button
-              onClick={() => setCategory('common')}
+              onClick={() => handleCategoryChange('common')}
               className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition-all ${
                 category === 'common'
                   ? "border-gray-500 bg-gray-100 dark:bg-gray-800/50 ring-2 ring-gray-400 dark:ring-gray-600"
@@ -1694,7 +1879,7 @@ export default function Page() {
 
             {/* Business ERP Option */}
             <button
-              onClick={() => setCategory('business')}
+              onClick={() => handleCategoryChange('business')}
               className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition-all ${
                 category === 'business'
                   ? "border-emerald-500 bg-emerald-50 dark:bg-emerald-900/30 ring-2 ring-emerald-400 dark:ring-emerald-600"
@@ -1726,7 +1911,7 @@ export default function Page() {
 
             {/* Pump Management Option */}
             <button
-              onClick={() => setCategory('pump')}
+              onClick={() => handleCategoryChange('pump')}
               className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition-all ${
                 category === 'pump'
                   ? "border-orange-500 bg-orange-50 dark:bg-orange-900/30 ring-2 ring-orange-400 dark:ring-orange-600"
@@ -1822,7 +2007,7 @@ export default function Page() {
                 {filteredAdmins.map((a) => (
                   <button
                     key={a.id}
-                    onClick={() => setSelectedAdminId(a.id)}
+                    onClick={() => handleAdminChange(a.id)}
                     className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition ${
                       selectedAdminId === a.id
                         ? "border-blue-500 bg-blue-100 dark:bg-blue-900/40 ring-2 ring-blue-300 shadow-sm"
@@ -1888,7 +2073,7 @@ export default function Page() {
                 return (
                   <button
                     key={role.id}
-                    onClick={() => setSelectedRoleId(role.id)}
+                    onClick={() => handleRoleChange(role.id)}
                     className={`w-full text-left rounded-md border px-3 py-2.5 text-xs transition ${
                       isSelected
                         ? "border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300 shadow-sm"
@@ -2060,11 +2245,11 @@ export default function Page() {
                       These pages apply across all modules.
                     </div>
                     {COMMON_PAGES.map((page) => {
-                      const isSelected = rolePagesSelectedIds.has(page.id);
+                      const isSelected = rolePagesSelectedIds.has(page.path);
                       return (
                         <div
                           key={page.id}
-                          onClick={() => toggleRolePageSelection(page.id)}
+                          onClick={() => toggleRolePageSelection(page.path)}
                           className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer transition ${
                             isSelected
                               ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-700'
@@ -2128,7 +2313,7 @@ export default function Page() {
                         </div>
                       ) : (
                         rolePages.map((page, pageIndex) => {
-                          const isSelected = rolePagesSelectedIds.has(page.id);
+                          const isSelected = rolePagesSelectedIds.has(page.path);
                           const uniqueKey = `${page.routeId || pageIndex}-${page.id || page.path}`;
                           const scopeBadge = category === 'pump' ? 'PUMP' : 'ERP';
                           const scopeColor = category === 'pump' 
@@ -2138,7 +2323,7 @@ export default function Page() {
                           return (
                             <div
                               key={uniqueKey}
-                              onClick={() => toggleRolePageSelection(page.id)}
+                              onClick={() => toggleRolePageSelection(page.path)}
                               className={`flex items-center gap-2 p-2 rounded-md border cursor-pointer transition ${
                                 isSelected
                                   ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-700'
@@ -2271,7 +2456,12 @@ export default function Page() {
               </>
             ) : (
               <>
-                <span className="text-xs text-gray-500">({totalPagesCount} pages)</span>
+                <span className="text-xs text-gray-500">
+                  {selectedRoleId 
+                    ? `(${pagesForSelectedRoleInBottom.all.length} pages for role)`
+                    : `(${totalPagesCount} pages total)`
+                  }
+                </span>
                 <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 ml-2">
                   <button
                     onClick={() => setPagesAssignedFilter('all')}
@@ -2279,38 +2469,87 @@ export default function Page() {
                       pagesAssignedFilter === 'all' ? 'bg-white dark:bg-gray-700 text-purple-600 shadow-sm font-medium' : 'text-gray-600'
                     }`}
                   >
-                    All
+                    All {selectedRoleId ? `(${pagesForSelectedRoleInBottom.all.length})` : ''}
                   </button>
                   <button
                     onClick={() => setPagesAssignedFilter('assigned')}
                     className={`px-2 py-0.5 text-xs rounded transition ${
                       pagesAssignedFilter === 'assigned' ? 'bg-white dark:bg-gray-700 text-green-600 shadow-sm font-medium' : 'text-gray-600'
                     }`}
+                    disabled={!selectedRoleId}
+                    title={!selectedRoleId ? 'Select a role first' : undefined}
                   >
-                    Assigned ({rolePagesSelectedIds.size})
+                    Assigned ({selectedRoleId ? pagesForSelectedRoleInBottom.assigned.length : '-'})
                   </button>
                   <button
                     onClick={() => setPagesAssignedFilter('unassigned')}
                     className={`px-2 py-0.5 text-xs rounded transition ${
                       pagesAssignedFilter === 'unassigned' ? 'bg-white dark:bg-gray-700 text-red-600 shadow-sm font-medium' : 'text-gray-600'
                     }`}
+                    disabled={!selectedRoleId}
+                    title={!selectedRoleId ? 'Select a role first' : undefined}
                   >
-                    Unassigned
+                    Unassigned ({selectedRoleId ? pagesForSelectedRoleInBottom.unassigned.length : '-'})
                   </button>
                 </div>
-                <div onClick={(e) => e.stopPropagation()}>
-                  <select
-                    value={pagesModuleFilter || ''}
-                    onChange={(e) => setPagesModuleFilter(e.target.value || null)}
-                    className="ml-2 text-xs px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                {/* Group By Toggle: Module or Role */}
+                <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 ml-2" onClick={(e) => e.stopPropagation()}>
+                  <button
+                    onClick={() => {
+                      setPagesGroupBy('role');
+                      setPagesModuleFilter(null);
+                      setPagesRoleFilter(null);
+                    }}
+                    className={`px-2 py-0.5 text-xs rounded transition flex items-center gap-1 ${
+                      pagesGroupBy === 'role' ? 'bg-white dark:bg-gray-700 text-indigo-600 shadow-sm font-medium' : 'text-gray-600'
+                    }`}
                   >
-                    <option value="">All Modules</option>
-                    {allPagesGroupedByModule.map(g => (
-                      <option key={g.moduleId} value={g.moduleId}>
-                        {g.moduleName} ({g.pages.length})
-                      </option>
-                    ))}
-                  </select>
+                    <FiShield className="w-3 h-3" />
+                    By Role
+                  </button>
+                  <button
+                    onClick={() => {
+                      setPagesGroupBy('module');
+                      setPagesModuleFilter(null);
+                      setPagesRoleFilter(null);
+                    }}
+                    className={`px-2 py-0.5 text-xs rounded transition flex items-center gap-1 ${
+                      pagesGroupBy === 'module' ? 'bg-white dark:bg-gray-700 text-purple-600 shadow-sm font-medium' : 'text-gray-600'
+                    }`}
+                  >
+                    <FiPackage className="w-3 h-3" />
+                    By Module
+                  </button>
+                </div>
+                {/* Filter dropdown based on groupBy mode */}
+                <div onClick={(e) => e.stopPropagation()}>
+                  {pagesGroupBy === 'role' ? (
+                    <select
+                      value={pagesRoleFilter || ''}
+                      onChange={(e) => setPagesRoleFilter(e.target.value || null)}
+                      className="ml-2 text-xs px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                    >
+                      <option value="">All Roles</option>
+                      {allPagesGroupedByRole.map(g => (
+                        <option key={g.roleId} value={g.roleId}>
+                          {g.roleName} ({g.pages.length})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <select
+                      value={pagesModuleFilter || ''}
+                      onChange={(e) => setPagesModuleFilter(e.target.value || null)}
+                      className="ml-2 text-xs px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
+                    >
+                      <option value="">All Modules</option>
+                      {allPagesGroupedByModule.map(g => (
+                        <option key={g.moduleId} value={g.moduleId}>
+                          {g.moduleName} ({g.pages.length})
+                        </option>
+                      ))}
+                    </select>
+                  )}
                 </div>
               </>
             )}
@@ -2467,22 +2706,168 @@ export default function Page() {
             {/* PAGES CONTENT */}
             {bottomViewMode === 'pages' && (
               <>
-                {/* When "Assigned" filter is active and a role is selected, show pages from rolePages (API) */}
-                {pagesAssignedFilter === 'assigned' && selectedRoleId && rolePages.length > 0 ? (
+                {/* ========== ROLE-SCOPED VIEW (when a role is selected) ========== */}
+                {selectedRoleId ? (
                   <div className="space-y-4">
-                    {/* Group rolePages by module */}
+                    {/* Show info banner about which role's pages are shown */}
+                    <div className="flex items-center gap-2 px-3 py-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
+                      <FiInfo className="w-4 h-4 text-yellow-600 flex-shrink-0" />
+                      <span className="text-xs text-yellow-700 dark:text-yellow-300">
+                        Showing pages for role: <strong>{pagesForSelectedRoleInBottom.roleName?.replace(/_/g, ' ')}</strong>
+                      </span>
+                    </div>
+                    
+                    {/* Get pages to display based on filter */}
                     {(() => {
-                      const moduleMap = new Map<string, Array<{ id: string; path: string; name: string; module?: string }>>();
-                      rolePages.filter(p => rolePagesSelectedIds.has(p.id) || rolePagesSelectedIds.has(p.path)).forEach(page => {
+                      const pagesToShow = pagesAssignedFilter === 'assigned' 
+                        ? pagesForSelectedRoleInBottom.assigned
+                        : pagesAssignedFilter === 'unassigned'
+                        ? pagesForSelectedRoleInBottom.unassigned
+                        : pagesForSelectedRoleInBottom.all;
+                      
+                      if (pagesToShow.length === 0) {
+                        return (
+                          <div className="text-center py-6">
+                            <FiFile className="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              {pagesAssignedFilter === 'assigned' 
+                                ? 'No pages assigned to this role yet'
+                                : pagesAssignedFilter === 'unassigned'
+                                ? 'All pages for this role are assigned'
+                                : 'No pages available for this role'}
+                            </p>
+                          </div>
+                        );
+                      }
+                      
+                      // Group pages by module
+                      const moduleMap = new Map<string, typeof pagesToShow>();
+                      pagesToShow.forEach(page => {
                         const mod = page.module || 'Other';
                         if (!moduleMap.has(mod)) moduleMap.set(mod, []);
                         moduleMap.get(mod)!.push(page);
                       });
+                      
                       return Array.from(moduleMap.entries())
-                        .filter(([, pages]) => pages.length > 0)
                         .sort((a, b) => a[0].localeCompare(b[0]))
                         .map(([moduleName, pages]) => (
                           <div key={moduleName} className="space-y-2">
+                            <div className="flex items-center gap-2 pb-1 border-b border-purple-100 dark:border-purple-800">
+                              <FiPackage className="w-3.5 h-3.5 text-purple-600" />
+                              <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">
+                                {moduleName}
+                              </span>
+                              <span className="text-[10px] text-gray-500 px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
+                                {pages.length} pages
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+                              {pages.map((page, idx) => {
+                                const isSelected = bottomSelectedPageId === page.id;
+                                const isAssigned = rolePagesSelectedIds.has(page.path);
+                                return (
+                                  <div
+                                    key={`${page.id}-${idx}`}
+                                    onClick={() => setBottomSelectedPageId(isSelected ? null : page.id)}
+                                    className={`p-2 rounded-lg border cursor-pointer transition-colors group ${
+                                      isSelected
+                                        ? 'border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300 shadow-sm'
+                                        : isAssigned
+                                        ? 'border-green-300 bg-green-50 dark:bg-green-900/20 hover:border-green-400'
+                                        : 'border-red-200 dark:border-red-800 bg-red-50/30 dark:bg-red-900/10 hover:border-red-400'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between mb-0.5">
+                                      {isAssigned ? (
+                                        <FiCheckCircle className="w-3 h-3 text-green-500" />
+                                      ) : (
+                                        <FiMinus className="w-3 h-3 text-red-400" />
+                                      )}
+                                      <Link href={page.path || '#'} onClick={(e) => e.stopPropagation()}>
+                                        <FiExternalLink className="w-2.5 h-2.5 text-gray-400 hover:text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                      </Link>
+                                    </div>
+                                    <div className={`text-xs font-medium truncate ${isSelected ? 'text-purple-700 dark:text-purple-300' : isAssigned ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                                      {page.name || page.id}
+                                    </div>
+                                    <div className="text-[9px] text-gray-500 dark:text-gray-400 truncate">
+                                      {page.path}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ));
+                    })()}
+                  </div>
+                ) : (
+                  /* ========== NO ROLE SELECTED - Show overview ========== */
+                  <>
+                    {/* Prompt to select a role */}
+                    <div className="flex items-center gap-2 px-3 py-2 mb-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border border-blue-200 dark:border-blue-800">
+                      <FiInfo className="w-4 h-4 text-blue-600 flex-shrink-0" />
+                      <span className="text-xs text-blue-700 dark:text-blue-300">
+                        Select a role above to see its assigned/unassigned pages. Currently showing all pages overview.
+                      </span>
+                    </div>
+                    
+                    {(pagesGroupBy === 'module' ? filteredPagesForOverview : filteredPagesForOverviewByRole).length === 0 ? (
+                      <div className="text-center py-6">
+                        <FiFile className="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                        <p className="text-sm text-gray-500 dark:text-gray-400">No pages available</p>
+                      </div>
+                    ) : pagesGroupBy === 'role' ? (
+                      /* ========== PAGES GROUPED BY ROLE (Overview) ========== */
+                      <div className="space-y-4">
+                        {filteredPagesForOverviewByRole.map(({ roleId, roleName, pages }) => (
+                          <div key={roleId} className="space-y-2">
+                            <div className="flex items-center gap-2 pb-1 border-b border-indigo-100 dark:border-indigo-800">
+                              <FiShield className="w-3.5 h-3.5 text-indigo-600" />
+                              <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+                                {roleName}
+                              </span>
+                              <span className="text-[10px] text-gray-500 px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
+                                {pages.length} pages
+                              </span>
+                            </div>
+                            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
+                              {pages.map((page, idx) => {
+                                const isSelected = bottomSelectedPageId === page.id;
+                                return (
+                                  <div
+                                    key={`${page.id}-${idx}`}
+                                    onClick={() => setBottomSelectedPageId(isSelected ? null : page.id)}
+                                    className={`p-2 rounded-lg border cursor-pointer transition-colors group ${
+                                      isSelected
+                                        ? 'border-indigo-500 bg-indigo-100 dark:bg-indigo-900/40 ring-2 ring-indigo-300 shadow-sm'
+                                        : 'border-indigo-200 dark:border-indigo-700 bg-white dark:bg-gray-800 hover:border-indigo-400'
+                                    }`}
+                                  >
+                                    <div className="flex items-center justify-between mb-0.5">
+                                      <FiFile className={`w-3 h-3 ${isSelected ? 'text-indigo-600' : 'text-indigo-500'}`} />
+                                      <Link href={page.path || '#'} onClick={(e) => e.stopPropagation()}>
+                                        <FiExternalLink className="w-2.5 h-2.5 text-gray-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                      </Link>
+                                    </div>
+                                    <div className={`text-xs font-medium truncate ${isSelected ? 'text-indigo-700 dark:text-indigo-300' : 'text-gray-900 dark:text-gray-100'}`}>
+                                      {page.name || page.id}
+                                    </div>
+                                    <div className="text-[9px] text-gray-500 dark:text-gray-400 truncate">
+                                      {page.module}
+                                    </div>
+                                  </div>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      /* ========== PAGES GROUPED BY MODULE (Overview) ========== */
+                      <div className="space-y-4">
+                        {filteredPagesForOverview.map(({ moduleId, moduleName, pages }) => (
+                          <div key={moduleId} className="space-y-2">
                             <div className="flex items-center gap-2 pb-1 border-b border-purple-100 dark:border-purple-800">
                               <FiPackage className="w-3.5 h-3.5 text-purple-600" />
                               <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">
@@ -2502,16 +2887,16 @@ export default function Page() {
                                     className={`p-2 rounded-lg border cursor-pointer transition-colors group ${
                                       isSelected
                                         ? 'border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300 shadow-sm'
-                                        : 'border-green-300 bg-green-50 dark:bg-green-900/20 hover:border-green-400'
+                                        : 'border-purple-200 dark:border-purple-700 bg-white dark:bg-gray-800 hover:border-purple-400'
                                     }`}
                                   >
                                     <div className="flex items-center justify-between mb-0.5">
-                                      <FiCheckCircle className="w-3 h-3 text-green-500" />
+                                      <FiFile className={`w-3 h-3 ${isSelected ? 'text-purple-600' : 'text-purple-500'}`} />
                                       <Link href={page.path || '#'} onClick={(e) => e.stopPropagation()}>
                                         <FiExternalLink className="w-2.5 h-2.5 text-gray-400 hover:text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                                       </Link>
                                     </div>
-                                    <div className={`text-xs font-medium truncate ${isSelected ? 'text-purple-700 dark:text-purple-300' : 'text-green-700 dark:text-green-300'}`}>
+                                    <div className={`text-xs font-medium truncate ${isSelected ? 'text-purple-700 dark:text-purple-300' : 'text-gray-900 dark:text-gray-100'}`}>
                                       {page.name || page.id}
                                     </div>
                                     <div className="text-[9px] text-gray-500 dark:text-gray-400 truncate">
@@ -2522,81 +2907,10 @@ export default function Page() {
                               })}
                             </div>
                           </div>
-                        ));
-                    })()}
-                  </div>
-                ) : filteredPagesForOverview.length === 0 ? (
-                  <div className="text-center py-6">
-                    <FiFile className="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
-                    <p className="text-sm text-gray-500 dark:text-gray-400">No pages available</p>
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    {filteredPagesForOverview.map(({ moduleId, moduleName, pages }) => {
-                      // Filter pages by assigned status - use path for matching since API returns paths as IDs
-                      const filteredPages = pages.filter(page => {
-                        const isAssigned = rolePagesSelectedIds.has(page.path) || rolePagesSelectedIds.has(page.id);
-                        if (pagesAssignedFilter === 'assigned') return isAssigned;
-                        if (pagesAssignedFilter === 'unassigned') return !isAssigned;
-                        return true; // 'all'
-                      });
-                      
-                      // Skip module if no pages match filter
-                      if (filteredPages.length === 0) return null;
-                      
-                      return (
-                        <div key={moduleId} className="space-y-2">
-                          {/* Module header */}
-                          <div className="flex items-center gap-2 pb-1 border-b border-purple-100 dark:border-purple-800">
-                            <FiPackage className="w-3.5 h-3.5 text-purple-600" />
-                            <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">
-                              {moduleName}
-                            </span>
-                            <span className="text-[10px] text-gray-500 px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
-                              {filteredPages.length} pages
-                            </span>
-                          </div>
-                          {/* Pages grid */}
-                          <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
-                            {filteredPages.map((page, idx) => {
-                              const isSelected = bottomSelectedPageId === page.id;
-                              const isAssigned = rolePagesSelectedIds.has(page.path) || rolePagesSelectedIds.has(page.id);
-                              return (
-                                <div
-                                  key={`${page.id}-${idx}`}
-                                  onClick={() => setBottomSelectedPageId(isSelected ? null : page.id)}
-                                  className={`p-2 rounded-lg border cursor-pointer transition-colors group ${
-                                    isSelected
-                                      ? 'border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300 shadow-sm'
-                                      : isAssigned
-                                    ? 'border-green-300 bg-green-50 dark:bg-green-900/20 hover:border-green-400'
-                                    : 'border-purple-200 dark:border-purple-700 bg-white dark:bg-gray-800 hover:border-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'
-                                }`}
-                              >
-                                <div className="flex items-center justify-between mb-0.5">
-                                  {isAssigned ? (
-                                    <FiCheckCircle className="w-3 h-3 text-green-500" />
-                                  ) : (
-                                    <FiFile className={`w-3 h-3 ${isSelected ? 'text-purple-600' : 'text-purple-500'}`} />
-                                  )}
-                                  <Link href={page.path || '#'} onClick={(e) => e.stopPropagation()}>
-                                    <FiExternalLink className="w-2.5 h-2.5 text-gray-400 hover:text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                  </Link>
-                                </div>
-                                <div className={`text-xs font-medium truncate ${isSelected ? 'text-purple-700 dark:text-purple-300' : isAssigned ? 'text-green-700 dark:text-green-300' : 'text-gray-900 dark:text-gray-100'}`}>
-                                  {page.name || page.id}
-                                </div>
-                                <div className="text-[9px] text-gray-500 dark:text-gray-400 truncate">
-                                  {page.path}
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
+                        ))}
                       </div>
-                    );
-                  })}
-                  </div>
+                    )}
+                  </>
                 )}
               </>
             )}

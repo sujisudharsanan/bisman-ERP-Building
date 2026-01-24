@@ -32,6 +32,34 @@ router.get('/effective', authenticate, async (req, res) => {
     const prisma = getPrisma();
     const userId = req.user?.legacy_id || req.user?.id;
     const tenantId = req.user?.tenant_id || req.user?.client_id;
+    const userRole = (req.user?.role || req.user?.roleName || req.user?.userType || '').toUpperCase();
+    
+    // Super Admin and Enterprise Admin bypass - they have full access
+    if (userRole === 'SUPER_ADMIN' || userRole === 'ENTERPRISE_ADMIN') {
+      console.log(`[EffectiveAccess API] ${userRole} bypass - full access granted for user ${userId}`);
+      return res.json({
+        ok: true,
+        success: true,
+        data: {
+          effectivePages: ['*'],
+          effectiveRoles: ['*'],
+          blockedPages: [],
+          accessDetails: {},
+          planId: null,
+          tenantId: null,
+          layers: {
+            subscription: -1,
+            enterprise: -1,
+            superadmin: -1,
+            effective: -1
+          },
+          cached: false,
+          computedAt: new Date().toISOString(),
+          bypass: true,
+          bypassReason: `${userRole} has full access`
+        }
+      });
+    }
     
     if (!userId || !tenantId) {
       return res.status(401).json({
