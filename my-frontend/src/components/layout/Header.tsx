@@ -27,15 +27,6 @@ function UserIcon({ className = '' }: { className?: string }) {
   );
 }
 
-function CalendarIcon({ className = '' }: { className?: string }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" aria-hidden>
-      <rect x="3" y="4" width="18" height="18" rx="2" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M16 2v4M8 2v4" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
 interface HeaderProps {
   onMenuToggle?: () => void;
 }
@@ -145,18 +136,8 @@ export default function Header({ onMenuToggle }: HeaderProps) {
             ) : null}
           </div>
 
-          {/* Right side - Calendar icon and menu toggle */}
+          {/* Right side - menu toggle */}
           <div className="flex items-center space-x-1">
-            {/* Calendar Icon */}
-              <Link
-              href="/calendar"
-              className="p-1 rounded-md text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500"
-              aria-label="Go to calendar"
-              title="Calendar"
-            >
-              <CalendarIcon className="w-3.5 h-3.5" />
-            </Link>
-
             {onMenuToggle && (
               <button 
                 onClick={onMenuToggle}
