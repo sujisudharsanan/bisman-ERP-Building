@@ -211,6 +211,13 @@ export default function Page() {
   const [rolePagesInitialIds, setRolePagesInitialIds] = useState<Set<string>>(new Set());
   const [rolePagesHasChanges, setRolePagesHasChanges] = useState(false);
   
+  // Database-driven pages (single source of truth)
+  const [dbPagesLoading, setDbPagesLoading] = useState(false);
+  const [dbPagesByRole, setDbPagesByRole] = useState<Array<{ roleId: string; roleName: string; roleLevel: number; pages: Array<{ id: string; code: string; name: string; path: string; icon: string; module: string; moduleName: string; showInSidebar: boolean; status: string }> }>>([]);
+  const [dbPagesByModule, setDbPagesByModule] = useState<Array<{ moduleId: string; moduleName: string; pages: Array<{ id: string; code: string; name: string; path: string; icon: string; showInSidebar: boolean; status: string; roles: string[] }> }>>([]);
+  const [dbRoles, setDbRoles] = useState<Array<{ id: string; name: string; displayName: string; level: number }>>([]);
+  const [dbTotalPages, setDbTotalPages] = useState(0);
+  
   // Create Super Admin modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -529,51 +536,40 @@ export default function Page() {
           return;
         }
         
-        // Get granted paths from API response
-        let grantedPaths = new Set<string>();
         if (response.ok) {
           const data = await response.json();
           if (data.success && Array.isArray(data.pages)) {
-            grantedPaths = new Set<string>(
-              data.pages.filter((p: { granted?: boolean }) => p.granted).map((p: { path: string }) => p.path)
+            // Use the API response directly - it returns all pages with granted status
+            const apiPages = data.pages.map((p: { id?: string; path: string; name?: string; module?: string; granted?: boolean; routeId?: number }) => ({
+              id: p.path || p.id || '',
+              path: p.path,
+              name: p.name || p.path,
+              module: p.module || 'General',
+              granted: p.granted || false,
+              routeId: p.routeId
+            }));
+            
+            console.log('✅ API returned', apiPages.length, 'pages,', apiPages.filter((p: { granted: boolean }) => p.granted).length, 'granted');
+            
+            setRolePages(apiPages);
+            const grantedPaths = new Set<string>(
+              apiPages.filter((p: { granted: boolean }) => p.granted).map((p: { path: string }) => p.path)
             );
-            console.log('✅ API returned', data.pages.length, 'pages,', grantedPaths.size, 'granted');
+            setRolePagesSelectedIds(grantedPaths);
+            setRolePagesInitialIds(new Set(grantedPaths));
+            setRolePagesHasChanges(false);
+          } else {
+            console.warn('⚠️ No pages in API response');
+            setRolePages([]);
+            setRolePagesSelectedIds(new Set());
+            setRolePagesInitialIds(new Set());
           }
+        } else {
+          console.error('⚠️ API request failed:', response.status);
+          setRolePages([]);
+          setRolePagesSelectedIds(new Set());
+          setRolePagesInitialIds(new Set());
         }
-        
-        // Get pages from PAGE_REGISTRY that match the selected role
-        // Include pages that: have 'ALL' in roles, OR match any variation of selected role name
-        const pagesForRole = PAGE_REGISTRY.filter(page => {
-          if (page.status !== 'active') return false;
-          const pageRoles = (page.roles || []).map(r => r.toUpperCase());
-          // Include if page is for ALL roles
-          if (pageRoles.includes('ALL')) return true;
-          // Check if any page role matches any variation of selected role
-          for (const pageRole of pageRoles) {
-            const normalizedPageRole = normalizeRoleName(pageRole);
-            if (roleVariations.includes(pageRole) || roleVariations.includes(normalizedPageRole)) {
-              return true;
-            }
-            // Also check if selected role variations include the page role
-            if (roleVariations.some(v => normalizeRoleName(v) === normalizedPageRole)) {
-              return true;
-            }
-          }
-          return false;
-        }).map(page => ({
-          id: page.id,
-          path: page.path,
-          name: page.name,
-          module: page.module || 'other',
-          granted: grantedPaths.has(page.path)
-        }));
-        
-        console.log('📚 PAGE_REGISTRY has', pagesForRole.length, 'pages for role:', selectedRoleName);
-        
-        setRolePages(pagesForRole);
-        setRolePagesSelectedIds(grantedPaths);
-        setRolePagesInitialIds(new Set(grantedPaths));
-        setRolePagesHasChanges(false);
         
       } catch (error) {
         // Ignore abort errors (expected during rapid switching)
@@ -806,18 +802,34 @@ export default function Page() {
         setLoading(true);
       }
       setError(null);
+      setDbPagesLoading(true);
       try {
         // Load different data based on user role
-        const [modsRes, usersRes, regRes, rolesRes, clientsRes] = await Promise.all([
+        const [modsRes, usersRes, regRes, rolesRes, clientsRes, dbPagesRes] = await Promise.all([
           fetch("/api/enterprise-admin/master-modules", { credentials: "include" }),
           fetch("/api/enterprise-admin/super-admins", { credentials: "include" }),
           fetch("/layout_registry.json").catch(() => new Response("{}")),
           fetch("/api/reports/roles-users", { credentials: "include" }).catch(() => new Response("{}")),
           // Load clients for SUPER_ADMIN
           fetch("/api/system/clients", { credentials: "include" }).catch(() => new Response("{}")),
+          // Load pages from database (single source of truth)
+          fetch("/api/governance/pages-by-role", { credentials: "include" }).catch(() => new Response("{}")),
         ]);
         const modsJson = await modsRes.json().catch(() => ({}));
         const rolesJson = await rolesRes.json().catch(() => ({}));
+        
+        // Load database pages (single source of truth for role management)
+        const dbPagesJson = await dbPagesRes.json().catch(() => ({}));
+        if (dbPagesJson.success && dbPagesJson.data) {
+          console.log('📋 Loaded database pages:', dbPagesJson.data.totalPages, 'pages,', dbPagesJson.data.totalRoles, 'roles');
+          setDbPagesByRole(dbPagesJson.data.byRole || []);
+          setDbPagesByModule(dbPagesJson.data.byModule || []);
+          setDbRoles(dbPagesJson.data.roles || []);
+          setDbTotalPages(dbPagesJson.data.totalPages || 0);
+        } else {
+          console.warn('⚠️ Could not load database pages:', dbPagesJson);
+        }
+        setDbPagesLoading(false);
         
         // Load clients for SUPER_ADMIN
         const clientsJson = await clientsRes.json().catch(() => ({}));
@@ -1023,9 +1035,26 @@ export default function Page() {
     return allRoles.find(r => r.id === selectedRoleId) || null;
   }, [allRoles, selectedRoleId]);
 
-  // Get all pages grouped by module for the Pages Overview section (using PAGE_REGISTRY)
+  // Get all pages grouped by module for the Pages Overview section (using DATABASE)
   // Enterprise Admin is the topmost role - can see and assign all pages
   const allPagesGroupedByModule = useMemo(() => {
+    // Use database data as single source of truth
+    if (dbPagesByModule.length > 0) {
+      console.log(`📋 Using DATABASE pages: ${dbTotalPages} pages in ${dbPagesByModule.length} modules`);
+      return dbPagesByModule.map(m => ({
+        moduleId: m.moduleId,
+        moduleName: m.moduleName,
+        pages: m.pages.map(p => ({
+          id: p.id,
+          name: p.name,
+          path: p.path,
+          status: p.status,
+          roles: p.roles || []
+        }))
+      }));
+    }
+    
+    // Fallback to PAGE_REGISTRY only if database is not loaded yet
     const moduleMap = new Map<string, { moduleId: string; moduleName: string; pages: { id: string; name: string; path: string; status: string }[] }>();
     
     let skippedCount = 0;
@@ -1058,12 +1087,35 @@ export default function Page() {
     
     const result = Array.from(moduleMap.values()).sort((a, b) => a.moduleName.localeCompare(b.moduleName));
     const totalPages = result.reduce((sum, g) => sum + g.pages.length, 0);
-    console.log(`📋 Page filtering: Total in registry: ${PAGE_REGISTRY.length}, Skipped: ${skippedCount}, Showing: ${totalPages} pages in ${result.length} modules`);
+    console.log(`📋 Fallback to PAGE_REGISTRY: ${PAGE_REGISTRY.length} total, Skipped: ${skippedCount}, Showing: ${totalPages} pages in ${result.length} modules`);
     return result;
-  }, []);
+  }, [dbPagesByModule, dbTotalPages]);
 
   // Get all pages grouped by ROLE for the Pages Overview section (using PAGE_REGISTRY)
+  // Get all pages grouped by ROLE for the Pages Overview section (using DATABASE)
   const allPagesGroupedByRole = useMemo(() => {
+    // Use database data as single source of truth
+    if (dbPagesByRole.length > 0) {
+      console.log(`📋 Using DATABASE pages grouped by role: ${dbPagesByRole.length} roles`);
+      return dbPagesByRole.map(r => ({
+        roleId: r.roleId,
+        roleName: r.roleName,
+        roleLevel: r.roleLevel,
+        pages: r.pages.map(p => ({
+          id: p.id,
+          name: p.name,
+          path: p.path,
+          status: p.status,
+          module: p.module
+        }))
+      })).sort((a, b) => {
+        if (a.roleId === '_unassigned') return 1;
+        if (b.roleId === '_unassigned') return -1;
+        return b.roleLevel - a.roleLevel || a.roleName.localeCompare(b.roleName);
+      });
+    }
+    
+    // Fallback to PAGE_REGISTRY only if database is not loaded yet
     const roleMap = new Map<string, { roleId: string; roleName: string; pages: { id: string; name: string; path: string; status: string; module: string }[] }>();
     
     for (const page of PAGE_REGISTRY) {
@@ -1123,7 +1175,7 @@ export default function Page() {
     });
     
     return result;
-  }, []);
+  }, [dbPagesByRole]);
 
   // Filtered pages based on selected role filter
   const filteredPagesForOverviewByRole = useMemo(() => {
@@ -1192,10 +1244,11 @@ export default function Page() {
     );
   }, [allPagesGroupedByModule, pagesModuleFilter]);
 
-  // Total pages count
+  // Total pages count - prefer database count
   const totalPagesCount = useMemo(() => {
+    if (dbTotalPages > 0) return dbTotalPages;
     return allPagesGroupedByModule.reduce((sum, g) => sum + g.pages.length, 0);
-  }, [allPagesGroupedByModule]);
+  }, [dbTotalPages, allPagesGroupedByModule]);
 
   const filteredAdmins = useMemo(() => {
     const list = Array.isArray(superAdmins) ? superAdmins : [];
@@ -2338,7 +2391,12 @@ export default function Page() {
           <div className="space-y-3 max-h-[400px] overflow-y-auto">
             {!selectedRoleId ? (
               <div className="text-xs text-yellow-700 dark:text-yellow-300 bg-yellow-50 dark:bg-yellow-900/20 p-2 rounded border border-yellow-300 dark:border-yellow-700">
-                ⚠️ Select a Role from Column 3 to see pages
+                ⚠️ Select a Role to see pages
+              </div>
+            ) : rolePagesLoading ? (
+              <div className="text-xs text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 p-3 rounded border border-blue-200 dark:border-blue-700 flex items-center gap-2">
+                <div className="animate-spin w-4 h-4 border-2 border-blue-600 border-t-transparent rounded-full"></div>
+                Loading pages for {selectedRole?.display_name || selectedRole?.name}...
               </div>
             ) : (
               <>

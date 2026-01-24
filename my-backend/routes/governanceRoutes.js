@@ -381,4 +381,165 @@ router.get('/rbac-missing', authenticate, async (req, res) => {
   }
 });
 
+// ============================================================================
+// GET /api/governance/pages-by-role
+// ============================================================================
+// Get all pages from database grouped by role assignments
+// This is the SINGLE SOURCE OF TRUTH for Role Management UI
+
+router.get('/pages-by-role', authenticate, async (req, res) => {
+  const client = await getPool().connect();
+  
+  try {
+    // Get all active pages with their module info
+    const pagesResult = await client.query(`
+      SELECT 
+        p.id,
+        p.page_code,
+        p.display_name,
+        p.route,
+        p.icon,
+        p.sort_order,
+        p.show_in_sidebar,
+        m.id as module_id,
+        m.module_code,
+        m.display_name as module_name
+      FROM pages_master p
+      LEFT JOIN modules_master m ON m.id = p.module_id
+      WHERE p.is_active = TRUE
+      ORDER BY m.sort_order, m.module_code, p.sort_order, p.display_name
+    `);
+
+    // Get all role-page assignments
+    const assignmentsResult = await client.query(`
+      SELECT 
+        rpa.page_id,
+        rpa.role_name,
+        rpa.can_view,
+        rpa.can_edit,
+        rpa.can_delete
+      FROM role_page_access rpa
+      WHERE rpa.can_view = TRUE
+    `);
+
+    // Get all roles
+    const rolesResult = await client.query(`
+      SELECT id, name, display_name, level
+      FROM rbac_roles
+      WHERE status = 'active'
+      ORDER BY level DESC, name
+    `);
+
+    // Build a map of page_id -> roles
+    const pageRolesMap = new Map();
+    for (const assignment of assignmentsResult.rows) {
+      if (!pageRolesMap.has(assignment.page_id)) {
+        pageRolesMap.set(assignment.page_id, []);
+      }
+      pageRolesMap.get(assignment.page_id).push(assignment.role_name);
+    }
+
+    // Group pages by role
+    const rolePageMap = new Map();
+    
+    // Initialize all roles with empty page arrays
+    for (const role of rolesResult.rows) {
+      rolePageMap.set(role.name, {
+        roleId: role.name,
+        roleName: role.display_name || role.name,
+        roleLevel: role.level,
+        pages: []
+      });
+    }
+    
+    // Add unassigned group
+    rolePageMap.set('_unassigned', {
+      roleId: '_unassigned',
+      roleName: 'Unassigned (No Role)',
+      roleLevel: 0,
+      pages: []
+    });
+
+    // Assign pages to roles
+    for (const page of pagesResult.rows) {
+      const pageData = {
+        id: String(page.id),
+        code: page.page_code,
+        name: page.display_name,
+        path: page.route,
+        icon: page.icon,
+        module: page.module_code || 'unknown',
+        moduleName: page.module_name || 'Unknown',
+        showInSidebar: page.show_in_sidebar,
+        status: 'active'
+      };
+
+      const assignedRoles = pageRolesMap.get(page.id) || [];
+      
+      if (assignedRoles.length === 0) {
+        rolePageMap.get('_unassigned').pages.push(pageData);
+      } else {
+        for (const roleName of assignedRoles) {
+          if (rolePageMap.has(roleName)) {
+            rolePageMap.get(roleName).pages.push(pageData);
+          }
+        }
+      }
+    }
+
+    // Group pages by module
+    const modulePageMap = new Map();
+    for (const page of pagesResult.rows) {
+      const moduleCode = page.module_code || 'unknown';
+      if (!modulePageMap.has(moduleCode)) {
+        modulePageMap.set(moduleCode, {
+          moduleId: moduleCode,
+          moduleName: page.module_name || 'Unknown',
+          pages: []
+        });
+      }
+      modulePageMap.get(moduleCode).pages.push({
+        id: String(page.id),
+        code: page.page_code,
+        name: page.display_name,
+        path: page.route,
+        icon: page.icon,
+        showInSidebar: page.show_in_sidebar,
+        status: 'active',
+        roles: pageRolesMap.get(page.id) || []
+      });
+    }
+
+    res.json({
+      success: true,
+      data: {
+        byRole: Array.from(rolePageMap.values())
+          .filter(r => r.pages.length > 0 || r.roleId !== '_unassigned')
+          .sort((a, b) => b.roleLevel - a.roleLevel),
+        byModule: Array.from(modulePageMap.values())
+          .sort((a, b) => a.moduleName.localeCompare(b.moduleName)),
+        roles: rolesResult.rows.map(r => ({
+          id: r.name,
+          name: r.name,
+          displayName: r.display_name || r.name,
+          level: r.level
+        })),
+        totalPages: pagesResult.rows.length,
+        totalRoles: rolesResult.rows.length
+      },
+      source: 'database',
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    console.error('[Governance] Error fetching pages by role:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch pages by role',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router;
