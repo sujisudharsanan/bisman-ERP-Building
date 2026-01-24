@@ -124,6 +124,66 @@
 			"command": "bash -lc 'set -e; cp -n my-frontend/.env.local.example my-frontend/.env.local || true; (cd my-frontend && npm run -s dev &>/dev/null &) && sleep 2; echo STARTED'",
 			"isBackground": false,
 			"group": "build"
+		},
+		{
+			"label": "check-railway-roles",
+			"type": "shell",
+			"command": "node check-railway.js",
+			"isBackground": false
+		},
+		{
+			"label": "fix-railway-roles",
+			"type": "shell",
+			"command": "node fix-railway-roles.js",
+			"isBackground": false
+		},
+		{
+			"label": "cleanup-temp-files",
+			"type": "shell",
+			"command": "rm -f check-role-pages.js check-railway.js fix-railway-roles.js && echo 'Cleaned up!'",
+			"isBackground": false
+		},
+		{
+			"label": "check-sidebar",
+			"type": "shell",
+			"command": "node check-sidebar-pages.js",
+			"isBackground": false
+		},
+		{
+			"label": "check-role-26",
+			"type": "shell",
+			"command": "node check-role-26.js",
+			"isBackground": false
+		},
+		{
+			"label": "check-user-role",
+			"type": "shell",
+			"command": "node check-user-role.js",
+			"isBackground": false
+		},
+		{
+			"label": "check-user-role2",
+			"type": "shell",
+			"command": "node check-user-role.js",
+			"isBackground": false
+		},
+		{
+			"label": "check-user-role3",
+			"type": "shell",
+			"command": "node check-user-role.js",
+			"isBackground": false
+		},
+		{
+			"label": "fix-complete-roles",
+			"type": "shell",
+			"command": "node fix-complete.js",
+			"isBackground": false
+		},
+		{
+			"label": "git-push",
+			"type": "shell",
+			"command": "git status && git add -A && git commit -m 'fix: update chat/AI routes and tasks config' && git push origin deployment",
+			"isBackground": false
 		}
 	]
 }

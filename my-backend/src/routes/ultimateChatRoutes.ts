@@ -9,35 +9,44 @@
  * =====================================================
  */
 
-import { Router, Request, Response } from 'express';
+import { Router, Request, Response, NextFunction } from 'express';
 import { Pool } from 'pg';
 import { EnhancedChatService } from '../services/chat/enhancedChatService';
 import { rbacService, UserRole } from '../services/chat/rbacService';
+
+interface AuthenticatedRequest extends Request {
+  user?: {
+    id?: string;
+    userId?: string;
+  };
+  userId?: number;
+  userRole?: UserRole;
+}
 
 const router = Router();
 
 // Database connection
 const pool = new Pool({
   host: process.env.DB_HOST || 'localhost',
-  port: process.env.DB_PORT || 5432,
-  database: process.env.DB_NAME || 'BISMAN',
+  port: parseInt(process.env.DB_PORT || '5432', 10),
+  database: process.env.DB_NAME || 'bisman',
   user: process.env.DB_USER || 'postgres',
   password: process.env.DB_PASSWORD || '',
-  ssl: process.env.NODE_ENV === 'production' ? { rejectUnauthorized: false } : false
 });
 
-// Initialize Enhanced Chat Service
+// Initialize enhanced chat service
 const enhancedChat = new EnhancedChatService(pool);
 
 /**
  * Middleware to extract user from request
  * Supports multiple auth methods for compatibility
  */
-const extractUser = async (req: Request, res: Response, next: Function) => {
+const extractUser = async (req: Request, res: Response, next: NextFunction) => {
   try {
+    const authReq = req as AuthenticatedRequest;
     // Try different auth methods
-    const userId = (req as any).user?.id || 
-                   (req as any).user?.userId || 
+    const userId = authReq.user?.id || 
+                   authReq.user?.userId || 
                    req.headers['x-user-id'] || 
                    req.body.userId;
     
@@ -62,8 +71,8 @@ const extractUser = async (req: Request, res: Response, next: Function) => {
       });
     }
     
-    (req as any).userId = userId; // UUID string, no parseInt
-    (req as any).userRole = userQuery.rows[0].role as UserRole;
+    (req as AuthenticatedRequest).userId = typeof userId === 'string' ? parseInt(userId, 10) : userId;
+    (req as AuthenticatedRequest).userRole = userQuery.rows[0].role as UserRole;
     
     next();
   } catch (error) {
@@ -80,11 +89,6 @@ router.use(extractUser);
 /**
  * POST /api/chat/message
  * Send a message to the chat
- * 
- * Features:
- * - NLP intent detection
- * - Entity extraction
- * - Self-learning with interaction logging
  * - Repeated question handling (3-tier)
  * - Human-like empathetic responses
  * - RBAC permission checking
@@ -93,8 +97,8 @@ router.use(extractUser);
 router.post('/message', async (req: Request, res: Response) => {
   try {
     const { message, conversationId, sessionId } = req.body;
-    const userId = (req as any).userId;
-    const userRole = (req as any).userRole;
+    const userId = (req as AuthenticatedRequest).userId;
+    const userRole = (req as AuthenticatedRequest).userRole;
     
     if (!message || message.trim().length === 0) {
       return res.status(400).json({ 
@@ -127,8 +131,7 @@ router.post('/message', async (req: Request, res: Response) => {
     console.error('[UltimateChatAPI] Error processing message:', error);
     res.status(500).json({
       success: false,
-      error: (error as Error).message,
-      reply: "I'm sorry, I encountered an error. Please try again or contact support if this persists."
+      error: 'Failed to process message'
     });
   }
 });
@@ -139,13 +142,11 @@ router.post('/message', async (req: Request, res: Response) => {
  */
 router.post('/greeting', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
-    const userRole = (req as any).userRole;
+    const userId = (req as AuthenticatedRequest).userId;
+    const userRole = (req as AuthenticatedRequest).userRole;
     
-    // Get user info from database
     const userQuery = await pool.query(
-      `SELECT first_name, last_name, last_login 
-       FROM users WHERE id = $1`,
+      'SELECT first_name, last_name FROM users WHERE id = $1',
       [userId]
     );
     
@@ -186,13 +187,11 @@ router.post('/greeting', async (req: Request, res: Response) => {
       suggestions,
       userRole
     });
-    
   } catch (error) {
     console.error('[UltimateChatAPI] Error generating greeting:', error);
     res.status(500).json({
       success: false,
-      error: (error as Error).message,
-      greeting: 'Hello! How can I help you today?'
+      error: 'Failed to generate greeting'
     });
   }
 });
@@ -203,17 +202,15 @@ router.post('/greeting', async (req: Request, res: Response) => {
  */
 router.get('/history', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = (req as AuthenticatedRequest).userId;
     const limit = parseInt(req.query.limit as string) || 50;
     
     const historyQuery = await pool.query(
       `SELECT 
+        id,
         user_message,
         bot_response,
-        intent,
-        confidence,
-        created_at,
-        session_id
+        created_at
        FROM chat_interactions
        WHERE user_id = $1
        ORDER BY created_at DESC
@@ -242,12 +239,10 @@ router.get('/history', async (req: Request, res: Response) => {
  */
 router.delete('/history', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = (req as AuthenticatedRequest).userId;
     
-    // Don't actually delete, just mark as cleared
     await pool.query(
-      `UPDATE chat_sessions 
-       SET is_cleared = true, cleared_at = NOW()
+      `UPDATE chat_interactions SET is_cleared = true
        WHERE user_id = $1 AND is_cleared = false`,
       [userId]
     );
@@ -272,20 +267,13 @@ router.delete('/history', async (req: Request, res: Response) => {
  */
 router.post('/feedback', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = (req as AuthenticatedRequest).userId;
     const { interactionId, feedbackType, comment } = req.body;
     
     if (!interactionId || !feedbackType) {
       return res.status(400).json({
         success: false,
         error: 'interactionId and feedbackType are required'
-      });
-    }
-    
-    if (!['thumbs_up', 'thumbs_down'].includes(feedbackType)) {
-      return res.status(400).json({
-        success: false,
-        error: 'feedbackType must be thumbs_up or thumbs_down'
       });
     }
     
@@ -333,26 +321,21 @@ router.post('/feedback', async (req: Request, res: Response) => {
  */
 router.get('/metrics', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
-    const userRole = (req as any).userRole;
+    const userRole = (req as AuthenticatedRequest).userRole;
     
-    // Check if user is admin
-    if (!['super_admin', 'admin'].includes(userRole)) {
+    // Only admin and manager can view metrics
+    if (!['admin', 'manager'].includes(userRole as string)) {
       return res.status(403).json({
         success: false,
         error: 'Insufficient permissions'
       });
     }
     
-    // Get metrics from database
     const metricsQuery = await pool.query(`
       SELECT 
         COUNT(*) as total_interactions,
-        AVG(confidence) as avg_confidence,
         COUNT(DISTINCT user_id) as unique_users,
-        COUNT(DISTINCT session_id) as total_sessions,
-        COUNT(*) FILTER (WHERE confidence < 0.6) as low_confidence_count,
-        COUNT(*) FILTER (WHERE is_flagged = true) as flagged_count
+        COUNT(DISTINCT session_id) as total_sessions
       FROM chat_interactions
       WHERE created_at >= NOW() - INTERVAL '30 days'
     `);
@@ -387,33 +370,28 @@ router.get('/metrics', async (req: Request, res: Response) => {
  * GET /api/chat/session/:sessionId
  * Get specific session details
  */
+/**
+ * GET /api/chat/session/:sessionId
+ * Get specific session details
+ */
 router.get('/session/:sessionId', async (req: Request, res: Response) => {
   try {
-    const userId = (req as any).userId;
+    const userId = (req as AuthenticatedRequest).userId;
     const { sessionId } = req.params;
     
     const sessionQuery = await pool.query(
       `SELECT 
+        ci.id,
         ci.user_message,
         ci.bot_response,
         ci.intent,
         ci.confidence,
-        ci.created_at,
-        cf.feedback_type,
-        cf.comment
+        ci.created_at
        FROM chat_interactions ci
-       LEFT JOIN chat_feedback cf ON ci.id = cf.interaction_id
        WHERE ci.session_id = $1 AND ci.user_id = $2
        ORDER BY ci.created_at ASC`,
       [sessionId, userId]
     );
-    
-    if (sessionQuery.rows.length === 0) {
-      return res.status(404).json({
-        success: false,
-        error: 'Session not found'
-      });
-    }
     
     res.json({
       success: true,

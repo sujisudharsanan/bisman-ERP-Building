@@ -9,7 +9,6 @@
 const express = require('express');
 const { Pool } = require('pg');
 const { getUnifiedChat } = require('../../../services/ai/unifiedChatEngine');
-const rbacService = require('../../../services/rbacService');
 
 const router = express.Router();
 
@@ -498,7 +497,6 @@ router.post('/feedback', async (req, res) => {
 router.post('/greeting', async (req, res) => {
   try {
     const userId = req.userId;
-    const userRole = req.userRole;
     
     let userName = 'there';
     let lastLoginDate = null;

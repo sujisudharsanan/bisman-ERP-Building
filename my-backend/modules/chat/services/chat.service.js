@@ -5,8 +5,8 @@
  */
 
 const memoryRepo = require('./assistantMemory.repository');
-const { detectIntent, getSuggestedClarifications } = require('../types/chat.intent');
-const { pickTonePrefix, getTimeBasedGreeting, getDayPart, pickSmallTalk } = require('../types/chat.templates');
+const { detectIntent } = require('../types/chat.intent');
+const { pickTonePrefix, pickSmallTalk } = require('../types/chat.templates');
 
 /**
  * @typedef {import('../types/chat.types').ChatReply} ChatReply
@@ -257,7 +257,7 @@ class ChatService {
   /**
    * Handle task creation
    */
-  async handleTaskCreate(ctx, memory) {
+  async handleTaskCreate(_ctx, _memory) {
     return {
       text: "Sure! I can help you create a new task. What should the task be about?",
       tone: 'friendly',
@@ -309,7 +309,7 @@ class ChatService {
   /**
    * Handle payment queries
    */
-  async handlePaymentQuery(ctx, memory, entities, effectiveBranchName) {
+  async handlePaymentQuery(ctx, memory, _entities, _effectiveBranchName) {
     const prefix = pickTonePrefix('info');
     
     const text =

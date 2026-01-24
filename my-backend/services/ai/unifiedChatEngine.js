@@ -842,7 +842,7 @@ Type **"help"** to see all topics!`;
     // Execute intent-specific actions
     switch (intent) {
       case 'list_tasks':
-      case 'list_pending_tasks':
+      case 'list_pending_tasks': {
         const tasks = await this.getPendingTasks(userId);
         responseData = { tasks };
         if (tasks.length > 0) {
@@ -856,8 +856,9 @@ Type **"help"** to see all topics!`;
           response = humanize(noTasksMsg);
         }
         break;
+      }
         
-      case 'list_approvals':
+      case 'list_approvals': {
         const approvals = await this.getPendingApprovals(userId);
         responseData = { approvals };
         if (approvals.length > 0) {
@@ -871,6 +872,7 @@ Type **"help"** to see all topics!`;
           response = humanize(noApprovalsMsg);
         }
         break;
+      }
         
       case 'greeting':
         // Already handled by generateGreeting
@@ -881,7 +883,7 @@ Type **"help"** to see all topics!`;
         response = humanize(response, { intent: 'help' });
         break;
       
-      case 'math':
+      case 'math': {
         // Extract and calculate math expression from message
         const mathResult = this.calculateMath(message);
         if (mathResult.success) {
@@ -890,8 +892,9 @@ Type **"help"** to see all topics!`;
           response = `I couldn't calculate that. Try something like "what is 25 + 17" or "calculate 100 / 5"`;
         }
         break;
+      }
         
-      default:
+      default: {
         // Check if this is a navigation/how-to question - search workflows
         const navigationKeywords = ['how to', 'how do i', 'where', 'where is', 'navigate', 'find', 'go to', 'open', 'access', 'show me', 'steps to', 'guide'];
         const isNavigationQuestion = navigationKeywords.some(kw => message.toLowerCase().includes(kw));
@@ -923,6 +926,7 @@ Type **"help"** to see all topics!`;
         // Humanize all other responses
         response = humanize(response);
         break;
+      }
     }
     
     return {
@@ -1015,7 +1019,7 @@ Type **"help"** to see all topics!`;
       
       // Classify intent
       const intentResult = await this.classifyIntent(messageToProcess);
-      const { intent, confidence, requiresPermission } = intentResult;
+      const { intent, confidence } = intentResult;
       
       // Generate response
       const responseResult = await this.generateResponse(
@@ -1070,13 +1074,12 @@ Type **"help"** to see all topics!`;
       }
       
       // Save user message
-      const userMsgResult = await pool.query(`
+      await pool.query(`
         INSERT INTO chat_messages (
           conversation_id, user_id, role, content, 
           intent, entities, response_metadata
         )
         VALUES ($1, $2, 'user', $3, $4, $5, $6)
-        RETURNING id
       `, [
         actualConversationId, 
         userId, 
@@ -1293,7 +1296,7 @@ Type **"help"** to see all topics!`;
   /**
    * Get analytics
    */
-  async getAnalytics(userId = null, dateRange = '7 days') {
+  async getAnalytics(userId = null, _dateRange = '7 days') {
     try {
       const query = userId 
         ? `SELECT * FROM v_user_chat_summary WHERE user_id = $1`
