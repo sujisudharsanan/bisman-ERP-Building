@@ -3320,7 +3320,7 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
         try {
           // Generate a name from the path
           const pathParts = path.split('/').filter(Boolean);
-          const name = pathParts.map(p => p.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())).join(' - ') || path;
+          const name = pathParts.map(p => p.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())).join(' - ') || 'Home';
           
           const newRoute = await prisma.rbac_routes.create({
             data: {
@@ -3328,15 +3328,16 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
               name: name,
               method: 'GET',
               is_active: true,
-              is_public: false,
-              created_at: new Date(),
-              updated_at: new Date()
+              is_protected: false,
+              is_menu_item: true,
+              created_at: new Date()
             }
           });
           grantedRouteIds.add(newRoute.id);
           routeByPath.set(path, newRoute);
           routeById.set(newRoute.id, newRoute);
           allRoutes.push(newRoute);
+          console.log('[RBAC] Created route:', path, '-> ID:', newRoute.id);
         } catch (createError) {
           console.warn('[RBAC] Failed to create route for path:', path, createError.message);
         }
