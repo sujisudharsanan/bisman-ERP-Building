@@ -2374,7 +2374,7 @@ export default function Page() {
                           <input
                             type="checkbox"
                             checked={isSelected}
-                            onChange={() => toggleRolePageSelection(page.id)}
+                            onChange={() => toggleRolePageSelection(page.path)}
                             className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer"
                             onClick={(e) => e.stopPropagation()}
                           />
@@ -2450,7 +2450,7 @@ export default function Page() {
                               <input
                                 type="checkbox"
                                 checked={isSelected}
-                                onChange={() => toggleRolePageSelection(page.id)}
+                                onChange={() => toggleRolePageSelection(page.path)}
                                 className="w-4 h-4 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer"
                                 onClick={(e) => e.stopPropagation()}
                               />
