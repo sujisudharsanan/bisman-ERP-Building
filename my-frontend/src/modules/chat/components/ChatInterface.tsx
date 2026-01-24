@@ -1070,7 +1070,7 @@ Choose a subscription plan that fits your business needs:
         const firstName = fullName.split(/[\s_]+/)[0]; // Extract first name only
         const welcomeMessage: Message = {
           id: `bot-welcome-${Date.now()}`,
-          message: `Hey ${firstName}! 👋 I'm Bey, your intelligent assistant for BISMAN ERP. How can I help you today?`,
+          message: `Hi ${firstName}!`,
           user_id: 'bey',
           create_at: Date.now(),
           username: 'Bey',
@@ -1085,7 +1085,7 @@ Choose a subscription plan that fits your business needs:
       const firstName = fullName.split(/[\s_]+/)[0]; // Extract first name only
       const welcomeMessage: Message = {
         id: `bot-welcome-${Date.now()}`,
-        message: `Hey ${firstName}! 👋 I'm Bey, your intelligent assistant for BISMAN ERP. How can I help you today?`,
+        message: `Hi ${firstName}!`,
         user_id: 'bey',
         create_at: Date.now(),
         username: 'Bey',

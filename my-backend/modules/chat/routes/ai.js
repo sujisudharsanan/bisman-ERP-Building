@@ -358,33 +358,8 @@ router.post('/greeting', async (req, res) => {
       }
     }
     
-    // Build personalized greeting
-    const hour = new Date().getHours();
-    let timeGreeting = 'Hello';
-    if (hour < 12) timeGreeting = 'Good morning';
-    else if (hour < 18) timeGreeting = 'Good afternoon';
-    else timeGreeting = 'Good evening';
-    
-    // Construct greeting message with tasks
-    let greetingMessage = `${timeGreeting}, ${userName}! ⚡`;
-    
-    if (pendingTasksCount > 0) {
-      greetingMessage += `\n\nYou have ${pendingTasksCount} pending task${pendingTasksCount > 1 ? 's' : ''} since your last login:`;
-      
-      pendingTasks.forEach((task, index) => {
-        const priorityEmoji = task.priority === 'high' ? '🔴' : task.priority === 'medium' ? '🟡' : '🟢';
-        greetingMessage += `\n${index + 1}. ${priorityEmoji} ${task.title}`;
-        if (task.due_date) {
-          const dueDate = new Date(task.due_date);
-          const isOverdue = dueDate < new Date();
-          greetingMessage += isOverdue ? ' ⚠️ (Overdue)' : ` (Due: ${dueDate.toLocaleDateString()})`;
-        }
-      });
-      
-      greetingMessage += '\n\nHow can I assist you today?';
-    } else {
-      greetingMessage += ' You\'re all caught up! 🎉 How can I help you today?';
-    }
+    // Simple greeting with just Hi and user's personal name
+    const greetingMessage = `Hi ${userName}!`;
     
     // Get role-based suggestions (simplified)
     const suggestions = [
@@ -574,33 +549,8 @@ router.post('/greeting', async (req, res) => {
       }
     }
     
-    // Build time-based greeting
-    const hour = new Date().getHours();
-    let timeGreeting = 'Hello';
-    if (hour < 12) timeGreeting = 'Good morning';
-    else if (hour < 18) timeGreeting = 'Good afternoon';
-    else timeGreeting = 'Good evening';
-    
-    // Construct greeting message
-    let greetingMessage = `${timeGreeting}, ${userName}! ⚡`;
-    
-    if (pendingTasksCount > 0) {
-      greetingMessage += `\n\nYou have **${pendingTasksCount}** pending task${pendingTasksCount > 1 ? 's' : ''} since your last login:`;
-      
-      pendingTasks.forEach((task, index) => {
-        const priorityEmoji = task.priority === 'high' ? '🔴' : task.priority === 'medium' ? '🟡' : '🟢';
-        greetingMessage += `\n${index + 1}. ${priorityEmoji} ${task.title}`;
-        if (task.due_date) {
-          const dueDate = new Date(task.due_date);
-          const isOverdue = dueDate < new Date();
-          greetingMessage += isOverdue ? ' ⚠️ (Overdue)' : ` (Due: ${dueDate.toLocaleDateString()})`;
-        }
-      });
-      
-      greetingMessage += '\n\nHow can I assist you today?';
-    } else {
-      greetingMessage += '\n\nYou\'re all caught up! 🎉 How can I help you today?';
-    }
+    // Simple greeting with just Hi and user's personal name
+    const greetingMessage = `Hi ${userName}!`;
     
     res.json({
       success: true,

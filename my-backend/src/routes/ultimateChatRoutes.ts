@@ -163,12 +163,6 @@ router.post('/greeting', async (req: Request, res: Response) => {
     
     const user = userQuery.rows[0];
     const name = user.first_name || 'there';
-    const hour = new Date().getHours();
-    
-    let timeGreeting = 'Hello';
-    if (hour < 12) timeGreeting = 'Good morning';
-    else if (hour < 18) timeGreeting = 'Good afternoon';
-    else timeGreeting = 'Good evening';
     
     // Get role-specific suggestions
     const suggestions = rbacService.getAllowedIntents(userRole)
@@ -188,7 +182,7 @@ router.post('/greeting', async (req: Request, res: Response) => {
     
     res.json({
       success: true,
-      greeting: `${timeGreeting}, ${name}! How can I assist you today?`,
+      greeting: `Hi ${name}!`,
       suggestions,
       userRole
     });

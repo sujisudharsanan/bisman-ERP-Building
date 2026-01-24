@@ -207,7 +207,7 @@ class UnifiedChatEngine {
         return { success: false, error: 'No math expression found' };
       }
       
-      let expression = mathMatch[0].trim();
+      const expression = mathMatch[0].trim();
       
       // Security: Only allow safe characters
       if (!/^[\d\s+\-*/().]+$/.test(expression)) {
@@ -651,30 +651,10 @@ Type **"help"** to see all topics!`;
    */
   async generateGreeting(userId) {
     const userContext = await this.getUserContext(userId);
-    const { firstName, visitCount, lastVisit, isNew } = userContext;
+    const { firstName } = userContext;
     
-    let greeting = `Hello ${firstName}! `;
-    
-    if (isNew || visitCount === 0) {
-      greeting += "Welcome! I'm BEIA, your BISMAN ERP Internal Assistant. I can help you with tasks, approvals, reports, navigation, and more.";
-      greeting = humanizeService.humanize(greeting, { userName: firstName, tone: 'friendly' });
-    } else {
-      const newItems = await this.getNewItemsSinceLastVisit(userId, lastVisit);
-      
-      if (newItems.tasks > 0 || newItems.approvals > 0) {
-        greeting += `Welcome back! Since your last visit, you have:\n`;
-        if (newItems.tasks > 0) {
-          greeting += `• ${newItems.tasks} new task(s)\n`;
-        }
-        if (newItems.approvals > 0) {
-          greeting += `• ${newItems.approvals} pending approval(s)\n`;
-        }
-        greeting = humanizeService.humanize(greeting, { userName: firstName, tone: 'friendly' });
-      } else {
-        greeting += `Welcome back! Everything looks good. How can I help you today?`;
-        greeting = humanizeService.humanize(greeting, { userName: firstName, tone: 'friendly' });
-      }
-    }
+    // Simple greeting with just Hi and user's personal name
+    const greeting = `Hi ${firstName}!`;
     
     // Update visit
     await this.updateUserVisit(userId);
@@ -682,7 +662,7 @@ Type **"help"** to see all topics!`;
     return {
       greeting,
       userContext,
-      newItems: isNew ? null : await this.getNewItemsSinceLastVisit(userId, lastVisit)
+      newItems: null
     };
   }
 
@@ -972,7 +952,7 @@ Type **"help"** to see all topics!`;
       }
       
       // Get user context - merge with extra context from caller
-      let userContext = await this.getUserContext(userId);
+      const userContext = await this.getUserContext(userId);
       
       // Override with extraContext if provided (for super_admins, enterprise_admins)
       if (extraContext.userName) {

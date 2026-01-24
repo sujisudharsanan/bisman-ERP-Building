@@ -198,6 +198,7 @@ export default function Page() {
   const [authHint, setAuthHint] = useState<string | null>(null);
   const [isAssignMode, setIsAssignMode] = useState(false); // Toggle for showing + icons on unassigned modules
   const [isRoleAssignMode, setIsRoleAssignMode] = useState(false); // Toggle for role assignment mode
+  const [isPageAssignMode, setIsPageAssignMode] = useState(false); // Toggle for page assignment mode in bottom section
   const [autoSaveStatus, setAutoSaveStatus] = useState<'idle' | 'saving' | 'saved' | 'error'>('idle');
   // Bottom section always shows roles only (modules are managed via page permissions in column 4)
   const [assignedRoleIds, setAssignedRoleIds] = useState<number[]>([]); // Roles assigned to selected Super Admin
@@ -237,6 +238,8 @@ export default function Page() {
   // Pages grouping mode: 'module' or 'role'
   const [pagesGroupBy, setPagesGroupBy] = useState<'module' | 'role'>('role');
   const [pagesRoleFilter, setPagesRoleFilter] = useState<string | null>(null);
+  // Bottom section search query for both roles and pages
+  const [bottomSearchQuery, setBottomSearchQuery] = useState('');
   
   const autoSaveTimerRef = useRef<NodeJS.Timeout | null>(null);
   const lastSavedRef = useRef<string>(''); // Track last saved state to avoid duplicate saves
@@ -249,6 +252,23 @@ export default function Page() {
   // Toast notification state for protected module warnings
   const [toastMessage, setToastMessage] = useState<{ message: string; type: 'warning' | 'error' | 'info' } | null>(null);
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // ============================================================================
+  // FILTERED ROLE PAGES - Exclude common pages and API routes from category section
+  // ============================================================================
+  const commonPagePaths = useMemo(() => new Set(COMMON_PAGES.map(p => p.path)), []);
+  
+  const filteredRolePages = useMemo(() => {
+    return rolePages.filter(page => {
+      const path = page.path || page.id;
+      // Exclude:
+      // 1. Common pages (already shown in COMMON_PAGES section)
+      // 2. API routes (not actual pages)
+      if (commonPagePaths.has(path)) return false;
+      if (path.startsWith('/api/')) return false;
+      return true;
+    });
+  }, [rolePages, commonPagePaths]);
 
   // Show toast message
   const showToast = useCallback((message: string, type: 'warning' | 'error' | 'info' = 'warning') => {
@@ -454,10 +474,50 @@ export default function Page() {
     const abortController = new AbortController();
     const currentRoleId = selectedRoleId; // Capture for stale closure check
     
+    // Find the selected role's name for filtering
+    const selectedRole = allRoles.find(r => r.id === selectedRoleId);
+    const selectedRoleName = (selectedRole?.name || '').toUpperCase();
+    
+    // Normalize role name for matching (remove spaces, underscores, etc.)
+    const normalizeRoleName = (name: string): string => {
+      return name.toUpperCase().replace(/[\s_-]+/g, '').replace(/OPERATIONS/g, 'OPS');
+    };
+    
+    const normalizedSelectedRole = normalizeRoleName(selectedRoleName);
+    
+    // Create variations of the role name for matching
+    const getRoleVariations = (roleName: string): string[] => {
+      const normalized = normalizeRoleName(roleName);
+      const variations = [
+        roleName.toUpperCase(),
+        normalized,
+        roleName.toUpperCase().replace(/\s+/g, '_'),
+        roleName.toUpperCase().replace(/_/g, ''),
+      ];
+      // Add common mappings
+      const mappings: Record<string, string[]> = {
+        'ADMINISTRATOR': ['ADMIN', 'ADMINISTRATOR'],
+        'ADMIN': ['ADMIN', 'ADMINISTRATOR'],
+        'ADMINOPERATIONS': ['ADMIN_OPS', 'ADMINOPS', 'ADMIN_OPERATIONS', 'OPERATIONS_MANAGER'],
+        'ADMINOPS': ['ADMIN_OPS', 'ADMINOPS', 'ADMIN_OPERATIONS', 'OPERATIONS_MANAGER'],
+        'OPERATIONSMANAGER': ['OPERATIONS_MANAGER', 'OPS_MANAGER', 'OPSMANAGER'],
+        'CHIEFOPERATINGOFFICER': ['COO', 'CHIEF_OPERATING_OFFICER'],
+        'COO': ['COO', 'CHIEF_OPERATING_OFFICER'],
+      };
+      if (mappings[normalized]) {
+        variations.push(...mappings[normalized]);
+      }
+      return [...new Set(variations)];
+    };
+    
+    const roleVariations = getRoleVariations(selectedRoleName);
+    
     const loadRolePages = async () => {
       setRolePagesLoading(true);
       try {
-        console.log('📄 Loading pages for role:', selectedRoleId);
+        console.log('📄 Loading pages for role:', selectedRoleId, 'name:', selectedRoleName, 'variations:', roleVariations);
+        
+        // Get granted pages from API
         const response = await fetch(`/api/rbac/roles/${selectedRoleId}/pages`, {
           credentials: 'include',
           signal: abortController.signal
@@ -469,29 +529,52 @@ export default function Page() {
           return;
         }
         
+        // Get granted paths from API response
+        let grantedPaths = new Set<string>();
         if (response.ok) {
           const data = await response.json();
           if (data.success && Array.isArray(data.pages)) {
-            setRolePages(data.pages);
-            // Track which pages are granted (selected) - use path for consistent matching
-            const grantedPaths = new Set<string>(
+            grantedPaths = new Set<string>(
               data.pages.filter((p: { granted?: boolean }) => p.granted).map((p: { path: string }) => p.path)
             );
-            setRolePagesSelectedIds(grantedPaths);
-            setRolePagesInitialIds(new Set(grantedPaths));
-            setRolePagesHasChanges(false);
-            console.log('✅ Loaded', data.pages.length, 'pages,', grantedPaths.size, 'granted for role');
-          } else {
-            setRolePages([]);
-            setRolePagesSelectedIds(new Set());
-            setRolePagesInitialIds(new Set());
+            console.log('✅ API returned', data.pages.length, 'pages,', grantedPaths.size, 'granted');
           }
-        } else {
-          console.error('⚠️ API failed with status:', response.status);
-          setRolePages([]);
-          setRolePagesSelectedIds(new Set());
-          setRolePagesInitialIds(new Set());
         }
+        
+        // Get pages from PAGE_REGISTRY that match the selected role
+        // Include pages that: have 'ALL' in roles, OR match any variation of selected role name
+        const pagesForRole = PAGE_REGISTRY.filter(page => {
+          if (page.status !== 'active') return false;
+          const pageRoles = (page.roles || []).map(r => r.toUpperCase());
+          // Include if page is for ALL roles
+          if (pageRoles.includes('ALL')) return true;
+          // Check if any page role matches any variation of selected role
+          for (const pageRole of pageRoles) {
+            const normalizedPageRole = normalizeRoleName(pageRole);
+            if (roleVariations.includes(pageRole) || roleVariations.includes(normalizedPageRole)) {
+              return true;
+            }
+            // Also check if selected role variations include the page role
+            if (roleVariations.some(v => normalizeRoleName(v) === normalizedPageRole)) {
+              return true;
+            }
+          }
+          return false;
+        }).map(page => ({
+          id: page.id,
+          path: page.path,
+          name: page.name,
+          module: page.module || 'other',
+          granted: grantedPaths.has(page.path)
+        }));
+        
+        console.log('📚 PAGE_REGISTRY has', pagesForRole.length, 'pages for role:', selectedRoleName);
+        
+        setRolePages(pagesForRole);
+        setRolePagesSelectedIds(grantedPaths);
+        setRolePagesInitialIds(new Set(grantedPaths));
+        setRolePagesHasChanges(false);
+        
       } catch (error) {
         // Ignore abort errors (expected during rapid switching)
         if (error instanceof Error && error.name === 'AbortError') {
@@ -516,7 +599,7 @@ export default function Page() {
     return () => {
       abortController.abort();
     };
-  }, [selectedRoleId]);
+  }, [selectedRoleId, allRoles]);
 
   // Track changes for role pages
   useEffect(() => {
@@ -585,6 +668,34 @@ export default function Page() {
   const handleDeselectAllRolePages = () => {
     setRolePagesSelectedIds(new Set());
   };
+
+  // Toggle all pages for a specific role group (used in "By Role" view in bottom section)
+  const handleToggleRoleGroupPages = useCallback((pages: { path: string }[], selectAll: boolean) => {
+    setRolePagesSelectedIds(prev => {
+      const newSet = new Set(prev);
+      if (selectAll) {
+        // Add all page paths from this role group
+        pages.forEach(page => newSet.add(page.path));
+      } else {
+        // Remove all page paths from this role group
+        pages.forEach(page => newSet.delete(page.path));
+      }
+      return newSet;
+    });
+  }, []);
+
+  // Check if all pages in a role group are selected
+  const isRoleGroupFullySelected = useCallback((pages: { path: string }[]) => {
+    if (pages.length === 0) return false;
+    return pages.every(page => rolePagesSelectedIds.has(page.path));
+  }, [rolePagesSelectedIds]);
+
+  // Check if some pages in a role group are selected (partial)
+  const isRoleGroupPartiallySelected = useCallback((pages: { path: string }[]) => {
+    if (pages.length === 0) return false;
+    const selectedCount = pages.filter(page => rolePagesSelectedIds.has(page.path)).length;
+    return selectedCount > 0 && selectedCount < pages.length;
+  }, [rolePagesSelectedIds]);
 
   // Compute whether there are unsaved changes by comparing current selection with initial state
   const hasChanges = useMemo(() => {
@@ -1026,47 +1137,51 @@ export default function Page() {
   // ============================================================================
   // SCOPED PAGES FOR SELECTED ROLE (Critical fix for bottom section)
   // When a role is selected in the bottom drawer, show ONLY pages for that role
+  // Uses the same data source as the top section (rolePages from API)
   // ============================================================================
   const pagesForSelectedRoleInBottom = useMemo(() => {
     // If no role selected in bottom section, return empty (user must select a role first)
     if (!selectedRoleId) {
-      return { all: [], assigned: [], unassigned: [], roleSelected: false };
+      return { all: [], assigned: [], unassigned: [], roleSelected: false, roleName: '' };
     }
     
     // Find the selected role's name
     const selectedRole = allRoles.find(r => r.id === selectedRoleId);
     const selectedRoleName = selectedRole?.name?.toUpperCase() || '';
     
-    // Get pages from registry that belong to this role
-    const rolePages = PAGE_REGISTRY.filter(page => {
-      if (page.status !== 'active') return false;
-      const pageRoles = ((page as any).roles || []).map((r: string) => r.toUpperCase());
-      return pageRoles.includes(selectedRoleName) || pageRoles.includes('ALL');
-    }).map(page => ({
-      id: page.id,
-      name: page.name,
-      path: page.path,
-      status: page.status,
-      module: page.module
-    }));
+    // Use the same pages as the top section (rolePages from API + COMMON_PAGES)
+    // Combine filteredRolePages (category pages) with COMMON_PAGES
+    const allPagesForRole = [
+      ...COMMON_PAGES.map(p => ({
+        id: p.id,
+        name: p.name,
+        path: p.path,
+        module: 'common'
+      })),
+      ...filteredRolePages.map(p => ({
+        id: p.id,
+        name: p.name || p.path,
+        path: p.path,
+        module: p.module || 'other'
+      }))
+    ];
     
     // Split into assigned/unassigned based on rolePagesSelectedIds
-    // Now we consistently store paths, so only check page.path
-    const assigned = rolePages.filter(page => 
+    const assigned = allPagesForRole.filter(page => 
       rolePagesSelectedIds.has(page.path)
     );
-    const unassigned = rolePages.filter(page => 
+    const unassigned = allPagesForRole.filter(page => 
       !rolePagesSelectedIds.has(page.path)
     );
     
     return {
-      all: rolePages,
+      all: allPagesForRole,
       assigned,
       unassigned,
       roleSelected: true,
       roleName: selectedRoleName
     };
-  }, [selectedRoleId, allRoles, rolePagesSelectedIds]);
+  }, [selectedRoleId, allRoles, rolePagesSelectedIds, filteredRolePages]);
 
   // Filtered pages based on selected module filter
   const filteredPagesForOverview = useMemo(() => {
@@ -1836,11 +1951,11 @@ export default function Page() {
         </div>
       )}
 
-      {/* Scrollable top section with 4 columns */}
+      {/* Scrollable top section with 4 columns - narrower first 3, wider Pages column */}
       <div className="flex-1 overflow-auto min-h-0 mb-4">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-[minmax(180px,1fr)_minmax(180px,1fr)_minmax(180px,1fr)_minmax(280px,2fr)] gap-3">
           {/* 1. Category Selection */}
-        <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
+        <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-2">
           <div className="text-sm font-semibold mb-2 flex items-center justify-between">
             <span>Category</span>
             <span className="text-xs font-normal text-gray-500">
@@ -1944,7 +2059,7 @@ export default function Page() {
         </div>
 
         {/* 2. Users column - Clients for SUPER_ADMIN, Super Admins for ENTERPRISE_ADMIN */}
-        <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
+        <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-2">
           <div className="text-sm font-semibold mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <span>{isSuperAdmin ? 'Clients' : 'Super Admins'}</span>
@@ -2035,7 +2150,7 @@ export default function Page() {
 
         {/* 3. Roles - Only show allocated/assigned roles */}
         <div 
-          className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3"
+          className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-2"
         >
           <div className="text-sm font-semibold mb-2 flex items-center justify-between">
             <div className="flex items-center gap-2">
@@ -2126,7 +2241,7 @@ export default function Page() {
         </div>
 
         {/* 4. Pages - Show pages for the selected role with Common + Category sections */}
-        <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-3">
+        <div className="rounded-lg border bg-white/40 dark:bg-gray-900/30 p-2">
           <div className="text-sm font-semibold mb-1 flex items-center justify-between">
             <div className="flex items-center gap-2">
               <FiFile className="text-purple-600" />
@@ -2138,7 +2253,7 @@ export default function Page() {
               )}
             </div>
             <span className="text-xs font-normal text-gray-500">
-              {selectedRoleId ? `${rolePagesSelectedIds.size}/${rolePages.length + COMMON_PAGES.length}` : ''}
+              {selectedRoleId ? `${rolePagesSelectedIds.size}/${filteredRolePages.length + COMMON_PAGES.length}` : ''}
             </span>
           </div>
 
@@ -2296,7 +2411,7 @@ export default function Page() {
                           {category === 'pump' ? 'Pump Management Pages' : 'Business ERP Pages'}
                         </span>
                       </div>
-                      <span className="text-[10px] text-gray-500">{rolePages.length}</span>
+                      <span className="text-[10px] text-gray-500">{filteredRolePages.length}</span>
                     </div>
                     
                     <div className={`p-2 space-y-1 ${
@@ -2307,12 +2422,12 @@ export default function Page() {
                           <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-blue-500"></div>
                           Loading pages...
                         </div>
-                      ) : rolePages.length === 0 ? (
+                      ) : filteredRolePages.length === 0 ? (
                         <div className="text-xs text-gray-500 p-2 text-center">
                           No pages for this category.
                         </div>
                       ) : (
-                        rolePages.map((page, pageIndex) => {
+                        filteredRolePages.map((page, pageIndex) => {
                           const isSelected = rolePagesSelectedIds.has(page.path);
                           const uniqueKey = `${page.routeId || pageIndex}-${page.id || page.path}`;
                           const scopeBadge = category === 'pump' ? 'PUMP' : 'ERP';
@@ -2397,6 +2512,7 @@ export default function Page() {
                 onClick={() => {
                   setBottomViewMode('roles');
                   setIsRolesDrawerExpanded(true);
+                  setBottomSearchQuery('');
                 }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                   bottomViewMode === 'roles'
@@ -2411,6 +2527,7 @@ export default function Page() {
                 onClick={() => {
                   setBottomViewMode('pages');
                   setIsPagesDrawerExpanded(true);
+                  setBottomSearchQuery('');
                 }}
                 className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
                   bottomViewMode === 'pages'
@@ -2452,6 +2569,17 @@ export default function Page() {
                   >
                     Unassigned ({allRoles.length - assignedRoleIds.length})
                   </button>
+                </div>
+                {/* Search bar for roles */}
+                <div className="relative ml-2" onClick={(e) => e.stopPropagation()}>
+                  <FiSearch className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search roles..."
+                    value={bottomSearchQuery}
+                    onChange={(e) => setBottomSearchQuery(e.target.value)}
+                    className="pl-7 pr-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 w-36 focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent"
+                  />
                 </div>
               </>
             ) : (
@@ -2551,6 +2679,17 @@ export default function Page() {
                     </select>
                   )}
                 </div>
+                {/* Search bar for pages */}
+                <div className="relative ml-2" onClick={(e) => e.stopPropagation()}>
+                  <FiSearch className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search pages..."
+                    value={bottomSearchQuery}
+                    onChange={(e) => setBottomSearchQuery(e.target.value)}
+                    className="pl-7 pr-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 w-36 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:border-transparent"
+                  />
+                </div>
               </>
             )}
           </div>
@@ -2593,24 +2732,39 @@ export default function Page() {
                 </div>
               </>
             ) : (
-              /* Clickable area for pages expand/collapse */
-              <div 
-                onClick={() => setIsPagesDrawerExpanded(!isPagesDrawerExpanded)}
-                className="flex items-center gap-3 cursor-pointer hover:bg-white/50 dark:hover:bg-gray-800/50 px-3 py-1 rounded-lg transition-colors"
-              >
-                <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 rounded-full">
-                  <FiPackage className="w-3 h-3 text-purple-600" />
-                  <span className="text-purple-700 dark:text-purple-400">{allPagesGroupedByModule.length} modules</span>
-                </span>
-                {/* Expand/Collapse indicator */}
+              /* Pages view - Add/Remove button and expand/collapse */
+              <>
+                {selectedRoleId && (
+                  <button
+                    onClick={() => setIsPageAssignMode(!isPageAssignMode)}
+                    className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm ${
+                      isPageAssignMode
+                        ? "bg-green-600 text-white hover:bg-green-700"
+                        : "bg-purple-600 text-white hover:bg-purple-700"
+                    }`}
+                  >
+                    {isPageAssignMode ? "✓ Done" : "Add/Remove"}
+                  </button>
+                )}
+                {/* Clickable area for pages expand/collapse */}
                 <div 
-                  className={`p-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-transform duration-300 ${
-                    isPagesDrawerExpanded ? 'rotate-180' : ''
-                  }`}
+                  onClick={() => setIsPagesDrawerExpanded(!isPagesDrawerExpanded)}
+                  className="flex items-center gap-3 cursor-pointer hover:bg-white/50 dark:hover:bg-gray-800/50 px-3 py-1 rounded-lg transition-colors"
                 >
-                  <FiChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                  <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 rounded-full">
+                    <FiPackage className="w-3 h-3 text-purple-600" />
+                    <span className="text-purple-700 dark:text-purple-400">{allPagesGroupedByModule.length} modules</span>
+                  </span>
+                  {/* Expand/Collapse indicator */}
+                  <div 
+                    className={`p-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-transform duration-300 ${
+                      isPagesDrawerExpanded ? 'rotate-180' : ''
+                    }`}
+                  >
+                    <FiChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+                  </div>
                 </div>
-              </div>
+              </>
             )}
           </div>
         </div>
@@ -2624,9 +2778,15 @@ export default function Page() {
                 {allRoles
                   .filter((role) => {
                     const isAssigned = assignedRoleIds.includes(role.id);
-                    return rolesFilter === 'all' || 
+                    const matchesFilter = rolesFilter === 'all' || 
                       (rolesFilter === 'assigned' && isAssigned) ||
                       (rolesFilter === 'unassigned' && !isAssigned);
+                    // Search filter
+                    const searchLower = bottomSearchQuery.toLowerCase().trim();
+                    const matchesSearch = !searchLower || 
+                      (role.name || '').toLowerCase().includes(searchLower) ||
+                      (role.display_name || '').toLowerCase().includes(searchLower);
+                    return matchesFilter && matchesSearch;
                   })
                   .map((role) => {
                     const isSelected = selectedRoleId === role.id;
@@ -2768,30 +2928,56 @@ export default function Page() {
                                 return (
                                   <div
                                     key={`${page.id}-${idx}`}
-                                    onClick={() => setBottomSelectedPageId(isSelected ? null : page.id)}
-                                    className={`p-2 rounded-lg border cursor-pointer transition-colors group ${
-                                      isSelected
-                                        ? 'border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300 shadow-sm'
-                                        : isAssigned
-                                        ? 'border-green-300 bg-green-50 dark:bg-green-900/20 hover:border-green-400'
-                                        : 'border-red-200 dark:border-red-800 bg-red-50/30 dark:bg-red-900/10 hover:border-red-400'
-                                    }`}
+                                    className="relative"
                                   >
-                                    <div className="flex items-center justify-between mb-0.5">
-                                      {isAssigned ? (
-                                        <FiCheckCircle className="w-3 h-3 text-green-500" />
-                                      ) : (
-                                        <FiMinus className="w-3 h-3 text-red-400" />
-                                      )}
-                                      <Link href={page.path || '#'} onClick={(e) => e.stopPropagation()}>
-                                        <FiExternalLink className="w-2.5 h-2.5 text-gray-400 hover:text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                      </Link>
-                                    </div>
-                                    <div className={`text-xs font-medium truncate ${isSelected ? 'text-purple-700 dark:text-purple-300' : isAssigned ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-300'}`}>
-                                      {page.name || page.id}
-                                    </div>
-                                    <div className="text-[9px] text-gray-500 dark:text-gray-400 truncate">
-                                      {page.path}
+                                    {/* Add/Remove button overlay */}
+                                    {isPageAssignMode && (
+                                      <button
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          toggleRolePageSelection(page.path);
+                                        }}
+                                        className={`absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-transform hover:scale-110 ${
+                                          isAssigned 
+                                            ? "bg-red-500 hover:bg-red-600 text-white"
+                                            : "bg-green-500 hover:bg-green-600 text-white"
+                                        }`}
+                                      >
+                                        {isAssigned ? '−' : '+'}
+                                      </button>
+                                    )}
+                                    <div
+                                      onClick={() => {
+                                        if (isPageAssignMode) {
+                                          toggleRolePageSelection(page.path);
+                                        } else {
+                                          setBottomSelectedPageId(isSelected ? null : page.id);
+                                        }
+                                      }}
+                                      className={`p-2 rounded-lg border cursor-pointer transition-colors group ${
+                                        isSelected
+                                          ? 'border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300 shadow-sm'
+                                          : isAssigned
+                                          ? 'border-green-300 bg-green-50 dark:bg-green-900/20 hover:border-green-400'
+                                          : 'border-red-200 dark:border-red-800 bg-red-50/30 dark:bg-red-900/10 hover:border-red-400'
+                                      }`}
+                                    >
+                                      <div className="flex items-center justify-between mb-0.5">
+                                        {isAssigned ? (
+                                          <FiCheckCircle className="w-3 h-3 text-green-500" />
+                                        ) : (
+                                          <FiMinus className="w-3 h-3 text-red-400" />
+                                        )}
+                                        <Link href={page.path || '#'} onClick={(e) => e.stopPropagation()}>
+                                          <FiExternalLink className="w-2.5 h-2.5 text-gray-400 hover:text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                        </Link>
+                                      </div>
+                                      <div className={`text-xs font-medium truncate ${isSelected ? 'text-purple-700 dark:text-purple-300' : isAssigned ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                                        {page.name || page.id}
+                                      </div>
+                                      <div className="text-[9px] text-gray-500 dark:text-gray-400 truncate">
+                                        {page.path}
+                                      </div>
                                     </div>
                                   </div>
                                 );
@@ -2820,9 +3006,29 @@ export default function Page() {
                     ) : pagesGroupBy === 'role' ? (
                       /* ========== PAGES GROUPED BY ROLE (Overview) ========== */
                       <div className="space-y-4">
-                        {filteredPagesForOverviewByRole.map(({ roleId, roleName, pages }) => (
+                        {filteredPagesForOverviewByRole.map(({ roleId, roleName, pages }) => {
+                          const isFullySelected = isRoleGroupFullySelected(pages);
+                          const isPartiallySelected = isRoleGroupPartiallySelected(pages);
+                          return (
                           <div key={roleId} className="space-y-2">
                             <div className="flex items-center gap-2 pb-1 border-b border-indigo-100 dark:border-indigo-800">
+                              {/* Select All checkbox for this role group */}
+                              {selectedRoleId && (
+                                <input
+                                  type="checkbox"
+                                  checked={isFullySelected}
+                                  ref={(el) => {
+                                    if (el) el.indeterminate = isPartiallySelected && !isFullySelected;
+                                  }}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleRoleGroupPages(pages, !isFullySelected);
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="w-4 h-4 text-indigo-600 rounded border-gray-300 focus:ring-indigo-500 cursor-pointer"
+                                  title={isFullySelected ? 'Deselect all pages in this role' : 'Select all pages in this role'}
+                                />
+                              )}
                               <FiShield className="w-3.5 h-3.5 text-indigo-600" />
                               <span className="text-xs font-semibold text-indigo-700 dark:text-indigo-300">
                                 {roleName}
@@ -2830,22 +3036,67 @@ export default function Page() {
                               <span className="text-[10px] text-gray-500 px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
                                 {pages.length} pages
                               </span>
+                              {/* Show selected count when a role is selected */}
+                              {selectedRoleId && (
+                                <span className="text-[10px] text-green-600 dark:text-green-400 px-1.5 py-0.5 bg-green-50 dark:bg-green-900/30 rounded">
+                                  {pages.filter(p => rolePagesSelectedIds.has(p.path)).length} selected
+                                </span>
+                              )}
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
                               {pages.map((page, idx) => {
                                 const isSelected = bottomSelectedPageId === page.id;
+                                const isPageChecked = rolePagesSelectedIds.has(page.path);
                                 return (
                                   <div
                                     key={`${page.id}-${idx}`}
-                                    onClick={() => setBottomSelectedPageId(isSelected ? null : page.id)}
+                                    onClick={() => {
+                                      if (selectedRoleId) {
+                                        // Toggle page selection when role is selected
+                                        setRolePagesSelectedIds(prev => {
+                                          const newSet = new Set(prev);
+                                          if (newSet.has(page.path)) {
+                                            newSet.delete(page.path);
+                                          } else {
+                                            newSet.add(page.path);
+                                          }
+                                          return newSet;
+                                        });
+                                      } else {
+                                        setBottomSelectedPageId(isSelected ? null : page.id);
+                                      }
+                                    }}
                                     className={`p-2 rounded-lg border cursor-pointer transition-colors group ${
                                       isSelected
                                         ? 'border-indigo-500 bg-indigo-100 dark:bg-indigo-900/40 ring-2 ring-indigo-300 shadow-sm'
+                                        : isPageChecked
+                                        ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-700'
                                         : 'border-indigo-200 dark:border-indigo-700 bg-white dark:bg-gray-800 hover:border-indigo-400'
                                     }`}
                                   >
                                     <div className="flex items-center justify-between mb-0.5">
-                                      <FiFile className={`w-3 h-3 ${isSelected ? 'text-indigo-600' : 'text-indigo-500'}`} />
+                                      {selectedRoleId ? (
+                                        <input
+                                          type="checkbox"
+                                          checked={isPageChecked}
+                                          onChange={(e) => {
+                                            e.stopPropagation();
+                                            setRolePagesSelectedIds(prev => {
+                                              const newSet = new Set(prev);
+                                              if (newSet.has(page.path)) {
+                                                newSet.delete(page.path);
+                                              } else {
+                                                newSet.add(page.path);
+                                              }
+                                              return newSet;
+                                            });
+                                          }}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="w-3.5 h-3.5 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer"
+                                        />
+                                      ) : (
+                                        <FiFile className={`w-3 h-3 ${isSelected ? 'text-indigo-600' : 'text-indigo-500'}`} />
+                                      )}
                                       <Link href={page.path || '#'} onClick={(e) => e.stopPropagation()}>
                                         <FiExternalLink className="w-2.5 h-2.5 text-gray-400 hover:text-indigo-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                                       </Link>
@@ -2861,14 +3112,35 @@ export default function Page() {
                               })}
                             </div>
                           </div>
-                        ))}
+                        );
+                        })}
                       </div>
                     ) : (
                       /* ========== PAGES GROUPED BY MODULE (Overview) ========== */
                       <div className="space-y-4">
-                        {filteredPagesForOverview.map(({ moduleId, moduleName, pages }) => (
+                        {filteredPagesForOverview.map(({ moduleId, moduleName, pages }) => {
+                          const isFullySelected = isRoleGroupFullySelected(pages);
+                          const isPartiallySelected = isRoleGroupPartiallySelected(pages);
+                          return (
                           <div key={moduleId} className="space-y-2">
                             <div className="flex items-center gap-2 pb-1 border-b border-purple-100 dark:border-purple-800">
+                              {/* Select All checkbox for this module group */}
+                              {selectedRoleId && (
+                                <input
+                                  type="checkbox"
+                                  checked={isFullySelected}
+                                  ref={(el) => {
+                                    if (el) el.indeterminate = isPartiallySelected && !isFullySelected;
+                                  }}
+                                  onChange={(e) => {
+                                    e.stopPropagation();
+                                    handleToggleRoleGroupPages(pages, !isFullySelected);
+                                  }}
+                                  onClick={(e) => e.stopPropagation()}
+                                  className="w-4 h-4 text-purple-600 rounded border-gray-300 focus:ring-purple-500 cursor-pointer"
+                                  title={isFullySelected ? 'Deselect all pages in this module' : 'Select all pages in this module'}
+                                />
+                              )}
                               <FiPackage className="w-3.5 h-3.5 text-purple-600" />
                               <span className="text-xs font-semibold text-purple-700 dark:text-purple-300">
                                 {moduleName}
@@ -2876,22 +3148,67 @@ export default function Page() {
                               <span className="text-[10px] text-gray-500 px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
                                 {pages.length} pages
                               </span>
+                              {/* Show selected count when a role is selected */}
+                              {selectedRoleId && (
+                                <span className="text-[10px] text-green-600 dark:text-green-400 px-1.5 py-0.5 bg-green-50 dark:bg-green-900/30 rounded">
+                                  {pages.filter(p => rolePagesSelectedIds.has(p.path)).length} selected
+                                </span>
+                              )}
                             </div>
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
                               {pages.map((page, idx) => {
                                 const isSelected = bottomSelectedPageId === page.id;
+                                const isPageChecked = rolePagesSelectedIds.has(page.path);
                                 return (
                                   <div
                                     key={`${page.id}-${idx}`}
-                                    onClick={() => setBottomSelectedPageId(isSelected ? null : page.id)}
+                                    onClick={() => {
+                                      if (selectedRoleId) {
+                                        // Toggle page selection when role is selected
+                                        setRolePagesSelectedIds(prev => {
+                                          const newSet = new Set(prev);
+                                          if (newSet.has(page.path)) {
+                                            newSet.delete(page.path);
+                                          } else {
+                                            newSet.add(page.path);
+                                          }
+                                          return newSet;
+                                        });
+                                      } else {
+                                        setBottomSelectedPageId(isSelected ? null : page.id);
+                                      }
+                                    }}
                                     className={`p-2 rounded-lg border cursor-pointer transition-colors group ${
                                       isSelected
                                         ? 'border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300 shadow-sm'
+                                        : isPageChecked
+                                        ? 'border-green-300 bg-green-50 dark:bg-green-900/20 dark:border-green-700'
                                         : 'border-purple-200 dark:border-purple-700 bg-white dark:bg-gray-800 hover:border-purple-400'
                                     }`}
                                   >
                                     <div className="flex items-center justify-between mb-0.5">
-                                      <FiFile className={`w-3 h-3 ${isSelected ? 'text-purple-600' : 'text-purple-500'}`} />
+                                      {selectedRoleId ? (
+                                        <input
+                                          type="checkbox"
+                                          checked={isPageChecked}
+                                          onChange={(e) => {
+                                            e.stopPropagation();
+                                            setRolePagesSelectedIds(prev => {
+                                              const newSet = new Set(prev);
+                                              if (newSet.has(page.path)) {
+                                                newSet.delete(page.path);
+                                              } else {
+                                                newSet.add(page.path);
+                                              }
+                                              return newSet;
+                                            });
+                                          }}
+                                          onClick={(e) => e.stopPropagation()}
+                                          className="w-3.5 h-3.5 text-green-600 rounded border-gray-300 focus:ring-green-500 cursor-pointer"
+                                        />
+                                      ) : (
+                                        <FiFile className={`w-3 h-3 ${isSelected ? 'text-purple-600' : 'text-purple-500'}`} />
+                                      )}
                                       <Link href={page.path || '#'} onClick={(e) => e.stopPropagation()}>
                                         <FiExternalLink className="w-2.5 h-2.5 text-gray-400 hover:text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                                       </Link>
@@ -2907,7 +3224,8 @@ export default function Page() {
                               })}
                             </div>
                           </div>
-                        ))}
+                        );
+                        })}
                       </div>
                     )}
                   </>

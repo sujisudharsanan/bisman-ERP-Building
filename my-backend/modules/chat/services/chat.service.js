@@ -41,12 +41,8 @@ class ChatService {
     // ==================== SMALL TALK ====================
     
     if (intent === 'GREETING') {
-      const greeting = getTimeBasedGreeting();
-      const isNewUser = !memory || memory.conversationCount === 0;
-      
-      const text = isNewUser
-        ? `${greeting} ${ctx.userName}! 👋 I'm Bisman Assistant, here to help with your ERP tasks. What can I do for you?`
-        : `${greeting} ${ctx.userName}! 😊 Good to see you again. How can I help you today?`;
+      // Simple greeting with just Hi and user's personal name
+      const text = `Hi ${ctx.userName}!`;
 
       return {
         text,
