@@ -77,12 +77,6 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ showThemeToggle = false, fixed = 
     style={{ height: 'var(--navbar-height)' }}
     data-component="top-navbar"
   >
-      {/* Left rail aligned with sidebar */}
-      <div
-        aria-hidden
-        className="absolute left-0 top-0 bottom-0 border-r border-gray-200 dark:border-gray-800"
-        style={{ width: 'var(--sidebar-width, 13rem)' }}
-      />
       {/* Left side - Logo and Title only */}
       <div className="flex items-center gap-3">
         {/* Logo and Title */}

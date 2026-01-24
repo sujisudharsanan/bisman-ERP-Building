@@ -195,6 +195,53 @@
 			"label": "role-page-report",
 			"type": "shell",
 			"command": "node get-schema.js"
+		},
+		{
+			"label": "rbac-coverage-audit",
+			"type": "shell",
+			"command": "node scripts/rbac-coverage-audit.js"
+		},
+		{
+			"label": "rbac-audit-v2",
+			"type": "shell",
+			"command": "node scripts/rbac-coverage-audit.js 2>&1"
+		},
+		{
+			"label": "rbac-audit-final",
+			"type": "shell",
+			"command": "node scripts/rbac-coverage-audit.js 2>&1",
+			"isBackground": false
+		},
+		{
+			"label": "rbac-audit-action",
+			"type": "shell",
+			"command": "node scripts/rbac-audit-action.js 2>&1"
+		},
+		{
+			"label": "rbac-action-run",
+			"type": "shell",
+			"command": "node scripts/rbac-audit-action.js 2>&1"
+		},
+		{
+			"label": "rbac-fix-apply",
+			"type": "shell",
+			"command": "node -e \"\nconst { Pool } = require('pg');\nconst pool = new Pool({ connectionString: 'postgresql://postgres:JNdJhwkgAhtLbiGOFDEZZRGOtCvQumvd@hopper.proxy.rlwy.net:30204/railway' });\n\n(async () => {\n  console.log('RBAC AUDIT - CORRECTIVE ACTIONS');\n  console.log('================================\\n');\n\n  try {\n    // 1. Fix /admin/support\n    console.log('STEP 1: Assign /admin/support to admin roles...');\n    const adminSupport = await pool.query(\\\"SELECT id FROM pages_master WHERE page_code = 'ADMIN_SUPPORT'\\\");\n    if (adminSupport.rows.length > 0) {\n      const pageId = adminSupport.rows[0].id;\n      for (const role of ['SUPER_ADMIN', 'SYSTEM_ADMIN']) {\n        const existing = await pool.query('SELECT 1 FROM role_page_access WHERE role_name = $1 AND page_id = $2', [role, pageId]);\n        if (existing.rows.length === 0) {\n          await pool.query('INSERT INTO role_page_access (role_name, page_id, can_view, can_edit, can_delete) VALUES ($1, $2, true, true, true)', [role, pageId]);\n          console.log('   DONE: Assigned /admin/support to ' + role);\n        } else {\n          console.log('   INFO: Already assigned to ' + role);\n        }\n      }\n    }\n\n    // 2. Fix QA_LOGIN\n    console.log('\\nSTEP 2: Fix QA_LOGIN show_in_sidebar...');\n    const qaResult = await pool.query(\\\"UPDATE pages_master SET show_in_sidebar = false WHERE page_code = 'QA_LOGIN' AND show_in_sidebar = true RETURNING id\\\");\n    console.log(qaResult.rows.length > 0 ? '   DONE: QA_LOGIN sidebar=false' : '   INFO: Already false');\n\n    // 3. Fix WELCOME\n    console.log('\\nSTEP 3: Fix WELCOME show_in_sidebar...');\n    const welcomeResult = await pool.query(\\\"UPDATE pages_master SET show_in_sidebar = false WHERE page_code = 'WELCOME' AND show_in_sidebar = true RETURNING id\\\");\n    console.log(welcomeResult.rows.length > 0 ? '   DONE: WELCOME sidebar=false' : '   INFO: Already false');\n\n    // 4. Verify\n    console.log('\\nSTEP 4: Verification...');\n    const remaining = await pool.query('SELECT COUNT(*) as count FROM pages_master WHERE status = \\\"active\\\" AND show_in_sidebar = true AND id NOT IN (SELECT DISTINCT page_id FROM role_page_access)');\n    console.log('   Sidebar pages without roles: ' + remaining.rows[0].count);\n\n    const superAdmin = await pool.query(\\\"SELECT COUNT(*) as count FROM role_page_access WHERE role_name = 'SUPER_ADMIN'\\\");\n    console.log('   SUPER_ADMIN total pages: ' + superAdmin.rows[0].count);\n\n    console.log('\\n=== ACTIONS COMPLETED ===');\n  } catch (e) {\n    console.error('ERROR:', e.message);\n  }\n  pool.end();\n})();\n\" 2>&1"
+		},
+		{
+			"label": "apply-rbac-fixes",
+			"type": "shell",
+			"command": "node scripts/apply-rbac-fixes.js"
+		},
+		{
+			"label": "check-dashboard-pages",
+			"type": "shell",
+			"command": "node -e \"const { Pool } = require('pg'); const pool = new Pool({ connectionString: 'postgresql://postgres:JNdJhwkgAhtLbiGOFDEZZRGOtCvQumvd@hopper.proxy.rlwy.net:30204/railway' }); (async () => { const res = await pool.query('SELECT id, page_code, display_name, route, show_in_sidebar FROM pages_master WHERE route LIKE \\\"%dashboard%\\\" OR display_name LIKE \\\"%Dashboard%\\\" ORDER BY route'); console.table(res.rows); pool.end(); })();\""
+		},
+		{
+			"label": "fix-dashboard-name",
+			"type": "shell",
+			"command": "node scripts/fix-dashboard-name.js",
+			"isBackground": false
 		}
 	]
 }
