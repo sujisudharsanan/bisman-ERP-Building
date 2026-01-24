@@ -28,6 +28,7 @@ type Client = {
   productType?: string;
   status?: string;
   is_active?: boolean;
+  modules_enabled?: string[] | null;  // Modules assigned by Enterprise Admin
 };
 
 type Role = {
@@ -169,15 +170,33 @@ export default function RolesUsersReportPage() {
     return allRoles.find(r => r.id === selectedRoleId) || null;
   }, [allRoles, selectedRoleId]);
 
+  // Modules to hide from SUPER_ADMIN (enterprise-admin specific modules)
+  const HIDDEN_MODULES = ['enterprise-admin', 'super-admin'];
+
   // Get all pages grouped by module for the Pages Overview section (using PAGE_REGISTRY)
+  // For SUPER_ADMIN: Filter by client's modules_enabled if a client is selected
   const allPagesGroupedByModule = useMemo(() => {
     // Group pages from PAGE_REGISTRY by module
     const moduleMap = new Map<string, { moduleId: string; moduleName: string; pages: { id: string; name: string; path: string; status: string }[] }>();
+    
+    // Get client's enabled modules (if super admin and client selected)
+    const clientEnabledModules = isSuperAdmin && selectedClient?.modules_enabled 
+      ? (Array.isArray(selectedClient.modules_enabled) ? selectedClient.modules_enabled : [])
+      : null;
     
     for (const page of PAGE_REGISTRY) {
       if (page.status !== 'active') continue; // Skip disabled/coming-soon pages
       
       const moduleId = page.module;
+      
+      // For SUPER_ADMIN: Hide enterprise-admin and super-admin modules
+      if (isSuperAdmin && HIDDEN_MODULES.includes(moduleId)) continue;
+      
+      // For SUPER_ADMIN with client selected: Only show pages from client's enabled modules
+      if (isSuperAdmin && clientEnabledModules && clientEnabledModules.length > 0) {
+        if (!clientEnabledModules.includes(moduleId)) continue;
+      }
+      
       if (!moduleMap.has(moduleId)) {
         const moduleMeta = MODULES[moduleId];
         moduleMap.set(moduleId, {
@@ -196,7 +215,7 @@ export default function RolesUsersReportPage() {
     
     // Convert to array and sort by module name
     return Array.from(moduleMap.values()).sort((a, b) => a.moduleName.localeCompare(b.moduleName));
-  }, []);
+  }, [isSuperAdmin, selectedClient]);
 
   // Filtered pages based on selected module filter and assigned filter
   const filteredPagesForOverview = useMemo(() => {
