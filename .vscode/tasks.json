@@ -184,6 +184,17 @@
 			"type": "shell",
 			"command": "git status && git add -A && git commit -m 'fix: update chat/AI routes and tasks config' && git push origin deployment",
 			"isBackground": false
+		},
+		{
+			"label": "role-page-report",
+			"type": "shell",
+			"command": "node role-page-report.js",
+			"isBackground": false
+		},
+		{
+			"label": "role-page-report",
+			"type": "shell",
+			"command": "node get-schema.js"
 		}
 	]
 }
