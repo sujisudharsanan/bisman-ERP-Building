@@ -52,6 +52,9 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       '/common',            // Has layout.tsx with Sidebar
       '/system',            // Has layout.tsx with Sidebar
       '/qa',                // Has layout.tsx (standalone testing)
+      // Dashboard pages - use DashboardLayout with their own sidebar
+      '/dashboard',         // Uses DashboardLayout
+      '/task-dashboard',    // Uses DashboardLayout
       // API routes
       '/api',
     ],
