@@ -867,7 +867,7 @@ export default function Page() {
         // Parse roles data - API returns { success, summary, data: [...] }
         // The data array contains role objects with users
         const rolesArray = rolesJson.data || rolesJson.roles || [];
-        const rolesData = (Array.isArray(rolesArray) ? rolesArray : []).map((r: any) => ({
+        let rolesData = (Array.isArray(rolesArray) ? rolesArray : []).map((r: any) => ({
           id: Number(r.roleId || r.id),
           name: String(r.roleName || r.name || ''),
           display_name: String(r.roleDisplayName || r.display_name || r.roleName || r.name || ''),
@@ -877,6 +877,27 @@ export default function Page() {
           users: Array.isArray(r.users) ? r.users : [],
           userCount: r.userCount || (Array.isArray(r.users) ? r.users.length : 0),
         })) as Role[];
+        
+        // Ensure SUPER_ADMIN and ENTERPRISE_ADMIN are included (they might not come from roles-users API)
+        const existingRoleNames = new Set(rolesData.map(r => r.name.toUpperCase()));
+        const adminRolesToAdd = [
+          { name: 'SUPER_ADMIN', display_name: 'Super Admin', level: 100 },
+          { name: 'ENTERPRISE_ADMIN', display_name: 'Enterprise Admin', level: 99 },
+        ];
+        adminRolesToAdd.forEach((adminRole, idx) => {
+          if (!existingRoleNames.has(adminRole.name)) {
+            rolesData.unshift({
+              id: -1 - idx, // Use negative IDs for synthetic entries
+              name: adminRole.name,
+              display_name: adminRole.display_name,
+              level: adminRole.level,
+              is_active: true,
+              users: [],
+              userCount: 0,
+            } as Role);
+          }
+        });
+        
         console.log('📋 Loaded roles:', rolesData.length, rolesData);
         setAllRoles(rolesData);
         
@@ -1034,6 +1055,27 @@ export default function Page() {
   const selectedRole = useMemo(() => {
     return allRoles.find(r => r.id === selectedRoleId) || null;
   }, [allRoles, selectedRoleId]);
+
+  // Create a map of role name -> page count from database (single source of truth)
+  const rolePageCountMap = useMemo(() => {
+    const map = new Map<string, number>();
+    dbPagesByRole.forEach(r => {
+      // Store by role ID (which is the role name string like 'SUPER_ADMIN')
+      map.set(r.roleId.toUpperCase(), r.pages.length);
+      // Also store by display name for fallback matching
+      if (r.roleName) {
+        map.set(r.roleName.toUpperCase(), r.pages.length);
+      }
+    });
+    return map;
+  }, [dbPagesByRole]);
+
+  // Get page count for a role (from database)
+  const getPageCountForRole = (role: Role): number => {
+    const roleName = (role.name || '').toUpperCase();
+    const displayName = (role.display_name || '').toUpperCase();
+    return rolePageCountMap.get(roleName) ?? rolePageCountMap.get(displayName) ?? 0;
+  };
 
   // Get all pages grouped by module for the Pages Overview section (using DATABASE)
   // Enterprise Admin is the topmost role - can see and assign all pages
@@ -2903,9 +2945,14 @@ export default function Page() {
                             </span>
                           </div>
                           <div className="flex items-center justify-between">
-                            <span className="text-[9px] text-gray-500 dark:text-gray-400">
-                              {userCount} users
-                            </span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] text-gray-500 dark:text-gray-400">
+                                {userCount} users
+                              </span>
+                              <span className="text-[9px] text-purple-600 dark:text-purple-400 font-medium">
+                                {getPageCountForRole(role)} pages
+                              </span>
+                            </div>
                             {role.level && (
                               <span className={`text-[9px] px-1 py-0.5 rounded ${
                                 isSelected ? 'bg-yellow-200 text-yellow-800 dark:bg-yellow-800 dark:text-yellow-200' : isAssigned ? 'bg-green-200 text-green-800 dark:bg-green-800 dark:text-green-200' : 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300'
