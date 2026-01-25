@@ -3209,11 +3209,11 @@ app.get('/api/enterprise-admin/super-admins/:id/page-pool', authenticate, requir
         pm.show_in_sidebar,
         pm.icon,
         pm.sort_order,
-        m.module_name,
+        m.module_code as module_name,
         m.display_name as module_display_name
       FROM superadmin_page_pool pp
       JOIN pages_master pm ON pp.page_id = pm.id
-      LEFT JOIN modules m ON pm.module_id = m.id
+      LEFT JOIN modules_master m ON pm.module_id = m.id
       WHERE pp.superadmin_id = ${superAdminId}
         AND pp.is_active = true
         AND pm.status = 'active'
