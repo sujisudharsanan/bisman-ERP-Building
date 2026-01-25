@@ -3214,7 +3214,8 @@ app.get('/api/enterprise-admin/super-admins/:id/page-pool', authenticate, requir
       FROM superadmin_page_pool pp
       JOIN pages_master pm ON pp.page_id = pm.id
       LEFT JOIN modules m ON pm.module_id = m.id
-      WHERE pp.super_admin_id = ${superAdminId}
+      WHERE pp.superadmin_id = ${superAdminId}
+        AND pp.is_active = true
         AND pm.status = 'active'
       ORDER BY m.sort_order, pm.sort_order
     `;
@@ -3303,10 +3304,11 @@ app.put('/api/enterprise-admin/super-admins/:id/page-pool', authenticate, requir
 
     // Use transaction to update page pool
     const result = await prisma.$transaction(async (tx) => {
-      // Delete existing page pool entries
+      // Delete existing page pool entries (soft delete by setting is_active = false)
       await tx.$executeRaw`
-        DELETE FROM superadmin_page_pool 
-        WHERE super_admin_id = ${superAdminId}
+        UPDATE superadmin_page_pool 
+        SET is_active = false
+        WHERE superadmin_id = ${superAdminId}
       `;
 
       // Insert new page pool entries
@@ -3315,9 +3317,9 @@ app.put('/api/enterprise-admin/super-admins/:id/page-pool', authenticate, requir
         const pid = parseInt(pageId);
         if (Number.isFinite(pid) && pid > 0) {
           await tx.$executeRaw`
-            INSERT INTO superadmin_page_pool (super_admin_id, page_id, granted_by, granted_at)
-            VALUES (${superAdminId}, ${pid}, ${enterpriseAdminId}, NOW())
-            ON CONFLICT (super_admin_id, page_id) DO NOTHING
+            INSERT INTO superadmin_page_pool (superadmin_id, page_id, granted_by, granted_at, is_active)
+            VALUES (${superAdminId}, ${pid}, ${enterpriseAdminId}, NOW(), true)
+            ON CONFLICT (superadmin_id, page_id) DO UPDATE SET is_active = true, granted_at = NOW()
           `;
           insertedCount++;
         }
