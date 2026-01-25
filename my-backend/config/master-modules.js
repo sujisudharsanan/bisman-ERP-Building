@@ -30,31 +30,31 @@ const MASTER_MODULES = [
     icon: 'FiGlobe',
     category: 'Admin',
     pages: [
-      { id: 'enterprise-admin-pages-roles-report', name: 'All Pages & Roles Report', path: '/enterprise-admin/system/pages-roles-report' },
+      // Removed: enterprise-admin-pages-roles-report (deleted)
       { id: 'enterprise-admin-dashboard', name: 'Enterprise Dashboard', path: '/enterprise-admin/dashboard' },
       { id: 'enterprise-admin-roles', name: 'Role Management', path: '/enterprise-admin/roles' },
       { id: 'enterprise-admin-subscription-access', name: 'Subscription Access Control', path: '/enterprise-admin/subscription-access' },
       { id: 'enterprise-admin-super-admins', name: 'Super Admins', path: '/enterprise-admin/super-admins' },
       { id: 'enterprise-admin-logs', name: 'System Logs', path: '/enterprise-admin/logs' },
       { id: 'enterprise-admin-activity-logs', name: 'Activity Logs', path: '/enterprise-admin/activity-logs' },
-      { id: 'enterprise-admin-page-governance', name: 'Page Governance', path: '/enterprise-admin/page-governance' },
+      // Removed: enterprise-admin-page-governance (deleted)
       { id: 'enterprise-admin-billing', name: 'Billing Management', path: '/enterprise-admin/billing' },
       { id: 'enterprise-admin-monitoring', name: 'System Monitoring', path: '/enterprise-admin/monitoring' },
       { id: 'enterprise-admin-integrations', name: 'Integrations', path: '/enterprise-admin/integrations' },
       { id: 'enterprise-admin-subscriptions', name: 'Subscriptions', path: '/enterprise-admin/subscriptions' },
       { id: 'enterprise-admin-rbac-security', name: 'RBAC Security', path: '/enterprise-admin/rbac-security' },
-      { id: 'enterprise-admin-security-operations', name: 'Security Operations', path: '/enterprise-admin/security-operations' },
+      // Removed: enterprise-admin-security-operations (deleted)
       { id: 'enterprise-admin-pages-report', name: 'Pages Report', path: '/enterprise-admin/pages-report' },
       { id: 'enterprise-admin-monitoring-database', name: 'Database Monitoring', path: '/enterprise-admin/monitoring/database' },
       { id: 'enterprise-admin-monitoring-live', name: 'Live Monitoring', path: '/enterprise-admin/monitoring/live' },
       { id: 'enterprise-admin-monitoring-performance', name: 'Performance Monitoring', path: '/enterprise-admin/monitoring/performance' },
       { id: 'enterprise-admin-docs-production-ready', name: 'Production Ready Docs', path: '/enterprise-admin/docs/production-ready' },
       { id: 'enterprise-admin-super-admins-create', name: 'Create Super Admin', path: '/enterprise-admin/super-admins/create' },
-      { id: 'enterprise-admin-users', name: 'Users', path: '/enterprise-admin/users' },
-      { id: 'enterprise-admin-organizations', name: 'Organizations', path: '/enterprise-admin/organizations' },
-      { id: 'enterprise-admin-reports', name: 'Reports', path: '/enterprise-admin/reports' },
-      { id: 'enterprise-admin-notifications', name: 'Notifications', path: '/enterprise-admin/notifications' },
-      { id: 'enterprise-admin-audit', name: 'Audit', path: '/enterprise-admin/audit' }
+      // Removed: enterprise-admin-users (deleted)
+      // Removed: enterprise-admin-organizations (deleted)
+      // Removed: enterprise-admin-reports (deleted - duplicate)
+      // Removed: enterprise-admin-notifications (deleted)
+      // Removed: enterprise-admin-audit (deleted)
     ],
   },
   {
@@ -64,15 +64,15 @@ const MASTER_MODULES = [
     icon: 'FiServer',
     category: 'System',
     pages: [
-      { id: 'user-management', name: 'Client Management', path: '/system/user-management' },
+      // Removed: user-management (deleted - duplicate)
       { id: 'user-creation', name: 'Create New User', path: '/system/user-creation' },
-      { id: 'permission-manager', name: 'Permission Manager', path: '/system/permission-manager' },
-      { id: 'roles-users-report', name: 'Modules & Roles', path: '/system/roles-users-report' },
+      // Removed: permission-manager (deleted - duplicate)
+      // Removed: roles-users-report (deleted - duplicate)
       { id: 'audit-integrity', name: 'Audit Integrity', path: '/system/audit-integrity-dashboard' },
-      { id: 'backup-restore', name: 'Backup & Restore', path: '/system/backup-restore' },
-      { id: 'system-health', name: 'System Health', path: '/system/system-health-dashboard' },
-      { id: 'integration-settings', name: 'Integration Settings', path: '/system/integration-settings' },
-      { id: 'trust-security', name: 'Trust & Security', path: '/trust-security' },
+      // Removed: backup-restore (deleted - duplicate)
+      // Removed: system-health (deleted - duplicate)
+      // Removed: integration-settings (deleted - duplicate)
+      // Removed: trust-security (deleted)
       { id: 'ai-training', name: 'AI Training', path: '/ai-training' },
       { id: 'trace', name: 'Trace', path: '/trace' },
       { id: 'task-clarifications', name: 'Task Clarifications', path: '/task-clarifications' },
@@ -323,7 +323,7 @@ const MASTER_MODULES = [
       { id: 'admin-sla-dashboard', name: 'SLA Dashboard', path: '/admin/sla' },
       { id: 'admin-audit-dashboard', name: 'Audit Dashboard', path: '/admin/audit' },
       { id: 'admin-system-flow', name: 'User Flow & Management', path: '/admin/system-flow' },
-      { id: 'admin-task-approvals', name: 'Task Approvals', path: '/admin/task-approvals' },
+      // Removed: admin-task-approvals (deleted)
       { id: 'admin-dashboard', name: 'Dashboard', path: '/admin' },
       { id: 'admin-user-usage', name: 'User Usage Details', path: '/admin/user-usage' },
       { id: 'analytics-dashboard', name: 'Analytics Dashboard', path: '/analytics' },
@@ -331,7 +331,7 @@ const MASTER_MODULES = [
       // Removed: admin-contracts-create (no page file)
       // Removed: admin-users-create (no page file)
       // Removed: admin-bank-templates (no page file)
-      { id: 'admin-clients', name: 'Client Management', path: '/admin/clients' },
+      // Removed: admin-clients (deleted)
       { id: 'admin-settings', name: 'Admin Settings', path: '/admin/settings' },
       // Removed: admin-ai-analytics (no page file)
       // Removed: admin-permissions (no page file)
@@ -346,8 +346,8 @@ const MASTER_MODULES = [
       { id: 'admin-billing', name: 'Billing', path: '/admin/billing' },
       { id: 'admin-reports', name: 'Reports', path: '/admin/reports' },
       { id: 'admin-support', name: 'Support', path: '/admin/support' },
-      { id: 'admin-integrations', name: 'Integrations', path: '/admin/integrations' },
-      { id: 'admin-notifications', name: 'Notifications', path: '/admin/notifications' },
+      // Removed: admin-integrations (deleted - duplicate of enterprise-admin)
+      // Removed: admin-notifications (deleted)
       { id: 'admin-developer', name: 'Developer Tools', path: '/admin/developer' },
       { id: 'admin-ai', name: 'AI Management', path: '/admin/ai' }
     ],
