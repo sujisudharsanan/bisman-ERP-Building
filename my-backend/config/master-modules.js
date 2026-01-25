@@ -324,25 +324,24 @@ const MASTER_MODULES = [
       { id: 'admin-audit-dashboard', name: 'Audit Dashboard', path: '/admin/audit' },
       { id: 'admin-system-flow', name: 'User Flow & Management', path: '/admin/system-flow' },
       { id: 'admin-task-approvals', name: 'Task Approvals', path: '/admin/task-approvals' },
-      { id: 'admin-client-dashboard', name: 'Dashboard', path: '/admin' },
+      { id: 'admin-dashboard', name: 'Dashboard', path: '/admin' },
       { id: 'admin-user-usage', name: 'User Usage Details', path: '/admin/user-usage' },
       { id: 'analytics-dashboard', name: 'Analytics Dashboard', path: '/analytics' },
-      { id: 'admin-contracts', name: 'Contracts & Agreements', path: '/admin/contracts' },
-      { id: 'admin-contracts-create', name: 'Create Contract', path: '/admin/contracts/create' },
-      { id: 'admin-users-create', name: 'Create User', path: '/admin/users/create' },
-      { id: 'admin-branches-create', name: 'Create Branch', path: '/admin/branches/create' },
-      { id: 'admin-bank-templates', name: 'Bank Templates', path: '/admin/bank-templates' },
+      // Removed: admin-contracts (no page file)
+      // Removed: admin-contracts-create (no page file)
+      // Removed: admin-users-create (no page file)
+      // Removed: admin-bank-templates (no page file)
       { id: 'admin-clients', name: 'Client Management', path: '/admin/clients' },
       { id: 'admin-settings', name: 'Admin Settings', path: '/admin/settings' },
-      { id: 'admin-ai-analytics', name: 'AI Analytics', path: '/admin/ai-analytics' },
-      { id: 'admin-permissions', name: 'Permissions', path: '/admin/permissions' },
-      { id: 'admin-rag-sources', name: 'RAG Sources', path: '/admin/rag-sources' },
+      // Removed: admin-ai-analytics (no page file)
+      // Removed: admin-permissions (no page file)
+      // Removed: admin-rag-sources (no page file)
       { id: 'admin-subscription-view', name: 'Subscription', path: '/admin/subscription' },
       { id: 'clients-create', name: 'Create Client', path: '/clients/create' },
       { id: 'clients-usage-dashboard', name: 'Client Usage Dashboard', path: '/clients/usage-dashboard' },
-      { id: 'admin-client-dashboard', name: 'Client Dashboard', path: '/admin/client-dashboard' },
-      { id: 'admin-users', name: 'Users', path: '/admin/users' },
-      { id: 'admin-modules', name: 'Modules', path: '/admin/modules' },
+      // Removed: admin-client-dashboard duplicate (use admin-dashboard instead)
+      // Removed: admin-users (no page file)
+      // Removed: admin-modules (no page file)
       { id: 'admin-organizations', name: 'Organizations', path: '/admin/organizations' },
       { id: 'admin-billing', name: 'Billing', path: '/admin/billing' },
       { id: 'admin-reports', name: 'Reports', path: '/admin/reports' },

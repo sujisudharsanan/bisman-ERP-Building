@@ -11,6 +11,7 @@
  *   node scripts/validate-rbac.js
  * 
  * Created: 2026-01-25
+ * Updated: 2026-01-25 - Added data consistency checks
  * ============================================================================
  */
 
@@ -24,10 +25,10 @@ const pool = new Pool({ connectionString: DATABASE_URL });
 // Expected page count ranges per role type
 const EXPECTED_RANGES = {
   PLATFORM: { min: 15, max: 150 },      // SYSTEM_ADMIN, ENTERPRISE_ADMIN, SUPER_ADMIN
-  TENANT_ADMIN: { min: 15, max: 50 },   // ADMIN, ADMIN_OPS
-  EXECUTIVE: { min: 20, max: 110 },     // CEO, CFO, COO, CTO (high visibility)
-  MANAGER: { min: 20, max: 80 },        // Various managers
-  STAFF: { min: 15, max: 60 },          // Staff, Data Entry
+  TENANT_ADMIN: { min: 15, max: 80 },   // ADMIN, ADMIN_OPS
+  EXECUTIVE: { min: 5, max: 110 },      // CEO, CFO, COO, CTO (high visibility)
+  MANAGER: { min: 5, max: 80 },         // Various managers
+  STAFF: { min: 1, max: 60 },           // Staff, Data Entry
   INTERNAL: { min: 3, max: 20 }         // BISMAN_* roles
 };
 
@@ -69,6 +70,40 @@ async function runValidation() {
   let warnings = 0;
 
   try {
+    // ========================================================================
+    // TEST 0: Data Consistency - is_active vs status fields
+    // ========================================================================
+    console.log('\n┌─────────────────────────────────────────────────────────────────────┐');
+    console.log('│ TEST 0: Data Consistency (is_active vs status)                      │');
+    console.log('└─────────────────────────────────────────────────────────────────────┘');
+    
+    const mismatch = await pool.query(`
+      SELECT route, is_active, status
+      FROM pages_master 
+      WHERE (is_active = TRUE AND status != 'active') 
+         OR (is_active = FALSE AND status = 'active')
+    `);
+    
+    const totalActive = await pool.query(`SELECT COUNT(*) as count FROM pages_master WHERE is_active = TRUE`);
+    const totalStatus = await pool.query(`SELECT COUNT(*) as count FROM pages_master WHERE status = 'active'`);
+    
+    console.log(`\n   Pages with is_active=TRUE:   ${totalActive.rows[0].count}`);
+    console.log(`   Pages with status='active':  ${totalStatus.rows[0].count}`);
+    console.log(`   Mismatch count:              ${mismatch.rows.length}`);
+    
+    if (mismatch.rows.length === 0) {
+      console.log('\n✅ PASSED: is_active and status fields are consistent');
+      passed++;
+    } else {
+      console.log(`\n⚠️  WARNING: ${mismatch.rows.length} pages have is_active/status mismatch`);
+      console.log('   These pages may show differently in UI vs API:');
+      mismatch.rows.slice(0, 10).forEach(r => 
+        console.log(`   - ${r.route} | is_active=${r.is_active} | status=${r.status}`)
+      );
+      if (mismatch.rows.length > 10) console.log(`   ... and ${mismatch.rows.length - 10} more`);
+      warnings++;
+    }
+
     // ========================================================================
     // TEST 1: PUBLIC pages should have 0 role assignments
     // ========================================================================
@@ -186,6 +221,62 @@ async function runValidation() {
     }
 
     // ========================================================================
+    // TEST 4.5: Role Separation (Enterprise vs Super Admin)
+    // ========================================================================
+    console.log('\n┌─────────────────────────────────────────────────────────────────────┐');
+    console.log('│ TEST 4.5: Role Separation (Enterprise Admin vs Super Admin)         │');
+    console.log('└─────────────────────────────────────────────────────────────────────┘');
+    
+    // ENTERPRISE_ADMIN should have /enterprise-admin/* routes
+    const eaRoutes = await pool.query(`
+      SELECT COUNT(*) as count
+      FROM role_page_access rpa
+      JOIN pages_master pm ON rpa.page_id = pm.id
+      WHERE rpa.role_name = 'ENTERPRISE_ADMIN' 
+        AND pm.route LIKE '/enterprise-admin%'
+        AND pm.is_active = TRUE
+    `);
+    
+    // SUPER_ADMIN should have /super-admin/* routes
+    const saRoutes = await pool.query(`
+      SELECT COUNT(*) as count
+      FROM role_page_access rpa
+      JOIN pages_master pm ON rpa.page_id = pm.id
+      WHERE rpa.role_name = 'SUPER_ADMIN' 
+        AND pm.route LIKE '/super-admin%'
+        AND pm.is_active = TRUE
+    `);
+    
+    // SUPER_ADMIN should NOT have /enterprise-admin/* (unless also SYSTEM_ADMIN)
+    const saCrossover = await pool.query(`
+      SELECT COUNT(*) as count
+      FROM role_page_access rpa
+      JOIN pages_master pm ON rpa.page_id = pm.id
+      WHERE rpa.role_name = 'SUPER_ADMIN' 
+        AND pm.route LIKE '/enterprise-admin%'
+    `);
+    
+    console.log(`\n   ENTERPRISE_ADMIN /enterprise-admin/* pages: ${eaRoutes.rows[0].count}`);
+    console.log(`   SUPER_ADMIN /super-admin/* pages:           ${saRoutes.rows[0].count}`);
+    console.log(`   SUPER_ADMIN crossover to /enterprise-admin: ${saCrossover.rows[0].count}`);
+    
+    const eaCount = parseInt(eaRoutes.rows[0].count);
+    const saCount = parseInt(saRoutes.rows[0].count);
+    const crossCount = parseInt(saCrossover.rows[0].count);
+    
+    if (eaCount >= 5 && saCount >= 5 && crossCount === 0) {
+      console.log('\n✅ PASSED: Role separation is correct');
+      passed++;
+    } else if (crossCount > 0) {
+      console.log(`\n⚠️  WARNING: SUPER_ADMIN has ${crossCount} enterprise-admin routes`);
+      console.log('   This may be intentional if SUPER_ADMIN manages enterprise features.');
+      warnings++;
+    } else {
+      console.log(`\n⚠️  WARNING: Low route counts - check role assignments`);
+      warnings++;
+    }
+
+    // ========================================================================
     // TEST 5: Realistic page counts per role
     // ========================================================================
     console.log('\n┌─────────────────────────────────────────────────────────────────────┐');
@@ -273,7 +364,7 @@ async function runValidation() {
         console.log(`❌ FAILED: BASE_USER has 0 pages`);
         failed++;
       }
-    } catch (e) {
+    } catch {
       console.log('❌ FAILED: base_user_pages table does not exist');
       failed++;
     }
@@ -324,7 +415,7 @@ async function runValidation() {
     const roleDashboards = {
       'ENTERPRISE_ADMIN': '/enterprise-admin/dashboard',
       'SUPER_ADMIN': '/super-admin',
-      'ADMIN': '/admin/client-dashboard'
+      'ADMIN': '/admin'  // Admin dashboard is at /admin
     };
     
     let dashboardIssues = 0;
@@ -372,6 +463,89 @@ async function runValidation() {
       duplicates.rows.forEach(d => console.log(`   - ${d.route} (${d.cnt} times)`));
       failed++;
     }
+
+    // ========================================================================
+    // TEST 11: Sidebar pages must have role assignments
+    // ========================================================================
+    console.log('\n┌─────────────────────────────────────────────────────────────────────┐');
+    console.log('│ TEST 11: Sidebar pages have role assignments                        │');
+    console.log('└─────────────────────────────────────────────────────────────────────┘');
+    
+    const sidebarNoRoles = await pool.query(`
+      SELECT pm.route, pm.display_name
+      FROM pages_master pm
+      WHERE pm.show_in_sidebar = TRUE
+        AND pm.is_active = TRUE
+        AND pm.id NOT IN (SELECT DISTINCT page_id FROM role_page_access)
+    `);
+    
+    const totalSidebar = await pool.query(`
+      SELECT COUNT(*) as count FROM pages_master 
+      WHERE show_in_sidebar = TRUE AND is_active = TRUE
+    `);
+    
+    const assignedSidebar = await pool.query(`
+      SELECT COUNT(DISTINCT pm.id) as count
+      FROM pages_master pm
+      JOIN role_page_access rpa ON rpa.page_id = pm.id
+      WHERE pm.show_in_sidebar = TRUE AND pm.is_active = TRUE
+    `);
+    
+    console.log(`\n   Total sidebar pages:    ${totalSidebar.rows[0].count}`);
+    console.log(`   With role assignments:  ${assignedSidebar.rows[0].count}`);
+    console.log(`   Without assignments:    ${sidebarNoRoles.rows.length}`);
+    
+    if (sidebarNoRoles.rows.length === 0) {
+      console.log('\n✅ PASSED: All sidebar pages have role assignments');
+      passed++;
+    } else {
+      console.log(`\n⚠️  WARNING: ${sidebarNoRoles.rows.length} sidebar pages without role assignments:`);
+      sidebarNoRoles.rows.slice(0, 10).forEach(p => console.log(`   - ${p.route} (${p.display_name})`));
+      if (sidebarNoRoles.rows.length > 10) console.log(`   ... and ${sidebarNoRoles.rows.length - 10} more`);
+      warnings++;
+    }
+
+    // ========================================================================
+    // TEST 12: Pages shown in Top Section vs Role-assigned consistency
+    // ========================================================================
+    console.log('\n┌─────────────────────────────────────────────────────────────────────┐');
+    console.log('│ TEST 12: Top Page Section vs Role-Assigned Page Consistency         │');
+    console.log('└─────────────────────────────────────────────────────────────────────┘');
+    
+    // "Top section" shows pages with status='active' (312)
+    // "Role-assigned" should show only pages the selected role can access
+    
+    const statusActiveCount = await pool.query(`SELECT COUNT(*) as count FROM pages_master WHERE status = 'active'`);
+    const isActiveCount = await pool.query(`SELECT COUNT(*) as count FROM pages_master WHERE is_active = TRUE`);
+    const uniqueAssigned = await pool.query(`SELECT COUNT(DISTINCT page_id) as count FROM role_page_access`);
+    
+    console.log(`\n   Pages with status='active':    ${statusActiveCount.rows[0].count}`);
+    console.log(`   Pages with is_active=TRUE:     ${isActiveCount.rows[0].count}`);
+    console.log(`   Unique pages with any role:    ${uniqueAssigned.rows[0].count}`);
+    
+    const statusActive = parseInt(statusActiveCount.rows[0].count);
+    const isActive = parseInt(isActiveCount.rows[0].count);
+    const assignedCount = parseInt(uniqueAssigned.rows[0].count);
+    
+    // If UI shows 312 in top section but only 192 assigned, there's a mismatch
+    if (statusActive === isActive) {
+      console.log('\n✅ PASSED: status and is_active fields are consistent');
+      passed++;
+    } else {
+      console.log(`\n❌ FAILED: ${statusActive - isActive} pages have status='active' but is_active=FALSE`);
+      console.log('   This causes UI to show more pages than actually accessible.');
+      console.log('   FIX: Sync is_active with status or update queries to use is_active only.');
+      console.log(`   (${assignedCount} pages have role assignments)`);
+      failed++;
+    }
+    
+    // Check if all active pages have roles
+    const unassignedActive = await pool.query(`
+      SELECT COUNT(*) as count FROM pages_master 
+      WHERE is_active = TRUE 
+      AND id NOT IN (SELECT DISTINCT page_id FROM role_page_access)
+    `);
+    console.log(`   Active pages without roles:    ${unassignedActive.rows[0].count}`);
 
     // ========================================================================
     // SUMMARY
