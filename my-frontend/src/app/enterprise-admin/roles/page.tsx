@@ -9,22 +9,25 @@ import { PAGE_REGISTRY, MODULES } from "@/common/config/page-registry";
 import Link from "next/link";
 
 // Common pages that are shared across all modules - always visible
-// Note: id should match path for consistency with API (which returns path as id)
+// Note: Only include pages that exist and are active in the database
+// Last verified: 2026-01-25
 const COMMON_PAGES = [
   { id: '/dashboard', path: '/dashboard', name: 'Dashboard' },
-  { id: '/profile', path: '/profile', name: 'Profile' },
   { id: '/common/about-me', path: '/common/about-me', name: 'About Me' },
-  { id: '/notifications', path: '/notifications', name: 'Notifications' },
   { id: '/settings', path: '/settings', name: 'Settings' },
   { id: '/common/user-settings', path: '/common/user-settings', name: 'User Settings' },
-  { id: '/help', path: '/help', name: 'Help & Support' },
-  { id: '/common/documentation', path: '/common/documentation', name: 'Documentation' },
-  { id: '/audit-logs', path: '/audit-logs', name: 'Audit Logs' },
   { id: '/calendar', path: '/calendar', name: 'Calendar' },
   { id: '/common/calendar', path: '/common/calendar', name: 'Calendar' },
   { id: '/task-dashboard', path: '/task-dashboard', name: 'Task Dashboard' },
   { id: '/assistant', path: '/assistant', name: 'AI Assistant' },
 ];
+
+// Removed pages (deleted or inactive in DB):
+// - /profile (doesn't exist)
+// - /notifications (inactive)
+// - /help (doesn't exist)
+// - /common/documentation (inactive)
+// - /audit-logs (doesn't exist)
 
 // Enterprise Admin is the topmost role - can see and assign ALL pages
 // No module exclusions needed
