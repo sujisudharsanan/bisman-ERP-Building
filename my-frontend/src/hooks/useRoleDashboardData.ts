@@ -33,15 +33,6 @@ const getMockDashboardData = (role: DashboardRole): DashboardData => {
           color: 'blue',
         },
         {
-          id: 'staff',
-          name: 'Staff Management',
-          description: 'Monitor team performance and assignments',
-          value: 28,
-          icon: 'FaUsers',
-          link: '/staff',
-          color: 'green',
-        },
-        {
           id: 'routes',
           name: 'Route Planning',
           description: 'Plan and optimize delivery routes',
@@ -113,7 +104,7 @@ const getMockDashboardData = (role: DashboardRole): DashboardData => {
       ],
       quickActions: [
         { id: '1', label: 'Add Route', icon: 'FaPlus', action: '/routes/new', color: 'blue' },
-        { id: '2', label: 'Assign Driver', icon: 'FaUserPlus', action: '/staff/assign', color: 'green' },
+        { id: '2', label: 'Assign Driver', icon: 'FaUserPlus', action: '/hr/user-creation', color: 'green' },
         { id: '3', label: 'Generate Report', icon: 'FaFileAlt', action: '/reports/generate', color: 'purple' },
       ],
     },
@@ -150,7 +141,7 @@ const getMockDashboardData = (role: DashboardRole): DashboardData => {
           description: 'View staff schedules and assignments',
           value: 12,
           icon: 'FaUsers',
-          link: '/staff',
+          link: '/hr/user-creation',
           color: 'purple',
         },
         {

@@ -3604,7 +3604,8 @@ app.get('/api/admin/role-assignments', authenticate, async (req, res) => {
         name: r.name,
         displayName: r.display_name,
         description: r.description,
-        level: r.level
+        level: r.level,
+        productType: r.product_type || 'ALL'
       }))
     });
   } catch (error) {

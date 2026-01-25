@@ -17,7 +17,6 @@ const COMMON_PAGES = [
   { id: '/common/user-settings', path: '/common/user-settings', name: 'User Settings' },
   { id: '/common/security-settings', path: '/common/security-settings', name: 'Security Settings' },
   { id: '/common/calendar', path: '/common/calendar', name: 'Calendar' },
-  { id: '/task-dashboard', path: '/task-dashboard', name: 'Task Dashboard' },
   { id: '/assistant', path: '/assistant', name: 'AI Assistant' },
 ];
 
@@ -29,6 +28,16 @@ const COMMON_PAGES = [
 // - /audit-logs (doesn't exist)
 // - /settings (deactivated - use /admin/settings for role-specific)
 // - /calendar (deactivated - duplicate of /common/calendar)
+// - /task-dashboard (deleted)
+// - /ai-training (deleted)
+// - /clients/usage-dashboard (deleted)
+// - /hub-incharge (deleted)
+// - /legal (deleted)
+// - /banker (deleted)
+// - /staff (deleted)
+// - /trace (deleted)
+// - /tasks/clarifications (deleted)
+// - /tasks/reviews (deleted)
 
 // Enterprise Admin is the topmost role - can see and assign ALL pages
 // No module exclusions needed
@@ -79,6 +88,7 @@ type Role = {
   is_active?: boolean;
   users?: Array<{ id: number; username: string; email: string }>;
   userCount?: number;
+  productType?: string; // 'ALL' | 'BUSINESS_ERP' | 'PUMP_ERP'
 };
 
 function arr<T = any>(obj: any, key: string): T[] {
@@ -941,6 +951,7 @@ export default function Page() {
           is_active: r.roleStatus === 'active' || r.is_active !== false,
           users: Array.isArray(r.users) ? r.users : [],
           userCount: r.userCount || (Array.isArray(r.users) ? r.users.length : 0),
+          productType: r.productType || r.product_type || 'ALL',
         })) as Role[];
         
         // Note: SUPER_ADMIN and ENTERPRISE_ADMIN should come from the API with proper IDs
@@ -1092,12 +1103,31 @@ export default function Page() {
     return admin;
   }, [superAdmins, selectedAdminId]);
 
-  // Roles allowed for the selected Super Admin
+  // Roles allowed for the selected Super Admin, filtered by selected category
   // Enterprise Admin sees ALL roles; Super Admin sees roles they're allowed to manage
+  // Roles are filtered by productType based on selected category:
+  // - 'pump' category -> only roles with productType 'PUMP_ERP' or 'ALL'
+  // - 'business' category -> only roles with productType 'BUSINESS_ERP' or 'ALL'
+  // - 'all' or 'common' -> all roles
   const rolesForSelectedAdmin = useMemo(() => {
-    // Enterprise Admin always sees all roles
-    return allRoles;
-  }, [allRoles]);
+    let filteredRoles = allRoles;
+    
+    // Filter by category/product type
+    if (category === 'pump') {
+      filteredRoles = allRoles.filter(r => {
+        const pt = (r.productType || 'ALL').toUpperCase();
+        return pt === 'PUMP_ERP' || pt === 'PUMP' || pt === 'ALL';
+      });
+    } else if (category === 'business') {
+      filteredRoles = allRoles.filter(r => {
+        const pt = (r.productType || 'ALL').toUpperCase();
+        return pt === 'BUSINESS_ERP' || pt === 'BUSINESS' || pt === 'ERP' || pt === 'ALL';
+      });
+    }
+    // For 'all' or 'common', show all roles
+    
+    return filteredRoles;
+  }, [allRoles, category]);
 
   // Get the selected role object
   const selectedRole = useMemo(() => {
@@ -2769,7 +2799,7 @@ export default function Page() {
             {/* Context-specific filters */}
             {bottomViewMode === 'roles' ? (
               <>
-                <span className="text-xs text-gray-500">({allRoles.length} roles)</span>
+                <span className="text-xs text-gray-500">({rolesForSelectedAdmin.length} roles)</span>
                 <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 ml-2" onClick={(e) => e.stopPropagation()}>
                   <button
                     onClick={() => setRolesFilter('all')}
@@ -2793,7 +2823,7 @@ export default function Page() {
                       rolesFilter === 'unassigned' ? 'bg-white dark:bg-gray-700 text-red-600 shadow-sm font-medium' : 'text-gray-600'
                     }`}
                   >
-                    Unassigned ({allRoles.length - assignedRoleIds.length})
+                    Unassigned ({rolesForSelectedAdmin.length - assignedRoleIds.length})
                   </button>
                 </div>
                 {/* Search bar for roles */}
@@ -3020,7 +3050,7 @@ export default function Page() {
             {/* ROLES CONTENT */}
             {bottomViewMode === 'roles' && (
               <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-2">
-                {allRoles
+                {rolesForSelectedAdmin
                   .filter((role) => {
                     const isAssigned = assignedRoleIds.includes(role.id);
                     const matchesFilter = rolesFilter === 'all' || 

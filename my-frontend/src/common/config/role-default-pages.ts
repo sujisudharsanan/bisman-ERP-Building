@@ -232,7 +232,6 @@ export const ROLE_DEFAULT_PAGES: RoleDefaultPages[] = [
     description: 'Distribution hub operations',
     defaultPages: [
       'dashboard',
-      'hub-incharge-dashboard',
       'delivery-note',
       'material-receipt',
       'goods-receipt-note',
@@ -244,7 +243,6 @@ export const ROLE_DEFAULT_PAGES: RoleDefaultPages[] = [
     description: 'Distribution hub operations (underscore format)',
     defaultPages: [
       'dashboard',
-      'hub-incharge-dashboard',
       'delivery-note',
       'material-receipt',
       'goods-receipt-note',
@@ -381,7 +379,6 @@ export const ROLE_DEFAULT_PAGES: RoleDefaultPages[] = [
       'dashboard',
       'manager',
       'operations/kpi-dashboard',
-      'task-dashboard',
     ],
   },
   {
@@ -389,8 +386,6 @@ export const ROLE_DEFAULT_PAGES: RoleDefaultPages[] = [
     description: 'General staff access',
     defaultPages: [
       'dashboard',
-      'staff',
-      'task-dashboard',
     ],
   },
 ];

@@ -277,6 +277,7 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
         roleDescription: role.description,
         roleLevel: role.level,
         roleStatus: role.status,
+        productType: role.product_type || 'ALL',
         userCount: roleUsers.length,
         users: roleUsers.map(user => ({
           userId: user.id,

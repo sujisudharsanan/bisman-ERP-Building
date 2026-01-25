@@ -262,7 +262,7 @@ const Bell: LucideIcon = (() => null) as any;
 const HelpCircle: LucideIcon = (() => null) as any;
 
 // Page status types
-export type PageStatus = 'active' | 'coming-soon' | 'disabled';
+export type PageStatus = 'active' | 'coming-soon' | 'disabled' | 'inactive';
 
 // Page metadata interface
 export interface PageMetadata {
@@ -531,6 +531,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     permissions: ['enterprise-admin'],
     roles: ['ENTERPRISE_ADMIN'],
     status: 'active',
+    showInSidebar: true,
     description: 'Enterprise-level dashboard and metrics',
     order: 1,
   },
@@ -598,7 +599,12 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   {
     id: 'enterprise-admin-page-governance',
     name: 'Page Governance',
-    inactive,
+    path: '/enterprise-admin/page-governance',
+    iconKey: "FileCheck",
+    module: 'enterprise-admin',
+    permissions: ['enterprise-admin'],
+    roles: ['ENTERPRISE_ADMIN'],
+    status: 'inactive',
     showInSidebar: true,
     description: 'View and audit all registered pages in the ERP',
     order: 6,
@@ -937,7 +943,12 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   {
     id: 'trust-security',
     name: 'Trust & Security',
-    inactive,
+    path: '/common/trust-security',
+    iconKey: "Shield",
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL'],
+    status: 'disabled',
     showInSidebar: false, // Integrated into User Settings page
     description: 'Learn how BISMAN ERP keeps your data safe and private',
     order: 10.5,
@@ -1066,7 +1077,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['CFO', 'FINANCE_CONTROLLER', 'TREASURY'],
-    status: 'inactive',
+    status: 'disabled',
     description: 'Executive financial overview',
     order: 1,
   },
@@ -1342,7 +1353,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     module: 'finance',
     permissions: ['executive-dashboard'],
     roles: ['ACCOUNTS_PAYABLE', 'TREASURY', 'BANKER'],
-    status: 'inactive',
+    status: 'disabled',
     description: 'Record payment transactions',
     order: 24,
   },
@@ -1811,19 +1822,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 9,
   },
 
-  // ==================== ROLE-BASED DASHBOARDS (6 pages) ====================
-  {
-    id: 'hub-incharge-dashboard',
-    name: 'Hub Incharge Dashboard',
-    path: '/hub-incharge',
-  iconKey: "MapPin",
-    module: 'operations',
-    permissions: ['inventory-management'],
-    roles: ['HUB_INCHARGE'],
-    status: 'active',
-    description: 'Hub operations management dashboard',
-    order: 100,
-  },
+  // ==================== ROLE-BASED DASHBOARDS ====================
   {
     id: 'store-incharge-dashboard',
     name: 'Store Incharge Dashboard',
@@ -1932,35 +1931,14 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 4,
   },
   {
-    id: 'task-clarifications',
-    name: 'Task Clarifications',
-    path: '/tasks/clarifications',
-    iconKey: "MessageCircle",
-    module: 'system',
-    permissions: ['tasks:view'],
-    roles: ['ADMIN', 'MANAGER', 'ENTERPRISE_ADMIN'],
-    status: 'active',
-    description: 'View and respond to task clarification requests',
-    order: 6,
-    showInSidebar: false,
-  },
-  {
-    id: 'task-reviews',
-    name: 'Task Reviews',
-    path: '/tasks/reviews',
-    iconKey: "Eye",
-    module: 'system',
-    permissions: ['tasks:view'],
-    roles: ['ADMIN', 'MANAGER', 'ENTERPRISE_ADMIN'],
-    status: 'active',
-    description: 'Review completed tasks',
-    order: 7,
-    showInSidebar: false,
-  },
-  {
     id: 'approvals',
     name: 'Task Management',
-    inactive,
+    path: '/approvals',
+    iconKey: "CheckCircle",
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL'],
+    status: 'inactive',
     description: 'View and manage pending approvals',
     order: 8,
   },
@@ -2086,7 +2064,12 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   {
     id: 'admin-task-approvals',
     name: 'Task Approvals',
-    inactive,
+    path: '/admin/task-approvals',
+    iconKey: "CheckCircle",
+    module: 'admin',
+    permissions: ['admin-dashboard'],
+    roles: ['ADMIN'],
+    status: 'inactive',
     showInSidebar: false, // Hidden from admin sidebar
     description: 'Manage and approve pending tasks across your organization',
     order: 14,
@@ -2146,7 +2129,12 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   {
     id: 'admin-clients',
     name: 'Client Management',
-    inactive,
+    path: '/admin/clients',
+    iconKey: "Users",
+    module: 'admin',
+    permissions: ['admin-dashboard'],
+    roles: ['ADMIN'],
+    status: 'inactive',
     showInSidebar: true,
     description: 'Manage client accounts and permissions',
     order: 20,
@@ -2698,7 +2686,12 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   {
     id: 'enterprise-admin-security-operations',
     name: 'Security Operations',
-    inactive,
+    path: '/enterprise-admin/security-operations',
+    iconKey: "ShieldAlert",
+    module: 'enterprise-admin',
+    permissions: ['enterprise-admin'],
+    roles: ['ENTERPRISE_ADMIN'],
+    status: 'inactive',
     description: 'Security monitoring and operations',
     order: 15,
   },
@@ -2942,39 +2935,9 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 20,
   },
 
-  // Task Dashboard
-  {
-    id: 'task-dashboard',
-    name: 'Task Dashboard',
-    path: '/task-dashboard',
-    iconKey: "LayoutDashboard",
-    module: 'common',
-    permissions: ['authenticated'],
-    roles: ['ALL'],
-    status: 'active',
-    showInSidebar: false,
-    description: 'Alternative task dashboard view',
-    order: 30,
-  },
-
   // ========================================
   // ADDITIONAL PAGES - Final Sync
   // ========================================
-
-  // AI Training
-  {
-    id: 'ai-training',
-    name: 'AI Training',
-    path: '/ai-training',
-    iconKey: "Brain",
-    module: 'system',
-    permissions: ['ai:training:manage', 'system:admin'],
-    roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN'],
-    status: 'active',
-    showInSidebar: true,
-    description: 'AI model training and configuration',
-    order: 10,
-  },
 
   // Assistant
   {
@@ -3004,21 +2967,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     showInSidebar: false,
     description: 'Create a new client record',
     order: 22,
-  },
-
-  // Clients Usage Dashboard
-  {
-    id: 'clients-usage-dashboard',
-    name: 'Client Usage Dashboard',
-    path: '/clients/usage-dashboard',
-    iconKey: "BarChart2",
-    module: 'admin',
-    permissions: ['crm:clients:view', 'crm:manage'],
-    roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN'],
-    status: 'active',
-    showInSidebar: true,
-    description: 'View client usage statistics and analytics',
-    order: 24,
   },
 
   // Enterprise Admin Production Ready Docs
@@ -3100,7 +3048,12 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   {
     id: 'settings-security',
     name: 'Privacy & Security',
-    inactive,
+    path: '/settings/security',
+    iconKey: "Lock",
+    module: 'common',
+    permissions: ['authenticated'],
+    roles: ['ALL'],
+    status: 'inactive',
     showInSidebar: false,
     description: 'Security and privacy settings',
     order: 102,
@@ -3119,21 +3072,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     showInSidebar: false,
     description: 'Create a new system client',
     order: 12,
-  },
-
-  // Trace
-  {
-    id: 'trace',
-    name: 'Trace',
-    path: '/trace',
-    iconKey: "Activity",
-    module: 'system',
-    permissions: ['system:trace:view', 'system:admin'],
-    roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN'],
-    status: 'active',
-    showInSidebar: false,
-    description: 'System trace and debugging',
-    order: 50,
   },
 
   // ==================== COMMON PAGES ====================
@@ -3245,34 +3183,8 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'CFO executive dashboard',
     order: 1,
   },
-  {
-    id: 'banker',
-    name: 'Banker Portal',
-    path: '/banker',
-    iconKey: "Landmark",
-    module: 'finance',
-    permissions: ['banker:view'],
-    roles: ['BANKER', 'CFO', 'SUPER_ADMIN'],
-    status: 'inactive',
-    showInSidebar: true,
-    description: 'Banker portal and operations',
-    order: 7,
-  },
 
   // ==================== HR PAGES ====================
-  {
-    id: 'staff',
-    name: 'Staff Portal',
-    path: '/staff',
-    iconKey: "Users",
-    module: 'hr',
-    permissions: ['staff:view'],
-    roles: ['HR_MANAGER', 'SUPER_ADMIN', 'ADMIN'],
-    status: 'active',
-    showInSidebar: true,
-    description: 'Staff directory and management',
-    order: 1,
-  },
   {
     id: 'hr-user-creation',
     name: 'User Creation',
@@ -3285,21 +3197,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     showInSidebar: true,
     description: 'Create new user accounts',
     order: 2,
-  },
-
-  // ==================== COMPLIANCE PAGES ====================
-  {
-    id: 'legal',
-    name: 'Legal',
-    path: '/legal',
-    iconKey: "Scale",
-    module: 'compliance',
-    permissions: ['legal:view'],
-    roles: ['LEGAL_OFFICER', 'COMPLIANCE_OFFICER', 'SUPER_ADMIN'],
-    status: 'active',
-    showInSidebar: true,
-    description: 'Legal documents and compliance',
-    order: 1,
   },
 
   // ==================== ADMIN PAGES ====================
@@ -3360,7 +3257,12 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   {
     id: 'admin-notifications',
     name: 'Notifications',
-    inactive,
+    path: '/admin/notifications',
+    iconKey: "Bell",
+    module: 'admin',
+    permissions: ['admin-dashboard'],
+    roles: ['ADMIN', 'SUPER_ADMIN'],
+    status: 'inactive',
     showInSidebar: true,
     description: 'Notification management',
     order: 9,
@@ -3404,7 +3306,12 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   {
     id: 'enterprise-admin-users',
     name: 'Users',
-    inactive,
+    path: '/enterprise-admin/users',
+    iconKey: "Users",
+    module: 'enterprise-admin',
+    permissions: ['enterprise-admin'],
+    roles: ['ENTERPRISE_ADMIN'],
+    status: 'inactive',
     showInSidebar: true,
     description: 'Enterprise user management',
     order: 2,
@@ -3412,7 +3319,12 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   {
     id: 'enterprise-admin-organizations',
     name: 'Organizations',
-    inactive,
+    path: '/enterprise-admin/organizations',
+    iconKey: "Building2",
+    module: 'enterprise-admin',
+    permissions: ['enterprise-admin'],
+    roles: ['ENTERPRISE_ADMIN'],
+    status: 'inactive',
     showInSidebar: true,
     description: 'Enterprise organization management',
     order: 3,
@@ -3433,7 +3345,12 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   {
     id: 'enterprise-admin-notifications',
     name: 'Notifications',
-    inactive,
+    path: '/enterprise-admin/notifications',
+    iconKey: "Bell",
+    module: 'enterprise-admin',
+    permissions: ['enterprise-admin'],
+    roles: ['ENTERPRISE_ADMIN'],
+    status: 'inactive',
     showInSidebar: true,
     description: 'Enterprise notifications',
     order: 5,
@@ -3441,7 +3358,12 @@ export const PAGE_REGISTRY: PageMetadata[] = [
   {
     id: 'enterprise-admin-audit',
     name: 'Audit',
-    inactive,
+    path: '/enterprise-admin/audit',
+    iconKey: "FileSearch",
+    module: 'enterprise-admin',
+    permissions: ['enterprise-admin'],
+    roles: ['ENTERPRISE_ADMIN'],
+    status: 'inactive',
     showInSidebar: true,
     description: 'Enterprise audit logs',
     order: 6,

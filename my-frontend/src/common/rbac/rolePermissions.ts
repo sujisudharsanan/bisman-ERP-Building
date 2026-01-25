@@ -399,7 +399,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
       'asset-register',
       'stock-ledger',
     ],
-    defaultRoute: '/hub-incharge',
+    defaultRoute: '/dashboard',
   },
   COMPLIANCE: {
     role: 'COMPLIANCE',
@@ -464,7 +464,7 @@ export const ROLE_PERMISSIONS: Record<RoleType, RolePermissions> = {
       'delivery-note',
       'sales-order',
     ],
-    defaultRoute: '/staff/dashboard',
+    defaultRoute: '/dashboard',
   },
   /**
    * ═══════════════════════════════════════════════════════════════════════════
