@@ -267,7 +267,8 @@ export default function Page() {
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // ============================================================================
-  // FILTERED ROLE PAGES - Exclude common pages and API routes from category section
+  // FILTERED ROLE PAGES - Show ONLY pages assigned to the selected role
+  // Excludes: common pages (shown separately) and API routes
   // ============================================================================
   const commonPagePaths = useMemo(() => new Set(COMMON_PAGES.map(p => p.path)), []);
   
@@ -275,8 +276,10 @@ export default function Page() {
     return rolePages.filter(page => {
       const path = page.path || page.id;
       // Exclude:
-      // 1. Common pages (already shown in COMMON_PAGES section)
-      // 2. API routes (not actual pages)
+      // 1. Non-granted pages (only show pages assigned to this role)
+      // 2. Common pages (already shown in COMMON_PAGES section)
+      // 3. API routes (not actual pages)
+      if (!page.granted) return false;
       if (commonPagePaths.has(path)) return false;
       if (path.startsWith('/api/')) return false;
       return true;
@@ -2456,7 +2459,7 @@ export default function Page() {
               )}
             </div>
             <span className="text-xs font-normal text-gray-500">
-              {selectedRoleId ? `${rolePagesSelectedIds.size}/${filteredRolePages.length + COMMON_PAGES.length}` : ''}
+              {selectedRoleId ? `${rolePagesSelectedIds.size} pages assigned` : ''}
             </span>
           </div>
 
@@ -2968,7 +2971,11 @@ export default function Page() {
                 >
                   <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 rounded-full">
                     <FiPackage className="w-3 h-3 text-purple-600" />
-                    <span className="text-purple-700 dark:text-purple-400">{allPagesGroupedByModule.length} modules</span>
+                    <span className="text-purple-700 dark:text-purple-400">
+                      {selectedRoleId 
+                        ? `${pagesForSelectedRoleInBottom.all.length} role pages` 
+                        : `${allPagesGroupedByModule.length} modules`}
+                    </span>
                   </span>
                   {/* Expand/Collapse indicator */}
                   <div 
