@@ -432,12 +432,15 @@ export default function Page() {
     // Debounce save to database
     rolesSaveTimerRef.current = setTimeout(async () => {
       try {
-        console.log('💾 Saving', assignedRoleIds.length, 'roles to Super Admin:', selectedAdminId);
+        // Filter out any invalid IDs (negative, zero, or NaN)
+        const validRoleIds = assignedRoleIds.filter(id => Number.isFinite(id) && id > 0);
+        console.log('💾 Saving', validRoleIds.length, 'roles to Super Admin:', selectedAdminId, '(filtered from', assignedRoleIds.length, ')');
+        
         const response = await fetch(`/api/enterprise-admin/super-admins/${selectedAdminId}/assign-roles`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ roleIds: assignedRoleIds })
+          body: JSON.stringify({ roleIds: validRoleIds })
         });
         
         if (response.ok) {
@@ -867,7 +870,7 @@ export default function Page() {
         // Parse roles data - API returns { success, summary, data: [...] }
         // The data array contains role objects with users
         const rolesArray = rolesJson.data || rolesJson.roles || [];
-        let rolesData = (Array.isArray(rolesArray) ? rolesArray : []).map((r: any) => ({
+        const rolesData = (Array.isArray(rolesArray) ? rolesArray : []).map((r: any) => ({
           id: Number(r.roleId || r.id),
           name: String(r.roleName || r.name || ''),
           display_name: String(r.roleDisplayName || r.display_name || r.roleName || r.name || ''),
@@ -878,25 +881,8 @@ export default function Page() {
           userCount: r.userCount || (Array.isArray(r.users) ? r.users.length : 0),
         })) as Role[];
         
-        // Ensure SUPER_ADMIN and ENTERPRISE_ADMIN are included (they might not come from roles-users API)
-        const existingRoleNames = new Set(rolesData.map(r => r.name.toUpperCase()));
-        const adminRolesToAdd = [
-          { name: 'SUPER_ADMIN', display_name: 'Super Admin', level: 100 },
-          { name: 'ENTERPRISE_ADMIN', display_name: 'Enterprise Admin', level: 99 },
-        ];
-        adminRolesToAdd.forEach((adminRole, idx) => {
-          if (!existingRoleNames.has(adminRole.name)) {
-            rolesData.unshift({
-              id: -1 - idx, // Use negative IDs for synthetic entries
-              name: adminRole.name,
-              display_name: adminRole.display_name,
-              level: adminRole.level,
-              is_active: true,
-              users: [],
-              userCount: 0,
-            } as Role);
-          }
-        });
+        // Note: SUPER_ADMIN and ENTERPRISE_ADMIN should come from the API with proper IDs
+        // If they don't appear, they need to be added to the database, not with synthetic negative IDs
         
         console.log('📋 Loaded roles:', rolesData.length, rolesData);
         setAllRoles(rolesData);
