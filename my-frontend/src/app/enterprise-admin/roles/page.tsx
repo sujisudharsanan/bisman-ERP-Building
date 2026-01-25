@@ -10,24 +10,25 @@ import Link from "next/link";
 
 // Common pages that are shared across all modules - always visible
 // Note: Only include pages that exist and are active in the database
-// Last verified: 2026-01-25
+// Last verified: 2026-01-26
 const COMMON_PAGES = [
   { id: '/dashboard', path: '/dashboard', name: 'Dashboard' },
   { id: '/common/about-me', path: '/common/about-me', name: 'About Me' },
-  { id: '/settings', path: '/settings', name: 'Settings' },
   { id: '/common/user-settings', path: '/common/user-settings', name: 'User Settings' },
-  { id: '/calendar', path: '/calendar', name: 'Calendar' },
+  { id: '/common/security-settings', path: '/common/security-settings', name: 'Security Settings' },
   { id: '/common/calendar', path: '/common/calendar', name: 'Calendar' },
   { id: '/task-dashboard', path: '/task-dashboard', name: 'Task Dashboard' },
   { id: '/assistant', path: '/assistant', name: 'AI Assistant' },
 ];
 
-// Removed pages (deleted or inactive in DB):
+// Removed pages (deleted/inactive/duplicates in DB):
 // - /profile (doesn't exist)
 // - /notifications (inactive)
 // - /help (doesn't exist)
 // - /common/documentation (inactive)
 // - /audit-logs (doesn't exist)
+// - /settings (deactivated - use /admin/settings for role-specific)
+// - /calendar (deactivated - duplicate of /common/calendar)
 
 // Enterprise Admin is the topmost role - can see and assign ALL pages
 // No module exclusions needed
