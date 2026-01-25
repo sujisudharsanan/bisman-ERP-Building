@@ -1,0 +1,1228 @@
+ACCOUNTANT,/common/about-me  (inherited BASE_USER)
+ACCOUNTANT,/common/bank-accounts
+ACCOUNTANT,/common/calendar
+ACCOUNTANT,/common/notifications
+ACCOUNTANT,/common/task-approvals  (inherited BASE_USER)
+ACCOUNTANT,/finance/accounts-payable-summary
+ACCOUNTANT,/finance/accounts-receivable-summary
+ACCOUNTANT,/finance/approval-details/[taskId]
+ACCOUNTANT,/finance/approval-structure-overview
+ACCOUNTANT,/finance/bank-reconciliation
+ACCOUNTANT,/finance/bank-reconciliation-execute
+ACCOUNTANT,/finance/bank-statement-upload
+ACCOUNTANT,/finance/budget-approval
+ACCOUNTANT,/finance/budgeting-forecasting
+ACCOUNTANT,/finance/cash-flow-forecast
+ACCOUNTANT,/finance/cash-flow-statement
+ACCOUNTANT,/finance/chart-of-accounts
+ACCOUNTANT,/finance/company-dashboard
+ACCOUNTANT,/finance-controller
+ACCOUNTANT,/finance/cost-center-analysis
+ACCOUNTANT,/finance/executive-dashboard
+ACCOUNTANT,/finance/expense-report
+ACCOUNTANT,/finance/financial-statements
+ACCOUNTANT,/finance/fixed-asset-register
+ACCOUNTANT,/finance/foreign-exchange-management
+ACCOUNTANT,/finance/general-ledger
+ACCOUNTANT,/finance/inter-company-reconciliation
+ACCOUNTANT,/finance/invoice-posting
+ACCOUNTANT,/finance/journal-entries
+ACCOUNTANT,/finance/journal-entries-approval
+ACCOUNTANT,/finance/loan-management
+ACCOUNTANT,/finance/payment-approval-queue
+ACCOUNTANT,/finance/payment-batch-processing
+ACCOUNTANT,/finance/payment-entry
+ACCOUNTANT,/finance/payment-entry-view
+ACCOUNTANT,/finance/payment-gateway-integration
+ACCOUNTANT,/finance/period-end-adjustment-entries
+ACCOUNTANT,/finance/period-end-closing
+ACCOUNTANT,/finance/purchase-invoice
+ACCOUNTANT,/finance/tax-reports
+ACCOUNTANT,/finance/trial-balance
+ACCOUNTANT,/finance/vendor-master
+ACCOUNTANT,/reconciliation
+ACCOUNTANT,/reconciliation/[id]
+ACCOUNTANT,/reconciliation/upload
+ACCOUNTANT,/settlements
+ACCOUNTANT,/settlements/[id]
+ACCOUNTS,/billing/invoices
+ACCOUNTS,/common/about-me  (inherited BASE_USER)
+ACCOUNTS,/common/bank-accounts
+ACCOUNTS,/common/security-settings  (inherited BASE_USER)
+ACCOUNTS,/finance/accounts-receivable-summary
+ACCOUNTS,/finance/approval-details/[taskId]
+ACCOUNTS,/finance/general-ledger
+ACCOUNTS,/finance/payment-approval-queue
+ACCOUNTS,/reconciliation
+ACCOUNTS,/reconciliation/[id]
+ACCOUNTS,/reconciliation/upload
+ACCOUNTS,/reports/payment-summary
+ACCOUNTS,/settlements
+ACCOUNTS,/settlements/[id]
+ACCOUNTS_PAYABLE,/common/about-me  (inherited BASE_USER)
+ACCOUNTS_PAYABLE,/common/notifications
+ACCOUNTS_PAYABLE,/finance/accounts-payable-summary
+ACCOUNTS_PAYABLE,/finance/invoice-posting
+ACCOUNTS_PAYABLE,/finance/payment-entry
+ACCOUNTS_PAYABLE,/finance/payment-entry-view
+ACCOUNTS_PAYABLE,/finance/purchase-invoice
+ACCOUNTS_PAYABLE,/finance/vendor-master
+ADMIN,/admin
+ADMIN,/admin/ai
+ADMIN,/admin/ai-analytics
+ADMIN,/admin/api-management
+ADMIN,/admin/audit
+ADMIN,/admin/bank-templates
+ADMIN,/admin/billing
+ADMIN,/admin/billing/tenants
+ADMIN,/admin/billing/tenants/[id]
+ADMIN,/admin/branches
+ADMIN,/admin/branches/create
+ADMIN,/admin/client-dashboard
+ADMIN,/admin/clients
+ADMIN,/admin/clients/[id]/permissions
+ADMIN,/admin/contracts
+ADMIN,/admin/contracts/create
+ADMIN,/admin/developer
+ADMIN,/admin/integrations
+ADMIN,/admin/modules
+ADMIN,/admin/notifications
+ADMIN,/admin/organizations
+ADMIN,/admin/permissions
+ADMIN,/admin/rag-sources
+ADMIN,/admin/reports
+ADMIN,/admin/roles-permissions
+ADMIN,/admin/settings
+ADMIN,/admin/sla
+ADMIN,/admin/subscription
+ADMIN,/admin/subscription-billing
+ADMIN,/admin/support
+ADMIN,/admin/system-configuration
+ADMIN,/admin/system-flow
+ADMIN,/admin/task-approvals
+ADMIN,/admin/task-approvals/[taskId]
+ADMIN,/admin/tenant-management
+ADMIN,/admin/usage
+ADMIN,/admin/user-management
+ADMIN,/admin/users
+ADMIN,/admin/users/create
+ADMIN,/admin/user-usage
+ADMIN,/admin/user-usage/[id]
+ADMIN_OPS,/admin
+ADMIN_OPS,/admin/clients
+ADMIN_OPS,/admin/task-approvals
+ADMIN_OPS,/common/about-me  (inherited BASE_USER)
+ADMIN_OPS,/common/calendar
+ADMIN_OPS,/common/notifications
+ADMIN_OPS,/common/task-approvals  (inherited BASE_USER)
+ADMIN_OPS,/dashboard  (inherited BASE_USER)
+AUDITOR,/compliance/approval-workflow-view
+AUDITOR,/compliance/audit-trail
+AUDITOR,/compliance/compliance-dashboard
+AUDITOR,/compliance/contract-management
+AUDITOR,/compliance/document-management
+AUDITOR,/compliance/document-repository-view
+AUDITOR,/compliance/legal-case-management
+AUDITOR,/compliance/litigation-tracker
+AUDITOR,/compliance-officer
+AUDITOR,/compliance/policy-management
+AUDITOR,/compliance/regulatory-compliance
+AUDITOR,/compliance/regulatory-report-templates
+AUDITOR,/compliance/risk-management
+AUDITOR,/compliance/vendor-customer-master-legal
+AUDITOR,/governance/audit-integrity
+AUDITOR,/governance/rbac-structure
+AUDITOR,/governance/security-overview
+AUDITOR,/governance/security-violations
+AUDITOR,/reports/settlement-audit
+BANKER,/common/about-me  (inherited BASE_USER)
+BANKER,/common/bank-accounts
+BANKER,/common/security-settings  (inherited BASE_USER)
+BANKER,/finance/payment-approval-queue
+BANKER,/reconciliation
+BANKER,/reconciliation/[id]
+BANKER,/settlements
+BANKER,/settlements/[id]
+BISMAN_BILLING,/billing
+BISMAN_BILLING,/billing/invoices
+BISMAN_BILLING,/communication/internal-chat
+BISMAN_BILLING,/internal/customers
+BISMAN_BILLING,/internal/playbooks
+BISMAN_BILLING,/internal/support-sessions
+BISMAN_BILLING,/internal/teams
+BISMAN_CUSTOMER_CARE,/communication/internal-chat
+BISMAN_CUSTOMER_CARE,/internal/customers
+BISMAN_CUSTOMER_CARE,/internal/playbooks
+BISMAN_CUSTOMER_CARE,/internal/support-sessions
+BISMAN_CUSTOMER_CARE,/internal/teams
+BISMAN_ENGINEERING,/communication/internal-chat
+BISMAN_ENGINEERING,/internal/customers
+BISMAN_ENGINEERING,/internal/playbooks
+BISMAN_ENGINEERING,/internal/support-sessions
+BISMAN_ENGINEERING,/internal/teams
+BISMAN_ENGINEERING,/qa
+BISMAN_ENGINEERING,/qa/issues
+BISMAN_ENGINEERING,/qa/issues/[id]
+BISMAN_ENGINEERING,/qa/issues/new
+BISMAN_ENGINEERING,/qa/role-access-explorer
+BISMAN_ENGINEERING,/qa/test-tasks
+BISMAN_ENGINEERING,/qa/test-tasks/[id]
+BISMAN_ENGINEERING,/qa/test-tasks/new
+BISMAN_ENGINEERING,/system/server-logs
+BISMAN_FINANCE,/billing
+BISMAN_FINANCE,/billing/invoices
+BISMAN_FINANCE,/communication/internal-chat
+BISMAN_FINANCE,/internal/customers
+BISMAN_FINANCE,/internal/playbooks
+BISMAN_FINANCE,/internal/support-sessions
+BISMAN_FINANCE,/internal/teams
+BISMAN_SUPPORT,/communication/internal-chat
+BISMAN_SUPPORT,/internal/customers
+BISMAN_SUPPORT,/internal/playbooks
+BISMAN_SUPPORT,/internal/support-sessions
+BISMAN_SUPPORT,/internal/teams
+BRANCH_INCHARGE,/common/about-me  (inherited BASE_USER)
+BRANCH_INCHARGE,/common/calendar
+BRANCH_INCHARGE,/common/notifications
+BRANCH_INCHARGE,/common/payment-request  (inherited BASE_USER)
+BRANCH_INCHARGE,/common/task-approvals  (inherited BASE_USER)
+BRANCH_INCHARGE,/dashboard/workbench
+BRANCH_INCHARGE,/operations/inventory-management
+BRANCH_INCHARGE,/task-dashboard  (inherited BASE_USER)
+CEO,/
+CEO,/accounts
+CEO,/accounts-payable
+CEO,/ai-training
+CEO,/analytics  (inherited BASE_USER)
+CEO,/approvals  (inherited BASE_USER)
+CEO,/assets/maintenance-scheduling
+CEO,/assistant  (inherited BASE_USER)
+CEO,/banker
+CEO,/calendar  (inherited BASE_USER)
+CEO,/cfo-dashboard
+CEO,/clients/create
+CEO,/clients/usage-dashboard
+CEO,/common/about-me  (inherited BASE_USER)
+CEO,/common/bank-accounts
+CEO,/common/calendar
+CEO,/common/documentation  (inherited BASE_USER)
+CEO,/common/messages  (inherited BASE_USER)
+CEO,/common/notifications
+CEO,/common/payment-request  (inherited BASE_USER)
+CEO,/common/payment-requests/create  (inherited BASE_USER)
+CEO,/common/security-settings  (inherited BASE_USER)
+CEO,/common/task-approvals  (inherited BASE_USER)
+CEO,/common/task-approvals/[id]  (inherited BASE_USER)
+CEO,/common/user-creation
+CEO,/common/user-settings
+CEO,/dashboard/workbench
+CEO,/hub-incharge
+CEO,/inventory/barcode-scanning
+CEO,/inventory/category-management
+CEO,/inventory/reorder-rules
+CEO,/inventory/reports
+CEO,/legal
+CEO,/notifications  (inherited BASE_USER)
+CEO,/operations/kpi-dashboard
+CEO,/production/analytics
+CEO,/production/machine-management
+CEO,/production/scheduling
+CEO,/production/workflow
+CEO,/reports/payment-summary
+CEO,/reports/settlement-audit
+CEO,/sales/customer-master
+CEO,/sales/quotation-management
+CEO,/settings  (inherited BASE_USER)
+CEO,/settings/security  (inherited BASE_USER)
+CEO,/shipping/carrier-management
+CEO,/shipping/shipment-tracking
+CEO,/staff
+CEO,/task-dashboard  (inherited BASE_USER)
+CEO,/tasks/clarifications  (inherited BASE_USER)
+CEO,/tasks/create  (inherited BASE_USER)
+CEO,/tasks/reviews  (inherited BASE_USER)
+CEO,/trace  (inherited BASE_USER)
+CEO,/upgrade-required
+CEO,/warehouse/bin-location
+CFO,/
+CFO,/accounts
+CFO,/accounts-payable
+CFO,/ai-training
+CFO,/analytics  (inherited BASE_USER)
+CFO,/approvals  (inherited BASE_USER)
+CFO,/assets/maintenance-scheduling
+CFO,/assistant  (inherited BASE_USER)
+CFO,/banker
+CFO,/billing
+CFO,/billing/invoices
+CFO,/calendar  (inherited BASE_USER)
+CFO,/cfo-dashboard
+CFO,/clients/create
+CFO,/clients/usage-dashboard
+CFO,/common/about-me  (inherited BASE_USER)
+CFO,/common/bank-accounts
+CFO,/common/calendar
+CFO,/common/documentation  (inherited BASE_USER)
+CFO,/common/messages  (inherited BASE_USER)
+CFO,/common/notifications
+CFO,/common/payment-request  (inherited BASE_USER)
+CFO,/common/payment-requests/create  (inherited BASE_USER)
+CFO,/common/security-settings  (inherited BASE_USER)
+CFO,/common/task-approvals  (inherited BASE_USER)
+CFO,/common/task-approvals/[id]  (inherited BASE_USER)
+CFO,/common/user-creation
+CFO,/common/user-settings
+CFO,/compliance/compliance-dashboard
+CFO,/dashboard/workbench
+CFO,/finance/accounts-payable-summary
+CFO,/finance/accounts-receivable-summary
+CFO,/finance/approval-details/[taskId]
+CFO,/finance/approval-structure-overview
+CFO,/finance/bank-reconciliation
+CFO,/finance/bank-reconciliation-execute
+CFO,/finance/bank-statement-upload
+CFO,/finance/budget-approval
+CFO,/finance/budgeting-forecasting
+CFO,/finance/cash-flow-forecast
+CFO,/finance/cash-flow-statement
+CFO,/finance/chart-of-accounts
+CFO,/finance/company-dashboard
+CFO,/finance-controller
+CFO,/finance/cost-center-analysis
+CFO,/finance/executive-dashboard
+CFO,/finance/expense-report
+CFO,/finance/financial-statements
+CFO,/finance/fixed-asset-register
+CFO,/finance/foreign-exchange-management
+CFO,/finance/general-ledger
+CFO,/finance/inter-company-reconciliation
+CFO,/finance/invoice-posting
+CFO,/finance/journal-entries
+CFO,/finance/journal-entries-approval
+CFO,/finance/loan-management
+CFO,/finance/payment-approval-queue
+CFO,/finance/payment-batch-processing
+CFO,/finance/payment-entry
+CFO,/finance/payment-entry-view
+CFO,/finance/payment-gateway-integration
+CFO,/finance/period-end-adjustment-entries
+CFO,/finance/period-end-closing
+CFO,/finance/purchase-invoice
+CFO,/finance/tax-reports
+CFO,/finance/trial-balance
+CFO,/finance/vendor-master
+CFO,/hub-incharge
+CFO,/inventory/barcode-scanning
+CFO,/inventory/category-management
+CFO,/inventory/reorder-rules
+CFO,/inventory/reports
+CFO,/legal
+CFO,/notifications  (inherited BASE_USER)
+CFO,/operations/kpi-dashboard
+CFO,/procurement/purchase-orders
+CFO,/production/analytics
+CFO,/production/machine-management
+CFO,/production/scheduling
+CFO,/production/workflow
+CFO,/reconciliation
+CFO,/reconciliation/[id]
+CFO,/reconciliation/upload
+CFO,/reports/payment-summary
+CFO,/reports/settlement-audit
+CFO,/sales/customer-master
+CFO,/sales/quotation-management
+CFO,/settings  (inherited BASE_USER)
+CFO,/settings/security  (inherited BASE_USER)
+CFO,/settlements
+CFO,/settlements/[id]
+CFO,/shipping/carrier-management
+CFO,/shipping/shipment-tracking
+CFO,/staff
+CFO,/task-dashboard  (inherited BASE_USER)
+CFO,/tasks/clarifications  (inherited BASE_USER)
+CFO,/tasks/create  (inherited BASE_USER)
+CFO,/tasks/reviews  (inherited BASE_USER)
+CFO,/trace  (inherited BASE_USER)
+CFO,/upgrade-required
+CFO,/warehouse/bin-location
+COMPLIANCE,/common/about-me  (inherited BASE_USER)
+COMPLIANCE,/common/security-settings  (inherited BASE_USER)
+COMPLIANCE,/compliance/approval-workflow-view
+COMPLIANCE,/compliance/audit-trail
+COMPLIANCE,/compliance/compliance-dashboard
+COMPLIANCE,/compliance/contract-management
+COMPLIANCE,/compliance/document-management
+COMPLIANCE,/compliance/document-repository-view
+COMPLIANCE,/compliance/legal-case-management
+COMPLIANCE,/compliance/litigation-tracker
+COMPLIANCE,/compliance-officer
+COMPLIANCE,/compliance/policy-management
+COMPLIANCE,/compliance/regulatory-compliance
+COMPLIANCE,/compliance/regulatory-report-templates
+COMPLIANCE,/compliance/risk-management
+COMPLIANCE,/compliance/vendor-customer-master-legal
+COMPLIANCE,/governance/audit-integrity
+COMPLIANCE,/governance/rbac-structure
+COMPLIANCE,/governance/security-overview
+COMPLIANCE,/governance/security-violations
+COO,/
+COO,/accounts
+COO,/accounts-payable
+COO,/ai-training
+COO,/analytics  (inherited BASE_USER)
+COO,/approvals  (inherited BASE_USER)
+COO,/assets/maintenance-scheduling
+COO,/assistant  (inherited BASE_USER)
+COO,/banker
+COO,/calendar  (inherited BASE_USER)
+COO,/cfo-dashboard
+COO,/clients/create
+COO,/clients/usage-dashboard
+COO,/common/about-me  (inherited BASE_USER)
+COO,/common/bank-accounts
+COO,/common/calendar
+COO,/common/documentation  (inherited BASE_USER)
+COO,/common/messages  (inherited BASE_USER)
+COO,/common/notifications
+COO,/common/payment-request  (inherited BASE_USER)
+COO,/common/payment-requests/create  (inherited BASE_USER)
+COO,/common/security-settings  (inherited BASE_USER)
+COO,/common/task-approvals  (inherited BASE_USER)
+COO,/common/task-approvals/[id]  (inherited BASE_USER)
+COO,/common/user-creation
+COO,/common/user-settings
+COO,/dashboard/workbench
+COO,/finance/executive-dashboard
+COO,/hub-incharge
+COO,/inventory/barcode-scanning
+COO,/inventory/category-management
+COO,/inventory/reorder-rules
+COO,/inventory/reports
+COO,/legal
+COO,/notifications  (inherited BASE_USER)
+COO,/operations/inventory-management
+COO,/operations/kpi-dashboard
+COO,/production/analytics
+COO,/production/machine-management
+COO,/production/scheduling
+COO,/production/workflow
+COO,/reports/payment-summary
+COO,/reports/settlement-audit
+COO,/sales/customer-master
+COO,/sales/quotation-management
+COO,/settings  (inherited BASE_USER)
+COO,/settings/security  (inherited BASE_USER)
+COO,/shipping/carrier-management
+COO,/shipping/shipment-tracking
+COO,/staff
+COO,/task-dashboard  (inherited BASE_USER)
+COO,/tasks/clarifications  (inherited BASE_USER)
+COO,/tasks/create  (inherited BASE_USER)
+COO,/tasks/reviews  (inherited BASE_USER)
+COO,/trace  (inherited BASE_USER)
+COO,/upgrade-required
+COO,/warehouse/bin-location
+CTO,/
+CTO,/accounts
+CTO,/accounts-payable
+CTO,/ai-training
+CTO,/analytics  (inherited BASE_USER)
+CTO,/approvals  (inherited BASE_USER)
+CTO,/assets/maintenance-scheduling
+CTO,/assistant  (inherited BASE_USER)
+CTO,/banker
+CTO,/calendar  (inherited BASE_USER)
+CTO,/cfo-dashboard
+CTO,/clients/create
+CTO,/clients/usage-dashboard
+CTO,/common/about-me  (inherited BASE_USER)
+CTO,/common/bank-accounts
+CTO,/common/calendar
+CTO,/common/documentation  (inherited BASE_USER)
+CTO,/common/messages  (inherited BASE_USER)
+CTO,/common/notifications
+CTO,/common/payment-request  (inherited BASE_USER)
+CTO,/common/payment-requests/create  (inherited BASE_USER)
+CTO,/common/security-settings  (inherited BASE_USER)
+CTO,/common/task-approvals  (inherited BASE_USER)
+CTO,/common/task-approvals/[id]  (inherited BASE_USER)
+CTO,/common/user-creation
+CTO,/common/user-settings
+CTO,/dashboard/workbench
+CTO,/hub-incharge
+CTO,/inventory/barcode-scanning
+CTO,/inventory/category-management
+CTO,/inventory/reorder-rules
+CTO,/legal
+CTO,/notifications  (inherited BASE_USER)
+CTO,/production/analytics
+CTO,/production/machine-management
+CTO,/production/scheduling
+CTO,/production/workflow
+CTO,/sales/customer-master
+CTO,/sales/quotation-management
+CTO,/settings  (inherited BASE_USER)
+CTO,/settings/security  (inherited BASE_USER)
+CTO,/shipping/carrier-management
+CTO,/shipping/shipment-tracking
+CTO,/staff
+CTO,/system/integration-settings
+CTO,/system/server-logs
+CTO,/system/system-health-dashboard
+CTO,/task-dashboard  (inherited BASE_USER)
+CTO,/tasks/clarifications  (inherited BASE_USER)
+CTO,/tasks/create  (inherited BASE_USER)
+CTO,/tasks/reviews  (inherited BASE_USER)
+CTO,/trace  (inherited BASE_USER)
+CTO,/upgrade-required
+CTO,/warehouse/bin-location
+DATA_ENTRY,/
+DATA_ENTRY,/accounts
+DATA_ENTRY,/accounts-payable
+DATA_ENTRY,/ai-training
+DATA_ENTRY,/analytics  (inherited BASE_USER)
+DATA_ENTRY,/approvals  (inherited BASE_USER)
+DATA_ENTRY,/assets/maintenance-scheduling
+DATA_ENTRY,/assistant  (inherited BASE_USER)
+DATA_ENTRY,/banker
+DATA_ENTRY,/calendar  (inherited BASE_USER)
+DATA_ENTRY,/cfo-dashboard
+DATA_ENTRY,/clients/create
+DATA_ENTRY,/clients/usage-dashboard
+DATA_ENTRY,/common/about-me  (inherited BASE_USER)
+DATA_ENTRY,/common/bank-accounts
+DATA_ENTRY,/common/calendar
+DATA_ENTRY,/common/documentation  (inherited BASE_USER)
+DATA_ENTRY,/common/messages  (inherited BASE_USER)
+DATA_ENTRY,/common/notifications
+DATA_ENTRY,/common/payment-request  (inherited BASE_USER)
+DATA_ENTRY,/common/payment-requests/create  (inherited BASE_USER)
+DATA_ENTRY,/common/security-settings  (inherited BASE_USER)
+DATA_ENTRY,/common/task-approvals  (inherited BASE_USER)
+DATA_ENTRY,/common/task-approvals/[id]  (inherited BASE_USER)
+DATA_ENTRY,/common/user-creation
+DATA_ENTRY,/common/user-settings
+DATA_ENTRY,/hub-incharge
+DATA_ENTRY,/inventory/barcode-scanning
+DATA_ENTRY,/inventory/category-management
+DATA_ENTRY,/inventory/reorder-rules
+DATA_ENTRY,/legal
+DATA_ENTRY,/notifications  (inherited BASE_USER)
+DATA_ENTRY,/production/analytics
+DATA_ENTRY,/production/machine-management
+DATA_ENTRY,/production/scheduling
+DATA_ENTRY,/production/workflow
+DATA_ENTRY,/sales/customer-master
+DATA_ENTRY,/sales/quotation-management
+DATA_ENTRY,/settings  (inherited BASE_USER)
+DATA_ENTRY,/settings/security  (inherited BASE_USER)
+DATA_ENTRY,/shipping/carrier-management
+DATA_ENTRY,/shipping/shipment-tracking
+DATA_ENTRY,/staff
+DATA_ENTRY,/task-dashboard  (inherited BASE_USER)
+DATA_ENTRY,/tasks/clarifications  (inherited BASE_USER)
+DATA_ENTRY,/tasks/create  (inherited BASE_USER)
+DATA_ENTRY,/tasks/reviews  (inherited BASE_USER)
+DATA_ENTRY,/trace  (inherited BASE_USER)
+DATA_ENTRY,/upgrade-required
+DATA_ENTRY,/warehouse/bin-location
+ENTERPRISE_ADMIN,/enterprise-admin/billing
+ENTERPRISE_ADMIN,/enterprise-admin/dashboard
+ENTERPRISE_ADMIN,/enterprise-admin/docs/production-ready
+ENTERPRISE_ADMIN,/enterprise-admin/integrations
+ENTERPRISE_ADMIN,/enterprise-admin/logs
+ENTERPRISE_ADMIN,/enterprise-admin/monitoring
+ENTERPRISE_ADMIN,/enterprise-admin/monitoring/database
+ENTERPRISE_ADMIN,/enterprise-admin/monitoring/live
+ENTERPRISE_ADMIN,/enterprise-admin/monitoring/performance
+ENTERPRISE_ADMIN,/enterprise-admin/pages-report
+ENTERPRISE_ADMIN,/enterprise-admin/rbac-security
+ENTERPRISE_ADMIN,/enterprise-admin/roles
+ENTERPRISE_ADMIN,/enterprise-admin/subscription-access
+ENTERPRISE_ADMIN,/enterprise-admin/super-admins
+ENTERPRISE_ADMIN,/enterprise-admin/super-admins/create
+ENTERPRISE_ADMIN,/enterprise-admin/user-usage/[id]
+FINANCE_CONTROLLER,/
+FINANCE_CONTROLLER,/accounts
+FINANCE_CONTROLLER,/accounts-payable
+FINANCE_CONTROLLER,/ai-training
+FINANCE_CONTROLLER,/analytics  (inherited BASE_USER)
+FINANCE_CONTROLLER,/approvals  (inherited BASE_USER)
+FINANCE_CONTROLLER,/assets/maintenance-scheduling
+FINANCE_CONTROLLER,/assistant  (inherited BASE_USER)
+FINANCE_CONTROLLER,/banker
+FINANCE_CONTROLLER,/calendar  (inherited BASE_USER)
+FINANCE_CONTROLLER,/cfo-dashboard
+FINANCE_CONTROLLER,/clients/create
+FINANCE_CONTROLLER,/clients/usage-dashboard
+FINANCE_CONTROLLER,/common/about-me  (inherited BASE_USER)
+FINANCE_CONTROLLER,/common/bank-accounts
+FINANCE_CONTROLLER,/common/calendar
+FINANCE_CONTROLLER,/common/documentation  (inherited BASE_USER)
+FINANCE_CONTROLLER,/common/messages  (inherited BASE_USER)
+FINANCE_CONTROLLER,/common/notifications
+FINANCE_CONTROLLER,/common/payment-request  (inherited BASE_USER)
+FINANCE_CONTROLLER,/common/payment-requests/create  (inherited BASE_USER)
+FINANCE_CONTROLLER,/common/security-settings  (inherited BASE_USER)
+FINANCE_CONTROLLER,/common/task-approvals  (inherited BASE_USER)
+FINANCE_CONTROLLER,/common/task-approvals/[id]  (inherited BASE_USER)
+FINANCE_CONTROLLER,/common/user-creation
+FINANCE_CONTROLLER,/common/user-settings
+FINANCE_CONTROLLER,/dashboard/workbench
+FINANCE_CONTROLLER,/finance/accounts-payable-summary
+FINANCE_CONTROLLER,/finance/accounts-receivable-summary
+FINANCE_CONTROLLER,/finance/approval-details/[taskId]
+FINANCE_CONTROLLER,/finance/approval-structure-overview
+FINANCE_CONTROLLER,/finance/executive-dashboard
+FINANCE_CONTROLLER,/finance/general-ledger
+FINANCE_CONTROLLER,/finance/payment-approval-queue
+FINANCE_CONTROLLER,/hub-incharge
+FINANCE_CONTROLLER,/inventory/barcode-scanning
+FINANCE_CONTROLLER,/inventory/category-management
+FINANCE_CONTROLLER,/inventory/reorder-rules
+FINANCE_CONTROLLER,/legal
+FINANCE_CONTROLLER,/notifications  (inherited BASE_USER)
+FINANCE_CONTROLLER,/production/analytics
+FINANCE_CONTROLLER,/production/machine-management
+FINANCE_CONTROLLER,/production/scheduling
+FINANCE_CONTROLLER,/production/workflow
+FINANCE_CONTROLLER,/reconciliation
+FINANCE_CONTROLLER,/reconciliation/[id]
+FINANCE_CONTROLLER,/reconciliation/upload
+FINANCE_CONTROLLER,/reports/payment-summary
+FINANCE_CONTROLLER,/reports/settlement-audit
+FINANCE_CONTROLLER,/sales/customer-master
+FINANCE_CONTROLLER,/sales/quotation-management
+FINANCE_CONTROLLER,/settings  (inherited BASE_USER)
+FINANCE_CONTROLLER,/settings/security  (inherited BASE_USER)
+FINANCE_CONTROLLER,/settlements
+FINANCE_CONTROLLER,/settlements/[id]
+FINANCE_CONTROLLER,/shipping/carrier-management
+FINANCE_CONTROLLER,/shipping/shipment-tracking
+FINANCE_CONTROLLER,/staff
+FINANCE_CONTROLLER,/task-dashboard  (inherited BASE_USER)
+FINANCE_CONTROLLER,/tasks/clarifications  (inherited BASE_USER)
+FINANCE_CONTROLLER,/tasks/create  (inherited BASE_USER)
+FINANCE_CONTROLLER,/tasks/reviews  (inherited BASE_USER)
+FINANCE_CONTROLLER,/trace  (inherited BASE_USER)
+FINANCE_CONTROLLER,/upgrade-required
+FINANCE_CONTROLLER,/warehouse/bin-location
+HR,/common/about-me  (inherited BASE_USER)
+HR,/common/security-settings  (inherited BASE_USER)
+HR,/hr/attendance-tracking
+HR,/hr/performance-review
+HR,/hr/policy
+HR,/hr/training
+HR,/hr/user-creation
+HR,/system/user-creation
+HR_MANAGER,/
+HR_MANAGER,/accounts
+HR_MANAGER,/accounts-payable
+HR_MANAGER,/ai-training
+HR_MANAGER,/analytics  (inherited BASE_USER)
+HR_MANAGER,/approvals  (inherited BASE_USER)
+HR_MANAGER,/assets/maintenance-scheduling
+HR_MANAGER,/assistant  (inherited BASE_USER)
+HR_MANAGER,/banker
+HR_MANAGER,/calendar  (inherited BASE_USER)
+HR_MANAGER,/cfo-dashboard
+HR_MANAGER,/clients/create
+HR_MANAGER,/clients/usage-dashboard
+HR_MANAGER,/common/about-me  (inherited BASE_USER)
+HR_MANAGER,/common/bank-accounts
+HR_MANAGER,/common/calendar
+HR_MANAGER,/common/documentation  (inherited BASE_USER)
+HR_MANAGER,/common/messages  (inherited BASE_USER)
+HR_MANAGER,/common/notifications
+HR_MANAGER,/common/payment-request  (inherited BASE_USER)
+HR_MANAGER,/common/payment-requests/create  (inherited BASE_USER)
+HR_MANAGER,/common/security-settings  (inherited BASE_USER)
+HR_MANAGER,/common/task-approvals  (inherited BASE_USER)
+HR_MANAGER,/common/task-approvals/[id]  (inherited BASE_USER)
+HR_MANAGER,/common/user-creation
+HR_MANAGER,/common/user-settings
+HR_MANAGER,/dashboard/workbench
+HR_MANAGER,/hr/attendance-tracking
+HR_MANAGER,/hr/performance-review
+HR_MANAGER,/hr/policy
+HR_MANAGER,/hr/training
+HR_MANAGER,/hr/user-creation
+HR_MANAGER,/hub-incharge
+HR_MANAGER,/inventory/barcode-scanning
+HR_MANAGER,/inventory/category-management
+HR_MANAGER,/inventory/reorder-rules
+HR_MANAGER,/legal
+HR_MANAGER,/notifications  (inherited BASE_USER)
+HR_MANAGER,/production/analytics
+HR_MANAGER,/production/machine-management
+HR_MANAGER,/production/scheduling
+HR_MANAGER,/production/workflow
+HR_MANAGER,/sales/customer-master
+HR_MANAGER,/sales/quotation-management
+HR_MANAGER,/settings  (inherited BASE_USER)
+HR_MANAGER,/settings/security  (inherited BASE_USER)
+HR_MANAGER,/shipping/carrier-management
+HR_MANAGER,/shipping/shipment-tracking
+HR_MANAGER,/staff
+HR_MANAGER,/system/user-creation
+HR_MANAGER,/task-dashboard  (inherited BASE_USER)
+HR_MANAGER,/tasks/clarifications  (inherited BASE_USER)
+HR_MANAGER,/tasks/create  (inherited BASE_USER)
+HR_MANAGER,/tasks/reviews  (inherited BASE_USER)
+HR_MANAGER,/trace  (inherited BASE_USER)
+HR_MANAGER,/upgrade-required
+HR_MANAGER,/warehouse/bin-location
+HUB_INCHARGE,/
+HUB_INCHARGE,/accounts
+HUB_INCHARGE,/accounts-payable
+HUB_INCHARGE,/ai-training
+HUB_INCHARGE,/analytics  (inherited BASE_USER)
+HUB_INCHARGE,/approvals  (inherited BASE_USER)
+HUB_INCHARGE,/assets/maintenance-scheduling
+HUB_INCHARGE,/assistant  (inherited BASE_USER)
+HUB_INCHARGE,/banker
+HUB_INCHARGE,/calendar  (inherited BASE_USER)
+HUB_INCHARGE,/cfo-dashboard
+HUB_INCHARGE,/clients/create
+HUB_INCHARGE,/clients/usage-dashboard
+HUB_INCHARGE,/common/about-me  (inherited BASE_USER)
+HUB_INCHARGE,/common/bank-accounts
+HUB_INCHARGE,/common/calendar
+HUB_INCHARGE,/common/documentation  (inherited BASE_USER)
+HUB_INCHARGE,/common/messages  (inherited BASE_USER)
+HUB_INCHARGE,/common/notifications
+HUB_INCHARGE,/common/payment-request  (inherited BASE_USER)
+HUB_INCHARGE,/common/payment-requests/create  (inherited BASE_USER)
+HUB_INCHARGE,/common/security-settings  (inherited BASE_USER)
+HUB_INCHARGE,/common/task-approvals  (inherited BASE_USER)
+HUB_INCHARGE,/common/task-approvals/[id]  (inherited BASE_USER)
+HUB_INCHARGE,/common/user-creation
+HUB_INCHARGE,/common/user-settings
+HUB_INCHARGE,/dashboard/workbench
+HUB_INCHARGE,/hub-incharge
+HUB_INCHARGE,/inventory/barcode-scanning
+HUB_INCHARGE,/inventory/category-management
+HUB_INCHARGE,/inventory/reorder-rules
+HUB_INCHARGE,/legal
+HUB_INCHARGE,/notifications  (inherited BASE_USER)
+HUB_INCHARGE,/operations/asset-register-hub
+HUB_INCHARGE,/operations/bom-view
+HUB_INCHARGE,/operations/delivery-note
+HUB_INCHARGE,/operations/inventory-management
+HUB_INCHARGE,/operations/item-master-limited
+HUB_INCHARGE,/operations/kpi-dashboard
+HUB_INCHARGE,/operations-manager
+HUB_INCHARGE,/operations/quality-inspection
+HUB_INCHARGE,/operations/sales-order
+HUB_INCHARGE,/operations/sales-order-view
+HUB_INCHARGE,/operations/shipping-logistics
+HUB_INCHARGE,/operations/stock-entry
+HUB_INCHARGE,/operations/stock-entry-transfer
+HUB_INCHARGE,/operations/stock-ledger
+HUB_INCHARGE,/operations/work-order
+HUB_INCHARGE,/production/analytics
+HUB_INCHARGE,/production/machine-management
+HUB_INCHARGE,/production/scheduling
+HUB_INCHARGE,/production/workflow
+HUB_INCHARGE,/pump-management/server-logs
+HUB_INCHARGE,/sales/customer-master
+HUB_INCHARGE,/sales/quotation-management
+HUB_INCHARGE,/settings  (inherited BASE_USER)
+HUB_INCHARGE,/settings/security  (inherited BASE_USER)
+HUB_INCHARGE,/shipping/carrier-management
+HUB_INCHARGE,/shipping/shipment-tracking
+HUB_INCHARGE,/staff
+HUB_INCHARGE,/store-incharge
+HUB_INCHARGE,/task-dashboard  (inherited BASE_USER)
+HUB_INCHARGE,/tasks/clarifications  (inherited BASE_USER)
+HUB_INCHARGE,/tasks/create  (inherited BASE_USER)
+HUB_INCHARGE,/tasks/reviews  (inherited BASE_USER)
+HUB_INCHARGE,/trace  (inherited BASE_USER)
+HUB_INCHARGE,/upgrade-required
+HUB_INCHARGE,/warehouse/bin-location
+HUB_INCHARGE_SR,/common/about-me  (inherited BASE_USER)
+HUB_INCHARGE_SR,/common/calendar
+HUB_INCHARGE_SR,/common/notifications
+HUB_INCHARGE_SR,/common/payment-request  (inherited BASE_USER)
+HUB_INCHARGE_SR,/common/task-approvals  (inherited BASE_USER)
+HUB_INCHARGE_SR,/dashboard/workbench
+HUB_INCHARGE_SR,/operations/inventory-management
+HUB_INCHARGE_SR,/operations/kpi-dashboard
+HUB_INCHARGE_SR,/reports/payment-summary
+HUB_INCHARGE_SR,/task-dashboard  (inherited BASE_USER)
+INTERN,/common/about-me  (inherited BASE_USER)
+INTERN,/common/calendar
+INTERN,/common/documentation  (inherited BASE_USER)
+INTERN,/common/notifications
+IT_ADMIN,/common/about-me  (inherited BASE_USER)
+IT_ADMIN,/common/security-settings  (inherited BASE_USER)
+IT_ADMIN,/system/about-me
+IT_ADMIN,/system/audit-integrity-dashboard
+IT_ADMIN,/system/audit-logs
+IT_ADMIN,/system/backup-restore
+IT_ADMIN,/system/clients/[id]/edit
+IT_ADMIN,/system/clients/new
+IT_ADMIN,/system/integration-settings
+IT_ADMIN,/system/permission-manager
+IT_ADMIN,/system/role-access-explorer
+IT_ADMIN,/system/roles-users-report
+IT_ADMIN,/system/server-logs
+IT_ADMIN,/system/system-health-dashboard
+IT_ADMIN,/system/user-creation
+IT_ADMIN,/system/user-management
+LEGAL,/common/about-me  (inherited BASE_USER)
+LEGAL,/common/security-settings  (inherited BASE_USER)
+LEGAL,/compliance/approval-workflow-view
+LEGAL,/compliance/audit-trail
+LEGAL,/compliance/compliance-dashboard
+LEGAL,/compliance/contract-management
+LEGAL,/compliance/document-management
+LEGAL,/compliance/document-repository-view
+LEGAL,/compliance/legal-case-management
+LEGAL,/compliance/litigation-tracker
+LEGAL,/compliance-officer
+LEGAL,/compliance/policy-management
+LEGAL,/compliance/regulatory-compliance
+LEGAL,/compliance/regulatory-report-templates
+LEGAL,/compliance/risk-management
+LEGAL,/compliance/vendor-customer-master-legal
+LEGAL,/legal
+MANAGER,/
+MANAGER,/accounts
+MANAGER,/accounts-payable
+MANAGER,/ai-training
+MANAGER,/analytics  (inherited BASE_USER)
+MANAGER,/approvals  (inherited BASE_USER)
+MANAGER,/assets/maintenance-scheduling
+MANAGER,/assistant  (inherited BASE_USER)
+MANAGER,/banker
+MANAGER,/calendar  (inherited BASE_USER)
+MANAGER,/cfo-dashboard
+MANAGER,/clients/create
+MANAGER,/clients/usage-dashboard
+MANAGER,/common/about-me  (inherited BASE_USER)
+MANAGER,/common/bank-accounts
+MANAGER,/common/calendar
+MANAGER,/common/documentation  (inherited BASE_USER)
+MANAGER,/common/messages  (inherited BASE_USER)
+MANAGER,/common/notifications
+MANAGER,/common/payment-request  (inherited BASE_USER)
+MANAGER,/common/payment-requests/create  (inherited BASE_USER)
+MANAGER,/common/security-settings  (inherited BASE_USER)
+MANAGER,/common/task-approvals  (inherited BASE_USER)
+MANAGER,/common/task-approvals/[id]  (inherited BASE_USER)
+MANAGER,/common/user-creation
+MANAGER,/common/user-settings
+MANAGER,/dashboard/workbench
+MANAGER,/hub-incharge
+MANAGER,/inventory/barcode-scanning
+MANAGER,/inventory/category-management
+MANAGER,/inventory/reorder-rules
+MANAGER,/inventory/reports
+MANAGER,/legal
+MANAGER,/notifications  (inherited BASE_USER)
+MANAGER,/procurement/goods-receipt
+MANAGER,/procurement/material-request
+MANAGER,/procurement-officer
+MANAGER,/procurement/purchase-order
+MANAGER,/procurement/purchase-orders
+MANAGER,/procurement/purchase-request
+MANAGER,/procurement/rfq
+MANAGER,/procurement/supplier-master
+MANAGER,/procurement/supplier-quotation
+MANAGER,/production/analytics
+MANAGER,/production/machine-management
+MANAGER,/production/scheduling
+MANAGER,/production/workflow
+MANAGER,/reports/payment-summary
+MANAGER,/reports/settlement-audit
+MANAGER,/sales/customer-master
+MANAGER,/sales/quotation-management
+MANAGER,/settings  (inherited BASE_USER)
+MANAGER,/settings/security  (inherited BASE_USER)
+MANAGER,/shipping/carrier-management
+MANAGER,/shipping/shipment-tracking
+MANAGER,/staff
+MANAGER,/task-dashboard  (inherited BASE_USER)
+MANAGER,/tasks/clarifications  (inherited BASE_USER)
+MANAGER,/tasks/create  (inherited BASE_USER)
+MANAGER,/tasks/reviews  (inherited BASE_USER)
+MANAGER,/trace  (inherited BASE_USER)
+MANAGER,/upgrade-required
+MANAGER,/warehouse/bin-location
+OPERATIONS_MANAGER,/
+OPERATIONS_MANAGER,/accounts
+OPERATIONS_MANAGER,/accounts-payable
+OPERATIONS_MANAGER,/ai-training
+OPERATIONS_MANAGER,/analytics  (inherited BASE_USER)
+OPERATIONS_MANAGER,/approvals  (inherited BASE_USER)
+OPERATIONS_MANAGER,/assets/maintenance-scheduling
+OPERATIONS_MANAGER,/assistant  (inherited BASE_USER)
+OPERATIONS_MANAGER,/banker
+OPERATIONS_MANAGER,/calendar  (inherited BASE_USER)
+OPERATIONS_MANAGER,/cfo-dashboard
+OPERATIONS_MANAGER,/clients/create
+OPERATIONS_MANAGER,/clients/usage-dashboard
+OPERATIONS_MANAGER,/common/about-me  (inherited BASE_USER)
+OPERATIONS_MANAGER,/common/bank-accounts
+OPERATIONS_MANAGER,/common/calendar
+OPERATIONS_MANAGER,/common/documentation  (inherited BASE_USER)
+OPERATIONS_MANAGER,/common/messages  (inherited BASE_USER)
+OPERATIONS_MANAGER,/common/notifications
+OPERATIONS_MANAGER,/common/payment-request  (inherited BASE_USER)
+OPERATIONS_MANAGER,/common/payment-requests/create  (inherited BASE_USER)
+OPERATIONS_MANAGER,/common/security-settings  (inherited BASE_USER)
+OPERATIONS_MANAGER,/common/task-approvals  (inherited BASE_USER)
+OPERATIONS_MANAGER,/common/task-approvals/[id]  (inherited BASE_USER)
+OPERATIONS_MANAGER,/common/user-creation
+OPERATIONS_MANAGER,/common/user-settings
+OPERATIONS_MANAGER,/dashboard/workbench
+OPERATIONS_MANAGER,/hub-incharge
+OPERATIONS_MANAGER,/inventory/barcode-scanning
+OPERATIONS_MANAGER,/inventory/category-management
+OPERATIONS_MANAGER,/inventory/reorder-rules
+OPERATIONS_MANAGER,/legal
+OPERATIONS_MANAGER,/notifications  (inherited BASE_USER)
+OPERATIONS_MANAGER,/operations/asset-register-hub
+OPERATIONS_MANAGER,/operations/bom-view
+OPERATIONS_MANAGER,/operations/delivery-note
+OPERATIONS_MANAGER,/operations/inventory-management
+OPERATIONS_MANAGER,/operations/item-master-limited
+OPERATIONS_MANAGER,/operations/kpi-dashboard
+OPERATIONS_MANAGER,/operations-manager
+OPERATIONS_MANAGER,/operations/quality-inspection
+OPERATIONS_MANAGER,/operations/sales-order
+OPERATIONS_MANAGER,/operations/sales-order-view
+OPERATIONS_MANAGER,/operations/shipping-logistics
+OPERATIONS_MANAGER,/operations/stock-entry
+OPERATIONS_MANAGER,/operations/stock-entry-transfer
+OPERATIONS_MANAGER,/operations/stock-ledger
+OPERATIONS_MANAGER,/operations/work-order
+OPERATIONS_MANAGER,/procurement/purchase-orders
+OPERATIONS_MANAGER,/production/analytics
+OPERATIONS_MANAGER,/production/machine-management
+OPERATIONS_MANAGER,/production/scheduling
+OPERATIONS_MANAGER,/production/workflow
+OPERATIONS_MANAGER,/pump-management/server-logs
+OPERATIONS_MANAGER,/sales/customer-master
+OPERATIONS_MANAGER,/sales/quotation-management
+OPERATIONS_MANAGER,/settings  (inherited BASE_USER)
+OPERATIONS_MANAGER,/settings/security  (inherited BASE_USER)
+OPERATIONS_MANAGER,/shipping/carrier-management
+OPERATIONS_MANAGER,/shipping/shipment-tracking
+OPERATIONS_MANAGER,/staff
+OPERATIONS_MANAGER,/store-incharge
+OPERATIONS_MANAGER,/task-dashboard  (inherited BASE_USER)
+OPERATIONS_MANAGER,/tasks/clarifications  (inherited BASE_USER)
+OPERATIONS_MANAGER,/tasks/create  (inherited BASE_USER)
+OPERATIONS_MANAGER,/tasks/reviews  (inherited BASE_USER)
+OPERATIONS_MANAGER,/trace  (inherited BASE_USER)
+OPERATIONS_MANAGER,/upgrade-required
+OPERATIONS_MANAGER,/warehouse/bin-location
+PROCUREMENT_OFFICER,/common/about-me  (inherited BASE_USER)
+PROCUREMENT_OFFICER,/common/calendar
+PROCUREMENT_OFFICER,/common/notifications
+PROCUREMENT_OFFICER,/common/payment-request  (inherited BASE_USER)
+PROCUREMENT_OFFICER,/common/task-approvals  (inherited BASE_USER)
+PROCUREMENT_OFFICER,/procurement/goods-receipt
+PROCUREMENT_OFFICER,/procurement/material-request
+PROCUREMENT_OFFICER,/procurement-officer
+PROCUREMENT_OFFICER,/procurement/purchase-order
+PROCUREMENT_OFFICER,/procurement/purchase-orders
+PROCUREMENT_OFFICER,/procurement/purchase-request
+PROCUREMENT_OFFICER,/procurement/rfq
+PROCUREMENT_OFFICER,/procurement/supplier-master
+PROCUREMENT_OFFICER,/procurement/supplier-quotation
+PROCUREMENT_OFFICER,/task-dashboard  (inherited BASE_USER)
+QA,/qa
+QA,/qa/issues
+QA,/qa/issues/[id]
+QA,/qa/issues/new
+QA,/qa/role-access-explorer
+QA,/qa/test-tasks
+QA,/qa/test-tasks/[id]
+QA,/qa/test-tasks/new
+STAFF,/
+STAFF,/accounts
+STAFF,/accounts-payable
+STAFF,/ai-training
+STAFF,/analytics  (inherited BASE_USER)
+STAFF,/approvals  (inherited BASE_USER)
+STAFF,/assets/maintenance-scheduling
+STAFF,/assistant  (inherited BASE_USER)
+STAFF,/banker
+STAFF,/calendar  (inherited BASE_USER)
+STAFF,/cfo-dashboard
+STAFF,/clients/create
+STAFF,/clients/usage-dashboard
+STAFF,/common/about-me  (inherited BASE_USER)
+STAFF,/common/bank-accounts
+STAFF,/common/calendar
+STAFF,/common/documentation  (inherited BASE_USER)
+STAFF,/common/messages  (inherited BASE_USER)
+STAFF,/common/notifications
+STAFF,/common/payment-request  (inherited BASE_USER)
+STAFF,/common/payment-requests/create  (inherited BASE_USER)
+STAFF,/common/security-settings  (inherited BASE_USER)
+STAFF,/common/task-approvals  (inherited BASE_USER)
+STAFF,/common/task-approvals/[id]  (inherited BASE_USER)
+STAFF,/common/user-creation
+STAFF,/common/user-settings
+STAFF,/dashboard/workbench
+STAFF,/hub-incharge
+STAFF,/inventory/barcode-scanning
+STAFF,/inventory/category-management
+STAFF,/inventory/reorder-rules
+STAFF,/legal
+STAFF,/notifications  (inherited BASE_USER)
+STAFF,/production/analytics
+STAFF,/production/machine-management
+STAFF,/production/scheduling
+STAFF,/production/workflow
+STAFF,/sales/customer-master
+STAFF,/sales/quotation-management
+STAFF,/settings  (inherited BASE_USER)
+STAFF,/settings/security  (inherited BASE_USER)
+STAFF,/shipping/carrier-management
+STAFF,/shipping/shipment-tracking
+STAFF,/staff
+STAFF,/task-dashboard  (inherited BASE_USER)
+STAFF,/tasks/clarifications  (inherited BASE_USER)
+STAFF,/tasks/create  (inherited BASE_USER)
+STAFF,/tasks/reviews  (inherited BASE_USER)
+STAFF,/trace  (inherited BASE_USER)
+STAFF,/upgrade-required
+STAFF,/warehouse/bin-location
+STORE_INCHARGE,/common/about-me  (inherited BASE_USER)
+STORE_INCHARGE,/common/calendar
+STORE_INCHARGE,/common/notifications
+STORE_INCHARGE,/common/security-settings  (inherited BASE_USER)
+STORE_INCHARGE,/common/task-approvals  (inherited BASE_USER)
+STORE_INCHARGE,/common/task-approvals/[id]  (inherited BASE_USER)
+STORE_INCHARGE,/dashboard/workbench
+STORE_INCHARGE,/operations/asset-register-hub
+STORE_INCHARGE,/operations/bom-view
+STORE_INCHARGE,/operations/delivery-note
+STORE_INCHARGE,/operations/inventory-management
+STORE_INCHARGE,/operations/item-master-limited
+STORE_INCHARGE,/operations/kpi-dashboard
+STORE_INCHARGE,/operations-manager
+STORE_INCHARGE,/operations/quality-inspection
+STORE_INCHARGE,/operations/sales-order
+STORE_INCHARGE,/operations/sales-order-view
+STORE_INCHARGE,/operations/shipping-logistics
+STORE_INCHARGE,/operations/stock-entry
+STORE_INCHARGE,/operations/stock-entry-transfer
+STORE_INCHARGE,/operations/stock-ledger
+STORE_INCHARGE,/operations/work-order
+STORE_INCHARGE,/pump-management/server-logs
+STORE_INCHARGE,/store-incharge
+STORE_INCHARGE_SR,/common/about-me  (inherited BASE_USER)
+STORE_INCHARGE_SR,/common/calendar
+STORE_INCHARGE_SR,/common/notifications
+STORE_INCHARGE_SR,/common/task-approvals  (inherited BASE_USER)
+STORE_INCHARGE_SR,/dashboard/workbench
+STORE_INCHARGE_SR,/operations/inventory-management
+STORE_INCHARGE_SR,/operations/kpi-dashboard
+STORE_INCHARGE_SR,/reports/payment-summary
+STORE_INCHARGE_SR,/store-incharge
+STORE_INCHARGE_SR,/task-dashboard  (inherited BASE_USER)
+SUPER_ADMIN,/super-admin
+SUPER_ADMIN,/super-admin/orders
+SUPER_ADMIN,/super-admin/security
+SUPER_ADMIN,/super-admin/subscription
+SUPER_ADMIN,/super-admin/subscriptions
+SUPER_ADMIN,/super-admin/subscriptions/audit
+SUPER_ADMIN,/super-admin/subscriptions/billing
+SUPER_ADMIN,/super-admin/subscriptions/coupons
+SUPER_ADMIN,/super-admin/subscriptions/micro-unlock
+SUPER_ADMIN,/super-admin/subscriptions/plans
+SUPER_ADMIN,/super-admin/subscriptions/tenants
+SUPER_ADMIN,/super-admin/system
+SUPER_ADMIN,/super-admin/system/about-me
+SUPER_ADMIN,/super-admin/system/backup-restore
+SUPER_ADMIN,/super-admin/system/integration-settings
+SUPER_ADMIN,/super-admin/system/it-admin
+SUPER_ADMIN,/super-admin/system/permission-manager
+SUPER_ADMIN,/super-admin/system/roles-users-report
+SUPER_ADMIN,/super-admin/system/system-health-dashboard
+SUPER_ADMIN,/super-admin/system/user-management
+SUPER_ADMIN,/super-admin/user-usage/[id]
+SUPER_ADMIN,/system/about-me
+SUPER_ADMIN,/system/audit-integrity-dashboard
+SUPER_ADMIN,/system/audit-logs
+SUPER_ADMIN,/system/backup-restore
+SUPER_ADMIN,/system/clients/[id]/edit
+SUPER_ADMIN,/system/clients/new
+SUPER_ADMIN,/system/integration-settings
+SUPER_ADMIN,/system/permission-manager
+SUPER_ADMIN,/system/role-access-explorer
+SUPER_ADMIN,/system/roles-users-report
+SUPER_ADMIN,/system/server-logs
+SUPER_ADMIN,/system/system-health-dashboard
+SUPER_ADMIN,/system/user-creation
+SUPER_ADMIN,/system/user-management
+SUPERVISOR,/
+SUPERVISOR,/accounts
+SUPERVISOR,/accounts-payable
+SUPERVISOR,/ai-training
+SUPERVISOR,/analytics  (inherited BASE_USER)
+SUPERVISOR,/approvals  (inherited BASE_USER)
+SUPERVISOR,/assets/maintenance-scheduling
+SUPERVISOR,/assistant  (inherited BASE_USER)
+SUPERVISOR,/banker
+SUPERVISOR,/calendar  (inherited BASE_USER)
+SUPERVISOR,/cfo-dashboard
+SUPERVISOR,/clients/create
+SUPERVISOR,/clients/usage-dashboard
+SUPERVISOR,/common/about-me  (inherited BASE_USER)
+SUPERVISOR,/common/bank-accounts
+SUPERVISOR,/common/calendar
+SUPERVISOR,/common/documentation  (inherited BASE_USER)
+SUPERVISOR,/common/messages  (inherited BASE_USER)
+SUPERVISOR,/common/notifications
+SUPERVISOR,/common/payment-request  (inherited BASE_USER)
+SUPERVISOR,/common/payment-requests/create  (inherited BASE_USER)
+SUPERVISOR,/common/security-settings  (inherited BASE_USER)
+SUPERVISOR,/common/task-approvals  (inherited BASE_USER)
+SUPERVISOR,/common/task-approvals/[id]  (inherited BASE_USER)
+SUPERVISOR,/common/user-creation
+SUPERVISOR,/common/user-settings
+SUPERVISOR,/dashboard/workbench
+SUPERVISOR,/hub-incharge
+SUPERVISOR,/inventory/barcode-scanning
+SUPERVISOR,/inventory/category-management
+SUPERVISOR,/inventory/reorder-rules
+SUPERVISOR,/legal
+SUPERVISOR,/notifications  (inherited BASE_USER)
+SUPERVISOR,/production/analytics
+SUPERVISOR,/production/machine-management
+SUPERVISOR,/production/scheduling
+SUPERVISOR,/production/workflow
+SUPERVISOR,/sales/customer-master
+SUPERVISOR,/sales/quotation-management
+SUPERVISOR,/settings  (inherited BASE_USER)
+SUPERVISOR,/settings/security  (inherited BASE_USER)
+SUPERVISOR,/shipping/carrier-management
+SUPERVISOR,/shipping/shipment-tracking
+SUPERVISOR,/staff
+SUPERVISOR,/task-dashboard  (inherited BASE_USER)
+SUPERVISOR,/tasks/clarifications  (inherited BASE_USER)
+SUPERVISOR,/tasks/create  (inherited BASE_USER)
+SUPERVISOR,/tasks/reviews  (inherited BASE_USER)
+SUPERVISOR,/trace  (inherited BASE_USER)
+SUPERVISOR,/upgrade-required
+SUPERVISOR,/warehouse/bin-location
+SYSTEM_ADMIN,/admin
+SYSTEM_ADMIN,/admin/ai
+SYSTEM_ADMIN,/admin/ai-analytics
+SYSTEM_ADMIN,/admin/api-management
+SYSTEM_ADMIN,/admin/audit
+SYSTEM_ADMIN,/admin/bank-templates
+SYSTEM_ADMIN,/admin/billing
+SYSTEM_ADMIN,/admin/billing/tenants
+SYSTEM_ADMIN,/admin/billing/tenants/[id]
+SYSTEM_ADMIN,/admin/branches
+SYSTEM_ADMIN,/admin/branches/create
+SYSTEM_ADMIN,/admin/client-dashboard
+SYSTEM_ADMIN,/admin/clients
+SYSTEM_ADMIN,/admin/clients/[id]/permissions
+SYSTEM_ADMIN,/admin/contracts
+SYSTEM_ADMIN,/admin/contracts/create
+SYSTEM_ADMIN,/admin/developer
+SYSTEM_ADMIN,/admin/integrations
+SYSTEM_ADMIN,/admin/modules
+SYSTEM_ADMIN,/admin/notifications
+SYSTEM_ADMIN,/admin/organizations
+SYSTEM_ADMIN,/admin/permissions
+SYSTEM_ADMIN,/admin/rag-sources
+SYSTEM_ADMIN,/admin/reports
+SYSTEM_ADMIN,/admin/roles-permissions
+SYSTEM_ADMIN,/admin/settings
+SYSTEM_ADMIN,/admin/sla
+SYSTEM_ADMIN,/admin/subscription
+SYSTEM_ADMIN,/admin/subscription-billing
+SYSTEM_ADMIN,/admin/support
+SYSTEM_ADMIN,/admin/system-configuration
+SYSTEM_ADMIN,/admin/system-flow
+SYSTEM_ADMIN,/admin/task-approvals
+SYSTEM_ADMIN,/admin/task-approvals/[taskId]
+SYSTEM_ADMIN,/admin/tenant-management
+SYSTEM_ADMIN,/admin/usage
+SYSTEM_ADMIN,/admin/user-management
+SYSTEM_ADMIN,/admin/users
+SYSTEM_ADMIN,/admin/users/create
+SYSTEM_ADMIN,/admin/user-usage
+SYSTEM_ADMIN,/admin/user-usage/[id]
+SYSTEM_ADMIN,/enterprise-admin/billing
+SYSTEM_ADMIN,/enterprise-admin/dashboard
+SYSTEM_ADMIN,/enterprise-admin/docs/production-ready
+SYSTEM_ADMIN,/enterprise-admin/integrations
+SYSTEM_ADMIN,/enterprise-admin/logs
+SYSTEM_ADMIN,/enterprise-admin/monitoring
+SYSTEM_ADMIN,/enterprise-admin/monitoring/database
+SYSTEM_ADMIN,/enterprise-admin/monitoring/live
+SYSTEM_ADMIN,/enterprise-admin/monitoring/performance
+SYSTEM_ADMIN,/enterprise-admin/pages-report
+SYSTEM_ADMIN,/enterprise-admin/rbac-security
+SYSTEM_ADMIN,/enterprise-admin/roles
+SYSTEM_ADMIN,/enterprise-admin/subscription-access
+SYSTEM_ADMIN,/enterprise-admin/super-admins
+SYSTEM_ADMIN,/enterprise-admin/super-admins/create
+SYSTEM_ADMIN,/enterprise-admin/user-usage/[id]
+SYSTEM_ADMIN,/governance/audit-integrity
+SYSTEM_ADMIN,/governance/rbac-structure
+SYSTEM_ADMIN,/governance/security-overview
+SYSTEM_ADMIN,/governance/security-violations
+SYSTEM_ADMIN,/internal/customers
+SYSTEM_ADMIN,/internal/playbooks
+SYSTEM_ADMIN,/internal/support-sessions
+SYSTEM_ADMIN,/internal/teams
+SYSTEM_ADMIN,/qa
+SYSTEM_ADMIN,/qa/issues
+SYSTEM_ADMIN,/qa/issues/[id]
+SYSTEM_ADMIN,/qa/issues/new
+SYSTEM_ADMIN,/qa/role-access-explorer
+SYSTEM_ADMIN,/qa/test-tasks
+SYSTEM_ADMIN,/qa/test-tasks/[id]
+SYSTEM_ADMIN,/qa/test-tasks/new
+SYSTEM_ADMIN,/super-admin
+SYSTEM_ADMIN,/super-admin/orders
+SYSTEM_ADMIN,/super-admin/security
+SYSTEM_ADMIN,/super-admin/subscription
+SYSTEM_ADMIN,/super-admin/subscriptions
+SYSTEM_ADMIN,/super-admin/subscriptions/audit
+SYSTEM_ADMIN,/super-admin/subscriptions/billing
+SYSTEM_ADMIN,/super-admin/subscriptions/coupons
+SYSTEM_ADMIN,/super-admin/subscriptions/micro-unlock
+SYSTEM_ADMIN,/super-admin/subscriptions/plans
+SYSTEM_ADMIN,/super-admin/subscriptions/tenants
+SYSTEM_ADMIN,/super-admin/system
+SYSTEM_ADMIN,/super-admin/system/about-me
+SYSTEM_ADMIN,/super-admin/system/backup-restore
+SYSTEM_ADMIN,/super-admin/system/integration-settings
+SYSTEM_ADMIN,/super-admin/system/it-admin
+SYSTEM_ADMIN,/super-admin/system/permission-manager
+SYSTEM_ADMIN,/super-admin/system/roles-users-report
+SYSTEM_ADMIN,/super-admin/system/system-health-dashboard
+SYSTEM_ADMIN,/super-admin/system/user-management
+SYSTEM_ADMIN,/super-admin/user-usage/[id]
+SYSTEM_ADMIN,/system/about-me
+SYSTEM_ADMIN,/system/audit-integrity-dashboard
+SYSTEM_ADMIN,/system/audit-logs
+SYSTEM_ADMIN,/system/backup-restore
+SYSTEM_ADMIN,/system/clients/[id]/edit
+SYSTEM_ADMIN,/system/clients/new
+SYSTEM_ADMIN,/system/integration-settings
+SYSTEM_ADMIN,/system/permission-manager
+SYSTEM_ADMIN,/system/role-access-explorer
+SYSTEM_ADMIN,/system/roles-users-report
+SYSTEM_ADMIN,/system/server-logs
+SYSTEM_ADMIN,/system/system-health-dashboard
+SYSTEM_ADMIN,/system/user-creation
+SYSTEM_ADMIN,/system/user-management
+TREASURY,/common/about-me  (inherited BASE_USER)
+TREASURY,/common/security-settings  (inherited BASE_USER)
+TREASURY,/finance/approval-details/[taskId]
+TREASURY,/finance/executive-dashboard
+TREASURY,/finance/payment-approval-queue

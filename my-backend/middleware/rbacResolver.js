@@ -87,7 +87,7 @@ async function resolveEffectivePermissions(userId, userRole) {
   const shouldInherit = inheritsBaseUser(userRole);
   
   let query;
-  let params = [userRole];
+  const params = [userRole];
   
   if (shouldInherit) {
     // Business roles: Get BASE_USER pages + role-specific pages

@@ -1,0 +1,1386 @@
+# RBAC Role-Page Access Documentation
+
+**Generated:** 2025-01-25
+**Total Mappings:** 1,228
+**Total Roles:** 39
+**BASE_USER Pages:** 21
+
+---
+
+## BASE_USER Inherited Pages (21)
+
+All roles that inherit BASE_USER automatically get these pages:
+
+- `/dashboard` (sidebar order: 1)
+- `/notifications` (sidebar order: 2)
+- `/common/messages` (sidebar order: 3)
+- `/calendar` (sidebar order: 4)
+- `/common/about-me` (sidebar order: 5)
+- `/settings` (sidebar order: 6)
+- `/common/task-approvals` (sidebar order: 10)
+- `/common/payment-request` (sidebar order: 11)
+- `/task-dashboard` (sidebar order: 20)
+- `/tasks/create` (sidebar order: 21)
+- `/assistant` (sidebar order: 25)
+- `/analytics` (sidebar order: 30)
+- `/approvals` (sidebar order: 999)
+- `/common/documentation` (sidebar order: 999)
+- `/common/payment-requests/create` (sidebar order: 999)
+- `/common/security-settings` (sidebar order: 999)
+- `/common/task-approvals/[id]` (sidebar order: 999)
+- `/settings/security` (sidebar order: 999)
+- `/tasks/clarifications` (sidebar order: 999)
+- `/tasks/reviews` (sidebar order: 999)
+- `/trace` (sidebar order: 999)
+
+---
+
+## Role-Specific Page Assignments
+
+Pages marked with **(inherited)** come from BASE_USER.
+
+### ACCOUNTANT (47 pages)
+
+- `/common/about-me` **(inherited)**
+- `/common/bank-accounts`
+- `/common/calendar`
+- `/common/notifications`
+- `/common/task-approvals` **(inherited)**
+- `/finance/accounts-payable-summary`
+- `/finance/accounts-receivable-summary`
+- `/finance/approval-details/[taskId]`
+- `/finance/approval-structure-overview`
+- `/finance/bank-reconciliation`
+- `/finance/bank-reconciliation-execute`
+- `/finance/bank-statement-upload`
+- `/finance/budget-approval`
+- `/finance/budgeting-forecasting`
+- `/finance/cash-flow-forecast`
+- `/finance/cash-flow-statement`
+- `/finance/chart-of-accounts`
+- `/finance/company-dashboard`
+- `/finance-controller`
+- `/finance/cost-center-analysis`
+- `/finance/executive-dashboard`
+- `/finance/expense-report`
+- `/finance/financial-statements`
+- `/finance/fixed-asset-register`
+- `/finance/foreign-exchange-management`
+- `/finance/general-ledger`
+- `/finance/inter-company-reconciliation`
+- `/finance/invoice-posting`
+- `/finance/journal-entries`
+- `/finance/journal-entries-approval`
+- `/finance/loan-management`
+- `/finance/payment-approval-queue`
+- `/finance/payment-batch-processing`
+- `/finance/payment-entry`
+- `/finance/payment-entry-view`
+- `/finance/payment-gateway-integration`
+- `/finance/period-end-adjustment-entries`
+- `/finance/period-end-closing`
+- `/finance/purchase-invoice`
+- `/finance/tax-reports`
+- `/finance/trial-balance`
+- `/finance/vendor-master`
+- `/reconciliation`
+- `/reconciliation/[id]`
+- `/reconciliation/upload`
+- `/settlements`
+- `/settlements/[id]`
+
+### ACCOUNTS (14 pages)
+
+- `/billing/invoices`
+- `/common/about-me` **(inherited)**
+- `/common/bank-accounts`
+- `/common/security-settings` **(inherited)**
+- `/finance/accounts-receivable-summary`
+- `/finance/approval-details/[taskId]`
+- `/finance/general-ledger`
+- `/finance/payment-approval-queue`
+- `/reconciliation`
+- `/reconciliation/[id]`
+- `/reconciliation/upload`
+- `/reports/payment-summary`
+- `/settlements`
+- `/settlements/[id]`
+
+### ACCOUNTS_PAYABLE (8 pages)
+
+- `/common/about-me` **(inherited)**
+- `/common/notifications`
+- `/finance/accounts-payable-summary`
+- `/finance/invoice-posting`
+- `/finance/payment-entry`
+- `/finance/payment-entry-view`
+- `/finance/purchase-invoice`
+- `/finance/vendor-master`
+
+### ADMIN (41 pages)
+
+- `/admin`
+- `/admin/ai`
+- `/admin/ai-analytics`
+- `/admin/api-management`
+- `/admin/audit`
+- `/admin/bank-templates`
+- `/admin/billing`
+- `/admin/billing/tenants`
+- `/admin/billing/tenants/[id]`
+- `/admin/branches`
+- `/admin/branches/create`
+- `/admin/client-dashboard`
+- `/admin/clients`
+- `/admin/clients/[id]/permissions`
+- `/admin/contracts`
+- `/admin/contracts/create`
+- `/admin/developer`
+- `/admin/integrations`
+- `/admin/modules`
+- `/admin/notifications`
+- `/admin/organizations`
+- `/admin/permissions`
+- `/admin/rag-sources`
+- `/admin/reports`
+- `/admin/roles-permissions`
+- `/admin/settings`
+- `/admin/sla`
+- `/admin/subscription`
+- `/admin/subscription-billing`
+- `/admin/support`
+- `/admin/system-configuration`
+- `/admin/system-flow`
+- `/admin/task-approvals`
+- `/admin/task-approvals/[taskId]`
+- `/admin/tenant-management`
+- `/admin/usage`
+- `/admin/user-management`
+- `/admin/users`
+- `/admin/users/create`
+- `/admin/user-usage`
+- `/admin/user-usage/[id]`
+
+### ADMIN_OPS (8 pages)
+
+- `/admin`
+- `/admin/clients`
+- `/admin/task-approvals`
+- `/common/about-me` **(inherited)**
+- `/common/calendar`
+- `/common/notifications`
+- `/common/task-approvals` **(inherited)**
+- `/dashboard` **(inherited)**
+
+### AUDITOR (19 pages)
+
+- `/compliance/approval-workflow-view`
+- `/compliance/audit-trail`
+- `/compliance/compliance-dashboard`
+- `/compliance/contract-management`
+- `/compliance/document-management`
+- `/compliance/document-repository-view`
+- `/compliance/legal-case-management`
+- `/compliance/litigation-tracker`
+- `/compliance-officer`
+- `/compliance/policy-management`
+- `/compliance/regulatory-compliance`
+- `/compliance/regulatory-report-templates`
+- `/compliance/risk-management`
+- `/compliance/vendor-customer-master-legal`
+- `/governance/audit-integrity`
+- `/governance/rbac-structure`
+- `/governance/security-overview`
+- `/governance/security-violations`
+- `/reports/settlement-audit`
+
+### BANKER (8 pages)
+
+- `/common/about-me` **(inherited)**
+- `/common/bank-accounts`
+- `/common/security-settings` **(inherited)**
+- `/finance/payment-approval-queue`
+- `/reconciliation`
+- `/reconciliation/[id]`
+- `/settlements`
+- `/settlements/[id]`
+
+### BISMAN_BILLING (7 pages)
+
+- `/billing`
+- `/billing/invoices`
+- `/communication/internal-chat`
+- `/internal/customers`
+- `/internal/playbooks`
+- `/internal/support-sessions`
+- `/internal/teams`
+
+### BISMAN_CUSTOMER_CARE (5 pages)
+
+- `/communication/internal-chat`
+- `/internal/customers`
+- `/internal/playbooks`
+- `/internal/support-sessions`
+- `/internal/teams`
+
+### BISMAN_ENGINEERING (14 pages)
+
+- `/communication/internal-chat`
+- `/internal/customers`
+- `/internal/playbooks`
+- `/internal/support-sessions`
+- `/internal/teams`
+- `/qa`
+- `/qa/issues`
+- `/qa/issues/[id]`
+- `/qa/issues/new`
+- `/qa/role-access-explorer`
+- `/qa/test-tasks`
+- `/qa/test-tasks/[id]`
+- `/qa/test-tasks/new`
+- `/system/server-logs`
+
+### BISMAN_FINANCE (7 pages)
+
+- `/billing`
+- `/billing/invoices`
+- `/communication/internal-chat`
+- `/internal/customers`
+- `/internal/playbooks`
+- `/internal/support-sessions`
+- `/internal/teams`
+
+### BISMAN_SUPPORT (5 pages)
+
+- `/communication/internal-chat`
+- `/internal/customers`
+- `/internal/playbooks`
+- `/internal/support-sessions`
+- `/internal/teams`
+
+### BRANCH_INCHARGE (8 pages)
+
+- `/common/about-me` **(inherited)**
+- `/common/calendar`
+- `/common/notifications`
+- `/common/payment-request` **(inherited)**
+- `/common/task-approvals` **(inherited)**
+- `/dashboard/workbench`
+- `/operations/inventory-management`
+- `/task-dashboard` **(inherited)**
+
+### CEO (55 pages)
+
+- `/`
+- `/accounts`
+- `/accounts-payable`
+- `/ai-training`
+- `/analytics` **(inherited)**
+- `/approvals` **(inherited)**
+- `/assets/maintenance-scheduling`
+- `/assistant` **(inherited)**
+- `/banker`
+- `/calendar` **(inherited)**
+- `/cfo-dashboard`
+- `/clients/create`
+- `/clients/usage-dashboard`
+- `/common/about-me` **(inherited)**
+- `/common/bank-accounts`
+- `/common/calendar`
+- `/common/documentation` **(inherited)**
+- `/common/messages` **(inherited)**
+- `/common/notifications`
+- `/common/payment-request` **(inherited)**
+- `/common/payment-requests/create` **(inherited)**
+- `/common/security-settings` **(inherited)**
+- `/common/task-approvals` **(inherited)**
+- `/common/task-approvals/[id]` **(inherited)**
+- `/common/user-creation`
+- `/common/user-settings`
+- `/dashboard/workbench`
+- `/hub-incharge`
+- `/inventory/barcode-scanning`
+- `/inventory/category-management`
+- `/inventory/reorder-rules`
+- `/inventory/reports`
+- `/legal`
+- `/notifications` **(inherited)**
+- `/operations/kpi-dashboard`
+- `/production/analytics`
+- `/production/machine-management`
+- `/production/scheduling`
+- `/production/workflow`
+- `/reports/payment-summary`
+- `/reports/settlement-audit`
+- `/sales/customer-master`
+- `/sales/quotation-management`
+- `/settings` **(inherited)**
+- `/settings/security` **(inherited)**
+- `/shipping/carrier-management`
+- `/shipping/shipment-tracking`
+- `/staff`
+- `/task-dashboard` **(inherited)**
+- `/tasks/clarifications` **(inherited)**
+- `/tasks/create` **(inherited)**
+- `/tasks/reviews` **(inherited)**
+- `/trace` **(inherited)**
+- `/upgrade-required`
+- `/warehouse/bin-location`
+
+### CFO (101 pages)
+
+- `/`
+- `/accounts`
+- `/accounts-payable`
+- `/ai-training`
+- `/analytics` **(inherited)**
+- `/approvals` **(inherited)**
+- `/assets/maintenance-scheduling`
+- `/assistant` **(inherited)**
+- `/banker`
+- `/billing`
+- `/billing/invoices`
+- `/calendar` **(inherited)**
+- `/cfo-dashboard`
+- `/clients/create`
+- `/clients/usage-dashboard`
+- `/common/about-me` **(inherited)**
+- `/common/bank-accounts`
+- `/common/calendar`
+- `/common/documentation` **(inherited)**
+- `/common/messages` **(inherited)**
+- `/common/notifications`
+- `/common/payment-request` **(inherited)**
+- `/common/payment-requests/create` **(inherited)**
+- `/common/security-settings` **(inherited)**
+- `/common/task-approvals` **(inherited)**
+- `/common/task-approvals/[id]` **(inherited)**
+- `/common/user-creation`
+- `/common/user-settings`
+- `/compliance/compliance-dashboard`
+- `/dashboard/workbench`
+- `/finance/accounts-payable-summary`
+- `/finance/accounts-receivable-summary`
+- `/finance/approval-details/[taskId]`
+- `/finance/approval-structure-overview`
+- `/finance/bank-reconciliation`
+- `/finance/bank-reconciliation-execute`
+- `/finance/bank-statement-upload`
+- `/finance/budget-approval`
+- `/finance/budgeting-forecasting`
+- `/finance/cash-flow-forecast`
+- `/finance/cash-flow-statement`
+- `/finance/chart-of-accounts`
+- `/finance/company-dashboard`
+- `/finance-controller`
+- `/finance/cost-center-analysis`
+- `/finance/executive-dashboard`
+- `/finance/expense-report`
+- `/finance/financial-statements`
+- `/finance/fixed-asset-register`
+- `/finance/foreign-exchange-management`
+- `/finance/general-ledger`
+- `/finance/inter-company-reconciliation`
+- `/finance/invoice-posting`
+- `/finance/journal-entries`
+- `/finance/journal-entries-approval`
+- `/finance/loan-management`
+- `/finance/payment-approval-queue`
+- `/finance/payment-batch-processing`
+- `/finance/payment-entry`
+- `/finance/payment-entry-view`
+- `/finance/payment-gateway-integration`
+- `/finance/period-end-adjustment-entries`
+- `/finance/period-end-closing`
+- `/finance/purchase-invoice`
+- `/finance/tax-reports`
+- `/finance/trial-balance`
+- `/finance/vendor-master`
+- `/hub-incharge`
+- `/inventory/barcode-scanning`
+- `/inventory/category-management`
+- `/inventory/reorder-rules`
+- `/inventory/reports`
+- `/legal`
+- `/notifications` **(inherited)**
+- `/operations/kpi-dashboard`
+- `/procurement/purchase-orders`
+- `/production/analytics`
+- `/production/machine-management`
+- `/production/scheduling`
+- `/production/workflow`
+- `/reconciliation`
+- `/reconciliation/[id]`
+- `/reconciliation/upload`
+- `/reports/payment-summary`
+- `/reports/settlement-audit`
+- `/sales/customer-master`
+- `/sales/quotation-management`
+- `/settings` **(inherited)**
+- `/settings/security` **(inherited)**
+- `/settlements`
+- `/settlements/[id]`
+- `/shipping/carrier-management`
+- `/shipping/shipment-tracking`
+- `/staff`
+- `/task-dashboard` **(inherited)**
+- `/tasks/clarifications` **(inherited)**
+- `/tasks/create` **(inherited)**
+- `/tasks/reviews` **(inherited)**
+- `/trace` **(inherited)**
+- `/upgrade-required`
+- `/warehouse/bin-location`
+
+### COMPLIANCE (20 pages)
+
+- `/common/about-me` **(inherited)**
+- `/common/security-settings` **(inherited)**
+- `/compliance/approval-workflow-view`
+- `/compliance/audit-trail`
+- `/compliance/compliance-dashboard`
+- `/compliance/contract-management`
+- `/compliance/document-management`
+- `/compliance/document-repository-view`
+- `/compliance/legal-case-management`
+- `/compliance/litigation-tracker`
+- `/compliance-officer`
+- `/compliance/policy-management`
+- `/compliance/regulatory-compliance`
+- `/compliance/regulatory-report-templates`
+- `/compliance/risk-management`
+- `/compliance/vendor-customer-master-legal`
+- `/governance/audit-integrity`
+- `/governance/rbac-structure`
+- `/governance/security-overview`
+- `/governance/security-violations`
+
+### COO (57 pages)
+
+- `/`
+- `/accounts`
+- `/accounts-payable`
+- `/ai-training`
+- `/analytics` **(inherited)**
+- `/approvals` **(inherited)**
+- `/assets/maintenance-scheduling`
+- `/assistant` **(inherited)**
+- `/banker`
+- `/calendar` **(inherited)**
+- `/cfo-dashboard`
+- `/clients/create`
+- `/clients/usage-dashboard`
+- `/common/about-me` **(inherited)**
+- `/common/bank-accounts`
+- `/common/calendar`
+- `/common/documentation` **(inherited)**
+- `/common/messages` **(inherited)**
+- `/common/notifications`
+- `/common/payment-request` **(inherited)**
+- `/common/payment-requests/create` **(inherited)**
+- `/common/security-settings` **(inherited)**
+- `/common/task-approvals` **(inherited)**
+- `/common/task-approvals/[id]` **(inherited)**
+- `/common/user-creation`
+- `/common/user-settings`
+- `/dashboard/workbench`
+- `/finance/executive-dashboard`
+- `/hub-incharge`
+- `/inventory/barcode-scanning`
+- `/inventory/category-management`
+- `/inventory/reorder-rules`
+- `/inventory/reports`
+- `/legal`
+- `/notifications` **(inherited)**
+- `/operations/inventory-management`
+- `/operations/kpi-dashboard`
+- `/production/analytics`
+- `/production/machine-management`
+- `/production/scheduling`
+- `/production/workflow`
+- `/reports/payment-summary`
+- `/reports/settlement-audit`
+- `/sales/customer-master`
+- `/sales/quotation-management`
+- `/settings` **(inherited)**
+- `/settings/security` **(inherited)**
+- `/shipping/carrier-management`
+- `/shipping/shipment-tracking`
+- `/staff`
+- `/task-dashboard` **(inherited)**
+- `/tasks/clarifications` **(inherited)**
+- `/tasks/create` **(inherited)**
+- `/tasks/reviews` **(inherited)**
+- `/trace` **(inherited)**
+- `/upgrade-required`
+- `/warehouse/bin-location`
+
+### CTO (54 pages)
+
+- `/`
+- `/accounts`
+- `/accounts-payable`
+- `/ai-training`
+- `/analytics` **(inherited)**
+- `/approvals` **(inherited)**
+- `/assets/maintenance-scheduling`
+- `/assistant` **(inherited)**
+- `/banker`
+- `/calendar` **(inherited)**
+- `/cfo-dashboard`
+- `/clients/create`
+- `/clients/usage-dashboard`
+- `/common/about-me` **(inherited)**
+- `/common/bank-accounts`
+- `/common/calendar`
+- `/common/documentation` **(inherited)**
+- `/common/messages` **(inherited)**
+- `/common/notifications`
+- `/common/payment-request` **(inherited)**
+- `/common/payment-requests/create` **(inherited)**
+- `/common/security-settings` **(inherited)**
+- `/common/task-approvals` **(inherited)**
+- `/common/task-approvals/[id]` **(inherited)**
+- `/common/user-creation`
+- `/common/user-settings`
+- `/dashboard/workbench`
+- `/hub-incharge`
+- `/inventory/barcode-scanning`
+- `/inventory/category-management`
+- `/inventory/reorder-rules`
+- `/legal`
+- `/notifications` **(inherited)**
+- `/production/analytics`
+- `/production/machine-management`
+- `/production/scheduling`
+- `/production/workflow`
+- `/sales/customer-master`
+- `/sales/quotation-management`
+- `/settings` **(inherited)**
+- `/settings/security` **(inherited)**
+- `/shipping/carrier-management`
+- `/shipping/shipment-tracking`
+- `/staff`
+- `/system/integration-settings`
+- `/system/server-logs`
+- `/system/system-health-dashboard`
+- `/task-dashboard` **(inherited)**
+- `/tasks/clarifications` **(inherited)**
+- `/tasks/create` **(inherited)**
+- `/tasks/reviews` **(inherited)**
+- `/trace` **(inherited)**
+- `/upgrade-required`
+- `/warehouse/bin-location`
+
+### DATA_ENTRY (50 pages)
+
+- `/`
+- `/accounts`
+- `/accounts-payable`
+- `/ai-training`
+- `/analytics` **(inherited)**
+- `/approvals` **(inherited)**
+- `/assets/maintenance-scheduling`
+- `/assistant` **(inherited)**
+- `/banker`
+- `/calendar` **(inherited)**
+- `/cfo-dashboard`
+- `/clients/create`
+- `/clients/usage-dashboard`
+- `/common/about-me` **(inherited)**
+- `/common/bank-accounts`
+- `/common/calendar`
+- `/common/documentation` **(inherited)**
+- `/common/messages` **(inherited)**
+- `/common/notifications`
+- `/common/payment-request` **(inherited)**
+- `/common/payment-requests/create` **(inherited)**
+- `/common/security-settings` **(inherited)**
+- `/common/task-approvals` **(inherited)**
+- `/common/task-approvals/[id]` **(inherited)**
+- `/common/user-creation`
+- `/common/user-settings`
+- `/hub-incharge`
+- `/inventory/barcode-scanning`
+- `/inventory/category-management`
+- `/inventory/reorder-rules`
+- `/legal`
+- `/notifications` **(inherited)**
+- `/production/analytics`
+- `/production/machine-management`
+- `/production/scheduling`
+- `/production/workflow`
+- `/sales/customer-master`
+- `/sales/quotation-management`
+- `/settings` **(inherited)**
+- `/settings/security` **(inherited)**
+- `/shipping/carrier-management`
+- `/shipping/shipment-tracking`
+- `/staff`
+- `/task-dashboard` **(inherited)**
+- `/tasks/clarifications` **(inherited)**
+- `/tasks/create` **(inherited)**
+- `/tasks/reviews` **(inherited)**
+- `/trace` **(inherited)**
+- `/upgrade-required`
+- `/warehouse/bin-location`
+
+### ENTERPRISE_ADMIN (16 pages)
+
+- `/enterprise-admin/billing`
+- `/enterprise-admin/dashboard`
+- `/enterprise-admin/docs/production-ready`
+- `/enterprise-admin/integrations`
+- `/enterprise-admin/logs`
+- `/enterprise-admin/monitoring`
+- `/enterprise-admin/monitoring/database`
+- `/enterprise-admin/monitoring/live`
+- `/enterprise-admin/monitoring/performance`
+- `/enterprise-admin/pages-report`
+- `/enterprise-admin/rbac-security`
+- `/enterprise-admin/roles`
+- `/enterprise-admin/subscription-access`
+- `/enterprise-admin/super-admins`
+- `/enterprise-admin/super-admins/create`
+- `/enterprise-admin/user-usage/[id]`
+
+### FINANCE_CONTROLLER (65 pages)
+
+- `/`
+- `/accounts`
+- `/accounts-payable`
+- `/ai-training`
+- `/analytics` **(inherited)**
+- `/approvals` **(inherited)**
+- `/assets/maintenance-scheduling`
+- `/assistant` **(inherited)**
+- `/banker`
+- `/calendar` **(inherited)**
+- `/cfo-dashboard`
+- `/clients/create`
+- `/clients/usage-dashboard`
+- `/common/about-me` **(inherited)**
+- `/common/bank-accounts`
+- `/common/calendar`
+- `/common/documentation` **(inherited)**
+- `/common/messages` **(inherited)**
+- `/common/notifications`
+- `/common/payment-request` **(inherited)**
+- `/common/payment-requests/create` **(inherited)**
+- `/common/security-settings` **(inherited)**
+- `/common/task-approvals` **(inherited)**
+- `/common/task-approvals/[id]` **(inherited)**
+- `/common/user-creation`
+- `/common/user-settings`
+- `/dashboard/workbench`
+- `/finance/accounts-payable-summary`
+- `/finance/accounts-receivable-summary`
+- `/finance/approval-details/[taskId]`
+- `/finance/approval-structure-overview`
+- `/finance/executive-dashboard`
+- `/finance/general-ledger`
+- `/finance/payment-approval-queue`
+- `/hub-incharge`
+- `/inventory/barcode-scanning`
+- `/inventory/category-management`
+- `/inventory/reorder-rules`
+- `/legal`
+- `/notifications` **(inherited)**
+- `/production/analytics`
+- `/production/machine-management`
+- `/production/scheduling`
+- `/production/workflow`
+- `/reconciliation`
+- `/reconciliation/[id]`
+- `/reconciliation/upload`
+- `/reports/payment-summary`
+- `/reports/settlement-audit`
+- `/sales/customer-master`
+- `/sales/quotation-management`
+- `/settings` **(inherited)**
+- `/settings/security` **(inherited)**
+- `/settlements`
+- `/settlements/[id]`
+- `/shipping/carrier-management`
+- `/shipping/shipment-tracking`
+- `/staff`
+- `/task-dashboard` **(inherited)**
+- `/tasks/clarifications` **(inherited)**
+- `/tasks/create` **(inherited)**
+- `/tasks/reviews` **(inherited)**
+- `/trace` **(inherited)**
+- `/upgrade-required`
+- `/warehouse/bin-location`
+
+### HR (8 pages)
+
+- `/common/about-me` **(inherited)**
+- `/common/security-settings` **(inherited)**
+- `/hr/attendance-tracking`
+- `/hr/performance-review`
+- `/hr/policy`
+- `/hr/training`
+- `/hr/user-creation`
+- `/system/user-creation`
+
+### HR_MANAGER (57 pages)
+
+- `/`
+- `/accounts`
+- `/accounts-payable`
+- `/ai-training`
+- `/analytics` **(inherited)**
+- `/approvals` **(inherited)**
+- `/assets/maintenance-scheduling`
+- `/assistant` **(inherited)**
+- `/banker`
+- `/calendar` **(inherited)**
+- `/cfo-dashboard`
+- `/clients/create`
+- `/clients/usage-dashboard`
+- `/common/about-me` **(inherited)**
+- `/common/bank-accounts`
+- `/common/calendar`
+- `/common/documentation` **(inherited)**
+- `/common/messages` **(inherited)**
+- `/common/notifications`
+- `/common/payment-request` **(inherited)**
+- `/common/payment-requests/create` **(inherited)**
+- `/common/security-settings` **(inherited)**
+- `/common/task-approvals` **(inherited)**
+- `/common/task-approvals/[id]` **(inherited)**
+- `/common/user-creation`
+- `/common/user-settings`
+- `/dashboard/workbench`
+- `/hr/attendance-tracking`
+- `/hr/performance-review`
+- `/hr/policy`
+- `/hr/training`
+- `/hr/user-creation`
+- `/hub-incharge`
+- `/inventory/barcode-scanning`
+- `/inventory/category-management`
+- `/inventory/reorder-rules`
+- `/legal`
+- `/notifications` **(inherited)**
+- `/production/analytics`
+- `/production/machine-management`
+- `/production/scheduling`
+- `/production/workflow`
+- `/sales/customer-master`
+- `/sales/quotation-management`
+- `/settings` **(inherited)**
+- `/settings/security` **(inherited)**
+- `/shipping/carrier-management`
+- `/shipping/shipment-tracking`
+- `/staff`
+- `/system/user-creation`
+- `/task-dashboard` **(inherited)**
+- `/tasks/clarifications` **(inherited)**
+- `/tasks/create` **(inherited)**
+- `/tasks/reviews` **(inherited)**
+- `/trace` **(inherited)**
+- `/upgrade-required`
+- `/warehouse/bin-location`
+
+### HUB_INCHARGE (68 pages)
+
+- `/`
+- `/accounts`
+- `/accounts-payable`
+- `/ai-training`
+- `/analytics` **(inherited)**
+- `/approvals` **(inherited)**
+- `/assets/maintenance-scheduling`
+- `/assistant` **(inherited)**
+- `/banker`
+- `/calendar` **(inherited)**
+- `/cfo-dashboard`
+- `/clients/create`
+- `/clients/usage-dashboard`
+- `/common/about-me` **(inherited)**
+- `/common/bank-accounts`
+- `/common/calendar`
+- `/common/documentation` **(inherited)**
+- `/common/messages` **(inherited)**
+- `/common/notifications`
+- `/common/payment-request` **(inherited)**
+- `/common/payment-requests/create` **(inherited)**
+- `/common/security-settings` **(inherited)**
+- `/common/task-approvals` **(inherited)**
+- `/common/task-approvals/[id]` **(inherited)**
+- `/common/user-creation`
+- `/common/user-settings`
+- `/dashboard/workbench`
+- `/hub-incharge`
+- `/inventory/barcode-scanning`
+- `/inventory/category-management`
+- `/inventory/reorder-rules`
+- `/legal`
+- `/notifications` **(inherited)**
+- `/operations/asset-register-hub`
+- `/operations/bom-view`
+- `/operations/delivery-note`
+- `/operations/inventory-management`
+- `/operations/item-master-limited`
+- `/operations/kpi-dashboard`
+- `/operations-manager`
+- `/operations/quality-inspection`
+- `/operations/sales-order`
+- `/operations/sales-order-view`
+- `/operations/shipping-logistics`
+- `/operations/stock-entry`
+- `/operations/stock-entry-transfer`
+- `/operations/stock-ledger`
+- `/operations/work-order`
+- `/production/analytics`
+- `/production/machine-management`
+- `/production/scheduling`
+- `/production/workflow`
+- `/pump-management/server-logs`
+- `/sales/customer-master`
+- `/sales/quotation-management`
+- `/settings` **(inherited)**
+- `/settings/security` **(inherited)**
+- `/shipping/carrier-management`
+- `/shipping/shipment-tracking`
+- `/staff`
+- `/store-incharge`
+- `/task-dashboard` **(inherited)**
+- `/tasks/clarifications` **(inherited)**
+- `/tasks/create` **(inherited)**
+- `/tasks/reviews` **(inherited)**
+- `/trace` **(inherited)**
+- `/upgrade-required`
+- `/warehouse/bin-location`
+
+### HUB_INCHARGE_SR (10 pages)
+
+- `/common/about-me` **(inherited)**
+- `/common/calendar`
+- `/common/notifications`
+- `/common/payment-request` **(inherited)**
+- `/common/task-approvals` **(inherited)**
+- `/dashboard/workbench`
+- `/operations/inventory-management`
+- `/operations/kpi-dashboard`
+- `/reports/payment-summary`
+- `/task-dashboard` **(inherited)**
+
+### INTERN (4 pages)
+
+- `/common/about-me` **(inherited)**
+- `/common/calendar`
+- `/common/documentation` **(inherited)**
+- `/common/notifications`
+
+### IT_ADMIN (16 pages)
+
+- `/common/about-me` **(inherited)**
+- `/common/security-settings` **(inherited)**
+- `/system/about-me`
+- `/system/audit-integrity-dashboard`
+- `/system/audit-logs`
+- `/system/backup-restore`
+- `/system/clients/[id]/edit`
+- `/system/clients/new`
+- `/system/integration-settings`
+- `/system/permission-manager`
+- `/system/role-access-explorer`
+- `/system/roles-users-report`
+- `/system/server-logs`
+- `/system/system-health-dashboard`
+- `/system/user-creation`
+- `/system/user-management`
+
+### LEGAL (17 pages)
+
+- `/common/about-me` **(inherited)**
+- `/common/security-settings` **(inherited)**
+- `/compliance/approval-workflow-view`
+- `/compliance/audit-trail`
+- `/compliance/compliance-dashboard`
+- `/compliance/contract-management`
+- `/compliance/document-management`
+- `/compliance/document-repository-view`
+- `/compliance/legal-case-management`
+- `/compliance/litigation-tracker`
+- `/compliance-officer`
+- `/compliance/policy-management`
+- `/compliance/regulatory-compliance`
+- `/compliance/regulatory-report-templates`
+- `/compliance/risk-management`
+- `/compliance/vendor-customer-master-legal`
+- `/legal`
+
+### MANAGER (63 pages)
+
+- `/`
+- `/accounts`
+- `/accounts-payable`
+- `/ai-training`
+- `/analytics` **(inherited)**
+- `/approvals` **(inherited)**
+- `/assets/maintenance-scheduling`
+- `/assistant` **(inherited)**
+- `/banker`
+- `/calendar` **(inherited)**
+- `/cfo-dashboard`
+- `/clients/create`
+- `/clients/usage-dashboard`
+- `/common/about-me` **(inherited)**
+- `/common/bank-accounts`
+- `/common/calendar`
+- `/common/documentation` **(inherited)**
+- `/common/messages` **(inherited)**
+- `/common/notifications`
+- `/common/payment-request` **(inherited)**
+- `/common/payment-requests/create` **(inherited)**
+- `/common/security-settings` **(inherited)**
+- `/common/task-approvals` **(inherited)**
+- `/common/task-approvals/[id]` **(inherited)**
+- `/common/user-creation`
+- `/common/user-settings`
+- `/dashboard/workbench`
+- `/hub-incharge`
+- `/inventory/barcode-scanning`
+- `/inventory/category-management`
+- `/inventory/reorder-rules`
+- `/inventory/reports`
+- `/legal`
+- `/notifications` **(inherited)**
+- `/procurement/goods-receipt`
+- `/procurement/material-request`
+- `/procurement-officer`
+- `/procurement/purchase-order`
+- `/procurement/purchase-orders`
+- `/procurement/purchase-request`
+- `/procurement/rfq`
+- `/procurement/supplier-master`
+- `/procurement/supplier-quotation`
+- `/production/analytics`
+- `/production/machine-management`
+- `/production/scheduling`
+- `/production/workflow`
+- `/reports/payment-summary`
+- `/reports/settlement-audit`
+- `/sales/customer-master`
+- `/sales/quotation-management`
+- `/settings` **(inherited)**
+- `/settings/security` **(inherited)**
+- `/shipping/carrier-management`
+- `/shipping/shipment-tracking`
+- `/staff`
+- `/task-dashboard` **(inherited)**
+- `/tasks/clarifications` **(inherited)**
+- `/tasks/create` **(inherited)**
+- `/tasks/reviews` **(inherited)**
+- `/trace` **(inherited)**
+- `/upgrade-required`
+- `/warehouse/bin-location`
+
+### OPERATIONS_MANAGER (69 pages)
+
+- `/`
+- `/accounts`
+- `/accounts-payable`
+- `/ai-training`
+- `/analytics` **(inherited)**
+- `/approvals` **(inherited)**
+- `/assets/maintenance-scheduling`
+- `/assistant` **(inherited)**
+- `/banker`
+- `/calendar` **(inherited)**
+- `/cfo-dashboard`
+- `/clients/create`
+- `/clients/usage-dashboard`
+- `/common/about-me` **(inherited)**
+- `/common/bank-accounts`
+- `/common/calendar`
+- `/common/documentation` **(inherited)**
+- `/common/messages` **(inherited)**
+- `/common/notifications`
+- `/common/payment-request` **(inherited)**
+- `/common/payment-requests/create` **(inherited)**
+- `/common/security-settings` **(inherited)**
+- `/common/task-approvals` **(inherited)**
+- `/common/task-approvals/[id]` **(inherited)**
+- `/common/user-creation`
+- `/common/user-settings`
+- `/dashboard/workbench`
+- `/hub-incharge`
+- `/inventory/barcode-scanning`
+- `/inventory/category-management`
+- `/inventory/reorder-rules`
+- `/legal`
+- `/notifications` **(inherited)**
+- `/operations/asset-register-hub`
+- `/operations/bom-view`
+- `/operations/delivery-note`
+- `/operations/inventory-management`
+- `/operations/item-master-limited`
+- `/operations/kpi-dashboard`
+- `/operations-manager`
+- `/operations/quality-inspection`
+- `/operations/sales-order`
+- `/operations/sales-order-view`
+- `/operations/shipping-logistics`
+- `/operations/stock-entry`
+- `/operations/stock-entry-transfer`
+- `/operations/stock-ledger`
+- `/operations/work-order`
+- `/procurement/purchase-orders`
+- `/production/analytics`
+- `/production/machine-management`
+- `/production/scheduling`
+- `/production/workflow`
+- `/pump-management/server-logs`
+- `/sales/customer-master`
+- `/sales/quotation-management`
+- `/settings` **(inherited)**
+- `/settings/security` **(inherited)**
+- `/shipping/carrier-management`
+- `/shipping/shipment-tracking`
+- `/staff`
+- `/store-incharge`
+- `/task-dashboard` **(inherited)**
+- `/tasks/clarifications` **(inherited)**
+- `/tasks/create` **(inherited)**
+- `/tasks/reviews` **(inherited)**
+- `/trace` **(inherited)**
+- `/upgrade-required`
+- `/warehouse/bin-location`
+
+### PROCUREMENT_OFFICER (15 pages)
+
+- `/common/about-me` **(inherited)**
+- `/common/calendar`
+- `/common/notifications`
+- `/common/payment-request` **(inherited)**
+- `/common/task-approvals` **(inherited)**
+- `/procurement/goods-receipt`
+- `/procurement/material-request`
+- `/procurement-officer`
+- `/procurement/purchase-order`
+- `/procurement/purchase-orders`
+- `/procurement/purchase-request`
+- `/procurement/rfq`
+- `/procurement/supplier-master`
+- `/procurement/supplier-quotation`
+- `/task-dashboard` **(inherited)**
+
+### QA (8 pages)
+
+- `/qa`
+- `/qa/issues`
+- `/qa/issues/[id]`
+- `/qa/issues/new`
+- `/qa/role-access-explorer`
+- `/qa/test-tasks`
+- `/qa/test-tasks/[id]`
+- `/qa/test-tasks/new`
+
+### STAFF (51 pages)
+
+- `/`
+- `/accounts`
+- `/accounts-payable`
+- `/ai-training`
+- `/analytics` **(inherited)**
+- `/approvals` **(inherited)**
+- `/assets/maintenance-scheduling`
+- `/assistant` **(inherited)**
+- `/banker`
+- `/calendar` **(inherited)**
+- `/cfo-dashboard`
+- `/clients/create`
+- `/clients/usage-dashboard`
+- `/common/about-me` **(inherited)**
+- `/common/bank-accounts`
+- `/common/calendar`
+- `/common/documentation` **(inherited)**
+- `/common/messages` **(inherited)**
+- `/common/notifications`
+- `/common/payment-request` **(inherited)**
+- `/common/payment-requests/create` **(inherited)**
+- `/common/security-settings` **(inherited)**
+- `/common/task-approvals` **(inherited)**
+- `/common/task-approvals/[id]` **(inherited)**
+- `/common/user-creation`
+- `/common/user-settings`
+- `/dashboard/workbench`
+- `/hub-incharge`
+- `/inventory/barcode-scanning`
+- `/inventory/category-management`
+- `/inventory/reorder-rules`
+- `/legal`
+- `/notifications` **(inherited)**
+- `/production/analytics`
+- `/production/machine-management`
+- `/production/scheduling`
+- `/production/workflow`
+- `/sales/customer-master`
+- `/sales/quotation-management`
+- `/settings` **(inherited)**
+- `/settings/security` **(inherited)**
+- `/shipping/carrier-management`
+- `/shipping/shipment-tracking`
+- `/staff`
+- `/task-dashboard` **(inherited)**
+- `/tasks/clarifications` **(inherited)**
+- `/tasks/create` **(inherited)**
+- `/tasks/reviews` **(inherited)**
+- `/trace` **(inherited)**
+- `/upgrade-required`
+- `/warehouse/bin-location`
+
+### STORE_INCHARGE (24 pages)
+
+- `/common/about-me` **(inherited)**
+- `/common/calendar`
+- `/common/notifications`
+- `/common/security-settings` **(inherited)**
+- `/common/task-approvals` **(inherited)**
+- `/common/task-approvals/[id]` **(inherited)**
+- `/dashboard/workbench`
+- `/operations/asset-register-hub`
+- `/operations/bom-view`
+- `/operations/delivery-note`
+- `/operations/inventory-management`
+- `/operations/item-master-limited`
+- `/operations/kpi-dashboard`
+- `/operations-manager`
+- `/operations/quality-inspection`
+- `/operations/sales-order`
+- `/operations/sales-order-view`
+- `/operations/shipping-logistics`
+- `/operations/stock-entry`
+- `/operations/stock-entry-transfer`
+- `/operations/stock-ledger`
+- `/operations/work-order`
+- `/pump-management/server-logs`
+- `/store-incharge`
+
+### STORE_INCHARGE_SR (10 pages)
+
+- `/common/about-me` **(inherited)**
+- `/common/calendar`
+- `/common/notifications`
+- `/common/task-approvals` **(inherited)**
+- `/dashboard/workbench`
+- `/operations/inventory-management`
+- `/operations/kpi-dashboard`
+- `/reports/payment-summary`
+- `/store-incharge`
+- `/task-dashboard` **(inherited)**
+
+### SUPER_ADMIN (35 pages)
+
+- `/super-admin`
+- `/super-admin/orders`
+- `/super-admin/security`
+- `/super-admin/subscription`
+- `/super-admin/subscriptions`
+- `/super-admin/subscriptions/audit`
+- `/super-admin/subscriptions/billing`
+- `/super-admin/subscriptions/coupons`
+- `/super-admin/subscriptions/micro-unlock`
+- `/super-admin/subscriptions/plans`
+- `/super-admin/subscriptions/tenants`
+- `/super-admin/system`
+- `/super-admin/system/about-me`
+- `/super-admin/system/backup-restore`
+- `/super-admin/system/integration-settings`
+- `/super-admin/system/it-admin`
+- `/super-admin/system/permission-manager`
+- `/super-admin/system/roles-users-report`
+- `/super-admin/system/system-health-dashboard`
+- `/super-admin/system/user-management`
+- `/super-admin/user-usage/[id]`
+- `/system/about-me`
+- `/system/audit-integrity-dashboard`
+- `/system/audit-logs`
+- `/system/backup-restore`
+- `/system/clients/[id]/edit`
+- `/system/clients/new`
+- `/system/integration-settings`
+- `/system/permission-manager`
+- `/system/role-access-explorer`
+- `/system/roles-users-report`
+- `/system/server-logs`
+- `/system/system-health-dashboard`
+- `/system/user-creation`
+- `/system/user-management`
+
+### SUPERVISOR (51 pages)
+
+- `/`
+- `/accounts`
+- `/accounts-payable`
+- `/ai-training`
+- `/analytics` **(inherited)**
+- `/approvals` **(inherited)**
+- `/assets/maintenance-scheduling`
+- `/assistant` **(inherited)**
+- `/banker`
+- `/calendar` **(inherited)**
+- `/cfo-dashboard`
+- `/clients/create`
+- `/clients/usage-dashboard`
+- `/common/about-me` **(inherited)**
+- `/common/bank-accounts`
+- `/common/calendar`
+- `/common/documentation` **(inherited)**
+- `/common/messages` **(inherited)**
+- `/common/notifications`
+- `/common/payment-request` **(inherited)**
+- `/common/payment-requests/create` **(inherited)**
+- `/common/security-settings` **(inherited)**
+- `/common/task-approvals` **(inherited)**
+- `/common/task-approvals/[id]` **(inherited)**
+- `/common/user-creation`
+- `/common/user-settings`
+- `/dashboard/workbench`
+- `/hub-incharge`
+- `/inventory/barcode-scanning`
+- `/inventory/category-management`
+- `/inventory/reorder-rules`
+- `/legal`
+- `/notifications` **(inherited)**
+- `/production/analytics`
+- `/production/machine-management`
+- `/production/scheduling`
+- `/production/workflow`
+- `/sales/customer-master`
+- `/sales/quotation-management`
+- `/settings` **(inherited)**
+- `/settings/security` **(inherited)**
+- `/shipping/carrier-management`
+- `/shipping/shipment-tracking`
+- `/staff`
+- `/task-dashboard` **(inherited)**
+- `/tasks/clarifications` **(inherited)**
+- `/tasks/create` **(inherited)**
+- `/tasks/reviews` **(inherited)**
+- `/trace` **(inherited)**
+- `/upgrade-required`
+- `/warehouse/bin-location`
+
+### SYSTEM_ADMIN (108 pages)
+
+- `/admin`
+- `/admin/ai`
+- `/admin/ai-analytics`
+- `/admin/api-management`
+- `/admin/audit`
+- `/admin/bank-templates`
+- `/admin/billing`
+- `/admin/billing/tenants`
+- `/admin/billing/tenants/[id]`
+- `/admin/branches`
+- `/admin/branches/create`
+- `/admin/client-dashboard`
+- `/admin/clients`
+- `/admin/clients/[id]/permissions`
+- `/admin/contracts`
+- `/admin/contracts/create`
+- `/admin/developer`
+- `/admin/integrations`
+- `/admin/modules`
+- `/admin/notifications`
+- `/admin/organizations`
+- `/admin/permissions`
+- `/admin/rag-sources`
+- `/admin/reports`
+- `/admin/roles-permissions`
+- `/admin/settings`
+- `/admin/sla`
+- `/admin/subscription`
+- `/admin/subscription-billing`
+- `/admin/support`
+- `/admin/system-configuration`
+- `/admin/system-flow`
+- `/admin/task-approvals`
+- `/admin/task-approvals/[taskId]`
+- `/admin/tenant-management`
+- `/admin/usage`
+- `/admin/user-management`
+- `/admin/users`
+- `/admin/users/create`
+- `/admin/user-usage`
+- `/admin/user-usage/[id]`
+- `/enterprise-admin/billing`
+- `/enterprise-admin/dashboard`
+- `/enterprise-admin/docs/production-ready`
+- `/enterprise-admin/integrations`
+- `/enterprise-admin/logs`
+- `/enterprise-admin/monitoring`
+- `/enterprise-admin/monitoring/database`
+- `/enterprise-admin/monitoring/live`
+- `/enterprise-admin/monitoring/performance`
+- `/enterprise-admin/pages-report`
+- `/enterprise-admin/rbac-security`
+- `/enterprise-admin/roles`
+- `/enterprise-admin/subscription-access`
+- `/enterprise-admin/super-admins`
+- `/enterprise-admin/super-admins/create`
+- `/enterprise-admin/user-usage/[id]`
+- `/governance/audit-integrity`
+- `/governance/rbac-structure`
+- `/governance/security-overview`
+- `/governance/security-violations`
+- `/internal/customers`
+- `/internal/playbooks`
+- `/internal/support-sessions`
+- `/internal/teams`
+- `/qa`
+- `/qa/issues`
+- `/qa/issues/[id]`
+- `/qa/issues/new`
+- `/qa/role-access-explorer`
+- `/qa/test-tasks`
+- `/qa/test-tasks/[id]`
+- `/qa/test-tasks/new`
+- `/super-admin`
+- `/super-admin/orders`
+- `/super-admin/security`
+- `/super-admin/subscription`
+- `/super-admin/subscriptions`
+- `/super-admin/subscriptions/audit`
+- `/super-admin/subscriptions/billing`
+- `/super-admin/subscriptions/coupons`
+- `/super-admin/subscriptions/micro-unlock`
+- `/super-admin/subscriptions/plans`
+- `/super-admin/subscriptions/tenants`
+- `/super-admin/system`
+- `/super-admin/system/about-me`
+- `/super-admin/system/backup-restore`
+- `/super-admin/system/integration-settings`
+- `/super-admin/system/it-admin`
+- `/super-admin/system/permission-manager`
+- `/super-admin/system/roles-users-report`
+- `/super-admin/system/system-health-dashboard`
+- `/super-admin/system/user-management`
+- `/super-admin/user-usage/[id]`
+- `/system/about-me`
+- `/system/audit-integrity-dashboard`
+- `/system/audit-logs`
+- `/system/backup-restore`
+- `/system/clients/[id]/edit`
+- `/system/clients/new`
+- `/system/integration-settings`
+- `/system/permission-manager`
+- `/system/role-access-explorer`
+- `/system/roles-users-report`
+- `/system/server-logs`
+- `/system/system-health-dashboard`
+- `/system/user-creation`
+- `/system/user-management`
+
+### TREASURY (5 pages)
+
+- `/common/about-me` **(inherited)**
+- `/common/security-settings` **(inherited)**
+- `/finance/approval-details/[taskId]`
+- `/finance/executive-dashboard`
+- `/finance/payment-approval-queue`
+
