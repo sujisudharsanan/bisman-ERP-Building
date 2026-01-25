@@ -3499,7 +3499,7 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
       // Insert new entries for granted pages
       for (const pageId of grantedPageIds) {
         await tx.$executeRaw`
-          INSERT INTO role_page_access (role_name, page_id, can_view, can_edit, can_delete, created_at)
+          INSERT INTO role_page_access (role_name, page_id, can_view, can_edit, can_delete, granted_at)
           VALUES (${roleName}, ${pageId}, true, true, false, NOW())
           ON CONFLICT (role_name, page_id) DO UPDATE SET can_view = true, can_edit = true
         `;
