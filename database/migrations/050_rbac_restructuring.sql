@@ -18,9 +18,9 @@ ALTER TABLE pages_master ADD COLUMN IF NOT EXISTS page_type VARCHAR(20) DEFAULT 
 ALTER TABLE pages_master ADD COLUMN IF NOT EXISTS sidebar_order INTEGER DEFAULT 999;
 ALTER TABLE pages_master ADD COLUMN IF NOT EXISTS requires_base_user BOOLEAN DEFAULT false;
 
--- Create BASE_USER role
-INSERT INTO rbac_roles (name, display_name, description, is_system_role, is_active, created_at)
-VALUES ('BASE_USER', 'Base User', 'Default permissions for all logged-in business users', true, true, NOW())
+-- Create BASE_USER role (using status column, not is_active)
+INSERT INTO rbac_roles (name, display_name, description, is_system_role, status, created_at)
+VALUES ('BASE_USER', 'Base User', 'Default permissions for all logged-in business users', true, 'active', NOW())
 ON CONFLICT (name) DO NOTHING;
 
 -- Create base_user_pages table for inheritance

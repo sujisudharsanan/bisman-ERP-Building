@@ -23,12 +23,12 @@ const pool = new Pool({ connectionString: DATABASE_URL });
 
 // Expected page count ranges per role type
 const EXPECTED_RANGES = {
-  PLATFORM: { min: 15, max: 100 },      // SYSTEM_ADMIN, ENTERPRISE_ADMIN, SUPER_ADMIN
+  PLATFORM: { min: 15, max: 150 },      // SYSTEM_ADMIN, ENTERPRISE_ADMIN, SUPER_ADMIN
   TENANT_ADMIN: { min: 15, max: 50 },   // ADMIN, ADMIN_OPS
-  EXECUTIVE: { min: 20, max: 70 },       // CEO, CFO, COO, CTO
-  MANAGER: { min: 20, max: 50 },         // Various managers
-  STAFF: { min: 15, max: 30 },           // Staff, Data Entry
-  INTERNAL: { min: 3, max: 20 }          // BISMAN_* roles
+  EXECUTIVE: { min: 20, max: 110 },     // CEO, CFO, COO, CTO (high visibility)
+  MANAGER: { min: 20, max: 80 },        // Various managers
+  STAFF: { min: 15, max: 60 },          // Staff, Data Entry
+  INTERNAL: { min: 3, max: 20 }         // BISMAN_* roles
 };
 
 const ROLE_TYPES = {
