@@ -218,6 +218,12 @@ export default function Page() {
   const [dbRoles, setDbRoles] = useState<Array<{ id: string; name: string; displayName: string; level: number }>>([]);
   const [dbTotalPages, setDbTotalPages] = useState(0);
   
+  // SuperAdmin Page Pool - pages that Enterprise Admin has granted to this Super Admin
+  // This defines the maximum pages the Super Admin can assign to their roles
+  const [superAdminPagePool, setSuperAdminPagePool] = useState<Array<{ id: number; pageCode: string; displayName: string; route: string; moduleId: number | null; showInSidebar: boolean }>>([]);
+  const [superAdminPagePoolLoading, setSuperAdminPagePoolLoading] = useState(false);
+  const [superAdminPagePoolIds, setSuperAdminPagePoolIds] = useState<Set<number>>(new Set());
+  
   // Create Super Admin modal state
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [createForm, setCreateForm] = useState({
@@ -469,6 +475,52 @@ export default function Page() {
       }
     };
   }, [assignedRoleIds, selectedAdminId]);
+
+  // Load SuperAdmin's page pool when a Super Admin is selected
+  // This determines which pages the Super Admin can assign to roles
+  useEffect(() => {
+    if (!selectedAdminId) {
+      setSuperAdminPagePool([]);
+      setSuperAdminPagePoolIds(new Set());
+      return;
+    }
+    
+    const loadPagePool = async () => {
+      setSuperAdminPagePoolLoading(true);
+      try {
+        console.log('📦 Loading page pool for Super Admin:', selectedAdminId);
+        
+        const response = await fetch(`/api/enterprise-admin/super-admins/${selectedAdminId}/page-pool`, {
+          credentials: 'include'
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.ok && Array.isArray(data.pages)) {
+            setSuperAdminPagePool(data.pages);
+            setSuperAdminPagePoolIds(new Set(data.pages.map((p: { id: number }) => p.id)));
+            console.log('✅ Page pool loaded:', data.pages.length, 'pages available for Super Admin', selectedAdminId);
+          } else {
+            console.warn('⚠️ Page pool response invalid:', data);
+            setSuperAdminPagePool([]);
+            setSuperAdminPagePoolIds(new Set());
+          }
+        } else {
+          console.error('❌ Failed to load page pool:', response.status);
+          setSuperAdminPagePool([]);
+          setSuperAdminPagePoolIds(new Set());
+        }
+      } catch (error) {
+        console.error('❌ Error loading page pool:', error);
+        setSuperAdminPagePool([]);
+        setSuperAdminPagePoolIds(new Set());
+      } finally {
+        setSuperAdminPagePoolLoading(false);
+      }
+    };
+    
+    loadPagePool();
+  }, [selectedAdminId]);
 
   // Load pages for the selected role (with race condition protection)
   useEffect(() => {
@@ -1043,32 +1095,72 @@ export default function Page() {
   }, [allRoles, selectedRoleId]);
 
   // Create a map of role name -> page count from database (single source of truth)
+  // When a SuperAdmin is selected, filter to only count pages in their pool
   const rolePageCountMap = useMemo(() => {
     const map = new Map<string, number>();
     dbPagesByRole.forEach(r => {
+      let pageCount = r.pages.length;
+      
+      // If a SuperAdmin is selected, only count pages that are in their page pool
+      if (selectedAdminId && superAdminPagePoolIds.size > 0) {
+        pageCount = r.pages.filter(p => {
+          const pageId = parseInt(p.id);
+          return superAdminPagePoolIds.has(pageId);
+        }).length;
+      }
+      
       // Store by role ID (which is the role name string like 'SUPER_ADMIN')
-      map.set(r.roleId.toUpperCase(), r.pages.length);
+      map.set(r.roleId.toUpperCase(), pageCount);
       // Also store by display name for fallback matching
       if (r.roleName) {
-        map.set(r.roleName.toUpperCase(), r.pages.length);
+        map.set(r.roleName.toUpperCase(), pageCount);
       }
     });
     return map;
-  }, [dbPagesByRole]);
+  }, [dbPagesByRole, selectedAdminId, superAdminPagePoolIds]);
 
-  // Get page count for a role (from database)
+  // Get page count for a role (from database, filtered by SuperAdmin's page pool)
   const getPageCountForRole = (role: Role): number => {
     const roleName = (role.name || '').toUpperCase();
     const displayName = (role.display_name || '').toUpperCase();
     return rolePageCountMap.get(roleName) ?? rolePageCountMap.get(displayName) ?? 0;
   };
+  
+  // Get the total pages available in SuperAdmin's pool (for display)
+  const totalPagesInPool = useMemo(() => {
+    return superAdminPagePool.length;
+  }, [superAdminPagePool]);
 
   // Get all pages grouped by module for the Pages Overview section (using DATABASE)
-  // Enterprise Admin is the topmost role - can see and assign all pages
+  // When SuperAdmin is selected, filter to only show pages in their pool
   const allPagesGroupedByModule = useMemo(() => {
     // Use database data as single source of truth
     if (dbPagesByModule.length > 0) {
       console.log(`📋 Using DATABASE pages: ${dbTotalPages} pages in ${dbPagesByModule.length} modules`);
+      
+      // If SuperAdmin is selected and has a page pool, filter pages
+      if (selectedAdminId && superAdminPagePoolIds.size > 0) {
+        console.log(`📦 Filtering to SuperAdmin's page pool: ${superAdminPagePoolIds.size} pages`);
+        return dbPagesByModule
+          .map(m => ({
+            moduleId: m.moduleId,
+            moduleName: m.moduleName,
+            pages: m.pages
+              .filter(p => {
+                const pageId = parseInt(p.id);
+                return superAdminPagePoolIds.has(pageId);
+              })
+              .map(p => ({
+                id: p.id,
+                name: p.name,
+                path: p.path,
+                status: p.status,
+                roles: p.roles || []
+              }))
+          }))
+          .filter(m => m.pages.length > 0); // Only include modules with pages
+      }
+      
       return dbPagesByModule.map(m => ({
         moduleId: m.moduleId,
         moduleName: m.moduleName,
@@ -1117,14 +1209,44 @@ export default function Page() {
     const totalPages = result.reduce((sum, g) => sum + g.pages.length, 0);
     console.log(`📋 Fallback to PAGE_REGISTRY: ${PAGE_REGISTRY.length} total, Skipped: ${skippedCount}, Showing: ${totalPages} pages in ${result.length} modules`);
     return result;
-  }, [dbPagesByModule, dbTotalPages]);
+  }, [dbPagesByModule, dbTotalPages, selectedAdminId, superAdminPagePoolIds]);
 
   // Get all pages grouped by ROLE for the Pages Overview section (using PAGE_REGISTRY)
   // Get all pages grouped by ROLE for the Pages Overview section (using DATABASE)
+  // When SuperAdmin is selected, filter to only show pages in their pool
   const allPagesGroupedByRole = useMemo(() => {
     // Use database data as single source of truth
     if (dbPagesByRole.length > 0) {
       console.log(`📋 Using DATABASE pages grouped by role: ${dbPagesByRole.length} roles`);
+      
+      // If SuperAdmin is selected and has a page pool, filter pages
+      if (selectedAdminId && superAdminPagePoolIds.size > 0) {
+        console.log(`📦 Filtering role pages to SuperAdmin's pool: ${superAdminPagePoolIds.size} pages`);
+        return dbPagesByRole.map(r => ({
+          roleId: r.roleId,
+          roleName: r.roleName,
+          roleLevel: r.roleLevel,
+          pages: r.pages
+            .filter(p => {
+              const pageId = parseInt(p.id);
+              return superAdminPagePoolIds.has(pageId);
+            })
+            .map(p => ({
+              id: p.id,
+              name: p.name,
+              path: p.path,
+              status: p.status,
+              module: p.module
+            }))
+        }))
+        .filter(r => r.pages.length > 0) // Only include roles with pages
+        .sort((a, b) => {
+          if (a.roleId === '_unassigned') return 1;
+          if (b.roleId === '_unassigned') return -1;
+          return b.roleLevel - a.roleLevel || a.roleName.localeCompare(b.roleName);
+        });
+      }
+      
       return dbPagesByRole.map(r => ({
         roleId: r.roleId,
         roleName: r.roleName,
@@ -1203,7 +1325,7 @@ export default function Page() {
     });
     
     return result;
-  }, [dbPagesByRole]);
+  }, [dbPagesByRole, selectedAdminId, superAdminPagePoolIds]);
 
   // Filtered pages based on selected role filter
   const filteredPagesForOverviewByRole = useMemo(() => {

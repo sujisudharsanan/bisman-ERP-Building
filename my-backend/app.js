@@ -3174,6 +3174,177 @@ app.get('/api/enterprise-admin/super-admins/:id/roles', authenticate, requireRol
 });
 
 // ============================================
+// GET PAGE POOL FOR A SUPER ADMIN
+// Returns pages that Enterprise Admin has assigned to this Super Admin
+// This defines the maximum pages the Super Admin can grant to their roles
+// ============================================
+app.get('/api/enterprise-admin/super-admins/:id/page-pool', authenticate, requireRole('ENTERPRISE_ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const superAdminId = parseInt(id);
+
+    console.log('🔵 GET page pool for Super Admin:', superAdminId);
+
+    // Verify super admin exists
+    const superAdmin = await prisma.super_admins.findUnique({
+      where: { id: superAdminId }
+    });
+
+    if (!superAdmin) {
+      return res.status(404).json({ 
+        ok: false, 
+        error: 'Super admin not found' 
+      });
+    }
+
+    // Get pages from superadmin_page_pool table
+    const pagePoolResult = await prisma.$queryRaw`
+      SELECT 
+        pp.page_id,
+        pm.page_code,
+        pm.display_name,
+        pm.route,
+        pm.parent_id,
+        pm.module_id,
+        pm.show_in_sidebar,
+        pm.icon,
+        pm.sort_order,
+        m.module_name,
+        m.display_name as module_display_name
+      FROM superadmin_page_pool pp
+      JOIN pages_master pm ON pp.page_id = pm.id
+      LEFT JOIN modules m ON pm.module_id = m.id
+      WHERE pp.super_admin_id = ${superAdminId}
+        AND pm.status = 'active'
+      ORDER BY m.sort_order, pm.sort_order
+    `;
+
+    // Group pages by module for easier frontend consumption
+    const pagesByModule = {};
+    const allPages = [];
+
+    for (const row of pagePoolResult) {
+      const moduleName = row.module_name || 'Other';
+      if (!pagesByModule[moduleName]) {
+        pagesByModule[moduleName] = {
+          moduleId: row.module_id,
+          moduleName: row.module_name,
+          displayName: row.module_display_name || moduleName,
+          pages: []
+        };
+      }
+      
+      const pageData = {
+        id: row.page_id,
+        pageCode: row.page_code,
+        displayName: row.display_name,
+        route: row.route,
+        parentId: row.parent_id,
+        moduleId: row.module_id,
+        showInSidebar: row.show_in_sidebar,
+        icon: row.icon,
+        sortOrder: row.sort_order
+      };
+      
+      pagesByModule[moduleName].pages.push(pageData);
+      allPages.push(pageData);
+    }
+
+    console.log('✅ Page pool retrieved:', allPages.length, 'pages for Super Admin', superAdminId);
+
+    res.json({ 
+      ok: true, 
+      superAdminId,
+      totalPages: allPages.length,
+      pages: allPages,
+      pagesByModule: Object.values(pagesByModule)
+    });
+  } catch (error) {
+    console.error('Error fetching super admin page pool:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: 'Failed to fetch page pool',
+      message: error.message 
+    });
+  }
+});
+
+// ============================================
+// UPDATE PAGE POOL FOR A SUPER ADMIN
+// Enterprise Admin can grant/revoke pages for a Super Admin
+// ============================================
+app.put('/api/enterprise-admin/super-admins/:id/page-pool', authenticate, requireRole('ENTERPRISE_ADMIN'), async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { pageIds } = req.body;
+    const superAdminId = parseInt(id);
+    const enterpriseAdminId = req.user.id;
+
+    console.log('🔵 UPDATE page pool for Super Admin:', superAdminId, 'Pages:', pageIds?.length || 0);
+
+    if (!Array.isArray(pageIds)) {
+      return res.status(400).json({ 
+        ok: false, 
+        message: 'pageIds must be an array' 
+      });
+    }
+
+    // Verify super admin exists
+    const superAdmin = await prisma.super_admins.findUnique({
+      where: { id: superAdminId }
+    });
+
+    if (!superAdmin) {
+      return res.status(404).json({ 
+        ok: false, 
+        error: 'Super admin not found' 
+      });
+    }
+
+    // Use transaction to update page pool
+    const result = await prisma.$transaction(async (tx) => {
+      // Delete existing page pool entries
+      await tx.$executeRaw`
+        DELETE FROM superadmin_page_pool 
+        WHERE super_admin_id = ${superAdminId}
+      `;
+
+      // Insert new page pool entries
+      let insertedCount = 0;
+      for (const pageId of pageIds) {
+        const pid = parseInt(pageId);
+        if (Number.isFinite(pid) && pid > 0) {
+          await tx.$executeRaw`
+            INSERT INTO superadmin_page_pool (super_admin_id, page_id, granted_by, granted_at)
+            VALUES (${superAdminId}, ${pid}, ${enterpriseAdminId}, NOW())
+            ON CONFLICT (super_admin_id, page_id) DO NOTHING
+          `;
+          insertedCount++;
+        }
+      }
+
+      return insertedCount;
+    });
+
+    console.log('✅ Page pool updated for Super Admin:', superAdminId, '| Pages granted:', result);
+
+    res.json({ 
+      ok: true, 
+      message: `Page pool updated with ${result} pages`,
+      superAdminId,
+      pageCount: result
+    });
+  } catch (error) {
+    console.error('Error updating super admin page pool:', error);
+    res.status(500).json({ 
+      ok: false, 
+      error: 'Failed to update page pool',
+      message: error.message 
+    });
+  }
+});
+
+// ============================================
 // GET PAGES FOR A SPECIFIC ROLE
 // Returns all available pages with granted status for this role
 // RBAC: Only shows pages the logged-in user has access to (except SUPER_ADMIN)
