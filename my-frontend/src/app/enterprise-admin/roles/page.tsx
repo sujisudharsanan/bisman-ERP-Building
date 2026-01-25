@@ -268,18 +268,21 @@ export default function Page() {
 
   // ============================================================================
   // FILTERED ROLE PAGES - Show ONLY pages assigned to the selected role
-  // Excludes: common pages (shown separately) and API routes
+  // Excludes: common module pages (shown separately) and API routes
   // ============================================================================
   const commonPagePaths = useMemo(() => new Set(COMMON_PAGES.map(p => p.path)), []);
   
   const filteredRolePages = useMemo(() => {
     return rolePages.filter(page => {
       const path = page.path || page.id;
+      const moduleUpper = (page.module || '').toUpperCase();
       // Exclude:
       // 1. Non-granted pages (only show pages assigned to this role)
-      // 2. Common pages (already shown in COMMON_PAGES section)
-      // 3. API routes (not actual pages)
+      // 2. Pages in COMMON module (shown separately in top section)
+      // 3. Pages in hardcoded COMMON_PAGES list (shown separately)
+      // 4. API routes (not actual pages)
       if (!page.granted) return false;
+      if (moduleUpper === 'COMMON') return false;  // Exclude all COMMON module pages
       if (commonPagePaths.has(path)) return false;
       if (path.startsWith('/api/')) return false;
       return true;
@@ -1356,18 +1359,19 @@ export default function Page() {
     
     // Use the same pages as the top section (rolePages from API + COMMON_PAGES)
     // Combine filteredRolePages (category pages) with COMMON_PAGES
+    // Note: Use 'COMMON' (uppercase) to match DB module naming convention
     const allPagesForRole = [
       ...COMMON_PAGES.map(p => ({
         id: p.id,
         name: p.name,
         path: p.path,
-        module: 'common'
+        module: 'COMMON'  // Use uppercase to match DB module naming
       })),
       ...filteredRolePages.map(p => ({
         id: p.id,
         name: p.name || p.path,
         path: p.path,
-        module: p.module || 'other'
+        module: p.module || 'OTHER'
       }))
     ];
     
@@ -2954,14 +2958,29 @@ export default function Page() {
               <>
                 {selectedRoleId && (
                   <button
-                    onClick={() => setIsPageAssignMode(!isPageAssignMode)}
+                    onClick={async () => {
+                      if (isPageAssignMode && rolePagesHasChanges) {
+                        // Save changes when clicking "Done" if there are unsaved changes
+                        await handleSaveRolePages();
+                      }
+                      setIsPageAssignMode(!isPageAssignMode);
+                    }}
+                    disabled={isPageAssignMode && rolePagesSaving}
                     className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm ${
                       isPageAssignMode
-                        ? "bg-green-600 text-white hover:bg-green-700"
+                        ? rolePagesSaving 
+                          ? "bg-yellow-600 text-white cursor-wait"
+                          : "bg-green-600 text-white hover:bg-green-700"
                         : "bg-purple-600 text-white hover:bg-purple-700"
                     }`}
                   >
-                    {isPageAssignMode ? "✓ Done" : "Add/Remove"}
+                    {isPageAssignMode 
+                      ? rolePagesSaving 
+                        ? "Saving..." 
+                        : rolePagesHasChanges 
+                          ? "✓ Save & Done" 
+                          : "✓ Done" 
+                      : "Add/Remove"}
                   </button>
                 )}
                 {/* Clickable area for pages expand/collapse */}
