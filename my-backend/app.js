@@ -3349,7 +3349,7 @@ app.put('/api/enterprise-admin/super-admins/:id/page-pool', authenticate, requir
 // ============================================
 // GET PAGES FOR A SPECIFIC ROLE
 // Returns all available pages with granted status for this role
-// RBAC: Only shows pages the logged-in user has access to (except SUPER_ADMIN)
+// Uses role_page_access + pages_master as the source of truth
 // ============================================
 app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN']), async (req, res) => {
   try {
@@ -3359,7 +3359,7 @@ app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_
     
     console.log('[RBAC] Getting pages for role:', roleIdNum, '| Logged-in user role:', loggedInUserRole);
     
-    // Get role info
+    // Get role info from rbac_roles
     const role = await prisma.rbac_roles.findUnique({
       where: { id: roleIdNum }
     });
@@ -3372,76 +3372,61 @@ app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_
       });
     }
     
-    // Get ALL routes/pages from the database
-    let allRoutes = await prisma.rbac_routes.findMany({
-      where: { is_active: true },
-      orderBy: [{ module: 'asc' }, { name: 'asc' }]
-    });
+    const roleName = role.name; // e.g., 'ADMIN'
     
-    // RBAC Filter: Non-SUPER_ADMIN users can only see/manage pages they have access to
-    if (loggedInUserRole !== 'SUPER_ADMIN') {
-      // Get the logged-in user's role ID
-      const userRoleRecord = await prisma.rbac_roles.findFirst({
-        where: { name: loggedInUserRole }
-      });
-      
-      if (userRoleRecord) {
-        // Get pages the logged-in user has access to
-        const userPermissions = await prisma.rbac_permissions.findMany({
-          where: {
-            role_id: userRoleRecord.id,
-            is_active: true,
-            granted: true
-          }
-        });
-        
-        const userAllowedRouteIds = new Set(userPermissions.map(p => p.route_id));
-        
-        // Filter to only show routes the user has access to
-        const beforeCount = allRoutes.length;
-        allRoutes = allRoutes.filter(route => userAllowedRouteIds.has(route.id));
-        console.log('[RBAC] Filtered routes for', loggedInUserRole, ':', beforeCount, '->', allRoutes.length);
-      }
-    }
+    // Get ALL active pages from pages_master (source of truth)
+    const allPagesResult = await prisma.$queryRaw`
+      SELECT 
+        p.id,
+        p.page_code,
+        p.display_name,
+        p.route,
+        p.icon,
+        p.show_in_sidebar,
+        m.module_code,
+        m.display_name as module_name
+      FROM pages_master p
+      LEFT JOIN modules_master m ON m.id = p.module_id
+      WHERE p.status = 'active'
+      ORDER BY m.sort_order, m.module_code, p.sort_order, p.display_name
+    `;
     
-    // Get permissions for the target role being viewed
-    const permissions = await prisma.rbac_permissions.findMany({
-      where: {
-        role_id: roleIdNum,
-        is_active: true
-      }
-    });
+    // Get pages assigned to this role from role_page_access
+    const rolePageAccessResult = await prisma.$queryRaw`
+      SELECT page_id 
+      FROM role_page_access 
+      WHERE role_name = ${roleName} 
+        AND can_view = true
+    `;
     
-    // Create a set of granted route IDs
-    const grantedRouteIds = new Set(
-      permissions.filter(p => p.granted).map(p => p.route_id)
-    );
+    // Create set of granted page IDs
+    const grantedPageIds = new Set(rolePageAccessResult.map(r => r.page_id));
     
-    // Map all routes with granted status
-    const pages = allRoutes.map(route => ({
-      id: route.path || String(route.id),
-      routeId: route.id,
-      path: route.path,
-      name: route.display_name || route.name || route.path,
-      module: route.module || 'General',
-      description: route.description,
-      isActive: route.is_active,
-      granted: grantedRouteIds.has(route.id)
+    // Map all pages with granted status
+    const pages = allPagesResult.map(page => ({
+      id: page.route || String(page.id),
+      pageId: page.id,
+      path: page.route,
+      name: page.display_name || page.page_code || page.route,
+      module: page.module_code || 'General',
+      moduleName: page.module_name || page.module_code || 'General',
+      icon: page.icon,
+      showInSidebar: page.show_in_sidebar,
+      granted: grantedPageIds.has(page.id)
     }));
     
     const grantedCount = pages.filter(p => p.granted).length;
-    console.log('[RBAC] Found', pages.length, 'total pages,', grantedCount, 'granted for role:', role.name);
+    console.log('[RBAC] Found', pages.length, 'total pages,', grantedCount, 'granted for role:', roleName);
     
     res.json({ 
       success: true, 
-      role: role.name,
-      roleDisplayName: role.display_name || role.name,
+      role: roleName,
+      roleDisplayName: role.display_name || roleName,
       roleId: roleIdNum,
       pages,
       grantedCount,
       totalCount: pages.length,
-      source: 'rbac_routes',
-      filteredBy: loggedInUserRole !== 'SUPER_ADMIN' ? loggedInUserRole : null
+      source: 'pages_master + role_page_access'
     });
   } catch (error) {
     console.error('[RBAC] Error fetching role pages:', error);
@@ -3457,13 +3442,13 @@ app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_
 // ============================================
 // UPDATE PAGES (PERMISSIONS) FOR A SPECIFIC ROLE
 // Save which pages are assigned to this role
-// RBAC: Non-SUPER_ADMIN users can only grant pages they have access to
+// Uses role_page_access + pages_master as the source of truth
 // ============================================
 app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     const { roleId } = req.params;
     const roleIdNum = parseInt(roleId);
-    const { pageIds } = req.body; // Array of page paths or route IDs to grant
+    const { pageIds } = req.body; // Array of page paths to grant
     const loggedInUserRole = req.user?.role || req.user?.roleName;
     
     console.log('[RBAC] Updating pages for role:', roleIdNum, 'with', pageIds?.length || 0, 'pages | By:', loggedInUserRole);
@@ -3480,176 +3465,56 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
       });
     }
     
-    // Get all routes
-    let allRoutes = await prisma.rbac_routes.findMany({
-      where: { is_active: true }
+    const roleName = role.name;
+    
+    // Get page IDs from paths
+    const allPages = await prisma.$queryRaw`
+      SELECT id, route FROM pages_master WHERE status = 'active'
+    `;
+    
+    // Create map of path to page ID
+    const pageIdByPath = new Map();
+    allPages.forEach(p => {
+      if (p.route) pageIdByPath.set(p.route, p.id);
     });
     
-    // RBAC Filter: Non-SUPER_ADMIN users can only manage pages they have access to
-    let allowedRouteIds = null;
-    if (loggedInUserRole !== 'SUPER_ADMIN') {
-      const userRoleRecord = await prisma.rbac_roles.findFirst({
-        where: { name: loggedInUserRole }
-      });
+    // Convert paths to page IDs
+    const grantedPageIds = new Set();
+    (pageIds || []).forEach(path => {
+      const pageId = pageIdByPath.get(path);
+      if (pageId) {
+        grantedPageIds.add(pageId);
+      }
+    });
+    
+    console.log('[RBAC] Resolved', grantedPageIds.size, 'page IDs from', pageIds?.length || 0, 'paths');
+    
+    // Use raw SQL transaction to update role_page_access
+    await prisma.$transaction(async (tx) => {
+      // First, delete all existing entries for this role
+      await tx.$executeRaw`
+        DELETE FROM role_page_access WHERE role_name = ${roleName}
+      `;
       
-      if (userRoleRecord) {
-        const userPermissions = await prisma.rbac_permissions.findMany({
-          where: {
-            role_id: userRoleRecord.id,
-            is_active: true,
-            granted: true
-          }
-        });
-        
-        allowedRouteIds = new Set(userPermissions.map(p => p.route_id));
-        const beforeCount = allRoutes.length;
-        allRoutes = allRoutes.filter(route => allowedRouteIds.has(route.id));
-        console.log('[RBAC] Filtered routes for', loggedInUserRole, ':', beforeCount, '->', allRoutes.length);
-      }
-    }
-    
-    // Create map of path to route for quick lookup
-    const routeByPath = new Map();
-    const routeById = new Map();
-    allRoutes.forEach(r => {
-      if (r.path) routeByPath.set(r.path, r);
-      routeById.set(r.id, r);
-    });
-    
-    // Find route IDs from pageIds (can be paths or numeric IDs)
-    // Auto-create routes for paths that don't exist in the database
-    const grantedRouteIds = new Set();
-    const pathsToCreate = [];
-    const rejectedPageIds = []; // Pages user tried to grant but doesn't have access to
-    
-    (pageIds || []).forEach(pageId => {
-      // Try as path first
-      const routeByPathMatch = routeByPath.get(pageId);
-      if (routeByPathMatch) {
-        // RBAC check: can user grant this page?
-        if (allowedRouteIds && !allowedRouteIds.has(routeByPathMatch.id)) {
-          rejectedPageIds.push(pageId);
-          return;
-        }
-        grantedRouteIds.add(routeByPathMatch.id);
-        return;
-      }
-      // Try as numeric route ID
-      const numId = parseInt(pageId);
-      if (!isNaN(numId) && routeById.has(numId)) {
-        // RBAC check: can user grant this page?
-        if (allowedRouteIds && !allowedRouteIds.has(numId)) {
-          rejectedPageIds.push(pageId);
-          return;
-        }
-        grantedRouteIds.add(numId);
-        return;
-      }
-      // Path doesn't exist - only SUPER_ADMIN can create new routes
-      if (typeof pageId === 'string' && pageId.startsWith('/')) {
-        if (loggedInUserRole === 'SUPER_ADMIN') {
-          pathsToCreate.push(pageId);
-        } else {
-          rejectedPageIds.push(pageId);
-        }
+      // Insert new entries for granted pages
+      for (const pageId of grantedPageIds) {
+        await tx.$executeRaw`
+          INSERT INTO role_page_access (role_name, page_id, can_view, can_edit, can_delete, created_at)
+          VALUES (${roleName}, ${pageId}, true, true, false, NOW())
+          ON CONFLICT (role_name, page_id) DO UPDATE SET can_view = true, can_edit = true
+        `;
       }
     });
     
-    if (rejectedPageIds.length > 0) {
-      console.log('[RBAC] Rejected', rejectedPageIds.length, 'page grants due to RBAC restrictions');
-    }
-    
-    // Auto-create missing routes
-    if (pathsToCreate.length > 0) {
-      console.log('[RBAC] Auto-creating', pathsToCreate.length, 'missing routes:', pathsToCreate.slice(0, 5));
-      for (const path of pathsToCreate) {
-        try {
-          // Generate a name from the path
-          const pathParts = path.split('/').filter(Boolean);
-          const name = pathParts.map(p => p.replace(/-/g, ' ').replace(/\b\w/g, c => c.toUpperCase())).join(' - ') || 'Home';
-          
-          const newRoute = await prisma.rbac_routes.create({
-            data: {
-              path: path,
-              name: name,
-              method: 'GET',
-              is_active: true,
-              is_protected: false,
-              is_menu_item: true,
-              created_at: new Date()
-            }
-          });
-          grantedRouteIds.add(newRoute.id);
-          routeByPath.set(path, newRoute);
-          routeById.set(newRoute.id, newRoute);
-          allRoutes.push(newRoute);
-          console.log('[RBAC] Created route:', path, '-> ID:', newRoute.id);
-        } catch (createError) {
-          console.warn('[RBAC] Failed to create route for path:', path, createError.message);
-        }
-      }
-    }
-    
-    console.log('[RBAC] Resolved', grantedRouteIds.size, 'route IDs to grant');
-    
-    // Get existing permissions for this role
-    const existingPerms = await prisma.rbac_permissions.findMany({
-      where: { role_id: roleIdNum }
-    });
-    
-    const existingPermByRouteId = new Map();
-    existingPerms.forEach(p => existingPermByRouteId.set(p.route_id, p));
-    
-    // Update or create permissions
-    const operations = [];
-    
-    for (const route of allRoutes) {
-      const shouldGrant = grantedRouteIds.has(route.id);
-      const existingPerm = existingPermByRouteId.get(route.id);
-      
-      if (existingPerm) {
-        // Update existing permission
-        if (existingPerm.granted !== shouldGrant) {
-          operations.push(
-            prisma.rbac_permissions.update({
-              where: { id: existingPerm.id },
-              data: { 
-                granted: shouldGrant,
-                updated_at: new Date()
-              }
-            })
-          );
-        }
-      } else {
-        // Create new permission record
-        operations.push(
-          prisma.rbac_permissions.create({
-            data: {
-              role_id: roleIdNum,
-              route_id: route.id,
-              granted: shouldGrant,
-              is_active: true,
-              created_at: new Date(),
-              updated_at: new Date()
-            }
-          })
-        );
-      }
-    }
-    
-    // Execute all operations
-    if (operations.length > 0) {
-      await prisma.$transaction(operations);
-      console.log('[RBAC] Executed', operations.length, 'permission updates');
-    }
+    console.log('[RBAC] Updated role_page_access:', grantedPageIds.size, 'pages for role:', roleName);
     
     res.json({ 
       success: true, 
       message: 'Role pages updated successfully',
       roleId: roleIdNum,
       roleName: role.name,
-      grantedCount: grantedRouteIds.size,
-      totalRoutes: allRoutes.length
+      grantedCount: grantedPageIds.size,
+      source: 'role_page_access'
     });
   } catch (error) {
     console.error('[RBAC] Error updating role pages:', error);
