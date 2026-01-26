@@ -64,9 +64,10 @@ const DashboardLayout: React.FC<DashboardLayoutProps> = ({ children, role }) => 
             <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
           </ErrorBoundary>
 
-          {/* Main Content - Use CSS variable for consistent margin */}
+          {/* Main Content - Sidebar is fixed, so use left positioning not margin */}
           <main 
-            className="flex-1 overflow-auto transition-all duration-300 ml-52"
+            className="flex-1 overflow-auto transition-all duration-300"
+            style={{ marginLeft: sidebarOpen ? '208px' : '64px' }}
           >
             <ErrorBoundary fallback={
               <div className="p-8 text-center">

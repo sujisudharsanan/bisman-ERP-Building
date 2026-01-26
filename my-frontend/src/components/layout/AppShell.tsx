@@ -100,6 +100,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           </ErrorBoundary>
           <main
             className="flex-1 overflow-auto transition-all duration-300 p-6"
+            style={{ marginLeft: sidebarOpen ? '208px' : '64px' }}
           >
             {children}
           </main>
