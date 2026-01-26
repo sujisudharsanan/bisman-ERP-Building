@@ -1,0 +1,13 @@
+id,page_code,display_name,route,module_code,show_in_sidebar
+"45","ADMIN_DASHBOARD","Admin Dashboard","/admin","ADMIN","true"
+"76","BILLING_DASHBOARD","Billing Dashboard","/billing","BILLING","true"
+"71","COMPLIANCE_DASHBOARD","Compliance Dashboard","/compliance/compliance-dashboard","COMPLIANCE","true"
+"86","DASHBOARD_HOME","My Dashboard","/dashboard","DASHBOARD","false"
+"87","DASHBOARD_REQUESTS","My Requests","/dashboard/requests","DASHBOARD","true"
+"1","ENTERPRISE_ADMIN_DASHBOARD","Enterprise Dashboard","/enterprise-admin/dashboard","ENTERPRISE_ADMIN","true"
+"243","FINANCE_COMPANY_DASHBOARD","Company Dashboard","/finance/company-dashboard","FINANCE","true"
+"91","SETTLEMENTS_DASHBOARD","Settlements","/settlements","FINANCE","true"
+"170","STORE_INCHARGE_DASHBOARD","Store Incharge Dashboard","/store-incharge","OPERATIONS","true"
+"92","QA_DASHBOARD","QA Dashboard","/qa","QA","true"
+"17","SUPER_ADMIN_DASHBOARD","Super Admin Dashboard","/super-admin","SUPER_ADMIN","true"
+"184","SYSTEM_AUDIT_INTEGRITY_DASHBOARD","Audit Integrity Dashboard","/system/audit-integrity-dashboard","SYSTEM","true"

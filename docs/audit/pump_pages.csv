@@ -1,0 +1,2 @@
+id,page_code,display_name,route,module_code,status,show_in_sidebar
+"169","PUMP_MANAGEMENT_SERVER_LOGS","Server Logs","/pump-management/server-logs","OPERATIONS","inactive","false"

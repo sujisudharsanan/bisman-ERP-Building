@@ -1,5 +1,4 @@
 /* eslint-env node, commonjs */
-/* global require */
 /**
  * Script to create the admin_role_assignments table if it doesn't exist
  * Run with: node scripts/create-admin-role-assignments.js

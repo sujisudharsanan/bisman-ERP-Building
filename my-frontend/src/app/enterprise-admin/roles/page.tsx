@@ -609,7 +609,7 @@ export default function Page() {
       try {
         console.log('📄 Loading pages for role:', selectedRoleId, 'name:', selectedRoleName, 'variations:', roleVariations);
         
-        // Get granted pages from API
+        // Get scoped pages from API (now returns assigned, inherited, candidate)
         const response = await fetch(`/api/rbac/roles/${selectedRoleId}/pages`, {
           credentials: 'include',
           signal: abortController.signal
@@ -624,21 +624,34 @@ export default function Page() {
         if (response.ok) {
           const data = await response.json();
           if (data.success && Array.isArray(data.pages)) {
-            // Use the API response directly - it returns all pages with granted status
-            const apiPages = data.pages.map((p: { id?: string; path: string; name?: string; module?: string; granted?: boolean; routeId?: number }) => ({
+            // API returns scoped pages with accessType (ASSIGNED, INHERITED, CANDIDATE)
+            const apiPages = data.pages.map((p: { 
+              id?: string; path: string; name?: string; module?: string; 
+              granted?: boolean; accessType?: string; inherited?: boolean 
+            }) => ({
               id: p.path || p.id || '',
               path: p.path,
               name: p.name || p.path,
               module: p.module || 'General',
               granted: p.granted || false,
-              routeId: p.routeId
+              inherited: p.inherited || p.accessType === 'INHERITED',
+              accessType: p.accessType || (p.granted ? 'ASSIGNED' : 'CANDIDATE')
             }));
             
-            console.log('✅ API returned', apiPages.length, 'pages,', apiPages.filter((p: { granted: boolean }) => p.granted).length, 'granted');
+            // Count by access type
+            const assignedCount = apiPages.filter((p: { accessType: string }) => p.accessType === 'ASSIGNED').length;
+            const inheritedCount = apiPages.filter((p: { accessType: string }) => p.accessType === 'INHERITED').length;
+            const candidateCount = apiPages.filter((p: { accessType: string }) => p.accessType === 'CANDIDATE').length;
+            
+            console.log('✅ API returned', apiPages.length, 'scoped pages:',
+              assignedCount, 'assigned,', inheritedCount, 'inherited,', candidateCount, 'candidate');
             
             setRolePages(apiPages);
+            // Selected = assigned + inherited pages
             const grantedPaths = new Set<string>(
-              apiPages.filter((p: { granted: boolean }) => p.granted).map((p: { path: string }) => p.path)
+              apiPages
+                .filter((p: { accessType: string }) => p.accessType === 'ASSIGNED' || p.accessType === 'INHERITED')
+                .map((p: { path: string }) => p.path)
             );
             setRolePagesSelectedIds(grantedPaths);
             setRolePagesInitialIds(new Set(grantedPaths));

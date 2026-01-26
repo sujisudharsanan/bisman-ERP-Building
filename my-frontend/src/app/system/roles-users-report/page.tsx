@@ -49,6 +49,8 @@ type RolePage = {
   name: string;
   module?: string;
   granted?: boolean;
+  inherited?: boolean;
+  accessType?: 'ASSIGNED' | 'INHERITED' | 'CANDIDATE';
 };
 
 type SubscriptionPlan = {
@@ -539,14 +541,23 @@ export default function RolesUsersReportPage() {
         if (response.ok) {
           const data = await response.json();
           if (data.success && Array.isArray(data.pages)) {
+            // API now returns scoped pages with accessType (ASSIGNED, INHERITED, CANDIDATE)
             setRolePages(data.pages);
+            // Selected = assigned + inherited pages (not candidates)
             const grantedIds = new Set<string>(
-              data.pages.filter((p: RolePage) => p.granted).map((p: RolePage) => p.id)
+              data.pages
+                .filter((p: RolePage) => p.granted || p.accessType === 'ASSIGNED' || p.accessType === 'INHERITED')
+                .map((p: RolePage) => p.id)
             );
             setRolePagesSelectedIds(grantedIds);
             setRolePagesInitialIds(new Set(grantedIds));
             setRolePagesHasChanges(false);
-            console.log('✅ Loaded', data.pages.length, 'pages,', grantedIds.size, 'granted');
+            
+            const assignedCount = data.pages.filter((p: RolePage) => p.accessType === 'ASSIGNED').length;
+            const inheritedCount = data.pages.filter((p: RolePage) => p.accessType === 'INHERITED').length;
+            const candidateCount = data.pages.filter((p: RolePage) => p.accessType === 'CANDIDATE').length;
+            console.log('✅ Loaded', data.pages.length, 'scoped pages:', 
+              assignedCount, 'assigned,', inheritedCount, 'inherited,', candidateCount, 'candidate');
           } else {
             setRolePages([]);
             setRolePagesSelectedIds(new Set());

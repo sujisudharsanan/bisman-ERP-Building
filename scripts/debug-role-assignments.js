@@ -1,5 +1,4 @@
 /* eslint-env node, commonjs */
-/* global require */
 /**
  * Debug script to check admin_role_assignments and related data
  */

@@ -1,5 +1,5 @@
 /* eslint-env node, commonjs */
-/* global require */
+/* global require, console */
 const { Pool } = require('pg');
 const pool = new Pool({ 
   connectionString: 'postgresql://postgres:JNdJhwkgAhtLbiGOFDEZZRGOtCvQumvd@hopper.proxy.rlwy.net:30204/railway' 

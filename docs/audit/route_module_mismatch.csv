@@ -1,0 +1,9 @@
+id,page_code,display_name,route,module_code,base_route
+"146","RECONCILIATION_DETAIL","Reconciliation Detail","/reconciliation/[id]","FINANCE","/finance"
+"90","RECONCILIATION_UPLOAD","Upload Statement","/reconciliation/upload","FINANCE","/finance"
+"91","SETTLEMENTS_DASHBOARD","Settlements","/settlements","FINANCE","/finance"
+"147","SETTLEMENT_DETAIL","Settlement Detail","/settlements/[id]","FINANCE","/finance"
+"118","WELCOME","Welcome","/welcome","ONBOARDING","/onboarding"
+"119","WELCOME_BRANDING","Welcome Branding","/welcome/branding","ONBOARDING","/onboarding"
+"120","WELCOME_LAUNCHING","Welcome Launching","/welcome/launching","ONBOARDING","/onboarding"
+"170","STORE_INCHARGE_DASHBOARD","Store Incharge Dashboard","/store-incharge","OPERATIONS","/operations"

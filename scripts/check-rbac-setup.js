@@ -1,5 +1,4 @@
 /* eslint-env node, commonjs */
-/* global require */
 /**
  * Check and setup RBAC tables for the 3-level permission model
  */
