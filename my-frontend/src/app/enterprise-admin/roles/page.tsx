@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { FiUsers, FiPackage, FiGrid, FiCheckCircle, FiUnlock, FiExternalLink, FiShield, FiPlus, FiX, FiChevronUp, FiChevronDown, FiSearch, FiLock, FiGlobe, FiInfo, FiFile, FiMinus } from "react-icons/fi";
+import { FiUsers, FiPackage, FiGrid, FiCheckCircle, FiUnlock, FiExternalLink, FiShield, FiPlus, FiX, FiChevronUp, FiChevronDown, FiSearch, FiLock, FiGlobe, FiInfo, FiFile, FiMinus, FiAlertCircle } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePageRefresh } from "@/contexts/RefreshContext";
 import { isModuleProtected, getProtectedModuleMessage, isRoleProtected, getProtectedRoleMessage, getDefaultRoleNames } from "@/common/config/protected-access";
@@ -3198,12 +3198,16 @@ export default function Page() {
                       : "Add/Remove"}
                   </button>
                 )}
-                {/* Stats badge for pages */}
+                {/* Stats badge for pages - format depends on pagesGroupBy mode */}
                 <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 rounded-full">
                   <FiPackage className="w-3 h-3 text-purple-600" />
                   <span className="text-purple-700 dark:text-purple-400">
                     {selectedRoleId && roleScopedPages
-                      ? `${roleScopedPages.counts.assigned + roleScopedPages.counts.inherited}/${roleScopedPages.counts.assigned + roleScopedPages.counts.inherited + roleScopedPages.counts.candidate} pages` 
+                      ? pagesGroupBy === 'role'
+                        // By Role mode: show X/X (assigned/assigned) - only showing assigned pages
+                        ? `${roleScopedPages.counts.assigned + roleScopedPages.counts.inherited}/${roleScopedPages.counts.assigned + roleScopedPages.counts.inherited} pages`
+                        // By Module mode: show X/Y (assigned/total candidates)
+                        : `${roleScopedPages.counts.assigned + roleScopedPages.counts.inherited}/${roleScopedPages.counts.assigned + roleScopedPages.counts.inherited + roleScopedPages.counts.candidate} pages`
                       : selectedAdminId && totalPagesInPool > 0
                       ? `${totalPagesInPool} pages in pool`
                       : `${allPagesGroupedByModule.length} modules`}
@@ -3324,6 +3328,10 @@ export default function Page() {
                       <FiInfo className="w-4 h-4 text-yellow-600 flex-shrink-0" />
                       <span className="text-xs text-yellow-700 dark:text-yellow-300">
                         Showing pages for role: <strong>{selectedRole?.name?.replace(/_/g, ' ')}</strong>
+                        {pagesGroupBy === 'role' 
+                          ? <span className="ml-2 text-indigo-600 dark:text-indigo-400">(By Role: showing only assigned pages)</span>
+                          : <span className="ml-2 text-purple-600 dark:text-purple-400">(By Module: showing all candidate pages)</span>
+                        }
                         {roleScopedPages.counts.inherited > 0 && (
                           <span className="ml-2 text-blue-600 dark:text-blue-400">(includes {roleScopedPages.counts.inherited} inherited BASE_USER pages)</span>
                         )}
@@ -3338,7 +3346,7 @@ export default function Page() {
                       </div>
                     )}
                     
-                    {/* Get pages to display based on filter */}
+                    {/* Get pages to display based on pagesGroupBy mode AND assignedFilter */}
                     {!roleScopedPagesLoading && (() => {
                       // Combine assigned and inherited into one "assigned" group
                       const assignedPages = [
@@ -3366,23 +3374,45 @@ export default function Page() {
                         accessType: 'CANDIDATE'
                       }));
                       
-                      const pagesToShow = pagesAssignedFilter === 'assigned' 
-                        ? assignedPages
-                        : pagesAssignedFilter === 'unassigned'
-                        ? candidatePages
-                        : [...assignedPages, ...candidatePages];
+                      // KEY FIX: pagesGroupBy determines what pages to show:
+                      // - "role" mode: Show ONLY assigned pages (pages this role HAS)
+                      // - "module" mode: Show ALL candidate pages (pages this role COULD have)
+                      let pagesToShow: typeof assignedPages;
+                      if (pagesGroupBy === 'role') {
+                        // "By Role" mode: Show only assigned pages, apply assignedFilter within assigned
+                        pagesToShow = pagesAssignedFilter === 'unassigned' 
+                          ? [] // In By Role mode, there are no unassigned pages to show
+                          : assignedPages;
+                      } else {
+                        // "By Module" mode: Show all candidates, apply assignedFilter
+                        pagesToShow = pagesAssignedFilter === 'assigned' 
+                          ? assignedPages
+                          : pagesAssignedFilter === 'unassigned'
+                          ? candidatePages
+                          : [...assignedPages, ...candidatePages];
+                      }
                       
                       if (pagesToShow.length === 0) {
                         return (
                           <div className="text-center py-6">
                             <FiFile className="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
                             <p className="text-sm text-gray-500 dark:text-gray-400">
-                              {pagesAssignedFilter === 'assigned' 
+                              {pagesGroupBy === 'role' && pagesAssignedFilter === 'unassigned'
+                                ? 'Switch to "By Module" mode to see unassigned pages'
+                                : pagesAssignedFilter === 'assigned' 
                                 ? 'No pages assigned to this role yet'
                                 : pagesAssignedFilter === 'unassigned'
                                 ? 'All pages for this role are assigned'
                                 : 'No pages available for this role'}
                             </p>
+                            {pagesGroupBy === 'role' && pagesAssignedFilter === 'unassigned' && (
+                              <button
+                                onClick={() => setPagesGroupBy('module')}
+                                className="mt-2 text-xs px-3 py-1.5 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition"
+                              >
+                                Switch to By Module
+                              </button>
+                            )}
                           </div>
                         );
                       }
@@ -3827,7 +3857,7 @@ export default function Page() {
         </div>
       )}
 
-      {/* Toast Notification for Protected Modules */}
+      {/* Toast Notification for Protected Modules and Missing Selections */}
       {toastMessage && (
         <div className={`fixed bottom-4 right-4 z-50 max-w-md px-4 py-3 rounded-lg shadow-lg animate-slide-up flex items-start gap-3 ${
           toastMessage.type === 'warning' 
@@ -3836,11 +3866,17 @@ export default function Page() {
             ? 'bg-red-50 border border-red-300 text-red-800 dark:bg-red-900/90 dark:border-red-700 dark:text-red-200'
             : 'bg-blue-50 border border-blue-300 text-blue-800 dark:bg-blue-900/90 dark:border-blue-700 dark:text-blue-200'
         }`}>
-          <FiLock className={`w-5 h-5 shrink-0 mt-0.5 ${
-            toastMessage.type === 'warning' ? 'text-yellow-600' : toastMessage.type === 'error' ? 'text-red-600' : 'text-blue-600'
-          }`} />
+          {toastMessage.type === 'warning' ? (
+            <FiAlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-yellow-600" />
+          ) : toastMessage.type === 'error' ? (
+            <FiAlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-red-600" />
+          ) : (
+            <FiInfo className="w-5 h-5 shrink-0 mt-0.5 text-blue-600" />
+          )}
           <div className="flex-1">
-            <p className="text-sm font-medium">Protected Module</p>
+            <p className="text-sm font-medium">
+              {toastMessage.type === 'warning' ? 'Warning' : toastMessage.type === 'error' ? 'Error' : 'Info'}
+            </p>
             <p className="text-xs mt-0.5">{toastMessage.message}</p>
           </div>
           <button 
