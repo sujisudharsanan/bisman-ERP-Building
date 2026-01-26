@@ -718,6 +718,16 @@ export default function Page() {
           if (data.success && data.data) {
             console.log(`✅ Role-scoped pages: ${data.data.counts.assigned} assigned, ${data.data.counts.inherited} inherited, ${data.data.counts.candidate} candidates`);
             setRoleScopedPages(data.data);
+            
+            // SYNC: Also populate rolePagesSelectedIds with assigned + inherited page paths
+            // This ensures the toggle state matches what the API returns as "assigned"
+            const assignedPaths = new Set<string>([
+              ...data.data.assignedPages.map((p: { route: string }) => p.route),
+              ...data.data.inheritedPages.map((p: { route: string }) => p.route)
+            ]);
+            setRolePagesSelectedIds(assignedPaths);
+            setRolePagesInitialIds(new Set(assignedPaths));
+            setRolePagesHasChanges(false);
           } else {
             console.warn('⚠️ Invalid role-scoped pages response:', data);
             setRoleScopedPages(null);
@@ -3441,9 +3451,12 @@ export default function Page() {
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
                               {pages.map((page, idx) => {
                                 const isSelected = bottomSelectedPageId === page.id;
-                                const isAssigned = page.accessType === 'ASSIGNED' || page.accessType === 'DIRECT' || page.accessType === 'BASE_USER';
+                                // Use rolePagesSelectedIds for real-time toggle state
+                                const isInLocalSelection = rolePagesSelectedIds.has(page.path);
                                 const isInherited = page.accessType === 'BASE_USER' || page.accessType === 'INHERITED';
-                                const isCandidate = page.accessType === 'CANDIDATE';
+                                // isAssigned reflects the CURRENT toggle state from rolePagesSelectedIds
+                                const isAssigned = isInLocalSelection || isInherited;
+                                const isCandidate = !isAssigned && !isInherited;
                                 return (
                                   <div
                                     key={`${page.id}-${idx}`}
@@ -3457,12 +3470,12 @@ export default function Page() {
                                           toggleRolePageSelection(page.path);
                                         }}
                                         className={`absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-transform hover:scale-110 ${
-                                          isAssigned 
+                                          isInLocalSelection 
                                             ? "bg-red-500 hover:bg-red-600 text-white"
                                             : "bg-green-500 hover:bg-green-600 text-white"
                                         }`}
                                       >
-                                        {isAssigned ? '−' : '+'}
+                                        {isInLocalSelection ? '−' : '+'}
                                       </button>
                                     )}
                                     {/* Inherited badge */}
@@ -3484,7 +3497,7 @@ export default function Page() {
                                           ? 'border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300 shadow-sm'
                                           : isInherited
                                           ? 'border-blue-300 bg-blue-50 dark:bg-blue-900/20 hover:border-blue-400'
-                                          : isAssigned
+                                          : isInLocalSelection
                                           ? 'border-green-300 bg-green-50 dark:bg-green-900/20 hover:border-green-400'
                                           : 'border-gray-200 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-900/10 hover:border-gray-400'
                                       }`}
@@ -3492,7 +3505,7 @@ export default function Page() {
                                       <div className="flex items-center justify-between mb-0.5">
                                         {isInherited ? (
                                           <FiLock className="w-3 h-3 text-blue-500" title="Inherited - cannot be removed" />
-                                        ) : isAssigned ? (
+                                        ) : isInLocalSelection ? (
                                           <FiCheckCircle className="w-3 h-3 text-green-500" />
                                         ) : (
                                           <FiPlus className="w-3 h-3 text-gray-400" />
@@ -3501,7 +3514,7 @@ export default function Page() {
                                           <FiExternalLink className="w-2.5 h-2.5 text-gray-400 hover:text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                                         </Link>
                                       </div>
-                                      <div className={`text-xs font-medium truncate ${isSelected ? 'text-purple-700 dark:text-purple-300' : isInherited ? 'text-blue-700 dark:text-blue-300' : isAssigned ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                                      <div className={`text-xs font-medium truncate ${isSelected ? 'text-purple-700 dark:text-purple-300' : isInherited ? 'text-blue-700 dark:text-blue-300' : isInLocalSelection ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-300'}`}>
                                         {page.name || page.id}
                                       </div>
                                       <div className="text-[9px] text-gray-500 dark:text-gray-400 truncate">
