@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
-import { FiUsers, FiPackage, FiGrid, FiShield, FiRefreshCw, FiChevronUp, FiCreditCard, FiFile, FiExternalLink, FiCheckCircle, FiMinus } from "react-icons/fi";
+import { FiUsers, FiPackage, FiGrid, FiShield, FiRefreshCw, FiChevronUp, FiCreditCard, FiFile, FiExternalLink, FiCheckCircle, FiMinus, FiPlus, FiLock } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
 import ClientManagementTabs from "@/components/common/ClientManagementTabs";
 import { PAGE_REGISTRY, MODULES } from "@/common/config/page-registry";
@@ -1116,13 +1116,49 @@ export default function RolesUsersReportPage() {
       } rounded-t-xl shadow-lg`}>
         {/* Header Bar with Toggle between Roles and Pages */}
         <div 
-          className={`flex items-center justify-between px-4 py-2 border-b rounded-t-xl ${
+          className={`flex items-center justify-between px-4 py-2 border-b rounded-t-xl cursor-pointer transition-colors ${
             bottomSectionContext === 'pages' 
-              ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-100 dark:border-blue-800' 
-              : 'bg-purple-50 dark:bg-purple-900/30 border-purple-100 dark:border-purple-800'
+              ? 'bg-blue-50 dark:bg-blue-900/30 border-blue-100 dark:border-blue-800 hover:bg-blue-100 dark:hover:bg-blue-900/50' 
+              : 'bg-purple-50 dark:bg-purple-900/30 border-purple-100 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/50'
           }`}
+          onClick={() => {
+            if (bottomSectionContext === 'pages') {
+              setIsPagesDrawerExpanded(!isPagesDrawerExpanded);
+            } else {
+              setIsRolesDrawerExpanded(!isRolesDrawerExpanded);
+            }
+          }}
         >
-          <div className="flex items-center gap-3 flex-wrap">
+          {/* Expand/Collapse Toggle - Always visible at the left */}
+          <div 
+            onClick={(e) => {
+              e.stopPropagation();
+              if (bottomSectionContext === 'pages') {
+                setIsPagesDrawerExpanded(!isPagesDrawerExpanded);
+              } else {
+                setIsRolesDrawerExpanded(!isRolesDrawerExpanded);
+              }
+            }}
+            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-all mr-3 ${
+              bottomSectionContext === 'pages'
+                ? 'hover:bg-blue-200 dark:hover:bg-blue-800/50'
+                : 'hover:bg-purple-200 dark:hover:bg-purple-800/50'
+            }`}
+            title={`Click to ${(bottomSectionContext === 'pages' ? isPagesDrawerExpanded : isRolesDrawerExpanded) ? 'collapse' : 'expand'}`}
+          >
+            <div 
+              className={`p-1 rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-transform duration-300 ${
+                (bottomSectionContext === 'pages' ? isPagesDrawerExpanded : isRolesDrawerExpanded) ? 'rotate-180' : ''
+              }`}
+            >
+              <FiChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+            </div>
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-400 hidden sm:inline">
+              {(bottomSectionContext === 'pages' ? isPagesDrawerExpanded : isRolesDrawerExpanded) ? 'Collapse' : 'Expand'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap flex-1" onClick={(e) => e.stopPropagation()}>
             {/* Toggle Buttons - Roles / Pages */}
             <div className="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 rounded-lg p-0.5">
               <button
@@ -1287,6 +1323,32 @@ export default function RolesUsersReportPage() {
               </button>
             )}
             
+            {/* Add/Remove button for pages - when in pages context and a role is selected */}
+            {bottomSectionContext === 'pages' && selectedRoleId && (
+              <button
+                onClick={async (e) => { 
+                  e.stopPropagation(); 
+                  if (isPageEditMode) {
+                    // Save when clicking Done
+                    await handleSaveRolePages();
+                  }
+                  setIsPageEditMode(!isPageEditMode); 
+                }}
+                disabled={isPageEditMode && rolePagesSaving}
+                className={`text-xs font-semibold px-3 py-1.5 rounded-lg transition flex items-center gap-1.5 shadow-sm ${
+                  isPageEditMode
+                    ? rolePagesSaving 
+                      ? "bg-gray-400 text-white cursor-wait"
+                      : rolePagesHasChanges
+                        ? "bg-green-600 text-white hover:bg-green-700"
+                        : "bg-green-600 text-white hover:bg-green-700"
+                    : "bg-blue-600 text-white hover:bg-blue-700"
+                }`}
+              >
+                {isPageEditMode ? (rolePagesSaving ? "Saving..." : rolePagesHasChanges ? "✓ Save & Done" : "✓ Done") : "Add/Remove"}
+              </button>
+            )}
+            
             {/* Total users for roles */}
             {bottomSectionContext === 'roles' && (
               <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
@@ -1296,22 +1358,6 @@ export default function RolesUsersReportPage() {
                 </span>
               </div>
             )}
-            
-            {/* Expand/Collapse button */}
-            <button 
-              onClick={() => {
-                if (bottomSectionContext === 'pages') {
-                  setIsPagesDrawerExpanded(!isPagesDrawerExpanded);
-                } else {
-                  setIsRolesDrawerExpanded(!isRolesDrawerExpanded);
-                }
-              }}
-              className={`p-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-transform duration-300 hover:bg-gray-50 ${
-                (bottomSectionContext === 'pages' ? isPagesDrawerExpanded : isRolesDrawerExpanded) ? 'rotate-180' : ''
-              }`}
-            >
-              <FiChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-            </button>
           </div>
         </div>
 
@@ -1483,6 +1529,51 @@ export default function RolesUsersReportPage() {
                           <span className="text-[10px] text-gray-500 px-1.5 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
                             {pages.length} pages
                           </span>
+                          {/* Module toggle - select/deselect all pages in this module */}
+                          {isPageEditMode && selectedRoleId && (
+                            <>
+                              <span className="text-[10px] text-green-600 dark:text-green-400 px-1.5 py-0.5 bg-green-50 dark:bg-green-900/30 rounded">
+                                {pages.filter(p => rolePagesSelectedIds.has(p.id) || rolePagesSelectedIds.has(p.path)).length} selected
+                              </span>
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  const allSelected = pages.every(p => rolePagesSelectedIds.has(p.id) || rolePagesSelectedIds.has(p.path));
+                                  setRolePagesSelectedIds(prev => {
+                                    const newSet = new Set(prev);
+                                    if (allSelected) {
+                                      // Deselect all pages in this module
+                                      pages.forEach(p => {
+                                        newSet.delete(p.id);
+                                        newSet.delete(p.path);
+                                      });
+                                    } else {
+                                      // Select all pages in this module
+                                      pages.forEach(p => newSet.add(p.id));
+                                    }
+                                    return newSet;
+                                  });
+                                }}
+                                className={`ml-auto flex items-center gap-1 px-2 py-0.5 text-[10px] font-medium rounded transition-colors ${
+                                  pages.every(p => rolePagesSelectedIds.has(p.id) || rolePagesSelectedIds.has(p.path))
+                                    ? 'bg-red-100 text-red-700 hover:bg-red-200 dark:bg-red-900/30 dark:text-red-300'
+                                    : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-300'
+                                }`}
+                              >
+                                {pages.every(p => rolePagesSelectedIds.has(p.id) || rolePagesSelectedIds.has(p.path)) ? (
+                                  <>
+                                    <FiMinus className="w-2.5 h-2.5" />
+                                    Deselect All
+                                  </>
+                                ) : (
+                                  <>
+                                    <FiPlus className="w-2.5 h-2.5" />
+                                    Select All
+                                  </>
+                                )}
+                              </button>
+                            </>
+                          )}
                         </div>
                         {/* Pages grid */}
                         <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
@@ -1492,30 +1583,56 @@ export default function RolesUsersReportPage() {
                             return (
                               <div
                                 key={`${page.id}-${idx}`}
-                                onClick={() => setBottomSelectedPageId(isSelected ? null : page.id)}
-                                className={`p-2 rounded-lg border cursor-pointer transition-colors group ${
-                                  isSelected
-                                    ? 'border-blue-500 bg-blue-100 dark:bg-blue-900/40 ring-2 ring-blue-300 shadow-sm'
-                                    : isAssigned
-                                    ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 hover:border-green-400 hover:bg-green-100'
-                                    : 'border-blue-200 dark:border-blue-700 bg-white dark:bg-gray-800 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20'
-                                }`}
+                                className="relative"
                               >
-                                <div className="flex items-center justify-between mb-0.5">
-                                  {isAssigned ? (
-                                    <FiCheckCircle className="w-3 h-3 text-green-600" />
-                                  ) : (
-                                    <FiFile className={`w-3 h-3 ${isSelected ? 'text-blue-600' : 'text-blue-500'}`} />
-                                  )}
-                                  <Link href={page.path || '#'} onClick={(e) => e.stopPropagation()}>
-                                    <FiExternalLink className="w-2.5 h-2.5 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
-                                  </Link>
-                                </div>
-                                <div className={`text-xs font-medium truncate ${isSelected ? 'text-blue-700 dark:text-blue-300' : 'text-gray-900 dark:text-gray-100'}`}>
-                                  {page.name || page.id}
-                                </div>
-                                <div className="text-[9px] text-gray-500 dark:text-gray-400 truncate">
-                                  {page.path}
+                                {/* Add/Remove button overlay when in edit mode */}
+                                {isPageEditMode && selectedRoleId && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      toggleRolePageSelection(page.id);
+                                    }}
+                                    className={`absolute -top-1 -right-1 z-10 w-5 h-5 rounded-full flex items-center justify-center text-sm font-bold shadow-lg transition-transform hover:scale-110 ${
+                                      isAssigned 
+                                        ? "bg-red-500 hover:bg-red-600 text-white"
+                                        : "bg-green-500 hover:bg-green-600 text-white"
+                                    }`}
+                                  >
+                                    {isAssigned ? '−' : '+'}
+                                  </button>
+                                )}
+                                <div
+                                  onClick={() => {
+                                    if (isPageEditMode && selectedRoleId) {
+                                      toggleRolePageSelection(page.id);
+                                    } else {
+                                      setBottomSelectedPageId(isSelected ? null : page.id);
+                                    }
+                                  }}
+                                  className={`p-2 rounded-lg border cursor-pointer transition-colors group ${
+                                    isSelected
+                                      ? 'border-blue-500 bg-blue-100 dark:bg-blue-900/40 ring-2 ring-blue-300 shadow-sm'
+                                      : isAssigned
+                                      ? 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 hover:border-green-400 hover:bg-green-100'
+                                      : 'border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 hover:border-blue-400 hover:bg-blue-50 dark:hover:bg-blue-900/20'
+                                  }`}
+                                >
+                                  <div className="flex items-center justify-between mb-0.5">
+                                    {isAssigned ? (
+                                      <FiCheckCircle className="w-3 h-3 text-green-600" />
+                                    ) : (
+                                      <FiFile className={`w-3 h-3 ${isSelected ? 'text-blue-600' : 'text-gray-400'}`} />
+                                    )}
+                                    <Link href={page.path || '#'} onClick={(e) => e.stopPropagation()}>
+                                      <FiExternalLink className="w-2.5 h-2.5 text-gray-400 hover:text-blue-600 opacity-0 group-hover:opacity-100 transition-opacity" />
+                                    </Link>
+                                  </div>
+                                  <div className={`text-xs font-medium truncate ${isSelected ? 'text-blue-700 dark:text-blue-300' : isAssigned ? 'text-green-700 dark:text-green-300' : 'text-gray-900 dark:text-gray-100'}`}>
+                                    {page.name || page.id}
+                                  </div>
+                                  <div className="text-[9px] text-gray-500 dark:text-gray-400 truncate">
+                                    {page.path}
+                                  </div>
                                 </div>
                               </div>
                             );
