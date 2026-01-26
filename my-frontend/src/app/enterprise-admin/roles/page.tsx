@@ -232,6 +232,16 @@ export default function Page() {
   const [dbRoles, setDbRoles] = useState<Array<{ id: string; name: string; displayName: string; level: number }>>([]);
   const [dbTotalPages, setDbTotalPages] = useState(0);
   
+  // Role-scoped pages from /api/governance/role-pages (single source of truth for selected role)
+  // This contains ONLY pages relevant to the selected role, properly filtered by role scope
+  const [roleScopedPages, setRoleScopedPages] = useState<{
+    assignedPages: Array<{ id: string; pageCode: string; displayName: string; route: string; icon: string; showInSidebar: boolean; category: string; pageType: string; moduleCode: string; moduleName: string; canView: boolean; canEdit: boolean; canDelete: boolean; accessType: string }>;
+    inheritedPages: Array<{ id: string; pageCode: string; displayName: string; route: string; icon: string; showInSidebar: boolean; category: string; pageType: string; moduleCode: string; moduleName: string; canView: boolean; canEdit: boolean; canDelete: boolean; accessType: string }>;
+    candidatePages: Array<{ id: string; pageCode: string; displayName: string; route: string; icon: string; showInSidebar: boolean; category: string; pageType: string; moduleCode: string; moduleName: string }>;
+    counts: { assigned: number; inherited: number; candidate: number; total: number };
+  } | null>(null);
+  const [roleScopedPagesLoading, setRoleScopedPagesLoading] = useState(false);
+  
   // SuperAdmin Page Pool - pages that Enterprise Admin has granted to this Super Admin
   // This defines the maximum pages the Super Admin can assign to their roles
   const [superAdminPagePool, setSuperAdminPagePool] = useState<Array<{ id: number; pageCode: string; displayName: string; route: string; moduleId: number | null; showInSidebar: boolean }>>([]);
@@ -667,6 +677,69 @@ export default function Page() {
     loadRolePages();
     
     // Cleanup: abort fetch if role changes before response arrives
+    return () => {
+      abortController.abort();
+    };
+  }, [selectedRoleId, allRoles]);
+
+  // ============================================================================
+  // LOAD ROLE-SCOPED PAGES (single source of truth for pages list)
+  // Fetches assigned, inherited, and candidate pages filtered by role scope
+  // This replaces the global pages list with a role-specific one
+  // ============================================================================
+  useEffect(() => {
+    if (!selectedRoleId) {
+      setRoleScopedPages(null);
+      return;
+    }
+
+    const selectedRole = allRoles.find(r => r.id === selectedRoleId);
+    const selectedRoleName = selectedRole?.name || '';
+    
+    if (!selectedRoleName) {
+      console.log('⚠️ No role name found for ID:', selectedRoleId);
+      return;
+    }
+
+    const abortController = new AbortController();
+    
+    const loadRoleScopedPages = async () => {
+      setRoleScopedPagesLoading(true);
+      try {
+        console.log('📋 Loading role-scoped pages for:', selectedRoleName);
+        
+        const response = await fetch(`/api/governance/role-pages?roleName=${encodeURIComponent(selectedRoleName)}`, {
+          credentials: 'include',
+          signal: abortController.signal
+        });
+        
+        if (response.ok) {
+          const data = await response.json();
+          if (data.success && data.data) {
+            console.log(`✅ Role-scoped pages: ${data.data.counts.assigned} assigned, ${data.data.counts.inherited} inherited, ${data.data.counts.candidate} candidates`);
+            setRoleScopedPages(data.data);
+          } else {
+            console.warn('⚠️ Invalid role-scoped pages response:', data);
+            setRoleScopedPages(null);
+          }
+        } else {
+          console.error('❌ Failed to load role-scoped pages:', response.status);
+          setRoleScopedPages(null);
+        }
+      } catch (error) {
+        if (error instanceof Error && error.name === 'AbortError') {
+          console.log('🔄 Role-scoped pages fetch aborted');
+          return;
+        }
+        console.error('❌ Error loading role-scoped pages:', error);
+        setRoleScopedPages(null);
+      } finally {
+        setRoleScopedPagesLoading(false);
+      }
+    };
+
+    loadRoleScopedPages();
+
     return () => {
       abortController.abort();
     };
@@ -1170,6 +1243,96 @@ export default function Page() {
   const totalPagesInPool = useMemo(() => {
     return superAdminPagePool.length;
   }, [superAdminPagePool]);
+
+  // ============================================================================
+  // ROLE-SCOPED PAGES COMPUTED VALUES (single source of truth when role selected)
+  // These replace global page lists with role-specific data
+  // ============================================================================
+  
+  // Get total pages for selected role (assigned + inherited)
+  const roleScopedTotalPages = useMemo(() => {
+    if (!roleScopedPages) return 0;
+    return roleScopedPages.counts.assigned + roleScopedPages.counts.inherited;
+  }, [roleScopedPages]);
+  
+  // Get candidate pages for selected role (pages that CAN be assigned)
+  const roleScopedCandidateCount = useMemo(() => {
+    if (!roleScopedPages) return 0;
+    return roleScopedPages.counts.candidate;
+  }, [roleScopedPages]);
+  
+  // Get pages grouped by module for the selected role (for bottom section)
+  // Combines assigned + inherited + candidate pages, grouped by module
+  const roleScopedPagesByModule = useMemo(() => {
+    if (!roleScopedPages) return [];
+    
+    const moduleMap = new Map<string, {
+      moduleId: string;
+      moduleName: string;
+      pages: Array<{
+        id: string;
+        name: string;
+        path: string;
+        module: string;
+        accessType: string;
+        isAssigned: boolean;
+        isInherited: boolean;
+      }>;
+    }>();
+    
+    // Add assigned pages
+    for (const page of roleScopedPages.assignedPages) {
+      const key = page.moduleCode || 'GENERAL';
+      if (!moduleMap.has(key)) {
+        moduleMap.set(key, { moduleId: key, moduleName: page.moduleName || key, pages: [] });
+      }
+      moduleMap.get(key)!.pages.push({
+        id: page.id,
+        name: page.displayName,
+        path: page.route,
+        module: page.moduleCode,
+        accessType: 'ASSIGNED',
+        isAssigned: true,
+        isInherited: false
+      });
+    }
+    
+    // Add inherited pages
+    for (const page of roleScopedPages.inheritedPages) {
+      const key = page.moduleCode || 'GENERAL';
+      if (!moduleMap.has(key)) {
+        moduleMap.set(key, { moduleId: key, moduleName: page.moduleName || key, pages: [] });
+      }
+      moduleMap.get(key)!.pages.push({
+        id: page.id,
+        name: page.displayName,
+        path: page.route,
+        module: page.moduleCode,
+        accessType: 'INHERITED',
+        isAssigned: false,
+        isInherited: true
+      });
+    }
+    
+    // Add candidate pages (not yet assigned)
+    for (const page of roleScopedPages.candidatePages) {
+      const key = page.moduleCode || 'GENERAL';
+      if (!moduleMap.has(key)) {
+        moduleMap.set(key, { moduleId: key, moduleName: page.moduleName || key, pages: [] });
+      }
+      moduleMap.get(key)!.pages.push({
+        id: page.id,
+        name: page.displayName,
+        path: page.route,
+        module: page.moduleCode,
+        accessType: 'CANDIDATE',
+        isAssigned: false,
+        isInherited: false
+      });
+    }
+    
+    return Array.from(moduleMap.values()).sort((a, b) => a.moduleName.localeCompare(b.moduleName));
+  }, [roleScopedPages]);
 
   // Get all pages grouped by module for the Pages Overview section (using DATABASE)
   // When SuperAdmin is selected, filter to only show pages in their pool
@@ -2870,8 +3033,8 @@ export default function Page() {
             ) : (
               <>
                 <span className="text-xs text-gray-500">
-                  {selectedRoleId 
-                    ? `(${pagesForSelectedRoleInBottom.all.length} pages for role)`
+                  {selectedRoleId && roleScopedPages
+                    ? `(${roleScopedPages.counts.assigned + roleScopedPages.counts.inherited}/${roleScopedPages.counts.assigned + roleScopedPages.counts.inherited + roleScopedPages.counts.candidate} pages for role)`
                     : selectedAdminId && totalPagesInPool > 0
                     ? `(${totalPagesInPool} pages in pool)`
                     : `(${totalPagesCount} pages total)`
@@ -2884,7 +3047,7 @@ export default function Page() {
                       pagesAssignedFilter === 'all' ? 'bg-white dark:bg-gray-700 text-purple-600 shadow-sm font-medium' : 'text-gray-600'
                     }`}
                   >
-                    All {selectedRoleId ? `(${pagesForSelectedRoleInBottom.all.length})` : ''}
+                    All {selectedRoleId && roleScopedPages ? `(${roleScopedPages.counts.assigned + roleScopedPages.counts.inherited + roleScopedPages.counts.candidate})` : ''}
                   </button>
                   <button
                     onClick={() => setPagesAssignedFilter('assigned')}
@@ -2894,7 +3057,7 @@ export default function Page() {
                     disabled={!selectedRoleId}
                     title={!selectedRoleId ? 'Select a role first' : undefined}
                   >
-                    Assigned ({selectedRoleId ? pagesForSelectedRoleInBottom.assigned.length : '-'})
+                    Assigned ({selectedRoleId && roleScopedPages ? roleScopedPages.counts.assigned + roleScopedPages.counts.inherited : '-'})
                   </button>
                   <button
                     onClick={() => setPagesAssignedFilter('unassigned')}
@@ -2904,7 +3067,7 @@ export default function Page() {
                     disabled={!selectedRoleId}
                     title={!selectedRoleId ? 'Select a role first' : undefined}
                   >
-                    Unassigned ({selectedRoleId ? pagesForSelectedRoleInBottom.unassigned.length : '-'})
+                    Unassigned ({selectedRoleId && roleScopedPages ? roleScopedPages.counts.candidate : '-'})
                   </button>
                 </div>
                 {/* Group By Toggle: Module or Role */}
@@ -3039,8 +3202,8 @@ export default function Page() {
                 <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 rounded-full">
                   <FiPackage className="w-3 h-3 text-purple-600" />
                   <span className="text-purple-700 dark:text-purple-400">
-                    {selectedRoleId 
-                      ? `${pagesForSelectedRoleInBottom.all.length} role pages` 
+                    {selectedRoleId && roleScopedPages
+                      ? `${roleScopedPages.counts.assigned + roleScopedPages.counts.inherited}/${roleScopedPages.counts.assigned + roleScopedPages.counts.inherited + roleScopedPages.counts.candidate} pages` 
                       : selectedAdminId && totalPagesInPool > 0
                       ? `${totalPagesInPool} pages in pool`
                       : `${allPagesGroupedByModule.length} modules`}
@@ -3154,23 +3317,60 @@ export default function Page() {
             {bottomViewMode === 'pages' && (
               <>
                 {/* ========== ROLE-SCOPED VIEW (when a role is selected) ========== */}
-                {selectedRoleId ? (
+                {selectedRoleId && roleScopedPages ? (
                   <div className="space-y-4">
                     {/* Show info banner about which role's pages are shown */}
                     <div className="flex items-center gap-2 px-3 py-2 bg-yellow-50 dark:bg-yellow-900/20 rounded-lg border border-yellow-200 dark:border-yellow-800">
                       <FiInfo className="w-4 h-4 text-yellow-600 flex-shrink-0" />
                       <span className="text-xs text-yellow-700 dark:text-yellow-300">
-                        Showing pages for role: <strong>{pagesForSelectedRoleInBottom.roleName?.replace(/_/g, ' ')}</strong>
+                        Showing pages for role: <strong>{selectedRole?.name?.replace(/_/g, ' ')}</strong>
+                        {roleScopedPages.counts.inherited > 0 && (
+                          <span className="ml-2 text-blue-600 dark:text-blue-400">(includes {roleScopedPages.counts.inherited} inherited BASE_USER pages)</span>
+                        )}
                       </span>
                     </div>
                     
+                    {/* Loading indicator */}
+                    {roleScopedPagesLoading && (
+                      <div className="text-center py-4">
+                        <div className="inline-block animate-spin rounded-full h-6 w-6 border-b-2 border-purple-500"></div>
+                        <p className="text-xs text-gray-500 mt-2">Loading role pages...</p>
+                      </div>
+                    )}
+                    
                     {/* Get pages to display based on filter */}
-                    {(() => {
+                    {!roleScopedPagesLoading && (() => {
+                      // Combine assigned and inherited into one "assigned" group
+                      const assignedPages = [
+                        ...roleScopedPages.assignedPages.map(p => ({
+                          id: p.id,
+                          name: p.displayName,
+                          path: p.route,
+                          module: p.moduleCode,
+                          accessType: p.accessType
+                        })),
+                        ...roleScopedPages.inheritedPages.map(p => ({
+                          id: p.id,
+                          name: p.displayName,
+                          path: p.route,
+                          module: p.moduleCode,
+                          accessType: p.accessType
+                        }))
+                      ];
+                      
+                      const candidatePages = roleScopedPages.candidatePages.map(p => ({
+                        id: p.id,
+                        name: p.displayName,
+                        path: p.route,
+                        module: p.moduleCode,
+                        accessType: 'CANDIDATE'
+                      }));
+                      
                       const pagesToShow = pagesAssignedFilter === 'assigned' 
-                        ? pagesForSelectedRoleInBottom.assigned
+                        ? assignedPages
                         : pagesAssignedFilter === 'unassigned'
-                        ? pagesForSelectedRoleInBottom.unassigned
-                        : pagesForSelectedRoleInBottom.all;
+                        ? candidatePages
+                        : [...assignedPages, ...candidatePages];
                       
                       if (pagesToShow.length === 0) {
                         return (
@@ -3211,14 +3411,16 @@ export default function Page() {
                             <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 xl:grid-cols-8 gap-2">
                               {pages.map((page, idx) => {
                                 const isSelected = bottomSelectedPageId === page.id;
-                                const isAssigned = rolePagesSelectedIds.has(page.path);
+                                const isAssigned = page.accessType === 'ASSIGNED' || page.accessType === 'DIRECT' || page.accessType === 'BASE_USER';
+                                const isInherited = page.accessType === 'BASE_USER' || page.accessType === 'INHERITED';
+                                const isCandidate = page.accessType === 'CANDIDATE';
                                 return (
                                   <div
                                     key={`${page.id}-${idx}`}
                                     className="relative"
                                   >
-                                    {/* Add/Remove button overlay */}
-                                    {isPageAssignMode && (
+                                    {/* Add/Remove button overlay - only for non-inherited pages */}
+                                    {isPageAssignMode && !isInherited && (
                                       <button
                                         onClick={(e) => {
                                           e.stopPropagation();
@@ -3233,33 +3435,43 @@ export default function Page() {
                                         {isAssigned ? '−' : '+'}
                                       </button>
                                     )}
+                                    {/* Inherited badge */}
+                                    {isInherited && (
+                                      <div className="absolute -top-1 -right-1 z-10 px-1.5 py-0.5 text-[8px] font-bold bg-blue-500 text-white rounded-full" title="Inherited from BASE_USER">
+                                        BASE
+                                      </div>
+                                    )}
                                     <div
                                       onClick={() => {
-                                        if (isPageAssignMode) {
+                                        if (isPageAssignMode && !isInherited) {
                                           toggleRolePageSelection(page.path);
-                                        } else {
+                                        } else if (!isPageAssignMode) {
                                           setBottomSelectedPageId(isSelected ? null : page.id);
                                         }
                                       }}
                                       className={`p-2 rounded-lg border cursor-pointer transition-colors group ${
                                         isSelected
                                           ? 'border-purple-500 bg-purple-100 dark:bg-purple-900/40 ring-2 ring-purple-300 shadow-sm'
+                                          : isInherited
+                                          ? 'border-blue-300 bg-blue-50 dark:bg-blue-900/20 hover:border-blue-400'
                                           : isAssigned
                                           ? 'border-green-300 bg-green-50 dark:bg-green-900/20 hover:border-green-400'
-                                          : 'border-red-200 dark:border-red-800 bg-red-50/30 dark:bg-red-900/10 hover:border-red-400'
+                                          : 'border-gray-200 dark:border-gray-700 bg-gray-50/30 dark:bg-gray-900/10 hover:border-gray-400'
                                       }`}
                                     >
                                       <div className="flex items-center justify-between mb-0.5">
-                                        {isAssigned ? (
+                                        {isInherited ? (
+                                          <FiLock className="w-3 h-3 text-blue-500" title="Inherited - cannot be removed" />
+                                        ) : isAssigned ? (
                                           <FiCheckCircle className="w-3 h-3 text-green-500" />
                                         ) : (
-                                          <FiMinus className="w-3 h-3 text-red-400" />
+                                          <FiPlus className="w-3 h-3 text-gray-400" />
                                         )}
                                         <Link href={page.path || '#'} onClick={(e) => e.stopPropagation()}>
                                           <FiExternalLink className="w-2.5 h-2.5 text-gray-400 hover:text-purple-600 opacity-0 group-hover:opacity-100 transition-opacity" />
                                         </Link>
                                       </div>
-                                      <div className={`text-xs font-medium truncate ${isSelected ? 'text-purple-700 dark:text-purple-300' : isAssigned ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-300'}`}>
+                                      <div className={`text-xs font-medium truncate ${isSelected ? 'text-purple-700 dark:text-purple-300' : isInherited ? 'text-blue-700 dark:text-blue-300' : isAssigned ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-gray-300'}`}>
                                         {page.name || page.id}
                                       </div>
                                       <div className="text-[9px] text-gray-500 dark:text-gray-400 truncate">

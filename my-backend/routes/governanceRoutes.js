@@ -542,4 +542,252 @@ router.get('/pages-by-role', authenticate, async (req, res) => {
   }
 });
 
+// ============================================================================
+// GET /api/governance/role-pages
+// ============================================================================
+// Returns pages scoped to a specific role with proper filtering
+// This is the SINGLE SOURCE OF TRUTH for role management pages list
+// 
+// Query params:
+//   - roleName: The role to get pages for (e.g., 'ADMIN', 'CLIENT', 'SUPER_ADMIN')
+//   - clientId: (optional) Client ID for tenant-scoped queries
+//
+// Returns:
+//   - assignedPages: Pages directly assigned to this role via role_page_access
+//   - inheritedPages: BASE_USER pages inherited by business roles  
+//   - candidatePages: Pages that CAN be assigned (filtered by role scope)
+//   - counts: Summary counts
+
+router.get('/role-pages', authenticate, async (req, res) => {
+  const client = await getPool().connect();
+  
+  try {
+    const { roleName, clientId } = req.query;
+    
+    if (!roleName) {
+      return res.status(400).json({
+        success: false,
+        error: 'roleName query parameter is required'
+      });
+    }
+    
+    const normalizedRole = roleName.toUpperCase();
+    console.log(`[Governance] role-pages for: ${normalizedRole}, clientId: ${clientId || 'none'}`);
+    
+    // ========================================================================
+    // ROLE CLASSIFICATION
+    // ========================================================================
+    const PLATFORM_ROLES = ['SYSTEM_ADMIN', 'ENTERPRISE_ADMIN', 'SUPER_ADMIN'];
+    const TENANT_ADMIN_ROLES = ['ADMIN', 'ADMIN_OPS', 'IT_ADMIN'];
+    const INTERNAL_ROLES = ['BISMAN_ENGINEERING', 'BISMAN_SUPPORT', 'BISMAN_BILLING', 'BISMAN_FINANCE', 'BISMAN_CUSTOMER_CARE', 'QA'];
+    const NO_INHERIT_ROLES = [...PLATFORM_ROLES, ...TENANT_ADMIN_ROLES, ...INTERNAL_ROLES];
+    
+    const inheritsBaseUser = !NO_INHERIT_ROLES.includes(normalizedRole);
+    
+    // ========================================================================
+    // 1. GET ASSIGNED PAGES (directly from role_page_access)
+    // ========================================================================
+    const assignedResult = await client.query(`
+      SELECT 
+        pm.id,
+        pm.page_code,
+        pm.display_name,
+        pm.route,
+        pm.icon,
+        pm.show_in_sidebar,
+        pm.category,
+        pm.page_type,
+        mm.module_code,
+        mm.display_name as module_name,
+        rpa.can_view,
+        rpa.can_edit,
+        rpa.can_delete,
+        'DIRECT' as access_type
+      FROM role_page_access rpa
+      JOIN pages_master pm ON pm.id = rpa.page_id
+      LEFT JOIN modules_master mm ON mm.id = pm.module_id
+      WHERE rpa.role_name = $1 
+        AND rpa.can_view = true
+        AND pm.is_active = true
+      ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
+    `, [normalizedRole]);
+    
+    // ========================================================================
+    // 2. GET INHERITED PAGES (BASE_USER pages for business roles)
+    // ========================================================================
+    let inheritedResult = { rows: [] };
+    if (inheritsBaseUser) {
+      inheritedResult = await client.query(`
+        SELECT 
+          pm.id,
+          pm.page_code,
+          pm.display_name,
+          pm.route,
+          pm.icon,
+          pm.show_in_sidebar,
+          pm.category,
+          pm.page_type,
+          mm.module_code,
+          mm.display_name as module_name,
+          true as can_view,
+          false as can_edit,
+          false as can_delete,
+          'BASE_USER' as access_type
+        FROM base_user_pages bup
+        JOIN pages_master pm ON pm.id = bup.page_id
+        LEFT JOIN modules_master mm ON mm.id = pm.module_id
+        WHERE pm.is_active = true
+        ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
+      `);
+    }
+    
+    // ========================================================================
+    // 3. GET CANDIDATE PAGES (pages that CAN be assigned to this role)
+    // Filter by:
+    //   - page_type = 'UI_PAGE' (exclude API_ROUTE, REDIRECT)
+    //   - category != 'PUBLIC'
+    //   - Route prefix scope based on role type
+    // ========================================================================
+    
+    // Build route exclusion filter based on role type
+    let routeExclusionClause = '';
+    
+    if (PLATFORM_ROLES.includes(normalizedRole)) {
+      // Platform roles can see their own admin routes
+      if (normalizedRole === 'ENTERPRISE_ADMIN') {
+        // Enterprise Admin: can see /enterprise-admin/*, /admin/*, /system/*
+        routeExclusionClause = `
+          AND (
+            pm.route NOT LIKE '/super-admin%'
+            OR pm.route IS NULL
+          )
+        `;
+      } else if (normalizedRole === 'SUPER_ADMIN') {
+        // Super Admin: can see /super-admin/*, /admin/*, /system/*
+        routeExclusionClause = `
+          AND (
+            pm.route NOT LIKE '/enterprise-admin%'
+            OR pm.route IS NULL
+          )
+        `;
+      }
+      // SYSTEM_ADMIN can see everything
+    } else if (TENANT_ADMIN_ROLES.includes(normalizedRole)) {
+      // Tenant admins: can see /admin/* only
+      routeExclusionClause = `
+        AND (
+          pm.route NOT LIKE '/super-admin%'
+          AND pm.route NOT LIKE '/enterprise-admin%'
+          AND pm.route NOT LIKE '/system%'
+          OR pm.route IS NULL
+        )
+      `;
+    } else {
+      // Business roles: cannot see any admin routes
+      routeExclusionClause = `
+        AND (
+          pm.route NOT LIKE '/super-admin%'
+          AND pm.route NOT LIKE '/enterprise-admin%'
+          AND pm.route NOT LIKE '/admin%'
+          AND pm.route NOT LIKE '/system%'
+          AND pm.route NOT LIKE '/internal%'
+          AND pm.route NOT LIKE '/qa%'
+          OR pm.route IS NULL
+        )
+      `;
+    }
+    
+    // Get all candidate pages (UI pages that can be assigned)
+    const candidateQuery = `
+      SELECT 
+        pm.id,
+        pm.page_code,
+        pm.display_name,
+        pm.route,
+        pm.icon,
+        pm.show_in_sidebar,
+        pm.category,
+        pm.page_type,
+        mm.module_code,
+        mm.display_name as module_name
+      FROM pages_master pm
+      LEFT JOIN modules_master mm ON mm.id = pm.module_id
+      WHERE pm.is_active = true
+        AND pm.page_type = 'UI_PAGE'
+        AND pm.category <> 'PUBLIC'
+        ${routeExclusionClause}
+      ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
+    `;
+    
+    const candidateResult = await client.query(candidateQuery);
+    
+    // ========================================================================
+    // 4. BUILD RESPONSE
+    // ========================================================================
+    
+    // Create sets for deduplication
+    const assignedPageIds = new Set(assignedResult.rows.map(p => p.id));
+    const inheritedPageIds = new Set(inheritedResult.rows.map(p => p.id));
+    
+    // Format page objects
+    const formatPage = (row, source = 'assigned') => ({
+      id: String(row.id),
+      pageCode: row.page_code,
+      displayName: row.display_name,
+      route: row.route,
+      icon: row.icon,
+      showInSidebar: row.show_in_sidebar,
+      category: row.category,
+      pageType: row.page_type,
+      moduleCode: row.module_code || 'GENERAL',
+      moduleName: row.module_name || 'General',
+      canView: row.can_view ?? true,
+      canEdit: row.can_edit ?? false,
+      canDelete: row.can_delete ?? false,
+      accessType: row.access_type || source.toUpperCase()
+    });
+    
+    const assignedPages = assignedResult.rows.map(r => formatPage(r, 'assigned'));
+    const inheritedPages = inheritedResult.rows
+      .filter(r => !assignedPageIds.has(r.id)) // Exclude already assigned
+      .map(r => formatPage(r, 'inherited'));
+    
+    // Candidate pages: exclude already assigned and inherited
+    const candidatePages = candidateResult.rows
+      .filter(r => !assignedPageIds.has(r.id) && !inheritedPageIds.has(r.id))
+      .map(r => formatPage(r, 'candidate'));
+    
+    console.log(`[Governance] role-pages result: ${assignedPages.length} assigned, ${inheritedPages.length} inherited, ${candidatePages.length} candidates`);
+    
+    res.json({
+      success: true,
+      data: {
+        roleName: normalizedRole,
+        inheritsBaseUser,
+        assignedPages,
+        inheritedPages,
+        candidatePages,
+        counts: {
+          assigned: assignedPages.length,
+          inherited: inheritedPages.length,
+          candidate: candidatePages.length,
+          total: assignedPages.length + inheritedPages.length
+        }
+      },
+      source: 'database',
+      timestamp: new Date().toISOString()
+    });
+    
+  } catch (error) {
+    console.error('[Governance] Error fetching role pages:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch role pages',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  } finally {
+    client.release();
+  }
+});
+
 module.exports = router;
