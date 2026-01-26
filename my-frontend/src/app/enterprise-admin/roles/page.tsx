@@ -2747,8 +2747,8 @@ export default function Page() {
         {/* Header Bar with Toggle between Roles and Pages - entire bar is clickable to expand/collapse */}
         <div 
           onClick={(e) => {
-            // Only toggle if clicking on the bar itself, not on buttons/selects inside
-            if ((e.target as HTMLElement).closest('button, select, .no-toggle')) return;
+            // Only toggle if clicking on the bar itself, not on buttons/selects/inputs inside
+            if ((e.target as HTMLElement).closest('button, select, input, .no-toggle')) return;
             if (bottomViewMode === 'pages') {
               setIsPagesDrawerExpanded(!isPagesDrawerExpanded);
             } else {
@@ -2761,7 +2761,36 @@ export default function Page() {
               : 'bg-emerald-50 dark:bg-emerald-900/30 border-emerald-100 dark:border-emerald-800 hover:bg-emerald-100 dark:hover:bg-emerald-900/50'
           }`}
         >
-          <div className="flex items-center gap-3 flex-wrap">
+          {/* Expand/Collapse Toggle - Always visible at the left */}
+          <div 
+            onClick={(e) => {
+              e.stopPropagation();
+              if (bottomViewMode === 'pages') {
+                setIsPagesDrawerExpanded(!isPagesDrawerExpanded);
+              } else {
+                setIsRolesDrawerExpanded(!isRolesDrawerExpanded);
+              }
+            }}
+            className={`flex items-center gap-2 px-2 py-1.5 rounded-lg cursor-pointer transition-all mr-3 ${
+              bottomViewMode === 'pages'
+                ? 'hover:bg-purple-200 dark:hover:bg-purple-800/50'
+                : 'hover:bg-emerald-200 dark:hover:bg-emerald-800/50'
+            }`}
+            title={`Click to ${(bottomViewMode === 'pages' ? isPagesDrawerExpanded : isRolesDrawerExpanded) ? 'collapse' : 'expand'}`}
+          >
+            <div 
+              className={`p-1 rounded bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-transform duration-300 ${
+                (bottomViewMode === 'pages' ? isPagesDrawerExpanded : isRolesDrawerExpanded) ? 'rotate-180' : ''
+              }`}
+            >
+              <FiChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
+            </div>
+            <span className="text-xs font-medium text-gray-600 dark:text-gray-400 hidden sm:inline">
+              {(bottomViewMode === 'pages' ? isPagesDrawerExpanded : isRolesDrawerExpanded) ? 'Collapse' : 'Expand'}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-3 flex-wrap flex-1">
             {/* Toggle Buttons - Roles / Pages */}
             <div className="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 rounded-lg p-0.5">
               <button
@@ -2843,6 +2872,8 @@ export default function Page() {
                 <span className="text-xs text-gray-500">
                   {selectedRoleId 
                     ? `(${pagesForSelectedRoleInBottom.all.length} pages for role)`
+                    : selectedAdminId && totalPagesInPool > 0
+                    ? `(${totalPagesInPool} pages in pool)`
                     : `(${totalPagesCount} pages total)`
                   }
                 </span>
@@ -2966,29 +2997,16 @@ export default function Page() {
                     {isRoleAssignMode ? "✓ Done" : "Add/Remove"}
                   </button>
                 )}
-                {/* Clickable area for expand/collapse */}
-                <div 
-                  onClick={() => setIsRolesDrawerExpanded(!isRolesDrawerExpanded)}
-                  className="flex items-center gap-3 cursor-pointer hover:bg-white/50 dark:hover:bg-gray-800/50 px-3 py-1 rounded-lg transition-colors"
-                >
-                  <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                    <FiUsers className="w-3.5 h-3.5 text-blue-600" />
-                    <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                      {allRoles.reduce((sum, r) => sum + (r.userCount || r.users?.length || 0), 0)} users
-                    </span>
-                  </div>
-                  {/* Expand/Collapse indicator */}
-                  <div 
-                    className={`p-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-transform duration-300 ${
-                      isRolesDrawerExpanded ? 'rotate-180' : ''
-                    }`}
-                  >
-                    <FiChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                  </div>
+                {/* Stats badge */}
+                <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
+                  <FiUsers className="w-3.5 h-3.5 text-blue-600" />
+                  <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
+                    {allRoles.reduce((sum, r) => sum + (r.userCount || r.users?.length || 0), 0)} users
+                  </span>
                 </div>
               </>
             ) : (
-              /* Pages view - Add/Remove button and expand/collapse */
+              /* Pages view - Add/Remove button */
               <>
                 {selectedRoleId && (
                   <button
@@ -3017,28 +3035,17 @@ export default function Page() {
                       : "Add/Remove"}
                   </button>
                 )}
-                {/* Clickable area for pages expand/collapse */}
-                <div 
-                  onClick={() => setIsPagesDrawerExpanded(!isPagesDrawerExpanded)}
-                  className="flex items-center gap-3 cursor-pointer hover:bg-white/50 dark:hover:bg-gray-800/50 px-3 py-1 rounded-lg transition-colors"
-                >
-                  <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 rounded-full">
-                    <FiPackage className="w-3 h-3 text-purple-600" />
-                    <span className="text-purple-700 dark:text-purple-400">
-                      {selectedRoleId 
-                        ? `${pagesForSelectedRoleInBottom.all.length} role pages` 
-                        : `${allPagesGroupedByModule.length} modules`}
-                    </span>
+                {/* Stats badge for pages */}
+                <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-purple-100 dark:bg-purple-900/30 rounded-full">
+                  <FiPackage className="w-3 h-3 text-purple-600" />
+                  <span className="text-purple-700 dark:text-purple-400">
+                    {selectedRoleId 
+                      ? `${pagesForSelectedRoleInBottom.all.length} role pages` 
+                      : selectedAdminId && totalPagesInPool > 0
+                      ? `${totalPagesInPool} pages in pool`
+                      : `${allPagesGroupedByModule.length} modules`}
                   </span>
-                  {/* Expand/Collapse indicator */}
-                  <div 
-                    className={`p-1.5 rounded-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 shadow-sm transition-transform duration-300 ${
-                      isPagesDrawerExpanded ? 'rotate-180' : ''
-                    }`}
-                  >
-                    <FiChevronUp className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                  </div>
-                </div>
+                </span>
               </>
             )}
           </div>
