@@ -1183,6 +1183,19 @@ export default function Page() {
     return map;
   }, [modules]);
 
+  // Compute page counts for pump-related modules from database (single source of truth)
+  const pumpPagesCount = useMemo(() => {
+    if (dbPagesByModule.length === 0) return 0;
+    const pumpModuleKeys = ['pump', 'pump-management', 'pump_management'];
+    const pumpModules = dbPagesByModule.filter(m => 
+      pumpModuleKeys.some(key => 
+        m.moduleId.toLowerCase().includes(key) ||
+        m.moduleName.toLowerCase().includes(key)
+      )
+    );
+    return pumpModules.reduce((sum, m) => sum + m.pages.length, 0);
+  }, [dbPagesByModule]);
+
   const selectedAdmin = useMemo(() => {
     const admin = superAdmins.find((a) => a.id === selectedAdminId);
     if (admin) {
@@ -1201,20 +1214,54 @@ export default function Page() {
 
   // Roles allowed for the selected Super Admin, filtered by selected category
   // Enterprise Admin sees ALL roles; Super Admin sees roles they're allowed to manage
-  // Roles are filtered by productType based on selected category:
-  // - 'pump' category -> only roles with productType 'PUMP_ERP' or 'ALL'
-  // - 'business' category -> only roles with productType 'BUSINESS_ERP' or 'ALL'
-  // - 'all' or 'common' -> all roles
+  // Roles are filtered by:
+  // 1. productType based on selected category (pump/business/all) - for backwards compatibility
+  // 2. Whether they actually have pages assigned in modules_master/pages_master (database truth)
   const rolesForSelectedAdmin = useMemo(() => {
     let filteredRoles = allRoles;
     
-    // Filter by category/product type
-    if (category === 'pump') {
-      filteredRoles = allRoles.filter(r => {
+    // ============================================================================
+    // CRITICAL FIX: Filter roles by whether they have pages in the category's modules
+    // When 'pump' category is selected, only show roles that have pages in pump-related modules
+    // This ensures Pump Management (with 0 pages in DB) shows 0 roles
+    // ============================================================================
+    if (category === 'pump' && dbPagesByModule.length > 0) {
+      // Find all pump-related modules in the database
+      const pumpModuleKeys = ['pump', 'pump-management', 'pump_management'];
+      const pumpModuleData = dbPagesByModule.filter(m => 
+        pumpModuleKeys.some(key => 
+          m.moduleId.toLowerCase().includes(key) ||
+          m.moduleName.toLowerCase().includes(key)
+        )
+      );
+      
+      // Get all unique role names from pages in pump modules
+      const rolesWithPagesInPump = new Set<string>();
+      for (const mod of pumpModuleData) {
+        for (const page of mod.pages) {
+          if (page.roles && Array.isArray(page.roles)) {
+            for (const roleName of page.roles) {
+              rolesWithPagesInPump.add(roleName.toUpperCase());
+            }
+          }
+        }
+      }
+      
+      // Filter by productType first (for compatibility), then by actual page assignments
+      const productTypeFiltered = allRoles.filter(r => {
         const pt = (r.productType || 'ALL').toUpperCase();
         return pt === 'PUMP_ERP' || pt === 'PUMP' || pt === 'ALL';
       });
+      
+      // Further filter to only roles that actually have pages in pump modules
+      filteredRoles = productTypeFiltered.filter(r => {
+        const roleName = (r.name || '').toUpperCase();
+        return rolesWithPagesInPump.has(roleName);
+      });
+      
+      console.log(`📋 Pump category: ${pumpModuleData.length} modules, ${pumpModuleData.reduce((sum, m) => sum + m.pages.length, 0)} pages, ${rolesWithPagesInPump.size} unique roles, showing ${filteredRoles.length} roles`);
     } else if (category === 'business') {
+      // For business, filter by productType - business modules have plenty of pages
       filteredRoles = allRoles.filter(r => {
         const pt = (r.productType || 'ALL').toUpperCase();
         return pt === 'BUSINESS_ERP' || pt === 'BUSINESS' || pt === 'ERP' || pt === 'ALL';
@@ -1223,7 +1270,7 @@ export default function Page() {
     // For 'all' or 'common', show all roles
     
     return filteredRoles;
-  }, [allRoles, category]);
+  }, [allRoles, category, dbPagesByModule]);
 
   // Get the selected role object
   const selectedRole = useMemo(() => {
@@ -2477,10 +2524,10 @@ export default function Page() {
                     )}
                   </div>
                   <div className="text-[10px] text-gray-500">
-                    {modules.filter(m => 
-                      ((m.businessCategory ?? '').toLowerCase().includes('pump') || m.productType === 'PUMP_ERP') ||
-                      (m.businessCategory ?? '').toLowerCase() === 'all' || m.alwaysAccessible
-                    ).length} modules
+                    {pumpPagesCount > 0 
+                      ? `${pumpPagesCount} pages` 
+                      : 'No pages configured'
+                    }
                   </div>
                 </div>
               </div>
