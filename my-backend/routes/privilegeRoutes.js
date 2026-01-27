@@ -333,12 +333,24 @@ router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) =>
         // This ensures admins can create users while the role assignment system is being set up
         console.log('[assignable-roles] Falling back to all business roles for ADMIN user');
         
-        const allBusinessRoles = await prismaInstance.rbac_roles.findMany({
-          where: {
-            status: 'active',
-          },
-          orderBy: { level: 'asc' }
-        });
+        let allBusinessRoles = [];
+        try {
+          // Try with status filter first
+          allBusinessRoles = await prismaInstance.rbac_roles.findMany({
+            where: {
+              status: 'active',
+            },
+            orderBy: { level: 'asc' }
+          });
+        } catch (queryErr) {
+          console.warn('[assignable-roles] Status query failed, trying without filter:', queryErr.message);
+          // Fallback: get all roles without status filter
+          allBusinessRoles = await prismaInstance.rbac_roles.findMany({
+            orderBy: { level: 'asc' }
+          });
+        }
+        
+        console.log('[assignable-roles] Found total roles:', allBusinessRoles.length);
         
         const businessRolesFiltered = allBusinessRoles
           .filter(role => {

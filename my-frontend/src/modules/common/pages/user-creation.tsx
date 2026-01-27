@@ -34,30 +34,45 @@ export default function UserCreationPage() {
         setIsLoading(true);
         setError(null);
 
+        let rolesList: any[] = [];
+        
         // Fetch roles - use assignable-roles endpoint which respects Enterprise Admin assignments
         const rolesResponse = await fetch('/api/privileges/assignable-roles', {
           credentials: 'include',
         });
         
-        if (!rolesResponse.ok) {
-          // Fallback to /api/roles if assignable-roles fails
-          console.warn('assignable-roles failed, falling back to /api/roles');
+        if (rolesResponse.ok) {
+          const rolesData = await rolesResponse.json();
+          rolesList = rolesData.data || rolesData.roles || [];
+          console.log('[UserCreation] assignable-roles response:', rolesData.source, 'count:', rolesList.length);
+        }
+        
+        // Fallback to /api/roles if assignable-roles fails or returns empty
+        if (rolesList.length === 0) {
+          console.warn('[UserCreation] assignable-roles empty/failed, falling back to /api/roles');
           const fallbackResponse = await fetch('/api/roles', { credentials: 'include' });
           if (fallbackResponse.ok) {
             const fallbackData = await fallbackResponse.json();
-            setRoles(fallbackData.roles || []);
-          } else {
-            throw new Error('Failed to fetch roles');
+            rolesList = fallbackData.roles || fallbackData.data || [];
+            console.log('[UserCreation] fallback /api/roles count:', rolesList.length);
           }
-        } else {
-          const rolesData = await rolesResponse.json();
-          const rolesList = rolesData.data || rolesData.roles || [];
+        }
+        
+        if (rolesList.length > 0) {
+          // Map to UserRole format (type cast since API may not return all fields)
           setRoles(rolesList.map((r: any) => ({
             id: String(r.id),
             name: r.name,
             displayName: r.displayName || r.display_name || r.name,
             level: r.level,
-          })));
+            description: r.description || '',
+            permissions: r.permissions || {},
+            is_system_role: r.is_system_role || false,
+            created_at: r.created_at || new Date().toISOString(),
+            updated_at: r.updated_at || new Date().toISOString(),
+          } as UserRole)));
+        } else {
+          console.error('[UserCreation] No roles found from any source');
         }
 
         // Fetch branches

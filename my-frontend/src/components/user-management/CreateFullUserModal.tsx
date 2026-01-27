@@ -100,23 +100,47 @@ export function CreateFullUserModal({
   useEffect(() => {
     if (isOpen && !propRoles) {
       // Use assignable-roles endpoint to respect Enterprise Admin assignments
-      fetch('/api/privileges/assignable-roles', { credentials: 'include' })
-        .then(res => {
-          if (res.ok) return res.json();
-          // Fallback to /api/roles
-          return fetch('/api/roles', { credentials: 'include' }).then(r => r.ok ? r.json() : { roles: [] });
-        })
-        .then(data => {
-          // assignable-roles returns data in 'data' field, /api/roles returns in 'roles' field
-          const rolesList = data.data || data.roles || data || [];
+      const fetchRoles = async () => {
+        try {
+          let rolesList: any[] = [];
+          
+          // Try assignable-roles first
+          const res = await fetch('/api/privileges/assignable-roles', { credentials: 'include' });
+          if (res.ok) {
+            const data = await res.json();
+            rolesList = data.data || data.roles || [];
+            console.log('[CreateFullUserModal] assignable-roles:', data.source, 'count:', rolesList.length);
+          }
+          
+          // Fallback to /api/roles if empty
+          if (rolesList.length === 0) {
+            console.warn('[CreateFullUserModal] Falling back to /api/roles');
+            const fallbackRes = await fetch('/api/roles', { credentials: 'include' });
+            if (fallbackRes.ok) {
+              const fallbackData = await fallbackRes.json();
+              rolesList = fallbackData.roles || fallbackData.data || [];
+              console.log('[CreateFullUserModal] /api/roles count:', rolesList.length);
+            }
+          }
+          
+          // Map to UserRole format (type cast since API may not return all fields)
           setInternalRoles(rolesList.map((r: any) => ({
             id: String(r.id),
             name: r.name,
             displayName: r.displayName || r.display_name || r.name,
             level: r.level,
-          })));
-        })
-        .catch(() => setInternalRoles([]));
+            description: r.description || '',
+            permissions: r.permissions || {},
+            is_system_role: r.is_system_role || false,
+            created_at: r.created_at || new Date().toISOString(),
+            updated_at: r.updated_at || new Date().toISOString(),
+          } as UserRole)));
+        } catch (err) {
+          console.error('[CreateFullUserModal] Error fetching roles:', err);
+          setInternalRoles([]);
+        }
+      };
+      fetchRoles();
     }
     if (isOpen && !propBranches) {
       fetch('/api/branches', { credentials: 'include' })
