@@ -399,47 +399,81 @@ const UserService = {
       // ========== CREATE USER ==========
       const hashedPassword = await bcrypt.hash(password, 10);
 
-      // Generate legacy_id from sequence for backward compatibility with RBAC junction tables
-      const legacyIdResult = await prisma.$queryRaw`SELECT nextval('users_enhanced_legacy_id_seq') as legacy_id`;
-      const generatedLegacyId = Number(legacyIdResult[0]?.legacy_id);
+      // Generate legacy_id with retry logic to handle sequence conflicts
+      // The sequence can get out of sync if previous transactions failed after getting nextval
+      let newUser;
+      let retryCount = 0;
+      const maxRetries = 3;
 
-      const newUser = await prisma.users_enhanced.create({
-        data: {
-          id: newUserId,
-          legacy_id: generatedLegacyId, // Set legacy_id for RBAC role assignment
-          username,
-          email: email.toLowerCase(),
-          password_hash: hashedPassword,
-          role, // String role for backwards compatibility
-          business_level: safeBusinessLevel,
-          system_scope: safeSystemScope, // P0-3: Use validated scope
-          reports_to: reports_to || null,
-          tenant_id: tenant_id || null,
-          super_admin_id: super_admin_id || null,
-          first_name: first_name || null,
-          last_name: last_name || null,
-          phone: phone || null,
-          product_type,
-          assigned_modules: assigned_modules || [],
-          page_permissions: page_permissions || {},
-          profile_pic_url: profile_pic_url || null,
-          is_active: true,
-          created_by: adminUserId || null,
-        },
-        select: {
-          id: true,
-          legacy_id: true,
-          username: true,
-          email: true,
-          role: true,
-          business_level: true,
-          reports_to: true,
-          tenant_id: true,
-          created_at: true,
-          first_name: true,
-          last_name: true,
-        },
-      });
+      while (retryCount < maxRetries) {
+        try {
+          // Generate legacy_id from sequence for backward compatibility with RBAC junction tables
+          const legacyIdResult = await prisma.$queryRaw`SELECT nextval('users_enhanced_legacy_id_seq') as legacy_id`;
+          const generatedLegacyId = Number(legacyIdResult[0]?.legacy_id);
+
+          newUser = await prisma.users_enhanced.create({
+            data: {
+              id: newUserId,
+              legacy_id: generatedLegacyId, // Set legacy_id for RBAC role assignment
+              username,
+              email: email.toLowerCase(),
+              password_hash: hashedPassword,
+              role, // String role for backwards compatibility
+              business_level: safeBusinessLevel,
+              system_scope: safeSystemScope, // P0-3: Use validated scope
+              reports_to: reports_to || null,
+              tenant_id: tenant_id || null,
+              super_admin_id: super_admin_id || null,
+              first_name: first_name || null,
+              last_name: last_name || null,
+              phone: phone || null,
+              product_type,
+              assigned_modules: assigned_modules || [],
+              page_permissions: page_permissions || {},
+              profile_pic_url: profile_pic_url || null,
+              is_active: true,
+              created_by: adminUserId || null,
+            },
+            select: {
+              id: true,
+              legacy_id: true,
+              username: true,
+              email: true,
+              role: true,
+              business_level: true,
+              reports_to: true,
+              tenant_id: true,
+              created_at: true,
+              first_name: true,
+              last_name: true,
+            },
+          });
+          break; // Success, exit retry loop
+        } catch (createError) {
+          // Check if it's a legacy_id unique constraint error (P2002)
+          if (createError.code === 'P2002' && createError.meta?.target?.includes('legacy_id')) {
+            retryCount++;
+            console.warn(`[UserService] legacy_id conflict, resync and retry (${retryCount}/${maxRetries})`);
+            
+            if (retryCount >= maxRetries) {
+              // Last resort: reset sequence to max+1 and try once more
+              await prisma.$executeRaw`
+                SELECT setval('users_enhanced_legacy_id_seq', 
+                  (SELECT COALESCE(MAX(legacy_id), 0) + 1 FROM users_enhanced), 
+                  false)
+              `;
+              console.log('[UserService] Sequence reset to max+1, final retry');
+            }
+            continue;
+          }
+          // For other errors, rethrow immediately
+          throw createError;
+        }
+      }
+
+      if (!newUser) {
+        throw new Error('Failed to create user after multiple retries due to legacy_id conflicts');
+      }
 
       // ========== ROLE ASSIGNMENT (via junction table) ==========
       // MULTI-ROLE FIX: Support role_ids array for multiple role assignment
