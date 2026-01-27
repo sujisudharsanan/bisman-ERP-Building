@@ -1600,14 +1600,33 @@ export default function Page() {
     return result;
   }, [dbPagesByRole, selectedAdminId, superAdminPagePoolIds]);
 
-  // Filtered pages based on selected role filter
+  // Filtered pages based on selected role filter AND search query
   const filteredPagesForOverviewByRole = useMemo(() => {
-    if (!pagesRoleFilter) return allPagesGroupedByRole;
-    return allPagesGroupedByRole.filter(g => 
-      g.roleId === pagesRoleFilter || 
-      g.roleName.toLowerCase().includes(pagesRoleFilter.toLowerCase())
-    );
-  }, [allPagesGroupedByRole, pagesRoleFilter]);
+    let result = allPagesGroupedByRole;
+    
+    // Filter by role if selected
+    if (pagesRoleFilter) {
+      result = result.filter(g => 
+        g.roleId === pagesRoleFilter || 
+        g.roleName.toLowerCase().includes(pagesRoleFilter.toLowerCase())
+      );
+    }
+    
+    // Filter by search query - search within page names, paths, and role names
+    const searchLower = bottomSearchQuery.toLowerCase().trim();
+    if (searchLower) {
+      result = result.map(group => ({
+        ...group,
+        pages: group.pages.filter(page => 
+          (page.name || '').toLowerCase().includes(searchLower) ||
+          (page.path || '').toLowerCase().includes(searchLower) ||
+          group.roleName.toLowerCase().includes(searchLower)
+        )
+      })).filter(group => group.pages.length > 0); // Remove empty role groups
+    }
+    
+    return result;
+  }, [allPagesGroupedByRole, pagesRoleFilter, bottomSearchQuery]);
 
   // ============================================================================
   // SCOPED PAGES FOR SELECTED ROLE (Critical fix for bottom section)
@@ -1659,14 +1678,33 @@ export default function Page() {
     };
   }, [selectedRoleId, allRoles, rolePagesSelectedIds, filteredRolePages]);
 
-  // Filtered pages based on selected module filter
+  // Filtered pages based on selected module filter AND search query
   const filteredPagesForOverview = useMemo(() => {
-    if (!pagesModuleFilter) return allPagesGroupedByModule;
-    return allPagesGroupedByModule.filter(g => 
-      g.moduleId === pagesModuleFilter || 
-      g.moduleName.toLowerCase().includes(pagesModuleFilter.toLowerCase())
-    );
-  }, [allPagesGroupedByModule, pagesModuleFilter]);
+    let result = allPagesGroupedByModule;
+    
+    // Filter by module if selected
+    if (pagesModuleFilter) {
+      result = result.filter(g => 
+        g.moduleId === pagesModuleFilter || 
+        g.moduleName.toLowerCase().includes(pagesModuleFilter.toLowerCase())
+      );
+    }
+    
+    // Filter by search query - search within page names, paths, and module names
+    const searchLower = bottomSearchQuery.toLowerCase().trim();
+    if (searchLower) {
+      result = result.map(group => ({
+        ...group,
+        pages: group.pages.filter(page => 
+          (page.name || '').toLowerCase().includes(searchLower) ||
+          (page.path || '').toLowerCase().includes(searchLower) ||
+          group.moduleName.toLowerCase().includes(searchLower)
+        )
+      })).filter(group => group.pages.length > 0); // Remove empty modules
+    }
+    
+    return result;
+  }, [allPagesGroupedByModule, pagesModuleFilter, bottomSearchQuery]);
 
   // Total pages count - prefer database count
   const totalPagesCount = useMemo(() => {
