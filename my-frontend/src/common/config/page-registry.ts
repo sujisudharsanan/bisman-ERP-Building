@@ -2020,21 +2020,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     showInSidebar: false, // Public page, accessible via direct link
   },
 
-  // ==================== ADMIN BILLING CONSOLE ====================
-  {
-    id: 'admin-billing-tenant',
-    name: 'Tenant Billing Admin',
-    path: '/admin/billing/tenants',
-    iconKey: "Building2",
-    module: 'admin',
-    permissions: ['admin-billing'],
-    roles: ['SUPER_ADMIN', 'ENTERPRISE_ADMIN'],
-    status: 'active',
-    showInSidebar: true, // Now visible in sidebar
-    description: 'Admin console for managing tenant billing',
-    order: 100,
-  },
-
   // ==================== ADMIN DASHBOARDS (SaaS Infrastructure) ====================
   {
     id: 'admin-sla-dashboard',
@@ -2893,20 +2878,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'View your profile',
     order: 28,
   },
-  {
-    id: 'dashboard-requests',
-    name: 'Requests',
-    path: '/dashboard/requests',
-    iconKey: "Inbox",
-    module: 'common',
-    permissions: ['authenticated'],
-    roles: ['ALL'],
-    status: 'active',
-    showInSidebar: false,
-    description: 'View pending requests',
-    order: 29,
-  },
-
   // Admin Module Additional Pages
   {
     id: 'admin-subscription-view',
@@ -3215,19 +3186,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'Billing management',
     order: 5,
   },
-  {
-    id: 'admin-reports',
-    name: 'Reports',
-    path: '/admin/reports',
-    iconKey: "FileText",
-    module: 'admin',
-    permissions: ['admin:reports:view'],
-    roles: ['ADMIN', 'SUPER_ADMIN'],
-    status: 'active',
-    showInSidebar: true,
-    description: 'Admin reports',
-    order: 6,
-  },
+
   {
     id: 'admin-support',
     name: 'Support',

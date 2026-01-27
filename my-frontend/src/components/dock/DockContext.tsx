@@ -37,7 +37,7 @@ const DEFAULT_PREFERENCES: DockPreferences = {
   magnifyOnHover: true,
   magnifyIntensity: 1.4,
   autoHide: false,
-  favoriteModules: ['dashboard', 'money', 'customers', 'delivery', 'team', 'reports', 'settings'],
+  favoriteModules: ['dashboard', 'money', 'customers', 'delivery', 'team', 'settings'],
 };
 
 // Default modules available in dock
@@ -47,8 +47,7 @@ export const DOCK_MODULES: DockModule[] = [
   { id: 'customers', label: 'Customers', icon: 'Users', href: '/admin/customers', shortcut: '⌘+3' },
   { id: 'delivery', label: 'Delivery', icon: 'Truck', href: '/admin/delivery', shortcut: '⌘+4' },
   { id: 'team', label: 'Team', icon: 'UserCircle', href: '/admin/team', shortcut: '⌘+5' },
-  { id: 'reports', label: 'Reports', icon: 'BarChart3', href: '/admin/reports', shortcut: '⌘+6' },
-  { id: 'settings', label: 'Settings', icon: 'Settings', href: '/admin/settings', shortcut: '⌘+7' },
+  { id: 'settings', label: 'Settings', icon: 'Settings', href: '/admin/settings', shortcut: '⌘+6' },
   { id: 'help', label: 'Help', icon: 'HelpCircle', href: '/admin/help', shortcut: '⌘+?' },
 ];
 

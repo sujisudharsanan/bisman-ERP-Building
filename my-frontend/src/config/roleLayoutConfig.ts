@@ -58,11 +58,10 @@ export const roleLayoutConfig: Record<string, RoleLayoutConfig> = {
       { id: 'dashboard', label: 'Dashboard', href: '/admin', icon: 'LayoutDashboard' },
       { id: 'reconciliation', label: 'Reconciliation', href: '/reconciliation', icon: 'Scale' },
       { id: 'system-flow', label: 'User Flow & Management', href: '/admin/system-flow', icon: 'Workflow' },
-      { id: 'reports', label: 'Reports', href: '/admin/reports', icon: 'BarChart2' },
       { id: 'finance', label: 'Finance', href: '/finance', icon: 'Wallet' },
       { id: 'settings', label: 'Settings', href: '/admin/settings', icon: 'Settings' },
     ],
-    allowedPages: ['/admin', '/admin/*', '/finance', '/finance/*', '/reports', '/settings', '/reconciliation', '/reconciliation/*'],
+    allowedPages: ['/admin', '/admin/*', '/finance', '/finance/*', '/settings', '/reconciliation', '/reconciliation/*'],
   },
 
   MANAGER: {
