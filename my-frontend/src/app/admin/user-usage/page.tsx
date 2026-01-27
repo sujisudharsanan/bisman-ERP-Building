@@ -2,6 +2,7 @@
 
 import React, { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Activity,
   Search,
@@ -24,7 +25,9 @@ import {
   Users,
   Mail,
   Shield,
-  Building2
+  Building2,
+  Edit3,
+  Key
 } from 'lucide-react';
 import apiClient from '@/services/apiClient';
 
@@ -148,6 +151,7 @@ function getStatusColor(status?: string): string {
 // ============================================================================
 
 export default function UserUsagePage() {
+  const router = useRouter();
   const [dateRange, setDateRange] = useState('7d');
   const [activityFilter, setActivityFilter] = useState('all');
   const [users, setUsers] = useState<UserData[]>([]);
@@ -456,6 +460,8 @@ export default function UserUsagePage() {
                     <button
                       key={u.id}
                       onClick={() => setSelectedUser(u)}
+                      onDoubleClick={() => router.push(`/admin/user-usage/${u.id}`)}
+                      title="Click to select, double-click to edit"
                       className={`w-full p-3 text-left hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors ${
                         selectedUser?.id === u.id ? 'bg-blue-50 dark:bg-blue-900/20 border-l-2 border-blue-500' : ''
                       }`}
@@ -486,7 +492,16 @@ export default function UserUsagePage() {
           {/* Selected User Details Card */}
           {selectedUser && (
             <div className="mt-4 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
-              <h4 className="font-semibold text-gray-900 dark:text-white mb-3">User Details</h4>
+              <div className="flex items-center justify-between mb-3">
+                <h4 className="font-semibold text-gray-900 dark:text-white">User Details</h4>
+                <button
+                  onClick={() => router.push(`/admin/user-usage/${selectedUser.id}`)}
+                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors"
+                >
+                  <Edit3 className="w-3.5 h-3.5" />
+                  Edit User
+                </button>
+              </div>
               <div className="space-y-3 text-sm">
                 <div className="flex items-center gap-2 text-gray-600 dark:text-gray-400">
                   <Mail className="w-4 h-4" />
@@ -510,11 +525,19 @@ export default function UserUsagePage() {
                   <Clock className="w-4 h-4" />
                   <span>Last login: {formatDate(selectedUser.last_login)}</span>
                 </div>
-                <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                <div className="pt-3 mt-3 border-t border-gray-200 dark:border-gray-700 flex items-center justify-between">
                   <span className={`inline-flex items-center gap-1 text-xs px-2 py-1 rounded-full ${getStatusColor(selectedUser.status)}`}>
                     <span className="w-1.5 h-1.5 rounded-full bg-current"></span>
                     {selectedUser.status || 'Active'}
                   </span>
+                  <button
+                    onClick={() => router.push(`/admin/user-usage/${selectedUser.id}?action=reset-password`)}
+                    className="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
+                    title="Reset Password"
+                  >
+                    <Key className="w-3.5 h-3.5" />
+                    Reset Password
+                  </button>
                 </div>
               </div>
             </div>
