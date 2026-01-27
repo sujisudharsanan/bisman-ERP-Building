@@ -335,7 +335,7 @@ router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) =>
         
         const allBusinessRoles = await prismaInstance.rbac_roles.findMany({
           where: {
-            is_active: true,
+            status: 'active',
           },
           orderBy: { level: 'asc' }
         });
@@ -355,7 +355,7 @@ router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) =>
             displayName: role.display_name || role.name,
             description: role.description,
             level: role.level || role.role_level || 0,
-            is_active: role.is_active
+            is_active: role.status === 'active'
           }));
         
         if (businessRolesFiltered.length > 0) {
