@@ -929,45 +929,100 @@ export default function UserUsagePage() {
   const fetchUserData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
+    let userDataLoaded = false;
 
     try {
-      // Fetch from backend APIs
-      const [userRes, usageRes] = await Promise.allSettled([
-        fetch(`${baseURL}/api/enterprise-admin/users/${userId}`, { credentials: 'include' }),
-        fetch(`${baseURL}/api/admin/user-usage/${userId}`, { credentials: 'include' }),
-      ]);
-
-      // Process user data or use demo
-      if (userRes.status === 'fulfilled' && userRes.value.ok) {
-        const userData = await userRes.value.json();
-        if (userData.ok && userData.user) {
+      // Fetch user data from the correct API endpoint
+      const userRes = await fetch(`${baseURL}/api/users/${userId}`, { credentials: 'include' });
+      
+      if (userRes.ok) {
+        const userData = await userRes.json();
+        const user = userData.data || userData.user;
+        
+        if (user) {
+          userDataLoaded = true;
+          const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || 'Unknown User';
+          
           setUserProfile({
-            id: userData.user.id,
-            name: userData.user.name,
-            email: userData.user.email,
-            role: userData.user.role,
-            status: userData.user.status,
+            id: user.id,
+            name: fullName,
+            email: user.email,
+            avatar: user.profile_pic_url,
+            role: user.role || 'USER',
+            status: user.is_active ? 'active' : 'inactive',
             organization: {
-              id: userData.user.organization?.id || '1',
-              name: userData.user.organization?.name || 'Demo Org',
-              plan: userData.user.organization?.subscriptionPlan || 'pro',
+              id: user.tenant_id || '1',
+              name: user.tenant_name || 'Organization',
+              plan: user.product_type || 'BUSINESS_ERP',
             },
-            createdAt: userData.user.createdAt,
-            accountType: userData.user.accountType || 'local',
+            createdAt: user.created_at,
+            accountType: 'local',
+          });
+
+          // Set security info from real data
+          setSecurity({
+            lastLogin: user.last_login || null,
+            lastLoginIP: null,
+            lastLoginDevice: null,
+            lastLoginLocation: null,
+            failedLoginAttempts: user.login_attempts || 0,
+            mfaEnabled: false,
+            passwordLastChanged: user.password_changed_at || null,
+            activeSessions: 1,
+            accountLocked: !!user.locked_until,
           });
         }
       }
 
-      // Generate demo data if API fails or for development
-      generateDemoData();
+      // Only generate demo data for activity/usage stats if user data failed
+      if (!userDataLoaded) {
+        generateDemoData();
+      } else {
+        // Generate placeholder activity stats (these would come from analytics API)
+        generateActivityStats();
+      }
 
     } catch (err: any) {
+      console.error('Failed to fetch user data:', err);
       setError(err.message || 'Failed to load user data');
       generateDemoData();
     } finally {
       setIsLoading(false);
     }
   }, [baseURL, userId]);
+
+  // Generate only activity/usage stats (not user profile)
+  const generateActivityStats = () => {
+    // Activity Stats - placeholder until analytics API is available
+    setActivityStats({
+      totalActions: 0,
+      apiCalls: 0,
+      pageViews: 0,
+      logins: 0,
+      exports: 0,
+      trend: 0,
+    });
+
+    // Empty daily activity
+    setDailyActivity([]);
+
+    // Empty storage
+    setStorage({
+      total: 5 * 1024 * 1024 * 1024,
+      used: 0,
+      breakdown: [],
+      recentFiles: [],
+    });
+
+    // Empty sessions
+    setSessions([]);
+
+    // Empty module usage
+    setModuleUsage([]);
+
+    // Empty recent actions
+    setRecentActions([]);
+  };
 
   const generateDemoData = () => {
     // User Profile (if not already set)
