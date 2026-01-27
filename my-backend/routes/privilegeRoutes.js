@@ -329,6 +329,46 @@ router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) =>
         
         console.log('[assignable-roles] ADMIN user has no roles assigned (no Super Admin roles to inherit)');
         
+        // FALLBACK: For ADMIN users without explicit assignments, return all business roles
+        // This ensures admins can create users while the role assignment system is being set up
+        console.log('[assignable-roles] Falling back to all business roles for ADMIN user');
+        
+        const allBusinessRoles = await prismaInstance.rbac_roles.findMany({
+          where: {
+            is_active: true,
+          },
+          orderBy: { level: 'asc' }
+        });
+        
+        const businessRolesFiltered = allBusinessRoles
+          .filter(role => {
+            const roleName = (role.name || '').toLowerCase();
+            // Exclude super admin, enterprise admin, admin, and system-level roles
+            return !roleName.includes('super') && 
+                   !roleName.includes('enterprise') &&
+                   roleName !== 'admin' &&
+                   !roleName.includes('platform');
+          })
+          .map(role => ({
+            id: role.id,
+            name: role.name,
+            displayName: role.display_name || role.name,
+            description: role.description,
+            level: role.level || role.role_level || 0,
+            is_active: role.is_active
+          }));
+        
+        if (businessRolesFiltered.length > 0) {
+          return res.json({
+            success: true,
+            data: businessRolesFiltered,
+            source: 'fallback_business_roles',
+            message: 'Using default business roles. Contact your Super Admin for custom role assignments.',
+            total: businessRolesFiltered.length,
+            timestamp: new Date().toISOString()
+          });
+        }
+        
         return res.json({
           success: true,
           data: [],
