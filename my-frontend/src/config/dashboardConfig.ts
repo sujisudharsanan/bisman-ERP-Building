@@ -314,6 +314,16 @@ export const DASHBOARD_CONFIGS: Record<string, RoleConfig> = {
     allowTaskCreation: true,
   },
   
+  ADMIN_OPS: {
+    displayName: 'Admin Ops',
+    columns: STANDARD_COLUMNS,
+    accentColor: 'border-indigo-500',
+    loadingText: 'Loading Admin Ops Dashboard...',
+    showRightPanel: true,
+    allowTaskCreation: true,
+    welcomeMessage: 'Welcome to your Operations Dashboard',
+  },
+  
   IT_ADMIN: {
     displayName: 'IT Administrator',
     columns: STANDARD_COLUMNS,
@@ -330,7 +340,7 @@ export const DASHBOARD_CONFIGS: Record<string, RoleConfig> = {
     accentColor: 'border-blue-500',
     loadingText: 'Loading Dashboard...',
     showRightPanel: true,
-    allowTaskCreation: false,
+    allowTaskCreation: true,  // Enable by default for all business users
   },
 };
 
