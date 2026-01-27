@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef } from "react";
-import { FiUsers, FiPackage, FiGrid, FiShield, FiRefreshCw, FiChevronUp, FiCreditCard, FiFile, FiExternalLink, FiCheckCircle, FiMinus, FiPlus, FiLock } from "react-icons/fi";
+import { FiUsers, FiPackage, FiGrid, FiShield, FiRefreshCw, FiChevronUp, FiCreditCard, FiFile, FiExternalLink, FiCheckCircle, FiMinus, FiPlus, FiLock, FiSearch } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
 import ClientManagementTabs from "@/components/common/ClientManagementTabs";
 import { PAGE_REGISTRY, MODULES } from "@/common/config/page-registry";
@@ -148,6 +148,7 @@ export default function RolesUsersReportPage() {
   const [pagesAssignedFilter, setPagesAssignedFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
   const [selectedModuleFilter, setSelectedModuleFilter] = useState<string | null>(null);
   const [bottomSelectedPageId, setBottomSelectedPageId] = useState<string | null>(null);
+  const [pagesSearchQuery, setPagesSearchQuery] = useState<string>('');  // Search query for pages
 
   // Ref to track if roles were loaded (to prevent overwrite on load)
   const isRolesInitializedRef = useRef<boolean>(false);
@@ -221,7 +222,7 @@ export default function RolesUsersReportPage() {
     return Array.from(moduleMap.values()).sort((a, b) => a.moduleName.localeCompare(b.moduleName));
   }, [isSuperAdmin, selectedClient]);
 
-  // Filtered pages based on selected module filter and assigned filter
+  // Filtered pages based on selected module filter, assigned filter, and search query
   const filteredPagesForOverview = useMemo(() => {
     let groups = allPagesGroupedByModule;
     
@@ -244,8 +245,20 @@ export default function RolesUsersReportPage() {
       })).filter(g => g.pages.length > 0);
     }
     
+    // Filter by search query
+    const searchLower = pagesSearchQuery.toLowerCase().trim();
+    if (searchLower) {
+      groups = groups.map(g => ({
+        ...g,
+        pages: g.pages.filter(page => 
+          page.name.toLowerCase().includes(searchLower) ||
+          page.path.toLowerCase().includes(searchLower)
+        )
+      })).filter(g => g.pages.length > 0);
+    }
+    
     return groups;
-  }, [allPagesGroupedByModule, selectedModuleFilter, pagesAssignedFilter, rolePagesSelectedIds, selectedRoleId]);
+  }, [allPagesGroupedByModule, selectedModuleFilter, pagesAssignedFilter, rolePagesSelectedIds, selectedRoleId, pagesSearchQuery]);
 
   // Total pages count
   const totalPagesCount = useMemo(() => {
@@ -1277,6 +1290,17 @@ export default function RolesUsersReportPage() {
                       </option>
                     ))}
                   </select>
+                </div>
+                {/* Search bar for pages */}
+                <div className="relative ml-2" onClick={(e) => e.stopPropagation()}>
+                  <FiSearch className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search pages..."
+                    value={pagesSearchQuery}
+                    onChange={(e) => setPagesSearchQuery(e.target.value)}
+                    className="pl-7 pr-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 w-36 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  />
                 </div>
               </>
             )}
