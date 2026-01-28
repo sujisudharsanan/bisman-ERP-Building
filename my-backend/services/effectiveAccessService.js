@@ -23,21 +23,71 @@
 const { getPrisma } = require('../lib/prisma');
 
 // ============================================================================
-// CONSTANTS
+// CONSTANTS (PHASE 3 CRITICAL)
 // ============================================================================
 
-// These pages are ALWAYS accessible to any logged-in user regardless of role/subscription
+/**
+ * ALWAYS_ACCESSIBLE_PAGES - MINIMAL set of pages that ANY authenticated user can access
+ * These bypass the approval chain but are strictly limited to non-sensitive pages.
+ * 
+ * SECURITY RULES:
+ * - NO financial pages
+ * - NO admin pages
+ * - NO user management pages
+ * - NO reporting pages
+ * - ONLY common utilities and personal settings
+ */
 const ALWAYS_ACCESSIBLE_PAGES = [
-  'dashboard', 'home', 'profile', 'settings', 'help', 'support', 'notifications',
-  // Common module pages - accessible to all logged-in users
-  'calendar', 'user-settings', 'user_settings', 'usersettings',
-  '/common/calendar', '/common/user-settings', '/calendar', '/settings',
-  'common_calendar', 'common_user_settings'
+  // Dashboard - landing page only
+  'DASHBOARD', 'dashboard', 'home',
+  
+  // Personal profile & settings
+  'USER_PROFILE', 'profile', 'user-profile',
+  'USER_SETTINGS', 'settings', 'user-settings', 'user_settings',
+  
+  // Common utilities
+  'COMMON_CALENDAR', 'calendar', 'common_calendar',
+  'COMMON_NOTIFICATIONS', 'notifications',
+  
+  // Route variants
+  '/dashboard', '/common/calendar', '/common/user-settings', '/calendar', '/settings'
 ];
 
+/**
+ * ALWAYS_ACCESSIBLE_MODULES - Modules that may contain always-accessible pages
+ * Note: This does NOT mean all pages in these modules are accessible
+ */
 const ALWAYS_ACCESSIBLE_MODULES = [
-  'dashboard', 'common', 'chat', 'support', 'help'
+  'dashboard', 'common'
 ];
+
+/**
+ * EXPLICIT REJECTION SCENARIOS
+ * These conditions result in IMMEDIATE DENIAL with no fallback:
+ * 
+ * 1. NO_USER_ID: Request without valid user identifier
+ * 2. NO_TENANT: User has no tenant association
+ * 3. NO_SUBSCRIPTION: Tenant has no active subscription
+ * 4. NO_EA_APPROVAL: Enterprise Admin hasn't approved pages for Super Admin
+ * 5. NO_SA_APPROVAL: Super Admin hasn't approved pages for user
+ * 6. PAGE_NOT_IN_SUBSCRIPTION: Page not included in subscription plan
+ * 7. PAGE_REVOKED: Page was previously granted but now revoked
+ */
+const REJECTION_CODES = {
+  NO_USER_ID: 'User identifier not provided',
+  NO_TENANT: 'User has no tenant association',
+  NO_SUBSCRIPTION: 'No active subscription found',
+  NO_EA_APPROVAL: 'Enterprise Admin has not approved this page for your Super Admin',
+  NO_SA_APPROVAL: 'Super Admin has not enabled this page for your account',
+  PAGE_NOT_IN_SUBSCRIPTION: 'Page is not included in your subscription plan',
+  PAGE_REVOKED: 'Access to this page has been revoked',
+  APPROVAL_CHAIN_BROKEN: 'Approval chain is incomplete - contact your administrator'
+};
+
+// Export for use in other modules
+module.exports.ALWAYS_ACCESSIBLE_PAGES = ALWAYS_ACCESSIBLE_PAGES;
+module.exports.ALWAYS_ACCESSIBLE_MODULES = ALWAYS_ACCESSIBLE_MODULES;
+module.exports.REJECTION_CODES = REJECTION_CODES;
 
 // ============================================================================
 // HELPER: Get pages from subscription plan
@@ -229,14 +279,19 @@ async function computeEffectivePages({
     if (superadminApproved) {
       console.log(`[EffectiveAccess] Superadmin approved ${superadminApproved.size} pages for user ${userId}`);
     } else {
-      console.log(`[EffectiveAccess] No Superadmin restrictions for user ${userId}`);
+      console.log(`[EffectiveAccess] DENY: No Superadmin approvals for user ${userId}`);
     }
     
     // COMPUTE INTERSECTION
+    // PHASE 3 CRITICAL FIX: null NEVER means "unrestricted"
+    // null/undefined means NO APPROVAL = DENY
     for (const pageKey of subscriptionPages) {
       const inSubscription = true;
-      const inEnterprise = enterpriseApproved === null || enterpriseApproved.has(pageKey);
-      const inSuperadmin = superadminApproved === null || superadminApproved.has(pageKey);
+      
+      // SECURITY: null means DENY, not "allow all"
+      // Only .has(pageKey) can grant access
+      const inEnterprise = enterpriseApproved && enterpriseApproved.has(pageKey);
+      const inSuperadmin = superadminApproved && superadminApproved.has(pageKey);
       
       const isEffective = inSubscription && inEnterprise && inSuperadmin;
       
@@ -366,11 +421,14 @@ async function computeEffectiveRoles({
     }
     
     // COMPUTE INTERSECTION
+    // PHASE 3 CRITICAL FIX: null NEVER means "unrestricted"
     for (const role of planRoles) {
       const roleName = role.name.toUpperCase();
       const inSubscription = subscriptionRoles.has(roleName);
-      const inEnterprise = enterpriseApprovedRoles === null || enterpriseApprovedRoles.has(roleName);
-      const inSuperadmin = superadminApprovedRoles === null || superadminApprovedRoles.has(roleName);
+      
+      // SECURITY: null means DENY, not "allow all"
+      const inEnterprise = enterpriseApprovedRoles && enterpriseApprovedRoles.has(roleName);
+      const inSuperadmin = superadminApprovedRoles && superadminApprovedRoles.has(roleName);
       
       const isEffective = inSubscription && inEnterprise && inSuperadmin;
       
