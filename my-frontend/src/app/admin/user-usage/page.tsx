@@ -27,7 +27,10 @@ import {
   Shield,
   Building2,
   Edit3,
-  Key
+  Key,
+  X,
+  Eye as EyeIcon,
+  EyeOff
 } from 'lucide-react';
 import apiClient from '@/services/apiClient';
 
@@ -141,8 +144,17 @@ export default function UserUsagePage() {
   const [selectedUser, setSelectedUser] = useState<UserData | null>(null);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
-
-  // Fetch users from API
+  
+  // Modal states
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [editingUser, setEditingUser] = useState<UserData | null>(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [modalLoading, setModalLoading] = useState(false);
+  const [modalError, setModalError] = useState<string | null>(null);
+  const [modalSuccess, setModalSuccess] = useState<string | null>(null);
   useEffect(() => {
     async function fetchUsers() {
       try {
@@ -186,6 +198,106 @@ export default function UserUsagePage() {
     }
     fetchUsers();
   }, []);
+
+  // Handle opening edit modal
+  const handleEditUser = (user: UserData) => {
+    setEditingUser(user);
+    setModalError(null);
+    setModalSuccess(null);
+    setShowEditModal(true);
+  };
+
+  // Handle opening reset password modal
+  const handleResetPassword = (user: UserData) => {
+    setEditingUser(user);
+    setNewPassword('');
+    setConfirmPassword('');
+    setModalError(null);
+    setModalSuccess(null);
+    setShowResetPasswordModal(true);
+  };
+
+  // Handle saving user edits
+  const handleSaveUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    setModalLoading(true);
+    setModalError(null);
+
+    try {
+      const formData = new FormData(e.target as HTMLFormElement);
+      const updates = {
+        first_name: formData.get('first_name') as string,
+        last_name: formData.get('last_name') as string,
+        email: formData.get('email') as string,
+        phone: formData.get('phone') as string,
+        role: formData.get('role') as string,
+      };
+
+      await apiClient.put(`/api/system/users/${editingUser.id}`, updates);
+      
+      // Update local state
+      setUsers(prev => prev.map(u => 
+        u.id === editingUser.id 
+          ? { ...u, ...updates, name: `${updates.first_name} ${updates.last_name}`.trim() }
+          : u
+      ));
+      
+      if (selectedUser?.id === editingUser.id) {
+        setSelectedUser(prev => prev ? { ...prev, ...updates, name: `${updates.first_name} ${updates.last_name}`.trim() } : null);
+      }
+
+      setModalSuccess('User updated successfully!');
+      setTimeout(() => {
+        setShowEditModal(false);
+        setModalSuccess(null);
+      }, 1500);
+    } catch (err: any) {
+      console.error('Failed to update user:', err);
+      setModalError(err.response?.data?.error || err.message || 'Failed to update user');
+    } finally {
+      setModalLoading(false);
+    }
+  };
+
+  // Handle password reset
+  const handleSubmitPasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+
+    if (newPassword.length < 8) {
+      setModalError('Password must be at least 8 characters');
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      setModalError('Passwords do not match');
+      return;
+    }
+
+    setModalLoading(true);
+    setModalError(null);
+
+    try {
+      await apiClient.post(`/api/system/users/${editingUser.id}/reset-password`, {
+        newPassword,
+      });
+
+      setModalSuccess('Password reset successfully!');
+      setTimeout(() => {
+        setShowResetPasswordModal(false);
+        setNewPassword('');
+        setConfirmPassword('');
+        setModalSuccess(null);
+      }, 1500);
+    } catch (err: any) {
+      console.error('Failed to reset password:', err);
+      setModalError(err.response?.data?.error || err.message || 'Failed to reset password');
+    } finally {
+      setModalLoading(false);
+    }
+  };
 
   // Filter users by search
   const filteredUsers = useMemo(() => {
@@ -526,7 +638,7 @@ export default function UserUsagePage() {
               <div className="flex items-center justify-between mb-3">
                 <h4 className="font-semibold text-gray-900 dark:text-white">User Details</h4>
                 <button
-                  onClick={() => router.push(`/admin/user-usage/${selectedUser.id}`)}
+                  onClick={() => handleEditUser(selectedUser)}
                   className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors"
                 >
                   <Edit3 className="w-3.5 h-3.5" />
@@ -562,7 +674,7 @@ export default function UserUsagePage() {
                     {selectedUser.status || 'Active'}
                   </span>
                   <button
-                    onClick={() => router.push(`/admin/user-usage/${selectedUser.id}?action=reset-password`)}
+                    onClick={() => handleResetPassword(selectedUser)}
                     className="flex items-center gap-1.5 px-2 py-1 text-xs text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 transition-colors"
                     title="Reset Password"
                   >
@@ -575,6 +687,189 @@ export default function UserUsagePage() {
           )}
         </div>
       </div>
+
+      {/* Edit User Modal */}
+      {showEditModal && editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Edit User</h3>
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <form onSubmit={handleSaveUser} className="p-4 space-y-4">
+              {modalError && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
+                  {modalError}
+                </div>
+              )}
+              {modalSuccess && (
+                <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-600 dark:text-green-400 text-sm">
+                  {modalSuccess}
+                </div>
+              )}
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">First Name</label>
+                  <input
+                    type="text"
+                    name="first_name"
+                    defaultValue={editingUser.name?.split(' ')[0] || ''}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    required
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Last Name</label>
+                  <input
+                    type="text"
+                    name="last_name"
+                    defaultValue={editingUser.name?.split(' ').slice(1).join(' ') || ''}
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Email</label>
+                <input
+                  type="email"
+                  name="email"
+                  defaultValue={editingUser.email}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Phone</label>
+                <input
+                  type="tel"
+                  name="phone"
+                  defaultValue={editingUser.phone || ''}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Role</label>
+                <select
+                  name="role"
+                  defaultValue={editingUser.role}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                >
+                  <option value="USER">User</option>
+                  <option value="ADMIN">Admin</option>
+                  <option value="ADMIN_OPS">Admin Ops</option>
+                  <option value="MANAGER">Manager</option>
+                  <option value="L1_APPROVER">L1 Approver</option>
+                  <option value="L2_APPROVER">L2 Approver</option>
+                  <option value="FINANCE">Finance</option>
+                  <option value="HUB_INCHARGE">Hub Incharge</option>
+                  <option value="BRANCH_MANAGER">Branch Manager</option>
+                </select>
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowEditModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={modalLoading}
+                  className="px-4 py-2 text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 rounded-lg disabled:opacity-50"
+                >
+                  {modalLoading ? 'Saving...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {showResetPasswordModal && editingUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md">
+            <div className="flex items-center justify-between p-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Reset Password</h3>
+              <button
+                onClick={() => setShowResetPasswordModal(false)}
+                className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+            <form onSubmit={handleSubmitPasswordReset} className="p-4 space-y-4">
+              <p className="text-sm text-gray-600 dark:text-gray-400">
+                Reset password for <strong>{editingUser.name}</strong> ({editingUser.email})
+              </p>
+              {modalError && (
+                <div className="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg text-red-600 dark:text-red-400 text-sm">
+                  {modalError}
+                </div>
+              )}
+              {modalSuccess && (
+                <div className="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg text-green-600 dark:text-green-400 text-sm">
+                  {modalSuccess}
+                </div>
+              )}
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">New Password</label>
+                <div className="relative">
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="w-full px-3 py-2 pr-10 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                    placeholder="Minimum 8 characters"
+                    required
+                    minLength={8}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <EyeIcon className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">Confirm Password</label>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-gray-900 dark:text-white focus:ring-2 focus:ring-blue-500"
+                  placeholder="Confirm new password"
+                  required
+                />
+              </div>
+              <div className="flex justify-end gap-3 pt-4">
+                <button
+                  type="button"
+                  onClick={() => setShowResetPasswordModal(false)}
+                  className="px-4 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={modalLoading}
+                  className="px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-700 rounded-lg disabled:opacity-50"
+                >
+                  {modalLoading ? 'Resetting...' : 'Reset Password'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

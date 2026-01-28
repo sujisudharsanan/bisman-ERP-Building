@@ -545,6 +545,69 @@ function extractOS(ua) {
 }
 
 /**
+ * Reset user password (admin action)
+ * POST /api/system/users/:id/reset-password
+ * 
+ * Allows admin to reset a user's password
+ */
+router.post('/:id/reset-password', authMiddleware, async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { newPassword } = req.body;
+    const currentUserRole = req.user?.role;
+
+    // Only admins can reset passwords
+    if (!CORE_ROLES.includes(currentUserRole)) {
+      return res.status(403).json({ error: 'Insufficient permissions to reset passwords' });
+    }
+
+    if (!newPassword || newPassword.length < 8) {
+      return res.status(400).json({ error: 'Password must be at least 8 characters' });
+    }
+
+    // Find the user
+    const user = await prisma.users_enhanced.findUnique({
+      where: { id },
+      select: { id: true, email: true, tenant_id: true },
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Hash the new password
+    const bcrypt = require('bcryptjs');
+    const salt = await bcrypt.genSalt(12);
+    const hashedPassword = await bcrypt.hash(newPassword, salt);
+
+    // Update the password
+    await prisma.users_enhanced.update({
+      where: { id },
+      data: {
+        password_hash: hashedPassword,
+        salt: salt,
+        password_changed_at: new Date(),
+        login_attempts: 0,
+        locked_until: null,
+      },
+    });
+
+    console.log(`[reset-password] Password reset for user ${user.email} by ${req.user?.email}`);
+
+    res.json({
+      success: true,
+      message: 'Password reset successfully',
+    });
+  } catch (error) {
+    console.error('Reset password error:', error);
+    res.status(500).json({
+      error: 'Failed to reset password',
+      details: error.message,
+    });
+  }
+});
+
+/**
  * Create new user
  * POST /api/system/users
  * 
