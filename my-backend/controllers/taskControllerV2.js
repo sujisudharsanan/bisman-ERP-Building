@@ -1449,12 +1449,15 @@ const logAudit = async (userId, action, tableName, recordId, oldValues, newValue
 
 /**
  * Maker-Checker valid state transitions
- * ASSIGNED → IN_PROGRESS (Assignee)
+ * OPEN/ASSIGNED → IN_PROGRESS (Assignee)
  * IN_PROGRESS → IN_REVIEW (Assignee submits for review)
  * IN_REVIEW → DONE (Creator approves)
  * IN_REVIEW → EDITING (Creator rejects → returns to IN_PROGRESS)
  */
 const makerCheckerTransitions = {
+  'OPEN': {
+    'IN_PROGRESS': { allowedRoles: ['assignee'], action: 'START_WORK' },
+  },
   'ASSIGNED': {
     'IN_PROGRESS': { allowedRoles: ['assignee'], action: 'START_WORK' },
   },
