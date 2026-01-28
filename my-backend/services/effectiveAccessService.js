@@ -110,13 +110,10 @@ async function getEnterpriseApprovedPages(superadminId) {
   }
   
   // SECURITY FIX: If no explicit assignments, Enterprise Admin hasn't configured yet
-  // For Super Admin role specifically, we need to allow role-based pages until EA configures
-  // This maintains backward compatibility while the approval system is set up
+  // Default to ALWAYS_ACCESSIBLE_PAGES only (DENY by default)
   if (assignments.length === 0) {
-    // Return null only for initial setup - Enterprise Admin should configure ASAP
-    // TODO: Once approval UI is ready, change to: return pageKeys; (default closed)
-    console.warn(`[EffectiveAccess] WARNING: No Enterprise Admin approval for SuperAdmin ${superadminId} - using role-based fallback`);
-    return null; // null means "no restriction" - TEMPORARY until EA configures
+    console.warn(`[EffectiveAccess] DENY: No Enterprise Admin approval for SuperAdmin ${superadminId} - only common pages accessible`);
+    return pageKeys; // Only ALWAYS_ACCESSIBLE_PAGES - DENY BY DEFAULT
   }
   
   return pageKeys;
@@ -462,11 +459,23 @@ async function grantEffectivePagesToUser({
   
   console.log(`[EffectiveAccess] Will grant ${effectivePageKeys.length} effective pages`);
   
-  // Clear existing subscription-granted permissions and re-grant only effective ones
-  // This ensures blocked pages are not accessible
+  // Get Super Admin ID for this tenant to create approval chain entries
+  let superAdminId = null;
+  try {
+    const client = await prisma.clients.findUnique({
+      where: { id: tenantId },
+      select: { super_admin_id: true }
+    });
+    superAdminId = client?.super_admin_id;
+  } catch (err) {
+    console.warn(`[EffectiveAccess] Could not get super_admin_id for tenant: ${err.message}`);
+  }
   
   let grantedCount = 0;
+  let approvalChainCount = 0;
+  
   for (const pageKey of effectivePageKeys) {
+    // 1. Grant to rbac_user_permissions
     try {
       await prisma.rbac_user_permissions.upsert({
         where: {
@@ -485,7 +494,33 @@ async function grantEffectivePagesToUser({
     } catch {
       // Ignore duplicates
     }
+    
+    // 2. Also create approval chain entry (SA→USER) in admin_page_assignments
+    // This ensures the 3-layer intersection finds these pages
+    if (superAdminId) {
+      try {
+        // Get page_id from page_code
+        const page = await prisma.pages_master.findFirst({
+          where: { page_code: pageKey, is_active: true },
+          select: { id: true }
+        });
+        
+        if (page) {
+          await prisma.$queryRaw`
+            INSERT INTO admin_page_assignments 
+            (assigner_id, assigner_type, assignee_id, assignee_type, page_id, page_key, tenant_id, is_active)
+            VALUES (${superAdminId}::int, 'SUPER_ADMIN', ${userId}::int, 'USER', ${page.id}::int, ${pageKey}, ${tenantId}, true)
+            ON CONFLICT DO NOTHING
+          `;
+          approvalChainCount++;
+        }
+      } catch {
+        // Ignore - might be unique constraint violation which is fine
+      }
+    }
   }
+  
+  console.log(`[EffectiveAccess] Created ${grantedCount} rbac_user_permissions, ${approvalChainCount} admin_page_assignments`);
   
   // Log the grant
   try {
@@ -499,8 +534,9 @@ async function grantEffectivePagesToUser({
           tenantId,
           planId,
           effectivePagesCount: grantedCount,
+          approvalChainCount,
           blockedPagesCount: effectiveResult.blockedPages.length,
-          blockedPages: effectiveResult.blockedPages.slice(0, 10) // First 10 for log size
+          blockedPages: effectiveResult.blockedPages.slice(0, 10)
         }
       }
     });
@@ -511,6 +547,7 @@ async function grantEffectivePagesToUser({
   return {
     success: true,
     grantedCount,
+    approvalChainCount,
     blockedCount: effectiveResult.blockedPages.length,
     effectivePages: effectivePageKeys,
     blockedPages: effectiveResult.blockedPages
