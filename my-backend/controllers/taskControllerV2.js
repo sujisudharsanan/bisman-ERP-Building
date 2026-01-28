@@ -898,6 +898,21 @@ const updateTaskStatus = async (req, res) => {
     const isCreator = existingTask.creator_id === userId;
     const isAssignee = existingTask.assignee_id === userId;
     
+    // Debug logging for permission checks
+    console.log(`[TaskStatus] Permission check: userId=${userId}, creator_id=${existingTask.creator_id}, assignee_id=${existingTask.assignee_id}`);
+    console.log(`[TaskStatus] isCreator=${isCreator}, isAssignee=${isAssignee}, oldStatus=${oldStatus}, newStatus=${newStatus}`);
+    
+    // Permission rules for starting work on a task:
+    // - Only the ASSIGNEE can start work (OPEN/ASSIGNED → IN_PROGRESS)
+    if (newStatus === 'IN_PROGRESS' && (oldStatus === 'OPEN' || oldStatus === 'ASSIGNED')) {
+      if (!isAssignee) {
+        return res.status(403).json({
+          success: false,
+          error: 'Only the assignee can start work on this task'
+        });
+      }
+    }
+    
     // Permission rules for completing a task:
     // - If task is IN_REVIEW: Only the CREATOR can approve and complete
     // - If task is IN_PROGRESS: Only the ASSIGNEE can complete directly
