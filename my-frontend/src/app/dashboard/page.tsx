@@ -16,6 +16,7 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Filter, X, User, Briefcase, ChevronDown } from 'lucide-react';
+import { toast } from 'sonner';
 import DashboardLayout from '@/components/layout/DashboardLayout';
 import KanbanColumn from '@/components/dashboard/KanbanColumn';
 import RightPanel from '@/components/dashboard/RightPanel';
@@ -46,7 +47,7 @@ export default function UnifiedDashboardPage() {
   const { user, loading: authLoading } = useAuth();
   const router = useRouter();
   const queryClient = useQueryClient();
-  const { createTask, loading: taskCreating } = useTaskAPI();
+  const { createTask, loading: taskCreating, error: taskError } = useTaskAPI();
   const [showTaskForm, setShowTaskForm] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('ALL');
@@ -506,13 +507,25 @@ export default function UnifiedDashboardPage() {
             mode="create"
             onCancel={() => setShowTaskForm(false)}
             onSubmit={async (data) => {
-              await createTask(data);
-              setShowTaskForm(false);
-              // Invalidate all kanban queries (both view modes) and refetch current view
-              queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
-              refetchKanban();
-              // Switch to "My Requests" to show the newly created task
-              setViewMode('my-requests');
+              const result = await createTask(data);
+              
+              if (result.task) {
+                // Success - show toast and close form
+                toast.success('Task created successfully!', {
+                  description: result.task.title,
+                });
+                setShowTaskForm(false);
+                // Invalidate all kanban queries (both view modes) and refetch current view
+                queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });
+                refetchKanban();
+                // Switch to "My Requests" to show the newly created task
+                setViewMode('my-requests');
+              } else {
+                // Error - show error toast with actual error message
+                toast.error('Failed to create task', {
+                  description: taskError || 'Please check the form and try again.',
+                });
+              }
             }}
             isLoading={taskCreating}
           />
