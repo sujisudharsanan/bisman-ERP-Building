@@ -175,6 +175,12 @@ async function getEnterpriseApprovedPages(superadminId) {
 
 /**
  * Get pages approved by Superadmin for a specific Client/Admin
+ * 
+ * SECURITY (PHASE 2 LOCKDOWN):
+ * - ONLY queries admin_page_assignments
+ * - rbac_user_permissions is NO LONGER authoritative
+ * - Absence of approval = DENY (only ALWAYS_ACCESSIBLE_PAGES returned)
+ * 
  * @param {number} clientAdminId - The Client Admin's legacy_id
  * @param {string} _tenantId - The tenant/client ID (reserved for future use)
  * @returns {Promise<Set<string>>} Set of approved page keys
@@ -182,37 +188,28 @@ async function getEnterpriseApprovedPages(superadminId) {
 async function getSuperadminApprovedPages(clientAdminId, _tenantId) {
   const prisma = getPrisma();
   
-  // Check admin_page_assignments where Superadmin assigned to this user
+  // AUTHORITATIVE SOURCE: admin_page_assignments ONLY
+  // SECURITY LOCKDOWN: rbac_user_permissions is NO LONGER queried
   const userAssignments = await prisma.$queryRaw`
-    SELECT page_key, is_active
+    SELECT page_key
     FROM admin_page_assignments
     WHERE assignee_id = ${clientAdminId}
       AND assigner_type = 'SUPER_ADMIN'
       AND is_active = true
   `;
   
-  // Also check rbac_user_permissions for explicit grants
-  const rbacPermissions = await prisma.rbac_user_permissions.findMany({
-    where: { user_id: clientAdminId },
-    select: { page_key: true }
-  });
-  
+  // Start with ALWAYS_ACCESSIBLE_PAGES only
   const pageKeys = new Set(ALWAYS_ACCESSIBLE_PAGES);
   
+  // Add only pages from admin_page_assignments
   for (const a of userAssignments) {
     if (a.page_key) pageKeys.add(a.page_key);
   }
   
-  for (const p of rbacPermissions) {
-    if (p.page_key) pageKeys.add(p.page_key);
-  }
-  
-  // SECURITY FIX: If no explicit assignments from Super Admin, check rbac_user_permissions
-  // If user has rbac_user_permissions, use those (backward compatibility)
-  // If nothing exists, user only gets ALWAYS_ACCESSIBLE_PAGES
-  if (userAssignments.length === 0 && rbacPermissions.length === 0) {
-    console.warn(`[EffectiveAccess] WARNING: No Super Admin approval for user ${clientAdminId} - only common pages accessible`);
-    return pageKeys; // Return only ALWAYS_ACCESSIBLE_PAGES (default closed)
+  // SECURITY: If no explicit assignments, user gets ONLY ALWAYS_ACCESSIBLE_PAGES
+  // This is DENY-BY-DEFAULT behavior
+  if (userAssignments.length === 0) {
+    console.warn(`[EffectiveAccess] DENY: No Super Admin approval for user ${clientAdminId} - only common pages accessible`);
   }
   
   return pageKeys;
@@ -533,28 +530,12 @@ async function grantEffectivePagesToUser({
   let approvalChainCount = 0;
   
   for (const pageKey of effectivePageKeys) {
-    // 1. Grant to rbac_user_permissions
-    try {
-      await prisma.rbac_user_permissions.upsert({
-        where: {
-          user_id_page_key: { user_id: userId, page_key: pageKey }
-        },
-        create: {
-          user_id: userId,
-          page_key: pageKey,
-          updated_at: new Date()
-        },
-        update: {
-          updated_at: new Date()
-        }
-      });
-      grantedCount++;
-    } catch {
-      // Ignore duplicates
-    }
+    // SECURITY LOCKDOWN (PHASE 2): ONLY write to admin_page_assignments
+    // rbac_user_permissions is now a DERIVED table, not authoritative
+    // Legacy write removed - approval chain is the ONLY source of truth
     
-    // 2. Also create approval chain entry (SA→USER) in admin_page_assignments
-    // This ensures the 3-layer intersection finds these pages
+    // Create approval chain entry (SA→USER) in admin_page_assignments
+    // This is the ONLY table that grants access now
     if (superAdminId) {
       try {
         // Get page_id from page_code
@@ -571,14 +552,17 @@ async function grantEffectivePagesToUser({
             ON CONFLICT DO NOTHING
           `;
           approvalChainCount++;
+          grantedCount++;
         }
       } catch {
         // Ignore - might be unique constraint violation which is fine
       }
+    } else {
+      console.warn(`[EffectiveAccess] Cannot grant page ${pageKey} - no Super Admin found for tenant`);
     }
   }
   
-  console.log(`[EffectiveAccess] Created ${grantedCount} rbac_user_permissions, ${approvalChainCount} admin_page_assignments`);
+  console.log(`[EffectiveAccess] Created ${approvalChainCount} admin_page_assignments entries (AUTHORITATIVE)`);
   
   // Log the grant
   try {
@@ -586,7 +570,7 @@ async function grantEffectivePagesToUser({
       data: {
         user_id: actorUserId,
         action: 'GRANT_EFFECTIVE_PAGES',
-        table_name: 'rbac_user_permissions',
+        table_name: 'admin_page_assignments',
         new_values: {
           targetUserId: userId,
           tenantId,
@@ -594,7 +578,8 @@ async function grantEffectivePagesToUser({
           effectivePagesCount: grantedCount,
           approvalChainCount,
           blockedPagesCount: effectiveResult.blockedPages.length,
-          blockedPages: effectiveResult.blockedPages.slice(0, 10)
+          blockedPages: effectiveResult.blockedPages.slice(0, 10),
+          lockdownPhase: 'PHASE_2_AUTHORITATIVE'
         }
       }
     });

@@ -789,18 +789,46 @@ const {
   smartRouteProtection 
 } = require('./middleware/roleProtection')
 
-// Apply smart route protection to all authenticated routes
-// MOVED AFTER MIDDLEWARE IMPORT (line ~800)
-// app.use('/api/*', authenticate, smartRouteProtection)
+// ===================================================================
+// PHASE 3 LOCKDOWN: ROUTE AUTHORIZATION GUARDRAIL
+// ===================================================================
+// This middleware enforces authorization on ALL /api/* routes.
+// It maps routes to page_keys and checks effective access.
+// Apply BEFORE individual route registrations.
+const { routeAuthorizationGuardrail } = require('./middleware/routeAuthorizationGuardrail')
+app.use('/api', routeAuthorizationGuardrail)
+console.log('🔒 Route Authorization Guardrail ACTIVE on /api/*')
 
 // Reports routes for generating system reports
 const reportsRoutes = require('./routes/reportsRoutes')
 app.use('/api/reports', authenticate, setTenantContext, requirePlanModuleAccess('reports'), reportsRoutes)
 console.log('✅ Reports routes loaded at /api/reports (plan-gated)')
 
-// Menu routes - SSOT for navigation menus
-const menuRoutes = require('./routes/menuRoutes')
-app.use('/api/modules', menuRoutes)
+// ===================================================================
+// SECURE MENU ROUTES - CANONICAL SOURCE (PHASE 1 LOCKDOWN)
+// ===================================================================
+// SECURITY: This is the ONLY menu endpoint that grants access.
+// It uses effectiveAccessService with 4-layer intersection.
+// Legacy routes below return 410 GONE.
+const menuRoutesSecure = require('./routes/menuRoutesSecure')
+app.use('/api/menu', authenticate, menuRoutesSecure)
+console.log('✅ SECURE Menu routes loaded at /api/menu (approval-authoritative)')
+
+// ===================================================================
+// LEGACY MENU ROUTES - DISABLED (410 GONE)
+// ===================================================================
+// SECURITY LOCKDOWN: These routes previously bypassed approval chain.
+// They now return 410 GONE to prevent any access via legacy endpoints.
+app.use('/api/modules', (_req, res) => {
+  console.warn('[SECURITY] Legacy /api/modules endpoint called - returning 410 GONE');
+  return res.status(410).json({
+    success: false,
+    error: 'ENDPOINT_DEPRECATED',
+    message: 'This endpoint has been permanently disabled. Use /api/menu instead.',
+    migration: 'RBAC_LOCKDOWN_2026'
+  });
+});
+console.log('⚠️  Legacy /api/modules disabled (410 GONE)');
 
 // Governance routes - Route validation and access tracking
 const governanceRoutes = require('./routes/governanceRoutes')
@@ -815,11 +843,13 @@ app.use('/api/page-sync', authenticate, pageSyncAuditRoutes)
 console.log('✅ Page Sync Audit routes loaded at /api/page-sync')
 
 // ===================================================================
-// DB-DRIVEN MENU API - Single source of truth for sidebar menus
+// LEGACY DB MENU API - REMOVED (SECURITY LOCKDOWN)
 // ===================================================================
-const dbMenuRoutes = require('./routes/dbMenuRoutes')
-app.use('/api/menu', dbMenuRoutes)
-console.log('✅ DB Menu routes loaded at /api/menu')
+// SECURITY: dbMenuRoutes has been REMOVED. It queried role_page_access
+// directly, bypassing the approval chain. All menu requests now go
+// through menuRoutesSecure at /api/menu (registered above).
+// DO NOT RE-ADD THIS ROUTE.
+console.log('⚠️  Legacy dbMenuRoutes REMOVED (was at /api/menu, now secure)')
 
 // Calendar routes for event management
 try {
