@@ -510,10 +510,18 @@ export default function UnifiedDashboardPage() {
               const result = await createTask(data);
               
               if (result.task) {
-                // Success - show toast and close form
-                toast.success('Task created successfully!', {
-                  description: result.task.title,
-                });
+                // Check if there's a warning (e.g., upward assignment)
+                if (result.warning) {
+                  toast.warning('Task created with notice', {
+                    description: result.warning,
+                    duration: 6000, // Show longer for important info
+                  });
+                } else {
+                  // Success - show toast and close form
+                  toast.success('Task created successfully!', {
+                    description: result.task.title,
+                  });
+                }
                 setShowTaskForm(false);
                 // Invalidate all kanban queries (both view modes) and refetch current view
                 queryClient.invalidateQueries({ queryKey: taskKeys.kanban() });

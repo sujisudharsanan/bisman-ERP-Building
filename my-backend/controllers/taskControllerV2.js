@@ -549,38 +549,30 @@ const createTask = async (req, res) => {
     const assigneeId = rawAssigneeId ? (await resolveUserId(rawAssigneeId) || rawAssigneeId) : null;
     
     // ============================================
-    // HIERARCHY CHECK: Subordinates cannot assign to superiors
-    // SECURITY FIX P0-3: FAIL CLOSED - reject on hierarchy check failure
+    // HIERARCHY CHECK: Check if assigning to a higher-level user
+    // Allow task creation but with warning and no priority for upward assignment
     // ============================================
+    let isUpwardAssignment = false;
+    let hierarchyWarning = null;
+    let finalPriority = priority.toUpperCase();
+    
     if (assigneeId && !skipHierarchyCheck) {
       try {
         const taskRequestService = require('../services/taskRequestService');
         const hierarchyCheck = await taskRequestService.checkAssignmentHierarchy(userId, assigneeId);
         
         if (hierarchyCheck.requiresRequest) {
-          // Return 403 with specific code so frontend can show request modal
-          return res.status(403).json({
-            success: false,
-            error: 'Request-based workflow required',
-            code: 'HIERARCHY_REQUIRES_REQUEST',
-            message: hierarchyCheck.reason,
-            details: {
-              creatorLevel: hierarchyCheck.creatorLevel,
-              assigneeLevel: hierarchyCheck.assigneeLevel,
-              creatorRoleName: hierarchyCheck.creatorRoleName,
-              assigneeRoleName: hierarchyCheck.assigneeRoleName
-            }
-          });
+          // Instead of blocking, allow with warning and no priority
+          isUpwardAssignment = true;
+          finalPriority = null; // No priority for upward assignments
+          hierarchyWarning = `Note: You are assigning a task to ${hierarchyCheck.assigneeRoleName} (higher level). Priority has been removed. The assignee will decide the priority.`;
+          console.log(`[HIERARCHY] Upward assignment: ${hierarchyCheck.creatorRoleName} (L${hierarchyCheck.creatorLevel}) → ${hierarchyCheck.assigneeRoleName} (L${hierarchyCheck.assigneeLevel})`);
         }
       } catch (hierarchyError) {
-        // SECURITY FIX P0-3: FAIL CLOSED - do NOT allow task creation if hierarchy check fails
-        console.error('[SECURITY] P0-3: Hierarchy check FAILED - blocking task creation:', hierarchyError.message);
-        return res.status(500).json({
-          success: false,
-          error: 'Unable to verify assignment hierarchy',
-          code: 'HIERARCHY_CHECK_FAILED',
-          message: 'Task assignment blocked due to hierarchy verification failure. Please try again or contact support.',
-        });
+        // Log the error but allow task creation with warning
+        console.warn('[HIERARCHY] Hierarchy check failed, allowing task creation with warning:', hierarchyError.message);
+        hierarchyWarning = 'Unable to verify role hierarchy. Task created without priority enforcement.';
+        finalPriority = null;
       }
     }
     
@@ -624,9 +616,10 @@ const createTask = async (req, res) => {
         title, description, status, priority, 
         creator_id, assignee_id, tenant_id,
         due_date, tags, serial_number, position,
+        is_upward_assignment,
         created_at, updated_at
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, NOW(), NOW())
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, NOW(), NOW())
       RETURNING *
     `;
     
@@ -634,35 +627,50 @@ const createTask = async (req, res) => {
       title,
       description,
       status,
-      priority.toUpperCase(),
+      finalPriority, // Use finalPriority (null for upward assignments)
       userId,
       assigneeId || null,
       tenantId || null,
       dueDate || null,
       tags,
       serialNumber,
-      position
+      position,
+      isUpwardAssignment // Track if this was an upward assignment
     ]);
     
     const task = result.rows[0];
     
-    // Create initial system message
+    // Create initial system message with upward assignment note if applicable
+    let systemMessage = `Task created by ${req.user.username}`;
+    if (isUpwardAssignment) {
+      systemMessage += ` (Note: This task was assigned to a higher-level role. Priority will be set by assignee.)`;
+    }
     await getDbPool().query(`
       INSERT INTO task_messages (task_id, sender_id, content, message_type, is_system_message, tenant_id)
       VALUES ($1, $2, $3, 'SYSTEM', true, $4)
-    `, [task.id, userId, `Task created by ${req.user.username}`, tenantId]);
+    `, [task.id, userId, systemMessage, tenantId]);
     
     // Log to audit with tenant isolation
     await logAudit(userId, 'CREATE', 'workflow_tasks', task.id, null, task, tenantId);
     
     // Emit Socket.IO event
-    emitToTenant(tenantId, 'task:created', { task });
+    emitToTenant(tenantId, 'task:created', { task, isUpwardAssignment });
     
-    res.status(201).json({
+    // Return success with warning if upward assignment
+    const response = {
       success: true,
       data: task,
-      message: 'Task created successfully'
-    });
+      message: isUpwardAssignment 
+        ? 'Task created successfully (assigned to higher-level user)' 
+        : 'Task created successfully'
+    };
+    
+    if (hierarchyWarning) {
+      response.warning = hierarchyWarning;
+      response.isUpwardAssignment = true;
+    }
+    
+    res.status(201).json(response);
     
   } catch (error) {
     console.error('[TaskController] createTask error:', error);
