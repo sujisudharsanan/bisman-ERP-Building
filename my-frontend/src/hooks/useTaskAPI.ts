@@ -64,12 +64,13 @@ export const useTaskAPI = () => {
   const [warning, setWarning] = useState<string | null>(null);
 
   // Create task (returns task and optional warning for duplicates)
+  // Uses V2 API which has proper hierarchy enforcement for task assignment
   const createTask = useCallback(async (taskData: CreateTaskInput): Promise<CreateTaskResult> => {
     setLoading(true);
     setError(null);
     setWarning(null);
     try {
-      const response = await apiFetch<Task>('/api/tasks', {
+      const response = await apiFetch<Task>('/api/v2/tasks', {
         method: 'POST',
         body: JSON.stringify(taskData),
       });

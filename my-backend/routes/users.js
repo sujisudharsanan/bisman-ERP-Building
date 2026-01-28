@@ -664,7 +664,32 @@ router.post('/', authMiddleware, checkUserCreationLimit(), async (req, res) => {
 
     const finalUsername = username || generateUsername();
     const finalPhone = mobile || phone || null;
-    const finalRole = role || (role_ids && role_ids.length > 0 ? role_ids[0] : 'USER');
+    
+    // Resolve role: if role_ids is provided, look up the role name from database
+    let finalRole = role;
+    if (!finalRole && role_ids && role_ids.length > 0) {
+      const roleId = role_ids[0];
+      // Check if roleId is already a role name (string like 'ADMIN')
+      if (typeof roleId === 'string' && /^[A-Z_]+$/.test(roleId)) {
+        finalRole = roleId;
+      } else {
+        // It's a numeric ID, look up the role name from rbac_roles
+        try {
+          const roleRecord = await prisma.rbac_roles.findUnique({
+            where: { id: parseInt(roleId, 10) },
+            select: { name: true },
+          });
+          finalRole = roleRecord?.name || 'USER';
+          console.log(`[User Creation] Resolved role_id ${roleId} to role name: ${finalRole}`);
+        } catch (roleErr) {
+          console.warn(`[User Creation] Could not resolve role_id ${roleId}:`, roleErr.message);
+          finalRole = 'USER';
+        }
+      }
+    }
+    if (!finalRole) {
+      finalRole = 'USER';
+    }
 
     // Validation
     if (!email || !password) {
