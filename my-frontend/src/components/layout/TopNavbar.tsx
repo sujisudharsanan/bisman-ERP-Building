@@ -2,11 +2,15 @@
 
 import React, { useState, useEffect } from 'react';
 import Image from 'next/image';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
+import { Calendar, Bell, User, Settings, ChevronDown } from 'lucide-react';
 
 // Dynamic imports to prevent SSR issues with theme/auth hooks
 const DarkModeToggle = dynamic(() => import('../ui/DarkModeToggle'), { ssr: false });
 const LogoutButton = dynamic(() => import('../ui/LogoutButton'), { ssr: false });
+import { useAuth } from '@/hooks/useAuth';
 
 
 interface TopNavbarProps {
@@ -39,6 +43,91 @@ const HeaderLogo: React.FC = () => {
       priority
       onError={() => setLogoError(true)}
     />
+  );
+};
+
+/**
+ * User Profile Dropdown
+ */
+const UserProfileDropdown: React.FC = () => {
+  const { user } = useAuth();
+  const router = useRouter();
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = React.useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const getInitials = (name?: string) => {
+    if (!name) return 'U';
+    return name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2);
+  };
+
+  const profilePicUrl = user?.profile_pic_url
+    ? (user.profile_pic_url.startsWith('/uploads/')
+        ? user.profile_pic_url.replace('/uploads/', '/api/secure-files/')
+        : user.profile_pic_url)
+    : null;
+
+  return (
+    <div className="relative" ref={dropdownRef}>
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+        title="User menu"
+      >
+        {/* Profile Picture */}
+        <div className="w-7 h-7 rounded-full overflow-hidden bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center ring-2 ring-white dark:ring-gray-800">
+          {profilePicUrl ? (
+            <Image
+              src={profilePicUrl}
+              alt="Profile"
+              width={28}
+              height={28}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="text-xs font-medium text-white">{getInitials(user?.name)}</span>
+          )}
+        </div>
+        <span className="hidden sm:inline text-sm font-medium text-gray-700 dark:text-gray-300 max-w-[100px] truncate">
+          {user?.name || 'User'}
+        </span>
+        <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
+      </button>
+
+      {/* Dropdown Menu */}
+      {isOpen && (
+        <div className="absolute right-0 top-full mt-1 w-48 bg-white dark:bg-gray-900 rounded-lg shadow-lg border border-gray-200 dark:border-gray-700 py-1 z-50">
+          <button
+            onClick={() => { router.push('/common/about-me'); setIsOpen(false); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            <User className="w-4 h-4" />
+            My Profile
+          </button>
+          <button
+            onClick={() => { router.push('/common/user-settings'); setIsOpen(false); }}
+            className="w-full flex items-center gap-2 px-3 py-2 text-sm text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-800"
+          >
+            <Settings className="w-4 h-4" />
+            User Settings
+          </button>
+          <div className="border-t border-gray-200 dark:border-gray-700 my-1" />
+          <div className="px-3 py-2">
+            <LogoutButton position="inline" variant="danger" compact />
+          </div>
+        </div>
+      )}
+    </div>
   );
 };
 
@@ -94,9 +183,31 @@ const TopNavbar: React.FC<TopNavbarProps> = ({ showThemeToggle = false, fixed = 
       </div>
 
       {/* Right side - Actions */}
-      <div className="flex items-center gap-2">
-        <LogoutButton position="inline" variant="danger" compact />
+      <div className="flex items-center gap-1 sm:gap-2">
+        {/* Calendar - Global Access */}
+        <Link
+          href="/common/calendar"
+          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors"
+          title="Calendar"
+        >
+          <Calendar className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+        </Link>
+
+        {/* Notifications - Global Access */}
+        <button
+          className="p-2 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition-colors relative"
+          title="Notifications"
+        >
+          <Bell className="w-5 h-5 text-gray-600 dark:text-gray-400" />
+          {/* Notification badge - show when there are unread notifications */}
+          {/* <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" /> */}
+        </button>
+
+        {/* Theme Toggle */}
         {showThemeToggle && <DarkModeToggle />}
+
+        {/* User Profile Dropdown */}
+        <UserProfileDropdown />
       </div>
     </header>
   );

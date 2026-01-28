@@ -15,12 +15,13 @@ import React, {
 import { API_BASE } from '@/config/api';
 
 // Common module pages that are always accessible without assignment
-// Removed per request: security-settings, notifications, messages, documentation, help-center
-// User settings merged into billing page
+// These pages bypass RBAC permission checks and are available to all authenticated users
 const COMMON_MODULE_PATHS = [
   '/common/about-me',
   '/common/change-password',
   '/common/payment-request',
+  '/common/calendar',      // Calendar is globally accessible via top navbar
+  '/common/user-settings', // User settings accessible via profile dropdown
   '/billing', // Billing page includes user management
   '/chat', // Chat is accessible to all
 ];
