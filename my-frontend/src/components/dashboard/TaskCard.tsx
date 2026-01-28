@@ -214,22 +214,14 @@ const TaskCard: React.FC<TaskCardProps> = ({ title, subItems, progress, comments
         </div>
       )}
       
-      {/* Footer: By Creator Name • U-ID (My Work) or To Assignee Name • U-ID (My Requests) */}
+      {/* Footer: By Creator Name (My Work) or To Assignee Name (My Requests) */}
       <div className="flex items-center justify-between pt-2 border-t border-gray-200 dark:border-slate-600/30">
-        {/* By/To Name with User ID - context-aware */}
+        {/* By/To Name - context-aware */}
         <div className="flex items-center gap-1 text-[10px] text-gray-500 dark:text-slate-400 min-w-0 flex-1 mr-2">
           <span className="text-gray-400 dark:text-slate-500 shrink-0">{displayLabel}</span>
           {displayName ? (
-            <span className="text-gray-700 dark:text-slate-300 truncate flex items-center gap-1">
-              <span>{displayName}</span>
-              {displayUserId && (
-                <>
-                  <span className="text-gray-400 dark:text-slate-500">•</span>
-                  <span className="font-mono text-gray-400 dark:text-slate-500">
-                    {formatEntityId(displayUserId, 'USER')}
-                  </span>
-                </>
-              )}
+            <span className="text-gray-700 dark:text-slate-300 truncate">
+              {displayName}
             </span>
           ) : (
             <span className="text-gray-400 dark:text-slate-500 italic">Unassigned</span>

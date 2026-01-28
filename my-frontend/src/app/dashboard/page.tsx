@@ -480,7 +480,7 @@ export default function UnifiedDashboardPage() {
                   <div className="flex-none hidden lg:block h-full">
                     <RightPanel 
                       mode="dock" 
-                      hideProfile 
+                      hideProfile={true}
                       viewMode={viewMode}
                       taskCounts={taskCounts}
                       performanceMetrics={performanceMetrics}
