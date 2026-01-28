@@ -85,7 +85,7 @@ export default function BankReconciliationPage() {
   };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+    <div className="min-h-screen">
       {/* Header */}
       <div className="mb-8">
         <div className="flex items-center justify-between">

@@ -98,10 +98,8 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
           <ErrorBoundary fallback={<div className="w-16 bg-red-100 dark:bg-red-900/20 flex items-center justify-center"><p className="text-red-600 text-xs">Sidebar Error</p></div>}>
             <Sidebar isOpen={sidebarOpen} onToggle={toggleSidebar} />
           </ErrorBoundary>
-          <main
-            className="flex-1 overflow-auto transition-all duration-300 p-6"
-            style={{ marginLeft: sidebarOpen ? '208px' : '64px' }}
-          >
+          {/* Main content - sidebar is sticky on desktop (part of flex flow), no marginLeft needed */}
+          <main className="flex-1 overflow-auto transition-all duration-300 p-4">
             {children}
           </main>
         </div>

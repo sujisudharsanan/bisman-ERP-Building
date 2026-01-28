@@ -26,8 +26,13 @@ const { getPrisma } = require('../lib/prisma');
 // CONSTANTS
 // ============================================================================
 
+// These pages are ALWAYS accessible to any logged-in user regardless of role/subscription
 const ALWAYS_ACCESSIBLE_PAGES = [
-  'dashboard', 'home', 'profile', 'settings', 'help', 'support', 'notifications'
+  'dashboard', 'home', 'profile', 'settings', 'help', 'support', 'notifications',
+  // Common module pages - accessible to all logged-in users
+  'calendar', 'user-settings', 'user_settings', 'usersettings',
+  '/common/calendar', '/common/user-settings', '/calendar', '/settings',
+  'common_calendar', 'common_user_settings'
 ];
 
 const ALWAYS_ACCESSIBLE_MODULES = [

@@ -63,7 +63,7 @@ export default function InterCompanyReconciliationPage() {
   const companies = ['Bisman Holdings Pvt Ltd', 'Bisman Manufacturing Ltd', 'Bisman Retail Ltd', 'Bisman Logistics Ltd'];
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+    <div className="min-h-screen">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">

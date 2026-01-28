@@ -18,7 +18,7 @@ export default function FinancialStatementsPage() {
   const incomeData = { revenue: 110000000, cogs: 55000000, grossProfit: 55000000, opex: 35000000, netIncome: 15000000 };
 
   return (
-    <div className="min-h-screen bg-gray-50 dark:bg-gray-900 p-6">
+    <div className="min-h-screen">
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-gray-900 dark:text-white flex items-center gap-3">

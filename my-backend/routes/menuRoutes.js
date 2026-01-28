@@ -39,15 +39,23 @@ const ROLE_SIDEBAR_MODULES = {
 // Route prefixes for admin roles - only show pages with these route prefixes
 // This prevents showing unrelated pages from COMMON module
 const ROLE_ROUTE_PREFIXES = {
-  'ENTERPRISE_ADMIN': ['/enterprise-admin'],
+  'ENTERPRISE_ADMIN': ['/enterprise-admin', '/common/calendar', '/common/user-settings'],
   'SUPER_ADMIN': ['/super-admin', '/system', '/common/', '/dashboard', '/subscriptions'],
   'SYSTEM_ADMIN': ['/system', '/common/', '/dashboard'],
   'ADMIN': ['/admin', '/common/', '/dashboard'],
 };
 
+// Common pages that should ALWAYS be accessible to ALL logged-in users
+const ALWAYS_ACCESSIBLE_ROUTES = [
+  '/common/calendar',
+  '/common/user-settings',
+  '/dashboard',
+  '/common/notifications'
+];
+
 // Routes to explicitly exclude from sidebar (even if matched by prefix)
 const EXCLUDED_SIDEBAR_ROUTES = {
-  'ENTERPRISE_ADMIN': ['/common/calendar', '/common/messages'],
+  'ENTERPRISE_ADMIN': [], // Removed /common/calendar - it should be accessible
 };
 
 // ============================================================================
@@ -194,7 +202,14 @@ router.get('/menu', authenticate, async (req, res) => {
       layoutGroup: mod.layout_group,
       sortOrder: mod.sort_order,
       pages: (pagesByModule[mod.id] || [])
-        .filter(p => p.showInSidebar && !excludedRoutes.some(excluded => p.route.startsWith(excluded)))
+        .filter(p => {
+          // Always include common accessible routes
+          if (ALWAYS_ACCESSIBLE_ROUTES.some(r => p.route === r || p.route.startsWith(r))) {
+            return p.showInSidebar;
+          }
+          // Otherwise apply exclusion rules
+          return p.showInSidebar && !excludedRoutes.some(excluded => p.route.startsWith(excluded));
+        })
         .sort((a, b) => a.sortOrder - b.sortOrder)
     })).filter(mod => mod.pages.length > 0);
 
