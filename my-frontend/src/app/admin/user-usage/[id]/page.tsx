@@ -73,6 +73,7 @@ import {
   Zap,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
+import apiClient from '@/services/apiClient';
 
 // ============================================================================
 // TYPE DEFINITIONS
@@ -932,54 +933,49 @@ export default function UserUsagePage() {
     let userDataLoaded = false;
 
     try {
-      // Fetch user data from the correct API endpoint
-      const userRes = await fetch(`${baseURL}/api/users/${userId}`, { credentials: 'include' });
+      // Fetch user data using apiClient (handles base URL automatically)
+      const response = await apiClient.get(`/api/users/${userId}`);
+      const userData = response.data;
+      const user = userData?.data || userData?.user || userData;
       
-      if (userRes.ok) {
-        const userData = await userRes.json();
-        const user = userData.data || userData.user;
+      if (user && user.id) {
+        userDataLoaded = true;
+        const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || 'Unknown User';
         
-        if (user) {
-          userDataLoaded = true;
-          const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.username || 'Unknown User';
-          
-          setUserProfile({
-            id: user.id,
-            name: fullName,
-            email: user.email,
-            avatar: user.profile_pic_url,
-            role: user.role || 'USER',
-            status: user.is_active ? 'active' : 'inactive',
-            organization: {
-              id: user.tenant_id || '1',
-              name: user.tenant_name || 'Organization',
-              plan: user.product_type || 'BUSINESS_ERP',
-            },
-            createdAt: user.created_at,
-            accountType: 'local',
-          });
+        setUserProfile({
+          id: user.id,
+          name: fullName,
+          email: user.email,
+          avatar: user.profile_pic_url,
+          role: user.role || 'USER',
+          status: user.is_active !== false ? 'active' : 'inactive',
+          organization: {
+            id: user.tenant_id || '1',
+            name: user.tenant_name || 'Organization',
+            plan: user.product_type || 'BUSINESS_ERP',
+          },
+          createdAt: user.created_at,
+          accountType: 'local',
+        });
 
-          // Set security info from real data
-          setSecurity({
-            lastLogin: user.last_login || null,
-            lastLoginIP: null,
-            lastLoginDevice: null,
-            lastLoginLocation: null,
-            failedLoginAttempts: user.login_attempts || 0,
-            mfaEnabled: false,
-            passwordLastChanged: user.password_changed_at || null,
-            activeSessions: 1,
-            accountLocked: !!user.locked_until,
-          });
-        }
-      }
-
-      // Only generate demo data for activity/usage stats if user data failed
-      if (!userDataLoaded) {
-        generateDemoData();
-      } else {
-        // Generate placeholder activity stats (these would come from analytics API)
+        // Set security info from real data
+        setSecurity({
+          lastLogin: user.last_login || null,
+          lastLoginIP: null,
+          lastLoginDevice: null,
+          lastLoginLocation: null,
+          failedLoginAttempts: user.login_attempts || 0,
+          mfaEnabled: false,
+          passwordLastChanged: user.password_changed_at || null,
+          activeSessions: 1,
+          accountLocked: !!user.locked_until,
+        });
+        
+        // Generate placeholder activity stats
         generateActivityStats();
+      } else {
+        console.warn('User data not found in response:', userData);
+        generateDemoData();
       }
 
     } catch (err: any) {
@@ -989,7 +985,7 @@ export default function UserUsagePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [baseURL, userId]);
+  }, [userId]);
 
   // Generate only activity/usage stats (not user profile)
   const generateActivityStats = () => {
