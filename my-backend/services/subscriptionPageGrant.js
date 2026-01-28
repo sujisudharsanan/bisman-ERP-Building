@@ -206,14 +206,15 @@ async function grantAllSubscriptionPagesToUser(userId, planId) {
 /**
  * Grant EFFECTIVE pages to a new user
  * SECURITY: If createdByAdminId is provided, pages are limited to what that admin has access to
+ * PHASE 2 FIX: Now accepts preValidatedPages for efficiency
  * 
  * @param {number} userId - New user's legacy_id
  * @param {string} tenantId - Tenant ID
- * @param {Object} options - Optional: { createdByAdminId, createdByRole }
+ * @param {Object} options - Optional: { createdByAdminId, createdByRole, preValidatedPages }
  */
 async function grantPagesForNewUser(userId, tenantId, options = {}) {
   const prisma = getPrisma();
-  const { createdByAdminId = null, createdByRole = 'SYSTEM' } = options;
+  const { createdByAdminId = null, createdByRole = 'SYSTEM', preValidatedPages = null } = options;
   
   console.log(`[SubscriptionPageGrant] Granting pages for new user=${userId}, tenant=${tenantId}, createdBy=${createdByAdminId}`);
   
@@ -227,9 +228,14 @@ async function grantPagesForNewUser(userId, tenantId, options = {}) {
       return { success: false, reason: 'No active subscription' };
     }
     
-    // SECURITY: Get the creating admin's effective pages to limit what they can grant
+    // PHASE 2 FIX: Use pre-validated pages if provided (already validated by userCreationValidator)
+    // This avoids re-computing effective pages
     let adminEffectivePages = null;
-    if (createdByAdminId && effectiveAccessService && !['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'SYSTEM'].includes(createdByRole)) {
+    if (preValidatedPages && preValidatedPages.length > 0) {
+      adminEffectivePages = new Set(preValidatedPages);
+      console.log(`[SubscriptionPageGrant] Using ${adminEffectivePages.size} pre-validated pages`);
+    } else if (createdByAdminId && effectiveAccessService && !['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'SYSTEM'].includes(createdByRole)) {
+      // Fallback: compute admin's effective pages if not pre-validated
       try {
         const adminAccess = await effectiveAccessService.computeEffectivePages({
           userId: createdByAdminId,

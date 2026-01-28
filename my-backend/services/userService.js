@@ -28,6 +28,15 @@ try {
   grantPagesForNewUser = null;
 }
 
+// Import user creation validator (PHASE 2 MANDATORY FIX)
+let userCreationValidator;
+try {
+  userCreationValidator = require('./userCreationValidator');
+} catch (err) {
+  console.warn('[UserService] userCreationValidator not available:', err.message);
+  userCreationValidator = null;
+}
+
 // ============================================================================
 // CONSTANTS
 // ============================================================================
@@ -375,6 +384,42 @@ const UserService = {
         await enforceSubscriptionLimits(tenant_id);
       }
 
+      // ========== PHASE 2 MANDATORY: USER CREATION VALIDATION ==========
+      // This validates that admin can only grant pages they are approved for
+      // THROWS HARD ERROR on any security violation
+      let validatedGrantablePages = null;
+      if (userCreationValidator && tenant_id && !skipSubscriptionCheck) {
+        try {
+          const validationResult = await userCreationValidator.validateUserCreation({
+            adminUserId,
+            adminLegacyId: assignedByLegacyId,
+            adminRole: isEnterpriseAdmin ? 'ENTERPRISE_ADMIN' : (adminUserId ? 'ADMIN' : 'SYSTEM'),
+            tenantId: tenant_id,
+            planId: null, // Will be fetched from subscription
+            newUserData: { role, business_level: safeBusinessLevel },
+            requestedPages: page_permissions || null
+          });
+          validatedGrantablePages = validationResult.grantablePages;
+          console.log(`[UserService] Validation passed: ${validatedGrantablePages.length} pages approved for new user`);
+        } catch (validationError) {
+          // HARD ERROR - do not proceed with user creation
+          if (validationError.isSecurityViolation) {
+            console.error(`[SECURITY] UserService: User creation blocked due to security violation:`, validationError.message);
+            // Log security violation
+            if (userCreationValidator.logSecurityViolation) {
+              await userCreationValidator.logSecurityViolation({
+                adminLegacyId: assignedByLegacyId,
+                type: validationError.code,
+                message: validationError.message,
+                details: validationError.details
+              });
+            }
+            throw validationError; // Re-throw to block user creation
+          }
+          console.warn(`[UserService] Validation warning (non-blocking):`, validationError.message);
+        }
+      }
+
       // ========== REPORTS_TO VALIDATION ==========
       const newUserId = uuidv4();
       validateNoSelfReference(newUserId, reports_to);
@@ -512,16 +557,21 @@ const UserService = {
       // ========== AUTO-GRANT SUBSCRIPTION PAGES ==========
       // When a new user is created, automatically grant pages based on tenant's subscription
       // SECURITY: Pages are limited by 3-layer intersection AND what the creating admin has access to
+      // PHASE 2 FIX: Use pre-validated pages if available
       if (newUser.legacy_id && newUser.tenant_id && grantPagesForNewUser) {
         try {
           // Pass the creating admin's ID so pages are limited to what they can grant
+          // Also pass validatedGrantablePages if available (from userCreationValidator)
           const grantResult = await grantPagesForNewUser(newUser.legacy_id, newUser.tenant_id, {
             createdByAdminId: assignedByLegacyId || null,
-            createdByRole: isEnterpriseAdmin ? 'ENTERPRISE_ADMIN' : (adminUserId ? 'ADMIN' : 'SYSTEM')
+            createdByRole: isEnterpriseAdmin ? 'ENTERPRISE_ADMIN' : (adminUserId ? 'ADMIN' : 'SYSTEM'),
+            preValidatedPages: validatedGrantablePages // Use pre-validated pages if available
           });
           console.log(`[UserService] Auto-granted pages for new user:`, grantResult);
         } catch (grantError) {
-          console.error('[UserService] Failed to auto-grant pages (non-blocking):', grantError.message);
+          // PHASE 2: Make this a HARD ERROR - user is created but unusable
+          console.error('[UserService] CRITICAL: Failed to grant pages for new user:', grantError.message);
+          // Don't throw - user is already created, but log as critical
         }
       }
 
