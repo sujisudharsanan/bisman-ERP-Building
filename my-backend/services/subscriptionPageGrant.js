@@ -205,11 +205,17 @@ async function grantAllSubscriptionPagesToUser(userId, planId) {
 
 /**
  * Grant EFFECTIVE pages to a new user
+ * SECURITY: If createdByAdminId is provided, pages are limited to what that admin has access to
+ * 
+ * @param {number} userId - New user's legacy_id
+ * @param {string} tenantId - Tenant ID
+ * @param {Object} options - Optional: { createdByAdminId, createdByRole }
  */
-async function grantPagesForNewUser(userId, tenantId) {
+async function grantPagesForNewUser(userId, tenantId, options = {}) {
   const prisma = getPrisma();
+  const { createdByAdminId = null, createdByRole = 'SYSTEM' } = options;
   
-  console.log(`[SubscriptionPageGrant] Granting pages for new user=${userId}, tenant=${tenantId}`);
+  console.log(`[SubscriptionPageGrant] Granting pages for new user=${userId}, tenant=${tenantId}, createdBy=${createdByAdminId}`);
   
   try {
     const subscription = await prisma.client_subscriptions.findUnique({
@@ -221,13 +227,32 @@ async function grantPagesForNewUser(userId, tenantId) {
       return { success: false, reason: 'No active subscription' };
     }
     
+    // SECURITY: Get the creating admin's effective pages to limit what they can grant
+    let adminEffectivePages = null;
+    if (createdByAdminId && effectiveAccessService && !['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'SYSTEM'].includes(createdByRole)) {
+      try {
+        const adminAccess = await effectiveAccessService.computeEffectivePages({
+          userId: createdByAdminId,
+          tenantId,
+          planId: subscription.plan_id
+        });
+        if (adminAccess && adminAccess.effectivePages) {
+          adminEffectivePages = new Set(adminAccess.effectivePages);
+          console.log(`[SubscriptionPageGrant] Admin ${createdByAdminId} has ${adminEffectivePages.size} effective pages to grant`);
+        }
+      } catch (err) {
+        console.warn(`[SubscriptionPageGrant] Could not get admin's effective pages: ${err.message}`);
+      }
+    }
+    
     if (effectiveAccessService && effectiveAccessService.grantEffectivePagesToUser) {
       const result = await effectiveAccessService.grantEffectivePagesToUser({
         userId,
         tenantId,
         planId: subscription.plan_id,
-        actorUserId: null,
-        actorRole: 'SYSTEM'
+        actorUserId: createdByAdminId,
+        actorRole: createdByRole,
+        limitToPages: adminEffectivePages // NEW: Limit to admin's approved pages
       });
       return { success: true, pagesGranted: result.grantedCount, pagesBlocked: result.blockedCount };
     }

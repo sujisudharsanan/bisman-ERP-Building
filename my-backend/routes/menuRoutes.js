@@ -7,6 +7,9 @@
  * based on their role and DB-driven configuration.
  * 
  * This is the SINGLE SOURCE OF TRUTH for navigation menus.
+ * 
+ * SECURITY: Uses 3-layer intersection for non-admin roles:
+ *   effectivePages = subscriptionPages ∩ enterpriseApproved ∩ superadminApproved
  * ============================================================================
  */
 
@@ -14,6 +17,15 @@ const express = require('express');
 const router = express.Router();
 const { authenticate } = require('../middleware/auth');
 const { getPool } = require('../middleware/database');
+
+// Import effective access service for 3-layer intersection
+let effectiveAccessService;
+try {
+  effectiveAccessService = require('../services/effectiveAccessService');
+} catch (err) {
+  console.warn('[MenuRoutes] effectiveAccessService not available:', err.message);
+  effectiveAccessService = null;
+}
 
 // ============================================================================
 // Role-to-Module Sidebar Mapping
@@ -164,7 +176,47 @@ router.get('/menu', authenticate, async (req, res) => {
     // Build hierarchical menu structure
     // =========================================================================
     const modules = modulesResult.rows;
-    const pages = pagesResult.rows;
+    let pages = pagesResult.rows;
+
+    // =========================================================================
+    // SECURITY: Apply 3-layer intersection for non-admin roles
+    // This filters pages based on: subscription ∩ enterpriseApproved ∩ superadminApproved
+    // =========================================================================
+    const isSystemAdmin = ['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMIN'].includes(userRole);
+    
+    if (!isSystemAdmin && effectiveAccessService) {
+      try {
+        // Get user's effective pages using 3-layer intersection
+        const legacyId = req.user?.legacyId || req.user?.legacy_id;
+        const tenantId = req.user?.tenantId || req.user?.tenant_id;
+        const planId = req.user?.planId || req.user?.plan_id;
+        
+        if (legacyId && tenantId) {
+          const effectiveResult = await effectiveAccessService.computeEffectivePages({
+            userId: legacyId,
+            tenantId,
+            planId: planId || 1 // Default plan if not set
+          });
+          
+          if (effectiveResult && effectiveResult.effectivePages) {
+            const effectiveSet = new Set(effectiveResult.effectivePages);
+            const originalCount = pages.length;
+            
+            // Filter pages to only those in the effective set
+            pages = pages.filter(p => 
+              effectiveSet.has(p.page_code) || 
+              effectiveSet.has(p.route) ||
+              ALWAYS_ACCESSIBLE_ROUTES.some(r => p.route === r || p.route.startsWith(r))
+            );
+            
+            console.log(`[MenuRoutes] Effective access filter: ${originalCount} -> ${pages.length} pages for user ${legacyId}`);
+          }
+        }
+      } catch (effectiveErr) {
+        console.error('[MenuRoutes] Error computing effective pages (using role-based fallback):', effectiveErr.message);
+        // Continue with role-based pages as fallback
+      }
+    }
 
     // Group pages by module
     const pagesByModule = {};

@@ -511,10 +511,14 @@ const UserService = {
 
       // ========== AUTO-GRANT SUBSCRIPTION PAGES ==========
       // When a new user is created, automatically grant pages based on tenant's subscription
-      // This ensures no manual Super Admin intervention is needed!
+      // SECURITY: Pages are limited by 3-layer intersection AND what the creating admin has access to
       if (newUser.legacy_id && newUser.tenant_id && grantPagesForNewUser) {
         try {
-          const grantResult = await grantPagesForNewUser(newUser.legacy_id, newUser.tenant_id);
+          // Pass the creating admin's ID so pages are limited to what they can grant
+          const grantResult = await grantPagesForNewUser(newUser.legacy_id, newUser.tenant_id, {
+            createdByAdminId: assignedByLegacyId || null,
+            createdByRole: isEnterpriseAdmin ? 'ENTERPRISE_ADMIN' : (adminUserId ? 'ADMIN' : 'SYSTEM')
+          });
           console.log(`[UserService] Auto-granted pages for new user:`, grantResult);
         } catch (grantError) {
           console.error('[UserService] Failed to auto-grant pages (non-blocking):', grantError.message);

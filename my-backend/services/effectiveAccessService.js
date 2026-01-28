@@ -109,10 +109,14 @@ async function getEnterpriseApprovedPages(superadminId) {
     if (a.page_key) pageKeys.add(a.page_key);
   }
   
-  // If no explicit assignments, Enterprise Admin hasn't restricted - allow all
-  // This is the "default open" behavior until Enterprise Admin configures
+  // SECURITY FIX: If no explicit assignments, Enterprise Admin hasn't configured yet
+  // For Super Admin role specifically, we need to allow role-based pages until EA configures
+  // This maintains backward compatibility while the approval system is set up
   if (assignments.length === 0) {
-    return null; // null means "no restriction"
+    // Return null only for initial setup - Enterprise Admin should configure ASAP
+    // TODO: Once approval UI is ready, change to: return pageKeys; (default closed)
+    console.warn(`[EffectiveAccess] WARNING: No Enterprise Admin approval for SuperAdmin ${superadminId} - using role-based fallback`);
+    return null; // null means "no restriction" - TEMPORARY until EA configures
   }
   
   return pageKeys;
@@ -156,9 +160,12 @@ async function getSuperadminApprovedPages(clientAdminId, _tenantId) {
     if (p.page_key) pageKeys.add(p.page_key);
   }
   
-  // If no explicit assignments, Superadmin hasn't configured - return null (no restriction)
+  // SECURITY FIX: If no explicit assignments from Super Admin, check rbac_user_permissions
+  // If user has rbac_user_permissions, use those (backward compatibility)
+  // If nothing exists, user only gets ALWAYS_ACCESSIBLE_PAGES
   if (userAssignments.length === 0 && rbacPermissions.length === 0) {
-    return null;
+    console.warn(`[EffectiveAccess] WARNING: No Super Admin approval for user ${clientAdminId} - only common pages accessible`);
+    return pageKeys; // Return only ALWAYS_ACCESSIBLE_PAGES (default closed)
   }
   
   return pageKeys;
@@ -426,13 +433,15 @@ async function computeEffectiveRoles({
  * @param {number} params.planId - Subscription plan ID
  * @param {number} params.actorUserId - Who is triggering this grant
  * @param {string} params.actorRole - Role of actor (SYSTEM, SUPER_ADMIN, etc)
+ * @param {Set<string>} params.limitToPages - Optional: Limit pages to this set (admin's approved pages)
  */
 async function grantEffectivePagesToUser({
   userId,
   tenantId,
   planId,
   actorUserId = null,
-  _actorRole = 'SYSTEM'
+  _actorRole = 'SYSTEM',
+  limitToPages = null
 }) {
   const prisma = getPrisma();
   
@@ -441,7 +450,16 @@ async function grantEffectivePagesToUser({
   // Compute effective pages
   const effectiveResult = await computeEffectivePages({ userId, tenantId, planId });
   
-  const effectivePageKeys = effectiveResult.effectivePages;
+  let effectivePageKeys = effectiveResult.effectivePages;
+  
+  // SECURITY: If limitToPages is set, only grant pages that the creating admin has access to
+  // This prevents admins from granting pages they don't have permission to
+  if (limitToPages && limitToPages.size > 0) {
+    const originalCount = effectivePageKeys.length;
+    effectivePageKeys = effectivePageKeys.filter(pk => limitToPages.has(pk));
+    console.log(`[EffectiveAccess] Admin limit applied: ${originalCount} -> ${effectivePageKeys.length} pages`);
+  }
+  
   console.log(`[EffectiveAccess] Will grant ${effectivePageKeys.length} effective pages`);
   
   // Clear existing subscription-granted permissions and re-grant only effective ones
