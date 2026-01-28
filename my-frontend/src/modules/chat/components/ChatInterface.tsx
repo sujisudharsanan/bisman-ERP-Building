@@ -1967,8 +1967,8 @@ Choose a subscription plan that fits your business needs:
                   <h3 className="font-semibold text-white text-sm">
                     {getSelectedUser(selectedUserId)?.name || 'Unknown User'}
                   </h3>
-                  <p className="text-gray-400 text-xs capitalize">
-                    {getSelectedUser(selectedUserId)?.roleName?.replace(/_/g, ' ').toLowerCase() || getSelectedUser(selectedUserId)?.email || 'Direct Message'}
+                  <p className="text-gray-400 text-xs">
+                    {getRoleDisplayName(getSelectedUser(selectedUserId)?.roleName || '') || getSelectedUser(selectedUserId)?.email || 'Direct Message'}
                   </p>
                 </div>
               </>
