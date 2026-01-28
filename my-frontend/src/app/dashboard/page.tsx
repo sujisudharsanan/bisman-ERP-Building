@@ -232,14 +232,7 @@ export default function UnifiedDashboardPage() {
   // Loading state - only show loading for auth, or for data when authenticated
   // If user is null (not authenticated), immediately redirect instead of showing loading
   if (authLoading) {
-    return (
-      <div className="flex items-center justify-center h-64 bg-gray-50 dark:bg-slate-900">
-        <div className="text-center">
-          <div className={`animate-spin rounded-full h-12 w-12 border-4 ${config.accentColor} border-t-transparent mx-auto mb-4`}></div>
-          <p className="text-gray-600 dark:text-gray-400">Checking authentication...</p>
-        </div>
-      </div>
-    );
+    return null; // Don't show any loading state - let the layout handle it
   }
   
   // Don't render if not authenticated or redirecting to admin dashboards
@@ -247,15 +240,17 @@ export default function UnifiedDashboardPage() {
     return null;
   }
   
-  // Data loading state (only shown when authenticated)
+  // Data loading state (only shown when authenticated) - minimal indicator
   if (dataLoading) {
     return (
-      <div className="flex items-center justify-center h-64 bg-gray-50 dark:bg-slate-900">
-        <div className="text-center">
-          <div className={`animate-spin rounded-full h-12 w-12 border-4 ${config.accentColor} border-t-transparent mx-auto mb-4`}></div>
-          <p className="text-gray-600 dark:text-gray-400">{config.loadingText}</p>
+      <DashboardLayout role={roleName || 'USER'}>
+        <div className="flex items-center justify-center h-64">
+          <div className="text-center">
+            <div className={`animate-spin rounded-full h-8 w-8 border-2 ${config.accentColor} border-t-transparent mx-auto mb-2`}></div>
+            <p className="text-sm text-gray-500 dark:text-gray-400">{config.loadingText}</p>
+          </div>
         </div>
-      </div>
+      </DashboardLayout>
     );
   }
 
