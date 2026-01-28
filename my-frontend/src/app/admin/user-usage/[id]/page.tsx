@@ -934,7 +934,7 @@ export default function UserUsagePage() {
 
     try {
       // Fetch user data using apiClient (handles base URL automatically)
-      const response = await apiClient.get(`/api/users/${userId}`);
+      const response = await apiClient.get(`/api/system/users/${userId}`);
       const userData = response.data;
       const user = userData?.data || userData?.user || userData;
       
@@ -971,8 +971,8 @@ export default function UserUsagePage() {
           accountLocked: !!user.locked_until,
         });
         
-        // Generate placeholder activity stats
-        generateActivityStats();
+        // Fetch usage statistics from API
+        await fetchUsageStats();
       } else {
         console.warn('User data not found in response:', userData);
         generateDemoData();
@@ -986,6 +986,107 @@ export default function UserUsagePage() {
       setIsLoading(false);
     }
   }, [userId]);
+
+  // Fetch real usage statistics from API
+  const fetchUsageStats = async () => {
+    try {
+      const usageResponse = await apiClient.get(`/api/system/users/${userId}/usage`);
+      const usageData = usageResponse.data?.data;
+      
+      if (usageData) {
+        // Set activity stats
+        if (usageData.stats) {
+          setActivityStats({
+            totalActions: usageData.stats.totalActions || 0,
+            apiCalls: usageData.stats.apiCalls || 0,
+            pageViews: usageData.stats.pageViews || 0,
+            logins: usageData.stats.logins || 0,
+            exports: 0,
+            trend: usageData.stats.trend || 0,
+          });
+        } else {
+          setActivityStats({
+            totalActions: 0,
+            apiCalls: 0,
+            pageViews: 0,
+            logins: 0,
+            exports: 0,
+            trend: 0,
+          });
+        }
+
+        // Set daily activity
+        if (usageData.dailyActivity && usageData.dailyActivity.length > 0) {
+          setDailyActivity(usageData.dailyActivity);
+        } else {
+          setDailyActivity([]);
+        }
+
+        // Set module usage
+        if (usageData.moduleUsage && usageData.moduleUsage.length > 0) {
+          setModuleUsage(usageData.moduleUsage.map((m: any) => ({
+            name: m.name,
+            visits: m.visits || 0,
+            actions: m.actions || 0,
+            lastAccessed: new Date().toISOString(),
+            color: m.color || '#8b5cf6',
+          })));
+        } else {
+          setModuleUsage([]);
+        }
+
+        // Set recent actions
+        if (usageData.recentActions && usageData.recentActions.length > 0) {
+          setRecentActions(usageData.recentActions.map((a: any) => ({
+            id: a.id,
+            action: a.action,
+            actionType: a.action?.toLowerCase().includes('create') ? 'create' : 
+                        a.action?.toLowerCase().includes('update') ? 'update' :
+                        a.action?.toLowerCase().includes('delete') ? 'delete' : 'view',
+            resource: a.resource,
+            resourceId: a.resourceId,
+            timestamp: a.timestamp,
+            ip: a.ip,
+            status: a.status || 'success',
+          })));
+        } else {
+          setRecentActions([]);
+        }
+
+        // Set sessions
+        if (usageData.sessions && usageData.sessions.length > 0) {
+          setSessions(usageData.sessions.map((s: any) => ({
+            id: s.id,
+            device: s.device || 'Desktop',
+            browser: s.browser || 'Unknown',
+            os: s.os || 'Unknown',
+            ip: s.ip || '',
+            location: '',
+            startedAt: s.startedAt,
+            lastActivity: s.lastActivity,
+            isCurrent: s.isCurrent || false,
+          })));
+        } else {
+          setSessions([]);
+        }
+
+        // Set empty storage (no storage tracking yet)
+        setStorage({
+          total: 5 * 1024 * 1024 * 1024,
+          used: 0,
+          breakdown: [],
+          recentFiles: [],
+        });
+
+        console.log('Usage stats loaded:', usageData.stats);
+      } else {
+        generateActivityStats();
+      }
+    } catch (usageErr: any) {
+      console.warn('Could not fetch usage stats:', usageErr.message);
+      generateActivityStats();
+    }
+  };
 
   // Generate only activity/usage stats (not user profile)
   const generateActivityStats = () => {

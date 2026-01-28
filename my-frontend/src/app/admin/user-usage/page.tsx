@@ -69,32 +69,15 @@ interface UserData {
 }
 
 // ============================================================================
-// Sample Activity Data (for display purposes)
+// Activity Data - Will be fetched from API or shown as empty
 // ============================================================================
 
-const sampleActivities: UsageActivity[] = [
-  { id: 'ACT001', action: 'Viewed Report', module: 'Finance', page: '/finance/cash-flow-statement', timestamp: new Date().toISOString(), duration: 180, ipAddress: '192.168.1.45', device: 'Desktop', browser: 'Chrome 120' },
-  { id: 'ACT002', action: 'Logged In', module: 'System', page: '/auth/login', timestamp: new Date().toISOString(), duration: 15, ipAddress: '192.168.1.45', device: 'Desktop', browser: 'Chrome 120' },
-  { id: 'ACT003', action: 'Viewed Dashboard', module: 'Dashboard', page: '/dashboard', timestamp: new Date().toISOString(), duration: 300, ipAddress: '10.0.0.25', device: 'Desktop', browser: 'Chrome 120' }
-];
+// Empty placeholder - real data would come from analytics API
+const emptyActivities: UsageActivity[] = [];
 
-const moduleUsage = [
-  { module: 'Finance', visits: 450, percentage: 45 },
-  { module: 'Dashboard', visits: 230, percentage: 23 },
-  { module: 'Reports', visits: 180, percentage: 18 },
-  { module: 'Settings', visits: 80, percentage: 8 },
-  { module: 'Other', visits: 60, percentage: 6 }
-];
+const emptyModuleUsage: { module: string; visits: number; percentage: number }[] = [];
 
-const dailyActivity = [
-  { date: '2024-01-14', sessions: 3, actions: 45 },
-  { date: '2024-01-15', sessions: 4, actions: 62 },
-  { date: '2024-01-16', sessions: 2, actions: 28 },
-  { date: '2024-01-17', sessions: 5, actions: 78 },
-  { date: '2024-01-18', sessions: 3, actions: 51 },
-  { date: '2024-01-19', sessions: 4, actions: 67 },
-  { date: '2024-01-20', sessions: 2, actions: 34 }
-];
+const emptyDailyActivity: { date: string; sessions: number; actions: number }[] = [];
 
 // ============================================================================
 // Sub-Components
@@ -165,8 +148,31 @@ export default function UserUsagePage() {
       try {
         setLoading(true);
         const response = await apiClient.get('/api/users');
-        const userData = response.data?.users || response.data || [];
-        setUsers(Array.isArray(userData) ? userData : []);
+        const rawUsers = response.data?.users || response.data?.data || response.data || [];
+        
+        // Transform user data to match our interface
+        const userData = (Array.isArray(rawUsers) ? rawUsers : []).map((u: any) => ({
+          id: u.id,
+          name: [u.first_name, u.last_name].filter(Boolean).join(' ') || u.username || 'Unknown',
+          email: u.email,
+          role: u.role,
+          role_name: u.role_name || u.role,
+          department: u.department,
+          status: u.is_active !== false ? 'active' : 'inactive',
+          avatar: u.profile_pic_url,
+          lastActive: u.last_login,
+          last_login: u.last_login,
+          created_at: u.created_at,
+          phone: u.phone,
+          totalSessions: 0,
+          avgSessionDuration: 0,
+          pagesVisited: 0,
+          actionsPerformed: 0,
+          mostUsedModule: '-',
+          activities: [],
+        }));
+        
+        setUsers(userData);
         // Select first user by default
         if (userData.length > 0 && !selectedUser) {
           setSelectedUser(userData[0]);
@@ -204,10 +210,10 @@ export default function UserUsagePage() {
     pagesVisited: 0,
     actionsPerformed: 0,
     mostUsedModule: '-',
-    activities: sampleActivities
+    activities: emptyActivities
   };
 
-  const activities = user.activities || sampleActivities;
+  const activities = user.activities || emptyActivities;
 
   const filteredActivities = useMemo(() => {
     if (activityFilter === 'all') return activities;
@@ -320,8 +326,14 @@ export default function UserUsagePage() {
           {/* Module Usage */}
           <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
             <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Module Usage</h3>
+            {emptyModuleUsage.length === 0 ? (
+              <div className="text-center py-8 text-gray-500 dark:text-gray-400">
+                <BarChart2 className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No usage data available</p>
+              </div>
+            ) : (
             <div className="space-y-3">
-              {moduleUsage.map((item) => (
+              {emptyModuleUsage.map((item) => (
                 <div key={item.module}>
                   <div className="flex justify-between text-sm mb-1">
                     <span className="text-gray-700 dark:text-gray-300">{item.module}</span>
@@ -336,13 +348,21 @@ export default function UserUsagePage() {
                 </div>
               ))}
             </div>
+            )}
           </div>
 
           {/* Daily Activity Chart */}
           <div className="col-span-2 bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-4">
             <h3 className="font-semibold text-gray-900 dark:text-white mb-4">Daily Activity (Last 7 Days)</h3>
+            {emptyDailyActivity.length === 0 ? (
+              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
+                <Activity className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No activity data available</p>
+                <p className="text-xs mt-1">Activity tracking will appear here once users start using the system</p>
+              </div>
+            ) : (
             <div className="flex items-end gap-2 h-40">
-              {dailyActivity.map((day) => (
+              {emptyDailyActivity.map((day) => (
                 <div key={day.date} className="flex-1 flex flex-col items-center">
                   <div className="w-full flex flex-col items-center gap-1">
                     <div
@@ -355,12 +375,15 @@ export default function UserUsagePage() {
                 </div>
               ))}
             </div>
+            )}
+            {emptyDailyActivity.length > 0 && (
             <div className="flex justify-center gap-6 mt-4 text-sm">
               <span className="flex items-center gap-2">
                 <span className="w-3 h-3 bg-blue-500 rounded"></span>
                 <span className="text-gray-600 dark:text-gray-400">Actions</span>
               </span>
             </div>
+            )}
           </div>
         </div>
 
@@ -382,7 +405,14 @@ export default function UserUsagePage() {
             </div>
           </div>
           <div className="divide-y divide-gray-200 dark:divide-gray-700">
-            {filteredActivities.map((activity) => (
+            {filteredActivities.length === 0 ? (
+              <div className="p-8 text-center text-gray-500 dark:text-gray-400">
+                <FileText className="w-8 h-8 mx-auto mb-2 opacity-50" />
+                <p className="text-sm">No activity logs available</p>
+                <p className="text-xs mt-1">User activity will be recorded here</p>
+              </div>
+            ) : (
+            filteredActivities.map((activity) => (
               <div key={activity.id} className="p-4 hover:bg-gray-50 dark:hover:bg-gray-700/50">
                 <div className="flex items-start gap-4">
                   <div className="p-2 bg-gray-100 dark:bg-gray-700 rounded-lg">
@@ -413,7 +443,8 @@ export default function UserUsagePage() {
                   </div>
                 </div>
               </div>
-            ))}
+            ))
+            )}
           </div>
         </div>
         </div>
