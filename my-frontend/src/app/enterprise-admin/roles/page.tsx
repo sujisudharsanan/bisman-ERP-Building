@@ -987,7 +987,11 @@ export default function Page() {
           fetch("/api/governance/pages-by-role", { credentials: "include" }).catch(() => new Response("{}")),
         ]);
         const modsJson = await modsRes.json().catch(() => ({}));
+        console.log('📦 master-modules response status:', modsRes.status, modsRes.ok ? 'OK' : 'FAILED');
+        console.log('📦 master-modules response:', JSON.stringify(modsJson).slice(0, 200));
         const rolesJson = await rolesRes.json().catch(() => ({}));
+        console.log('📦 roles-users response status:', rolesRes.status, rolesRes.ok ? 'OK' : 'FAILED');
+        console.log('📦 roles-users response:', JSON.stringify(rolesJson).slice(0, 200));
         
         // Load database pages (single source of truth for role management)
         const dbPagesJson = await dbPagesRes.json().catch(() => ({}));
@@ -1068,6 +1072,7 @@ export default function Page() {
           alwaysAccessible: m.alwaysAccessible || m.is_always_accessible || false,
           pages: Array.isArray(m.pages) ? m.pages : [],
         })) as Module[];
+        console.log('📦 Loaded modules:', mods.length, mods.map(m => m.name).slice(0, 5));
 
         const admins = arr<any>(usersJson, "superAdmins").map((a) => {
           // Build page permissions map if backend provided it (various shapes supported)
