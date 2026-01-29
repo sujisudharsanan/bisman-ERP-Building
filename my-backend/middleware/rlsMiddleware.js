@@ -157,8 +157,9 @@ function rlsContextMiddleware(prisma) {
         });
       }
       
-      // For platform-scoped users (EA, SYSTEM_ADMIN), tenant may be null
-      const isPlatformUser = ['ENTERPRISE_ADMIN', 'SYSTEM_ADMIN'].includes(role.toUpperCase());
+      // For platform-scoped users (EA, SYSTEM_ADMIN, SUPER_ADMIN), tenant may be null
+      // SUPER_ADMIN should have tenant_id from auth.js, but include as fallback
+      const isPlatformUser = ['ENTERPRISE_ADMIN', 'SYSTEM_ADMIN', 'SUPER_ADMIN'].includes(role.toUpperCase());
       
       if (!tenantId && !isPlatformUser) {
         console.error('[RLS] SECURITY: Missing tenant ID for non-platform user');
