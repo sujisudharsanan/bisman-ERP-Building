@@ -308,8 +308,8 @@ async function start() {
     console.log('\n' + '='.repeat(70));
     console.log('🚀 BISMAN ERP Backend Server Started Successfully');
     console.log('='.repeat(70));
-    console.log(`� Build Version:     2025-11-26T15:07:00Z (NUCLEAR v4)`);
-    console.log(`📝 Git Commit:        891a089f (Root route fix)`);
+    console.log(`📦 Build Version:     2026-01-29T17:00:00Z (SUPER_ADMIN RLS FIX)`);
+    console.log(`📝 Git Commit:        062973ee (SUPER_ADMIN tenant_id resolution)`);
     console.log(`�📡 Server URL:        http://0.0.0.0:${port}`);
     console.log(`🏥 Health Check:      http://0.0.0.0:${port}/api/health`);
     console.log(`🔌 Socket.IO:         ENABLED (Realtime updates)`);
