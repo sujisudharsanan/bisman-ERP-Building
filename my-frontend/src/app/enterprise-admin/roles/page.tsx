@@ -989,9 +989,15 @@ export default function Page() {
         const modsJson = await modsRes.json().catch(() => ({}));
         console.log('📦 master-modules response status:', modsRes.status, modsRes.ok ? 'OK' : 'FAILED');
         console.log('📦 master-modules response:', JSON.stringify(modsJson).slice(0, 200));
+        if (!modsRes.ok) {
+          console.error('❌ master-modules API failed:', modsRes.status, modsJson.error || modsJson.message || 'Unknown error');
+        }
         const rolesJson = await rolesRes.json().catch(() => ({}));
         console.log('📦 roles-users response status:', rolesRes.status, rolesRes.ok ? 'OK' : 'FAILED');
         console.log('📦 roles-users response:', JSON.stringify(rolesJson).slice(0, 200));
+        if (!rolesRes.ok) {
+          console.error('❌ roles-users API failed:', rolesRes.status, rolesJson.error || rolesJson.message || 'Unknown error');
+        }
         
         // Load database pages (single source of truth for role management)
         const dbPagesJson = await dbPagesRes.json().catch(() => ({}));
