@@ -543,11 +543,244 @@ router.get('/pages-by-role', authenticate, async (req, res) => {
 });
 
 // ============================================================================
-// GET /api/governance/role-pages
+// GET /api/governance/role-pages-secure (PHASE 1 LOCKDOWN)
+// ============================================================================
+// SECURE endpoint that uses admin_page_assignments ONLY
+// This is the AUTHORITATIVE source for role/user page assignments
+//
+// Query params:
+//   - roleName: The role name
+//   - userId: (optional) Specific user ID to get their approved pages
+//   - mode: 'available' (EA-approved for SA) | 'assigned' (SA-approved for user)
+//
+// Returns pages from admin_page_assignments, NOT role_page_access
+// ============================================================================
+
+router.get('/role-pages-secure', authenticate, async (req, res) => {
+  const client = await getPool().connect();
+  
+  try {
+    const { roleName, userId, mode = 'assigned' } = req.query;
+    const requestingUser = req.user;
+    const requestingRole = requestingUser?.role?.toUpperCase();
+    const requestingUserId = requestingUser?.legacyId || requestingUser?.legacy_id || requestingUser?.id;
+    
+    console.log(`[Governance] role-pages-secure: role=${roleName}, userId=${userId}, mode=${mode}, requester=${requestingRole}`);
+    
+    // ========================================================================
+    // SUPER_ADMIN: Get EA-approved pages (what pages EA has allowed)
+    // ========================================================================
+    if (requestingRole === 'SUPER_ADMIN' && mode === 'available') {
+      // Get pages approved by Enterprise Admin for this Super Admin
+      const eaApproved = await client.query(`
+        SELECT DISTINCT
+          pm.id,
+          pm.page_code,
+          pm.display_name,
+          pm.route,
+          pm.icon,
+          pm.show_in_sidebar,
+          pm.category,
+          pm.page_type,
+          mm.module_code,
+          mm.display_name as module_name,
+          apa.is_active
+        FROM admin_page_assignments apa
+        JOIN pages_master pm ON apa.page_key = pm.page_code
+        LEFT JOIN modules_master mm ON mm.id = pm.module_id
+        WHERE apa.assignee_id = $1
+          AND apa.assignee_type = 'SUPER_ADMIN'
+          AND apa.assigner_type = 'ENTERPRISE_ADMIN'
+          AND apa.is_active = true
+          AND pm.is_active = true
+        ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
+      `, [requestingUserId]);
+      
+      console.log(`[Governance] EA-approved pages for SA ${requestingUserId}: ${eaApproved.rows.length}`);
+      
+      return res.json({
+        success: true,
+        data: {
+          mode: 'available',
+          source: 'admin_page_assignments',
+          pages: eaApproved.rows.map(r => ({
+            id: String(r.id),
+            pageCode: r.page_code,
+            displayName: r.display_name,
+            route: r.route,
+            icon: r.icon,
+            showInSidebar: r.show_in_sidebar,
+            category: r.category,
+            pageType: r.page_type,
+            moduleCode: r.module_code || 'GENERAL',
+            moduleName: r.module_name || 'General'
+          })),
+          counts: {
+            total: eaApproved.rows.length,
+            eaApproved: eaApproved.rows.length
+          }
+        },
+        lockdown: 'PHASE_1_AUTHORITATIVE'
+      });
+    }
+    
+    // ========================================================================
+    // SUPER_ADMIN: Get pages assigned to a specific user/role
+    // ========================================================================
+    if (requestingRole === 'SUPER_ADMIN' && userId) {
+      // Get pages SA has approved for this user
+      const saApproved = await client.query(`
+        SELECT DISTINCT
+          pm.id,
+          pm.page_code,
+          pm.display_name,
+          pm.route,
+          pm.icon,
+          pm.show_in_sidebar,
+          pm.category,
+          pm.page_type,
+          mm.module_code,
+          mm.display_name as module_name,
+          apa.assignee_type
+        FROM admin_page_assignments apa
+        JOIN pages_master pm ON apa.page_key = pm.page_code
+        LEFT JOIN modules_master mm ON mm.id = pm.module_id
+        WHERE apa.assignee_id = $1
+          AND apa.assigner_type = 'SUPER_ADMIN'
+          AND apa.is_active = true
+          AND pm.is_active = true
+        ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
+      `, [userId]);
+      
+      console.log(`[Governance] SA-approved pages for user ${userId}: ${saApproved.rows.length}`);
+      
+      return res.json({
+        success: true,
+        data: {
+          mode: 'assigned',
+          userId: userId,
+          source: 'admin_page_assignments',
+          assignedPages: saApproved.rows.map(r => ({
+            id: String(r.id),
+            pageCode: r.page_code,
+            displayName: r.display_name,
+            route: r.route,
+            icon: r.icon,
+            showInSidebar: r.show_in_sidebar,
+            category: r.category,
+            pageType: r.page_type,
+            moduleCode: r.module_code || 'GENERAL',
+            moduleName: r.module_name || 'General',
+            assigneeType: r.assignee_type
+          })),
+          counts: {
+            assigned: saApproved.rows.length
+          }
+        },
+        lockdown: 'PHASE_1_AUTHORITATIVE'
+      });
+    }
+    
+    // ========================================================================
+    // SUPER_ADMIN: Get pages for a role (based on what SA has approved for that role's users)
+    // ========================================================================
+    if (requestingRole === 'SUPER_ADMIN' && roleName) {
+      const normalizedRole = roleName.toUpperCase();
+      
+      // Get pages SA has approved for users of this role
+      const roleApproved = await client.query(`
+        SELECT DISTINCT
+          pm.id,
+          pm.page_code,
+          pm.display_name,
+          pm.route,
+          pm.icon,
+          pm.show_in_sidebar,
+          pm.category,
+          pm.page_type,
+          mm.module_code,
+          mm.display_name as module_name
+        FROM admin_page_assignments apa
+        JOIN pages_master pm ON apa.page_key = pm.page_code
+        LEFT JOIN modules_master mm ON mm.id = pm.module_id
+        JOIN users u ON apa.assignee_id = u.id
+        WHERE u.role = $1
+          AND apa.assigner_type = 'SUPER_ADMIN'
+          AND apa.is_active = true
+          AND pm.is_active = true
+        ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
+      `, [normalizedRole]);
+      
+      // Get EA-approved pages (ceiling for what SA can assign)
+      const eaCeiling = await client.query(`
+        SELECT COUNT(DISTINCT page_key) as cnt
+        FROM admin_page_assignments
+        WHERE assignee_id = $1
+          AND assignee_type = 'SUPER_ADMIN'
+          AND assigner_type = 'ENTERPRISE_ADMIN'
+          AND is_active = true
+      `, [requestingUserId]);
+      
+      console.log(`[Governance] Role ${normalizedRole} has ${roleApproved.rows.length} approved pages (ceiling: ${eaCeiling.rows[0].cnt})`);
+      
+      return res.json({
+        success: true,
+        data: {
+          mode: 'role',
+          roleName: normalizedRole,
+          source: 'admin_page_assignments',
+          assignedPages: roleApproved.rows.map(r => ({
+            id: String(r.id),
+            pageCode: r.page_code,
+            displayName: r.display_name,
+            route: r.route,
+            icon: r.icon,
+            showInSidebar: r.show_in_sidebar,
+            category: r.category,
+            pageType: r.page_type,
+            moduleCode: r.module_code || 'GENERAL',
+            moduleName: r.module_name || 'General'
+          })),
+          counts: {
+            assigned: roleApproved.rows.length,
+            eaCeiling: parseInt(eaCeiling.rows[0].cnt)
+          }
+        },
+        lockdown: 'PHASE_1_AUTHORITATIVE'
+      });
+    }
+    
+    // Default: return empty with explanation
+    return res.json({
+      success: true,
+      data: {
+        mode: 'unknown',
+        pages: [],
+        message: 'Specify userId or roleName with appropriate mode'
+      }
+    });
+    
+  } catch (error) {
+    console.error('[Governance] Error in role-pages-secure:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Failed to fetch role pages',
+      error: process.env.NODE_ENV === 'development' ? error.message : undefined,
+    });
+  } finally {
+    client.release();
+  }
+});
+
+// ============================================================================
+// GET /api/governance/role-pages (LEGACY - queries role_page_access)
+// ============================================================================
+// NOTE: This endpoint is DEPRECATED. Use /role-pages-secure instead.
+// It still queries role_page_access for backward compatibility but
+// should NOT be used for authorization decisions.
 // ============================================================================
 // Returns pages scoped to a specific role with proper filtering
-// This is the SINGLE SOURCE OF TRUTH for role management pages list
-// 
+//
 // Query params:
 //   - roleName: The role to get pages for (e.g., 'ADMIN', 'CLIENT', 'SUPER_ADMIN')
 //   - clientId: (optional) Client ID for tenant-scoped queries
@@ -557,6 +790,7 @@ router.get('/pages-by-role', authenticate, async (req, res) => {
 //   - inheritedPages: BASE_USER pages inherited by business roles  
 //   - candidatePages: Pages that CAN be assigned (filtered by role scope)
 //   - counts: Summary counts
+
 
 router.get('/role-pages', authenticate, async (req, res) => {
   const client = await getPool().connect();

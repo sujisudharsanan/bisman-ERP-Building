@@ -3378,19 +3378,26 @@ app.put('/api/enterprise-admin/super-admins/:id/page-pool', authenticate, requir
 
 // ============================================
 // GET PAGES FOR A SPECIFIC ROLE
-// Returns SCOPED pages based on:
-// 1. Logged-in user's role (EA can only assign subset of pages)
-// 2. Target role's allowed scope (business roles can't get admin pages)
-// 3. Only UI_PAGE types (exclude REDIRECT, API_ROUTE)
-// Uses role_page_access + pages_master as the source of truth
+// ============================================
+// SECURE VERSION - Uses admin_page_assignments as authority
+// 
+// HIERARCHY:
+// - ENTERPRISE_ADMIN: Sees ALL pages from pages_master (can assign to SUPER_ADMIN)
+// - SUPER_ADMIN: Sees only EA→SA approved pages (can assign to ADMIN)  
+// - ADMIN: Sees only SA→ADMIN approved pages (can assign to users)
+//
+// Returns:
+// - assignedPages: Pages already granted to target role
+// - candidatePages: Pages available to grant (scoped by logged-in user's authority)
 // ============================================
 app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     const { roleId } = req.params;
     const roleIdNum = parseInt(roleId);
     const loggedInUserRole = (req.user?.role || req.user?.roleName || '').toUpperCase();
+    const loggedInUserId = req.user?.id;
     
-    console.log('[RBAC] Getting pages for role:', roleIdNum, '| Logged-in user role:', loggedInUserRole);
+    console.log('[RBAC-SECURE] Getting pages for role:', roleIdNum, '| Logged-in user role:', loggedInUserRole);
     
     // Get role info from rbac_roles
     const role = await prisma.rbac_roles.findUnique({
@@ -3408,116 +3415,146 @@ app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_
     const targetRoleName = role.name.toUpperCase(); // e.g., 'ADMIN'
     
     // ========================================================================
-    // SCOPE DEFINITIONS (based on platform isolation rules)
+    // SECURE RBAC: admin_page_assignments is the SINGLE SOURCE OF TRUTH
     // ========================================================================
-    const PLATFORM_ROLES = ['SYSTEM_ADMIN', 'ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'PLATFORM_ADMIN'];
-    const ADMIN_ROLES = ['ADMIN', 'ADMIN_OPS', 'IT_ADMIN'];
-    const INTERNAL_ROLES = ['BISMAN_ENGINEERING', 'BISMAN_SUPPORT', 'BISMAN_BILLING', 'BISMAN_FINANCE', 'BISMAN_CUSTOMER_CARE', 'QA'];
+    // Hierarchy chain:
+    // ENTERPRISE_ADMIN → assigns pages to → SUPER_ADMIN
+    // SUPER_ADMIN → assigns pages to → ADMIN  
+    // ADMIN → assigns pages to → users
+    //
+    // Rule: You can only assign pages that YOUR superior has approved for YOU
+    // ========================================================================
     
-    // Determine what modules/routes the TARGET role can access
-    let targetRoleRouteFilter = '';
-    if (PLATFORM_ROLES.includes(targetRoleName)) {
-      // Platform roles: can access their respective admin areas
-      if (targetRoleName === 'ENTERPRISE_ADMIN') {
-        targetRoleRouteFilter = `AND (p.route NOT LIKE '/super-admin%')`;
-      } else if (targetRoleName === 'SUPER_ADMIN') {
-        targetRoleRouteFilter = `AND (p.route NOT LIKE '/enterprise-admin%')`;
-      }
-      // SYSTEM_ADMIN can access everything
-    } else if (ADMIN_ROLES.includes(targetRoleName)) {
-      // Tenant admin roles: can access /admin/* but not platform areas
-      targetRoleRouteFilter = `
-        AND p.route NOT LIKE '/super-admin%'
-        AND p.route NOT LIKE '/enterprise-admin%'
-        AND p.route NOT LIKE '/system%'
-      `;
-    } else if (INTERNAL_ROLES.includes(targetRoleName)) {
-      // Internal roles: can access /internal/* and /qa/*
-      targetRoleRouteFilter = `
-        AND p.route NOT LIKE '/super-admin%'
-        AND p.route NOT LIKE '/enterprise-admin%'
-      `;
-    } else {
-      // Business roles: cannot access any admin/platform areas
-      targetRoleRouteFilter = `
-        AND p.route NOT LIKE '/super-admin%'
-        AND p.route NOT LIKE '/enterprise-admin%'
-        AND p.route NOT LIKE '/admin%'
-        AND p.route NOT LIKE '/system%'
-        AND p.route NOT LIKE '/internal%'
-        AND p.route NOT LIKE '/qa%'
-      `;
-    }
+    let assignablePagesResult = [];
+    let assignedPageIds = new Set();
     
-    // ========================================================================
-    // SCOPE RESTRICTION: What the LOGGED-IN user can assign
-    // Enterprise Admin can only assign pages they themselves have access to
-    // ========================================================================
-    let assignerScopeFilter = '';
-    if (loggedInUserRole === 'SUPER_ADMIN') {
-      // Super Admin: Get pages that Enterprise Admin has approved for them
-      // Super Admin cannot assign EA-only pages
-      assignerScopeFilter = `AND p.route NOT LIKE '/enterprise-admin%'`;
+    if (loggedInUserRole === 'ENTERPRISE_ADMIN') {
+      // =====================================================================
+      // EA sees ALL pages from pages_master (they are at the top of hierarchy)
+      // Assigned = pages EA has already approved for target role (SA)
+      // =====================================================================
+      assignablePagesResult = await prisma.$queryRaw`
+        SELECT 
+          p.id,
+          p.page_code,
+          p.display_name,
+          p.route,
+          p.icon,
+          p.show_in_sidebar,
+          p.category,
+          p.page_type,
+          m.module_code,
+          m.display_name as module_name
+        FROM pages_master p
+        LEFT JOIN modules_master m ON m.id = p.module_id
+        WHERE p.status = 'active'
+          AND p.page_type = 'UI_PAGE'
+          AND p.category <> 'PUBLIC'
+          AND p.route NOT LIKE '/enterprise-admin%'
+        ORDER BY m.sort_order, m.module_code, p.sort_order, p.display_name
+      `;
+      
+      // Get pages EA has already assigned to target role
+      const assignedResult = await prisma.$queryRaw`
+        SELECT page_id FROM admin_page_assignments
+        WHERE assigner_type = 'ENTERPRISE_ADMIN'
+          AND assignee_type = ${targetRoleName}
+          AND is_active = true
+      `;
+      assignedPageIds = new Set(assignedResult.map(r => r.page_id));
+      
+    } else if (loggedInUserRole === 'SUPER_ADMIN') {
+      // =====================================================================
+      // SA sees ONLY pages that EA has approved for SA
+      // Assigned = pages SA has already approved for target role (ADMIN)
+      // =====================================================================
+      
+      // Get pages EA has approved for SA (this is SA's assignable pool)
+      assignablePagesResult = await prisma.$queryRaw`
+        SELECT 
+          p.id,
+          p.page_code,
+          p.display_name,
+          p.route,
+          p.icon,
+          p.show_in_sidebar,
+          p.category,
+          p.page_type,
+          m.module_code,
+          m.display_name as module_name
+        FROM pages_master p
+        LEFT JOIN modules_master m ON m.id = p.module_id
+        INNER JOIN admin_page_assignments apa 
+          ON apa.page_id = p.id
+          AND apa.assigner_type = 'ENTERPRISE_ADMIN'
+          AND apa.assignee_type = 'SUPER_ADMIN'
+          AND apa.is_active = true
+        WHERE p.status = 'active'
+          AND p.page_type = 'UI_PAGE'
+        ORDER BY m.sort_order, m.module_code, p.sort_order, p.display_name
+      `;
+      
+      // Get pages SA has already assigned to target role (ADMIN)
+      const assignedResult = await prisma.$queryRaw`
+        SELECT page_id FROM admin_page_assignments
+        WHERE assigner_type = 'SUPER_ADMIN'
+          AND assignee_type = ${targetRoleName}
+          AND is_active = true
+      `;
+      assignedPageIds = new Set(assignedResult.map(r => r.page_id));
+      
     } else if (loggedInUserRole === 'ADMIN') {
-      // Admin: Can only assign business pages (no platform pages)
-      assignerScopeFilter = `
-        AND p.route NOT LIKE '/super-admin%'
-        AND p.route NOT LIKE '/enterprise-admin%'
-        AND p.route NOT LIKE '/system%'
+      // =====================================================================
+      // ADMIN sees ONLY pages that SA has approved for ADMIN
+      // Assigned = pages ADMIN has already approved for target user/role
+      // =====================================================================
+      
+      // Get pages SA has approved for ADMIN (this is ADMIN's assignable pool)
+      assignablePagesResult = await prisma.$queryRaw`
+        SELECT 
+          p.id,
+          p.page_code,
+          p.display_name,
+          p.route,
+          p.icon,
+          p.show_in_sidebar,
+          p.category,
+          p.page_type,
+          m.module_code,
+          m.display_name as module_name
+        FROM pages_master p
+        LEFT JOIN modules_master m ON m.id = p.module_id
+        INNER JOIN admin_page_assignments apa 
+          ON apa.page_id = p.id
+          AND apa.assigner_type = 'SUPER_ADMIN'
+          AND apa.assignee_type = 'ADMIN'
+          AND apa.is_active = true
+        WHERE p.status = 'active'
+          AND p.page_type = 'UI_PAGE'
+        ORDER BY m.sort_order, m.module_code, p.sort_order, p.display_name
       `;
+      
+      // Get pages ADMIN has already assigned to users
+      const assignedResult = await prisma.$queryRaw`
+        SELECT page_id FROM admin_page_assignments
+        WHERE assigner_type = 'ADMIN'
+          AND assignee_type = ${targetRoleName}
+          AND is_active = true
+      `;
+      assignedPageIds = new Set(assignedResult.map(r => r.page_id));
+      
+    } else {
+      // Unauthorized role trying to access
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized: Only EA, SA, or ADMIN can manage role pages',
+        pages: []
+      });
     }
-    // ENTERPRISE_ADMIN can assign all pages (no filter)
     
     // ========================================================================
-    // GET ASSIGNABLE PAGES (scoped by target role + logged-in user's scope)
-    // Only UI_PAGE, exclude PUBLIC category, active status
+    // Map pages with assigned status (no legacy inheritance needed)
     // ========================================================================
-    const assignablePagesQuery = `
-      SELECT 
-        p.id,
-        p.page_code,
-        p.display_name,
-        p.route,
-        p.icon,
-        p.show_in_sidebar,
-        p.category,
-        p.page_type,
-        m.module_code,
-        m.display_name as module_name
-      FROM pages_master p
-      LEFT JOIN modules_master m ON m.id = p.module_id
-      WHERE p.status = 'active'
-        AND p.page_type = 'UI_PAGE'
-        AND p.category <> 'PUBLIC'
-        ${targetRoleRouteFilter}
-        ${assignerScopeFilter}
-      ORDER BY m.sort_order, m.module_code, p.sort_order, p.display_name
-    `;
-    
-    const assignablePagesResult = await prisma.$queryRawUnsafe(assignablePagesQuery);
-    
-    // Get pages currently assigned to this role
-    const rolePageAccessResult = await prisma.$queryRaw`
-      SELECT page_id 
-      FROM role_page_access 
-      WHERE role_name = ${targetRoleName} 
-        AND can_view = true
-    `;
-    
-    // Get base_user_pages (inherited pages)
-    const baseUserPagesResult = await prisma.$queryRaw`
-      SELECT page_id FROM base_user_pages
-    `;
-    
-    // Create sets for quick lookup
-    const grantedPageIds = new Set(rolePageAccessResult.map(r => r.page_id));
-    const inheritedPageIds = new Set(baseUserPagesResult.map(r => r.page_id));
-    
-    // Determine if this role inherits BASE_USER pages
-    const NO_INHERIT_ROLES = [...PLATFORM_ROLES, ...ADMIN_ROLES, ...INTERNAL_ROLES];
-    const inheritsBaseUser = !NO_INHERIT_ROLES.includes(targetRoleName);
-    
-    // Map assignable pages with granted status
     const pages = assignablePagesResult.map(page => ({
       id: page.route || String(page.id),
       pageId: page.id,
@@ -3529,46 +3566,46 @@ app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_
       showInSidebar: page.show_in_sidebar,
       category: page.category,
       pageType: page.page_type,
-      granted: grantedPageIds.has(page.id),
-      inherited: inheritsBaseUser && inheritedPageIds.has(page.id),
-      accessType: grantedPageIds.has(page.id) ? 'ASSIGNED' : 
-                  (inheritsBaseUser && inheritedPageIds.has(page.id)) ? 'INHERITED' : 'CANDIDATE'
+      granted: assignedPageIds.has(page.id),
+      inherited: false, // No inheritance in secure model
+      accessType: assignedPageIds.has(page.id) ? 'ASSIGNED' : 'CANDIDATE'
     }));
     
     // Split into categories for UI
     const assignedPages = pages.filter(p => p.granted);
-    const inheritedPages = pages.filter(p => p.inherited && !p.granted);
-    const candidatePages = pages.filter(p => !p.granted && !p.inherited);
+    const candidatePages = pages.filter(p => !p.granted);
     
-    console.log('[RBAC] Role:', targetRoleName, '| Assignable:', pages.length, 
-                '| Assigned:', assignedPages.length, '| Inherited:', inheritedPages.length,
-                '| Candidate:', candidatePages.length);
+    console.log('[RBAC-SECURE] Role:', targetRoleName, '| Pool:', pages.length, 
+                '| Assigned:', assignedPages.length, '| Candidate:', candidatePages.length,
+                '| LoggedIn:', loggedInUserRole);
     
     res.json({ 
       success: true, 
       role: targetRoleName,
       roleDisplayName: role.display_name || targetRoleName,
       roleId: roleIdNum,
-      inheritsBaseUser,
+      inheritsBaseUser: false, // Deprecated - secure model uses explicit assignments
       // Full list (backward compatible)
       pages,
       // Categorized lists for UI
       assignedPages,
-      inheritedPages,
+      inheritedPages: [], // No inheritance in secure model
       candidatePages,
       // Counts
       counts: {
         assigned: assignedPages.length,
-        inherited: inheritedPages.length,
+        inherited: 0,
         candidate: candidatePages.length,
-        total: assignedPages.length + inheritedPages.length
+        total: assignedPages.length // Only assigned pages count toward "total"
       },
       grantedCount: assignedPages.length,
-      totalCount: pages.length,
-      source: 'pages_master + role_page_access (scoped)',
+      totalCount: pages.length, // Total available in pool
+      source: 'admin_page_assignments (SECURE)',
       scope: {
         loggedInRole: loggedInUserRole,
-        targetRole: targetRoleName
+        targetRole: targetRoleName,
+        authority: loggedInUserRole === 'ENTERPRISE_ADMIN' ? 'FULL' : 
+                   loggedInUserRole === 'SUPER_ADMIN' ? 'EA_APPROVED_ONLY' : 'SA_APPROVED_ONLY'
       }
     });
   } catch (error) {
@@ -3584,17 +3621,23 @@ app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_
 
 // ============================================
 // UPDATE PAGES (PERMISSIONS) FOR A SPECIFIC ROLE
-// Save which pages are assigned to this role
-// Uses role_page_access + pages_master as the source of truth
+// ============================================
+// SECURE VERSION - Uses admin_page_assignments as authority
+//
+// HIERARCHY:
+// - EA assigns to SA: assigner_type='ENTERPRISE_ADMIN', assignee_type='SUPER_ADMIN'
+// - SA assigns to ADMIN: assigner_type='SUPER_ADMIN', assignee_type='ADMIN'
+// - ADMIN assigns to USER: assigner_type='ADMIN', assignee_type='USER'
 // ============================================
 app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN']), async (req, res) => {
   try {
     const { roleId } = req.params;
     const roleIdNum = parseInt(roleId);
     const { pageIds } = req.body; // Array of page paths to grant
-    const loggedInUserRole = req.user?.role || req.user?.roleName;
+    const loggedInUserRole = (req.user?.role || req.user?.roleName || '').toUpperCase();
+    const loggedInUserId = req.user?.id;
     
-    console.log('[RBAC] Updating pages for role:', roleIdNum, 'with', pageIds?.length || 0, 'pages | By:', loggedInUserRole);
+    console.log('[RBAC-SECURE] Updating pages for role:', roleIdNum, 'with', pageIds?.length || 0, 'pages | By:', loggedInUserRole);
     
     // Validate role exists
     const role = await prisma.rbac_roles.findUnique({
@@ -3608,59 +3651,143 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
       });
     }
     
-    const roleName = role.name;
+    const targetRoleName = role.name.toUpperCase();
+    
+    // ========================================================================
+    // DETERMINE ASSIGNMENT PARAMETERS BASED ON HIERARCHY
+    // ========================================================================
+    let assignerType, assigneeType, assignerId;
+    
+    if (loggedInUserRole === 'ENTERPRISE_ADMIN') {
+      // EA can assign to SUPER_ADMIN
+      if (!['SUPER_ADMIN'].includes(targetRoleName)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Enterprise Admin can only assign pages to Super Admin role'
+        });
+      }
+      assignerType = 'ENTERPRISE_ADMIN';
+      assigneeType = 'SUPER_ADMIN';
+      assignerId = loggedInUserId;
+      
+    } else if (loggedInUserRole === 'SUPER_ADMIN') {
+      // SA can assign to ADMIN
+      if (!['ADMIN', 'ADMIN_OPS', 'IT_ADMIN'].includes(targetRoleName)) {
+        return res.status(403).json({
+          success: false,
+          error: 'Super Admin can only assign pages to Admin roles'
+        });
+      }
+      assignerType = 'SUPER_ADMIN';
+      assigneeType = targetRoleName;
+      assignerId = loggedInUserId;
+      
+    } else if (loggedInUserRole === 'ADMIN') {
+      // ADMIN can assign to users/business roles
+      assignerType = 'ADMIN';
+      assigneeType = targetRoleName;
+      assignerId = loggedInUserId;
+      
+    } else {
+      return res.status(403).json({
+        success: false,
+        error: 'Unauthorized: Only EA, SA, or ADMIN can manage role pages'
+      });
+    }
     
     // Get page IDs from paths
     const allPages = await prisma.$queryRaw`
-      SELECT id, route FROM pages_master WHERE status = 'active'
+      SELECT id, route, page_code FROM pages_master WHERE status = 'active'
     `;
     
-    // Create map of path to page ID
-    const pageIdByPath = new Map();
+    // Create map of path to page info
+    const pageInfoByPath = new Map();
     allPages.forEach(p => {
-      if (p.route) pageIdByPath.set(p.route, p.id);
+      if (p.route) pageInfoByPath.set(p.route, { id: p.id, page_code: p.page_code });
     });
     
     // Convert paths to page IDs
-    const grantedPageIds = new Set();
+    const grantedPages = [];
     (pageIds || []).forEach(path => {
-      const pageId = pageIdByPath.get(path);
-      if (pageId) {
-        grantedPageIds.add(pageId);
+      const pageInfo = pageInfoByPath.get(path);
+      if (pageInfo) {
+        grantedPages.push(pageInfo);
       }
     });
     
-    console.log('[RBAC] Resolved', grantedPageIds.size, 'page IDs from', pageIds?.length || 0, 'paths');
+    console.log('[RBAC-SECURE] Resolved', grantedPages.length, 'pages from', pageIds?.length || 0, 'paths');
     
-    // Use raw SQL transaction to update role_page_access
+    // ========================================================================
+    // VALIDATE: Can only assign pages that YOUR superior approved for YOU
+    // ========================================================================
+    if (loggedInUserRole !== 'ENTERPRISE_ADMIN') {
+      // Get pages that are approved for the logged-in user's role
+      const approvedForMe = await prisma.$queryRaw`
+        SELECT page_id FROM admin_page_assignments
+        WHERE assignee_type = ${loggedInUserRole}
+          AND is_active = true
+      `;
+      const approvedPageIds = new Set(approvedForMe.map(r => r.page_id));
+      
+      // Filter to only pages the user is allowed to assign
+      const validPages = grantedPages.filter(p => approvedPageIds.has(p.id));
+      const invalidCount = grantedPages.length - validPages.length;
+      
+      if (invalidCount > 0) {
+        console.warn('[RBAC-SECURE] Blocked', invalidCount, 'unapproved pages from being assigned');
+      }
+      
+      grantedPages.length = 0;
+      grantedPages.push(...validPages);
+    }
+    
+    // ========================================================================
+    // UPDATE admin_page_assignments (soft delete + insert)
+    // ========================================================================
     await prisma.$transaction(async (tx) => {
-      // First, delete all existing entries for this role
+      // Soft-delete existing assignments for this assigner→assignee pair
       await tx.$executeRaw`
-        DELETE FROM role_page_access WHERE role_name = ${roleName}
+        UPDATE admin_page_assignments 
+        SET is_active = false, revoked_at = NOW(), updated_at = NOW()
+        WHERE assigner_type = ${assignerType}
+          AND assignee_type = ${assigneeType}
+          AND is_active = true
       `;
       
-      // Insert new entries for granted pages
-      for (const pageId of grantedPageIds) {
+      // Insert new assignments
+      for (const page of grantedPages) {
         await tx.$executeRaw`
-          INSERT INTO role_page_access (role_name, page_id, can_view, can_edit, can_delete, granted_at)
-          VALUES (${roleName}, ${pageId}, true, true, false, NOW())
-          ON CONFLICT (role_name, page_id) DO UPDATE SET can_view = true, can_edit = true
+          INSERT INTO admin_page_assignments 
+            (assigner_id, assigner_type, assignee_id, assignee_type, page_id, page_key, is_active, granted_at, created_at, updated_at)
+          VALUES 
+            (${assignerId}, ${assignerType}, ${roleIdNum}, ${assigneeType}, ${page.id}, ${page.page_code}, true, NOW(), NOW(), NOW())
+          ON CONFLICT (assigner_type, assignee_type, page_id) 
+          WHERE is_active = true
+          DO UPDATE SET 
+            is_active = true, 
+            revoked_at = NULL, 
+            updated_at = NOW()
         `;
       }
     });
     
-    console.log('[RBAC] Updated role_page_access:', grantedPageIds.size, 'pages for role:', roleName);
+    console.log('[RBAC-SECURE] Updated admin_page_assignments:', grantedPages.length, 'pages for', assignerType, '→', assigneeType);
     
     res.json({ 
       success: true, 
       message: 'Role pages updated successfully',
       roleId: roleIdNum,
       roleName: role.name,
-      grantedCount: grantedPageIds.size,
-      source: 'role_page_access'
+      grantedCount: grantedPages.length,
+      source: 'admin_page_assignments (SECURE)',
+      assignment: {
+        assignerType,
+        assigneeType,
+        assignerId
+      }
     });
   } catch (error) {
-    console.error('[RBAC] Error updating role pages:', error);
+    console.error('[RBAC-SECURE] Error updating role pages:', error);
     res.status(500).json({ 
       success: false, 
       error: 'Failed to update role pages',
