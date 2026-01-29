@@ -53,8 +53,8 @@ const CACHE_TTL_MS = 30000; // 30 seconds
 // HELPER: Get cached effective pages
 // ============================================================================
 
-async function getCachedEffectivePages(userId, tenantId, planId) {
-  const cacheKey = `${userId}:${tenantId}:${planId}`;
+async function getCachedEffectivePages(userId, tenantId, planId, role) {
+  const cacheKey = `${userId}:${tenantId}:${planId}:${role}`;
   const cached = accessCache.get(cacheKey);
   
   if (cached && Date.now() - cached.timestamp < CACHE_TTL_MS) {
@@ -64,7 +64,8 @@ async function getCachedEffectivePages(userId, tenantId, planId) {
   const result = await effectiveAccessService.computeEffectivePages({
     userId,
     tenantId,
-    planId
+    planId,
+    role // Pass role for platform detection
   });
   
   const pages = new Set(result?.effectivePages || []);
@@ -183,8 +184,8 @@ function authorize(pageKey, permission = 'view') {
     }
     
     try {
-      // Get effective pages (cached)
-      const effectivePages = await getCachedEffectivePages(userId, tenantId, planId);
+      // Get effective pages (cached) - pass role for platform detection
+      const effectivePages = await getCachedEffectivePages(userId, tenantId, planId, userRole);
       
       // Check if page is in effective pages
       const hasPageAccess = effectivePages.has(pageKey) || 

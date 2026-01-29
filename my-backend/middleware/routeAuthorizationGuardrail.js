@@ -159,6 +159,7 @@ function routeAuthorizationGuardrail(req, res, next) {
   const userId = req.user.legacyId || req.user.legacy_id || req.user.id;
   const tenantId = req.user.tenantId || req.user.tenant_id;
   const planId = req.user.planId || req.user.plan_id || 1;
+  const role = req.user.role || req.user.roleName;
   
   if (!userId) {
     console.error(`[RouteGuardrail] DENY: No userId for ${route}`);
@@ -169,8 +170,8 @@ function routeAuthorizationGuardrail(req, res, next) {
     });
   }
   
-  // Check effective access
-  computeEffectivePages({ userId, tenantId, planId })
+  // Check effective access - pass role to allow platform detection
+  computeEffectivePages({ userId, tenantId, planId, role })
     .then(result => {
       const effectivePages = new Set(result?.effectivePages || []);
       
@@ -184,12 +185,13 @@ function routeAuthorizationGuardrail(req, res, next) {
                         effectivePages.has(requiredPageKey.toLowerCase());
       
       if (hasAccess) {
-        console.log(`[RouteGuardrail] ALLOW: user=${userId} page=${requiredPageKey} route=${route}`);
         return next();
       }
       
-      // DENY
-      console.warn(`[RouteGuardrail] DENY: user=${userId} page=${requiredPageKey} route=${route} method=${method}`);
+      // DENY - reduce log verbosity for production
+      if (process.env.NODE_ENV !== 'production') {
+        console.warn(`[RouteGuardrail] DENY: user=${userId} role=${role} page=${requiredPageKey} route=${route}`);
+      }
       
       return res.status(403).json({
         success: false,
@@ -201,7 +203,8 @@ function routeAuthorizationGuardrail(req, res, next) {
       });
     })
     .catch(error => {
-      console.error(`[RouteGuardrail] ERROR: ${error.message}`);
+      // Log single structured error, not full Prisma dump
+      console.error(`[RouteGuardrail] Authorization error for user=${userId}: ${error.message}`);
       // FAIL CLOSED
       return res.status(500).json({
         success: false,

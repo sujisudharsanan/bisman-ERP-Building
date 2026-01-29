@@ -84,10 +84,157 @@ const REJECTION_CODES = {
   APPROVAL_CHAIN_BROKEN: 'Approval chain is incomplete - contact your administrator'
 };
 
+/**
+ * PLATFORM ROLES - Users that are NOT tenant-scoped
+ * These roles use platform-level access computation, not tenant-based
+ */
+const PLATFORM_ROLES = ['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMIN'];
+
 // Export for use in other modules
 module.exports.ALWAYS_ACCESSIBLE_PAGES = ALWAYS_ACCESSIBLE_PAGES;
 module.exports.ALWAYS_ACCESSIBLE_MODULES = ALWAYS_ACCESSIBLE_MODULES;
 module.exports.REJECTION_CODES = REJECTION_CODES;
+module.exports.PLATFORM_ROLES = PLATFORM_ROLES;
+
+// ============================================================================
+// PLATFORM-LEVEL ACCESS (NO TENANT)
+// ============================================================================
+
+/**
+ * Compute effective pages for ENTERPRISE_ADMIN
+ * EA has access to ALL pages they can assign (platform-level, no tenant)
+ * 
+ * @param {number} userId - Enterprise Admin's ID
+ * @returns {Promise<Object>} Effective access result
+ */
+async function computeEnterpriseAdminPages(userId) {
+  const prisma = getPrisma();
+  
+  console.log(`[EffectiveAccess:Platform] Computing EA pages for userId=${userId}`);
+  
+  const result = {
+    effectivePages: [...ALWAYS_ACCESSIBLE_PAGES],
+    blockedPages: [],
+    accessDetails: {},
+    scope: 'PLATFORM',
+    role: 'ENTERPRISE_ADMIN'
+  };
+  
+  try {
+    // EA has access to all pages in the platform (they are at the top of hierarchy)
+    // Get all active UI pages
+    const pages = await prisma.$queryRaw`
+      SELECT pm.page_code, pm.route, mm.module_code
+      FROM pages_master pm
+      LEFT JOIN modules_master mm ON pm.module_id = mm.id
+      WHERE pm.is_active = true
+        AND pm.page_type = 'UI_PAGE'
+    `;
+    
+    for (const page of pages) {
+      if (page.page_code) result.effectivePages.push(page.page_code);
+      if (page.route) result.effectivePages.push(page.route);
+    }
+    
+    console.log(`[EffectiveAccess:Platform] EA has ${result.effectivePages.length} effective pages`);
+    return result;
+    
+  } catch (error) {
+    console.error('[EffectiveAccess:Platform] Error computing EA pages:', error.message);
+    // Fail-closed: Return only ALWAYS_ACCESSIBLE_PAGES on error
+    return result;
+  }
+}
+
+/**
+ * Compute effective pages for SUPER_ADMIN
+ * SA has access to pages that EA has approved for them (platform-level, no tenant)
+ * 
+ * @param {number} userId - Super Admin's ID
+ * @returns {Promise<Object>} Effective access result
+ */
+async function computeSuperAdminPages(userId) {
+  const prisma = getPrisma();
+  
+  console.log(`[EffectiveAccess:Platform] Computing SA pages for userId=${userId}`);
+  
+  const result = {
+    effectivePages: [...ALWAYS_ACCESSIBLE_PAGES],
+    blockedPages: [],
+    accessDetails: {},
+    scope: 'PLATFORM',
+    role: 'SUPER_ADMIN'
+  };
+  
+  try {
+    // Get pages approved by Enterprise Admin for this Super Admin
+    const approvedPages = await prisma.$queryRaw`
+      SELECT apa.page_key, pm.route
+      FROM admin_page_assignments apa
+      LEFT JOIN pages_master pm ON apa.page_id = pm.id
+      WHERE apa.assignee_type = 'SUPER_ADMIN'
+        AND apa.assigner_type = 'ENTERPRISE_ADMIN'
+        AND apa.is_active = true
+    `;
+    
+    for (const row of approvedPages) {
+      if (row.page_key) result.effectivePages.push(row.page_key);
+      if (row.route) result.effectivePages.push(row.route);
+    }
+    
+    console.log(`[EffectiveAccess:Platform] SA has ${result.effectivePages.length} effective pages`);
+    return result;
+    
+  } catch (error) {
+    console.error('[EffectiveAccess:Platform] Error computing SA pages:', error.message);
+    // Fail-closed: Return only ALWAYS_ACCESSIBLE_PAGES on error
+    return result;
+  }
+}
+
+/**
+ * Compute effective pages for platform-scoped users (EA, SA, SYSTEM_ADMIN)
+ * This function does NOT query the clients table
+ * 
+ * @param {Object} params
+ * @param {number} params.userId - User's ID
+ * @param {string} params.role - User's role (ENTERPRISE_ADMIN, SUPER_ADMIN, SYSTEM_ADMIN)
+ * @param {number} params.planId - Subscription plan ID (optional, for future use)
+ * @returns {Promise<Object>} Effective access result
+ */
+async function computePlatformEffectivePages({ userId, role, planId = null }) {
+  const normalizedRole = (role || '').toUpperCase();
+  
+  console.log(`[EffectiveAccess:Platform] Computing for userId=${userId}, role=${normalizedRole}`);
+  
+  switch (normalizedRole) {
+    case 'ENTERPRISE_ADMIN':
+      return await computeEnterpriseAdminPages(userId);
+      
+    case 'SUPER_ADMIN':
+      return await computeSuperAdminPages(userId);
+      
+    case 'SYSTEM_ADMIN':
+      // System admin has full access (bootstrap scenario)
+      return await computeEnterpriseAdminPages(userId);
+      
+    default:
+      // Fail-closed for unknown platform roles
+      console.warn(`[EffectiveAccess:Platform] Unknown platform role: ${normalizedRole}`);
+      return {
+        effectivePages: [...ALWAYS_ACCESSIBLE_PAGES],
+        blockedPages: [],
+        accessDetails: {},
+        scope: 'PLATFORM',
+        role: normalizedRole
+      };
+  }
+}
+
+// Export platform functions
+module.exports.computePlatformEffectivePages = computePlatformEffectivePages;
+module.exports.computeEnterpriseAdminPages = computeEnterpriseAdminPages;
+module.exports.computeSuperAdminPages = computeSuperAdminPages;
 
 // ============================================================================
 // HELPER: Get pages from subscription plan
@@ -216,25 +363,59 @@ async function getSuperadminApprovedPages(clientAdminId, _tenantId) {
 }
 
 // ============================================================================
-// MAIN: Compute Effective Pages
+// MAIN: Compute Effective Pages (TENANT-SCOPED)
 // ============================================================================
 
 /**
  * Compute effective pages for a user using THREE-LAYER INTERSECTION
  * 
+ * IMPORTANT: This function is for TENANT-SCOPED users only (Client Admin, Users)
+ * For platform-scoped users (EA, SA, SYSTEM_ADMIN), use computePlatformEffectivePages
+ * 
  * @param {Object} params
  * @param {number} params.userId - User's legacy_id
- * @param {string} params.tenantId - Tenant/client ID
+ * @param {string} params.tenantId - Tenant/client ID (REQUIRED for tenant users)
  * @param {number} params.planId - Subscription plan ID
  * @param {number} params.superadminId - The Superadmin managing this tenant (optional)
+ * @param {string} params.role - User's role (optional, used for platform detection)
  * @returns {Promise<Object>} Effective access result
  */
 async function computeEffectivePages({
   userId,
   tenantId,
   planId,
-  superadminId = null
+  superadminId = null,
+  role = null
 }) {
+  // ========================================================================
+  // EARLY GUARD: Detect platform users and route to platform access
+  // ========================================================================
+  const normalizedRole = (role || '').toUpperCase();
+  
+  if (PLATFORM_ROLES.includes(normalizedRole)) {
+    console.log(`[EffectiveAccess] Detected platform role ${normalizedRole} - routing to platform access`);
+    return await computePlatformEffectivePages({ userId, role: normalizedRole, planId });
+  }
+  
+  // ========================================================================
+  // INVARIANT: tenantId is REQUIRED for tenant-scoped users
+  // This prevents undefined Prisma calls
+  // ========================================================================
+  if (tenantId === undefined || tenantId === null) {
+    console.error(`[EffectiveAccess] INVARIANT VIOLATION: tenantId required for tenant-scoped RBAC (userId=${userId}, role=${role})`);
+    
+    // Fail-closed: Return only ALWAYS_ACCESSIBLE_PAGES
+    return {
+      effectivePages: [...ALWAYS_ACCESSIBLE_PAGES],
+      blockedPages: [],
+      accessDetails: {},
+      planId,
+      tenantId: null,
+      error: 'TENANT_REQUIRED',
+      message: 'Tenant context is required for this user type'
+    };
+  }
+  
   console.log(`[EffectiveAccess] Computing for user=${userId}, tenant=${tenantId}, plan=${planId}`);
   
   const result = {
@@ -730,6 +911,17 @@ module.exports = {
   // Core computation
   computeEffectivePages,
   computeEffectiveRoles,
+  
+  // Platform-level access (no tenant)
+  computePlatformEffectivePages,
+  computeEnterpriseAdminPages,
+  computeSuperAdminPages,
+  
+  // Constants
+  PLATFORM_ROLES,
+  ALWAYS_ACCESSIBLE_PAGES,
+  ALWAYS_ACCESSIBLE_MODULES,
+  REJECTION_CODES,
   
   // Granting
   grantEffectivePagesToUser,

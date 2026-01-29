@@ -74,7 +74,8 @@ async function getEffectivePagesForUser(user) {
   const result = await effectiveAccessService.computeEffectivePages({
     userId,
     tenantId,
-    planId
+    planId,
+    role // Pass role for platform detection (belt and suspenders)
   });
   
   if (!result || !result.effectivePages) {
