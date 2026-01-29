@@ -214,6 +214,20 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
           }
         });
 
+        // Get tenant_id from the client associated with this Super Admin
+        let superAdminTenantId = null;
+        try {
+          const client = await prisma.clients.findFirst({
+            where: { super_admin_id: superAdmin.id },
+            select: { id: true }
+          });
+          if (client) {
+            superAdminTenantId = client.id;
+          }
+        } catch (e) {
+          console.warn('[auth.routes] Could not fetch client for Super Admin:', e.message);
+        }
+
         authData = {
           id: superAdmin.id,
           email: superAdmin.email,
@@ -221,7 +235,7 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
           role: 'SUPER_ADMIN',
           userType: 'SUPER_ADMIN',
           productType: superAdmin.productType,
-          tenant_id: null,
+          tenant_id: superAdminTenantId,
           super_admin_id: superAdmin.id,
           assignedModules: assignedModules,
           pagePermissions: pagePermissions,
@@ -234,13 +248,15 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
           name: superAdmin.name,
           role: 'SUPER_ADMIN',
           userType: 'SUPER_ADMIN',
-          productType: superAdmin.productType
+          productType: superAdmin.productType,
+          tenant_id: superAdminTenantId
         });
 
         const refreshToken = generateRefreshToken({
           id: superAdmin.id,
           email: superAdmin.email,
-          userType: 'SUPER_ADMIN'
+          userType: 'SUPER_ADMIN',
+          tenant_id: superAdminTenantId
         });
 
         // Set cookies
