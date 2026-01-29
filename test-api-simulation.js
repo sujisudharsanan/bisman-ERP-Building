@@ -1,4 +1,5 @@
 /* eslint-env node */
+// Test from my-backend directory!
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient({
   datasources: {
@@ -9,23 +10,9 @@ const prisma = new PrismaClient({
 });
 
 async function testMasterModulesAPI() {
-  console.log('=== CHECKING PRISMA MODELS ===\n');
-  
-  const models = Object.keys(prisma).filter(k => !k.startsWith('_') && !k.startsWith('$'));
-  console.log('Available models:', models.slice(0, 30).join(', '));
-  console.log('Has "modules" model:', models.includes('modules'));
-  
-  console.log('\n=== SIMULATING master-modules API ===\n');
+  console.log('=== SIMULATING master-modules API ===\n');
   
   try {
-    if (!prisma.modules) {
-      console.log('ERROR: prisma.modules is undefined!');
-      console.log('Trying raw query instead...');
-      const result = await prisma.$queryRaw`SELECT id, module_name, display_name FROM modules ORDER BY id LIMIT 5`;
-      console.log('Raw query result:', result);
-      return;
-    }
-    
     // Simulate Enterprise Admin (sees all modules)
     const dbModules = await prisma.modules.findMany({
       orderBy: { id: 'asc' }
@@ -34,7 +21,7 @@ async function testMasterModulesAPI() {
     console.log('1. Prisma returned:', dbModules.length, 'modules from database');
     
     // Load config
-    const { MASTER_MODULES } = require('./my-backend/config/master-modules');
+    const { MASTER_MODULES } = require('./config/master-modules');
     console.log('2. Config has:', MASTER_MODULES.length, 'modules');
     
     // Merge - exactly like the API does
