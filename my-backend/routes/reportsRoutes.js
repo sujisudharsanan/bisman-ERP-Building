@@ -10,6 +10,11 @@ const { hasCrossTenantScope, hasTenantAdminScope } = require('../services/author
  * Generate a comprehensive report of all roles with their assigned users and email IDs
  */
 router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN']), async (req, res) => {
+  console.log('[RolesUsersReport] ========== REQUEST START ==========');
+  console.log('[RolesUsersReport] User email:', req.user?.email);
+  console.log('[RolesUsersReport] User role:', req.user?.role, '| roleName:', req.user?.roleName);
+  console.log('[RolesUsersReport] System scope:', req.user?.system_scope);
+  
   const prisma = getPrisma();
   
   // ✅ Check if Prisma is available

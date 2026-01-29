@@ -2197,6 +2197,12 @@ app.get('/api/admin', authenticate, requireRole('ADMIN'), async (req, res) => {
 // Enterprise Admin API endpoints
 // Get master modules configuration
 app.get('/api/enterprise-admin/master-modules', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN']), async (req, res) => {
+  console.log('[master-modules] ========== REQUEST START ==========');
+  console.log('[master-modules] User email:', req.user?.email);
+  console.log('[master-modules] User role:', req.user?.role, '| roleName:', req.user?.roleName);
+  console.log('[master-modules] User userType:', req.user?.userType);
+  console.log('[master-modules] System scope:', req.user?.system_scope);
+  
   try {
     // ✅ SECURITY FIX: Filter modules based on user role
     let dbModules;
