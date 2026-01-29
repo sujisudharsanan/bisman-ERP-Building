@@ -84,7 +84,11 @@ const BYPASS_PATTERNS = [
   '/favicon',
   '/api/uploads/',
   '/api/static/',
-  '/api/token/'  // Token refresh endpoint
+  '/api/token/',  // Token refresh endpoint
+  '/api/enterprise-admin/',  // Enterprise Admin APIs - role-protected at route level
+  '/api/reports/',  // Reports APIs - role-protected at route level
+  '/api/governance/',  // Governance APIs - role-protected at route level
+  '/api/system/'  // System APIs - role-protected at route level
 ];
 
 const ALWAYS_ALLOWED_PAGES = new Set([
