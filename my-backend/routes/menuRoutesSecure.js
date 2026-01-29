@@ -38,6 +38,17 @@ const ALWAYS_ACCESSIBLE_ROUTES = [
 ];
 
 // ============================================================================
+// SIDEBAR ROUTE PREFIXES - Filter menu display for admin roles
+// Admin users may have ACCESS to many pages but sidebar shows only their home modules
+// ============================================================================
+const SIDEBAR_ROUTE_PREFIXES = {
+  'ENTERPRISE_ADMIN': ['/enterprise-admin', '/common/calendar', '/common/user-settings', '/dashboard'],
+  'SUPER_ADMIN': ['/super-admin', '/system', '/common/', '/dashboard', '/subscriptions'],
+  'SYSTEM_ADMIN': ['/system', '/common/', '/dashboard'],
+  'ADMIN': ['/admin', '/common/', '/dashboard'],
+};
+
+// ============================================================================
 // HELPER: Get effective pages for user (SINGLE SOURCE OF TRUTH)
 // ============================================================================
 
@@ -236,8 +247,25 @@ router.get('/menu', authenticate, async (req, res) => {
       });
     }
     
-    // STEP 5: Build final menu (sorted, filtered)
-    const menu = Array.from(moduleMap.values())
+    // STEP 5: Build final menu (sorted, filtered by sidebar route prefixes)
+    // Admin roles see only their home module pages in sidebar, not ALL pages they can access
+    const sidebarPrefixes = SIDEBAR_ROUTE_PREFIXES[userRole] || null;
+    
+    let filteredMenu = Array.from(moduleMap.values());
+    
+    // Apply sidebar route prefix filter for admin roles
+    if (sidebarPrefixes) {
+      console.log(`[MenuSecure] Filtering sidebar for ${userRole} to prefixes: ${sidebarPrefixes.join(', ')}`);
+      
+      filteredMenu = filteredMenu.map(m => ({
+        ...m,
+        pages: m.pages.filter(p => 
+          sidebarPrefixes.some(prefix => p.route.startsWith(prefix))
+        )
+      }));
+    }
+    
+    const menu = filteredMenu
       .filter(m => m.pages.length > 0)
       .sort((a, b) => a.sortOrder - b.sortOrder)
       .map(m => ({
