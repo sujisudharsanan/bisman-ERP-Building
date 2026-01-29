@@ -105,6 +105,24 @@ async function authenticate(req, res, next) {
           user.roleName = 'SUPER_ADMIN'
           user.userType = 'SUPER_ADMIN'
           user.system_scope = 'CROSS_TENANT' // Super admins can access all tenants
+          
+          // CRITICAL: Resolve tenant_id from JWT payload (looked up from clients table during login)
+          // or fetch it now from clients table if not in JWT
+          user.tenant_id = payload.tenant_id || null;
+          if (!user.tenant_id) {
+            try {
+              const client = await prisma.clients.findFirst({
+                where: { super_admin_id: user.id },
+                select: { id: true }
+              });
+              if (client) {
+                user.tenant_id = client.id;
+              }
+            } catch (e) {
+              console.warn('[authenticate] Could not fetch client for Super Admin:', e.message);
+            }
+          }
+          console.log('[authenticate] Super Admin tenant_id resolved:', user.tenant_id);
         }
       } else {
         // Regular user (includes ADMIN users from legacy users table)
