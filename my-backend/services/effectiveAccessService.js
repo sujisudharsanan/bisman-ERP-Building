@@ -30,6 +30,9 @@ const { getPrisma } = require('../lib/prisma');
  * ALWAYS_ACCESSIBLE_PAGES - MINIMAL set of pages that ANY authenticated user can access
  * These bypass the approval chain but are strictly limited to non-sensitive pages.
  * 
+ * NOTE: These are FALLBACK values. The authoritative source is now:
+ *       pages_master.is_compulsory = true
+ * 
  * SECURITY RULES:
  * - NO financial pages
  * - NO admin pages
@@ -40,17 +43,23 @@ const { getPrisma } = require('../lib/prisma');
 const ALWAYS_ACCESSIBLE_PAGES = [
   // Dashboard - landing page only
   'DASHBOARD', 'dashboard', 'home',
+  'ADMIN_DASHBOARD', 'SUPER_ADMIN_DASHBOARD', 'ENTERPRISE_ADMIN_DASHBOARD',
   
   // Personal profile & settings
   'USER_PROFILE', 'profile', 'user-profile',
   'USER_SETTINGS', 'settings', 'user-settings', 'user_settings',
+  'COMMON_USER_SETTINGS',
   
   // Common utilities
   'COMMON_CALENDAR', 'calendar', 'common_calendar',
-  'COMMON_NOTIFICATIONS', 'notifications',
+  'COMMON_NOTIFICATIONS', 'notifications', 'NOTIFICATIONS',
+  
+  // Chat - communication is essential
+  'CHAT', 'COMMON_CHAT',
   
   // Route variants
-  '/dashboard', '/common/calendar', '/common/user-settings', '/calendar', '/settings'
+  '/dashboard', '/common/calendar', '/common/user-settings', '/calendar', '/settings',
+  '/common/notifications', '/admin/dashboard', '/super-admin/dashboard'
 ];
 
 /**
@@ -59,6 +68,17 @@ const ALWAYS_ACCESSIBLE_PAGES = [
  */
 const ALWAYS_ACCESSIBLE_MODULES = [
   'dashboard', 'common'
+];
+
+/**
+ * ALWAYS_ACCESSIBLE_PAGES_KEYS - Page codes (uppercase) for DB matching
+ * Used for database queries where we need the canonical page_code
+ */
+const ALWAYS_ACCESSIBLE_PAGES_KEYS = [
+  'DASHBOARD', 'ADMIN_DASHBOARD', 'SUPER_ADMIN_DASHBOARD', 'ENTERPRISE_ADMIN_DASHBOARD',
+  'USER_PROFILE', 'COMMON_USER_SETTINGS', 'USER_SETTINGS',
+  'COMMON_CALENDAR', 'COMMON_NOTIFICATIONS', 'NOTIFICATIONS',
+  'CHAT', 'COMMON_CHAT'
 ];
 
 /**
@@ -89,6 +109,162 @@ const REJECTION_CODES = {
  * These roles use platform-level access computation, not tenant-based
  */
 const PLATFORM_ROLES = ['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMIN'];
+
+// ============================================================================
+// COMPULSORY PAGES CACHE & HELPERS
+// ============================================================================
+
+/**
+ * Cache for compulsory pages (refreshed every 5 minutes)
+ */
+let compulsoryPagesCache = null;
+let compulsoryCacheTimestamp = 0;
+const COMPULSORY_CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Fetch compulsory pages from database (with caching)
+ * These pages are PLATFORM GUARANTEES - users cannot function without them
+ * 
+ * @returns {Promise<Set<string>>} Set of compulsory page codes and routes
+ */
+async function getCompulsoryPages() {
+  const now = Date.now();
+  
+  // Return cached if valid
+  if (compulsoryPagesCache && (now - compulsoryCacheTimestamp) < COMPULSORY_CACHE_TTL) {
+    return compulsoryPagesCache;
+  }
+  
+  const prisma = getPrisma();
+  
+  try {
+    const pages = await prisma.$queryRaw`
+      SELECT page_code, route
+      FROM pages_master
+      WHERE is_compulsory = true
+        AND status = 'active'
+    `;
+    
+    // Build set with both page_code and route for flexible matching
+    const compulsorySet = new Set(ALWAYS_ACCESSIBLE_PAGES); // Start with fallback
+    
+    for (const page of pages) {
+      if (page.page_code) compulsorySet.add(page.page_code);
+      if (page.route) compulsorySet.add(page.route);
+    }
+    
+    // Update cache
+    compulsoryPagesCache = compulsorySet;
+    compulsoryCacheTimestamp = now;
+    
+    console.log(`[EffectiveAccess] Loaded ${compulsorySet.size} compulsory pages from database`);
+    return compulsorySet;
+    
+  } catch (error) {
+    console.error('[EffectiveAccess] Error fetching compulsory pages, using fallback:', error.message);
+    // Return fallback on error
+    return new Set(ALWAYS_ACCESSIBLE_PAGES);
+  }
+}
+
+/**
+ * Fetch default pages for new roles from database
+ * These pages are auto-selected when creating a new role
+ * 
+ * @returns {Promise<Array<Object>>} Array of default page objects
+ */
+async function getDefaultPagesForRoles() {
+  const prisma = getPrisma();
+  
+  try {
+    const pages = await prisma.$queryRaw`
+      SELECT id, page_code, display_name, route, is_compulsory, is_default_for_roles
+      FROM pages_master
+      WHERE is_default_for_roles = true
+        AND status = 'active'
+      ORDER BY is_compulsory DESC, display_name ASC
+    `;
+    
+    return pages;
+    
+  } catch (error) {
+    console.error('[EffectiveAccess] Error fetching default pages:', error.message);
+    return [];
+  }
+}
+
+/**
+ * Check if a page is compulsory (cannot be revoked)
+ * 
+ * @param {string} pageKey - Page code or route to check
+ * @returns {Promise<boolean>} True if page is compulsory
+ */
+async function isCompulsoryPage(pageKey) {
+  const compulsoryPages = await getCompulsoryPages();
+  return compulsoryPages.has(pageKey) || 
+         compulsoryPages.has(pageKey.toUpperCase()) ||
+         compulsoryPages.has(pageKey.toLowerCase());
+}
+
+/**
+ * Validate page assignment request - rejects attempts to remove compulsory pages
+ * 
+ * @param {Array<string>} requestedPages - Pages the admin wants to assign
+ * @param {Array<string>} currentPages - Pages currently assigned
+ * @returns {Object} Validation result with any blocked removals
+ */
+async function validatePageAssignment(requestedPages, currentPages) {
+  const compulsoryPages = await getCompulsoryPages();
+  const requestedSet = new Set(requestedPages);
+  
+  const blockedRemovals = [];
+  const warningRemovals = [];
+  
+  // Check if any compulsory pages are being removed
+  for (const currentPage of currentPages) {
+    if (!requestedSet.has(currentPage)) {
+      // Page is being removed - check if compulsory
+      if (compulsoryPages.has(currentPage)) {
+        blockedRemovals.push({
+          page: currentPage,
+          reason: 'This page is mandatory and cannot be removed'
+        });
+      }
+    }
+  }
+  
+  return {
+    valid: blockedRemovals.length === 0,
+    blockedRemovals,
+    warningRemovals,
+    message: blockedRemovals.length > 0 
+      ? `Cannot remove compulsory pages: ${blockedRemovals.map(b => b.page).join(', ')}`
+      : 'Validation passed'
+  };
+}
+
+/**
+ * Clear the compulsory pages cache
+ * Call this after modifying is_compulsory flags in pages_master
+ */
+function clearCompulsoryPagesCache() {
+  compulsoryPagesCache = null;
+  compulsoryCacheTimestamp = 0;
+  console.log('[EffectiveAccess] Compulsory pages cache cleared');
+}
+
+/**
+ * Alias for getDefaultPagesForRoles (backwards compatibility)
+ */
+async function getDefaultPages() {
+  return await getDefaultPagesForRoles();
+}
+
+// Export compulsory page helpers
+module.exports.getCompulsoryPages = getCompulsoryPages;
+module.exports.getDefaultPagesForRoles = getDefaultPagesForRoles;
+module.exports.isCompulsoryPage = isCompulsoryPage;
+module.exports.validatePageAssignment = validatePageAssignment;
 
 // Export for use in other modules
 module.exports.ALWAYS_ACCESSIBLE_PAGES = ALWAYS_ACCESSIBLE_PAGES;
@@ -134,6 +310,16 @@ async function computeEnterpriseAdminPages(userId) {
     for (const page of pages) {
       if (page.page_code) result.effectivePages.push(page.page_code);
       if (page.route) result.effectivePages.push(page.route);
+    }
+    
+    // ========================================================================
+    // PHASE 7 FIX: INJECT COMPULSORY PAGES (ensure they're always present)
+    // ========================================================================
+    const compulsoryPages = await getCompulsoryPages();
+    for (const pageKey of compulsoryPages) {
+      if (!result.effectivePages.includes(pageKey)) {
+        result.effectivePages.push(pageKey);
+      }
     }
     
     console.log(`[EffectiveAccess:Platform] EA has ${result.effectivePages.length} effective pages`);
@@ -182,6 +368,16 @@ async function computeSuperAdminPages(userId) {
       if (row.route) result.effectivePages.push(row.route);
     }
     
+    // ========================================================================
+    // PHASE 7 FIX: INJECT COMPULSORY PAGES (ensure they're always present)
+    // ========================================================================
+    const compulsoryPages = await getCompulsoryPages();
+    for (const pageKey of compulsoryPages) {
+      if (!result.effectivePages.includes(pageKey)) {
+        result.effectivePages.push(pageKey);
+      }
+    }
+    
     console.log(`[EffectiveAccess:Platform] SA has ${result.effectivePages.length} effective pages`);
     return result;
     
@@ -202,7 +398,7 @@ async function computeSuperAdminPages(userId) {
  * @param {number} params.planId - Subscription plan ID (optional, for future use)
  * @returns {Promise<Object>} Effective access result
  */
-async function computePlatformEffectivePages({ userId, role, planId = null }) {
+async function computePlatformEffectivePages({ userId, role, planId: _planId = null }) {
   const normalizedRole = (role || '').toUpperCase();
   
   console.log(`[EffectiveAccess:Platform] Computing for userId=${userId}, role=${normalizedRole}`);
@@ -493,6 +689,35 @@ async function computeEffectivePages({
           reason: result.accessDetails[pageKey].blockedReason
         });
       }
+    }
+    
+    // ========================================================================
+    // PHASE 7 FIX: INJECT COMPULSORY PAGES
+    // These pages are ALWAYS accessible regardless of RBAC layers
+    // ========================================================================
+    const compulsoryPages = await getCompulsoryPages();
+    let injectedCount = 0;
+    
+    for (const pageKey of compulsoryPages) {
+      if (!result.effectivePages.includes(pageKey)) {
+        result.effectivePages.push(pageKey);
+        result.accessDetails[pageKey] = {
+          inSubscription: true,
+          inEnterprise: true,
+          inSuperadmin: true,
+          isEffective: true,
+          isCompulsory: true,
+          blockedReason: null
+        };
+        injectedCount++;
+        
+        // Remove from blocked if it was there
+        result.blockedPages = result.blockedPages.filter(b => b.pageKey !== pageKey);
+      }
+    }
+    
+    if (injectedCount > 0) {
+      console.log(`[EffectiveAccess] Injected ${injectedCount} compulsory pages`);
     }
     
     console.log(`[EffectiveAccess] Result: ${result.effectivePages.length} effective, ${result.blockedPages.length} blocked`);
@@ -917,9 +1142,15 @@ module.exports = {
   computeEnterpriseAdminPages,
   computeSuperAdminPages,
   
+  // Compulsory/Default pages (Phase 7)
+  getCompulsoryPages,
+  getDefaultPages,
+  clearCompulsoryPagesCache,
+  
   // Constants
   PLATFORM_ROLES,
   ALWAYS_ACCESSIBLE_PAGES,
+  ALWAYS_ACCESSIBLE_PAGES_KEYS,
   ALWAYS_ACCESSIBLE_MODULES,
   REJECTION_CODES,
   

@@ -1,0 +1,191 @@
+{
+  "timestamp": "2026-01-29T07:35:46.017Z",
+  "sections": {
+    "pageAccess": {
+      "findings": [
+        {
+          "status": "PASS",
+          "finding": "All pages have unique page_code"
+        },
+        {
+          "status": "PASS",
+          "finding": "All UI pages have valid routes"
+        },
+        {
+          "status": "WARN",
+          "finding": "4 pages without explicit assignments"
+        },
+        {
+          "status": "PASS",
+          "finding": "DENY-BY-DEFAULT pattern found"
+        },
+        {
+          "status": "PASS",
+          "finding": "No excessive hardcoded role checks"
+        },
+        {
+          "status": "PASS",
+          "finding": "126 routes use authenticate middleware"
+        }
+      ],
+      "status": "PASS"
+    },
+    "compulsoryPages": {
+      "findings": [
+        {
+          "status": "PASS",
+          "finding": "5 compulsory pages defined"
+        },
+        {
+          "status": "PASS",
+          "finding": "Dashboard is compulsory"
+        },
+        {
+          "status": "PASS",
+          "finding": "6 default pages for new roles"
+        },
+        {
+          "status": "PASS",
+          "finding": "Compulsory pages handled in effectiveAccessService"
+        }
+      ],
+      "status": "PASS"
+    },
+    "multiRolePages": {
+      "findings": [
+        {
+          "status": "PASS",
+          "finding": "10 pages properly shared across roles"
+        },
+        {
+          "status": "PASS",
+          "finding": "data_scope column exists in rbac_roles"
+        },
+        {
+          "status": "PASS",
+          "finding": "Minimal role-based SQL branching"
+        }
+      ],
+      "status": "PASS"
+    },
+    "dataScope": {
+      "findings": [
+        {
+          "status": "WARN",
+          "finding": "users_enhanced lacks data_scope column"
+        },
+        {
+          "status": "PASS",
+          "finding": "All data scopes are valid"
+        },
+        {
+          "status": "PASS",
+          "finding": "All required RLS session variables set"
+        },
+        {
+          "status": "PASS",
+          "finding": "Fail-closed design detected"
+        },
+        {
+          "status": "WARN",
+          "finding": "users_enhanced lacks data_scope - inherits from role"
+        }
+      ],
+      "status": "PASS"
+    },
+    "rls": {
+      "findings": [
+        {
+          "status": "PASS",
+          "finding": "21 tables have RLS enabled"
+        },
+        {
+          "status": "PASS",
+          "finding": "23 RLS policies defined"
+        },
+        {
+          "status": "PASS",
+          "finding": "set_security_context() function exists"
+        },
+        {
+          "status": "PASS",
+          "finding": "is_security_context_set() function exists"
+        },
+        {
+          "status": "PASS",
+          "finding": "bisman_app role exists with NOBYPASSRLS"
+        },
+        {
+          "status": "WARN",
+          "finding": "Superuser bypasses RLS (expected in admin connection)"
+        }
+      ],
+      "status": "PASS"
+    },
+    "backgroundJobs": {
+      "findings": [
+        {
+          "status": "WARN",
+          "finding": "No dedicated background job RLS handling"
+        },
+        {
+          "status": "PASS",
+          "finding": "6/9 jobs appear tenant-aware"
+        },
+        {
+          "status": "PASS",
+          "finding": "Webhooks appear authenticated"
+        }
+      ],
+      "status": "PASS"
+    },
+    "auditLogging": {
+      "findings": [
+        {
+          "status": "PASS",
+          "finding": "45 audit tables exist"
+        },
+        {
+          "status": "PASS",
+          "finding": "security_access_log has required columns"
+        },
+        {
+          "status": "PASS",
+          "finding": "log_security_access() function exists"
+        },
+        {
+          "status": "PASS",
+          "finding": "Security events are being logged"
+        }
+      ],
+      "status": "PASS"
+    },
+    "misconfiguration": {
+      "findings": [
+        {
+          "status": "PASS",
+          "finding": "Only 1 roles have ALL scope"
+        },
+        {
+          "status": "WARN",
+          "finding": "9 roles lack dashboard"
+        },
+        {
+          "status": "PASS",
+          "finding": "Most business tables have tenant_id"
+        },
+        {
+          "status": "PASS",
+          "finding": "User scope inherited from role (no override column)"
+        }
+      ],
+      "status": "PASS"
+    }
+  },
+  "summary": {
+    "pass": 29,
+    "fail": 0,
+    "warn": 6
+  },
+  "verdict": "🟢 SECURITY AUDIT PASSED"
+}

@@ -10,11 +10,21 @@
  * - Automatic logging
  * - Development/Production mode differentiation
  * - HTTP status code mapping
+ * - Data Isolation / RLS error handling (secure)
  * 
  * @module middleware/errorHandler
  */
 
 const { logError } = require('../utils/errorLogger');
+
+// Import data isolation handler (lazy load to avoid circular deps)
+let dataIsolationHandler = null;
+function getDataIsolationHandler() {
+  if (!dataIsolationHandler) {
+    dataIsolationHandler = require('./dataIsolationErrorHandler');
+  }
+  return dataIsolationHandler;
+}
 
 /**
  * Standard Error Codes
@@ -31,6 +41,12 @@ const ERROR_CODES = {
   // Authorization Errors (403)
   INSUFFICIENT_PERMISSIONS: 'INSUFFICIENT_PERMISSIONS',
   ACCESS_DENIED: 'ACCESS_DENIED',
+  PAGE_ACCESS_DENIED: 'PAGE_ACCESS_DENIED',       // RBAC page denial
+  DATA_ACCESS_DENIED: 'DATA_ACCESS_DENIED',       // RLS/scope denial
+  DATA_MODIFY_DENIED: 'DATA_MODIFY_DENIED',       // Edit blocked
+  DATA_DELETE_DENIED: 'DATA_DELETE_DENIED',       // Delete blocked
+  DATA_EXPORT_DENIED: 'DATA_EXPORT_DENIED',       // Export blocked
+  SELF_SCOPE_VIOLATION: 'SELF_SCOPE_VIOLATION',   // Accessing other user's data
   
   // Rate Limiting (429)
   LOGIN_LIMIT_REACHED: 'LOGIN_LIMIT_REACHED',
@@ -115,8 +131,10 @@ function getHttpStatus(errorCode) {
 
 /**
  * Format error response
+ * @param {Error} error - The error object
+ * @param {Object} _req - Express request (unused, kept for signature)
  */
-function formatErrorResponse(error, req) {
+function formatErrorResponse(error, _req) {
   const isDevelopment = process.env.NODE_ENV !== 'production';
   
   // Determine error code and status
@@ -124,6 +142,22 @@ function formatErrorResponse(error, req) {
   let httpStatus = error.httpStatus || getHttpStatus(errorCode);
   let message = error.message || 'An unexpected error occurred';
   let details = error.details || null;
+  
+  // =========================================================================
+  // CRITICAL: Handle RLS/Data Isolation Errors SECURELY
+  // =========================================================================
+  // PostgreSQL error 42501 = insufficient privilege (RLS policy violation)
+  // NEVER expose internal RLS details to users
+  // =========================================================================
+  if (error.code === '42501' || 
+      /permission denied for (table|relation)/i.test(error.message) ||
+      /row-level security/i.test(error.message) ||
+      /violates row-level security policy/i.test(error.message)) {
+    errorCode = ERROR_CODES.DATA_ACCESS_DENIED;
+    httpStatus = 403;
+    message = "You don't have permission to view this data.";
+    details = null; // NEVER leak RLS details
+  }
   
   // Handle specific error types
   
@@ -210,8 +244,31 @@ function formatRetryTime(seconds) {
 /**
  * Main Error Handler Middleware
  * Must be registered AFTER all routes
+ * @param {Error} err - The error
+ * @param {Object} req - Express request
+ * @param {Object} res - Express response
+ * @param {Function} _next - Next middleware (unused, required for Express error handler signature)
  */
-function errorHandler(err, req, res, next) {
+function errorHandler(err, req, res, _next) {
+  // Check if this is an RLS/Data Isolation error
+  const diHandler = getDataIsolationHandler();
+  if (diHandler.isRLSViolation(err)) {
+    // Use the secure data isolation handler
+    const mappedError = diHandler.mapDataIsolationError(err, {
+      operation: getOperationFromMethod(req.method),
+      dataScope: req.user?.dataScope,
+      currentUserId: req.user?.id,
+      targetUserId: req.params?.id || req.params?.userId,
+      req,
+    });
+    
+    // Log internally (async, don't block response)
+    diHandler.logDataIsolationViolation(mappedError, req);
+    
+    // Send secure response (no internal details)
+    return res.status(mappedError.status).json(diHandler.createSafeErrorResponse(mappedError));
+  }
+  
   // Log the error
   logError(err, req);
   
@@ -220,6 +277,20 @@ function errorHandler(err, req, res, next) {
   
   // Send response
   res.status(httpStatus).json(response);
+}
+
+/**
+ * Get operation type from HTTP method (for error context)
+ */
+function getOperationFromMethod(method) {
+  const methodMap = {
+    GET: 'view',
+    POST: 'create',
+    PUT: 'edit',
+    PATCH: 'edit',
+    DELETE: 'delete',
+  };
+  return methodMap[method?.toUpperCase()] || 'view';
 }
 
 /**
@@ -251,10 +322,26 @@ function asyncHandler(fn) {
   };
 }
 
+/**
+ * Create an empty state response for queries that return 0 rows
+ * USE THIS instead of returning an error when data is empty!
+ * 
+ * @param {string} entityType - Type of entity (e.g., 'tasks', 'records')
+ * @param {Object} pagination - Optional pagination info
+ * @returns {Object} Empty state response
+ */
+function createEmptyStateResponse(entityType = 'records', pagination = null) {
+  const diHandler = getDataIsolationHandler();
+  return diHandler.createEmptyStateResponse(entityType, pagination);
+}
+
 module.exports = {
   errorHandler,
   notFoundHandler,
   asyncHandler,
   AppError,
   ERROR_CODES,
+  // Data isolation helpers
+  createEmptyStateResponse,
+  getDataIsolationHandler,
 };

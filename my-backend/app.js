@@ -79,6 +79,7 @@ const { adminIpAllowlist } = require('./middleware/adminIpAllowlist') // ✅ IP 
 const { loginBruteForceProtection, signupBruteForceProtection, verifyCaptcha } = require('./middleware/bruteForceProtection') // ✅ Brute force protection
 const { rbacEnforcer } = require('./middleware/rbac.enforcer') // ✅ SECURITY: Global RBAC enforcement
 const { requirePlanModuleAccess } = require('./middleware/planModuleAccessMiddleware') // ✅ SECURITY: Subscription-based module access
+const { rlsContextMiddleware, rlsAuditMiddleware } = require('./middleware/rlsMiddleware') // ✅ SECURITY: PostgreSQL RLS context
 
 const app = express()
 
@@ -556,6 +557,25 @@ app.use('/api', async (req, res, next) => {
 // Step 2: Apply RBAC enforcement to all API routes
 app.use('/api', rbacEnforcer);
 console.log('[app.js] ✅ 🔒 RBAC Enforcer globally applied to all /api/* routes');
+
+// ============================================================================
+// 🔐 POSTGRESQL RLS CONTEXT - DATABASE SECURITY
+// ============================================================================
+// Sets PostgreSQL session variables for Row Level Security enforcement.
+// This MUST run after authentication and BEFORE any database access.
+//
+// Session variables set:
+//   app.user_id    - Current authenticated user's ID
+//   app.tenant_id  - Current tenant's ID (for multi-tenancy)
+//   app.data_scope - Data visibility scope (ALL, TENANT, SELF, etc.)
+//   app.role       - User's role name
+//
+// ⚠️ Without this middleware, RLS policies will block all data access.
+// ⚠️ Missing context = FAIL CLOSED (0 rows returned, not error)
+// ============================================================================
+app.use('/api', rlsContextMiddleware(prisma));
+app.use('/api', rlsAuditMiddleware(prisma));
+console.log('[app.js] ✅ 🔐 RLS Context Middleware globally applied to all /api/* routes');
 
 // Upload routes
 const uploadRoutes = require('./routes/upload')
@@ -3397,7 +3417,7 @@ app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_
     const loggedInUserRole = (req.user?.role || req.user?.roleName || '').toUpperCase();
     const loggedInUserId = req.user?.id;
     
-    console.log('[RBAC-SECURE] Getting pages for role:', roleIdNum, '| Logged-in user role:', loggedInUserRole);
+    console.log('[RBAC-SECURE] Getting pages for role:', roleIdNum, '| Logged-in user:', loggedInUserId, '| Role:', loggedInUserRole);
     
     // Get role info from rbac_roles
     const role = await prisma.rbac_roles.findUnique({
@@ -3739,6 +3759,51 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
       
       grantedPages.length = 0;
       grantedPages.push(...validPages);
+    }
+    
+    // ========================================================================
+    // PHASE 7 FIX: VALIDATE COMPULSORY PAGES ARE NOT BEING REMOVED
+    // Compulsory pages CANNOT be removed from any role
+    // ========================================================================
+    const effectiveAccessService = require('./services/effectiveAccessService');
+    const compulsoryPages = await effectiveAccessService.getCompulsoryPages();
+    
+    // Get current assignments for this role
+    const currentAssignments = await prisma.$queryRaw`
+      SELECT page_key FROM admin_page_assignments
+      WHERE assignee_type = ${assigneeType}
+        AND is_active = true
+    `;
+    const currentPageKeys = new Set(currentAssignments.map(a => a.page_key));
+    const newPageKeys = new Set(grantedPages.map(p => p.page_code));
+    
+    // Check if any compulsory pages are being removed
+    const blockedRemovals = [];
+    for (const currentKey of currentPageKeys) {
+      if (!newPageKeys.has(currentKey) && compulsoryPages.has(currentKey)) {
+        blockedRemovals.push(currentKey);
+      }
+    }
+    
+    // Also ensure all compulsory pages are included in the grant
+    for (const compulsoryKey of compulsoryPages) {
+      if (!newPageKeys.has(compulsoryKey)) {
+        // Auto-add compulsory pages if missing
+        const compulsoryPage = allPages.find(p => p.page_code === compulsoryKey);
+        if (compulsoryPage) {
+          grantedPages.push({ id: compulsoryPage.id, page_code: compulsoryPage.page_code });
+          console.log('[RBAC-SECURE] Auto-added compulsory page:', compulsoryKey);
+        }
+      }
+    }
+    
+    if (blockedRemovals.length > 0) {
+      return res.status(400).json({
+        success: false,
+        error: 'Cannot remove compulsory pages',
+        blockedPages: blockedRemovals,
+        message: `The following pages are mandatory and cannot be removed: ${blockedRemovals.join(', ')}`
+      });
     }
     
     // ========================================================================
