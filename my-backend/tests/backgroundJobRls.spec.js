@@ -1,3 +1,5 @@
+/* eslint-env jest */
+/* global describe, test, expect, beforeAll, afterAll */
 /**
  * BackgroundJobRLS Security Tests
  * ================================
@@ -26,7 +28,6 @@ const ADMIN_DATABASE_URL = process.env.DATABASE_URL ||
 const { 
   BackgroundJobRLS, 
   runWithRLSContext,
-  VALID_SCOPES,
   APPROVED_ALL_SCOPE_JOBS 
 } = require('../security/BackgroundJobRLS');
 
@@ -307,8 +308,8 @@ describe('BackgroundJobRLS Security Tests', () => {
             throw new Error('Intentional test failure');
           }
         );
-      } catch (e) {
-        expect(e.message).toBe('Intentional test failure');
+      } catch (err) {
+        expect(err.message).toBe('Intentional test failure');
       }
 
       // Next job should work fine with different context
@@ -368,11 +369,11 @@ describe('BackgroundJobRLS Security Tests', () => {
         await runWithRLSContext(
           { tenantId: testTenantId1, userId: testUserId, dataScope: 'TENANT' },
           { jobName: uniqueJobName },
-          async (client) => {
+          async (_client) => {
             throw new Error('Intentional failure for audit test');
           }
         );
-      } catch (e) {
+      } catch {
         // Expected
       }
 

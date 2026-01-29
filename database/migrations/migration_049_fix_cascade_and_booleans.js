@@ -1,3 +1,4 @@
+/* eslint-env node */
 /**
  * Migration 049: Fix CASCADE DELETE Rules & Nullable Booleans
  * =============================================================

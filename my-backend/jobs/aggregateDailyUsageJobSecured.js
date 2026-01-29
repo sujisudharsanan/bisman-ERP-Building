@@ -13,7 +13,7 @@
  */
 
 const { Pool } = require('pg');
-const { runWithRLSContext, runForAllTenants } = require('../security/BackgroundJobRLS');
+const { runWithRLSContext } = require('../security/BackgroundJobRLS');
 
 // Database connection
 const DATABASE_URL = process.env.DATABASE_URL ||

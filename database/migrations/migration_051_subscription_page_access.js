@@ -1,4 +1,4 @@
- 
+/* eslint-env node */
 /**
  * ============================================================================
  * MIGRATION 051: Subscription-Aware Page Access Control

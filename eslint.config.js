@@ -21,7 +21,7 @@ export default [
   
   // Backend JavaScript files
   {
-    files: ['my-backend/**/*.js', 'jobs/**/*.js', 'libs/**/*.js', 'scripts/**/*.js'],
+    files: ['my-backend/**/*.js', 'jobs/**/*.js', 'libs/**/*.js', 'scripts/**/*.js', 'database/**/*.js'],
     languageOptions: {
       ecmaVersion: 2021,
       sourceType: 'commonjs',

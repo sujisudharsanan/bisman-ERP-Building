@@ -106,7 +106,7 @@ async function getDataScope(user) {
         source: 'USER_OVERRIDE'
       };
     }
-  } catch (e) {
+  } catch {
     // Column may not exist yet, continue to role-level
   }
   
@@ -163,8 +163,8 @@ async function getDataScope(user) {
     
     return result;
     
-  } catch (e) {
-    console.warn('[DataScope] Error fetching from DB, using defaults:', e.message);
+  } catch (err) {
+    console.warn('[DataScope] Error fetching from DB, using defaults:', err.message);
   }
   
   // ========================================================================
@@ -333,7 +333,7 @@ function applyDataScopeSQL(scopeInfo, user, options = {}) {
       }
       break;
       
-    case 'DEPARTMENT':
+    case 'DEPARTMENT': {
       if (tenantId) {
         conditions.push(`${prefix}${tenantColumn} = :tenantId`);
         params.tenantId = tenantId;
@@ -345,8 +345,9 @@ function applyDataScopeSQL(scopeInfo, user, options = {}) {
         params.departments = depts;
       }
       break;
+    }
       
-    case 'TEAM':
+    case 'TEAM': {
       if (tenantId) {
         conditions.push(`${prefix}${tenantColumn} = :tenantId`);
         params.tenantId = tenantId;
@@ -358,6 +359,7 @@ function applyDataScopeSQL(scopeInfo, user, options = {}) {
         params.teams = teams;
       }
       break;
+    }
       
     case 'SELF':
     default:
@@ -398,17 +400,19 @@ function canAccessRecord(scopeInfo, user, record) {
     case 'TENANT':
       return record.tenant_id === tenantId;
       
-    case 'DEPARTMENT':
+    case 'DEPARTMENT': {
       if (record.tenant_id !== tenantId) return false;
       
       const allowedDepts = params.departments || params.department || [departmentId];
       return allowedDepts.includes(record.department_id);
+    }
       
-    case 'TEAM':
+    case 'TEAM': {
       if (record.tenant_id !== tenantId) return false;
       
       const allowedTeams = params.teams || params.team || [teamId];
       return allowedTeams.includes(record.team_id);
+    }
       
     case 'SELF':
     default:

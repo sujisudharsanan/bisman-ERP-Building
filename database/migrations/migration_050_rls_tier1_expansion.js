@@ -1,3 +1,4 @@
+/* eslint-env node */
 /**
  * Migration 050: RLS Tier 1 Expansion
  * ====================================

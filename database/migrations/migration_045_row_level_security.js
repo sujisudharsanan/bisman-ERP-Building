@@ -1,3 +1,4 @@
+/* eslint-env node */
 /**
  * Migration 045: PostgreSQL Row-Level Security (RLS)
  * 
@@ -384,7 +385,7 @@ async function rollbackMigration() {
       try {
         await pool.query(`ALTER TABLE ${tableName} DISABLE ROW LEVEL SECURITY`);
         console.log(`   ✅ Disabled RLS on ${tableName}`);
-      } catch (e) {
+      } catch {
         // Ignore if table doesn't exist
       }
     }

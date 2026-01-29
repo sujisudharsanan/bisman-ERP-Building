@@ -1,3 +1,4 @@
+/* eslint-env node */
 /**
  * Migration 046: Complete PostgreSQL RLS Security Implementation
  * 
@@ -377,7 +378,7 @@ async function runMigration() {
         `);
         
         console.log(`   ✅ ${tableName} - secured`);
-      } catch (e) {
+      } catch {
         // Silent skip
       }
     }
@@ -397,7 +398,7 @@ async function runMigration() {
       try {
         await pool.query(`ALTER TABLE ${tableName} DISABLE ROW LEVEL SECURITY`);
         console.log(`   ⏭️  ${tableName} - RLS disabled (lookup table)`);
-      } catch (e) {
+      } catch {
         // Silent skip
       }
     }
