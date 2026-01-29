@@ -161,7 +161,7 @@ registerSecuredHandler('seed-tenant-data', async (payload, client) => {
         VALUES ($1, $2, $3, true, NOW())
         ON CONFLICT (tenant_id, name) DO NOTHING
       `, [tenantId, cat.name, cat.description]);
-    } catch (e) {
+    } catch {
       // Ignore if table doesn't exist
     }
   }

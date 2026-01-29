@@ -19,7 +19,7 @@
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
-const { getDataScope, applyDataScope, canAccessRecord } = require('../services/dataScopeService');
+const { getDataScope, canAccessRecord } = require('../services/dataScopeService');
 const { checkEffectivePageAccess } = require('../services/effectiveAccessService');
 
 // ============================================================================

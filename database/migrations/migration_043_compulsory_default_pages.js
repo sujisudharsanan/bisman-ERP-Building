@@ -1,3 +1,5 @@
+/* eslint-env node, commonjs, es6 */
+/* global console, require, module, process */
 /**
  * Migration 043: Add Compulsory and Default Page Columns
  * =========================================================

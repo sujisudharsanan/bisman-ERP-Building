@@ -1,3 +1,4 @@
+/* eslint-env node */
 /**
  * Migration 048: Org Units & Data Scope Schema for Large Orgs
  * =============================================================

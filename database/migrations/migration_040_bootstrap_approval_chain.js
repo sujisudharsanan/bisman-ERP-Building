@@ -1,3 +1,4 @@
+/* eslint-env node, commonjs */
 /**
  * ============================================================================
  * PHASE 4: RBAC APPROVAL CHAIN BOOTSTRAP MIGRATION

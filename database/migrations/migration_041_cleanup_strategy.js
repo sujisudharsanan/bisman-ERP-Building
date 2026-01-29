@@ -1,3 +1,6 @@
+/* eslint-env node */
+/* eslint-disable import/no-unresolved */
+/* global console, process */
 /**
  * ============================================================================
  * PHASE 4 STEP 2: CLEANUP STRATEGY
@@ -13,7 +16,7 @@
  * 4. Create deprecation markers
  */
 
-const { Pool } = require('pg');
+import { Pool } from 'pg';
 
 const connectionString = process.env.DATABASE_URL || 
   'postgresql://postgres:JNdJhwkgAhtLbiGOFDEZZRGOtCvQumvd@hopper.proxy.rlwy.net:30204/railway';
@@ -306,7 +309,7 @@ if (process.argv.includes('--report-orphans')) {
   runCleanup();
 }
 
-module.exports = {
+export {
   runCleanup,
   reportOrphans,
   VALIDATE_APPROVAL_CHAIN,

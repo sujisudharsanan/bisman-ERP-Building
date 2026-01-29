@@ -282,7 +282,7 @@ class BackgroundJobRLS {
             RESET app.department;
             RESET app.context_set;
           `);
-        } catch (resetError) {
+        } catch {
           // Ignore reset errors - connection will be discarded
         }
         client.release();

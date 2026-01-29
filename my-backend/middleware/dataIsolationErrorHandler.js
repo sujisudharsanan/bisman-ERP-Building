@@ -271,11 +271,11 @@ function createSafeErrorResponse(mappedError) {
 /**
  * Create an empty state response (for valid queries with 0 rows)
  * 
- * @param {string} entityType - Type of entity (e.g., 'tasks', 'users', 'records')
+ * @param {string} _entityType - Type of entity (e.g., 'tasks', 'users', 'records')
  * @param {Object} pagination - Pagination info if applicable
  * @returns {Object} Empty state response
  */
-function createEmptyStateResponse(entityType = 'records', pagination = null) {
+function createEmptyStateResponse(_entityType = 'records', pagination = null) {
   const response = {
     success: true,
     data: [],

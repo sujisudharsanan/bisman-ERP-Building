@@ -18,13 +18,11 @@
  * - app.context_set - Flag indicating context is set
  */
 
-const { PrismaClient } = require('@prisma/client');
-
 // Get data scope service if available
 let dataScopeService = null;
 try {
   dataScopeService = require('../services/dataScopeService');
-} catch (e) {
+} catch {
   console.warn('[RLS] dataScopeService not found - using default scope resolution');
 }
 

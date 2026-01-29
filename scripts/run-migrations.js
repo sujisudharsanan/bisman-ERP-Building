@@ -96,7 +96,7 @@ async function getAppliedMigrations(pool) {
   }
 }
 
-async function applyMigration(pool, fileName, migrationDir, dbName) {
+async function applyMigration(pool, fileName, migrationDir, _dbName) {
   const filePath = path.join(migrationDir, fileName);
   
   if (!fs.existsSync(filePath)) {
@@ -141,7 +141,7 @@ async function applyMigration(pool, fileName, migrationDir, dbName) {
           'INSERT INTO schema_migrations (version, name, applied_at) VALUES ($1, $2, NOW()) ON CONFLICT (version) DO NOTHING',
           [version, fileName]
         );
-      } catch (recordErr) {
+      } catch {
         // Ignore
       }
       return true;

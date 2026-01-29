@@ -4,7 +4,6 @@ const fs = require('fs');
 const path = require('path');
 
 const RAILWAY_URL = 'postgresql://postgres:JNdJhwkgAhtLbiGOFDEZZRGOtCvQumvd@hopper.proxy.rlwy.net:30204/railway';
-const LOCAL_URL = process.env.LOCAL_DB_URL || 'postgresql://postgres:postgres@localhost:5432/bisman';
 
 async function findPendingMigrations() {
   const railwayPool = new Pool({ connectionString: RAILWAY_URL });

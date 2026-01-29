@@ -8,8 +8,6 @@
  */
 
 const { Pool } = require('pg');
-const fs = require('fs');
-const path = require('path');
 
 const DATABASE_URL = 'postgresql://postgres:JNdJhwkgAhtLbiGOFDEZZRGOtCvQumvd@hopper.proxy.rlwy.net:30204/railway';
 
@@ -205,7 +203,6 @@ async function audit() {
     console.log(`📊 Found ${actualTables.size} tables in database\n`);
 
     // 2. Collect all references from backend
-    const backendReferences = new Map();
 
     // Prisma model references
     const prismaModels = [

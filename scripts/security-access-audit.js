@@ -141,7 +141,6 @@ async function auditPageAccess() {
     // Count protected routes
     const authenticateCount = (appContent.match(/authenticate/g) || []).length;
     const requireRoleCount = (appContent.match(/requireRole/g) || []).length;
-    const publicRoutes = (appContent.match(/\/api\/(?:health|public)/g) || []).length;
     
     log(`   Routes with authenticate: ${authenticateCount}`);
     log(`   Routes with requireRole: ${requireRoleCount}`);
@@ -520,7 +519,7 @@ async function auditRLS() {
         section.findings.push(fail('rls-test', `RLS not enforced: ${count} rows visible`, 'CRITICAL'));
       }
     }
-  } catch (e) {
+  } catch {
     section.findings.push(pass('rls-test', 'RLS query failed as expected (fail-closed)'));
   }
   
@@ -675,7 +674,7 @@ async function auditLogging() {
     } else {
       section.findings.push(warn('recent-events', 'No recent security events'));
     }
-  } catch (e) {
+  } catch {
     section.findings.push(warn('recent-events', 'Could not query security events'));
   }
   
@@ -822,7 +821,6 @@ function generateVerdict() {
   
   // Overall verdict
   const criticalFails = audit.summary.fail;
-  const warnings = audit.summary.warn;
   
   log('\n' + '='.repeat(70));
   log('📊 AUDIT SUMMARY');

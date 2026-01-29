@@ -21,7 +21,7 @@
  */
 
 const { getPrisma } = require('../lib/prisma');
-const { permissionCache, pubsub, permUserKey, permRoleKey } = require('../cache');
+const { pubsub, permUserKey, permRoleKey } = require('../cache');
 const { redis, isEnabled: isRedisEnabled, subscriber } = require('../cache/redisClient');
 
 // TTL for permission cache (60 seconds - short for security)
@@ -205,7 +205,7 @@ async function getUserPermissions(userId, userType) {
             }
           }
         }
-      } catch (e) {
+      } catch {
         // users_enhanced might not exist
       }
 

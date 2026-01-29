@@ -528,7 +528,7 @@ async function phase7_quality() {
       GROUP BY status
     `);
     log(`   User status values: ${statusValues.map(s => `${s.status}(${s.count})`).join(', ')}`);
-  } catch (e) {
+  } catch {
     info('Could not check user status values');
   }
   

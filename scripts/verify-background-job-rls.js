@@ -12,9 +12,6 @@ const { Pool } = require('pg');
 // Admin connection for setup
 const ADMIN_URL = 'postgresql://postgres:JNdJhwkgAhtLbiGOFDEZZRGOtCvQumvd@hopper.proxy.rlwy.net:30204/railway';
 
-// App connection (NOBYPASSRLS)
-const APP_URL = 'postgresql://bisman_app:BismanApp2026Secure!@hopper.proxy.rlwy.net:30204/railway';
-
 async function verify() {
   console.log('🔐 BACKGROUND JOB RLS VERIFICATION');
   console.log('====================================\n');
@@ -25,7 +22,6 @@ async function verify() {
   const { 
     BackgroundJobRLS, 
     runWithRLSContext, 
-    VALID_SCOPES,
     APPROVED_ALL_SCOPE_JOBS 
   } = require('../my-backend/security/BackgroundJobRLS');
 
@@ -216,7 +212,7 @@ async function verify() {
           { jobName: 'test-failing-job' },
           async () => { throw new Error('Intentional failure'); }
         );
-      } catch (e) {
+      } catch {
         // Expected
       }
 

@@ -1,3 +1,5 @@
+/* eslint-env node */
+/* global module */
 /**
  * ============================================================================
  * PHASE 4: SCHEMA HARDENING - is_active NOT NULL

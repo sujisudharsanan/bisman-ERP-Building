@@ -270,12 +270,12 @@ async function runPhase5(appPool) {
     // Try to manually set data_scope to ALL (should not work for non-admin)
     try {
       await client.query(`SELECT set_config('app.data_scope', 'ALL', false)`);
-      const overrideResult = await client.query(`SELECT COUNT(*) as count FROM users_enhanced`);
+      await client.query(`SELECT COUNT(*) as count FROM users_enhanced`);
       // Even if they change the variable, RLS still enforces based on original context
       // This is a bit tricky to test without a separate connection
       recordTest('phase5', 'Attack: Manual scope override blocked', true, 
         'Manual override possible but RLS policy should still enforce original rules');
-    } catch (e) {
+    } catch {
       recordTest('phase5', 'Attack: Manual scope override blocked', true);
     }
     

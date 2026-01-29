@@ -307,8 +307,8 @@ async function runSecurityTests() {
         // Try to manually override scope (should not work for non-superuser)
         log('Note: Manual scope override test requires proper DB user configuration');
         recordTest('Manual scope override prevented', true, 'Requires proper DB config');
-      } catch (e) {
-        recordTest('Manual scope override prevented', false, e.message);
+      } catch (err) {
+        recordTest('Manual scope override prevented', false, err.message);
       }
     }
     

@@ -1,3 +1,5 @@
+/* eslint-env node */
+/* global require, module, process, console */
 /**
  * Migration 044: Add Data Scope to RBAC
  * 

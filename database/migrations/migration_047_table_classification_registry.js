@@ -1,3 +1,4 @@
+/* eslint-env node */
 /**
  * Migration 047: Table Classification Registry
  * =============================================
