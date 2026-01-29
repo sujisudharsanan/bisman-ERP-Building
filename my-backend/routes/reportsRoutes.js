@@ -66,7 +66,7 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
         let superAdminUserId = req.user?.id || req.user?.userId;
         if (typeof superAdminUserId === 'string' && superAdminUserId.includes('-')) {
           // UUID - lookup super_admin record by email
-          const superAdmin = await prisma.superAdmin.findFirst({
+          const superAdmin = await prisma.super_admins.findFirst({
             where: { email: req.user?.email }
           });
           superAdminUserId = superAdmin?.id;
@@ -74,7 +74,7 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
         
         if (superAdminUserId) {
           // Get roles assigned to this Super Admin by Enterprise Admin
-          const assignedRoles = await prisma.adminRoleAssignment.findMany({
+          const assignedRoles = await prisma.admin_role_assignments.findMany({
             where: {
               assignee_type: 'SUPER_ADMIN',
               assignee_id: parseInt(superAdminUserId),
