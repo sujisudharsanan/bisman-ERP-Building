@@ -77,12 +77,14 @@ const BYPASS_PATTERNS = [
   '/api/auth/',
   '/api/health',
   '/api/ping',
+  '/api/me',     // User profile endpoint - always allowed after auth
   '/api/menu',  // Menu has its own secure logic
   '/api/public/',
   '/api/webhook/',
   '/favicon',
   '/api/uploads/',
-  '/api/static/'
+  '/api/static/',
+  '/api/token/'  // Token refresh endpoint
 ];
 
 const ALWAYS_ALLOWED_PAGES = new Set([
@@ -129,7 +131,6 @@ function extractPageKeyFromRoute(route) {
  */
 function routeAuthorizationGuardrail(req, res, next) {
   const route = req.originalUrl || req.path;
-  const method = req.method;
   
   // Skip bypass patterns
   if (BYPASS_PATTERNS.some(pattern => route.startsWith(pattern))) {
