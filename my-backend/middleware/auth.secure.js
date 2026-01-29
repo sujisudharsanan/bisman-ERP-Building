@@ -227,6 +227,16 @@ async function authenticate(req, res, next) {
       return res.status(401).json({ error: 'user not found or inactive' })
     }
 
+    // Resolve tenant_id: 
+    // - For regular users: use user.tenant_id from DB
+    // - For SUPER_ADMIN: use JWT payload (looked up from clients table during login)
+    // - For ENTERPRISE_ADMIN: null (platform-level user)
+    let resolvedTenantId = user.tenant_id || null
+    if (payload.userType === 'SUPER_ADMIN' && !resolvedTenantId) {
+      // SUPER_ADMIN tenant_id is in the JWT (resolved during login from clients table)
+      resolvedTenantId = payload.tenant_id || null
+    }
+
     // Attach user to request for downstream middleware
     // Include legacy_id for chat/thread routes that use Int user IDs
     req.user = {
@@ -235,11 +245,11 @@ async function authenticate(req, res, next) {
       email: user.email || payload.email,
       role: user.role || payload.role,
       userType: payload.userType,
-      tenant_id: user.tenant_id,
+      tenant_id: resolvedTenantId,
       client_id: user.client_id
     }
 
-    console.log('[authenticate] Authentication successful:', req.user.email)
+    console.log('[authenticate] Authentication successful:', req.user.email, 'tenant:', resolvedTenantId)
     next()
   } catch (err) {
     console.error('[authenticate] Database lookup error:', err)
