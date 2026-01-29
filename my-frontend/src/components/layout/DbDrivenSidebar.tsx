@@ -6,7 +6,7 @@
  * This component generates the sidebar navigation PURELY from the database.
  * It replaces any hardcoded page-registry.ts dependency for menu generation.
  * 
- * Data Source: /api/modules/menu (menuRoutes.js)
+ * Data Source: /api/menu/menu (menuRoutesSecure.js)
  * 
  * Features:
  *   1. Fetches menu structure from database via API
@@ -181,7 +181,8 @@ export default function DbDrivenSidebar({
     
     try {
       const baseURL = process.env.NEXT_PUBLIC_API_URL || '';
-      const response = await fetch(`${baseURL}/api/modules/menu`, {
+      // Updated endpoint: /api/menu/menu (menuRoutesSecure mounted at /api/menu)
+      const response = await fetch(`${baseURL}/api/menu/menu`, {
         credentials: 'include',
         headers: {
           'Content-Type': 'application/json',
@@ -194,8 +195,18 @@ export default function DbDrivenSidebar({
       
       const result = await response.json();
       
-      if (result.success && result.data) {
-        const data = result.data as MenuData;
+      // Response format: { success, role, menu, accessibleRoutes, meta }
+      if (result.success && result.menu) {
+        const data: MenuData = {
+          role: result.role,
+          menu: result.menu || [],
+          accessibleRoutes: result.accessibleRoutes || [],
+          meta: result.meta || {
+            totalModules: result.menu?.length || 0,
+            totalPages: result.effectivePagesCount || 0,
+            generatedAt: result.meta?.computedAt || new Date().toISOString()
+          }
+        };
         setMenuData(data);
         
         // Cache the result

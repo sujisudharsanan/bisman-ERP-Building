@@ -4,7 +4,7 @@
  * ============================================================================
  * 
  * Single Source of Truth for navigation menus.
- * Fetches menu structure from /api/modules/menu endpoint.
+ * Fetches menu structure from /api/menu/menu endpoint.
  * 
  * This hook replaces all hardcoded menu configs:
  * - roleLayoutConfig.ts (deprecated)
@@ -85,7 +85,8 @@ export interface UseMenuResult {
 // ============================================================================
 
 async function fetchMenu(token: string): Promise<MenuData> {
-  const response = await fetch('/api/modules/menu', {
+  // Updated endpoint: /api/menu/menu (menuRoutesSecure mounted at /api/menu)
+  const response = await fetch('/api/menu/menu', {
     headers: {
       'Authorization': `Bearer ${token}`,
       'Content-Type': 'application/json',
@@ -101,7 +102,18 @@ async function fetchMenu(token: string): Promise<MenuData> {
     throw new Error(json.message || 'Failed to fetch menu');
   }
 
-  return json.data;
+  // Response format: { success, role, menu, accessibleRoutes, meta }
+  // Map to expected format
+  return {
+    role: json.role,
+    menu: json.menu || [],
+    accessibleRoutes: json.accessibleRoutes || [],
+    meta: json.meta || {
+      totalModules: json.menu?.length || 0,
+      totalPages: json.effectivePagesCount || 0,
+      generatedAt: json.meta?.computedAt || new Date().toISOString()
+    }
+  };
 }
 
 // ============================================================================
