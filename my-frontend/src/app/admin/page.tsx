@@ -188,12 +188,28 @@ export default function ClientDashboardPage() {
           const data = await response.json();
           
           // If has active subscription or trial, don't show modal
-          if (data.hasActiveSubscription || data.subscription?.status === 'trial' || data.subscription?.status === 'active') {
+          if (data.hasActiveSubscription || 
+              data.subscription?.status === 'trial' || 
+              data.subscription?.status === 'active' ||
+              data.subscription?.status === 'TRIAL' ||
+              data.subscription?.status === 'ACTIVE' ||
+              data.status === 'active' ||
+              data.status === 'trial') {
             setSubscriptionChecked(true);
             // Clear any dismissal tracking since subscription is now active
             localStorage.removeItem('subscription_modal_dismissed_at');
+            setShowActivationModal(false);
             return;
           }
+        }
+
+        // Check if this is first login after registration (show only then)
+        const isFirstLogin = localStorage.getItem('bisman_first_login_completed') !== 'true';
+        if (!isFirstLogin) {
+          // Not first login, don't show subscription modal
+          setSubscriptionChecked(true);
+          setShowActivationModal(false);
+          return;
         }
 
         // Check if popup was recently dismissed (within 5 minutes)
@@ -239,6 +255,8 @@ export default function ClientDashboardPage() {
     setShowActivationModal(false);
     // Clear dismissal tracking since subscription is now active
     localStorage.removeItem('subscription_modal_dismissed_at');
+    // Mark first login as complete so modal won't show again
+    localStorage.setItem('bisman_first_login_completed', 'true');
     // Reload to refresh subscription status
     window.location.reload();
   };
@@ -246,6 +264,8 @@ export default function ClientDashboardPage() {
   const handleModalClose = () => {
     // Store dismissal time so we can show again after 5 minutes
     localStorage.setItem('subscription_modal_dismissed_at', Date.now().toString());
+    // Mark first login as complete so modal won't show on subsequent logins
+    localStorage.setItem('bisman_first_login_completed', 'true');
     setShowActivationModal(false);
   };
 

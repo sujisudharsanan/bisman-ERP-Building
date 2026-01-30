@@ -98,7 +98,7 @@ const UserProfileDropdown: React.FC = () => {
             <span className="text-xs font-medium text-white">{getInitials(user?.name)}</span>
           )}
         </div>
-        <span className="hidden sm:inline text-sm font-medium text-gray-700 dark:text-gray-300 max-w-[100px] truncate">
+        <span className="hidden sm:inline text-sm font-medium text-gray-700 dark:text-gray-300 max-w-[200px] truncate">
           {user?.name || 'User'}
         </span>
         <ChevronDown className="w-3.5 h-3.5 text-gray-500" />
