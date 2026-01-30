@@ -268,6 +268,8 @@ const getKanbanTasks = async (req, res) => {
     const tenantId = req.user.tenant_id;
     const { viewMode = 'all' } = req.query; // 'all', 'my-work', 'my-requests'
     
+    console.log('[Kanban] Request:', { rawUserId, userId, tenantId, viewMode, role: req.user.role });
+    
     // Build query with mandatory tenant isolation - include UUIDs for frontend comparison
     let query = `
       SELECT 
@@ -319,7 +321,12 @@ const getKanbanTasks = async (req, res) => {
     
     query += ` ORDER BY t.position ASC, t.created_at DESC`;
     
+    console.log('[Kanban] Query params:', params);
     const result = await getDbPool().query(query, params);
+    console.log('[Kanban] Query returned', result.rows.length, 'rows');
+    if (result.rows.length > 0) {
+      console.log('[Kanban] First task:', result.rows[0].id, result.rows[0].title, result.rows[0].status);
+    }
     
     // Group by status for Kanban with Maker-Checker awareness
     const grouped = {
