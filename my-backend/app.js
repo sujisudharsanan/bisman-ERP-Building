@@ -4827,6 +4827,8 @@ app.get('/api/users/search', authenticate, async (req, res) => {
           OR: [
             { username: { contains: searchTerm, mode: 'insensitive' } },
             { email: { contains: searchTerm, mode: 'insensitive' } },
+            { first_name: { contains: searchTerm, mode: 'insensitive' } },
+            { last_name: { contains: searchTerm, mode: 'insensitive' } },
           ]
         }
       ];
