@@ -3687,23 +3687,18 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
     let assignerType, assigneeType, assignerId;
     
     if (loggedInUserRole === 'ENTERPRISE_ADMIN') {
-      // EA can assign to SUPER_ADMIN
-      if (!['SUPER_ADMIN'].includes(targetRoleName)) {
-        return res.status(403).json({
-          success: false,
-          error: 'Enterprise Admin can only assign pages to Super Admin role'
-        });
-      }
+      // EA can assign pages to ANY role (they are the top of the hierarchy)
       assignerType = 'ENTERPRISE_ADMIN';
-      assigneeType = 'SUPER_ADMIN';
+      assigneeType = targetRoleName;
       assignerId = loggedInUserId;
       
     } else if (loggedInUserRole === 'SUPER_ADMIN') {
-      // SA can assign to ADMIN
-      if (!['ADMIN', 'ADMIN_OPS', 'IT_ADMIN'].includes(targetRoleName)) {
+      // SA can assign to ADMIN and below
+      if (!['ADMIN', 'ADMIN_OPS', 'IT_ADMIN', 'HR', 'HR_MANAGER', 'FINANCE_CONTROLLER', 'OPERATIONS_MANAGER', 
+            'WAREHOUSE_MANAGER', 'BRANCH_MANAGER', 'COMPLIANCE_OFFICER', 'QUALITY_MANAGER'].includes(targetRoleName)) {
         return res.status(403).json({
           success: false,
-          error: 'Super Admin can only assign pages to Admin roles'
+          error: 'Super Admin can only assign pages to Admin and business roles'
         });
       }
       assignerType = 'SUPER_ADMIN';
