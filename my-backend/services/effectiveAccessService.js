@@ -41,9 +41,8 @@ const { getPrisma } = require('../lib/prisma');
  * - ONLY common utilities and personal settings
  */
 const ALWAYS_ACCESSIBLE_PAGES = [
-  // Dashboard - landing page only
-  'DASHBOARD', 'dashboard', 'home',
-  'ADMIN_DASHBOARD', 'SUPER_ADMIN_DASHBOARD', 'ENTERPRISE_ADMIN_DASHBOARD',
+  // Dashboard - landing page only (generic dashboard, NOT role-specific)
+  'DASHBOARD', 'dashboard', 'home', 'DASHBOARD_HOME',
   
   // Personal profile & settings
   'USER_PROFILE', 'profile', 'user-profile',
@@ -57,9 +56,9 @@ const ALWAYS_ACCESSIBLE_PAGES = [
   // Chat - communication is essential
   'CHAT', 'COMMON_CHAT',
   
-  // Route variants
+  // Route variants (generic only - NOT role-specific dashboards)
   '/dashboard', '/common/calendar', '/common/user-settings', '/calendar', '/settings',
-  '/common/notifications', '/admin/dashboard', '/super-admin/dashboard'
+  '/common/notifications'
 ];
 
 /**
@@ -73,9 +72,11 @@ const ALWAYS_ACCESSIBLE_MODULES = [
 /**
  * ALWAYS_ACCESSIBLE_PAGES_KEYS - Page codes (uppercase) for DB matching
  * Used for database queries where we need the canonical page_code
+ * NOTE: Role-specific dashboards (ADMIN_DASHBOARD, SUPER_ADMIN_DASHBOARD, ENTERPRISE_ADMIN_DASHBOARD)
+ *       are NOT included here - users must have proper role to access them
  */
 const ALWAYS_ACCESSIBLE_PAGES_KEYS = [
-  'DASHBOARD', 'ADMIN_DASHBOARD', 'SUPER_ADMIN_DASHBOARD', 'ENTERPRISE_ADMIN_DASHBOARD',
+  'DASHBOARD', 'DASHBOARD_HOME',
   'USER_PROFILE', 'COMMON_USER_SETTINGS', 'USER_SETTINGS',
   'COMMON_CALENDAR', 'COMMON_NOTIFICATIONS', 'NOTIFICATIONS',
   'CHAT', 'COMMON_CHAT'
