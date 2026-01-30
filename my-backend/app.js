@@ -544,7 +544,9 @@ app.use('/api', async (req, res, next) => {
         userType: payload.userType,
         role: payload.role || payload.userType,
         moduleId: payload.moduleId,
-        clientId: payload.clientId
+        clientId: payload.clientId,
+        tenant_id: payload.tenant_id || payload.tenantId,  // ✅ CRITICAL: Required for RLS
+        super_admin_id: payload.super_admin_id  // For Super Admin context
       };
     }
   } catch (err) {
