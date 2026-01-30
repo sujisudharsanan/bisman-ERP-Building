@@ -13,6 +13,7 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    environment: production
     steps:
       - uses: actions/checkout@v4
 
@@ -27,7 +28,7 @@ jobs:
 
       - name: Prisma migrate deploy (against Railway)
         env:
-          DATABASE_URL: postgresql://${{ secrets.RAILWAY_USER }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST }}:${{ secrets.RAILWAY_PORT }}/${{ secrets.RAILWAY_DB }}?sslmode=require
+          DATABASE_URL: "postgresql://${{ secrets.RAILWAY_USER }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST }}:${{ secrets.RAILWAY_PORT }}/${{ secrets.RAILWAY_DB }}?sslmode=require"
         working-directory: my-backend
         run: |
           npx prisma migrate deploy || npx prisma db push
@@ -38,7 +39,7 @@ jobs:
 
       - name: Apply demo password/data fixes
         env:
-          DATABASE_URL: postgresql://${{ secrets.RAILWAY_USER }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST }}:${{ secrets.RAILWAY_PORT }}/${{ secrets.RAILWAY_DB }}?sslmode=require
+          DATABASE_URL: "postgresql://${{ secrets.RAILWAY_USER }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST }}:${{ secrets.RAILWAY_PORT }}/${{ secrets.RAILWAY_DB }}?sslmode=require"
           PGSSLMODE: require
         run: |
           set -euo pipefail
@@ -64,8 +65,10 @@ jobs:
           psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT email, role, is_active FROM users WHERE email='demo_hub_incharge@bisman.demo';"
 
       - name: Optional restart via Railway CLI
-        if: ${{ secrets.RAILWAY_TOKEN != '' }}
+        if: secrets.RAILWAY_TOKEN != ''
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
           npm i -g @railway/cli
-          railway login --token ${{ secrets.RAILWAY_TOKEN }}
+          railway login --token $RAILWAY_TOKEN
           railway up || true

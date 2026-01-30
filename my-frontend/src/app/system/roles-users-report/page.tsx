@@ -176,10 +176,29 @@ export default function RolesUsersReportPage() {
   // Modules to hide from SUPER_ADMIN (enterprise-admin specific modules)
   const HIDDEN_MODULES = ['enterprise-admin', 'super-admin'];
 
-  // Get all pages grouped by module for the Pages Overview section (using PAGE_REGISTRY)
-  // For SUPER_ADMIN: Filter by client's modules_enabled if a client is selected
+  // SA-approved pages fetched from API
+  const [saApprovedPages, setSaApprovedPages] = useState<{ moduleId: string; moduleName: string; pages: { id: string; name: string; path: string; status: string }[] }[]>([]);
+  const [saApprovedPagesLoaded, setSaApprovedPagesLoaded] = useState(false);
+
+  // Get all pages grouped by module for the Pages Overview section
+  // For SUPER_ADMIN: Use API-fetched approved pages instead of PAGE_REGISTRY
   const allPagesGroupedByModule = useMemo(() => {
-    // Group pages from PAGE_REGISTRY by module
+    // For SUPER_ADMIN: Use SA-approved pages from API
+    if (isSuperAdmin && saApprovedPagesLoaded && saApprovedPages.length > 0) {
+      // Filter by client's enabled modules if selected
+      const clientEnabledModules = selectedClient?.modules_enabled 
+        ? (Array.isArray(selectedClient.modules_enabled) ? selectedClient.modules_enabled : [])
+        : null;
+      
+      if (clientEnabledModules && clientEnabledModules.length > 0) {
+        return saApprovedPages
+          .filter(m => clientEnabledModules.includes(m.moduleId))
+          .sort((a, b) => a.moduleName.localeCompare(b.moduleName));
+      }
+      return saApprovedPages;
+    }
+    
+    // Fallback to PAGE_REGISTRY for non-SA or while loading
     const moduleMap = new Map<string, { moduleId: string; moduleName: string; pages: { id: string; name: string; path: string; status: string }[] }>();
     
     // Get client's enabled modules (if super admin and client selected)
@@ -220,7 +239,7 @@ export default function RolesUsersReportPage() {
     
     // Convert to array and sort by module name
     return Array.from(moduleMap.values()).sort((a, b) => a.moduleName.localeCompare(b.moduleName));
-  }, [isSuperAdmin, selectedClient]);
+  }, [isSuperAdmin, selectedClient, saApprovedPages, saApprovedPagesLoaded]);
 
   // Filtered pages based on selected module filter, assigned filter, and search query
   const filteredPagesForOverview = useMemo(() => {
@@ -366,6 +385,25 @@ export default function RolesUsersReportPage() {
           }
         } catch (plansErr) {
           console.warn('[RolesUsersReport] Could not load subscription plans:', plansErr);
+        }
+
+        // Fetch SA-approved pages (only the pages Enterprise Admin has approved for this Super Admin)
+        try {
+          const approvedPagesRes = await fetch(`/api/super-admin/my-approved-pages${cacheBuster}`, { 
+            credentials: 'include',
+            cache: forceRefresh ? 'no-store' : 'default'
+          });
+          if (approvedPagesRes.ok) {
+            const approvedData = await approvedPagesRes.json();
+            if (approvedData.success && Array.isArray(approvedData.data)) {
+              console.log('[RolesUsersReport] Loaded', approvedData.totalPages, 'SA-approved pages in', approvedData.totalModules, 'modules');
+              setSaApprovedPages(approvedData.data);
+              setSaApprovedPagesLoaded(true);
+            }
+          }
+        } catch (approvedErr) {
+          console.warn('[RolesUsersReport] Could not load SA-approved pages:', approvedErr);
+          setSaApprovedPagesLoaded(true); // Mark as loaded to fallback to PAGE_REGISTRY
         }
       }
 

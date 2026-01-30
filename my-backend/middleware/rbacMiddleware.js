@@ -27,11 +27,6 @@ const { redis, isEnabled: isRedisEnabled, subscriber } = require('../cache/redis
 // TTL for permission cache (60 seconds - short for security)
 const PERMISSION_TTL = 60;
 
-// Cache for route definitions (longer TTL since routes rarely change)
-const ROUTE_CACHE_TTL = 300;
-let routeCache = null;
-let routeCacheExpiry = 0;
-
 // Track if PUB/SUB is initialized
 let pubsubInitialized = false;
 

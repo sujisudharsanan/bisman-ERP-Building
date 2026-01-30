@@ -65,4 +65,74 @@ router.get('/tables/:tableName', requireSuperAdmin, superAdminController.getTabl
 router.get('/dashboard/stats', requireSuperAdmin, superAdminController.getDashboardStats)
 router.get('/system/info', requireSuperAdmin, superAdminController.getSystemInfo)
 
+// =============== SA APPROVED PAGES ===============
+// Get pages that Enterprise Admin has approved for this Super Admin
+router.get('/my-approved-pages', requireSuperAdmin, async (req, res) => {
+  try {
+    const { getPrisma } = require('../lib/prisma');
+    const prisma = getPrisma();
+    const superAdminId = req.user?.id;
+    
+    console.log(`[SuperAdmin] Fetching approved pages for SA ${superAdminId}`);
+    
+    // Get pages approved by Enterprise Admin for this Super Admin
+    const approvedPages = await prisma.$queryRaw`
+      SELECT 
+        pm.id,
+        pm.page_code as code,
+        pm.display_name as name,
+        pm.route as path,
+        pm.icon,
+        pm.sort_order,
+        mm.module_code as module,
+        mm.display_name as module_name,
+        mm.icon as module_icon,
+        mm.sort_order as module_sort_order
+      FROM admin_page_assignments apa
+      INNER JOIN pages_master pm ON apa.page_id = pm.id
+      INNER JOIN modules_master mm ON pm.module_id = mm.id
+      WHERE apa.assignee_type = 'SUPER_ADMIN'
+        AND apa.assigner_type = 'ENTERPRISE_ADMIN'
+        AND apa.is_active = true
+        AND pm.is_active = true
+      ORDER BY mm.sort_order, pm.sort_order, pm.display_name
+    `;
+    
+    // Group by module
+    const moduleMap = new Map();
+    for (const page of approvedPages) {
+      if (!moduleMap.has(page.module)) {
+        moduleMap.set(page.module, {
+          moduleId: page.module,
+          moduleName: page.module_name,
+          moduleIcon: page.module_icon,
+          pages: []
+        });
+      }
+      moduleMap.get(page.module).pages.push({
+        id: page.code,
+        name: page.name,
+        path: page.path,
+        icon: page.icon,
+        status: 'active'
+      });
+    }
+    
+    const result = Array.from(moduleMap.values());
+    
+    console.log(`[SuperAdmin] SA ${superAdminId} has ${approvedPages.length} approved pages in ${result.length} modules`);
+    
+    res.json({
+      success: true,
+      totalPages: approvedPages.length,
+      totalModules: result.length,
+      data: result
+    });
+    
+  } catch (err) {
+    console.error('[SuperAdmin] Error fetching approved pages:', err);
+    res.status(500).json({ success: false, error: 'Failed to fetch approved pages' });
+  }
+});
+
 module.exports = router
