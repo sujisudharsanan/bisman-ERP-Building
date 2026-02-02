@@ -27,8 +27,9 @@ jobs:
         run: npm ci --no-audit --no-fund
 
       - name: Prisma migrate deploy (against Railway)
+        if: ${{ secrets.RAILWAY_PASSWORD != '' }}
         env:
-          DATABASE_URL: ${{ format('postgresql://{0}:{1}@{2}:{3}/{4}?sslmode=require', secrets.RAILWAY_USER, secrets.RAILWAY_PASSWORD, secrets.RAILWAY_HOST, secrets.RAILWAY_PORT, secrets.RAILWAY_DB || 'railway') }}
+          DATABASE_URL: "postgresql://${{ secrets.RAILWAY_USER }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST }}:${{ secrets.RAILWAY_PORT }}/${{ secrets.RAILWAY_DB || 'railway' }}?sslmode=require"
         working-directory: my-backend
         run: |
           npx prisma migrate deploy || npx prisma db push
@@ -39,9 +40,9 @@ jobs:
 
       - name: Apply demo password/data fixes
         env:
-          DATABASE_URL: ${{ format('postgresql://{0}:{1}@{2}:{3}/{4}?sslmode=require', secrets.RAILWAY_USER, secrets.RAILWAY_PASSWORD, secrets.RAILWAY_HOST, secrets.RAILWAY_PORT, secrets.RAILWAY_DB || 'railway') }}
+          DATABASE_URL: "postgresql://${{ secrets.RAILWAY_USER }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST }}:${{ secrets.RAILWAY_PORT }}/${{ secrets.RAILWAY_DB || 'railway' }}?sslmode=require"
           PGSSLMODE: "require"
-        if: ${{ secrets.RAILWAY_PASSWORD != '' }}
+        if: ${{ env.DATABASE_URL != '' }}
         run: |
           set -euo pipefail
           echo "Applying fix-railway-passwords.sql (if present)"
