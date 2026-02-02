@@ -3482,7 +3482,7 @@ app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_
       
       // Get pages EA has already assigned to target role
       const assignedResult = await prisma.$queryRaw`
-        SELECT page_id FROM admin_page_assignments
+        SELECT DISTINCT page_id FROM admin_page_assignments
         WHERE assigner_type = 'ENTERPRISE_ADMIN'
           AND assignee_type = ${targetRoleName}
           AND is_active = true
@@ -3497,7 +3497,7 @@ app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_
       
       // Get pages EA has approved for SA (this is SA's assignable pool)
       assignablePagesResult = await prisma.$queryRaw`
-        SELECT 
+        SELECT DISTINCT
           p.id,
           p.page_code,
           p.display_name,
@@ -3522,7 +3522,7 @@ app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_
       
       // Get pages SA has already assigned to target role (ADMIN)
       const assignedResult = await prisma.$queryRaw`
-        SELECT page_id FROM admin_page_assignments
+        SELECT DISTINCT page_id FROM admin_page_assignments
         WHERE assigner_type = 'SUPER_ADMIN'
           AND assignee_type = ${targetRoleName}
           AND is_active = true
@@ -3537,7 +3537,7 @@ app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_
       
       // Get pages SA has approved for ADMIN (this is ADMIN's assignable pool)
       assignablePagesResult = await prisma.$queryRaw`
-        SELECT 
+        SELECT DISTINCT
           p.id,
           p.page_code,
           p.display_name,
@@ -3562,7 +3562,7 @@ app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_
       
       // Get pages ADMIN has already assigned to users
       const assignedResult = await prisma.$queryRaw`
-        SELECT page_id FROM admin_page_assignments
+        SELECT DISTINCT page_id FROM admin_page_assignments
         WHERE assigner_type = 'ADMIN'
           AND assignee_type = ${targetRoleName}
           AND is_active = true
