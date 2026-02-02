@@ -3803,61 +3803,60 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
     // ========================================================================
     // UPDATE admin_page_assignments (soft delete + insert)
     // ========================================================================
-    console.log('[RBAC-SECURE] Transaction starting with:', { assignerType, assigneeType, assignerId, pageCount: grantedPages.length });
-    console.log('[RBAC-SECURE] Pages to save:', grantedPages.map(p => p.page_code));
+    console.log('[RBAC-SAVE] Transaction starting with:', { assignerType, assigneeType, assignerId, pageCount: grantedPages.length });
+    console.log('[RBAC-SAVE] Pages to save:', grantedPages.map(p => p.page_code));
     
-    await prisma.$transaction(async (tx) => {
+    // Use raw pg pool instead of Prisma transaction for debugging
+    const { Pool } = require('pg');
+    const directPool = new Pool({ connectionString: process.env.DATABASE_URL });
+    
+    try {
       // STEP 1: Soft-delete ALL existing assignments for this assigner→assignee pair
-      console.log('[RBAC-SECURE] Soft-deleting WHERE assigner_type =', assignerType, 'AND assignee_type =', assigneeType);
-      
-      const deleteCount = await tx.$executeRaw`
+      console.log('[RBAC-SAVE] Step 1: Soft-deleting...');
+      const deleteResult = await directPool.query(`
         UPDATE admin_page_assignments 
         SET is_active = false, revoked_at = NOW(), updated_at = NOW()
-        WHERE assigner_type = ${assignerType}
-          AND assignee_type = ${assigneeType}
+        WHERE assigner_type = $1
+          AND assignee_type = $2
           AND is_active = true
-      `;
-      console.log('[RBAC-SECURE] Soft-deleted', deleteCount, 'existing assignments');
+      `, [assignerType, assigneeType]);
+      console.log('[RBAC-SAVE] Soft-deleted', deleteResult.rowCount, 'existing assignments');
       
-      // STEP 2: Insert new assignments (only for pages that should be active)
-      // Use a single INSERT with proper ON CONFLICT that only activates the specific pages
-      let insertedCount = 0;
-      const pageKeysToActivate = grantedPages.map(p => p.page_code);
-      
+      // STEP 2: Insert/update new assignments
+      console.log('[RBAC-SAVE] Step 2: Inserting', grantedPages.length, 'pages...');
       for (const page of grantedPages) {
-        // Use UPSERT: Insert or update only the pages we want active
-        await tx.$executeRaw`
+        await directPool.query(`
           INSERT INTO admin_page_assignments 
             (assigner_id, assigner_type, assignee_id, assignee_type, page_id, page_key, is_active, granted_at, created_at, updated_at)
           VALUES 
-            (${assignerId}, ${assignerType}, ${roleIdNum}, ${assigneeType}, ${page.id}, ${page.page_code}, true, NOW(), NOW(), NOW())
+            ($1, $2, $3, $4, $5, $6, true, NOW(), NOW(), NOW())
           ON CONFLICT (assigner_id, assigner_type, assignee_id, page_key) 
           DO UPDATE SET 
             is_active = true, 
             revoked_at = NULL, 
             granted_at = NOW(),
             updated_at = NOW()
-        `;
-        insertedCount++;
+        `, [assignerId, assignerType, roleIdNum, assigneeType, page.id, page.page_code]);
       }
-      console.log('[RBAC-SECURE] Inserted/updated', insertedCount, 'page assignments');
+      console.log('[RBAC-SAVE] Step 2 complete');
       
       // STEP 3: Verify the final count
-      const verifyCount = await tx.$queryRaw`
+      const verifyResult = await directPool.query(`
         SELECT COUNT(*) as active_count FROM admin_page_assignments 
-        WHERE assigner_type = ${assignerType}
-          AND assignee_type = ${assigneeType}
+        WHERE assigner_type = $1
+          AND assignee_type = $2
           AND is_active = true
-      `;
-      console.log('[RBAC-SECURE] Verification: active count after save =', verifyCount[0]?.active_count);
+      `, [assignerType, assigneeType]);
+      console.log('[RBAC-SAVE] Verification: active count =', verifyResult.rows[0]?.active_count);
       
-      // ========================================================================
-      // NOTE: role_page_access table has been DROPPED (deprecated 2026-02-02)
-      // All RBAC now uses admin_page_assignments as single source of truth
-      // ========================================================================
-    });
+      await directPool.end();
+    } catch (dbError) {
+      console.error('[RBAC-SAVE] Database error:', dbError);
+      await directPool.end();
+      throw dbError;
+    }
     
-    console.log('[RBAC-SECURE] Updated admin_page_assignments:', grantedPages.length, 'pages for', assignerType, '→', assigneeType);
+    console.log('[RBAC-SAVE] COMPLETED:', grantedPages.length, 'pages for', assignerType, '→', assigneeType);
     
     res.json({ 
       success: true, 
