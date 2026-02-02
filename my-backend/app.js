@@ -3506,8 +3506,10 @@ app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_
           p.show_in_sidebar,
           p.category,
           p.page_type,
+          p.sort_order,
           m.module_code,
-          m.display_name as module_name
+          m.display_name as module_name,
+          m.sort_order as module_sort_order
         FROM pages_master p
         LEFT JOIN modules_master m ON m.id = p.module_id
         INNER JOIN admin_page_assignments apa 
@@ -3546,8 +3548,10 @@ app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_
           p.show_in_sidebar,
           p.category,
           p.page_type,
+          p.sort_order,
           m.module_code,
-          m.display_name as module_name
+          m.display_name as module_name,
+          m.sort_order as module_sort_order
         FROM pages_master p
         LEFT JOIN modules_master m ON m.id = p.module_id
         INNER JOIN admin_page_assignments apa 
