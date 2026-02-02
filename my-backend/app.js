@@ -3656,6 +3656,7 @@ app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_
 // - ADMIN assigns to USER: assigner_type='ADMIN', assignee_type='USER'
 // ============================================
 app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN']), async (req, res) => {
+  console.log('🚀🚀🚀 [RBAC-SAVE] POST /api/rbac/roles/:roleId/pages HIT! 🚀🚀🚀');
   try {
     const { roleId } = req.params;
     const roleIdNum = parseInt(roleId);
@@ -3663,7 +3664,8 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
     const loggedInUserRole = (req.user?.role || req.user?.roleName || '').toUpperCase();
     const loggedInUserId = req.user?.id;
     
-    console.log('[RBAC-SECURE] Updating pages for role:', roleIdNum, 'with', pageIds?.length || 0, 'pages | By:', loggedInUserRole);
+    console.log('[RBAC-SAVE] Updating pages for role:', roleIdNum, 'with', pageIds?.length || 0, 'pages | By:', loggedInUserRole);
+    console.log('[RBAC-SAVE] pageIds received:', JSON.stringify(pageIds));
     
     // Validate role exists
     const role = await prisma.rbac_roles.findUnique({
@@ -3801,10 +3803,11 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
     // ========================================================================
     // UPDATE admin_page_assignments (soft delete + insert)
     // ========================================================================
-    console.log('[RBAC-SECURE] Transaction starting with:', { assignerType, assigneeType, pageCount: grantedPages.length });
+    console.log('[RBAC-SECURE] Transaction starting with:', { assignerType, assigneeType, assignerId, pageCount: grantedPages.length });
+    console.log('[RBAC-SECURE] Pages to save:', grantedPages.map(p => p.page_code));
     
     await prisma.$transaction(async (tx) => {
-      // Soft-delete existing assignments for this assigner→assignee pair
+      // STEP 1: Soft-delete ALL existing assignments for this assigner→assignee pair
       console.log('[RBAC-SECURE] Soft-deleting WHERE assigner_type =', assignerType, 'AND assignee_type =', assigneeType);
       
       const deleteCount = await tx.$executeRaw`
@@ -3816,9 +3819,13 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
       `;
       console.log('[RBAC-SECURE] Soft-deleted', deleteCount, 'existing assignments');
       
-      // Insert new assignments
+      // STEP 2: Insert new assignments (only for pages that should be active)
+      // Use a single INSERT with proper ON CONFLICT that only activates the specific pages
       let insertedCount = 0;
+      const pageKeysToActivate = grantedPages.map(p => p.page_code);
+      
       for (const page of grantedPages) {
+        // Use UPSERT: Insert or update only the pages we want active
         await tx.$executeRaw`
           INSERT INTO admin_page_assignments 
             (assigner_id, assigner_type, assignee_id, assignee_type, page_id, page_key, is_active, granted_at, created_at, updated_at)
@@ -3828,11 +3835,21 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
           DO UPDATE SET 
             is_active = true, 
             revoked_at = NULL, 
+            granted_at = NOW(),
             updated_at = NOW()
         `;
         insertedCount++;
       }
       console.log('[RBAC-SECURE] Inserted/updated', insertedCount, 'page assignments');
+      
+      // STEP 3: Verify the final count
+      const verifyCount = await tx.$queryRaw`
+        SELECT COUNT(*) as active_count FROM admin_page_assignments 
+        WHERE assigner_type = ${assignerType}
+          AND assignee_type = ${assigneeType}
+          AND is_active = true
+      `;
+      console.log('[RBAC-SECURE] Verification: active count after save =', verifyCount[0]?.active_count);
       
       // ========================================================================
       // NOTE: role_page_access table has been DROPPED (deprecated 2026-02-02)
