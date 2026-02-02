@@ -3811,15 +3811,28 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
     const directPool = new Pool({ connectionString: process.env.DATABASE_URL });
     
     try {
-      // STEP 1: Soft-delete ALL existing assignments for this assigner→assignee pair
+      // STEP 1: Soft-delete ALL existing assignments for this role (regardless of assigner)
+      // ENTERPRISE_ADMIN has authority to override all assignments
       console.log('[RBAC-SAVE] Step 1: Soft-deleting...');
-      const deleteResult = await directPool.query(`
-        UPDATE admin_page_assignments 
-        SET is_active = false, revoked_at = NOW(), updated_at = NOW()
-        WHERE assigner_type = $1
-          AND assignee_type = $2
-          AND is_active = true
-      `, [assignerType, assigneeType]);
+      let deleteResult;
+      if (assignerType === 'ENTERPRISE_ADMIN') {
+        // EA overrides everything - delete all assignments for this role
+        deleteResult = await directPool.query(`
+          UPDATE admin_page_assignments 
+          SET is_active = false, revoked_at = NOW(), updated_at = NOW()
+          WHERE assignee_type = $1
+            AND is_active = true
+        `, [assigneeType]);
+      } else {
+        // SA/ADMIN only delete their own assignments
+        deleteResult = await directPool.query(`
+          UPDATE admin_page_assignments 
+          SET is_active = false, revoked_at = NOW(), updated_at = NOW()
+          WHERE assigner_type = $1
+            AND assignee_type = $2
+            AND is_active = true
+        `, [assignerType, assigneeType]);
+      }
       console.log('[RBAC-SAVE] Soft-deleted', deleteResult.rowCount, 'existing assignments');
       
       // STEP 2: Insert/update new assignments
