@@ -3729,16 +3729,33 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
       if (p.route) pageInfoByPath.set(p.route, { id: p.id, page_code: p.page_code });
     });
     
-    // Convert paths to page IDs
+    // Convert paths to page IDs, filtering out routes that don't belong to the target role
     const grantedPages = [];
+    const ADMIN_ONLY_ROUTES = ['/enterprise-admin', '/super-admin', '/system'];
+    const SA_BLOCKED_ROUTES = ['/enterprise-admin'];
+    
     (pageIds || []).forEach(path => {
       const pageInfo = pageInfoByPath.get(path);
       if (pageInfo) {
-        grantedPages.push(pageInfo);
+        // Filter based on target role - don't allow admin-level routes to be assigned to lower roles
+        if (targetRoleName === 'ADMIN' || targetRoleName === 'ADMIN_OPS' || targetRoleName === 'IT_ADMIN') {
+          // ADMIN roles should NOT have enterprise-admin or super-admin routes
+          if (ADMIN_ONLY_ROUTES.some(prefix => path.startsWith(prefix))) {
+            console.log('[RBAC-SECURE] Filtering out admin-only route for ADMIN:', path);
+            return; // Skip this page
+          }
+        } else if (targetRoleName === 'SUPER_ADMIN') {
+          // SUPER_ADMIN should NOT have enterprise-admin routes
+          if (SA_BLOCKED_ROUTES.some(prefix => path.startsWith(prefix))) {
+            console.log('[RBAC-SECURE] Filtering out EA route for SUPER_ADMIN:', path);
+            return; // Skip this page
+          }
+        }
+        grantedPages.push({ ...pageInfo, route: path });
       }
     });
     
-    console.log('[RBAC-SECURE] Resolved', grantedPages.length, 'pages from', pageIds?.length || 0, 'paths');
+    console.log('[RBAC-SECURE] Resolved', grantedPages.length, 'pages from', pageIds?.length || 0, 'paths (after route filtering)');
     
     // ========================================================================
     // VALIDATE: Can only assign pages that YOUR superior approved for YOU
