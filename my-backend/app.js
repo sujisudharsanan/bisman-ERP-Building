@@ -3718,7 +3718,7 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
     
     // Get page IDs from paths
     const allPages = await prisma.$queryRaw`
-      SELECT id, route, page_code FROM pages_master WHERE status = 'active'
+      SELECT id, route, page_code FROM pages_master WHERE is_active = true
     `;
     
     // Create map of path to page info
