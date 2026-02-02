@@ -525,15 +525,25 @@ async function getEnterpriseApprovedPages(superadminId) {
  * - rbac_user_permissions is NO LONGER authoritative
  * - Absence of approval = DENY (only ALWAYS_ACCESSIBLE_PAGES returned)
  * 
+ * PHASE 3 FIX: For tenant-scoped roles (ADMIN, etc.), also include pages
+ * assigned to the ROLE by Enterprise Admin, not just individual user assignments.
+ * This ensures that role-based page assignments work properly.
+ * 
  * @param {number} clientAdminId - The Client Admin's legacy_id
  * @param {string} _tenantId - The tenant/client ID (reserved for future use)
+ * @param {string} userRole - The user's role (e.g., 'ADMIN', 'OPERATIONS_MANAGER')
  * @returns {Promise<Set<string>>} Set of approved page keys
  */
-async function getSuperadminApprovedPages(clientAdminId, _tenantId) {
+async function getSuperadminApprovedPages(clientAdminId, _tenantId, userRole = null) {
   const prisma = getPrisma();
+  
+  // Start with ALWAYS_ACCESSIBLE_PAGES only
+  const pageKeys = new Set(ALWAYS_ACCESSIBLE_PAGES);
   
   // AUTHORITATIVE SOURCE: admin_page_assignments ONLY
   // SECURITY LOCKDOWN: rbac_user_permissions is NO LONGER queried
+  
+  // 1. User-specific assignments (SA assigned pages to this specific user)
   const userAssignments = await prisma.$queryRaw`
     SELECT page_key
     FROM admin_page_assignments
@@ -542,18 +552,38 @@ async function getSuperadminApprovedPages(clientAdminId, _tenantId) {
       AND is_active = true
   `;
   
-  // Start with ALWAYS_ACCESSIBLE_PAGES only
-  const pageKeys = new Set(ALWAYS_ACCESSIBLE_PAGES);
-  
-  // Add only pages from admin_page_assignments
   for (const a of userAssignments) {
     if (a.page_key) pageKeys.add(a.page_key);
   }
   
+  // 2. Role-based assignments (EA assigned pages to the role like ADMIN, OPERATIONS_MANAGER)
+  // This is the PRIMARY source of page assignments for tenant roles
+  if (userRole) {
+    const normalizedRole = userRole.toUpperCase();
+    
+    // Get pages assigned to this role by Enterprise Admin
+    const roleAssignments = await prisma.$queryRaw`
+      SELECT DISTINCT pm.page_code, pm.route
+      FROM admin_page_assignments apa
+      JOIN pages_master pm ON pm.id = apa.page_id
+      WHERE apa.assignee_type = ${normalizedRole}
+        AND apa.assigner_type = 'ENTERPRISE_ADMIN'
+        AND apa.is_active = true
+        AND pm.is_active = true
+    `;
+    
+    console.log(`[EffectiveAccess] Found ${roleAssignments.length} role-based pages for ${normalizedRole}`);
+    
+    for (const a of roleAssignments) {
+      if (a.page_code) pageKeys.add(a.page_code);
+      if (a.route) pageKeys.add(a.route);
+    }
+  }
+  
   // SECURITY: If no explicit assignments, user gets ONLY ALWAYS_ACCESSIBLE_PAGES
   // This is DENY-BY-DEFAULT behavior
-  if (userAssignments.length === 0) {
-    console.warn(`[EffectiveAccess] DENY: No Super Admin approval for user ${clientAdminId} - only common pages accessible`);
+  if (userAssignments.length === 0 && pageKeys.size <= ALWAYS_ACCESSIBLE_PAGES.length) {
+    console.warn(`[EffectiveAccess] DENY: No approvals for user ${clientAdminId} (role: ${userRole}) - only common pages accessible`);
   }
   
   return pageKeys;
@@ -650,9 +680,10 @@ async function computeEffectivePages({
     }
     
     // LAYER 3: Get Superadmin approved pages (client gate)
-    const superadminApproved = await getSuperadminApprovedPages(userId, tenantId);
+    // PHASE 3 FIX: Pass user's role so role-based EA assignments are included
+    const superadminApproved = await getSuperadminApprovedPages(userId, tenantId, role);
     if (superadminApproved) {
-      console.log(`[EffectiveAccess] Superadmin approved ${superadminApproved.size} pages for user ${userId}`);
+      console.log(`[EffectiveAccess] Superadmin approved ${superadminApproved.size} pages for user ${userId} (role: ${role})`);
     } else {
       console.log(`[EffectiveAccess] DENY: No Superadmin approvals for user ${userId}`);
     }

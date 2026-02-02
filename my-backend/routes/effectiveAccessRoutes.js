@@ -99,14 +99,16 @@ router.get('/effective', authenticate, async (req, res) => {
     const pagesResult = await computeEffectivePages({
       userId,
       tenantId,
-      planId: subscription.plan_id
+      planId: subscription.plan_id,
+      role: userRole  // Pass user's role for role-based page assignments
     });
     
     // Compute effective roles
     const rolesResult = await computeEffectiveRoles({
       userId,
       tenantId,
-      planId: subscription.plan_id
+      planId: subscription.plan_id,
+      role: userRole
     });
     
     res.json({
