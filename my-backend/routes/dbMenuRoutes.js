@@ -140,7 +140,7 @@ router.get('/sidebar', authenticate, async (req, res) => {
           AND pm.show_in_sidebar = true
           AND apa.assignee_type = 'ADMIN'
           AND apa.is_active = true
-        ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
+        ORDER BY "moduleOrder" NULLS LAST, "order", name
       `;
       
       // Fallback: if no assignments found, use scope-based defaults
@@ -168,7 +168,7 @@ router.get('/sidebar', authenticate, async (req, res) => {
               OR pm.route = '/dashboard'
               OR mm.module_code = 'COMMON'
             )
-          ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
+          ORDER BY "moduleOrder" NULLS LAST, "order", name
         `;
       }
     }
@@ -203,7 +203,7 @@ router.get('/sidebar', authenticate, async (req, res) => {
           AND pm.show_in_sidebar = true
           AND apa.assignee_type = ${userRole}
           AND apa.is_active = true
-        ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
+        ORDER BY "moduleOrder" NULLS LAST, "order", name
       `;
       
       // Also include common pages that are public (no RBAC needed)
