@@ -1233,8 +1233,19 @@ export default function Page() {
   // Roles are filtered by:
   // 1. productType based on selected category (pump/business/all) - for backwards compatibility
   // 2. Whether they actually have pages assigned in modules_master/pages_master (database truth)
+  // 3. SECURITY: SUPER_ADMIN and ENTERPRISE_ADMIN roles are NEVER shown - these are system-level roles
+  //    that cannot be assigned to users through this interface
   const rolesForSelectedAdmin = useMemo(() => {
-    let filteredRoles = allRoles;
+    // ============================================================================
+    // SECURITY: Filter out SUPER_ADMIN and ENTERPRISE_ADMIN roles
+    // These are system-level roles that should NEVER be assignable to other users
+    // through this Role Management interface
+    // ============================================================================
+    const RESTRICTED_ROLES = ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'SYSTEM_ADMIN'];
+    let filteredRoles = allRoles.filter(r => {
+      const roleName = (r.name || '').toUpperCase();
+      return !RESTRICTED_ROLES.includes(roleName);
+    });
     
     // ============================================================================
     // CRITICAL FIX: Filter roles by whether they have pages in the category's modules

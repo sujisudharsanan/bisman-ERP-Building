@@ -53,10 +53,10 @@ router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) =>
         allRoles = await privilegeService.getAllRoles();
       }
       
-      // Filter out super admin and enterprise admin roles
+      // Filter out super admin, enterprise admin, and system admin roles - these are restricted
       const assignableRoles = allRoles.filter(role => {
         const roleName = (role.name || '').toLowerCase();
-        return !roleName.includes('super') && !roleName.includes('enterprise');
+        return !roleName.includes('super') && !roleName.includes('enterprise') && !roleName.includes('system');
       });
       
       return res.json({
@@ -123,7 +123,7 @@ router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) =>
             }))
             .filter(role => {
               const roleName = (role.name || '').toLowerCase();
-              return !roleName.includes('super') && !roleName.includes('enterprise');
+              return !roleName.includes('super') && !roleName.includes('enterprise') && !roleName.includes('system');
             });
           
           return res.json({
@@ -157,7 +157,7 @@ router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) =>
         
         const assignableRoles = allRoles.filter(role => {
           const roleName = (role.name || '').toLowerCase();
-          return !roleName.includes('super') && !roleName.includes('enterprise');
+          return !roleName.includes('super') && !roleName.includes('enterprise') && !roleName.includes('system');
         });
         
         return res.json({
@@ -251,7 +251,7 @@ router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) =>
           }))
           .filter(role => {
             const roleName = (role.name || '').toLowerCase();
-            return !roleName.includes('super') && !roleName.includes('enterprise');
+            return !roleName.includes('super') && !roleName.includes('enterprise') && !roleName.includes('system');
           });
         
         return res.json({
@@ -311,8 +311,8 @@ router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) =>
               }))
               .filter(role => {
                 const roleName = (role.name || '').toLowerCase();
-                // Exclude super admin/enterprise admin roles
-                return !roleName.includes('super') && !roleName.includes('enterprise');
+                // Exclude super admin/enterprise admin/system admin roles
+                return !roleName.includes('super') && !roleName.includes('enterprise') && !roleName.includes('system');
               });
             
             console.log('[assignable-roles] Inherited roles from Super Admin:', roles.length);

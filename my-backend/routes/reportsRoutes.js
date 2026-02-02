@@ -168,10 +168,12 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
       console.log(`[RolesUsersReport] Extracted ${roles.length} unique roles from users`);
     }
     
-    // Filter out SUPER_ADMIN and ENTERPRISE_ADMIN
+    // Filter out SUPER_ADMIN, ENTERPRISE_ADMIN, and SYSTEM_ADMIN - these are system-level roles
+    // that should never be assignable through the Role Management interface
+    const RESTRICTED_ROLES_LIST = ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'SYSTEM_ADMIN'];
     roles = roles.filter(role => {
       const roleName = String(role.name).toUpperCase();
-      return roleName !== 'SUPER_ADMIN' && roleName !== 'ENTERPRISE_ADMIN';
+      return !RESTRICTED_ROLES_LIST.includes(roleName);
     });
     
     // ✅ Deduplicate roles by normalized name (prefer UPPERCASE canonical versions)
@@ -224,7 +226,7 @@ router.get('/roles-users', authenticate, requireRole(['ENTERPRISE_ADMIN', 'SUPER
       return String(a.name).localeCompare(String(b.name));
     });
     
-    console.log(`[RolesUsersReport] Found ${roles.length} roles (excluding SUPER_ADMIN and ENTERPRISE_ADMIN)`);
+    console.log(`[RolesUsersReport] Found ${roles.length} roles (excluding SUPER_ADMIN, ENTERPRISE_ADMIN, SYSTEM_ADMIN)`);
     
     // Fetch all users with their role information
     // Try users_enhanced first, fall back to user model
@@ -446,10 +448,12 @@ router.get('/roles-users/csv', authenticate, requireRole(['ENTERPRISE_ADMIN', 'S
       })).sort((a, b) => a.name.localeCompare(b.name));
     }
     
-    // Filter out SUPER_ADMIN and ENTERPRISE_ADMIN
+    // Filter out SUPER_ADMIN, ENTERPRISE_ADMIN, and SYSTEM_ADMIN - these are system-level roles
+    // that should never be assignable to regular users through this interface
+    const RESTRICTED_ROLES = ['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'SYSTEM_ADMIN'];
     roles = roles.filter(role => {
       const roleName = String(role.name).toUpperCase();
-      return roleName !== 'SUPER_ADMIN' && roleName !== 'ENTERPRISE_ADMIN';
+      return !RESTRICTED_ROLES.includes(roleName);
     });
     
     // ✅ SECURITY FIX: Add tenant filter
