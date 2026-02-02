@@ -52,6 +52,7 @@ router.get('/my-routes', authenticate, async (req, res) => {
     
     // Get all routes this role has access to
     const result = await client.query(`
+      -- MIGRATION NOTE: Switched from role_page_access to admin_page_assignments
       SELECT DISTINCT
         p.id,
         p.page_code,
@@ -62,18 +63,18 @@ router.get('/my-routes', authenticate, async (req, res) => {
         p.is_public,
         p.is_dynamic,
         m.module_code,
-        rpa.can_view,
-        rpa.can_edit,
-        rpa.can_delete,
-        rpa.can_export
+        COALESCE(apa.is_active, false) as can_view,
+        true as can_edit,
+        true as can_delete,
+        true as can_export
       FROM pages_master p
       LEFT JOIN modules_master m ON m.id = p.module_id
-      LEFT JOIN role_page_access rpa ON rpa.page_id = p.id AND rpa.role_name = $1
+      LEFT JOIN admin_page_assignments apa ON apa.page_id = p.id AND apa.assignee_type = $1 AND apa.is_active = true
       WHERE p.is_active = TRUE
         AND (
           p.is_governed = FALSE           -- Non-governed routes
           OR p.is_public = TRUE           -- Public routes
-          OR rpa.can_view = TRUE          -- Has explicit RBAC access
+          OR apa.is_active = TRUE         -- Has explicit RBAC access
         )
       ORDER BY m.module_code, p.route
     `, [userRole]);
@@ -313,6 +314,7 @@ router.get('/rbac-missing', authenticate, async (req, res) => {
     }
     
     // Get governed pages without SUPER_ADMIN RBAC
+    // MIGRATION NOTE: Switched from role_page_access to admin_page_assignments
     const result = await client.query(`
       SELECT 
         p.id,
@@ -322,27 +324,28 @@ router.get('/rbac-missing', authenticate, async (req, res) => {
         m.module_code,
         p.is_governed,
         p.is_public,
-        (SELECT COUNT(DISTINCT role_name) FROM role_page_access WHERE page_id = p.id AND can_view = TRUE) as role_count
+        (SELECT COUNT(DISTINCT assignee_type) FROM admin_page_assignments WHERE page_id = p.id AND is_active = TRUE) as role_count
       FROM pages_master p
       LEFT JOIN modules_master m ON m.id = p.module_id
-      LEFT JOIN role_page_access rpa ON rpa.page_id = p.id AND rpa.role_name = 'SUPER_ADMIN' AND rpa.can_view = TRUE
+      LEFT JOIN admin_page_assignments apa ON apa.page_id = p.id AND apa.assignee_type = 'SUPER_ADMIN' AND apa.is_active = TRUE
       WHERE p.is_active = TRUE
         AND p.is_governed = TRUE
-        AND rpa.id IS NULL
+        AND apa.id IS NULL
       ORDER BY m.module_code, p.route
     `);
     
     // Get summary stats
+    // MIGRATION NOTE: Switched from role_page_access to admin_page_assignments
     const statsResult = await client.query(`
       SELECT 
         COUNT(*) FILTER (WHERE is_governed = TRUE) as governed_count,
         COUNT(*) FILTER (WHERE is_governed = TRUE AND id IN (
-          SELECT DISTINCT page_id FROM role_page_access WHERE can_view = TRUE
+          SELECT DISTINCT page_id FROM admin_page_assignments WHERE is_active = TRUE
         )) as with_rbac_count,
-        COUNT(DISTINCT rpa.page_id) as pages_with_any_rbac,
-        (SELECT COUNT(DISTINCT role_name) FROM role_page_access) as unique_roles
+        COUNT(DISTINCT apa.page_id) as pages_with_any_rbac,
+        (SELECT COUNT(DISTINCT assignee_type) FROM admin_page_assignments) as unique_roles
       FROM pages_master p
-      LEFT JOIN role_page_access rpa ON rpa.page_id = p.id AND rpa.can_view = TRUE
+      LEFT JOIN admin_page_assignments apa ON apa.page_id = p.id AND apa.is_active = TRUE
       WHERE p.is_active = TRUE
     `);
     
@@ -410,16 +413,18 @@ router.get('/pages-by-role', authenticate, async (req, res) => {
       ORDER BY m.sort_order, m.module_code, p.sort_order, p.display_name
     `);
 
-    // Get all role-page assignments
+    // Get all role-page assignments from admin_page_assignments (SINGLE SOURCE OF TRUTH)
+    // MIGRATION NOTE: Switched from role_page_access to admin_page_assignments
+    // as per RBAC consolidation plan. role_page_access is now deprecated.
     const assignmentsResult = await client.query(`
       SELECT 
-        rpa.page_id,
-        rpa.role_name,
-        rpa.can_view,
-        rpa.can_edit,
-        rpa.can_delete
-      FROM role_page_access rpa
-      WHERE rpa.can_view = TRUE
+        apa.page_id,
+        apa.assignee_type as role_name,
+        true as can_view,
+        true as can_edit,
+        true as can_delete
+      FROM admin_page_assignments apa
+      WHERE apa.is_active = TRUE
     `);
 
     // Get all roles
@@ -819,8 +824,10 @@ router.get('/role-pages', authenticate, async (req, res) => {
     const inheritsBaseUser = !NO_INHERIT_ROLES.includes(normalizedRole);
     
     // ========================================================================
-    // 1. GET ASSIGNED PAGES (directly from role_page_access)
+    // 1. GET ASSIGNED PAGES (from admin_page_assignments - SINGLE SOURCE OF TRUTH)
     // ========================================================================
+    // MIGRATION NOTE: Switched from role_page_access to admin_page_assignments
+    // as per RBAC consolidation plan. role_page_access is now deprecated.
     const assignedResult = await client.query(`
       SELECT 
         pm.id,
@@ -833,15 +840,15 @@ router.get('/role-pages', authenticate, async (req, res) => {
         pm.page_type,
         mm.module_code,
         mm.display_name as module_name,
-        rpa.can_view,
-        rpa.can_edit,
-        rpa.can_delete,
+        true as can_view,
+        true as can_edit,
+        true as can_delete,
         'DIRECT' as access_type
-      FROM role_page_access rpa
-      JOIN pages_master pm ON pm.id = rpa.page_id
+      FROM admin_page_assignments apa
+      JOIN pages_master pm ON pm.id = apa.page_id
       LEFT JOIN modules_master mm ON mm.id = pm.module_id
-      WHERE rpa.role_name = $1 
-        AND rpa.can_view = true
+      WHERE apa.assignee_type = $1 
+        AND apa.is_active = true
         AND pm.is_active = true
       ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
     `, [normalizedRole]);

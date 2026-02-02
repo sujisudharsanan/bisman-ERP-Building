@@ -133,17 +133,17 @@ router.get('/sidebar', authenticate, async (req, res) => {
           pm.sort_order as "order",
           pm.description,
           mm.sort_order as "moduleOrder",
-          rpa.can_view,
-          rpa.can_edit,
-          rpa.can_delete,
-          rpa.can_export
+          true as can_view,
+          true as can_edit,
+          true as can_delete,
+          true as can_export
         FROM pages_master pm
         LEFT JOIN modules_master mm ON pm.module_id = mm.id
-        INNER JOIN role_page_access rpa ON rpa.page_id = pm.id
+        INNER JOIN admin_page_assignments apa ON apa.page_id = pm.id
         WHERE pm.is_active = true
           AND pm.show_in_sidebar = true
-          AND rpa.role_name = ${userRole}
-          AND rpa.can_view = true
+          AND apa.assignee_type = ${userRole}
+          AND apa.is_active = true
         ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
       `;
       
@@ -391,16 +391,15 @@ router.get('/check-access/:pageCode', authenticate, async (req, res) => {
       });
     }
     
-    // Regular users: check role_page_access
+    // Regular users: check admin_page_assignments (SINGLE SOURCE OF TRUTH)
+    // MIGRATION NOTE: Switched from role_page_access to admin_page_assignments
     const access = await prisma.$queryRaw`
       SELECT 
-        can_view,
-        can_edit,
-        can_delete,
-        can_export
-      FROM role_page_access
+        is_active as can_view
+      FROM admin_page_assignments
       WHERE page_id = ${page.id}
-        AND role_name = ${userRole}
+        AND assignee_type = ${userRole}
+        AND is_active = true
       LIMIT 1
     `;
     
@@ -414,22 +413,17 @@ router.get('/check-access/:pageCode', authenticate, async (req, res) => {
       });
     }
     
-    // Determine access level
-    const perms = access[0];
-    let accessLevel = 'view';
-    if (perms.can_delete) accessLevel = 'full';
-    else if (perms.can_edit) accessLevel = 'edit';
-    
+    // Full access granted via admin_page_assignments
     res.json({
       ok: true,
       pageCode,
       hasAccess: true,
-      accessLevel,
+      accessLevel: 'full',
       permissions: {
-        canView: perms.can_view,
-        canEdit: perms.can_edit,
-        canDelete: perms.can_delete,
-        canExport: perms.can_export
+        canView: true,
+        canEdit: true,
+        canDelete: true,
+        canExport: true
       },
       reason: 'RBAC permission granted'
     });
@@ -455,18 +449,20 @@ router.get('/my-permissions', authenticate, async (req, res) => {
       return res.status(401).json({ ok: false, error: 'Not authenticated' });
     }
     
-    // Get all permissions for this role
+    // Get all permissions for this role from admin_page_assignments (SINGLE SOURCE OF TRUTH)
+    // MIGRATION NOTE: Switched from role_page_access to admin_page_assignments
     const permissions = await prisma.$queryRaw`
       SELECT 
         pm.page_code as "pageCode",
         pm.route as path,
-        rpa.can_view as "canView",
-        rpa.can_edit as "canEdit",
-        rpa.can_delete as "canDelete",
-        rpa.can_export as "canExport"
-      FROM role_page_access rpa
-      INNER JOIN pages_master pm ON pm.id = rpa.page_id
-      WHERE rpa.role_name = ${userRole}
+        true as "canView",
+        true as "canEdit",
+        true as "canDelete",
+        true as "canExport"
+      FROM admin_page_assignments apa
+      INNER JOIN pages_master pm ON pm.id = apa.page_id
+      WHERE apa.assignee_type = ${userRole}
+        AND apa.is_active = true
         AND pm.is_active = true
     `;
     

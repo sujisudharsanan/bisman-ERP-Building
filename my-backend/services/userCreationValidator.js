@@ -89,6 +89,7 @@ async function getAdminGrantablePages(adminLegacyId, tenantId, planId) {
 /**
  * Get pages that a role typically has access to
  * This is used to determine what the new user's role needs
+ * MIGRATION NOTE: Switched from role_page_access to admin_page_assignments
  * 
  * @param {string} roleName - Role name
  * @returns {Promise<Set<string>>} Set of page keys for role
@@ -98,10 +99,10 @@ async function getRolePages(roleName) {
   
   const rolePages = await prisma.$queryRaw`
     SELECT DISTINCT pm.page_code
-    FROM role_page_access rpa
-    JOIN pages_master pm ON rpa.page_id = pm.id
-    WHERE rpa.role_name = ${roleName}
-      AND rpa.can_view = true
+    FROM admin_page_assignments apa
+    JOIN pages_master pm ON apa.page_id = pm.id
+    WHERE apa.assignee_type = ${roleName}
+      AND apa.is_active = true
       AND pm.is_active = true
   `;
   

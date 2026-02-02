@@ -129,9 +129,9 @@ router.get('/menu', authenticate, async (req, res) => {
         m.is_hidden
       FROM modules_master m
       INNER JOIN pages_master p ON p.module_id = m.id
-      INNER JOIN role_page_access rpa ON rpa.page_id = p.id
-      WHERE rpa.role_name = $1
-        AND rpa.can_view = TRUE
+      INNER JOIN admin_page_assignments apa ON apa.page_id = p.id
+      WHERE apa.assignee_type = $1
+        AND apa.is_active = TRUE
         AND m.is_active = TRUE
         AND m.is_hidden = FALSE
         AND p.is_active = TRUE
@@ -143,6 +143,7 @@ router.get('/menu', authenticate, async (req, res) => {
 
     // =========================================================================
     // Query 2: Get all pages this role has access to (filtered for sidebar)
+    // MIGRATION NOTE: Switched from role_page_access to admin_page_assignments
     // =========================================================================
     const pagesResult = await client.query(`
       SELECT 
@@ -157,13 +158,13 @@ router.get('/menu', authenticate, async (req, res) => {
         p.module_id,
         m.module_code,
         m.layout_group,
-        rpa.can_view,
-        rpa.can_edit
+        true as can_view,
+        true as can_edit
       FROM pages_master p
       INNER JOIN modules_master m ON m.id = p.module_id
-      INNER JOIN role_page_access rpa ON rpa.page_id = p.id
-      WHERE rpa.role_name = $1
-        AND rpa.can_view = TRUE
+      INNER JOIN admin_page_assignments apa ON apa.page_id = p.id
+      WHERE apa.assignee_type = $1
+        AND apa.is_active = TRUE
         AND p.is_active = TRUE
         AND m.is_active = TRUE
         AND p.show_in_sidebar = TRUE
@@ -322,15 +323,17 @@ router.get('/check-access', authenticate, async (req, res) => {
       });
     }
 
+    // MIGRATION NOTE: Switched from role_page_access to admin_page_assignments
     const result = await client.query(`
       SELECT 
         p.page_code,
         p.display_name,
-        rpa.can_view,
-        rpa.can_edit
+        true as can_view,
+        true as can_edit
       FROM pages_master p
-      INNER JOIN role_page_access rpa ON rpa.page_id = p.id
-      WHERE rpa.role_name = $1
+      INNER JOIN admin_page_assignments apa ON apa.page_id = p.id
+      WHERE apa.assignee_type = $1
+        AND apa.is_active = TRUE
         AND p.route = $2
         AND p.is_active = TRUE
     `, [userRole, route]);
@@ -463,13 +466,14 @@ router.get('/:moduleCode/pages', authenticate, async (req, res) => {
     const module = moduleResult.rows[0];
 
     // Get pages with access info
+    // MIGRATION NOTE: Switched from role_page_access to admin_page_assignments
     const pagesResult = await client.query(`
       SELECT 
         p.*,
-        rpa.can_view,
-        rpa.can_edit
+        COALESCE(apa.is_active, false) as can_view,
+        true as can_edit
       FROM pages_master p
-      LEFT JOIN role_page_access rpa ON rpa.page_id = p.id AND rpa.role_name = $1
+      LEFT JOIN admin_page_assignments apa ON apa.page_id = p.id AND apa.assignee_type = $1 AND apa.is_active = TRUE
       WHERE p.module_id = $2 AND p.is_active = TRUE
       ORDER BY p.sort_order, p.display_name
     `, [userRole, module.id]);

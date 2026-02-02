@@ -553,15 +553,16 @@ class SubscriptionPageAccessService {
   
   /**
    * Check if user has page approval (Layer 1 - RBAC)
+   * MIGRATION NOTE: Switched from role_page_access to admin_page_assignments
    */
   async checkPageApproval(userId, pageCode) {
     try {
-      // Check role_page_access (join on role_name = role)
+      // Check admin_page_assignments (join on assignee_type = role)
       const result = await prisma.$queryRaw`
-        SELECT 1 FROM role_page_access rpa
-        JOIN users_enhanced u ON rpa.role_name = u.role
-        JOIN pages_master pm ON rpa.page_id = pm.id
-        WHERE u.id = ${userId}::uuid AND pm.page_code = ${pageCode} AND rpa.can_view = true
+        SELECT 1 FROM admin_page_assignments apa
+        JOIN users_enhanced u ON apa.assignee_type = u.role
+        JOIN pages_master pm ON apa.page_id = pm.id
+        WHERE u.id = ${userId}::uuid AND pm.page_code = ${pageCode} AND apa.is_active = true
         LIMIT 1
       `;
       
