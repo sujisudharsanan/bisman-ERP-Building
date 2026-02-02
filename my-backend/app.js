@@ -3491,11 +3491,17 @@ app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_
       
     } else if (loggedInUserRole === 'SUPER_ADMIN') {
       // =====================================================================
-      // SA sees ONLY pages that EA has approved for SA
-      // Assigned = pages SA has already approved for target role (ADMIN)
+      // SUPER_ADMIN viewing a role:
+      // Pool = Pages that EA has assigned to THIS SPECIFIC ROLE (not to SA)
+      // Assigned = Same as pool (SA is viewing what EA configured for the role)
+      // 
+      // HARD RESTRICTIONS:
+      // - Do NOT show SA's own pool
+      // - Show ONLY what EA has explicitly assigned to the target role
+      // - Filter out /enterprise-admin/* routes (SA cannot see EA pages)
       // =====================================================================
       
-      // Get pages EA has approved for SA (this is SA's assignable pool)
+      // Get pages EA has assigned to the TARGET ROLE (not to SA)
       assignablePagesResult = await prisma.$queryRaw`
         SELECT DISTINCT
           p.id,
@@ -3514,22 +3520,18 @@ app.get('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE_
         LEFT JOIN modules_master m ON m.id = p.module_id
         INNER JOIN admin_page_assignments apa 
           ON apa.page_id = p.id
-          AND apa.assigner_type = 'ENTERPRISE_ADMIN'
-          AND apa.assignee_type = 'SUPER_ADMIN'
+          AND apa.assignee_type = ${targetRoleName}
           AND apa.is_active = true
         WHERE p.status = 'active'
           AND p.page_type = 'UI_PAGE'
+          AND p.is_active = true
+          AND p.route NOT LIKE '/enterprise-admin%'
         ORDER BY m.sort_order, m.module_code, p.sort_order, p.display_name
       `;
       
-      // Get pages SA has already assigned to target role (ADMIN)
-      const assignedResult = await prisma.$queryRaw`
-        SELECT DISTINCT page_id FROM admin_page_assignments
-        WHERE assigner_type = 'SUPER_ADMIN'
-          AND assignee_type = ${targetRoleName}
-          AND is_active = true
-      `;
-      assignedPageIds = new Set(assignedResult.map(r => r.page_id));
+      // For SA viewing a role, all pages in the pool are "assigned" (EA assigned them)
+      // SA is just viewing the role's permissions, not modifying
+      assignedPageIds = new Set(assignablePagesResult.map(r => r.id));
       
     } else if (loggedInUserRole === 'ADMIN') {
       // =====================================================================

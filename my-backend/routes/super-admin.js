@@ -76,6 +76,10 @@ router.get('/my-approved-pages', requireSuperAdmin, async (req, res) => {
     console.log(`[SuperAdmin] Fetching approved pages for SA ${superAdminId}`);
     
     // Get pages approved by Enterprise Admin for this Super Admin
+    // HARD RESTRICTIONS:
+    // - Only pages from admin_page_assignments
+    // - Exclude enterprise-admin routes (SA cannot access EA pages)
+    // - Only active pages
     const approvedPages = await prisma.$queryRaw`
       SELECT 
         pm.id,
@@ -95,6 +99,7 @@ router.get('/my-approved-pages', requireSuperAdmin, async (req, res) => {
         AND apa.assigner_type = 'ENTERPRISE_ADMIN'
         AND apa.is_active = true
         AND pm.is_active = true
+        AND pm.route NOT LIKE '/enterprise-admin%'
       ORDER BY mm.sort_order, pm.sort_order, pm.display_name
     `;
     
