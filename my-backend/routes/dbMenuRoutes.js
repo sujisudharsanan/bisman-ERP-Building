@@ -177,34 +177,75 @@ router.get('/sidebar', authenticate, async (req, res) => {
     else {
       menuType = 'user';
       
-      // Get pages where user's role has can_view = true
-      // role_page_access uses role_name (string), not role_id
-      menuItems = await prisma.$queryRaw`
-        SELECT DISTINCT
-          pm.id,
-          pm.page_code as "pageCode",
-          pm.display_name as name,
-          pm.route as path,
-          pm.icon as "iconKey",
-          mm.module_code as module,
-          mm.display_name as "moduleName",
-          pm.show_in_sidebar as "showInSidebar",
-          pm.sort_order as "order",
-          pm.description,
-          mm.sort_order as "moduleOrder",
-          true as can_view,
-          true as can_edit,
-          true as can_delete,
-          true as can_export
-        FROM pages_master pm
-        LEFT JOIN modules_master mm ON pm.module_id = mm.id
-        INNER JOIN admin_page_assignments apa ON apa.page_id = pm.id
-        WHERE pm.is_active = true
-          AND pm.show_in_sidebar = true
-          AND apa.assignee_type = ${userRole}
-          AND apa.is_active = true
-        ORDER BY "moduleOrder" NULLS LAST, "order", name
-      `;
+      // Get the user's Super Admin ID (for filtering by their assigned pages)
+      const userSuperAdminId = req.user?.super_admin_id || req.user?.superAdminId;
+      
+      console.log(`[Menu API] Regular user: role=${userRole}, superAdminId=${userSuperAdminId}`);
+      
+      // Get pages assigned to user's role by their Super Admin
+      // If no super_admin_id, fall back to all assignments for the role
+      if (userSuperAdminId) {
+        menuItems = await prisma.$queryRaw`
+          SELECT DISTINCT
+            pm.id,
+            pm.page_code as "pageCode",
+            pm.display_name as name,
+            pm.route as path,
+            pm.icon as "iconKey",
+            mm.module_code as module,
+            mm.display_name as "moduleName",
+            pm.show_in_sidebar as "showInSidebar",
+            pm.sort_order as "order",
+            pm.description,
+            mm.sort_order as "moduleOrder",
+            true as can_view,
+            true as can_edit,
+            true as can_delete,
+            true as can_export
+          FROM pages_master pm
+          LEFT JOIN modules_master mm ON pm.module_id = mm.id
+          INNER JOIN admin_page_assignments apa ON apa.page_id = pm.id
+          WHERE pm.is_active = true
+            AND pm.show_in_sidebar = true
+            AND apa.assignee_type = ${userRole}
+            AND apa.assigner_id = ${userSuperAdminId}
+            AND apa.assigner_type = 'SUPER_ADMIN'
+            AND apa.is_active = true
+          ORDER BY "moduleOrder" NULLS LAST, "order", name
+        `;
+        console.log(`[Menu API] Found ${menuItems.length} pages from Super Admin ${userSuperAdminId}`);
+      }
+      
+      // Fallback: If no pages from Super Admin, try role-based without SA filter
+      if (!menuItems || menuItems.length === 0) {
+        console.log(`[Menu API] No Super Admin pages, falling back to role-based`);
+        menuItems = await prisma.$queryRaw`
+          SELECT DISTINCT
+            pm.id,
+            pm.page_code as "pageCode",
+            pm.display_name as name,
+            pm.route as path,
+            pm.icon as "iconKey",
+            mm.module_code as module,
+            mm.display_name as "moduleName",
+            pm.show_in_sidebar as "showInSidebar",
+            pm.sort_order as "order",
+            pm.description,
+            mm.sort_order as "moduleOrder",
+            true as can_view,
+            true as can_edit,
+            true as can_delete,
+            true as can_export
+          FROM pages_master pm
+          LEFT JOIN modules_master mm ON pm.module_id = mm.id
+          INNER JOIN admin_page_assignments apa ON apa.page_id = pm.id
+          WHERE pm.is_active = true
+            AND pm.show_in_sidebar = true
+            AND apa.assignee_type = ${userRole}
+            AND apa.is_active = true
+          ORDER BY "moduleOrder" NULLS LAST, "order", name
+        `;
+      }
       
       // Also include common pages that are public (no RBAC needed)
       const commonPages = await prisma.$queryRaw`
