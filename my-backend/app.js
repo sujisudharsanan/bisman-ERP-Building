@@ -3262,7 +3262,6 @@ app.get('/api/enterprise-admin/super-admins/:id/page-pool', authenticate, requir
         pm.page_code,
         pm.display_name,
         pm.route,
-        pm.parent_id,
         pm.module_id,
         pm.show_in_sidebar,
         pm.icon,
@@ -3274,7 +3273,7 @@ app.get('/api/enterprise-admin/super-admins/:id/page-pool', authenticate, requir
       LEFT JOIN modules_master m ON pm.module_id = m.id
       WHERE pp.superadmin_id = ${superAdminId}
         AND pp.is_active = true
-        AND pm.status = 'active'
+        AND pm.is_active = true
       ORDER BY m.sort_order, pm.sort_order
     `;
 
@@ -3298,7 +3297,6 @@ app.get('/api/enterprise-admin/super-admins/:id/page-pool', authenticate, requir
         pageCode: row.page_code,
         displayName: row.display_name,
         route: row.route,
-        parentId: row.parent_id,
         moduleId: row.module_id,
         showInSidebar: row.show_in_sidebar,
         icon: row.icon,
