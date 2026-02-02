@@ -3840,12 +3840,12 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
       // Insert new assignments into role_page_access
       for (const page of grantedPages) {
         await tx.$executeRaw`
-          INSERT INTO role_page_access (role_name, page_id, can_view, can_edit, can_delete, created_at, updated_at)
-          VALUES (${assigneeType}, ${page.id}, true, true, false, NOW(), NOW())
+          INSERT INTO role_page_access (role_name, page_id, can_view, can_edit, can_delete, granted_at)
+          VALUES (${assigneeType}, ${page.id}, true, true, false, NOW())
           ON CONFLICT (role_name, page_id) DO UPDATE SET
             can_view = true,
             can_edit = true,
-            updated_at = NOW()
+            granted_at = NOW()
         `;
       }
     });
