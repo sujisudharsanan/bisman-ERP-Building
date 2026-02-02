@@ -3829,8 +3829,7 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
             (assigner_id, assigner_type, assignee_id, assignee_type, page_id, page_key, is_active, granted_at, created_at, updated_at)
           VALUES 
             (${assignerId}, ${assignerType}, ${roleIdNum}, ${assigneeType}, ${page.id}, ${page.page_code}, true, NOW(), NOW(), NOW())
-          ON CONFLICT (assigner_type, assignee_type, page_id) 
-          WHERE is_active = true
+          ON CONFLICT (assigner_id, assigner_type, assignee_id, page_key) 
           DO UPDATE SET 
             is_active = true, 
             revoked_at = NULL, 
