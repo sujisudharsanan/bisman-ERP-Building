@@ -659,6 +659,10 @@ async function computeEffectivePages({
     console.log(`[EffectiveAccess] Subscription has ${subscriptionPages.size} pages`);
     
     // LAYER 2: Get Enterprise Admin approved pages (enterprise gate)
+    // NOTE: For tenant-scoped roles (ADMIN, OPERATIONS_MANAGER, etc.), this layer
+    // is handled by role-based assignments in LAYER 3. The enterprise layer only
+    // applies to platform users (SA accessing EA-approved pages).
+    
     // Find the Superadmin for this tenant if not provided
     if (!superadminId) {
       const prisma = getPrisma();
@@ -669,14 +673,20 @@ async function computeEffectivePages({
       superadminId = client?.super_admin_id;
     }
     
+    // For tenant-scoped roles, skip the SA-specific enterprise check
+    // The role-based assignments from EA ARE the enterprise approval
+    const isTenantScopedRole = normalizedRole && !PLATFORM_ROLES.includes(normalizedRole);
+    
     let enterpriseApproved = null;
-    if (superadminId) {
+    if (!isTenantScopedRole && superadminId) {
       enterpriseApproved = await getEnterpriseApprovedPages(superadminId);
       if (enterpriseApproved) {
         console.log(`[EffectiveAccess] Enterprise approved ${enterpriseApproved.size} pages for Superadmin ${superadminId}`);
       } else {
         console.log(`[EffectiveAccess] No Enterprise restrictions for Superadmin ${superadminId}`);
       }
+    } else if (isTenantScopedRole) {
+      console.log(`[EffectiveAccess] Tenant-scoped role ${normalizedRole} - using role-based EA assignments`);
     }
     
     // LAYER 3: Get Superadmin approved pages (client gate)
@@ -689,14 +699,14 @@ async function computeEffectivePages({
     }
     
     // COMPUTE INTERSECTION
-    // PHASE 3 CRITICAL FIX: null NEVER means "unrestricted"
-    // null/undefined means NO APPROVAL = DENY
+    // For tenant-scoped roles: subscriptionPages ∩ roleBasedEAAssignments
+    // For platform users: subscriptionPages ∩ enterpriseApproved ∩ superadminApproved
     for (const pageKey of subscriptionPages) {
       const inSubscription = true;
       
-      // SECURITY: null means DENY, not "allow all"
-      // Only .has(pageKey) can grant access
-      const inEnterprise = enterpriseApproved && enterpriseApproved.has(pageKey);
+      // For tenant-scoped roles, skip the enterprise layer check
+      // (role-based EA assignments are already in superadminApproved)
+      const inEnterprise = isTenantScopedRole ? true : (enterpriseApproved && enterpriseApproved.has(pageKey));
       const inSuperadmin = superadminApproved && superadminApproved.has(pageKey);
       
       const isEffective = inSubscription && inEnterprise && inSuperadmin;
