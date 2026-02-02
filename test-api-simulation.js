@@ -1,4 +1,5 @@
 /* eslint-env node */
+/* global console */
 // Test from my-backend directory!
 const { PrismaClient } = require('@prisma/client');
 const prisma = new PrismaClient({
