@@ -544,16 +544,21 @@ async function getSuperadminApprovedPages(clientAdminId, _tenantId, userRole = n
   // SECURITY LOCKDOWN: rbac_user_permissions is NO LONGER queried
   
   // 1. User-specific assignments (SA assigned pages to this specific user)
-  const userAssignments = await prisma.$queryRaw`
-    SELECT page_key
-    FROM admin_page_assignments
-    WHERE assignee_id = ${clientAdminId}
-      AND assigner_type = 'SUPER_ADMIN'
-      AND is_active = true
-  `;
-  
-  for (const a of userAssignments) {
-    if (a.page_key) pageKeys.add(a.page_key);
+  // Only query if clientAdminId is a valid integer (legacy_id), skip for UUIDs
+  let userAssignments = [];
+  const numericId = parseInt(clientAdminId, 10);
+  if (!isNaN(numericId) && numericId > 0) {
+    userAssignments = await prisma.$queryRaw`
+      SELECT page_key
+      FROM admin_page_assignments
+      WHERE assignee_id = ${numericId}
+        AND assigner_type = 'SUPER_ADMIN'
+        AND is_active = true
+    `;
+    
+    for (const a of userAssignments) {
+      if (a.page_key) pageKeys.add(a.page_key);
+    }
   }
   
   // 2. Role-based assignments (EA assigned pages to the role like ADMIN, OPERATIONS_MANAGER)
