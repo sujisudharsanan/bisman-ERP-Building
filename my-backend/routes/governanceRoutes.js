@@ -828,8 +828,9 @@ router.get('/role-pages', authenticate, async (req, res) => {
     // ========================================================================
     // MIGRATION NOTE: Switched from role_page_access to admin_page_assignments
     // as per RBAC consolidation plan. role_page_access is now deprecated.
+    // NOTE: Using DISTINCT ON to deduplicate when same page is assigned multiple times
     const assignedResult = await client.query(`
-      SELECT 
+      SELECT DISTINCT ON (pm.id)
         pm.id,
         pm.page_code,
         pm.display_name,
@@ -850,7 +851,7 @@ router.get('/role-pages', authenticate, async (req, res) => {
       WHERE apa.assignee_type = $1 
         AND apa.is_active = true
         AND pm.is_active = true
-      ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
+      ORDER BY pm.id, mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
     `, [normalizedRole]);
     
     // ========================================================================
