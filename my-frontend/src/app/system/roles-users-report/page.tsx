@@ -181,9 +181,37 @@ export default function RolesUsersReportPage() {
   const [saApprovedPagesLoaded, setSaApprovedPagesLoaded] = useState(false);
 
   // Get all pages grouped by module for the Pages Overview section
-  // For SUPER_ADMIN: Use API-fetched approved pages instead of PAGE_REGISTRY
+  // For SUPER_ADMIN: When a role is selected, show only pages assigned to that role (from rolePages)
+  // Otherwise, use SA-approved pages from API
   const allPagesGroupedByModule = useMemo(() => {
-    // For SUPER_ADMIN: Use SA-approved pages from API
+    // PRIORITY: When a role is selected, use rolePages (pages EA assigned to that role)
+    // This ensures bottom section matches the top section (role-specific pages)
+    if (isSuperAdmin && selectedRoleId && rolePages.length > 0) {
+      const moduleMap = new Map<string, { moduleId: string; moduleName: string; pages: { id: string; name: string; path: string; status: string }[] }>();
+      
+      for (const page of rolePages) {
+        const moduleId = page.module || 'other';
+        
+        if (!moduleMap.has(moduleId)) {
+          const moduleMeta = MODULES[moduleId];
+          moduleMap.set(moduleId, {
+            moduleId,
+            moduleName: moduleMeta?.name || moduleId,
+            pages: []
+          });
+        }
+        moduleMap.get(moduleId)!.pages.push({
+          id: page.id,
+          name: page.name,
+          path: page.path,
+          status: 'active'
+        });
+      }
+      
+      return Array.from(moduleMap.values()).sort((a, b) => a.moduleName.localeCompare(b.moduleName));
+    }
+    
+    // For SUPER_ADMIN without role selected: Use SA-approved pages from API
     if (isSuperAdmin && saApprovedPagesLoaded && saApprovedPages.length > 0) {
       // Filter by client's enabled modules if selected
       const clientEnabledModules = selectedClient?.modules_enabled 
@@ -239,7 +267,7 @@ export default function RolesUsersReportPage() {
     
     // Convert to array and sort by module name
     return Array.from(moduleMap.values()).sort((a, b) => a.moduleName.localeCompare(b.moduleName));
-  }, [isSuperAdmin, selectedClient, saApprovedPages, saApprovedPagesLoaded]);
+  }, [isSuperAdmin, selectedClient, saApprovedPages, saApprovedPagesLoaded, selectedRoleId, rolePages]);
 
   // Filtered pages based on selected module filter, assigned filter, and search query
   const filteredPagesForOverview = useMemo(() => {
