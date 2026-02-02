@@ -798,6 +798,28 @@ export default function Page() {
         setRolePagesHasChanges(false);
         // Show success toast
         showToast(`✓ Saved ${data.grantedCount || pageIds.length} pages for ${data.roleName || 'role'}`, 'success');
+        
+        // Reload the role-scoped pages to get fresh data from server
+        // This ensures UI reflects the actual saved state
+        const selectedRole = allRoles.find(r => r.id === selectedRoleId);
+        if (selectedRole) {
+          const reloadResponse = await fetch(`/api/governance/role-pages?roleName=${encodeURIComponent(selectedRole.name)}`, {
+            credentials: 'include'
+          });
+          if (reloadResponse.ok) {
+            const reloadData = await reloadResponse.json();
+            if (reloadData.success && reloadData.data) {
+              console.log('🔄 Reloaded role-scoped pages after save');
+              setRoleScopedPages(reloadData.data);
+              const newPaths = new Set<string>([
+                ...reloadData.data.assignedPages.map((p: { route: string }) => p.route),
+                ...reloadData.data.inheritedPages.map((p: { route: string }) => p.route)
+              ]);
+              setRolePagesSelectedIds(newPaths);
+              setRolePagesInitialIds(new Set(newPaths));
+            }
+          }
+        }
       } else {
         const errorData = await response.json().catch(() => ({}));
         console.error('❌ Save failed:', response.status, errorData);
