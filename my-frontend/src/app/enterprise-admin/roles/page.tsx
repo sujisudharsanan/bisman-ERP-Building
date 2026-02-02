@@ -722,15 +722,23 @@ export default function Page() {
             console.log(`✅ Role-scoped pages: ${data.data.counts.assigned} assigned, ${data.data.counts.inherited} inherited, ${data.data.counts.candidate} candidates`);
             setRoleScopedPages(data.data);
             
-            // SYNC: Also populate rolePagesSelectedIds with assigned + inherited page paths
-            // This ensures the toggle state matches what the API returns as "assigned"
+            // SYNC: Populate rolePagesSelectedIds with assigned + inherited page paths
+            // ONLY on initial load - don't overwrite if user has made changes
             const assignedPaths = new Set<string>([
               ...data.data.assignedPages.map((p: { route: string }) => p.route),
               ...data.data.inheritedPages.map((p: { route: string }) => p.route)
             ]);
-            setRolePagesSelectedIds(assignedPaths);
-            setRolePagesInitialIds(new Set(assignedPaths));
-            setRolePagesHasChanges(false);
+            
+            // Only reset selection if this is a fresh load (no pending changes)
+            // or if the role changed (initialIds is empty)
+            if (rolePagesInitialIds.size === 0 || !rolePagesHasChanges) {
+              console.log('📋 Setting initial selection:', assignedPaths.size, 'pages');
+              setRolePagesSelectedIds(assignedPaths);
+              setRolePagesInitialIds(new Set(assignedPaths));
+              setRolePagesHasChanges(false);
+            } else {
+              console.log('⚠️ Skipping selection reset - user has pending changes');
+            }
           } else {
             console.warn('⚠️ Invalid role-scoped pages response:', data);
             setRoleScopedPages(null);
@@ -773,6 +781,7 @@ export default function Page() {
     try {
       const pageIds = Array.from(rolePagesSelectedIds);
       console.log('💾 Saving', pageIds.length, 'pages for role:', selectedRoleId);
+      console.log('💾 Page paths being sent:', pageIds);
       
       const response = await fetch(`/api/rbac/roles/${selectedRoleId}/pages`, {
         method: 'POST',
@@ -804,12 +813,15 @@ export default function Page() {
 
   // Toggle page selection for role - uses path for consistent matching
   const toggleRolePageSelection = (pagePath: string) => {
+    console.log('🔄 Toggle page:', pagePath);
     setRolePagesSelectedIds(prev => {
       const newSet = new Set(prev);
       if (newSet.has(pagePath)) {
         newSet.delete(pagePath);
+        console.log('🔄 Removed:', pagePath, '| New count:', newSet.size);
       } else {
         newSet.add(pagePath);
+        console.log('🔄 Added:', pagePath, '| New count:', newSet.size);
       }
       return newSet;
     });
