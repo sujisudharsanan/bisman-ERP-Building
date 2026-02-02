@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useEffect, useMemo, useState, useRef, useCallback } from "react";
-import { FiUsers, FiPackage, FiGrid, FiCheckCircle, FiUnlock, FiExternalLink, FiShield, FiPlus, FiX, FiChevronUp, FiChevronDown, FiSearch, FiLock, FiGlobe, FiInfo, FiFile, FiMinus, FiAlertCircle } from "react-icons/fi";
+import { FiUsers, FiPackage, FiGrid, FiCheckCircle, FiCheck, FiUnlock, FiExternalLink, FiShield, FiPlus, FiX, FiChevronUp, FiChevronDown, FiSearch, FiLock, FiGlobe, FiInfo, FiFile, FiMinus, FiAlertCircle } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
 import { usePageRefresh } from "@/contexts/RefreshContext";
 import { isModuleProtected, getProtectedModuleMessage, isRoleProtected, getProtectedRoleMessage, getDefaultRoleNames } from "@/common/config/protected-access";
@@ -287,7 +287,7 @@ export default function Page() {
   const lastLoadedAdminIdRef = useRef<number | null>(null); // Track which admin's roles we last loaded
 
   // Toast notification state for protected module warnings
-  const [toastMessage, setToastMessage] = useState<{ message: string; type: 'warning' | 'error' | 'info' } | null>(null);
+  const [toastMessage, setToastMessage] = useState<{ message: string; type: 'warning' | 'error' | 'info' | 'success' } | null>(null);
   const toastTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   // ============================================================================
@@ -314,7 +314,7 @@ export default function Page() {
   }, [rolePages, commonPagePaths]);
 
   // Show toast message
-  const showToast = useCallback((message: string, type: 'warning' | 'error' | 'info' = 'warning') => {
+  const showToast = useCallback((message: string, type: 'warning' | 'error' | 'info' | 'success' = 'warning') => {
     if (toastTimeoutRef.current) {
       clearTimeout(toastTimeoutRef.current);
     }
@@ -787,13 +787,16 @@ export default function Page() {
         // Update initial to current (no more unsaved changes)
         setRolePagesInitialIds(new Set(rolePagesSelectedIds));
         setRolePagesHasChanges(false);
+        // Show success toast
+        showToast(`✓ Saved ${data.grantedCount || pageIds.length} pages for ${data.roleName || 'role'}`, 'success');
       } else {
-        console.error('❌ Save failed:', response.status);
-        alert('Failed to save role pages');
+        const errorData = await response.json().catch(() => ({}));
+        console.error('❌ Save failed:', response.status, errorData);
+        showToast(errorData.message || 'Failed to save role pages', 'error');
       }
     } catch (error) {
       console.error('❌ Save error:', error);
-      alert('Error saving role pages');
+      showToast('Error saving role pages', 'error');
     } finally {
       setRolePagesSaving(false);
     }
@@ -3972,13 +3975,17 @@ export default function Page() {
       {/* Toast Notification for Protected Modules and Missing Selections */}
       {toastMessage && (
         <div className={`fixed bottom-4 right-4 z-50 max-w-md px-4 py-3 rounded-lg shadow-lg animate-slide-up flex items-start gap-3 ${
-          toastMessage.type === 'warning' 
+          toastMessage.type === 'success'
+            ? 'bg-green-50 border border-green-300 text-green-800 dark:bg-green-900/90 dark:border-green-700 dark:text-green-200'
+            : toastMessage.type === 'warning' 
             ? 'bg-yellow-50 border border-yellow-300 text-yellow-800 dark:bg-yellow-900/90 dark:border-yellow-700 dark:text-yellow-200'
             : toastMessage.type === 'error'
             ? 'bg-red-50 border border-red-300 text-red-800 dark:bg-red-900/90 dark:border-red-700 dark:text-red-200'
             : 'bg-blue-50 border border-blue-300 text-blue-800 dark:bg-blue-900/90 dark:border-blue-700 dark:text-blue-200'
         }`}>
-          {toastMessage.type === 'warning' ? (
+          {toastMessage.type === 'success' ? (
+            <FiCheck className="w-5 h-5 shrink-0 mt-0.5 text-green-600" />
+          ) : toastMessage.type === 'warning' ? (
             <FiAlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-yellow-600" />
           ) : toastMessage.type === 'error' ? (
             <FiAlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-red-600" />
@@ -3987,7 +3994,7 @@ export default function Page() {
           )}
           <div className="flex-1">
             <p className="text-sm font-medium">
-              {toastMessage.type === 'warning' ? 'Warning' : toastMessage.type === 'error' ? 'Error' : 'Info'}
+              {toastMessage.type === 'success' ? 'Success' : toastMessage.type === 'warning' ? 'Warning' : toastMessage.type === 'error' ? 'Error' : 'Info'}
             </p>
             <p className="text-xs mt-0.5">{toastMessage.message}</p>
           </div>
