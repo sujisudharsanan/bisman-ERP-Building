@@ -647,26 +647,17 @@ export default function Page() {
               assignedCount, 'assigned,', inheritedCount, 'inherited,', candidateCount, 'candidate');
             
             setRolePages(apiPages);
-            // Selected = assigned + inherited pages
-            const grantedPaths = new Set<string>(
-              apiPages
-                .filter((p: { accessType: string }) => p.accessType === 'ASSIGNED' || p.accessType === 'INHERITED')
-                .map((p: { path: string }) => p.path)
-            );
-            setRolePagesSelectedIds(grantedPaths);
-            setRolePagesInitialIds(new Set(grantedPaths));
-            setRolePagesHasChanges(false);
+            // NOTE: Don't set rolePagesSelectedIds here - let the governance/role-pages useEffect handle it
+            // This prevents race conditions between the two data sources
           } else {
             console.warn('⚠️ No pages in API response');
             setRolePages([]);
-            setRolePagesSelectedIds(new Set());
-            setRolePagesInitialIds(new Set());
+            // Don't reset rolePagesSelectedIds - let governance/role-pages handle it
           }
         } else {
           console.error('⚠️ API request failed:', response.status);
           setRolePages([]);
-          setRolePagesSelectedIds(new Set());
-          setRolePagesInitialIds(new Set());
+          // Don't reset rolePagesSelectedIds - let governance/role-pages handle it
         }
         
       } catch (error) {
@@ -677,8 +668,7 @@ export default function Page() {
         }
         console.error('❌ Error loading role pages:', error);
         setRolePages([]);
-        setRolePagesSelectedIds(new Set());
-        setRolePagesInitialIds(new Set());
+        // Don't reset rolePagesSelectedIds - let governance/role-pages handle it
       } finally {
         // Only clear loading if this is still the current request
         if (currentRoleId === selectedRoleId) {
