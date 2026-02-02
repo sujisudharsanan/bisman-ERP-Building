@@ -114,6 +114,37 @@ router.get('/sidebar', authenticate, async (req, res) => {
       `;
     }
     
+    // ========== TENANT ADMIN (ADMIN role) ==========
+    else if (userRole === 'ADMIN') {
+      menuType = 'admin';
+      
+      // Tenant Admin sees /admin/* pages + common pages + dashboard
+      menuItems = await prisma.$queryRaw`
+        SELECT 
+          pm.id,
+          pm.page_code as "pageCode",
+          pm.display_name as name,
+          pm.route as path,
+          pm.icon as "iconKey",
+          mm.module_code as module,
+          mm.display_name as "moduleName",
+          pm.show_in_sidebar as "showInSidebar",
+          pm.sort_order as "order",
+          pm.description,
+          mm.sort_order as "moduleOrder"
+        FROM pages_master pm
+        LEFT JOIN modules_master mm ON pm.module_id = mm.id
+        WHERE pm.is_active = true
+          AND pm.show_in_sidebar = true
+          AND (
+            pm.route LIKE '/admin%'
+            OR pm.route = '/dashboard'
+            OR mm.module_code = 'COMMON'
+          )
+        ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
+      `;
+    }
+    
     // ========== REGULAR USERS (RBAC-based) ==========
     else {
       menuType = 'user';
