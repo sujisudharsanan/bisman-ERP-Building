@@ -115,12 +115,13 @@ router.get('/sidebar', authenticate, async (req, res) => {
     }
     
     // ========== TENANT ADMIN (ADMIN role) ==========
+    // Uses admin_page_assignments to allow EA to control what ADMIN sees
     else if (userRole === 'ADMIN') {
       menuType = 'admin';
       
-      // Tenant Admin sees /admin/* pages + common pages + dashboard
+      // Get pages assigned to ADMIN role by Enterprise Admin
       menuItems = await prisma.$queryRaw`
-        SELECT 
+        SELECT DISTINCT
           pm.id,
           pm.page_code as "pageCode",
           pm.display_name as name,
@@ -134,15 +135,42 @@ router.get('/sidebar', authenticate, async (req, res) => {
           mm.sort_order as "moduleOrder"
         FROM pages_master pm
         LEFT JOIN modules_master mm ON pm.module_id = mm.id
+        INNER JOIN admin_page_assignments apa ON apa.page_id = pm.id
         WHERE pm.is_active = true
           AND pm.show_in_sidebar = true
-          AND (
-            pm.route LIKE '/admin%'
-            OR pm.route = '/dashboard'
-            OR mm.module_code = 'COMMON'
-          )
+          AND apa.assignee_type = 'ADMIN'
+          AND apa.is_active = true
         ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
       `;
+      
+      // Fallback: if no assignments found, use scope-based defaults
+      if (!menuItems || menuItems.length === 0) {
+        console.log('[Menu API] No admin_page_assignments for ADMIN, falling back to scope-based');
+        menuItems = await prisma.$queryRaw`
+          SELECT 
+            pm.id,
+            pm.page_code as "pageCode",
+            pm.display_name as name,
+            pm.route as path,
+            pm.icon as "iconKey",
+            mm.module_code as module,
+            mm.display_name as "moduleName",
+            pm.show_in_sidebar as "showInSidebar",
+            pm.sort_order as "order",
+            pm.description,
+            mm.sort_order as "moduleOrder"
+          FROM pages_master pm
+          LEFT JOIN modules_master mm ON pm.module_id = mm.id
+          WHERE pm.is_active = true
+            AND pm.show_in_sidebar = true
+            AND (
+              pm.route LIKE '/admin%'
+              OR pm.route = '/dashboard'
+              OR mm.module_code = 'COMMON'
+            )
+          ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
+        `;
+      }
     }
     
     // ========== REGULAR USERS (RBAC-based) ==========

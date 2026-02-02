@@ -203,11 +203,11 @@ function requireRole(role) {
     }
     
     // Support both object-style role and string role
-    const actual = req.user.roleName || req.user.role || (req.user.role && req.user.role.name)
+    const actual = (req.user.roleName || req.user.role || (req.user.role && req.user.role.name) || '').toUpperCase()
     console.log('[requireRole] User actual role:', actual)
     
-    // Support both single role and array of roles
-    const allowedRoles = Array.isArray(role) ? role : [role]
+    // Support both single role and array of roles - normalize to uppercase for comparison
+    const allowedRoles = (Array.isArray(role) ? role : [role]).map(r => (r || '').toUpperCase())
     console.log('[requireRole] Allowed roles:', allowedRoles)
     
     if (!allowedRoles.includes(actual)) {
