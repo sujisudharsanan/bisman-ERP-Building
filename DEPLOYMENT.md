@@ -26,3 +26,4 @@ This branch is your deployment bundle. It contains Dockerfiles, a compose file, 
 ## Notes
 - Adjust NEXT_PUBLIC_API_BASE_URL and exposed ports as needed for your server/domain.
 # Deploy trigger: Thu Jan 29 20:02:14 IST 2026
+# Deployment timestamp: 2026-02-02 09:30:42 UTC
