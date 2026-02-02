@@ -3780,35 +3780,26 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
     const currentPageKeys = new Set(currentAssignments.map(a => a.page_key));
     const newPageKeys = new Set(grantedPages.map(p => p.page_code));
     
-    // Check if any compulsory pages are being removed
-    const blockedRemovals = [];
-    for (const currentKey of currentPageKeys) {
-      if (!newPageKeys.has(currentKey) && compulsoryPages.has(currentKey)) {
-        blockedRemovals.push(currentKey);
-      }
-    }
-    
-    // Also ensure all compulsory pages are included in the grant
+    // Auto-add compulsory pages if missing (instead of blocking)
     for (const compulsoryKey of compulsoryPages) {
       if (!newPageKeys.has(compulsoryKey)) {
         // Auto-add compulsory pages if missing
         const compulsoryPage = allPages.find(p => p.page_code === compulsoryKey);
         if (compulsoryPage) {
           grantedPages.push({ id: compulsoryPage.id, page_code: compulsoryPage.page_code });
+          newPageKeys.add(compulsoryKey); // Track that we added it
           console.log('[RBAC-SECURE] Auto-added compulsory page:', compulsoryKey);
         }
       }
     }
     
-    if (blockedRemovals.length > 0) {
-      return res.status(400).json({
-        success: false,
-        error: 'Cannot remove compulsory pages',
-        blockedPages: blockedRemovals,
-        message: `The following pages are mandatory and cannot be removed: ${blockedRemovals.join(', ')}`
-      });
+    // Log if compulsory pages were attempted to be removed (warning only, not blocking)
+    for (const currentKey of currentPageKeys) {
+      if (!newPageKeys.has(currentKey) && compulsoryPages.has(currentKey)) {
+        console.log('[RBAC-SECURE] Note: Compulsory page was auto-retained:', currentKey);
+      }
     }
-    
+
     // ========================================================================
     // UPDATE admin_page_assignments (soft delete + insert)
     // ========================================================================
