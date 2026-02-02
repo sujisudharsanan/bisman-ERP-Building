@@ -416,13 +416,11 @@ router.get('/pages-by-role', authenticate, async (req, res) => {
     // Get all role-page assignments from admin_page_assignments (SINGLE SOURCE OF TRUTH)
     // MIGRATION NOTE: Switched from role_page_access to admin_page_assignments
     // as per RBAC consolidation plan. role_page_access is now deprecated.
+    // NOTE: Using DISTINCT to avoid duplicates when same page is assigned to multiple users with same role
     const assignmentsResult = await client.query(`
-      SELECT 
+      SELECT DISTINCT
         apa.page_id,
-        apa.assignee_type as role_name,
-        true as can_view,
-        true as can_edit,
-        true as can_delete
+        apa.assignee_type as role_name
       FROM admin_page_assignments apa
       WHERE apa.is_active = TRUE
     `);
@@ -439,9 +437,9 @@ router.get('/pages-by-role', authenticate, async (req, res) => {
     const pageRolesMap = new Map();
     for (const assignment of assignmentsResult.rows) {
       if (!pageRolesMap.has(assignment.page_id)) {
-        pageRolesMap.set(assignment.page_id, []);
+        pageRolesMap.set(assignment.page_id, new Set());
       }
-      pageRolesMap.get(assignment.page_id).push(assignment.role_name);
+      pageRolesMap.get(assignment.page_id).add(assignment.role_name);
     }
 
     // Group pages by role
@@ -479,7 +477,8 @@ router.get('/pages-by-role', authenticate, async (req, res) => {
         status: 'active'
       };
 
-      const assignedRoles = pageRolesMap.get(page.id) || [];
+      const assignedRolesSet = pageRolesMap.get(page.id);
+      const assignedRoles = assignedRolesSet ? Array.from(assignedRolesSet) : [];
       
       if (assignedRoles.length === 0) {
         rolePageMap.get('_unassigned').pages.push(pageData);
@@ -503,6 +502,7 @@ router.get('/pages-by-role', authenticate, async (req, res) => {
           pages: []
         });
       }
+      const rolesSet = pageRolesMap.get(page.id);
       modulePageMap.get(moduleCode).pages.push({
         id: String(page.id),
         code: page.page_code,
@@ -511,7 +511,7 @@ router.get('/pages-by-role', authenticate, async (req, res) => {
         icon: page.icon,
         showInSidebar: page.show_in_sidebar,
         status: 'active',
-        roles: pageRolesMap.get(page.id) || []
+        roles: rolesSet ? Array.from(rolesSet) : []
       });
     }
 
