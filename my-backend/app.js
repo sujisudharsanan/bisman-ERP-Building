@@ -3801,17 +3801,23 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
     // ========================================================================
     // UPDATE admin_page_assignments (soft delete + insert)
     // ========================================================================
+    console.log('[RBAC-SECURE] Transaction starting with:', { assignerType, assigneeType, pageCount: grantedPages.length });
+    
     await prisma.$transaction(async (tx) => {
       // Soft-delete existing assignments for this assigner→assignee pair
-      await tx.$executeRaw`
+      console.log('[RBAC-SECURE] Soft-deleting WHERE assigner_type =', assignerType, 'AND assignee_type =', assigneeType);
+      
+      const deleteCount = await tx.$executeRaw`
         UPDATE admin_page_assignments 
         SET is_active = false, revoked_at = NOW(), updated_at = NOW()
         WHERE assigner_type = ${assignerType}
           AND assignee_type = ${assigneeType}
           AND is_active = true
       `;
+      console.log('[RBAC-SECURE] Soft-deleted', deleteCount, 'existing assignments');
       
       // Insert new assignments
+      let insertedCount = 0;
       for (const page of grantedPages) {
         await tx.$executeRaw`
           INSERT INTO admin_page_assignments 
@@ -3824,7 +3830,9 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
             revoked_at = NULL, 
             updated_at = NOW()
         `;
+        insertedCount++;
       }
+      console.log('[RBAC-SECURE] Inserted/updated', insertedCount, 'page assignments');
       
       // ========================================================================
       // NOTE: role_page_access table has been DROPPED (deprecated 2026-02-02)
