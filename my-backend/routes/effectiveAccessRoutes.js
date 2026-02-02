@@ -111,17 +111,28 @@ router.get('/effective', authenticate, async (req, res) => {
       role: userRole
     });
     
+    // Return in format expected by frontend (success + data wrapper)
     res.json({
       ok: true,
-      hasSubscription: true,
-      subscriptionState: subscription.state,
-      planId: subscription.plan_id,
-      effectivePages: pagesResult.effectivePages,
-      blockedPages: pagesResult.blockedPages,
-      effectiveRoles: rolesResult.effectiveRoles,
-      blockedRoles: rolesResult.blockedRoles,
-      accessDetails: pagesResult.accessDetails,
-      roleDetails: rolesResult.roleDetails
+      success: true,
+      data: {
+        hasSubscription: true,
+        subscriptionState: subscription.state,
+        planId: subscription.plan_id,
+        effectivePages: pagesResult.effectivePages,
+        blockedPages: pagesResult.blockedPages,
+        effectiveRoles: rolesResult.effectiveRoles,
+        blockedRoles: rolesResult.blockedRoles,
+        accessDetails: pagesResult.accessDetails,
+        roleDetails: rolesResult.roleDetails,
+        layers: {
+          subscription: pagesResult.effectivePages?.length || 0,
+          enterprise: 0,
+          superadmin: 0,
+          effective: pagesResult.effectivePages?.length || 0
+        },
+        computedAt: new Date().toISOString()
+      }
     });
     
   } catch (error) {
