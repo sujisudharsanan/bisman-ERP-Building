@@ -3827,9 +3827,31 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
             updated_at = NOW()
         `;
       }
+      
+      // ========================================================================
+      // SYNC TO role_page_access (legacy table for backward compatibility)
+      // This ensures /api/governance/role-pages still works correctly
+      // ========================================================================
+      // Delete old assignments for this role
+      await tx.$executeRaw`
+        DELETE FROM role_page_access WHERE role_name = ${assigneeType}
+      `;
+      
+      // Insert new assignments into role_page_access
+      for (const page of grantedPages) {
+        await tx.$executeRaw`
+          INSERT INTO role_page_access (role_name, page_id, can_view, can_edit, can_delete, created_at, updated_at)
+          VALUES (${assigneeType}, ${page.id}, true, true, false, NOW(), NOW())
+          ON CONFLICT (role_name, page_id) DO UPDATE SET
+            can_view = true,
+            can_edit = true,
+            updated_at = NOW()
+        `;
+      }
     });
     
     console.log('[RBAC-SECURE] Updated admin_page_assignments:', grantedPages.length, 'pages for', assignerType, '→', assigneeType);
+    console.log('[RBAC-SECURE] Synced to role_page_access:', grantedPages.length, 'pages for role', assigneeType);
     
     res.json({ 
       success: true, 
