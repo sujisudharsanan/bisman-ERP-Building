@@ -91,7 +91,7 @@ const PageClassificationBadge = ({
         className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400"
         title="This page is outside your approved pool from Enterprise Admin. You cannot enable it."
       >
-        🔴 Restricted
+        🔴 SA Restricted
       </span>
     );
   }
@@ -99,7 +99,7 @@ const PageClassificationBadge = ({
   if (accessType === 'ASSIGNED') {
     return (
       <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-green-100 text-green-700 dark:bg-green-900/40 dark:text-green-400">
-        🟢 Enabled
+        🟢 Role Allowed
       </span>
     );
   }
@@ -107,7 +107,7 @@ const PageClassificationBadge = ({
   // CANDIDATE - in pool but not assigned
   return (
     <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-yellow-100 text-yellow-700 dark:bg-yellow-900/40 dark:text-yellow-400">
-      🟡 Available
+      🟡 Subscription Allowed
     </span>
   );
 };
@@ -1274,361 +1274,208 @@ export default function RolesUsersReportPage() {
           </div>
 
           <div className="flex items-center gap-3 flex-wrap flex-1" onClick={(e) => e.stopPropagation()}>
-            {/* Toggle Buttons - Roles / Pages */}
-            <div className="flex items-center gap-1 bg-gray-200 dark:bg-gray-700 rounded-lg p-0.5">
-              <button
-                onClick={() => {
-                  setBottomSectionContext('roles');
-                  setIsRolesDrawerExpanded(true);
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  bottomSectionContext === 'roles'
-                    ? 'bg-purple-600 text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                <FiShield className="w-3.5 h-3.5" />
-                All Roles Overview
-              </button>
-              <button
-                onClick={() => {
-                  setBottomSectionContext('pages');
-                  setIsPagesDrawerExpanded(true);
-                }}
-                className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
-                  bottomSectionContext === 'pages'
-                    ? 'bg-blue-600 text-white shadow-sm'
-                    : 'text-gray-600 dark:text-gray-400 hover:bg-gray-300 dark:hover:bg-gray-600'
-                }`}
-              >
-                <FiFile className="w-3.5 h-3.5" />
-                All Pages
-              </button>
+            {/* Section Header - Pages only (removed All Roles Overview toggle) */}
+            <div className="flex items-center gap-2">
+              <FiFile className="w-4 h-4 text-blue-600" />
+              <span className="text-sm font-semibold text-blue-700 dark:text-blue-300">
+                Pages for Selected Role
+              </span>
             </div>
 
-            {/* Context-specific filters */}
-            {bottomSectionContext === 'roles' ? (
-              <>
-                <span className="text-xs text-gray-500">({visibleRoles.length} roles)</span>
-                <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 ml-2" onClick={(e) => e.stopPropagation()}>
-                  <button
-                    onClick={() => setRolesFilter('all')}
-                    className={`px-2 py-0.5 text-xs rounded transition ${
-                      rolesFilter === 'all' ? 'bg-white dark:bg-gray-700 text-purple-600 shadow-sm font-medium' : 'text-gray-600'
-                    }`}
-                  >
-                    All
-                  </button>
-                  <button
-                    onClick={() => setRolesFilter('assigned')}
-                    className={`px-2 py-0.5 text-xs rounded transition ${
-                      rolesFilter === 'assigned' ? 'bg-white dark:bg-gray-700 text-green-600 shadow-sm font-medium' : 'text-gray-600'
-                    }`}
-                  >
-                    Assigned
-                  </button>
-                  <button
-                    onClick={() => setRolesFilter('unassigned')}
-                    className={`px-2 py-0.5 text-xs rounded transition ${
-                      rolesFilter === 'unassigned' ? 'bg-white dark:bg-gray-700 text-red-600 shadow-sm font-medium' : 'text-gray-600'
-                    }`}
-                  >
-                    Unassigned
-                  </button>
-                </div>
-              </>
-            ) : (
-              <>
-                <span className="text-xs text-gray-500">({totalPagesCount} pages)</span>
-                {/* REMOVED: All/Assigned/Unassigned filter buttons - SA only sees pages in their pool */}
-                {/* REMOVED: Module dropdown - flat page list, no module grouping */}
-                {/* Search bar for pages - kept for filtering */}
-                <div className="relative ml-2" onClick={(e) => e.stopPropagation()}>
-                  <FiSearch className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
-                  <input
-                    type="text"
-                    placeholder="Search pages..."
-                    value={pagesSearchQuery}
-                    onChange={(e) => setPagesSearchQuery(e.target.value)}
-                    className="pl-7 pr-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 w-36 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-                  />
-                </div>
-              </>
-            )}
+            {/* Context-specific filters - Pages only */}
+            <span className="text-xs text-gray-500">({totalPagesCount} pages)</span>
+            {/* REMOVED: All/Assigned/Unassigned filter buttons - SA only sees pages in their pool */}
+            {/* REMOVED: Module dropdown - flat page list, no module grouping */}
+            {/* Search bar for pages - kept for filtering */}
+            <div className="relative ml-2" onClick={(e) => e.stopPropagation()}>
+              <FiSearch className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
+              <input
+                type="text"
+                placeholder="Search pages..."
+                value={pagesSearchQuery}
+                onChange={(e) => setPagesSearchQuery(e.target.value)}
+                className="pl-7 pr-3 py-1 text-xs rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300 w-36 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+              />
+            </div>
           </div>
           
           <div className="flex items-center gap-3">
-            {/* Stats */}
+            {/* Stats - Pages only */}
             <div className="flex items-center gap-2">
-              {bottomSectionContext === 'roles' ? (
-                <>
-                  <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                    <span className="text-green-700 dark:text-green-400">{assignedRoleIds.length}</span>
-                  </span>
-                  <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-red-100 dark:bg-red-900/30 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-red-500"></span>
-                    <span className="text-red-700 dark:text-red-400">{visibleRoles.length - assignedRoleIds.length}</span>
-                  </span>
-                </>
-              ) : (
-                <>
-                  <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 rounded-full">
-                    <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                    <span className="text-green-700 dark:text-green-400">{rolePages.filter(p => p.accessType === 'ASSIGNED').length} enabled</span>
-                  </span>
-                  {/* REMOVED: modules count - flat page list, no module grouping */}
-                </>
-              )}
+              <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 rounded-full">
+                <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                <span className="text-green-700 dark:text-green-400">{rolePages.filter(p => p.accessType === 'ASSIGNED').length} enabled</span>
+              </span>
             </div>
-            
-            {/* REMOVED: Add/Remove button for roles - SA can only view assigned roles */}
-            {/* Roles are assigned by Enterprise Admin, SA cannot add/remove */}
-            
-            {/* Total users for roles */}
-            {bottomSectionContext === 'roles' && (
-              <div className="flex items-center gap-1.5 px-2 py-1 bg-blue-50 dark:bg-blue-900/30 rounded-lg">
-                <FiUsers className="w-3.5 h-3.5 text-blue-600" />
-                <span className="text-xs font-medium text-blue-700 dark:text-blue-300">
-                  {visibleRoles.reduce((sum, r) => sum + (r.userCount || r.users?.length || 0), 0)} users
-                </span>
-              </div>
-            )}
           </div>
         </div>
 
-        {/* Content Area - Shows Roles or Pages */}
-        {((bottomSectionContext === 'pages' && isPagesDrawerExpanded) || (bottomSectionContext === 'roles' && isRolesDrawerExpanded)) && (
+        {/* Content Area - Pages only (removed Roles section) */}
+        {isPagesDrawerExpanded && (
           <div className="px-4 py-3 bg-white/50 dark:bg-gray-900/50 max-h-64 overflow-y-auto">
-            {/* ROLES CONTENT - View only, no add/remove */}
-            {bottomSectionContext === 'roles' && (
-              <div className="grid grid-cols-3 md:grid-cols-5 lg:grid-cols-7 xl:grid-cols-9 gap-2">
-                {visibleRoles
-                  .filter((role) => {
-                    const isAssigned = assignedRoleIds.includes(role.id);
-                    return rolesFilter === 'all' || 
-                      (rolesFilter === 'assigned' && isAssigned) ||
-                      (rolesFilter === 'unassigned' && !isAssigned);
-                  })
-                  .map((role) => {
-                    const isSelected = selectedRoleId === role.id;
-                    const userCount = role.userCount || role.users?.length || 0;
-                    const isAssigned = assignedRoleIds.includes(role.id);
-                    
-                    return (
-                      <div key={role.id} className="relative">
-                        {/* REMOVED: Add/Remove button overlay - SA cannot add/remove roles */}
-                        <button
-                          onClick={() => {
-                            // Only allow selecting role for viewing pages
-                            setSelectedRoleId(role.id);
-                          }}
-                          className={`w-full text-left rounded-lg border px-2 py-1.5 text-xs cursor-pointer transition-all duration-200 hover:shadow-md ${
-                            isSelected
-                              ? "border-purple-500 bg-purple-50 dark:bg-purple-900/30 ring-2 ring-purple-300"
-                              : isAssigned
-                              ? "border-green-400 bg-green-50/80 dark:bg-green-900/20 hover:bg-green-100"
-                              : "border-gray-300 bg-gray-50/50 dark:bg-gray-800/50 hover:bg-gray-100"
-                          }`}
-                          title={`${role.description || role.name} (Level ${role.level || 0})${!isAssigned ? ' - Not assigned to this client' : ''}`}
-                        >
-                          <div className="flex items-center gap-1">
-                            {isAssigned ? (
-                              <span className="text-green-600 text-xs">✓</span>
-                            ) : (
-                              <FiLock className="w-3 h-3 text-gray-400" title="Role not assigned to this client" />
-                            )}
-                            <div className="min-w-0 flex-1">
-                              <div className="truncate font-medium text-[11px]">{role.display_name || role.name}</div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-[9px] text-gray-500">{userCount} users</span>
-                                {role.level !== undefined && (
-                                  <span className={`text-[8px] px-1 rounded font-bold ${
-                                    role.level >= 9 ? 'bg-purple-100 text-purple-700'
-                                      : role.level >= 7 ? 'bg-blue-100 text-blue-700'
-                                      : role.level >= 5 ? 'bg-green-100 text-green-700'
-                                      : 'bg-gray-100 text-gray-700'
-                                  }`}>
-                                    L{role.level}
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </button>
-                      </div>
-                    );
-                  })}
-              </div>
-            )}
-
             {/* PAGES CONTENT - SIMPLIFIED: No modules, just Role → Pages with Enable/Disable toggles */}
-            {bottomSectionContext === 'pages' && (
-              <>
-                {!selectedRoleId ? (
-                  <div className="text-center py-6">
-                    <FiShield className="w-10 h-10 mx-auto text-purple-300 dark:text-purple-600 mb-2" />
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      Select a role from the Roles column to manage page access
-                    </p>
-                    <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
-                      You can only enable/disable pages within your EA-approved pool
-                    </p>
-                  </div>
-                ) : rolePages.length === 0 ? (
-                  <div className="text-center py-6">
-                    <FiFile className="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
-                    <p className="text-sm text-gray-500 dark:text-gray-400">
-                      No pages available for this role
-                    </p>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {/* Legend */}
-                    <div className="flex items-center gap-4 pb-2 border-b border-gray-200 dark:border-gray-700">
-                      <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Legend:</span>
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-green-100 text-green-700">
-                        🟢 Enabled
-                      </span>
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-yellow-100 text-yellow-700">
-                        🟡 Available
-                      </span>
-                      <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-red-100 text-red-700">
-                        🔴 Restricted
-                      </span>
-                      {rolePagesHasChanges && (
-                        <button
-                          onClick={handleSaveRolePages}
-                          disabled={rolePagesSaving}
-                          className="ml-auto px-3 py-1 text-xs font-medium rounded bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400"
-                        >
-                          {rolePagesSaving ? 'Saving...' : 'Save Changes'}
-                        </button>
-                      )}
-                    </div>
+            {!selectedRoleId ? (
+              <div className="text-center py-6">
+                <FiShield className="w-10 h-10 mx-auto text-purple-300 dark:text-purple-600 mb-2" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  Select a role from the Roles column to manage page access
+                </p>
+                <p className="text-xs text-gray-400 dark:text-gray-500 mt-1">
+                  You can only enable/disable pages within your EA-approved pool
+                </p>
+              </div>
+            ) : rolePages.length === 0 ? (
+              <div className="text-center py-6">
+                <FiFile className="w-10 h-10 mx-auto text-gray-300 dark:text-gray-600 mb-2" />
+                <p className="text-sm text-gray-500 dark:text-gray-400">
+                  No pages available for this role
+                </p>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {/* Legend */}
+                <div className="flex items-center gap-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+                  <span className="text-xs font-medium text-gray-600 dark:text-gray-400">Legend:</span>
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-green-100 text-green-700">
+                    🟢 Role Allowed
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-yellow-100 text-yellow-700">
+                    🟡 Subscription Allowed
+                  </span>
+                  <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[9px] font-medium bg-red-100 text-red-700">
+                    🔴 SA Restricted
+                  </span>
+                  {rolePagesHasChanges && (
+                    <button
+                      onClick={handleSaveRolePages}
+                      disabled={rolePagesSaving}
+                      className="ml-auto px-3 py-1 text-xs font-medium rounded bg-green-600 text-white hover:bg-green-700 disabled:bg-gray-400"
+                    >
+                      {rolePagesSaving ? 'Saving...' : 'Save Changes'}
+                    </button>
+                  )}
+                </div>
 
-                    {/* Role header */}
-                    <div className="flex items-center gap-3 pb-2">
-                      <FiShield className="w-4 h-4 text-purple-600" />
-                      <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">
-                        {selectedRole?.display_name || selectedRole?.name}
-                      </span>
-                      <span className="text-xs text-gray-500 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
-                        {rolePages.filter(p => p.accessType === 'ASSIGNED').length} enabled / {rolePages.length} total
-                      </span>
-                    </div>
+                {/* Role header */}
+                <div className="flex items-center gap-3 pb-2">
+                  <FiShield className="w-4 h-4 text-purple-600" />
+                  <span className="text-sm font-semibold text-purple-700 dark:text-purple-300">
+                    {selectedRole?.display_name || selectedRole?.name}
+                  </span>
+                  <span className="text-xs text-gray-500 px-2 py-0.5 bg-gray-100 dark:bg-gray-800 rounded">
+                    {rolePages.filter(p => p.accessType === 'ASSIGNED').length} enabled / {rolePages.length} total
+                  </span>
+                </div>
 
-                    {/* Pages list - flat, no module grouping */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
-                      {rolePages
-                        .filter(page => {
-                          // Apply filter
-                          if (pagesAssignedFilter === 'assigned') {
-                            return page.accessType === 'ASSIGNED';
-                          }
-                          if (pagesAssignedFilter === 'unassigned') {
-                            return page.accessType !== 'ASSIGNED';
-                          }
-                          // Search filter
-                          const searchLower = pagesSearchQuery.toLowerCase().trim();
-                          if (searchLower) {
-                            return (page.name || '').toLowerCase().includes(searchLower) ||
-                                   (page.path || '').toLowerCase().includes(searchLower);
-                          }
-                          return true;
-                        })
-                        .map((page, idx) => {
-                          const isEnabled = page.accessType === 'ASSIGNED';
-                          // For now, all pages in rolePages are in SA pool (from scoped API)
-                          // In future, we can add inSaPool field from API
-                          const isInSaPool = page.inSaPool !== false; // Default true if not specified
-                          const isRestricted = !isInSaPool;
-
-                          return (
-                            <div
-                              key={`${page.id}-${idx}`}
-                              className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
-                                isRestricted
-                                  ? 'border-red-200 bg-red-50/50 dark:bg-red-900/10 opacity-60 cursor-not-allowed'
-                                  : isEnabled
-                                  ? 'border-green-300 bg-green-50 dark:bg-green-900/20'
-                                  : 'border-gray-200 bg-white dark:bg-gray-800'
-                              }`}
-                              title={isRestricted ? 'This page is restricted by Enterprise Admin. Contact EA to enable.' : ''}
-                            >
-                              {/* Toggle Switch */}
-                              <button
-                                onClick={() => !isRestricted && toggleRolePageSelection(page.id)}
-                                disabled={isRestricted}
-                                className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
-                                  isRestricted
-                                    ? 'bg-gray-300 cursor-not-allowed'
-                                    : isEnabled
-                                    ? 'bg-green-500 focus:ring-green-500 cursor-pointer'
-                                    : 'bg-gray-300 focus:ring-gray-500 cursor-pointer hover:bg-gray-400'
-                                }`}
-                                aria-label={isEnabled ? 'Disable page' : 'Enable page'}
-                              >
-                                <span
-                                  className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
-                                    isEnabled ? 'translate-x-4' : 'translate-x-0.5'
-                                  }`}
-                                />
-                                {isRestricted && (
-                                  <FiLock className="absolute inset-0 m-auto w-2.5 h-2.5 text-gray-500" />
-                                )}
-                              </button>
-
-                              {/* Page info */}
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2">
-                                  <span className={`text-xs font-medium truncate ${
-                                    isRestricted ? 'text-gray-500' : 'text-gray-900 dark:text-gray-100'
-                                  }`}>
-                                    {page.name || page.id}
-                                  </span>
-                                  <PageClassificationBadge 
-                                    accessType={page.accessType}
-                                    inSaPool={isInSaPool}
-                                    isRestricted={isRestricted}
-                                  />
-                                </div>
-                                <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
-                                  {page.path}
-                                </div>
-                              </div>
-
-                              {/* External link */}
-                              <Link 
-                                href={page.path || '#'} 
-                                onClick={(e) => e.stopPropagation()}
-                                className="text-gray-400 hover:text-blue-600 transition-colors"
-                              >
-                                <FiExternalLink className="w-3.5 h-3.5" />
-                              </Link>
-                            </div>
-                          );
-                        })}
-                    </div>
-
-                    {/* Empty state for filtered results */}
-                    {rolePages.filter(page => {
-                      if (pagesAssignedFilter === 'assigned') return page.accessType === 'ASSIGNED';
-                      if (pagesAssignedFilter === 'unassigned') return page.accessType !== 'ASSIGNED';
+                {/* Pages list - flat, no module grouping */}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-2">
+                  {rolePages
+                    .filter(page => {
+                      // Apply filter
+                      if (pagesAssignedFilter === 'assigned') {
+                        return page.accessType === 'ASSIGNED';
+                      }
+                      if (pagesAssignedFilter === 'unassigned') {
+                        return page.accessType !== 'ASSIGNED';
+                      }
+                      // Search filter
                       const searchLower = pagesSearchQuery.toLowerCase().trim();
                       if (searchLower) {
                         return (page.name || '').toLowerCase().includes(searchLower) ||
                                (page.path || '').toLowerCase().includes(searchLower);
                       }
                       return true;
-                    }).length === 0 && (
-                      <div className="text-center py-4">
-                        <p className="text-sm text-gray-500">No pages match the current filter</p>
-                      </div>
-                    )}
+                    })
+                    .map((page, idx) => {
+                      const isEnabled = page.accessType === 'ASSIGNED';
+                      // For now, all pages in rolePages are in SA pool (from scoped API)
+                      // In future, we can add inSaPool field from API
+                      const isInSaPool = page.inSaPool !== false; // Default true if not specified
+                      const isRestricted = !isInSaPool;
+
+                      return (
+                        <div
+                          key={`${page.id}-${idx}`}
+                          className={`flex items-center gap-3 p-3 rounded-lg border transition-colors ${
+                            isRestricted
+                              ? 'border-red-200 bg-red-50/50 dark:bg-red-900/10 opacity-60 cursor-not-allowed'
+                              : isEnabled
+                              ? 'border-green-300 bg-green-50 dark:bg-green-900/20'
+                              : 'border-gray-200 bg-white dark:bg-gray-800'
+                          }`}
+                          title={isRestricted ? 'This page is restricted by Enterprise Admin. Contact EA to enable.' : ''}
+                        >
+                          {/* Toggle Switch */}
+                          <button
+                            onClick={() => !isRestricted && toggleRolePageSelection(page.id)}
+                            disabled={isRestricted}
+                            className={`relative inline-flex h-5 w-9 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 ${
+                              isRestricted
+                                ? 'bg-gray-300 cursor-not-allowed'
+                                : isEnabled
+                                ? 'bg-green-500 focus:ring-green-500 cursor-pointer'
+                                : 'bg-gray-300 focus:ring-gray-500 cursor-pointer hover:bg-gray-400'
+                            }`}
+                            aria-label={isEnabled ? 'Disable page' : 'Enable page'}
+                          >
+                            <span
+                              className={`inline-block h-4 w-4 transform rounded-full bg-white shadow-sm transition-transform ${
+                                isEnabled ? 'translate-x-4' : 'translate-x-0.5'
+                              }`}
+                            />
+                            {isRestricted && (
+                              <FiLock className="absolute inset-0 m-auto w-2.5 h-2.5 text-gray-500" />
+                            )}
+                          </button>
+
+                          {/* Page info */}
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <span className={`text-xs font-medium truncate ${
+                                isRestricted ? 'text-gray-500' : 'text-gray-900 dark:text-gray-100'
+                              }`}>
+                                {page.name || page.id}
+                              </span>
+                              <PageClassificationBadge 
+                                accessType={page.accessType}
+                                inSaPool={isInSaPool}
+                                isRestricted={isRestricted}
+                              />
+                            </div>
+                            <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">
+                              {page.path}
+                            </div>
+                          </div>
+
+                          {/* External link */}
+                          <Link 
+                            href={page.path || '#'} 
+                            onClick={(e) => e.stopPropagation()}
+                            className="text-gray-400 hover:text-blue-600 transition-colors"
+                          >
+                            <FiExternalLink className="w-3.5 h-3.5" />
+                          </Link>
+                        </div>
+                      );
+                    })}
+                </div>
+
+                {/* Empty state for filtered results */}
+                {rolePages.filter(page => {
+                  if (pagesAssignedFilter === 'assigned') return page.accessType === 'ASSIGNED';
+                  if (pagesAssignedFilter === 'unassigned') return page.accessType !== 'ASSIGNED';
+                  const searchLower = pagesSearchQuery.toLowerCase().trim();
+                  if (searchLower) {
+                    return (page.name || '').toLowerCase().includes(searchLower) ||
+                           (page.path || '').toLowerCase().includes(searchLower);
+                  }
+                  return true;
+                }).length === 0 && (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-gray-500">No pages match the current filter</p>
                   </div>
                 )}
-              </>
+              </div>
             )}
           </div>
         )}
@@ -1636,11 +1483,15 @@ export default function RolesUsersReportPage() {
     </div>
   );
 }
-// Build cache bust: 20250204_SA_RBAC_UI_REFACTOR
+// Build cache bust: 20250204_SA_RBAC_UI_REFACTOR_v3
 // Changes:
 // 1. REMOVED Add/Remove buttons for roles (SA can only view EA-assigned roles)
 // 2. REMOVED Add/Remove buttons for pages (replaced with Enable/Disable toggles)
 // 3. REMOVED module grouping in pages section (flat Role → Pages list)
-// 4. ADDED classification badges: 🟢 Enabled, 🟡 Available, 🔴 Restricted
-// 5. ADDED toggle switches for enable/disable within SA's EA-approved pool
-// 6. Restricted pages visible but disabled with hover explanation
+// 4. REMOVED All Roles Overview toggle button - pages only in bottom section
+// 5. REMOVED All/Assigned/Unassigned filter buttons
+// 6. REMOVED module dropdown
+// 7. ADDED classification badges: 🟢 Role Allowed, 🟡 Subscription Allowed, 🔴 SA Restricted
+// 8. ADDED toggle switches for enable/disable within SA's EA-approved pool
+// 9. Restricted pages visible but disabled with hover explanation
+

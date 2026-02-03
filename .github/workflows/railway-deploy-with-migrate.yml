@@ -14,6 +14,9 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
+    env:
+      RAILWAY_PASSWORD: ${{ secrets.RAILWAY_PASSWORD }}
+      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -24,25 +27,27 @@ jobs:
 
       - name: Install backend deps
         working-directory: my-backend
-        run: npm ci --no-audit --no-fund
+        run: npm ci
 
       - name: Prisma migrate deploy (against Railway)
-        if: ${{ secrets.RAILWAY_PASSWORD != '' }}
+        if: ${{ env.RAILWAY_PASSWORD != '' }}
         env:
+          RAILWAY_USER: ${{ secrets.RAILWAY_USER }}
+          RAILWAY_PASSWORD: ${{ secrets.RAILWAY_PASSWORD }}
+          RAILWAY_HOST: ${{ secrets.RAILWAY_HOST }}
+          RAILWAY_PORT: ${{ secrets.RAILWAY_PORT }}
+          RAILWAY_DB: ${{ secrets.RAILWAY_DB }}
           DATABASE_URL: "postgresql://${{ secrets.RAILWAY_USER }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST }}:${{ secrets.RAILWAY_PORT }}/${{ secrets.RAILWAY_DB || 'railway' }}?sslmode=require"
         working-directory: my-backend
         run: |
           npx prisma migrate deploy || npx prisma db push
           npm run -s deploy:post || true
 
-      - name: Install PostgreSQL client
-        run: sudo apt-get update && sudo apt-get install -y postgresql-client
-
       - name: Apply demo password/data fixes
+        if: ${{ env.RAILWAY_PASSWORD != '' }}
         env:
           DATABASE_URL: "postgresql://${{ secrets.RAILWAY_USER }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST }}:${{ secrets.RAILWAY_PORT }}/${{ secrets.RAILWAY_DB || 'railway' }}?sslmode=require"
           PGSSLMODE: "require"
-        if: ${{ env.DATABASE_URL != '' }}
         run: |
           set -euo pipefail
           echo "Applying fix-railway-passwords.sql (if present)"
@@ -62,12 +67,16 @@ jobs:
             psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f ensure-demo-users.sql
           else
             echo "ensure-demo-users.sql not found, skipping"
+      - name: Optional restart via Railway CLI
+          echo "Ensuring demo users exist (idempotent upsert)"
+          if [ -f ensure-demo-users.sql ]; then
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f ensure-demo-users.sql
+          else
+            echo "ensure-demo-users.sql not found, skipping"
           fi
-          echo "Verifying hub incharge user exists and active..."
-          psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -c "SELECT email, role, is_active FROM users WHERE email='demo_hub_incharge@bisman.demo';"
 
       - name: Optional restart via Railway CLI
-        if: secrets.RAILWAY_TOKEN != ''
+        if: ${{ env.RAILWAY_TOKEN != '' }}
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
         run: |
