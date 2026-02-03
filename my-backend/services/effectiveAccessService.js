@@ -659,9 +659,38 @@ async function computeEffectivePages({
   };
   
   try {
+    const prisma = getPrisma();
+    
+    // RBAC FIX: If planId is missing or 0, fetch from client_subscriptions
+    let effectivePlanId = planId;
+    if (!effectivePlanId && tenantId) {
+      try {
+        const activeSub = await prisma.client_subscriptions.findFirst({
+          where: { 
+            client_id: tenantId,
+            is_active: true
+          },
+          select: { plan_id: true },
+          orderBy: { created_at: 'desc' }
+        });
+        if (activeSub?.plan_id) {
+          effectivePlanId = activeSub.plan_id;
+          console.log(`[EffectiveAccess] Fetched plan_id=${effectivePlanId} from DB for tenant=${tenantId}`);
+        }
+      } catch (e) {
+        console.warn(`[EffectiveAccess] Could not fetch plan_id for tenant ${tenantId}:`, e.message);
+      }
+    }
+    
+    // Fallback to plan 1 only as last resort
+    if (!effectivePlanId) {
+      console.warn(`[EffectiveAccess] No plan_id found, defaulting to 1`);
+      effectivePlanId = 1;
+    }
+    
     // LAYER 1: Get subscription pages (base entitlement)
-    const subscriptionPages = await getSubscriptionPages(planId);
-    console.log(`[EffectiveAccess] Subscription has ${subscriptionPages.size} pages`);
+    const subscriptionPages = await getSubscriptionPages(effectivePlanId);
+    console.log(`[EffectiveAccess] Subscription has ${subscriptionPages.size} pages (plan ${effectivePlanId})`);
     
     // LAYER 2: Get Enterprise Admin approved pages (enterprise gate)
     // NOTE: For tenant-scoped roles (ADMIN, OPERATIONS_MANAGER, etc.), this layer
@@ -670,7 +699,6 @@ async function computeEffectivePages({
     
     // Find the Superadmin for this tenant if not provided
     if (!superadminId) {
-      const prisma = getPrisma();
       const client = await prisma.clients.findUnique({
         where: { id: tenantId },
         select: { super_admin_id: true }

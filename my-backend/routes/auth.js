@@ -349,6 +349,7 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
 
         // Fetch tenant/client info for splash screen branding
         let tenantInfo = null;
+        let userPlanId = null; // RBAC: Subscription plan for page access computation
         if (regularUser.tenant_id && prisma) {
           try {
             tenantInfo = await prisma.clients.findUnique({
@@ -362,6 +363,23 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
                 client_code: true
               }
             });
+            
+            // RBAC FIX: Fetch active subscription plan_id for the tenant
+            // This is CRITICAL for effectiveAccessService to compute correct pages
+            const activeSub = await prisma.client_subscriptions.findFirst({
+              where: { 
+                client_id: regularUser.tenant_id,
+                is_active: true
+              },
+              select: { plan_id: true },
+              orderBy: { created_at: 'desc' }
+            });
+            if (activeSub?.plan_id) {
+              userPlanId = activeSub.plan_id;
+              console.log(`[auth.routes] User ${email} has subscription plan_id: ${userPlanId}`);
+            } else {
+              console.warn(`[auth.routes] User ${email} has no active subscription, using default plan`);
+            }
           } catch (e) {
             console.warn('[auth.routes] Failed to fetch tenant info:', e.message);
           }
@@ -389,6 +407,7 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
           productType: regularUser.productType || 'BUSINESS_ERP',
           tenant_id: regularUser.tenant_id,
           super_admin_id: regularUser.super_admin_id,
+          plan_id: userPlanId, // RBAC: Subscription plan for page access
           assignedModules: regularUser.assignedModules || [],
           pagePermissions: regularUser.pagePermissions || {},
           profile_pic_url: regularUser.profile_pic_url,
@@ -408,7 +427,8 @@ router.post('/login', loginBruteForceProtection, asyncHandler(async (req, res) =
           userType: userTypeValue,
           productType: regularUser.productType,
           tenant_id: regularUser.tenant_id,
-          super_admin_id: regularUser.super_admin_id
+          super_admin_id: regularUser.super_admin_id,
+          plan_id: userPlanId // RBAC: Include plan_id for effectiveAccessService
         });
 
         const refreshToken = generateRefreshToken({

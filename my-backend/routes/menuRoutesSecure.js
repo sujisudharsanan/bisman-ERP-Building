@@ -60,10 +60,35 @@ const SIDEBAR_ROUTE_PREFIXES = {
  * @returns {Promise<Set<string>>} Set of effective page keys/routes
  */
 async function getEffectivePagesForUser(user) {
+  const pool = getPool();
   const userId = user.legacyId || user.legacy_id || user.id;
   const tenantId = user.tenantId || user.tenant_id;
-  const planId = user.planId || user.plan_id || 1;
+  let planId = user.planId || user.plan_id;
   const role = user.role || user.roleName;
+  
+  // RBAC FIX: If planId is missing from JWT, fetch from client_subscriptions
+  // This handles existing sessions that were created before the auth.js fix
+  if (!planId && tenantId) {
+    try {
+      const subResult = await pool.query(`
+        SELECT plan_id FROM client_subscriptions 
+        WHERE client_id = $1 AND is_active = true 
+        ORDER BY created_at DESC LIMIT 1
+      `, [tenantId]);
+      if (subResult.rows.length > 0) {
+        planId = subResult.rows[0].plan_id;
+        console.log(`[MenuSecure] Fetched plan_id=${planId} for tenant=${tenantId}`);
+      }
+    } catch (e) {
+      console.warn(`[MenuSecure] Could not fetch plan_id for tenant ${tenantId}:`, e.message);
+    }
+  }
+  
+  // Default to plan 1 only as last resort (handles edge cases)
+  if (!planId) {
+    console.warn(`[MenuSecure] No plan_id found for user ${userId}, defaulting to 1`);
+    planId = 1;
+  }
   
   // For Enterprise Admin - they have access to EA pages only
   if (role === 'ENTERPRISE_ADMIN') {
