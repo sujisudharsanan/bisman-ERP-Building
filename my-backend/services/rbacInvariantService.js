@@ -16,7 +16,7 @@
  * FAIL HARD: Throws error or returns 403 - NO SILENT FILTERING
  */
 
-const prisma = require('../prismaClient');
+const { getPrisma } = require('../lib/prisma');
 
 /**
  * Validates that an assigner has authority to assign a specific page.
@@ -31,6 +31,8 @@ const prisma = require('../prismaClient');
  * @throws {Error} If database query fails
  */
 async function assertAssignerHasAuthority({ assignerType, assignerId, pageId, pageKey, superAdminId }) {
+  const prisma = getPrisma();
+  
   // Input validation
   if (!assignerType || !assignerId || !pageId) {
     return {
@@ -105,6 +107,8 @@ async function assertAssignerHasAuthority({ assignerType, assignerId, pageId, pa
  * @returns {Promise<{validPages: Array, rejectedPages: Array<{page: Object, reason: string}>}>}
  */
 async function assertBatchAuthority({ assignerType, assignerId, pages, superAdminId }) {
+  const prisma = getPrisma();
+  
   // ENTERPRISE_ADMIN - all pages valid
   if (assignerType === 'ENTERPRISE_ADMIN') {
     return { validPages: pages, rejectedPages: [] };
@@ -237,6 +241,8 @@ async function validateBatchOrReject(params, allowPartial = false) {
  * @returns {Promise<Set<number>>} Set of authorized page IDs
  */
 async function getAuthorizedPageIds(assignerType, assignerId, superAdminId) {
+  const prisma = getPrisma();
+  
   if (assignerType === 'ENTERPRISE_ADMIN') {
     // EA can assign any active page
     const allPages = await prisma.$queryRaw`

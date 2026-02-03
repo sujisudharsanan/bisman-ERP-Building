@@ -14,15 +14,15 @@
 const express = require('express');
 const router = express.Router();
 const { getPrisma } = require('../lib/prisma');
-const { authenticate, requireRole } = require('../middleware/auth');
+const { requireRole } = require('../middleware/auth');
 const { requireModuleAccess } = require('../middleware/roleProtection');
 
 // ============================================================================
 // MIDDLEWARE: SuperAdmin Only + Subscriptions Module Access
 // ============================================================================
 
+// NOTE: authenticate is already applied in app.js, so we don't need it here
 const superAdminOnly = [
-  authenticate,
   requireRole(['SUPER_ADMIN', 'SYSTEM_ADMIN', 'ENTERPRISE_ADMIN']),
   requireModuleAccess('subscriptions'), // ✅ SECURITY: Check Enterprise Admin has assigned this module
 ];

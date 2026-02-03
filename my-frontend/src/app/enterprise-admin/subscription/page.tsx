@@ -238,11 +238,17 @@ export default function SubscriptionControlPage() {
         const data = await res.json();
         setPlans(data.plans || []);
       } else {
-        throw new Error('Failed to load plans');
+        // Try to get error details from response
+        let errorMsg = `Failed to load plans (${res.status})`;
+        try {
+          const errData = await res.json();
+          errorMsg = errData.message || errData.error || errorMsg;
+        } catch { /* ignore parse error */ }
+        throw new Error(errorMsg);
       }
     } catch (err) {
       console.error('[SubscriptionControl] Load plans error:', err);
-      setError('Failed to load subscription plans');
+      setError(err instanceof Error ? err.message : 'Failed to load subscription plans');
     }
   }, []);
 
