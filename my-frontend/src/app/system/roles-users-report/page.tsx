@@ -1340,49 +1340,9 @@ export default function RolesUsersReportPage() {
             ) : (
               <>
                 <span className="text-xs text-gray-500">({totalPagesCount} pages)</span>
-                {selectedRoleId && (
-                  <div className="flex items-center gap-1 bg-gray-100 dark:bg-gray-800 rounded-lg p-0.5 ml-2" onClick={(e) => e.stopPropagation()}>
-                    <button
-                      onClick={() => setPagesAssignedFilter('all')}
-                      className={`px-2 py-0.5 text-xs rounded transition ${
-                        pagesAssignedFilter === 'all' ? 'bg-white dark:bg-gray-700 text-blue-600 shadow-sm font-medium' : 'text-gray-600'
-                      }`}
-                    >
-                      All
-                    </button>
-                    <button
-                      onClick={() => setPagesAssignedFilter('assigned')}
-                      className={`px-2 py-0.5 text-xs rounded transition ${
-                        pagesAssignedFilter === 'assigned' ? 'bg-white dark:bg-gray-700 text-green-600 shadow-sm font-medium' : 'text-gray-600'
-                      }`}
-                    >
-                      Assigned
-                    </button>
-                    <button
-                      onClick={() => setPagesAssignedFilter('unassigned')}
-                      className={`px-2 py-0.5 text-xs rounded transition ${
-                        pagesAssignedFilter === 'unassigned' ? 'bg-white dark:bg-gray-700 text-red-600 shadow-sm font-medium' : 'text-gray-600'
-                      }`}
-                    >
-                      Unassigned
-                    </button>
-                  </div>
-                )}
-                <div onClick={(e) => e.stopPropagation()}>
-                  <select
-                    value={selectedModuleFilter || ''}
-                    onChange={(e) => setSelectedModuleFilter(e.target.value || null)}
-                    className="ml-2 text-xs px-2 py-1 rounded-lg border border-gray-200 dark:border-gray-700 bg-white dark:bg-gray-800 text-gray-700 dark:text-gray-300"
-                  >
-                    <option value="">All Modules</option>
-                    {allPagesGroupedByModule.map(g => (
-                      <option key={g.moduleId} value={g.moduleId}>
-                        {g.moduleName} ({g.pages.length})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                {/* Search bar for pages */}
+                {/* REMOVED: All/Assigned/Unassigned filter buttons - SA only sees pages in their pool */}
+                {/* REMOVED: Module dropdown - flat page list, no module grouping */}
+                {/* Search bar for pages - kept for filtering */}
                 <div className="relative ml-2" onClick={(e) => e.stopPropagation()}>
                   <FiSearch className="absolute left-2 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-gray-400" />
                   <input
@@ -1415,12 +1375,9 @@ export default function RolesUsersReportPage() {
                 <>
                   <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-green-100 dark:bg-green-900/30 rounded-full">
                     <span className="w-1.5 h-1.5 rounded-full bg-green-500"></span>
-                    <span className="text-green-700 dark:text-green-400">{rolePagesSelectedIds.size}</span>
+                    <span className="text-green-700 dark:text-green-400">{rolePages.filter(p => p.accessType === 'ASSIGNED').length} enabled</span>
                   </span>
-                  <span className="flex items-center gap-1 text-xs px-2 py-0.5 bg-blue-100 dark:bg-blue-900/30 rounded-full">
-                    <FiPackage className="w-3 h-3 text-blue-600" />
-                    <span className="text-blue-700 dark:text-blue-400">{allPagesGroupedByModule.length} modules</span>
-                  </span>
+                  {/* REMOVED: modules count - flat page list, no module grouping */}
                 </>
               )}
             </div>
