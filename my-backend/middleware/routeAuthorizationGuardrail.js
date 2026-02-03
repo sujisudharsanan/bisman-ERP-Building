@@ -14,6 +14,28 @@
  */
 
 const { computeEffectivePages } = require('../services/effectiveAccessService');
+const { getPool } = require('./database');
+
+// ============================================================================
+// HELPER: Fetch plan_id from database if missing from JWT
+// ============================================================================
+
+async function fetchPlanIdFromDB(tenantId) {
+  if (!tenantId) return null;
+  
+  try {
+    const pool = getPool();
+    const result = await pool.query(`
+      SELECT plan_id FROM client_subscriptions 
+      WHERE client_id = $1 AND is_active = true 
+      ORDER BY created_at DESC LIMIT 1
+    `, [tenantId]);
+    return result.rows[0]?.plan_id || null;
+  } catch (e) {
+    console.warn(`[RouteGuardrail] Could not fetch plan_id for tenant ${tenantId}:`, e.message);
+    return null;
+  }
+}
 
 // ============================================================================
 // ROUTE → PAGE_KEY MAPPING
@@ -135,7 +157,7 @@ function extractPageKeyFromRoute(route) {
  * Guardrail middleware that ensures ALL protected routes check authorization
  * Apply this at app level: app.use(routeAuthorizationGuardrail)
  */
-function routeAuthorizationGuardrail(req, res, next) {
+async function routeAuthorizationGuardrail(req, res, next) {
   const route = req.originalUrl || req.path;
   
   // Skip bypass patterns
@@ -165,8 +187,18 @@ function routeAuthorizationGuardrail(req, res, next) {
   // ENFORCE AUTHORIZATION
   const userId = req.user.legacyId || req.user.legacy_id || req.user.id;
   const tenantId = req.user.tenantId || req.user.tenant_id;
-  const planId = req.user.planId || req.user.plan_id || 1;
+  let planId = req.user.planId || req.user.plan_id;
   const role = req.user.role || req.user.roleName;
+  
+  // RBAC FIX: Fetch plan_id from DB if missing from JWT
+  if (!planId && tenantId) {
+    try {
+      planId = await fetchPlanIdFromDB(tenantId);
+    } catch (e) {
+      console.warn(`[RouteGuardrail] plan_id fetch failed:`, e.message);
+    }
+  }
+  if (!planId) planId = 1; // Last resort fallback
   
   if (!userId) {
     console.error(`[RouteGuardrail] DENY: No userId for ${route}`);

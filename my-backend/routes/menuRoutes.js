@@ -192,11 +192,13 @@ router.get('/menu', authenticate, async (req, res) => {
         const tenantId = req.user?.tenantId || req.user?.tenant_id;
         const planId = req.user?.planId || req.user?.plan_id;
         
+        // RBAC FIX: planId is fetched from DB in effectiveAccessService if missing
+        
         if (legacyId && tenantId) {
           const effectiveResult = await effectiveAccessService.computeEffectivePages({
             userId: legacyId,
             tenantId,
-            planId: planId || 1 // Default plan if not set
+            planId // Let effectiveAccessService fetch from DB if null
           });
           
           if (effectiveResult && effectiveResult.effectivePages) {

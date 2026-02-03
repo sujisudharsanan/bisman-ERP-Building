@@ -50,6 +50,27 @@ const accessCache = new Map();
 const CACHE_TTL_MS = 30000; // 30 seconds
 
 // ============================================================================
+// HELPER: Fetch plan_id from database if missing from JWT
+// ============================================================================
+
+async function fetchPlanIdFromDB(tenantId) {
+  if (!tenantId) return null;
+  
+  try {
+    const pool = getPool();
+    const result = await pool.query(`
+      SELECT plan_id FROM client_subscriptions 
+      WHERE client_id = $1 AND is_active = true 
+      ORDER BY created_at DESC LIMIT 1
+    `, [tenantId]);
+    return result.rows[0]?.plan_id || null;
+  } catch (e) {
+    console.warn(`[Authorize] Could not fetch plan_id for tenant ${tenantId}:`, e.message);
+    return null;
+  }
+}
+
+// ============================================================================
 // HELPER: Get cached effective pages
 // ============================================================================
 
@@ -150,10 +171,16 @@ function authorize(pageKey, permission = 'view') {
     // Extract user info from JWT (set by authenticate middleware)
     const userId = req.user?.legacyId || req.user?.legacy_id || req.user?.id;
     const tenantId = req.user?.tenantId || req.user?.tenant_id;
-    const planId = req.user?.planId || req.user?.plan_id || 1;
+    let planId = req.user?.planId || req.user?.plan_id;
     const userRole = req.user?.role || req.user?.roleName;
     const route = req.originalUrl || req.path;
     const method = req.method;
+    
+    // RBAC FIX: Fetch plan_id from DB if missing from JWT
+    if (!planId && tenantId) {
+      planId = await fetchPlanIdFromDB(tenantId);
+    }
+    if (!planId) planId = 1; // Last resort fallback
     
     // Check bypass routes
     if (BYPASS_ROUTES.some(r => route.startsWith(r))) {
@@ -270,8 +297,14 @@ function authorizeAny(pageKeys, _permission = 'view') {
   return async (req, res, next) => {
     const userId = req.user?.legacyId || req.user?.legacy_id || req.user?.id;
     const tenantId = req.user?.tenantId || req.user?.tenant_id;
-    const planId = req.user?.planId || req.user?.plan_id || 1;
+    let planId = req.user?.planId || req.user?.plan_id;
     const route = req.originalUrl || req.path;
+    
+    // RBAC FIX: Fetch plan_id from DB if missing from JWT
+    if (!planId && tenantId) {
+      planId = await fetchPlanIdFromDB(tenantId);
+    }
+    if (!planId) planId = 1; // Last resort fallback
     
     if (!userId) {
       return res.status(401).json({
@@ -328,7 +361,13 @@ function authorizeAll(pageKeys, _permission = 'view') {
   return async (req, res, next) => {
     const userId = req.user?.legacyId || req.user?.legacy_id || req.user?.id;
     const tenantId = req.user?.tenantId || req.user?.tenant_id;
-    const planId = req.user?.planId || req.user?.plan_id || 1;
+    let planId = req.user?.planId || req.user?.plan_id;
+    
+    // RBAC FIX: Fetch plan_id from DB if missing from JWT
+    if (!planId && tenantId) {
+      planId = await fetchPlanIdFromDB(tenantId);
+    }
+    if (!planId) planId = 1; // Last resort fallback
     
     if (!userId) {
       return res.status(401).json({
