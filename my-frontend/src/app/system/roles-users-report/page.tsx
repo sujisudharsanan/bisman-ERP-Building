@@ -191,8 +191,8 @@ export default function RolesUsersReportPage() {
   const [rolesFilter, setRolesFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
   
   // Bottom section context - toggle between roles and pages
-  const [bottomSectionContext, setBottomSectionContext] = useState<'roles' | 'pages'>('roles');
-  const [isPagesDrawerExpanded, setIsPagesDrawerExpanded] = useState(false);
+  const [bottomSectionContext, setBottomSectionContext] = useState<'roles' | 'pages'>('pages');
+  const [isPagesDrawerExpanded, setIsPagesDrawerExpanded] = useState(true);
   const [pagesAssignedFilter, setPagesAssignedFilter] = useState<'all' | 'assigned' | 'unassigned'>('all');
   const [selectedModuleFilter, setSelectedModuleFilter] = useState<string | null>(null);
   const [bottomSelectedPageId, setBottomSelectedPageId] = useState<string | null>(null);
