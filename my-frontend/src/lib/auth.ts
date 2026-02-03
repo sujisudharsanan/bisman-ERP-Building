@@ -47,6 +47,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
   pages: { signIn: '/auth/login' },
+  secret: process.env.NEXTAUTH_SECRET || 'fallback-secret-for-dev-only-change-in-production',
 };
 
 export async function requireSession() {

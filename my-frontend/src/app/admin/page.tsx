@@ -173,7 +173,7 @@ export default function ClientDashboardPage() {
   const [showActivationModal, setShowActivationModal] = useState(false);
   const [subscriptionChecked, setSubscriptionChecked] = useState(false);
 
-  const API_BASE = process.env.NEXT_PUBLIC_API_BASE || '';
+  const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
   // Check subscription status and show modal if needed
   useEffect(() => {
