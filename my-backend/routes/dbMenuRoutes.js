@@ -5,12 +5,29 @@
  * Tables used:
  * - pages_master: page definitions (page_code, display_name, route, module_id, icon, sort_order, is_active, show_in_sidebar)
  * - modules_master: module definitions (module_code, display_name, sort_order, is_active)
- * - role_page_access: RBAC permissions (role_name, page_id, can_view, can_edit, can_delete)
+ * - admin_page_assignments: role-page mappings (assigner_type, assignee_type, page_id, is_active)
+ * 
+ * HIERARCHY DESIGN (EA = Manufacturer, SA = Driver):
+ * ================================================
+ * 1. ENTERPRISE_ADMIN (EA) - The "Manufacturer"
+ *    - Creates ALL role-page assignments
+ *    - Assigns pages to: SUPER_ADMIN, ADMIN, and other roles
+ *    - Has full control over what pages each role can see
+ * 
+ * 2. SUPER_ADMIN (SA) - The "Driver"
+ *    - Can only VIEW what EA assigned to their role
+ *    - Can DISABLE pages for sub-roles (set is_active=false)
+ *    - CANNOT add new pages that EA didn't assign
+ *    - Can only navigate/filter, not create
+ * 
+ * 3. ADMIN and other roles
+ *    - See pages assigned by EA (assigner_type='ENTERPRISE_ADMIN')
+ *    - Filtered by SA-disabled pages (where SA set is_active=false)
  * 
  * Access Control Flow:
  * 1. Super Admin / Enterprise Admin → scope-based (super-admin/*, enterprise-admin/*)
- * 2. Regular users → role_page_access.can_view = true
- * 3. Plan/module restrictions → checked via tenant subscription (if applicable)
+ * 2. Regular users → admin_page_assignments where assigner_type='ENTERPRISE_ADMIN'
+ * 3. SA can disable pages → is_active=false in admin_page_assignments
  */
 
 const express = require('express');
@@ -53,12 +70,14 @@ router.get('/sidebar', authenticate, async (req, res) => {
     let menuType = 'user';
     
     // ========== SUPER ADMIN ==========
+    // SA is the "Driver" - sees only what EA assigned to SUPER_ADMIN role
     if (userRole === 'SUPER_ADMIN') {
       menuType = 'super-admin';
       
-      // Super Admin sees all super-admin/* pages + common pages
+      // Super Admin sees pages assigned by EA to SUPER_ADMIN role
+      // Plus super-admin/* scope pages for navigation
       menuItems = await prisma.$queryRaw`
-        SELECT 
+        SELECT DISTINCT
           pm.id,
           pm.page_code as "pageCode",
           pm.display_name as name,
@@ -72,14 +91,20 @@ router.get('/sidebar', authenticate, async (req, res) => {
           mm.sort_order as "moduleOrder"
         FROM pages_master pm
         LEFT JOIN modules_master mm ON pm.module_id = mm.id
+        LEFT JOIN admin_page_assignments apa ON apa.page_id = pm.id
         WHERE pm.is_active = true
           AND pm.show_in_sidebar = true
           AND (
-            pm.route LIKE '/super-admin%'
-            OR pm.route LIKE '/system%'
+            -- EA-assigned pages for SUPER_ADMIN role
+            (apa.assignee_type = 'SUPER_ADMIN' 
+             AND apa.assigner_type = 'ENTERPRISE_ADMIN' 
+             AND apa.is_active = true)
+            -- OR super-admin scope pages
+            OR pm.route LIKE '/super-admin%'
+            -- OR common pages
             OR mm.module_code = 'COMMON'
           )
-        ORDER BY mm.sort_order NULLS LAST, pm.sort_order, pm.display_name
+        ORDER BY "moduleOrder" NULLS LAST, "order", name
       `;
     }
     
@@ -174,17 +199,71 @@ router.get('/sidebar', authenticate, async (req, res) => {
     }
     
     // ========== REGULAR USERS (RBAC-based) ==========
+    // Design: EA assigns pages to all roles. SA can only DISABLE (not add).
+    // Regular users see: EA-assigned pages for their role, minus any SA-disabled pages.
     else {
       menuType = 'user';
       
-      // Get the user's Super Admin ID (for filtering by their assigned pages)
+      // Get the user's Super Admin ID (for filtering disabled pages)
       const userSuperAdminId = req.user?.super_admin_id || req.user?.superAdminId;
       
       console.log(`[Menu API] Regular user: role=${userRole}, superAdminId=${userSuperAdminId}`);
       
-      // Get pages assigned to user's role by their Super Admin
-      // If no super_admin_id, fall back to all assignments for the role
-      if (userSuperAdminId) {
+      // Primary: Get pages assigned to user's role by ENTERPRISE_ADMIN
+      // These are the base permissions - EA is the "manufacturer"
+      menuItems = await prisma.$queryRaw`
+        SELECT DISTINCT
+          pm.id,
+          pm.page_code as "pageCode",
+          pm.display_name as name,
+          pm.route as path,
+          pm.icon as "iconKey",
+          mm.module_code as module,
+          mm.display_name as "moduleName",
+          pm.show_in_sidebar as "showInSidebar",
+          pm.sort_order as "order",
+          pm.description,
+          mm.sort_order as "moduleOrder",
+          true as can_view,
+          true as can_edit,
+          true as can_delete,
+          true as can_export
+        FROM pages_master pm
+        LEFT JOIN modules_master mm ON pm.module_id = mm.id
+        INNER JOIN admin_page_assignments apa ON apa.page_id = pm.id
+        WHERE pm.is_active = true
+          AND pm.show_in_sidebar = true
+          AND apa.assignee_type = ${userRole}
+          AND apa.assigner_type = 'ENTERPRISE_ADMIN'
+          AND apa.is_active = true
+        ORDER BY "moduleOrder" NULLS LAST, "order", name
+      `;
+      console.log(`[Menu API] Found ${menuItems.length} EA-assigned pages for ${userRole}`);
+      
+      // If SA has disabled some pages, filter them out
+      // SA can only DISABLE pages that EA assigned - checked via is_active = false
+      if (userSuperAdminId && menuItems.length > 0) {
+        const disabledPages = await prisma.$queryRaw`
+          SELECT page_id
+          FROM admin_page_assignments
+          WHERE assignee_type = ${userRole}
+            AND assigner_type = 'SUPER_ADMIN'
+            AND assigner_id = ${userSuperAdminId}
+            AND is_active = false
+        `;
+        
+        if (disabledPages.length > 0) {
+          const disabledIds = new Set(disabledPages.map(p => p.page_id));
+          const beforeCount = menuItems.length;
+          menuItems = menuItems.filter(item => !disabledIds.has(item.id));
+          console.log(`[Menu API] SA disabled ${beforeCount - menuItems.length} pages, ${menuItems.length} remaining`);
+        }
+      }
+      
+      // Fallback: If EA hasn't assigned to this role, check if SA has legacy assignments
+      // This maintains backward compatibility with existing SA-created assignments
+      if (!menuItems || menuItems.length === 0) {
+        console.log(`[Menu API] No EA assignments for ${userRole}, checking SA legacy assignments`);
         menuItems = await prisma.$queryRaw`
           SELECT DISTINCT
             pm.id,
@@ -208,43 +287,11 @@ router.get('/sidebar', authenticate, async (req, res) => {
           WHERE pm.is_active = true
             AND pm.show_in_sidebar = true
             AND apa.assignee_type = ${userRole}
-            AND apa.assigner_id = ${userSuperAdminId}
             AND apa.assigner_type = 'SUPER_ADMIN'
             AND apa.is_active = true
           ORDER BY "moduleOrder" NULLS LAST, "order", name
         `;
-        console.log(`[Menu API] Found ${menuItems.length} pages from Super Admin ${userSuperAdminId}`);
-      }
-      
-      // Fallback: If no pages from Super Admin, try role-based without SA filter
-      if (!menuItems || menuItems.length === 0) {
-        console.log(`[Menu API] No Super Admin pages, falling back to role-based`);
-        menuItems = await prisma.$queryRaw`
-          SELECT DISTINCT
-            pm.id,
-            pm.page_code as "pageCode",
-            pm.display_name as name,
-            pm.route as path,
-            pm.icon as "iconKey",
-            mm.module_code as module,
-            mm.display_name as "moduleName",
-            pm.show_in_sidebar as "showInSidebar",
-            pm.sort_order as "order",
-            pm.description,
-            mm.sort_order as "moduleOrder",
-            true as can_view,
-            true as can_edit,
-            true as can_delete,
-            true as can_export
-          FROM pages_master pm
-          LEFT JOIN modules_master mm ON pm.module_id = mm.id
-          INNER JOIN admin_page_assignments apa ON apa.page_id = pm.id
-          WHERE pm.is_active = true
-            AND pm.show_in_sidebar = true
-            AND apa.assignee_type = ${userRole}
-            AND apa.is_active = true
-          ORDER BY "moduleOrder" NULLS LAST, "order", name
-        `;
+        console.log(`[Menu API] Found ${menuItems.length} SA legacy pages for ${userRole}`);
       }
       
       // Also include common pages that are public (no RBAC needed)
