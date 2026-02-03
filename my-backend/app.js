@@ -3766,8 +3766,36 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
     // ========================================================================
     // VALIDATE: Can only assign pages that YOUR superior approved for YOU
     // ========================================================================
-    if (loggedInUserRole !== 'ENTERPRISE_ADMIN') {
-      // Get pages that are approved for the logged-in user's role
+    if (loggedInUserRole === 'SUPER_ADMIN') {
+      // SA can only assign pages from their superadmin_page_pool (EA-granted)
+      // Get the SA's ID from super_admins table
+      const superAdminId = req.user?.super_admin_id || req.user?.superAdminId || loggedInUserId;
+      
+      console.log('[RBAC-SECURE] SA validation: checking superadmin_page_pool for SA#' + superAdminId);
+      
+      // Get pages in SA's pool (granted by EA)
+      const poolPages = await prisma.$queryRaw`
+        SELECT page_id FROM superadmin_page_pool
+        WHERE superadmin_id = ${parseInt(superAdminId)}
+          AND is_active = true
+      `;
+      const poolPageIds = new Set(poolPages.map(r => r.page_id));
+      
+      console.log('[RBAC-SECURE] SA#' + superAdminId + ' has ' + poolPageIds.size + ' pages in their pool');
+      
+      // Filter to only pages in SA's pool
+      const validPages = grantedPages.filter(p => poolPageIds.has(p.id));
+      const invalidCount = grantedPages.length - validPages.length;
+      
+      if (invalidCount > 0) {
+        console.warn('[RBAC-SECURE] SA blocked from assigning', invalidCount, 'pages NOT in their pool');
+      }
+      
+      grantedPages.length = 0;
+      grantedPages.push(...validPages);
+      
+    } else if (loggedInUserRole !== 'ENTERPRISE_ADMIN') {
+      // Other roles (ADMIN, etc.) can only assign pages approved for them
       const approvedForMe = await prisma.$queryRaw`
         SELECT page_id FROM admin_page_assignments
         WHERE assignee_type = ${loggedInUserRole}
@@ -3786,6 +3814,7 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
       grantedPages.length = 0;
       grantedPages.push(...validPages);
     }
+    // EA has no restrictions - they are the manufacturer
     
     // ========================================================================
     // PHASE 7 FIX: VALIDATE COMPULSORY PAGES ARE NOT BEING REMOVED
