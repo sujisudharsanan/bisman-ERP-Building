@@ -32,7 +32,8 @@ try {
 // ============================================================================
 
 // Core modules always accessible regardless of plan
-const ALWAYS_ACCESSIBLE_MODULES = ['dashboard', 'common', 'chat', 'support', 'help'];
+// AUDIT FIX 2026-02-03: Changed from lowercase to UPPERCASE to match modules_master.module_code
+const ALWAYS_ACCESSIBLE_MODULES = ['DASHBOARD', 'COMMON', 'CHAT', 'SUPPORT', 'HELP'];
 
 // ============================================================================
 // MAIN FUNCTION: Grant Pages Based on Subscription Plan

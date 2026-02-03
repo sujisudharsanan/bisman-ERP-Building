@@ -23,7 +23,9 @@ import { PrismaClient } from '@prisma/client';
 const prisma = new PrismaClient();
 
 // Modules that are always accessible regardless of plan
-const ALWAYS_ACCESSIBLE_MODULES = ['dashboard', 'common', 'chat', 'support', 'help'];
+// AUDIT FIX 2026-02-03: Using UPPERCASE to match modules_master.module_code
+// Note: comparison should be case-insensitive (using .toLowerCase())
+const ALWAYS_ACCESSIBLE_MODULES = ['DASHBOARD', 'COMMON', 'CHAT', 'SUPPORT', 'HELP'];
 
 // Type for raw query results
 interface ModuleAccessRow {
@@ -131,8 +133,9 @@ export async function checkModuleAccess(
   tenantId: string,
   moduleId: string
 ): Promise<ModuleAccessResult> {
-  // Always allow core modules
-  if (ALWAYS_ACCESSIBLE_MODULES.includes(moduleId.toLowerCase())) {
+  // Always allow core modules (case-insensitive comparison)
+  // AUDIT FIX 2026-02-03: Using .toUpperCase() to match UPPERCASE constants
+  if (ALWAYS_ACCESSIBLE_MODULES.includes(moduleId.toUpperCase())) {
     return {
       hasAccess: true,
       accessLevel: 'full',

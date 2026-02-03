@@ -52,7 +52,9 @@ export interface ModuleCheckResult {
 const getApiUrl = () => process.env.NEXT_PUBLIC_API_URL || '';
 
 // Core modules that are always accessible
-const ALWAYS_ACCESSIBLE_MODULES = ['dashboard', 'common', 'chat', 'support', 'help'];
+// AUDIT FIX 2026-02-03: Using UPPERCASE to match backend constants
+// Comparisons should use .toUpperCase() for case-insensitive matching
+const ALWAYS_ACCESSIBLE_MODULES = ['DASHBOARD', 'COMMON', 'CHAT', 'SUPPORT', 'HELP'];
 
 // Module display names for user-friendly messages
 const MODULE_DISPLAY_NAMES: Record<string, string> = {
@@ -148,7 +150,8 @@ export function useModuleAccess() {
    */
   const hasAccess = useCallback(
     (moduleId: string): boolean => {
-      const normalizedId = moduleId.toLowerCase();
+      // AUDIT FIX 2026-02-03: Using toUpperCase to match UPPERCASE constants
+      const normalizedId = moduleId.toUpperCase();
 
       // Always allow core modules
       if (ALWAYS_ACCESSIBLE_MODULES.includes(normalizedId)) {
@@ -160,7 +163,7 @@ export function useModuleAccess() {
         return true;
       }
 
-      const moduleInfo = moduleAccess.modules[normalizedId];
+      const moduleInfo = moduleAccess.modules[moduleId.toLowerCase()];
 
       // No explicit record = no access for paid modules
       if (!moduleInfo) {
@@ -177,7 +180,8 @@ export function useModuleAccess() {
    */
   const getAccessLevel = useCallback(
     (moduleId: string): ModuleAccessLevel => {
-      const normalizedId = moduleId.toLowerCase();
+      // AUDIT FIX 2026-02-03: Using toUpperCase for constant comparison
+      const normalizedId = moduleId.toUpperCase();
 
       if (ALWAYS_ACCESSIBLE_MODULES.includes(normalizedId)) {
         return 'full';
@@ -187,7 +191,7 @@ export function useModuleAccess() {
         return 'full'; // Optimistic until loaded
       }
 
-      const moduleInfo = moduleAccess.modules[normalizedId];
+      const moduleInfo = moduleAccess.modules[moduleId.toLowerCase()];
       return moduleInfo?.accessLevel || 'none';
     },
     [moduleAccess]
@@ -209,14 +213,16 @@ export function useModuleAccess() {
    */
   const checkModuleAccess = useCallback(
     (moduleId: string): ModuleCheckResult => {
-      const normalizedId = moduleId.toLowerCase();
-      const displayName = MODULE_DISPLAY_NAMES[normalizedId] || moduleId;
+      const lowerCaseId = moduleId.toLowerCase();
+      // AUDIT FIX 2026-02-03: Using toUpperCase for constant comparison
+      const normalizedId = moduleId.toUpperCase();
+      const displayName = MODULE_DISPLAY_NAMES[lowerCaseId] || moduleId;
 
       if (ALWAYS_ACCESSIBLE_MODULES.includes(normalizedId)) {
         return {
           hasAccess: true,
           accessLevel: 'full',
-          moduleId: normalizedId,
+          moduleId: lowerCaseId,
           planName: 'Any',
           message: 'Core module - always accessible',
         };

@@ -64,9 +64,14 @@ const ALWAYS_ACCESSIBLE_PAGES = [
 /**
  * ALWAYS_ACCESSIBLE_MODULES - Modules that may contain always-accessible pages
  * Note: This does NOT mean all pages in these modules are accessible
+ * 
+ * CRITICAL: Must match case with modules_master.module_code in database
+ * Database stores these as UPPERCASE (DASHBOARD, COMMON)
+ * 
+ * AUDIT FIX 2026-02-03: Changed from lowercase to UPPERCASE to match DB
  */
 const ALWAYS_ACCESSIBLE_MODULES = [
-  'dashboard', 'common'
+  'DASHBOARD', 'COMMON'
 ];
 
 /**

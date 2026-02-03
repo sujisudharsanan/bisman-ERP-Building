@@ -16,7 +16,9 @@
 const { getPrisma } = require('../lib/prisma');
 
 // Modules that are always accessible regardless of plan
-const ALWAYS_ACCESSIBLE_MODULES = ['dashboard', 'common', 'chat', 'support', 'help', 'auth', 'public', 'onboarding'];
+// AUDIT FIX 2026-02-03: Using UPPERCASE to match modules_master.module_code
+// Note: comparison uses .toLowerCase() for case-insensitive matching
+const ALWAYS_ACCESSIBLE_MODULES = ['DASHBOARD', 'COMMON', 'CHAT', 'SUPPORT', 'HELP', 'AUTH', 'PUBLIC', 'ONBOARDING'];
 
 // Module mapping: API path prefix → module_id in plan_module_access
 const MODULE_MAPPING = {
@@ -126,8 +128,9 @@ async function getTenantPlanId(tenantId) {
 async function checkModuleAccess(tenantId, moduleId) {
   const prisma = getPrisma();
   
-  // Always allow public modules
-  if (ALWAYS_ACCESSIBLE_MODULES.includes(moduleId.toLowerCase())) {
+  // Always allow public modules (case-insensitive comparison)
+  // AUDIT FIX 2026-02-03: Using .toUpperCase() to match UPPERCASE constants
+  if (ALWAYS_ACCESSIBLE_MODULES.includes(moduleId.toUpperCase())) {
     return {
       hasAccess: true,
       accessLevel: 'full',
