@@ -3765,7 +3765,10 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
     
     // ========================================================================
     // VALIDATE: Can only assign pages that YOUR superior approved for YOU
+    // INVARIANT ENFORCEMENT: FAIL HARD (403) - NO SILENT FILTERING
     // ========================================================================
+    const rbacInvariant = require('./services/rbacInvariantService');
+    
     if (loggedInUserRole === 'SUPER_ADMIN') {
       // SA can only assign pages from their superadmin_page_pool (EA-granted)
       // Get the SA's ID from super_admins table
@@ -3773,46 +3776,37 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
       
       console.log('[RBAC-SECURE] SA validation: checking superadmin_page_pool for SA#' + superAdminId);
       
-      // Get pages in SA's pool (granted by EA)
-      const poolPages = await prisma.$queryRaw`
-        SELECT page_id FROM superadmin_page_pool
-        WHERE superadmin_id = ${parseInt(superAdminId)}
-          AND is_active = true
-      `;
-      const poolPageIds = new Set(poolPages.map(r => r.page_id));
+      // Use centralized invariant service for batch validation
+      const validation = await rbacInvariant.validateBatchOrReject({
+        assignerType: 'SUPER_ADMIN',
+        assignerId: assignerId,
+        pages: grantedPages,
+        superAdminId: superAdminId
+      }, false); // false = FAIL HARD on any unauthorized page
       
-      console.log('[RBAC-SECURE] SA#' + superAdminId + ' has ' + poolPageIds.size + ' pages in their pool');
-      
-      // Filter to only pages in SA's pool
-      const validPages = grantedPages.filter(p => poolPageIds.has(p.id));
-      const invalidCount = grantedPages.length - validPages.length;
-      
-      if (invalidCount > 0) {
-        console.warn('[RBAC-SECURE] SA blocked from assigning', invalidCount, 'pages NOT in their pool');
+      if (!validation.pass) {
+        console.error('[RBAC-INVARIANT] HARD FAILURE:', validation.error.message);
+        return res.status(validation.statusCode).json(validation.error);
       }
       
-      grantedPages.length = 0;
-      grantedPages.push(...validPages);
+      // All pages validated - continue with validated pages
+      console.log('[RBAC-SECURE] SA#' + superAdminId + ' - all ' + grantedPages.length + ' pages validated');
       
     } else if (loggedInUserRole !== 'ENTERPRISE_ADMIN') {
       // Other roles (ADMIN, etc.) can only assign pages approved for them
-      const approvedForMe = await prisma.$queryRaw`
-        SELECT page_id FROM admin_page_assignments
-        WHERE assignee_type = ${loggedInUserRole}
-          AND is_active = true
-      `;
-      const approvedPageIds = new Set(approvedForMe.map(r => r.page_id));
+      // Use centralized invariant service
+      const validation = await rbacInvariant.validateBatchOrReject({
+        assignerType: loggedInUserRole,
+        assignerId: assignerId,
+        pages: grantedPages
+      }, false); // false = FAIL HARD on any unauthorized page
       
-      // Filter to only pages the user is allowed to assign
-      const validPages = grantedPages.filter(p => approvedPageIds.has(p.id));
-      const invalidCount = grantedPages.length - validPages.length;
-      
-      if (invalidCount > 0) {
-        console.warn('[RBAC-SECURE] Blocked', invalidCount, 'unapproved pages from being assigned');
+      if (!validation.pass) {
+        console.error('[RBAC-INVARIANT] HARD FAILURE:', validation.error.message);
+        return res.status(validation.statusCode).json(validation.error);
       }
       
-      grantedPages.length = 0;
-      grantedPages.push(...validPages);
+      console.log('[RBAC-SECURE] ' + loggedInUserRole + ' - all ' + grantedPages.length + ' pages validated');
     }
     // EA has no restrictions - they are the manufacturer
     

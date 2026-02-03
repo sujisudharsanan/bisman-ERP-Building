@@ -981,6 +981,17 @@ async function grantEffectivePagesToUser({
   
   let grantedCount = 0;
   let approvalChainCount = 0;
+  let skippedCount = 0;
+  
+  // INVARIANT ENFORCEMENT: Import the centralized validation service
+  const rbacInvariant = require('./rbacInvariantService');
+  
+  // Pre-fetch SA's authorized pages from superadmin_page_pool for efficiency
+  let saAuthorizedPageIds = new Set();
+  if (superAdminId) {
+    saAuthorizedPageIds = await rbacInvariant.getAuthorizedPageIds('SUPER_ADMIN', superAdminId, superAdminId);
+    console.log(`[EffectiveAccess] SA#${superAdminId} has ${saAuthorizedPageIds.size} pages in their pool`);
+  }
   
   for (const pageKey of effectivePageKeys) {
     // SECURITY LOCKDOWN (PHASE 2): ONLY write to admin_page_assignments
@@ -998,6 +1009,13 @@ async function grantEffectivePagesToUser({
         });
         
         if (page) {
+          // INVARIANT CHECK: SA can only assign pages in their pool
+          if (!saAuthorizedPageIds.has(page.id)) {
+            console.warn(`[EffectiveAccess] INVARIANT BLOCKED: SA#${superAdminId} cannot assign page#${page.id} (${pageKey}) - not in superadmin_page_pool`);
+            skippedCount++;
+            continue; // Skip this page - don't insert
+          }
+          
           await prisma.$queryRaw`
             INSERT INTO admin_page_assignments 
             (assigner_id, assigner_type, assignee_id, assignee_type, page_id, page_key, tenant_id, is_active)
@@ -1013,6 +1031,10 @@ async function grantEffectivePagesToUser({
     } else {
       console.warn(`[EffectiveAccess] Cannot grant page ${pageKey} - no Super Admin found for tenant`);
     }
+  }
+  
+  if (skippedCount > 0) {
+    console.warn(`[EffectiveAccess] INVARIANT: Blocked ${skippedCount} pages not in SA's pool`);
   }
   
   console.log(`[EffectiveAccess] Created ${approvalChainCount} admin_page_assignments entries (AUTHORITATIVE)`);
