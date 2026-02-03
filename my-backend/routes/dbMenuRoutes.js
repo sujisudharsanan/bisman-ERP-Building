@@ -5,18 +5,20 @@
  * Tables used:
  * - pages_master: page definitions (page_code, display_name, route, module_id, icon, sort_order, is_active, show_in_sidebar)
  * - modules_master: module definitions (module_code, display_name, sort_order, is_active)
- * - admin_page_assignments: role-page mappings (assigner_type, assignee_type, page_id, is_active)
+ * - superadmin_page_pool: EA grants pages to specific SuperAdmin users (superadmin_id, page_id)
+ * - admin_page_assignments: role-page mappings for other roles (assigner_type, assignee_type, page_id, is_active)
  * 
  * HIERARCHY DESIGN (EA = Manufacturer, SA = Driver):
  * ================================================
  * 1. ENTERPRISE_ADMIN (EA) - The "Manufacturer"
  *    - Creates ALL role-page assignments
- *    - Assigns pages to: SUPER_ADMIN, ADMIN, and other roles
- *    - Has full control over what pages each role can see
+ *    - Assigns pages to specific SuperAdmins via superadmin_page_pool
+ *    - Assigns pages to roles (ADMIN, etc.) via admin_page_assignments
+ *    - Has full control over what pages each role/user can see
  * 
  * 2. SUPER_ADMIN (SA) - The "Driver"
- *    - Can only VIEW what EA assigned to their role
- *    - Can DISABLE pages for sub-roles (set is_active=false)
+ *    - Gets pages from superadmin_page_pool (user-specific, granted by EA)
+ *    - Can DISABLE pages for sub-roles (set is_active=false in admin_page_assignments)
  *    - CANNOT add new pages that EA didn't assign
  *    - Can only navigate/filter, not create
  * 
@@ -25,9 +27,10 @@
  *    - Filtered by SA-disabled pages (where SA set is_active=false)
  * 
  * Access Control Flow:
- * 1. Super Admin / Enterprise Admin → scope-based (super-admin/*, enterprise-admin/*)
- * 2. Regular users → admin_page_assignments where assigner_type='ENTERPRISE_ADMIN'
- * 3. SA can disable pages → is_active=false in admin_page_assignments
+ * 1. Enterprise Admin → scope-based (enterprise-admin/*)
+ * 2. Super Admin → superadmin_page_pool (user-specific) + super-admin/* scope
+ * 3. Regular users → admin_page_assignments where assigner_type='ENTERPRISE_ADMIN'
+ * 4. SA can disable pages → is_active=false in admin_page_assignments
  */
 
 const express = require('express');
@@ -70,42 +73,81 @@ router.get('/sidebar', authenticate, async (req, res) => {
     let menuType = 'user';
     
     // ========== SUPER ADMIN ==========
-    // SA is the "Driver" - sees only what EA assigned to SUPER_ADMIN role
+    // SA is the "Driver" - sees only what EA assigned via superadmin_page_pool
     if (userRole === 'SUPER_ADMIN') {
       menuType = 'super-admin';
       
-      // Super Admin sees pages assigned by EA to SUPER_ADMIN role
+      // Get the SuperAdmin's ID from super_admins table (not users table)
+      // SuperAdmin may have a different ID in super_admins vs their user.id
+      const superAdminId = req.user?.super_admin_id || req.user?.superAdminId || req.user?.id;
+      
+      console.log(`[Menu API] SuperAdmin sidebar request, superAdminId=${superAdminId}`);
+      
+      // Super Admin sees pages from superadmin_page_pool (EA-granted)
       // Plus super-admin/* scope pages for navigation
-      menuItems = await prisma.$queryRaw`
-        SELECT DISTINCT
-          pm.id,
-          pm.page_code as "pageCode",
-          pm.display_name as name,
-          pm.route as path,
-          pm.icon as "iconKey",
-          mm.module_code as module,
-          mm.display_name as "moduleName",
-          pm.show_in_sidebar as "showInSidebar",
-          pm.sort_order as "order",
-          pm.description,
-          mm.sort_order as "moduleOrder"
-        FROM pages_master pm
-        LEFT JOIN modules_master mm ON pm.module_id = mm.id
-        LEFT JOIN admin_page_assignments apa ON apa.page_id = pm.id
-        WHERE pm.is_active = true
-          AND pm.show_in_sidebar = true
-          AND (
-            -- EA-assigned pages for SUPER_ADMIN role
-            (apa.assignee_type = 'SUPER_ADMIN' 
-             AND apa.assigner_type = 'ENTERPRISE_ADMIN' 
-             AND apa.is_active = true)
-            -- OR super-admin scope pages
-            OR pm.route LIKE '/super-admin%'
-            -- OR common pages
-            OR mm.module_code = 'COMMON'
-          )
-        ORDER BY "moduleOrder" NULLS LAST, "order", name
-      `;
+      if (superAdminId && !isNaN(parseInt(superAdminId))) {
+        menuItems = await prisma.$queryRaw`
+          SELECT DISTINCT
+            pm.id,
+            pm.page_code as "pageCode",
+            pm.display_name as name,
+            pm.route as path,
+            pm.icon as "iconKey",
+            mm.module_code as module,
+            mm.display_name as "moduleName",
+            pm.show_in_sidebar as "showInSidebar",
+            pm.sort_order as "order",
+            pm.description,
+            mm.sort_order as "moduleOrder"
+          FROM pages_master pm
+          LEFT JOIN modules_master mm ON pm.module_id = mm.id
+          LEFT JOIN superadmin_page_pool spp ON spp.page_id = pm.id
+          WHERE pm.is_active = true
+            AND pm.show_in_sidebar = true
+            AND (
+              -- EA-granted pages via superadmin_page_pool
+              (spp.superadmin_id = ${parseInt(superAdminId)} AND spp.is_active = true)
+              -- OR super-admin scope pages
+              OR pm.route LIKE '/super-admin%'
+              -- OR common pages
+              OR mm.module_code = 'COMMON'
+            )
+          ORDER BY "moduleOrder" NULLS LAST, "order", name
+        `;
+        console.log(`[Menu API] Found ${menuItems.length} pages from superadmin_page_pool for SA#${superAdminId}`);
+      }
+      
+      // Fallback: If no superadmin_page_pool pages, try admin_page_assignments
+      if (!menuItems || menuItems.length === 0) {
+        console.log(`[Menu API] No superadmin_page_pool pages, falling back to admin_page_assignments`);
+        menuItems = await prisma.$queryRaw`
+          SELECT DISTINCT
+            pm.id,
+            pm.page_code as "pageCode",
+            pm.display_name as name,
+            pm.route as path,
+            pm.icon as "iconKey",
+            mm.module_code as module,
+            mm.display_name as "moduleName",
+            pm.show_in_sidebar as "showInSidebar",
+            pm.sort_order as "order",
+            pm.description,
+            mm.sort_order as "moduleOrder"
+          FROM pages_master pm
+          LEFT JOIN modules_master mm ON pm.module_id = mm.id
+          LEFT JOIN admin_page_assignments apa ON apa.page_id = pm.id
+          WHERE pm.is_active = true
+            AND pm.show_in_sidebar = true
+            AND (
+              (apa.assignee_type = 'SUPER_ADMIN' 
+               AND apa.assigner_type = 'ENTERPRISE_ADMIN' 
+               AND apa.is_active = true)
+              OR pm.route LIKE '/super-admin%'
+              OR mm.module_code = 'COMMON'
+            )
+          ORDER BY "moduleOrder" NULLS LAST, "order", name
+        `;
+      }
     }
     
     // ========== ENTERPRISE ADMIN ==========
