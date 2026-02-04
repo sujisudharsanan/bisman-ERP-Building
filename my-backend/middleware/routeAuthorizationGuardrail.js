@@ -118,6 +118,7 @@ const BYPASS_PATTERNS = [
   '/api/system/',  // System APIs - role-protected at route level
   '/api/users',  // User management APIs - role-protected at route level
   '/api/subscriptions/',  // Subscription APIs - role-protected at route level
+  '/api/branches',  // Branches APIs - role-protected at route level
 ];
 
 const ALWAYS_ALLOWED_PAGES = new Set([
