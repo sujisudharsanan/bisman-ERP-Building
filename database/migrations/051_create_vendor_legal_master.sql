@@ -756,6 +756,41 @@ WHERE m.module_code = 'compliance'
 ON CONFLICT (page_code) DO NOTHING;
 
 -- ============================================================================
+-- Role Assignments for Vendor Pages
+-- ============================================================================
+-- Assign VENDORS_LEGAL_LIST page to appropriate roles
+INSERT INTO admin_page_assignments (page_id, assignee_type, is_active, created_at)
+SELECT pm.id, role.name, true, NOW()
+FROM pages_master pm
+CROSS JOIN (VALUES 
+    ('ENTERPRISE_ADMIN'), 
+    ('SUPER_ADMIN'), 
+    ('ADMIN'), 
+    ('ADMIN_OPS'),
+    ('OPERATIONS_MANAGER'),
+    ('FINANCE_MANAGER'),
+    ('PROCUREMENT_MANAGER'),
+    ('HUB_INCHARGE')
+) AS role(name)
+WHERE pm.page_code = 'VENDORS_LEGAL_LIST'
+ON CONFLICT DO NOTHING;
+
+-- Assign VENDORS_LEGAL_ADD page to appropriate roles
+INSERT INTO admin_page_assignments (page_id, assignee_type, is_active, created_at)
+SELECT pm.id, role.name, true, NOW()
+FROM pages_master pm
+CROSS JOIN (VALUES 
+    ('ENTERPRISE_ADMIN'), 
+    ('SUPER_ADMIN'), 
+    ('ADMIN'), 
+    ('ADMIN_OPS'),
+    ('PROCUREMENT_MANAGER'),
+    ('HUB_INCHARGE')
+) AS role(name)
+WHERE pm.page_code = 'VENDORS_LEGAL_ADD'
+ON CONFLICT DO NOTHING;
+
+-- ============================================================================
 -- VERIFICATION
 -- ============================================================================
 

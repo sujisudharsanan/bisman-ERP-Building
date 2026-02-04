@@ -324,6 +324,40 @@ FROM modules_master m
 WHERE m.module_code = 'operations'
 ON CONFLICT (page_code) DO NOTHING;
 
+-- ============================================================================
+-- 10. Role Assignments for Asset Pages
+-- ============================================================================
+-- Assign ASSETS_LIST page to appropriate roles
+INSERT INTO admin_page_assignments (page_id, assignee_type, is_active, created_at)
+SELECT pm.id, role.name, true, NOW()
+FROM pages_master pm
+CROSS JOIN (VALUES 
+    ('ENTERPRISE_ADMIN'), 
+    ('SUPER_ADMIN'), 
+    ('ADMIN'), 
+    ('ADMIN_OPS'),
+    ('OPERATIONS_MANAGER'),
+    ('FINANCE_MANAGER'),
+    ('HUB_INCHARGE')
+) AS role(name)
+WHERE pm.page_code = 'ASSETS_LIST'
+ON CONFLICT DO NOTHING;
+
+-- Assign ASSETS_ADD page to appropriate roles
+INSERT INTO admin_page_assignments (page_id, assignee_type, is_active, created_at)
+SELECT pm.id, role.name, true, NOW()
+FROM pages_master pm
+CROSS JOIN (VALUES 
+    ('ENTERPRISE_ADMIN'), 
+    ('SUPER_ADMIN'), 
+    ('ADMIN'), 
+    ('ADMIN_OPS'),
+    ('OPERATIONS_MANAGER'),
+    ('HUB_INCHARGE')
+) AS role(name)
+WHERE pm.page_code = 'ASSETS_ADD'
+ON CONFLICT DO NOTHING;
+
 COMMIT;
 
 -- ============================================================================
