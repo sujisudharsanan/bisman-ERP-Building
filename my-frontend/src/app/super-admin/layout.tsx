@@ -14,6 +14,8 @@ interface SuperAdminLayoutProps {
   children: React.ReactNode;
 }
 
+// Super Admin Layout - Uses dynamic RBAC
+// Access is controlled by database role assignments
 export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
   const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -22,7 +24,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
   const sidebarWidth = sidebarOpen ? '208px' : '64px';
 
   return (
-    <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ENTERPRISE_ADMIN']}>
+    <ProtectedRoute>
       <ThemeProvider>
         <DockProvider>
           <RefreshProvider>

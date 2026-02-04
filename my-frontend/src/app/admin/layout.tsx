@@ -8,7 +8,8 @@ import { DockProvider } from '@/components/dock';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 // Admin layout with sidebar and top navbar
-// Protected: Only ADMIN, SUPER_ADMIN, and ENTERPRISE_ADMIN can access
+// Protected: Uses dynamic RBAC - access is controlled by database role assignments
+// No hardcoded roles - if EA assigns any page under /admin/* to a role, they get access
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -16,7 +17,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
   const sidebarWidth = sidebarOpen ? '208px' : '64px';
 
   return (
-    <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN']}>
+    <ProtectedRoute>
       <ThemeProvider>
         <DockProvider>
           {/* Fixed Top Navigation */}

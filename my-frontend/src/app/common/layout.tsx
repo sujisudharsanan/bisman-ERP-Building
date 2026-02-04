@@ -8,7 +8,7 @@ import { DockProvider } from '@/components/dock';
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 // Common layout with sidebar and top navbar
-// Protected: Authenticated users with appropriate roles can access
+// Protected: Uses dynamic RBAC - access is controlled by database role assignments
 export default function CommonLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
@@ -16,7 +16,7 @@ export default function CommonLayout({ children }: { children: React.ReactNode }
   const sidebarWidth = sidebarOpen ? '208px' : '64px';
 
   return (
-    <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'BRANCH_INCHARGE', 'HUB_INCHARGE', 'STORE_INCHARGE']}>
+    <ProtectedRoute>
       <ThemeProvider>
         <DockProvider>
           {/* Fixed Top Navigation */}

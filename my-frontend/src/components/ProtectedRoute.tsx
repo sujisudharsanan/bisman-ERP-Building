@@ -1,14 +1,22 @@
 /**
  * Protected Route Component
  * Guards routes and redirects unauthenticated users to login
- * Supports role-based access control
+ * Supports role-based access control AND dynamic page-level permissions
+ * 
+ * IMPORTANT: This component now checks BOTH:
+ * 1. Role-based access (allowedRoles prop) - for backward compatibility
+ * 2. Dynamic page access (useEffectiveAccess) - for EA-assigned page permissions
+ * 
+ * If EA has assigned a page to a role (e.g., ADMIN_OPS -> /admin/branches),
+ * the user will have access even if their role isn't in the hardcoded allowedRoles list.
  */
 
 'use client';
 
-import { useEffect, useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
 import { useAuth } from '@/contexts/AuthContext';
+import { useEffectiveAccess } from '@/hooks/useEffectiveAccess';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -16,6 +24,9 @@ interface ProtectedRouteProps {
   fallback?: React.ReactNode;
   loadingTimeout?: number; // Max time to wait before showing error
 }
+
+// Pages always accessible regardless of permissions
+const ALWAYS_ACCESSIBLE = ['dashboard', 'about-me', 'profile', 'settings', 'help', 'support', 'notifications', 'chat'];
 
 export default function ProtectedRoute({
   children,
@@ -25,26 +36,92 @@ export default function ProtectedRoute({
 }: ProtectedRouteProps) {
   const { user, loading } = useAuth();
   const router = useRouter();
+  const pathname = usePathname();
   const [hasTimedOut, setHasTimedOut] = useState(false);
   const [isRedirecting, setIsRedirecting] = useState(false);
   const redirectAttempted = useRef(false);
+  
+  // Use effective access hook for dynamic page-level permissions
+  const { 
+    hasPageAccess, 
+    effectivePages,
+    loading: effectiveAccessLoading 
+  } = useEffectiveAccess();
+  
+  // Derive multiple page key formats for matching (backend stores both page_code and route)
+  // e.g., /admin/branches -> ['branches', '/admin/branches', 'ADMIN_BRANCHES']
+  const pageKeys = useMemo(() => {
+    const segments = pathname?.split('/').filter(Boolean) || [];
+    const lastSegment = segments[segments.length - 1] || 'dashboard';
+    
+    // Generate potential page codes from route
+    // /admin/branches -> ADMIN_BRANCHES
+    const pageCode = segments
+      .filter(s => s.length > 0)
+      .map(s => s.toUpperCase().replace(/-/g, '_'))
+      .join('_');
+    
+    return {
+      route: pathname || '/',
+      segment: lastSegment,
+      pageCode: pageCode,
+    };
+  }, [pathname]);
+  
+  // Check if user has dynamic page access (checks multiple formats)
+  const hasDynamicPageAccess = useCallback((): boolean => {
+    // Check route match (e.g., '/admin/branches')
+    if (hasPageAccess(pageKeys.route)) return true;
+    
+    // Check last segment (e.g., 'branches')
+    if (hasPageAccess(pageKeys.segment)) return true;
+    
+    // Check page code format (e.g., 'ADMIN_BRANCHES')
+    if (hasPageAccess(pageKeys.pageCode)) return true;
+    
+    // Also check if the route is in effectivePages directly
+    if (effectivePages.includes(pageKeys.route)) return true;
+    if (effectivePages.includes(pageKeys.segment)) return true;
+    if (effectivePages.includes(pageKeys.pageCode)) return true;
+    
+    return false;
+  }, [hasPageAccess, effectivePages, pageKeys]);
 
   // Compute authorization synchronously to avoid flash of loading state
   const isAuthorized = (() => {
-    if (loading) return false;
+    if (loading || effectiveAccessLoading) return false;
     if (!user) return false;
     
-    // Role check
     const userRole = user.role || user.roleName;
-    if (allowedRoles && allowedRoles.length > 0) {
-      const hasAccess = allowedRoles.some(role => 
-        userRole?.toLowerCase() === role.toLowerCase()
-      );
-      return hasAccess;
+    
+    // 1. Check if page is always accessible
+    if (ALWAYS_ACCESSIBLE.includes(pageKeys.segment)) {
+      return true;
     }
     
-    // No specific roles required, user is logged in
-    return true;
+    // 2. Check role-based access (hardcoded allowedRoles)
+    if (allowedRoles && allowedRoles.length > 0) {
+      const hasRoleAccess = allowedRoles.some(role => 
+        userRole?.toLowerCase() === role.toLowerCase()
+      );
+      if (hasRoleAccess) {
+        return true;
+      }
+    }
+    
+    // 3. Check dynamic page-level access (EA-assigned permissions)
+    // This allows users whose roles have been granted specific pages by EA
+    if (hasDynamicPageAccess()) {
+      return true;
+    }
+    
+    // 4. If no allowedRoles specified and user is logged in, allow access
+    if (!allowedRoles || allowedRoles.length === 0) {
+      return true;
+    }
+    
+    // 5. Not authorized
+    return false;
   })();
 
   // Loading timeout to prevent infinite loading state
@@ -61,7 +138,7 @@ export default function ProtectedRoute({
   // Handle redirects when auth check is complete
   useEffect(() => {
     // Skip if already redirecting or redirect was attempted
-    if (isRedirecting || redirectAttempted.current || loading) return;
+    if (isRedirecting || redirectAttempted.current || loading || effectiveAccessLoading) return;
 
     // Not logged in - redirect to login
     if (!user) {
@@ -72,27 +149,44 @@ export default function ProtectedRoute({
       return;
     }
 
-    // Check role access
     const userRole = user.role || user.roleName;
+    
+    // Check if page is always accessible
+    if (ALWAYS_ACCESSIBLE.includes(pageKeys.segment)) {
+      console.log(`✅ ProtectedRoute: Page "${pageKeys.segment}" is always accessible`);
+      return;
+    }
+    
+    // Check role-based access (hardcoded allowedRoles)
     if (allowedRoles && allowedRoles.length > 0) {
-      const hasAccess = allowedRoles.some(role => 
+      const hasRoleAccess = allowedRoles.some(role => 
         userRole?.toLowerCase() === role.toLowerCase()
       );
       
-      if (!hasAccess) {
-        console.log(`🚫 ProtectedRoute: User role "${userRole}" not in allowed roles [${allowedRoles.join(', ')}]`);
-        redirectAttempted.current = true;
-        setIsRedirecting(true);
-        router.push('/access-denied');
+      if (hasRoleAccess) {
+        console.log(`✅ ProtectedRoute: User role "${userRole}" in allowed roles [${allowedRoles.join(', ')}]`);
         return;
       }
     }
-
-    // User is authorized - log it once
-    if (!redirectAttempted.current) {
-      console.log(`✅ ProtectedRoute: User authorized with role "${userRole}"`);
+    
+    // Check dynamic page-level access (EA-assigned permissions)
+    if (hasDynamicPageAccess()) {
+      console.log(`✅ ProtectedRoute: User has dynamic page access to "${pageKeys.route}" via effective permissions`);
+      return;
     }
-  }, [user, loading, allowedRoles, router, isRedirecting]);
+    
+    // If no allowedRoles specified, allow access (backward compatibility)
+    if (!allowedRoles || allowedRoles.length === 0) {
+      console.log(`✅ ProtectedRoute: No roles required, user "${userRole}" authorized`);
+      return;
+    }
+    
+    // No access - redirect to access-denied
+    console.log(`🚫 ProtectedRoute: User role "${userRole}" denied access to "${pageKeys.route}". Not in [${allowedRoles.join(', ')}] and no dynamic page access.`);
+    redirectAttempted.current = true;
+    setIsRedirecting(true);
+    router.push('/access-denied');
+  }, [user, loading, effectiveAccessLoading, allowedRoles, router, isRedirecting, pageKeys, hasDynamicPageAccess]);
 
   // Handle timeout - redirect to login if stuck
   useEffect(() => {
@@ -124,7 +218,7 @@ export default function ProtectedRoute({
   const loadingContent = fallback || defaultFallback;
 
   // Show loading state
-  if (loading || isRedirecting) {
+  if (loading || effectiveAccessLoading || isRedirecting) {
     return <>{loadingContent}</>;
   }
 

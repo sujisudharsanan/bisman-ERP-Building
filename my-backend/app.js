@@ -5250,9 +5250,19 @@ app.post('/api/branches', authenticate, async (req, res) => {
       });
     }
     
+    // Handle invalid UUID errors
+    if (error.message?.includes('invalid input syntax for type uuid') || 
+        error.message?.includes('expected pattern')) {
+      console.error('[Branches] Invalid tenant_id format');
+      return res.status(500).json({
+        success: false,
+        error: 'Invalid organization ID. Please try logging out and back in.'
+      });
+    }
+    
     res.status(500).json({
       success: false,
-      error: error.message || 'Failed to create branch'
+      error: 'Failed to create branch. Please try again.'
     });
   }
 });

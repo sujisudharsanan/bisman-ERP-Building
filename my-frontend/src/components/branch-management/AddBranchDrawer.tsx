@@ -285,38 +285,38 @@ export default function AddBranchDrawer({ isOpen, onClose, onSuccess, editBranch
       />
       
       {/* Drawer */}
-      <div className="fixed right-0 top-0 h-full w-full max-w-xl bg-white shadow-xl z-50 overflow-hidden flex flex-col">
+      <div className="fixed right-0 top-0 h-full w-full max-w-xl bg-white dark:bg-slate-800 shadow-xl z-50 overflow-hidden flex flex-col">
         {/* Header */}
-        <div className="flex items-center justify-between px-6 py-4 border-b bg-gray-50">
+        <div className="flex items-center justify-between px-6 py-4 border-b dark:border-slate-700 bg-gray-50 dark:bg-slate-900">
           <div className="flex items-center gap-3">
-            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isEditMode ? 'bg-amber-100' : 'bg-blue-100'}`}>
+            <div className={`w-10 h-10 rounded-lg flex items-center justify-center ${isEditMode ? 'bg-amber-100 dark:bg-amber-900/30' : 'bg-blue-100 dark:bg-blue-900/30'}`}>
               {isEditMode ? (
-                <Edit className="w-5 h-5 text-amber-600" />
+                <Edit className="w-5 h-5 text-amber-600 dark:text-amber-400" />
               ) : (
-                <Building2 className="w-5 h-5 text-blue-600" />
+                <Building2 className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               )}
             </div>
             <div>
-              <h2 className="text-lg font-semibold text-gray-900">
+              <h2 className="text-lg font-semibold text-gray-900 dark:text-gray-100">
                 {isEditMode ? 'Edit Branch' : 'Add New Branch'}
               </h2>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 dark:text-gray-400">
                 {isEditMode ? 'Update branch details' : 'Create a new branch location'}
               </p>
             </div>
           </div>
           <button
             onClick={onClose}
-            className="p-2 hover:bg-gray-200 rounded-lg transition-colors"
+            className="p-2 hover:bg-gray-200 dark:hover:bg-slate-700 rounded-lg transition-colors"
           >
-            <X className="w-5 h-5 text-gray-500" />
+            <X className="w-5 h-5 text-gray-500 dark:text-gray-400" />
           </button>
         </div>
         
         {/* Form Content */}
-        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6">
+        <form onSubmit={handleSubmit} className="flex-1 overflow-y-auto p-6 dark:bg-slate-800">
           {submitError && (
-            <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg flex items-center gap-2 text-red-700">
+            <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/30 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2 text-red-700 dark:text-red-300">
               <AlertTriangle className="w-5 h-5" />
               <span>{submitError}</span>
             </div>
@@ -324,14 +324,14 @@ export default function AddBranchDrawer({ isOpen, onClose, onSuccess, editBranch
           
           {/* Basic Information */}
           <div className="mb-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2">
               <Building2 className="w-4 h-4" />
               Basic Information
             </h3>
             
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                   Branch Name *
                 </label>
                 <input
@@ -339,16 +339,16 @@ export default function AddBranchDrawer({ isOpen, onClose, onSuccess, editBranch
                   name="name"
                   value={formData.name}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                    errors.name ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 ${
+                    errors.name ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
                   }`}
                   placeholder="e.g., Mumbai Central"
                 />
-                {errors.name && <p className="mt-1 text-xs text-red-600">{errors.name}</p>}
+                {errors.name && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.name}</p>}
               </div>
               
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                   Branch Code *
                 </label>
                 <input
@@ -356,26 +356,26 @@ export default function AddBranchDrawer({ isOpen, onClose, onSuccess, editBranch
                   name="code"
                   value={formData.code}
                   onChange={handleInputChange}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                    errors.code ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 ${
+                    errors.code ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
                   }`}
                   placeholder="e.g., MUM-C01"
                 />
-                {errors.code && <p className="mt-1 text-xs text-red-600">{errors.code}</p>}
+                {errors.code && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.code}</p>}
               </div>
             </div>
           </div>
           
           {/* Address */}
           <div className="mb-6">
-            <h3 className="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-200 mb-4 flex items-center gap-2">
               <MapPin className="w-4 h-4" />
               Address Details
             </h3>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
+                <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">
                   Full Address *
                 </label>
                 <textarea
@@ -383,92 +383,92 @@ export default function AddBranchDrawer({ isOpen, onClose, onSuccess, editBranch
                   value={formData.address}
                   onChange={handleInputChange}
                   rows={2}
-                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                    errors.address ? 'border-red-500' : 'border-gray-300'
+                  className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 ${
+                    errors.address ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
                   }`}
                   placeholder="Street address, building, floor..."
                 />
-                {errors.address && <p className="mt-1 text-xs text-red-600">{errors.address}</p>}
+                {errors.address && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.address}</p>}
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">City *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">City *</label>
                   <input
                     type="text"
                     name="city"
                     value={formData.city}
                     onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                      errors.city ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 ${
+                      errors.city ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
                     }`}
                   />
-                  {errors.city && <p className="mt-1 text-xs text-red-600">{errors.city}</p>}
+                  {errors.city && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.city}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">District *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">District *</label>
                   <input
                     type="text"
                     name="district"
                     value={formData.district}
                     onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                      errors.district ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 ${
+                      errors.district ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
                     }`}
                   />
-                  {errors.district && <p className="mt-1 text-xs text-red-600">{errors.district}</p>}
+                  {errors.district && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.district}</p>}
                 </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">State *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">State *</label>
                   <input
                     type="text"
                     name="state"
                     value={formData.state}
                     onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                      errors.state ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 ${
+                      errors.state ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
                     }`}
                   />
-                  {errors.state && <p className="mt-1 text-xs text-red-600">{errors.state}</p>}
+                  {errors.state && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.state}</p>}
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Pincode *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Pincode *</label>
                   <input
                     type="text"
                     name="pincode"
                     value={formData.pincode}
                     onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                      errors.pincode ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 ${
+                      errors.pincode ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
                     }`}
                   />
-                  {errors.pincode && <p className="mt-1 text-xs text-red-600">{errors.pincode}</p>}
+                  {errors.pincode && <p className="mt-1 text-xs text-red-600 dark:text-red-400">{errors.pincode}</p>}
                 </div>
               </div>
               
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Area (Sq Ft)</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Area (Sq Ft)</label>
                   <input
                     type="number"
                     name="areaSquareFeet"
                     value={formData.areaSquareFeet}
                     onChange={handleInputChange}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    className="w-full px-3 py-2 border border-gray-300 dark:border-slate-600 rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
                     placeholder="e.g., 1500"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Building Type *</label>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-200 mb-1">Building Type *</label>
                   <select
                     name="buildingType"
                     value={formData.buildingType}
                     onChange={handleInputChange}
-                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 ${
-                      errors.buildingType ? 'border-red-500' : 'border-gray-300'
+                    className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-blue-500 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 ${
+                      errors.buildingType ? 'border-red-500' : 'border-gray-300 dark:border-slate-600'
                     }`}
                   >
                     <option value="owned">Owned</option>
@@ -482,8 +482,8 @@ export default function AddBranchDrawer({ isOpen, onClose, onSuccess, editBranch
           
           {/* Agreement Details (for rented/leased) */}
           {needsAgreement && (
-            <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-              <h3 className="text-sm font-semibold text-amber-800 mb-4 flex items-center gap-2">
+            <div className="mb-6 p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+              <h3 className="text-sm font-semibold text-amber-800 dark:text-amber-300 mb-4 flex items-center gap-2">
                 <FileText className="w-4 h-4" />
                 Agreement Details (Required for {formData.buildingType})
               </h3>

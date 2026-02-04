@@ -3,12 +3,12 @@
 import ProtectedRoute from '@/components/ProtectedRoute';
 
 /**
- * Billing Layout - Protected route for authenticated users with billing access
- * Super Admin, Enterprise Admin, Admin, and Owner roles can access billing
+ * Billing Layout - Uses dynamic RBAC
+ * Access is controlled by database role assignments, not hardcoded roles.
  */
 export default function BillingLayout({ children }: { children: React.ReactNode }) {
   return (
-    <ProtectedRoute allowedRoles={['SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'ADMIN', 'OWNER']}>
+    <ProtectedRoute>
       {children}
     </ProtectedRoute>
   );

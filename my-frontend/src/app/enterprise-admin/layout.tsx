@@ -10,6 +10,8 @@ import { RefreshProvider } from '@/contexts/RefreshContext';
 
 // Note: Client layouts cannot export `metadata`. Page-level metadata can be set in individual pages.
 
+// Enterprise Admin Layout - Uses dynamic RBAC
+// Access is controlled by database role assignments
 export default function EnterpriseAdminLayout({
   children,
 }: {
@@ -19,7 +21,7 @@ export default function EnterpriseAdminLayout({
   const { user } = useAuth();
   
   return (
-    <ProtectedRoute allowedRoles={['ENTERPRISE_ADMIN']}>
+    <ProtectedRoute>
       <RefreshProvider>
         <div className="min-h-screen bg-gray-50 dark:bg-slate-900">
           <WelcomePopup userName={user?.name || user?.username} />

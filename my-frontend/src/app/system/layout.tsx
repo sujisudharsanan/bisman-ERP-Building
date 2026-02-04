@@ -11,8 +11,9 @@ import { ThemeProvider } from '@/components/ThemeProvider';
 import { DockProvider } from '@/components/dock';
 
 /**
- * System Layout - Protected route for Admin, Super Admin and Enterprise Admin
+ * System Layout - Uses dynamic RBAC
  * Contains system-level management pages like user management, permissions, etc.
+ * Access is controlled by database role assignments, not hardcoded roles.
  */
 export default function SystemLayout({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -22,7 +23,7 @@ export default function SystemLayout({ children }: { children: React.ReactNode }
   const sidebarWidth = sidebarOpen ? '208px' : '64px';
 
   return (
-    <ProtectedRoute allowedRoles={['ADMIN', 'SUPER_ADMIN', 'ENTERPRISE_ADMIN', 'SYSTEM_ADMIN', 'HR', 'HR_MANAGER']}>
+    <ProtectedRoute>
       <ThemeProvider>
         <DockProvider>
           <RefreshProvider>
