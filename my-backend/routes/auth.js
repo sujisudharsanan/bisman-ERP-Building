@@ -605,8 +605,9 @@ router.post('/logout', async (req, res) => {
 /**
  * Get current user's permissions (for sidebar)
  * Returns assigned modules and page permissions
+ * Supports both /me/permissions and /permissions for backwards compatibility
  */
-router.get('/me/permissions', async (req, res) => {
+const getPermissionsHandler = async (req, res) => {
   try {
     const token = req.cookies?.access_token || req.headers.authorization?.split(' ')[1];
 
@@ -729,7 +730,11 @@ router.get('/me/permissions', async (req, res) => {
     console.error('Error fetching user permissions:', error);
     res.status(500).json({ message: 'Failed to fetch permissions', error: error.message });
   }
-});
+};
+
+// Register permissions routes
+router.get('/me/permissions', getPermissionsHandler);
+router.get('/permissions', getPermissionsHandler);
 
 /**
  * Get current user info

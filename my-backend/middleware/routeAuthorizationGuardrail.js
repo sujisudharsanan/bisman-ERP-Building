@@ -97,6 +97,7 @@ const ROUTE_PAGE_MAPPING = {
 
 const BYPASS_PATTERNS = [
   '/api/auth/',
+  '/api/access/',  // Effective access APIs - required for dashboard/sidebar loading
   '/api/health',
   '/api/ping',
   '/api/me',     // User profile endpoint - always allowed after auth
