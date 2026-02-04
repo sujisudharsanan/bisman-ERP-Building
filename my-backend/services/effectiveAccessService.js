@@ -873,13 +873,18 @@ async function computeEffectiveRoles({
     }
     
     // LAYER 3: Get Superadmin approved roles for this user
-    const superadminRoleAssignments = await prisma.$queryRaw`
-      SELECT role_id, role_name
-      FROM admin_role_assignments
-      WHERE assignee_id = ${userId}
-        AND assigner_type = 'SUPER_ADMIN'
-        AND is_active = true
-    `;
+    // Only query if userId is a valid integer (legacy_id), skip for UUIDs
+    let superadminRoleAssignments = [];
+    const numericUserId = parseInt(userId, 10);
+    if (!isNaN(numericUserId) && numericUserId > 0) {
+      superadminRoleAssignments = await prisma.$queryRaw`
+        SELECT role_id, role_name
+        FROM admin_role_assignments
+        WHERE assignee_id = ${numericUserId}
+          AND assigner_type = 'SUPER_ADMIN'
+          AND is_active = true
+      `;
+    }
     
     let superadminApprovedRoles = null;
     if (superadminRoleAssignments.length > 0) {
@@ -888,13 +893,16 @@ async function computeEffectiveRoles({
       );
     }
     
-    // Also check user_roles junction table
-    const userRoles = await prisma.$queryRaw`
-      SELECT r.name
-      FROM user_roles ur
-      JOIN rbac_roles r ON ur.role_id = r.id
-      WHERE ur.user_id = ${userId}
-    `;
+    // Also check user_roles junction table (skip if userId is not numeric)
+    let userRoles = [];
+    if (!isNaN(numericUserId) && numericUserId > 0) {
+      userRoles = await prisma.$queryRaw`
+        SELECT r.name
+        FROM user_roles ur
+        JOIN rbac_roles r ON ur.role_id = r.id
+        WHERE ur.user_id = ${numericUserId}
+      `;
+    }
     
     if (userRoles.length > 0) {
       if (!superadminApprovedRoles) superadminApprovedRoles = new Set();
