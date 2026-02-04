@@ -1134,7 +1134,7 @@ export default function AssetAddForm() {
     );
   }
   
-  const isLimitReached = limits && !limits.unlimited && limits.remaining <= 0;
+  const isLimitReached = !!(limits && !limits.unlimited && limits.remaining <= 0);
   
   return (
     <div className="min-h-screen bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">

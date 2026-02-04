@@ -9,6 +9,9 @@
  * @module tests/assets
  */
 
+/* eslint-env jest */
+/* global jest, expect, describe, it, beforeAll */
+
 const request = require('supertest');
 
 // Mock dependencies before requiring app

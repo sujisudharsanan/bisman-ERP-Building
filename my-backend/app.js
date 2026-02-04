@@ -1173,6 +1173,27 @@ try {
   }
 }
 
+// ===================================================================
+// VENDOR LEGAL MASTER - Enterprise Vendor Compliance & Due Diligence
+// ===================================================================
+// Comprehensive vendor legal management system:
+// - Full vendor legal identity (GST, PAN, CIN, Registration)
+// - Multi-step onboarding with 7 sections
+// - Document upload with verification workflow
+// - Risk assessment and due diligence tracking
+// - Approval workflow with status lifecycle
+// - Complete audit trail for compliance
+// ===================================================================
+try {
+  const vendorLegalRoutes = require('./routes/vendorLegal')
+  app.use('/api/vendors-legal', authenticate, setTenantContext, requirePlanModuleAccess('compliance'), vendorLegalRoutes)
+  console.log('✅ Vendor Legal Master routes loaded at /api/vendors-legal (plan-gated: compliance)')
+} catch (e) {
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn('Vendor Legal Master routes not loaded:', e && e.message)
+  }
+}
+
 // Approval Workflow routes (Multi-tenant stage-based approval engine)
 try {
   const approvalRoutes = require('./dist/routes/approvals').default

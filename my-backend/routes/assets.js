@@ -26,7 +26,6 @@ const { v4: uuidv4 } = require('uuid');
 
 const ASSET_STATUSES = ['draft', 'pending_approval', 'active', 'inactive', 'under_maintenance', 'retired', 'disposed', 'lost', 'sold'];
 const ASSET_CONDITIONS = ['new', 'excellent', 'good', 'fair', 'poor', 'damaged'];
-const FILE_CATEGORIES = ['invoice', 'warranty', 'manual', 'image', 'certificate', 'insurance', 'general'];
 
 // Roles that can manage assets (used for logging, not authorization - auth is permission-based)
 const ASSET_ADMIN_ROLES = ['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN', 'ADMIN_OPS', 'OPERATIONS_MANAGER'];
