@@ -115,7 +115,9 @@ const BYPASS_PATTERNS = [
   '/api/rbac/',  // RBAC APIs - role-protected at route level
   '/api/reports/',  // Reports APIs - role-protected at route level
   '/api/governance/',  // Governance APIs - role-protected at route level
-  '/api/system/'  // System APIs - role-protected at route level
+  '/api/system/',  // System APIs - role-protected at route level
+  '/api/users',  // User management APIs - role-protected at route level
+  '/api/subscriptions/',  // Subscription APIs - role-protected at route level
 ];
 
 const ALWAYS_ALLOWED_PAGES = new Set([
