@@ -99,7 +99,14 @@ export default function ProtectedRoute({
       return true;
     }
     
-    // 2. Check role-based access (hardcoded allowedRoles)
+    // 3. Check dynamic page-level access (EA-assigned permissions)
+    // This is now the PRIMARY authorization check since we removed hardcoded roles
+    // Users must have the page explicitly assigned via admin_page_assignments
+    if (hasDynamicPageAccess()) {
+      return true;
+    }
+    
+    // 4. If allowedRoles is specified, check role-based access (legacy support)
     if (allowedRoles && allowedRoles.length > 0) {
       const hasRoleAccess = allowedRoles.some(role => 
         userRole?.toLowerCase() === role.toLowerCase()
@@ -109,18 +116,7 @@ export default function ProtectedRoute({
       }
     }
     
-    // 3. Check dynamic page-level access (EA-assigned permissions)
-    // This allows users whose roles have been granted specific pages by EA
-    if (hasDynamicPageAccess()) {
-      return true;
-    }
-    
-    // 4. If no allowedRoles specified and user is logged in, allow access
-    if (!allowedRoles || allowedRoles.length === 0) {
-      return true;
-    }
-    
-    // 5. Not authorized
+    // 5. Not authorized - no dynamic access and no role match
     return false;
   })();
 
