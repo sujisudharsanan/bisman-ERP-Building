@@ -1003,7 +1003,7 @@ export default function SubscriptionControlPage() {
   // ============================================================================
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] gap-3">
+    <div className="flex flex-col h-full min-h-0 gap-3">
       {/* Compact Header - Stats Bar + Actions */}
       <div className="flex items-center justify-between flex-shrink-0 px-3 py-2 bg-gradient-to-r from-indigo-50 via-purple-50 to-pink-50 dark:from-indigo-900/20 dark:via-purple-900/20 dark:to-pink-900/20 rounded-lg border border-indigo-100 dark:border-indigo-800">
         <div className="flex items-center gap-4 text-xs">

@@ -36,7 +36,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
             
             {/* Main content area - full width minus sidebar */}
             <main 
-              className="bg-gray-50 dark:bg-slate-900 transition-all duration-300"
+              className="bg-gray-50 dark:bg-slate-900 transition-[left] duration-300"
               style={{ 
                 position: 'fixed',
                 top: 'var(--navbar-height, 52px)',
@@ -46,7 +46,7 @@ export default function SuperAdminLayout({ children }: SuperAdminLayoutProps) {
                 overflow: 'auto'
               }}
             >
-              <div className="p-4 w-full">
+              <div className="p-4 w-full h-full">
                 {children}
               </div>
             </main>

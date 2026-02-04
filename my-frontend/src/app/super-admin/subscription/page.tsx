@@ -569,7 +569,7 @@ export default function SubscriptionControlPage() {
   // ============================================================================
 
   return (
-    <div className="flex flex-col h-[calc(100vh-6rem)] gap-4">
+    <div className="flex flex-col h-full min-h-0 gap-4">
       {/* Header */}
       <div className="flex items-center justify-between flex-shrink-0">
         <div className="flex items-center gap-3">
