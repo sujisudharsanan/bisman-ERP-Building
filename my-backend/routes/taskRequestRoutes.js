@@ -85,7 +85,8 @@ router.get('/check-hierarchy/:assigneeId', authenticateToken, async (req, res) =
       });
     }
     
-    const result = await taskRequestService.checkAssignmentHierarchy(userId, parseInt(assigneeId));
+    // Use assigneeId as-is (UUID string)
+    const result = await taskRequestService.checkAssignmentHierarchy(userId, assigneeId);
     
     res.json({
       success: true,
@@ -114,11 +115,12 @@ router.get('/check-hierarchy/:assigneeId', authenticateToken, async (req, res) =
 router.get('/user-role-level/:userId', authenticateToken, async (req, res) => {
   try {
     const { userId } = req.params;
-    const result = await taskRequestService.getUserRoleLevel(parseInt(userId));
+    // Pass userId as-is (UUID string)
+    const result = await taskRequestService.getUserRoleLevel(userId);
     
     res.json({
       success: true,
-      userId: parseInt(userId),
+      userId: userId,
       level: result.level,
       roleName: result.roleName
     });
@@ -172,7 +174,7 @@ router.post('/', authenticateToken, async (req, res) => {
       description,
       priority,
       suggestedDueDate,
-      requestedTo: parseInt(requestedTo),
+      requestedTo: requestedTo,  // UUID string
       tags,
       tenantId: actorInfo.tenantId
     }, actorInfo);
@@ -459,7 +461,7 @@ router.post('/:id/delegate', authenticateToken, async (req, res) => {
     
     const result = await taskRequestService.delegateRequest(
       parseInt(id),
-      parseInt(delegateToId),
+      delegateToId,  // UUID string
       actorInfo,
       { reason }
     );

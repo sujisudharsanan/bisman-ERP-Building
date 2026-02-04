@@ -132,6 +132,36 @@ router.get('/access/:featureKey', authenticate, async (req, res) => {
 });
 
 /**
+ * GET /api/micro-unlock/check/:featureKey
+ * Alias for /access/:featureKey (used by frontend FeatureGate)
+ */
+router.get('/check/:featureKey', authenticate, async (req, res) => {
+  try {
+    const { featureKey } = req.params;
+    const tenantId = getTenantId(req);
+    const userId = req.user?.id;
+
+    if (!tenantId) {
+      return res.status(400).json({ 
+        ok: false, 
+        error: 'Tenant context required' 
+      });
+    }
+
+    const access = await microUnlockService.checkFeatureAccess(
+      tenantId,
+      userId,
+      featureKey
+    );
+
+    res.json({ ok: true, access });
+  } catch (error) {
+    console.error('[MicroUnlock] Check access error:', error);
+    res.status(500).json({ ok: false, error: 'Failed to check feature access' });
+  }
+});
+
+/**
  * POST /api/micro-unlock/usage/:featureKey
  * Record feature usage (called by other services)
  */
