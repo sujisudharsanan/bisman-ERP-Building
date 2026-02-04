@@ -139,7 +139,7 @@ const missingPages = {
     { path: 'shipping-logistics', name: 'Shipping & Logistics' },
     { path: 'stock-entry-transfer', name: 'Stock Transfer' },
     { path: 'sales-order-view', name: 'Sales Order View' },
-    { path: 'asset-register-hub', name: 'Asset Register' },
+    // asset-register-hub removed - consolidated into /assets
     { path: 'about-me', name: 'About Me' },
   ],
   procurement: [

@@ -233,7 +233,7 @@ const MASTER_MODULES = [
       { id: 'shipping-logistics', name: 'Shipping & Logistics', path: '/operations/shipping-logistics' },
       { id: 'stock-transfer', name: 'Stock Transfer', path: '/operations/stock-entry-transfer' },
       { id: 'sales-order-view', name: 'Sales Order View', path: '/operations/sales-order-view' },
-      { id: 'asset-register', name: 'Asset Register', path: '/operations/asset-register-hub' },
+      // Asset Register Hub removed - consolidated into /assets
       { id: 'hub-incharge-dashboard', name: 'Hub Incharge Dashboard', path: '/hub-incharge' },
       { id: 'store-incharge-dashboard', name: 'Store Incharge Dashboard', path: '/store-incharge' },
       { id: 'branch-incharge-dashboard', name: 'Branch Dashboard', path: '/dashboard' },

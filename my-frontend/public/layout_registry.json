@@ -1513,22 +1513,6 @@
       ]
     },
     {
-      "id": "asset-register",
-      "name": "Asset Register",
-      "path": "/operations/asset-register-hub",
-      "module": "operations",
-      "status": "active",
-      "description": "Manage hub assets",
-      "order": 13,
-      "permissions": [
-        "inventory-management"
-      ],
-      "roles": [
-        "HUB INCHARGE",
-        "OPERATIONS MANAGER"
-      ]
-    },
-    {
       "id": "audit-trail",
       "name": "Audit Trail",
       "path": "/compliance/audit-trail",

@@ -1700,18 +1700,7 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     description: 'View sales orders',
     order: 12,
   },
-  {
-    id: 'asset-register',
-    name: 'Asset Register',
-    path: '/operations/asset-register-hub',
-  iconKey: "Box",
-    module: 'operations',
-    permissions: ['inventory-management'],
-    roles: ['HUB_INCHARGE', 'OPERATIONS_MANAGER'],
-    status: 'active',
-    description: 'Manage hub assets',
-    order: 13,
-  },
+  // Asset Register Hub - REMOVED (consolidated into /assets page)
 
   // ==================== COMPLIANCE MODULE (8 pages) ====================
   {
