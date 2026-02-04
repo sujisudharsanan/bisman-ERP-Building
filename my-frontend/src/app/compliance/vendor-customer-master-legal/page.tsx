@@ -19,7 +19,9 @@ import {
   MoreVertical,
   Loader2,
   AlertCircle,
-  RefreshCw
+  RefreshCw,
+  X,
+  Save
 } from 'lucide-react';
 
 // ============================================================================
@@ -62,21 +64,42 @@ interface StatsData {
   high_risk_vendors: number;
 }
 
+interface VendorFormData {
+  legal_name: string;
+  trade_name: string;
+  gst_number: string;
+  pan_number: string;
+  cin_number: string;
+  registration_number: string;
+  business_type: string;
+  industry: string;
+  contact_name: string;
+  contact_email: string;
+  contact_phone: string;
+  address_line1: string;
+  city: string;
+  state: string;
+  pincode: string;
+  is_msme: boolean;
+}
+
 // ============================================================================
 // API Helper
 // ============================================================================
 
 const API_BASE = process.env.NEXT_PUBLIC_API_URL || '';
 
-async function fetchWithAuth(endpoint: string) {
+async function fetchWithAuth(endpoint: string, options?: RequestInit) {
   const response = await fetch(`${API_BASE}${endpoint}`, {
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',
     },
+    ...options,
   });
   if (!response.ok) {
-    throw new Error(`API error: ${response.status}`);
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(errorData.message || errorData.error || `API error: ${response.status}`);
   }
   return response.json();
 }
@@ -136,6 +159,112 @@ export default function VendorCustomerMasterLegalPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [riskFilter, setRiskFilter] = useState<string>('all');
+  
+  // Modal state
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [formSuccess, setFormSuccess] = useState<string | null>(null);
+  
+  // Form data
+  const initialFormData: VendorFormData = {
+    legal_name: '',
+    trade_name: '',
+    gst_number: '',
+    pan_number: '',
+    cin_number: '',
+    registration_number: '',
+    business_type: 'private_limited',
+    industry: '',
+    contact_name: '',
+    contact_email: '',
+    contact_phone: '',
+    address_line1: '',
+    city: '',
+    state: '',
+    pincode: '',
+    is_msme: false,
+  };
+  const [formData, setFormData] = useState<VendorFormData>(initialFormData);
+
+  // Handle form input changes
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value, type } = e.target;
+    setFormData(prev => ({
+      ...prev,
+      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value
+    }));
+  };
+
+  // Submit new vendor
+  const handleSubmitVendor = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setFormLoading(true);
+    setFormError(null);
+    setFormSuccess(null);
+
+    try {
+      // Validate required fields
+      if (!formData.legal_name.trim()) {
+        throw new Error('Legal name is required');
+      }
+      if (!formData.gst_number.trim()) {
+        throw new Error('GST number is required');
+      }
+      if (!formData.pan_number.trim()) {
+        throw new Error('PAN number is required');
+      }
+
+      // Prepare payload
+      const payload = {
+        legal_name: formData.legal_name.trim(),
+        trade_name: formData.trade_name.trim() || formData.legal_name.trim(),
+        gst_number: formData.gst_number.trim().toUpperCase(),
+        pan_number: formData.pan_number.trim().toUpperCase(),
+        cin_number: formData.cin_number.trim() || null,
+        registration_number: formData.registration_number.trim() || null,
+        business_type: formData.business_type,
+        industry: formData.industry.trim() || null,
+        is_msme: formData.is_msme,
+        primary_contact: {
+          name: formData.contact_name.trim(),
+          email: formData.contact_email.trim(),
+          phone: formData.contact_phone.trim()
+        },
+        registered_address: {
+          line1: formData.address_line1.trim(),
+          city: formData.city.trim(),
+          state: formData.state.trim(),
+          pincode: formData.pincode.trim(),
+          country: 'India'
+        }
+      };
+
+      const response = await fetchWithAuth('/api/vendors-legal', {
+        method: 'POST',
+        body: JSON.stringify(payload)
+      });
+
+      if (response.success) {
+        setFormSuccess('Vendor created successfully!');
+        setFormData(initialFormData);
+        
+        // Refresh vendors list
+        setTimeout(() => {
+          setShowAddModal(false);
+          setFormSuccess(null);
+          fetchVendors();
+        }, 1500);
+      } else {
+        throw new Error(response.message || 'Failed to create vendor');
+      }
+    } catch (err) {
+      console.error('Error creating vendor:', err);
+      setFormError(err instanceof Error ? err.message : 'Failed to create vendor');
+    } finally {
+      setFormLoading(false);
+    }
+  };
 
   // Fetch vendors from API
   const fetchVendors = useCallback(async () => {
@@ -205,7 +334,10 @@ export default function VendorCustomerMasterLegalPage() {
               <Download className="w-4 h-4" />
               Export
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <button 
+              onClick={() => setShowAddModal(true)}
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
               <Plus className="w-4 h-4" />
               Add Vendor
             </button>
@@ -458,6 +590,308 @@ export default function VendorCustomerMasterLegalPage() {
           </div>
         )}
       </div>
+
+      {/* Add Vendor Modal */}
+      {showAddModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+          <div className="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-2xl max-h-[90vh] overflow-y-auto m-4">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between p-6 border-b border-gray-200 dark:border-gray-700">
+              <div>
+                <h2 className="text-xl font-bold text-gray-900 dark:text-white">Add New Vendor</h2>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Enter vendor legal and compliance details</p>
+              </div>
+              <button
+                onClick={() => { setShowAddModal(false); setFormError(null); setFormData(initialFormData); }}
+                className="p-2 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg"
+              >
+                <X className="w-5 h-5 text-gray-500" />
+              </button>
+            </div>
+
+            {/* Form */}
+            <form onSubmit={handleSubmitVendor} className="p-6">
+              {/* Error/Success Messages */}
+              {formError && (
+                <div className="mb-4 p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-lg flex items-center gap-2">
+                  <AlertCircle className="w-5 h-5 text-red-600" />
+                  <p className="text-red-600 dark:text-red-400">{formError}</p>
+                </div>
+              )}
+              {formSuccess && (
+                <div className="mb-4 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg flex items-center gap-2">
+                  <CheckCircle className="w-5 h-5 text-green-600" />
+                  <p className="text-green-600 dark:text-green-400">{formSuccess}</p>
+                </div>
+              )}
+
+              {/* Legal Information */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                  <Building2 className="w-4 h-4" /> Legal Information
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Legal Name <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="legal_name"
+                      value={formData.legal_name}
+                      onChange={handleInputChange}
+                      placeholder="Registered company name"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Trade Name
+                    </label>
+                    <input
+                      type="text"
+                      name="trade_name"
+                      value={formData.trade_name}
+                      onChange={handleInputChange}
+                      placeholder="Business trading name"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      GST Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="gst_number"
+                      value={formData.gst_number}
+                      onChange={handleInputChange}
+                      placeholder="22AAAAA0000A1Z5"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white uppercase"
+                      required
+                      maxLength={15}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      PAN Number <span className="text-red-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      name="pan_number"
+                      value={formData.pan_number}
+                      onChange={handleInputChange}
+                      placeholder="AAAAA0000A"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white uppercase"
+                      required
+                      maxLength={10}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      CIN Number
+                    </label>
+                    <input
+                      type="text"
+                      name="cin_number"
+                      value={formData.cin_number}
+                      onChange={handleInputChange}
+                      placeholder="U12345MH2020PTC123456"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white uppercase"
+                      maxLength={21}
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Business Type
+                    </label>
+                    <select
+                      name="business_type"
+                      value={formData.business_type}
+                      onChange={handleInputChange}
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    >
+                      <option value="private_limited">Private Limited</option>
+                      <option value="public_limited">Public Limited</option>
+                      <option value="llp">LLP</option>
+                      <option value="partnership">Partnership</option>
+                      <option value="proprietorship">Proprietorship</option>
+                      <option value="trust">Trust</option>
+                      <option value="government">Government</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Industry
+                    </label>
+                    <input
+                      type="text"
+                      name="industry"
+                      value={formData.industry}
+                      onChange={handleInputChange}
+                      placeholder="e.g., Manufacturing, IT Services"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      name="is_msme"
+                      id="is_msme"
+                      checked={formData.is_msme}
+                      onChange={handleInputChange}
+                      className="w-4 h-4 text-blue-600 rounded border-gray-300"
+                    />
+                    <label htmlFor="is_msme" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+                      MSME Registered
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              {/* Contact Information */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                  <Users className="w-4 h-4" /> Primary Contact
+                </h3>
+                <div className="grid grid-cols-3 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Contact Name
+                    </label>
+                    <input
+                      type="text"
+                      name="contact_name"
+                      value={formData.contact_name}
+                      onChange={handleInputChange}
+                      placeholder="John Doe"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Email
+                    </label>
+                    <input
+                      type="email"
+                      name="contact_email"
+                      value={formData.contact_email}
+                      onChange={handleInputChange}
+                      placeholder="contact@vendor.com"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Phone
+                    </label>
+                    <input
+                      type="tel"
+                      name="contact_phone"
+                      value={formData.contact_phone}
+                      onChange={handleInputChange}
+                      placeholder="+91 9876543210"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Address */}
+              <div className="mb-6">
+                <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
+                  <MapPin className="w-4 h-4" /> Registered Address
+                </h3>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="col-span-2">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Address Line
+                    </label>
+                    <input
+                      type="text"
+                      name="address_line1"
+                      value={formData.address_line1}
+                      onChange={handleInputChange}
+                      placeholder="Street address"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      City
+                    </label>
+                    <input
+                      type="text"
+                      name="city"
+                      value={formData.city}
+                      onChange={handleInputChange}
+                      placeholder="Mumbai"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      State
+                    </label>
+                    <input
+                      type="text"
+                      name="state"
+                      value={formData.state}
+                      onChange={handleInputChange}
+                      placeholder="Maharashtra"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
+                      Pincode
+                    </label>
+                    <input
+                      type="text"
+                      name="pincode"
+                      value={formData.pincode}
+                      onChange={handleInputChange}
+                      placeholder="400001"
+                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white"
+                      maxLength={6}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Form Actions */}
+              <div className="flex justify-end gap-3 pt-4 border-t border-gray-200 dark:border-gray-700">
+                <button
+                  type="button"
+                  onClick={() => { setShowAddModal(false); setFormError(null); setFormData(initialFormData); }}
+                  className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg text-gray-700 dark:text-gray-300 hover:bg-gray-50 dark:hover:bg-gray-700"
+                  disabled={formLoading}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={formLoading}
+                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  {formLoading ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                      Creating...
+                    </>
+                  ) : (
+                    <>
+                      <Save className="w-4 h-4" />
+                      Create Vendor
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

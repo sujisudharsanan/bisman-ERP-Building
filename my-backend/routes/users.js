@@ -555,9 +555,14 @@ router.post('/:id/reset-password', authMiddleware, async (req, res) => {
     const { id } = req.params;
     const { newPassword } = req.body;
     const currentUserRole = req.user?.role;
+    const currentUserId = req.user?.id;
+    const currentUserTenantId = req.user?.tenant_id;
+
+    console.log(`[reset-password] Request from ${req.user?.email} (${currentUserRole}) for user ${id}`);
 
     // Only admins can reset passwords
     if (!CORE_ROLES.includes(currentUserRole)) {
+      console.log(`[reset-password] Permission denied: ${currentUserRole} not in CORE_ROLES`);
       return res.status(403).json({ error: 'Insufficient permissions to reset passwords' });
     }
 
@@ -565,43 +570,78 @@ router.post('/:id/reset-password', authMiddleware, async (req, res) => {
       return res.status(400).json({ error: 'Password must be at least 8 characters' });
     }
 
-    // Find the user
-    const user = await prisma.users_enhanced.findUnique({
-      where: { id },
-      select: { id: true, email: true, tenant_id: true },
-    });
-
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
     // Hash the new password using bcrypt
-    // bcrypt includes the salt in the hash, so we don't need a separate salt column
     const bcrypt = require('bcryptjs');
     const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-    // Update the password
-    await prisma.users_enhanced.update({
-      where: { id },
-      data: {
-        password_hash: hashedPassword,
-        password_changed_at: new Date(),
-        login_attempts: 0,
-        locked_until: null,
-      },
+    // Use $transaction to ensure RLS context and update use same connection
+    const result = await prisma.$transaction(async (tx) => {
+      // Set RLS context for this transaction (TENANT scope for admin)
+      const dataScope = ['ENTERPRISE_ADMIN', 'SYSTEM_ADMIN'].includes(currentUserRole?.toUpperCase()) 
+        ? 'ALL' 
+        : 'TENANT';
+      
+      await tx.$executeRaw`
+        SELECT set_security_context(
+          ${String(currentUserId)}::TEXT,
+          ${String(currentUserTenantId || '')}::TEXT,
+          ${String(dataScope)}::TEXT,
+          ${String(currentUserRole || '')}::TEXT,
+          ''::TEXT
+        )
+      `;
+
+      // Find the user
+      const user = await tx.users_enhanced.findUnique({
+        where: { id },
+        select: { id: true, email: true, tenant_id: true },
+      });
+
+      if (!user) {
+        throw new Error('USER_NOT_FOUND');
+      }
+
+      console.log(`[reset-password] Found user: ${user.email}, updating password...`);
+
+      // Update the password
+      await tx.users_enhanced.update({
+        where: { id },
+        data: {
+          password_hash: hashedPassword,
+          password_changed_at: new Date(),
+          login_attempts: 0,
+          locked_until: null,
+        },
+      });
+
+      return user;
     });
 
-    console.log(`[reset-password] Password reset for user ${user.email} by ${req.user?.email}`);
+    console.log(`[reset-password] Password reset successful for user ${result.email} by ${req.user?.email}`);
 
     res.json({
       success: true,
       message: 'Password reset successfully',
     });
   } catch (error) {
-    console.error('Reset password error:', error);
+    console.error('[reset-password] Error:', error);
+    
+    if (error.message === 'USER_NOT_FOUND') {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Check for RLS policy violation
+    if (error.message?.includes('policy') || error.code === 'P2025') {
+      console.error('[reset-password] RLS policy violation or record not visible');
+      return res.status(403).json({
+        error: 'Cannot reset password for this user',
+        details: 'User is not in your authorized scope',
+      });
+    }
+    
     res.status(500).json({
       error: 'Failed to reset password',
-      details: error.message,
+      details: error.message || 'Unknown error',
     });
   }
 });

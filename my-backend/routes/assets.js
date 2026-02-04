@@ -27,9 +27,6 @@ const { v4: uuidv4 } = require('uuid');
 const ASSET_STATUSES = ['draft', 'pending_approval', 'active', 'inactive', 'under_maintenance', 'retired', 'disposed', 'lost', 'sold'];
 const ASSET_CONDITIONS = ['new', 'excellent', 'good', 'fair', 'poor', 'damaged'];
 
-// Roles that can manage assets (used for logging, not authorization - auth is permission-based)
-const ASSET_ADMIN_ROLES = ['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'ADMIN', 'ADMIN_OPS', 'OPERATIONS_MANAGER'];
-
 // ============================================================================
 // MIDDLEWARE: Check Asset Creation Limit
 // ============================================================================
@@ -103,9 +100,7 @@ const checkAssetPermission = (requiredPermission) => {
   return async (req, res, next) => {
     try {
       const pool = getPool();
-      const userId = req.user?.legacy_id || req.user?.id;
       const userRole = (req.user?.role || '').toUpperCase();
-      const tenantId = req.user?.tenant_id;
       
       // Platform admins and operations managers have full access
       if (['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMIN', 'ADMIN', 'ADMIN_OPS', 'OPERATIONS_MANAGER'].includes(userRole)) {

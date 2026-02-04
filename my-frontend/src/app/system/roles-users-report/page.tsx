@@ -3,6 +3,7 @@
 import React, { useEffect, useMemo, useState, useRef } from "react";
 import { FiUsers, FiPackage, FiGrid, FiShield, FiRefreshCw, FiChevronUp, FiCreditCard, FiFile, FiExternalLink, FiCheckCircle, FiLock, FiSearch, FiAlertCircle } from "react-icons/fi";
 import { useAuth } from "@/contexts/AuthContext";
+import { triggerPermissionsRefresh } from "@/hooks/useEffectiveAccess";
 import ClientManagementTabs from "@/components/common/ClientManagementTabs";
 import { PAGE_REGISTRY, MODULES } from "@/common/config/page-registry";
 import Link from "next/link";
@@ -736,6 +737,12 @@ export default function RolesUsersReportPage() {
         console.log('✅ Saved role pages');
         setRolePagesInitialIds(new Set(rolePagesSelectedIds));
         setRolePagesHasChanges(false);
+        
+        // 🔔 Trigger cache invalidation for all users with this role
+        if (selectedRole) {
+          console.log('🔔 Triggering permissions refresh for role:', selectedRole.name);
+          triggerPermissionsRefresh(selectedRole.name);
+        }
       } else {
         console.error('❌ Save failed:', response.status);
         alert('Failed to save role pages');

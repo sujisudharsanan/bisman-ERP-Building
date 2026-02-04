@@ -235,6 +235,100 @@ router.post('/refresh', authenticate, async (req, res) => {
 });
 
 // ============================================================================
+// GET /api/access/role-version/:roleName
+// Get the latest version/timestamp for a role's page assignments
+// Used by frontend to check if cached data is stale
+// ============================================================================
+
+router.get('/role-version/:roleName', authenticate, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const { roleName } = req.params;
+    const normalizedRole = (roleName || '').toUpperCase();
+    
+    // Get the latest update timestamp for this role's assignments
+    const latestAssignment = await prisma.$queryRaw`
+      SELECT MAX(GREATEST(
+        COALESCE(updated_at, created_at),
+        COALESCE(granted_at, created_at),
+        COALESCE(revoked_at, '1970-01-01'::timestamp)
+      )) as last_changed
+      FROM admin_page_assignments
+      WHERE assignee_type = ${normalizedRole}
+    `;
+    
+    const lastChanged = latestAssignment[0]?.last_changed || new Date(0);
+    const version = new Date(lastChanged).getTime();
+    
+    res.json({
+      ok: true,
+      role: normalizedRole,
+      version,
+      lastChanged: lastChanged.toISOString(),
+      cacheKey: `role_${normalizedRole}_${version}`
+    });
+    
+  } catch (error) {
+    console.error('[EffectiveAccess API] Role version error:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'Failed to get role version'
+    });
+  }
+});
+
+// ============================================================================
+// GET /api/access/check-stale
+// Check if user's cached effective access is stale
+// Returns true if the role assignments have changed since the provided timestamp
+// ============================================================================
+
+router.get('/check-stale', authenticate, async (req, res) => {
+  try {
+    const prisma = getPrisma();
+    const userRole = (req.user?.role || req.user?.roleName || '').toUpperCase();
+    const cachedAt = parseInt(req.query.cachedAt || '0', 10);
+    
+    if (!userRole) {
+      return res.json({ ok: true, isStale: true, reason: 'NO_ROLE' });
+    }
+    
+    // Get the latest update timestamp for this role's assignments
+    const latestAssignment = await prisma.$queryRaw`
+      SELECT MAX(GREATEST(
+        COALESCE(updated_at, created_at),
+        COALESCE(granted_at, created_at),
+        COALESCE(revoked_at, '1970-01-01'::timestamp)
+      )) as last_changed
+      FROM admin_page_assignments
+      WHERE assignee_type = ${userRole}
+    `;
+    
+    const lastChanged = latestAssignment[0]?.last_changed;
+    const lastChangedMs = lastChanged ? new Date(lastChanged).getTime() : 0;
+    
+    // Cache is stale if role assignments have been updated after the cache timestamp
+    const isStale = cachedAt < lastChangedMs;
+    
+    res.json({
+      ok: true,
+      isStale,
+      role: userRole,
+      cachedAt,
+      lastChangedAt: lastChangedMs,
+      reason: isStale ? 'ROLE_ASSIGNMENTS_UPDATED' : 'CACHE_VALID'
+    });
+    
+  } catch (error) {
+    console.error('[EffectiveAccess API] Check stale error:', error);
+    res.status(500).json({
+      ok: false,
+      error: 'Failed to check stale status'
+    });
+  }
+});
+
+// ============================================================================
 // GET /api/access/summary
 // Get summary of access layers for debugging/admin view
 // ============================================================================

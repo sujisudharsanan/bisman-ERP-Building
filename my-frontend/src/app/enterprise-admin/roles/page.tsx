@@ -6,6 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import { usePageRefresh } from "@/contexts/RefreshContext";
 import { isModuleProtected, getProtectedModuleMessage, isRoleProtected, getProtectedRoleMessage, getDefaultRoleNames } from "@/common/config/protected-access";
 import { PAGE_REGISTRY, MODULES } from "@/common/config/page-registry";
+import { triggerPermissionsRefresh } from "@/hooks/useEffectiveAccess";
 import Link from "next/link";
 
 // Common pages that are shared across all modules - always visible
@@ -799,9 +800,15 @@ export default function Page() {
         // Show success toast
         showToast(`✓ Saved ${data.grantedCount || pageIds.length} pages for ${data.roleName || 'role'}`, 'success');
         
+        // 🔔 Trigger cache invalidation for all users with this role
+        const selectedRole = allRoles.find(r => r.id === selectedRoleId);
+        if (selectedRole) {
+          console.log('🔔 Triggering permissions refresh for role:', selectedRole.name);
+          triggerPermissionsRefresh(selectedRole.name);
+        }
+        
         // Reload the role-scoped pages to get fresh data from server
         // This ensures UI reflects the actual saved state
-        const selectedRole = allRoles.find(r => r.id === selectedRoleId);
         if (selectedRole) {
           const reloadResponse = await fetch(`/api/governance/role-pages?roleName=${encodeURIComponent(selectedRole.name)}`, {
             credentials: 'include'

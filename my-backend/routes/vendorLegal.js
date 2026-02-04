@@ -18,10 +18,62 @@
 const express = require('express');
 const router = express.Router();
 const { getPool } = require('../middleware/database');
-const { authorize } = require('../middleware/authorize');
+const { authorizeAny } = require('../middleware/authorize');
 const multer = require('multer');
 const path = require('path');
 const crypto = require('crypto');
+
+// ============================================================================
+// AUTHORIZATION: Page codes that grant access to vendor legal operations
+// ============================================================================
+
+// These page codes control access to vendor legal endpoints
+// Users with ANY of these pages can access vendor operations
+const VENDOR_VIEW_PAGES = [
+  'COMPLIANCE_VENDOR_LEGAL',     // Dedicated vendor legal page
+  'VENDOR_CUSTOMER_MASTER_LEGAL', // Alternative page code
+  'COMPLIANCE_DASHBOARD',         // Compliance dashboard includes vendor view
+  'PROCUREMENT_VENDOR_MASTER',    // Procurement vendor master
+  'VENDOR_MASTER',                // Generic vendor master
+  'ADMIN_DASHBOARD',              // Admins have full access
+  'SYSTEM_ADMIN_DASHBOARD'        // System admins have full access
+];
+
+const VENDOR_EDIT_PAGES = [
+  'COMPLIANCE_VENDOR_LEGAL',
+  'VENDOR_CUSTOMER_MASTER_LEGAL',
+  'PROCUREMENT_VENDOR_MASTER',
+  'VENDOR_MASTER',
+  'ADMIN_DASHBOARD',
+  'SYSTEM_ADMIN_DASHBOARD'
+];
+
+// Roles that always have access (operations/admin roles)
+const VENDOR_ALLOWED_ROLES = [
+  'SUPER_ADMIN', 'ADMIN', 'ADMIN_OPS', 'SYSTEM_ADMIN', 'ENTERPRISE_ADMIN',
+  'OPERATIONS_MANAGER', 'PROCUREMENT_OFFICER', 'COMPLIANCE_OFFICER',
+  'CFO', 'FINANCE_CONTROLLER', 'HUB_INCHARGE', 'BRANCH_MANAGER'
+];
+
+/**
+ * Role-based authorization middleware for vendor operations
+ * Allows access if user has any of the required pages OR is in allowed roles
+ */
+function authorizeVendor(operation = 'view') {
+  return async (req, res, next) => {
+    const userRole = req.user?.role?.toUpperCase();
+    
+    // Check if user is in allowed roles
+    if (userRole && VENDOR_ALLOWED_ROLES.includes(userRole)) {
+      console.log(`[VendorAuth] ALLOW: role=${userRole} has direct access`);
+      return next();
+    }
+    
+    // Fall back to page-based authorization
+    const pages = operation === 'view' ? VENDOR_VIEW_PAGES : VENDOR_EDIT_PAGES;
+    return authorizeAny(pages, operation)(req, res, next);
+  };
+}
 
 // ============================================================================
 // CONSTANTS
@@ -239,7 +291,7 @@ function validateVendorData(data, isUpdate = false) {
  * GET /stats/summary
  * Get vendor dashboard statistics
  */
-router.get('/stats/summary', authorize('VIEW_VENDOR'), async (req, res) => {
+router.get('/stats/summary', authorizeVendor('view'), async (req, res) => {
   try {
     const pool = getPool();
     const tenantId = req.user.tenant_id;
@@ -364,7 +416,7 @@ router.get('/lookups/industries', async (req, res) => {
  * GET /
  * List vendors with filters, search, pagination
  */
-router.get('/', authorize('VIEW_VENDOR'), async (req, res) => {
+router.get('/', authorizeVendor('view'), async (req, res) => {
   try {
     const pool = getPool();
     const tenantId = req.user.tenant_id;
@@ -494,7 +546,7 @@ router.get('/', authorize('VIEW_VENDOR'), async (req, res) => {
  * GET /:id
  * Get vendor details with all related data
  */
-router.get('/:id', authorize('VIEW_VENDOR'), async (req, res) => {
+router.get('/:id', authorizeVendor('view'), async (req, res) => {
   try {
     const pool = getPool();
     const { id } = req.params;
@@ -551,7 +603,7 @@ router.get('/:id', authorize('VIEW_VENDOR'), async (req, res) => {
  * POST /
  * Create new vendor
  */
-router.post('/', authorize('CREATE_VENDOR'), async (req, res) => {
+router.post('/', authorizeVendor('edit'), async (req, res) => {
   const pool = getPool();
   const client = await pool.connect();
   
@@ -723,7 +775,7 @@ router.post('/', authorize('CREATE_VENDOR'), async (req, res) => {
  * PUT /:id
  * Update vendor
  */
-router.put('/:id', authorize('UPDATE_VENDOR'), async (req, res) => {
+router.put('/:id', authorizeVendor('edit'), async (req, res) => {
   const pool = getPool();
   const client = await pool.connect();
   
@@ -849,7 +901,7 @@ router.put('/:id', authorize('UPDATE_VENDOR'), async (req, res) => {
  * DELETE /:id
  * Soft delete vendor
  */
-router.delete('/:id', authorize('DELETE_VENDOR'), async (req, res) => {
+router.delete('/:id', authorizeVendor('delete'), async (req, res) => {
   const pool = getPool();
   
   try {
@@ -901,7 +953,7 @@ router.delete('/:id', authorize('DELETE_VENDOR'), async (req, res) => {
  * POST /:id/submit
  * Submit vendor for approval
  */
-router.post('/:id/submit', authorize('CREATE_VENDOR'), async (req, res) => {
+router.post('/:id/submit', authorizeVendor('edit'), async (req, res) => {
   const pool = getPool();
   const client = await pool.connect();
   
@@ -977,7 +1029,7 @@ router.post('/:id/submit', authorize('CREATE_VENDOR'), async (req, res) => {
  * POST /:id/approve
  * Approve vendor
  */
-router.post('/:id/approve', authorize('APPROVE_VENDOR'), async (req, res) => {
+router.post('/:id/approve', authorizeVendor('edit'), async (req, res) => {
   const pool = getPool();
   const client = await pool.connect();
   
@@ -1055,7 +1107,7 @@ router.post('/:id/approve', authorize('APPROVE_VENDOR'), async (req, res) => {
  * POST /:id/reject
  * Reject vendor
  */
-router.post('/:id/reject', authorize('APPROVE_VENDOR'), async (req, res) => {
+router.post('/:id/reject', authorizeVendor('edit'), async (req, res) => {
   const pool = getPool();
   const client = await pool.connect();
   
@@ -1133,7 +1185,7 @@ router.post('/:id/reject', authorize('APPROVE_VENDOR'), async (req, res) => {
  * POST /:id/suspend
  * Suspend vendor
  */
-router.post('/:id/suspend', authorize('SUSPEND_VENDOR'), async (req, res) => {
+router.post('/:id/suspend', authorizeVendor('edit'), async (req, res) => {
   const pool = getPool();
   const client = await pool.connect();
   
@@ -1198,7 +1250,7 @@ router.post('/:id/suspend', authorize('SUSPEND_VENDOR'), async (req, res) => {
  * POST /:id/reactivate
  * Reactivate suspended vendor
  */
-router.post('/:id/reactivate', authorize('APPROVE_VENDOR'), async (req, res) => {
+router.post('/:id/reactivate', authorizeVendor('edit'), async (req, res) => {
   const pool = getPool();
   const client = await pool.connect();
   
@@ -1263,7 +1315,7 @@ router.post('/:id/reactivate', authorize('APPROVE_VENDOR'), async (req, res) => 
  * POST /:id/documents
  * Upload vendor document
  */
-router.post('/:id/documents', authorize('UPLOAD_VENDOR_DOC'), upload.single('file'), async (req, res) => {
+router.post('/:id/documents', authorizeVendor('edit'), upload.single('file'), async (req, res) => {
   const pool = getPool();
   
   try {
@@ -1343,7 +1395,7 @@ router.post('/:id/documents', authorize('UPLOAD_VENDOR_DOC'), upload.single('fil
  * DELETE /:id/documents/:docId
  * Remove document
  */
-router.delete('/:id/documents/:docId', authorize('UPLOAD_VENDOR_DOC'), async (req, res) => {
+router.delete('/:id/documents/:docId', authorizeVendor('edit'), async (req, res) => {
   const pool = getPool();
   
   try {
@@ -1397,7 +1449,7 @@ router.delete('/:id/documents/:docId', authorize('UPLOAD_VENDOR_DOC'), async (re
  * POST /:id/contacts
  * Add vendor contact
  */
-router.post('/:id/contacts', authorize('UPDATE_VENDOR'), async (req, res) => {
+router.post('/:id/contacts', authorizeVendor('edit'), async (req, res) => {
   const pool = getPool();
   
   try {
@@ -1456,7 +1508,7 @@ router.post('/:id/contacts', authorize('UPDATE_VENDOR'), async (req, res) => {
  * POST /:id/addresses
  * Add vendor address
  */
-router.post('/:id/addresses', authorize('UPDATE_VENDOR'), async (req, res) => {
+router.post('/:id/addresses', authorizeVendor('edit'), async (req, res) => {
   const pool = getPool();
   
   try {
@@ -1508,7 +1560,7 @@ router.post('/:id/addresses', authorize('UPDATE_VENDOR'), async (req, res) => {
  * POST /:id/banks
  * Add vendor bank account
  */
-router.post('/:id/banks', authorize('UPDATE_VENDOR'), async (req, res) => {
+router.post('/:id/banks', authorizeVendor('edit'), async (req, res) => {
   const pool = getPool();
   
   try {
@@ -1653,7 +1705,7 @@ router.post('/validate/pan', async (req, res) => {
  * GET /:id/history
  * Get vendor audit history
  */
-router.get('/:id/history', authorize('VIEW_VENDOR'), async (req, res) => {
+router.get('/:id/history', authorizeVendor('view'), async (req, res) => {
   try {
     const pool = getPool();
     const { id } = req.params;
@@ -1697,7 +1749,7 @@ router.get('/:id/history', authorize('VIEW_VENDOR'), async (req, res) => {
  * GET /export
  * Export vendors to CSV
  */
-router.get('/export', authorize('EXPORT_VENDOR'), async (req, res) => {
+router.get('/export', authorizeVendor('view'), async (req, res) => {
   try {
     const pool = getPool();
     const tenantId = req.user.tenant_id;

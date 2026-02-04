@@ -3958,6 +3958,19 @@ app.post('/api/rbac/roles/:roleId/pages', authenticate, requireRole(['ENTERPRISE
       throw dbError;
     }
     
+    // ========================================================================
+    // CACHE INVALIDATION: Notify that this role's permissions have changed
+    // This ensures users with this role will get fresh permissions on next check
+    // ========================================================================
+    try {
+      const cacheInvalidationService = require('./services/cacheInvalidationService');
+      await cacheInvalidationService.updateRoleVersion(assigneeType, assignerType);
+      console.log('[RBAC-SAVE] Cache invalidated for role:', assigneeType);
+    } catch (cacheErr) {
+      // Non-fatal - log but don't fail the request
+      console.warn('[RBAC-SAVE] Cache invalidation warning:', cacheErr.message);
+    }
+    
     console.log('[RBAC-SAVE] COMPLETED:', grantedPages.length, 'pages for', assignerType, '→', assigneeType);
     
     res.json({ 

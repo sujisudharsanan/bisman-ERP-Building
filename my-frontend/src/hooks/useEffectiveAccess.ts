@@ -8,6 +8,11 @@
  * This is the single source of truth for frontend page access.
  * Backend enforces the same logic, so this is purely for UI hiding.
  * 
+ * CACHE INVALIDATION:
+ *   - Cache is automatically invalidated when role assignments change
+ *   - Checks for stale cache on each load
+ *   - Forces refresh if assignments have changed since last cache
+ * 
  * Usage:
  *   const { effectivePages, blockedPages, hasPageAccess, loading, refresh } = useEffectiveAccess();
  *   
@@ -16,7 +21,7 @@
  *   }
  */
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useAuth } from '@/common/hooks/useAuth';
 
 // ============================================================================
@@ -82,11 +87,14 @@ export interface UseEffectiveAccessResult {
 const getApiUrl = () => process.env.NEXT_PUBLIC_API_URL || '';
 
 // Cache key prefix for localStorage
-const CACHE_KEY_PREFIX = 'effective_access_v1_';
+const CACHE_KEY_PREFIX = 'effective_access_v2_'; // v2 includes cachedAt timestamp
 
-// Cache TTL: 5 minutes for normal use, 1 hour in localStorage
-const MEMORY_CACHE_TTL_MS = 5 * 60 * 1000;
-const STORAGE_CACHE_TTL_MS = 60 * 60 * 1000;
+// Cache TTL: 2 minutes for memory, 30 minutes in localStorage (reduced for quicker updates)
+const MEMORY_CACHE_TTL_MS = 2 * 60 * 1000;
+const STORAGE_CACHE_TTL_MS = 30 * 60 * 1000;
+
+// How often to check for stale cache (every 30 seconds)
+const STALE_CHECK_INTERVAL_MS = 30 * 1000;
 
 // Pages that are always accessible (no permission check needed)
 const ALWAYS_ACCESSIBLE_PAGES = [
@@ -99,6 +107,58 @@ const ALWAYS_ACCESSIBLE_PAGES = [
   'notifications',
   'chat',
 ];
+
+// ============================================================================
+// HELPER: Check if cache is stale via backend
+// ============================================================================
+
+async function checkCacheStale(cachedAt: number): Promise<boolean> {
+  try {
+    const baseURL = getApiUrl();
+    const response = await fetch(`${baseURL}/api/access/check-stale?cachedAt=${cachedAt}`, {
+      method: 'GET',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    
+    if (!response.ok) return true; // Assume stale on error
+    
+    const result = await response.json();
+    return result.isStale || false;
+  } catch (e) {
+    console.warn('[useEffectiveAccess] Stale check failed:', e);
+    return false; // Don't force refresh on network error
+  }
+}
+
+// ============================================================================
+// EVENT SYSTEM: Allow immediate cache invalidation from role management pages
+// ============================================================================
+
+const RBAC_INVALIDATION_EVENT = 'rbac-permissions-changed';
+
+/**
+ * Trigger immediate cache invalidation across all useEffectiveAccess hooks.
+ * Call this after successfully saving role page assignments.
+ * 
+ * @param roleName - Optional: the specific role that was updated
+ */
+export function triggerPermissionsRefresh(roleName?: string) {
+  console.log('[useEffectiveAccess] Broadcasting permissions refresh event', roleName ? `for role: ${roleName}` : '');
+  
+  // Clear all localStorage caches that start with our prefix
+  for (let i = 0; i < localStorage.length; i++) {
+    const key = localStorage.key(i);
+    if (key?.startsWith(CACHE_KEY_PREFIX)) {
+      localStorage.removeItem(key);
+    }
+  }
+  
+  // Dispatch custom event for hooks to listen
+  window.dispatchEvent(new CustomEvent(RBAC_INVALIDATION_EVENT, {
+    detail: { roleName, timestamp: Date.now() }
+  }));
+}
 
 // ============================================================================
 // HOOK IMPLEMENTATION
@@ -249,6 +309,10 @@ export function useEffectiveAccess(): UseEffectiveAccessResult {
     }
   }, [user?.id, user?.roleName, user?.role, hasFullAccessRole, cacheKey]);
   
+  // Track when we last checked for stale cache
+  const lastStaleCheckRef = useRef<number>(0);
+  const staleCheckIntervalRef = useRef<NodeJS.Timeout | null>(null);
+  
   // Initial fetch on mount
   useEffect(() => {
     if (!authLoading) {
@@ -256,10 +320,82 @@ export function useEffectiveAccess(): UseEffectiveAccessResult {
     }
   }, [authLoading, fetchEffectiveAccess]);
   
+  // Listen for immediate invalidation events (from role management pages)
+  useEffect(() => {
+    const handleInvalidation = (event: Event) => {
+      const customEvent = event as CustomEvent;
+      console.log('[useEffectiveAccess] Received invalidation event:', customEvent.detail);
+      
+      // Force refresh from server
+      fetchEffectiveAccess(true);
+    };
+    
+    window.addEventListener(RBAC_INVALIDATION_EVENT, handleInvalidation);
+    
+    return () => {
+      window.removeEventListener(RBAC_INVALIDATION_EVENT, handleInvalidation);
+    };
+  }, [fetchEffectiveAccess]);
+  
+  // Periodic stale check - automatically refresh if role assignments changed
+  useEffect(() => {
+    if (authLoading || !user?.id || hasFullAccessRole) {
+      return;
+    }
+    
+    const checkAndRefreshIfStale = async () => {
+      try {
+        // Get the cached timestamp
+        if (!cacheKey) return;
+        
+        const cached = localStorage.getItem(cacheKey);
+        if (!cached) return;
+        
+        const { timestamp } = JSON.parse(cached);
+        if (!timestamp) return;
+        
+        // Check if cache is stale
+        const isStale = await checkCacheStale(timestamp);
+        
+        if (isStale) {
+          console.log('[useEffectiveAccess] Cache is stale, auto-refreshing...');
+          // Clear localStorage cache before refresh to ensure fresh data
+          localStorage.removeItem(cacheKey);
+          await fetchEffectiveAccess(true);
+        }
+      } catch (e) {
+        console.warn('[useEffectiveAccess] Auto-refresh check failed:', e);
+      }
+    };
+    
+    // Run check immediately if enough time has passed since last check
+    const now = Date.now();
+    if (now - lastStaleCheckRef.current > STALE_CHECK_INTERVAL_MS) {
+      lastStaleCheckRef.current = now;
+      checkAndRefreshIfStale();
+    }
+    
+    // Set up periodic check
+    staleCheckIntervalRef.current = setInterval(() => {
+      lastStaleCheckRef.current = Date.now();
+      checkAndRefreshIfStale();
+    }, STALE_CHECK_INTERVAL_MS);
+    
+    return () => {
+      if (staleCheckIntervalRef.current) {
+        clearInterval(staleCheckIntervalRef.current);
+      }
+    };
+  }, [authLoading, user?.id, hasFullAccessRole, cacheKey, fetchEffectiveAccess]);
+  
   // Refresh function for manual refresh
   const refresh = useCallback(async () => {
+    // Clear cache before refresh
+    if (cacheKey) {
+      localStorage.removeItem(cacheKey);
+    }
     await fetchEffectiveAccess(true);
-  }, [fetchEffectiveAccess]);
+  }, [fetchEffectiveAccess, cacheKey]);
   
   // Check if user has access to a specific page
   const hasPageAccess = useCallback((pageKey: string): boolean => {
