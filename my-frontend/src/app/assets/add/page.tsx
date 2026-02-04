@@ -110,6 +110,24 @@ interface BranchOption {
   is_active?: boolean;
 }
 
+interface VendorOption {
+  id: number;
+  name: string;
+  contact_person?: string;
+  email?: string;
+  phone?: string;
+  vendor_code?: string;
+}
+
+interface LocationOption {
+  id: number;
+  name: string;
+  code?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+}
+
 // ============================================================================
 // Constants
 // ============================================================================
@@ -486,6 +504,8 @@ export default function AssetAddForm() {
   const [categories, setCategories] = useState<AssetCategory[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
   const [branches, setBranches] = useState<BranchOption[]>([]);
+  const [vendors, setVendors] = useState<VendorOption[]>([]);
+  const [locations, setLocations] = useState<LocationOption[]>([]);
   const [limits, setLimits] = useState<AssetLimits | null>(null);
   
   const [isLoading, setIsLoading] = useState(true);
@@ -504,29 +524,57 @@ export default function AssetAddForm() {
       try {
         setIsLoading(true);
         
-        // Fetch in parallel
-        const [categoriesRes, limitsRes, branchesRes, usersRes] = await Promise.all([
+        // Fetch in parallel - use asset-specific endpoints to avoid 403 from other modules
+        const [categoriesRes, limitsRes, locationsRes, usersRes, vendorsRes] = await Promise.all([
           apiClient.get('/api/assets/categories').catch(() => ({ data: [] })),
           apiClient.get('/api/assets/limits').catch(() => ({ data: null })),
-          apiClient.get('/api/branches').catch(() => ({ branches: [] })),
-          apiClient.get('/api/users/search?limit=100&include_self=true').catch(() => ({ users: [] })),
+          apiClient.get('/api/assets/locations').catch(() => ({ data: [] })),
+          apiClient.get('/api/assets/users').catch(() => ({ data: [] })),
+          apiClient.get('/api/assets/vendors').catch(() => ({ data: [] })),
         ]);
         
         setCategories(categoriesRes.data || []);
         setLimits(limitsRes.data || null);
-        setBranches(branchesRes.branches || []);
         
-        // Map users to consistent format
-        const usersList = (usersRes.users || []).map((u: any) => ({
-          id: u.legacy_id || u.id,
+        // Set locations from the asset-specific endpoint
+        const locationsList = (locationsRes.data || []).map((loc: any) => ({
+          id: loc.id,
+          name: loc.name,
+          code: loc.code,
+          address: loc.address,
+          city: loc.city,
+          state: loc.state,
+        }));
+        setLocations(locationsList);
+        
+        // Also populate branches for backward compatibility
+        setBranches((locationsRes.data || []).map((loc: any) => ({
+          id: loc.id,
+          branch_name: loc.name,
+          branch_code: loc.code,
+          is_active: true,
+        })));
+        
+        // Map users from asset-specific endpoint
+        const usersList = (usersRes.data || []).map((u: any) => ({
+          id: u.id || u.legacy_id,
           legacy_id: u.legacy_id,
-          name: u.first_name && u.last_name 
-            ? `${u.first_name} ${u.last_name}`.trim() 
-            : u.username || u.email,
+          name: u.name || u.username || u.email,
           email: u.email,
           role: u.role,
         }));
         setUsers(usersList);
+        
+        // Map vendors from asset-specific endpoint
+        const vendorsList = (vendorsRes.data || []).map((v: any) => ({
+          id: v.id,
+          name: v.name,
+          contact_person: v.contact_person,
+          email: v.email,
+          phone: v.phone,
+          vendor_code: v.vendor_code,
+        }));
+        setVendors(vendorsList);
         
         // Try to restore draft
         const saved = localStorage.getItem(AUTOSAVE_KEY);
@@ -909,12 +957,25 @@ export default function AssetAddForm() {
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <InputField
+          <SelectField
             label="Vendor Name"
-            name="vendor_name"
-            value={formData.vendor_name}
-            onChange={handleChange}
-            placeholder="Supplier company name"
+            name="vendor_id"
+            value={vendors.find(v => v.name === formData.vendor_name)?.id || ''}
+            onChange={(e) => {
+              const vendorId = e.target.value ? parseInt(e.target.value) : null;
+              const selectedVendor = vendors.find(v => v.id === vendorId);
+              setFormData(prev => ({
+                ...prev,
+                vendor_name: selectedVendor?.name || '',
+                vendor_contact: selectedVendor?.email || selectedVendor?.phone || prev.vendor_contact,
+              }));
+            }}
+            options={vendors.map(v => ({ 
+              value: v.id, 
+              label: v.vendor_code ? `${v.name} (${v.vendor_code})` : v.name 
+            }))}
+            placeholder="Select Vendor"
+            icon={Building}
           />
           
           <InputField
@@ -953,20 +1014,23 @@ export default function AssetAddForm() {
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <SelectField
-          label="Branch"
+          label="Location"
           name="branch_id"
           value={formData.branch_id}
           onChange={(e) => {
             const branchId = e.target.value ? parseInt(e.target.value) : null;
-            const selectedBranch = branches.find(b => b.id === branchId);
+            const selectedLocation = locations.find(l => l.id === branchId);
             setFormData(prev => ({
               ...prev,
               branch_id: branchId,
-              location_name: selectedBranch?.branch_name || prev.location_name,
+              location_name: selectedLocation?.name || prev.location_name,
             }));
           }}
-          options={branches.map(b => ({ value: b.id, label: b.branch_name }))}
-          placeholder="Select Branch"
+          options={locations.map(l => ({ 
+            value: l.id, 
+            label: l.city ? `${l.name} (${l.city})` : l.name 
+          }))}
+          placeholder="Select Location"
           icon={MapPin}
         />
         
@@ -988,7 +1052,7 @@ export default function AssetAddForm() {
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <SelectField
-            label="Assigned To"
+            label="Assigned To (Name)"
             name="assigned_to_user_id"
             value={formData.assigned_to_user_id}
             onChange={(e) => {
@@ -1000,8 +1064,11 @@ export default function AssetAddForm() {
                 assigned_to_name: selectedUser?.name || '',
               }));
             }}
-            options={users.map(u => ({ value: u.id, label: `${u.name} (${u.email})` }))}
-            placeholder="Select User"
+            options={users.map(u => ({ 
+              value: u.id, 
+              label: u.email ? `${u.name} (${u.email})` : u.name 
+            }))}
+            placeholder="Select Employee"
             icon={User}
           />
           

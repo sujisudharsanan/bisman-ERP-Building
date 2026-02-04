@@ -444,6 +444,169 @@ router.get('/categories', authMiddleware, async (req, res) => {
 });
 
 // ============================================================================
+// GET /api/assets/vendors - Get vendors for asset form dropdown
+// ============================================================================
+
+router.get('/vendors', authMiddleware, async (req, res) => {
+  try {
+    const pool = getPool();
+    const tenantId = req.user?.tenant_id;
+    const { search = '', limit = 50 } = req.query;
+    
+    if (!tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+    
+    let query = `
+      SELECT 
+        id, 
+        COALESCE(vendor_name, name, company_name) as name,
+        COALESCE(contact_person, '') as contact_person,
+        COALESCE(email, contact_email, '') as email,
+        COALESCE(phone, contact_phone, '') as phone,
+        vendor_code
+      FROM vendors
+      WHERE tenant_id = $1 
+        AND (is_deleted = false OR is_deleted IS NULL)
+        AND (status = 'active' OR status IS NULL)
+    `;
+    
+    const params = [tenantId];
+    
+    if (search) {
+      query += ` AND (
+        vendor_name ILIKE $2 OR 
+        name ILIKE $2 OR 
+        company_name ILIKE $2 OR
+        vendor_code ILIKE $2
+      )`;
+      params.push(`%${search}%`);
+    }
+    
+    query += ` ORDER BY COALESCE(vendor_name, name, company_name) LIMIT $${params.length + 1}`;
+    params.push(parseInt(limit));
+    
+    const result = await pool.query(query, params);
+    
+    res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error('[GET /api/assets/vendors] Error:', error);
+    res.status(500).json({ error: 'Failed to fetch vendors' });
+  }
+});
+
+// ============================================================================
+// GET /api/assets/users - Get users for asset assignment dropdown
+// ============================================================================
+
+router.get('/users', authMiddleware, async (req, res) => {
+  try {
+    const pool = getPool();
+    const tenantId = req.user?.tenant_id;
+    const { search = '', limit = 100 } = req.query;
+    
+    if (!tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+    
+    let query = `
+      SELECT 
+        legacy_id as id,
+        legacy_id,
+        COALESCE(first_name || ' ' || last_name, username, email) as name,
+        email,
+        role,
+        username
+      FROM users_enhanced
+      WHERE tenant_id = $1 
+        AND status = 'active'
+    `;
+    
+    const params = [tenantId];
+    
+    if (search) {
+      query += ` AND (
+        first_name ILIKE $2 OR 
+        last_name ILIKE $2 OR 
+        email ILIKE $2 OR
+        username ILIKE $2 OR
+        (first_name || ' ' || last_name) ILIKE $2
+      )`;
+      params.push(`%${search}%`);
+    }
+    
+    query += ` ORDER BY COALESCE(first_name || ' ' || last_name, username, email) LIMIT $${params.length + 1}`;
+    params.push(parseInt(limit));
+    
+    const result = await pool.query(query, params);
+    
+    res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error('[GET /api/assets/users] Error:', error);
+    res.status(500).json({ error: 'Failed to fetch users' });
+  }
+});
+
+// ============================================================================
+// GET /api/assets/locations - Get locations/branches for asset form dropdown
+// ============================================================================
+
+router.get('/locations', authMiddleware, async (req, res) => {
+  try {
+    const pool = getPool();
+    const tenantId = req.user?.tenant_id;
+    const { search = '', limit = 50 } = req.query;
+    
+    if (!tenantId) {
+      return res.status(400).json({ error: 'Tenant context required' });
+    }
+    
+    let query = `
+      SELECT 
+        id,
+        branch_name as name,
+        branch_code as code,
+        address,
+        city,
+        state
+      FROM branches
+      WHERE tenant_id = $1 
+        AND is_active = true
+    `;
+    
+    const params = [tenantId];
+    
+    if (search) {
+      query += ` AND (
+        branch_name ILIKE $2 OR 
+        branch_code ILIKE $2 OR
+        city ILIKE $2
+      )`;
+      params.push(`%${search}%`);
+    }
+    
+    query += ` ORDER BY branch_name LIMIT $${params.length + 1}`;
+    params.push(parseInt(limit));
+    
+    const result = await pool.query(query, params);
+    
+    res.json({
+      success: true,
+      data: result.rows,
+    });
+  } catch (error) {
+    console.error('[GET /api/assets/locations] Error:', error);
+    res.status(500).json({ error: 'Failed to fetch locations' });
+  }
+});
+
+// ============================================================================
 // GET /api/assets/:id - Get single asset
 // ============================================================================
 
