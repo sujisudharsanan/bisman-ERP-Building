@@ -448,7 +448,7 @@ async function runMigration() {
           table_name, operation, row_count
         ) VALUES (
           p_event_type,
-          NULLIF(current_setting('app.user_id', true), '')::INTEGER,
+          NULLIF(current_setting('app.user_id', true), ''),  -- TEXT, supports both UUID and integer
           current_setting('app.tenant_id', true),
           current_setting('app.data_scope', true),
           p_table_name,
