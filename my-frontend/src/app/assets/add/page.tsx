@@ -75,6 +75,7 @@ interface AssetFormData {
   invoice_number: string;
   
   // Location & Assignment
+  branch_id: number | null;
   location_name: string;
   department: string;
   assigned_to_user_id: number | null;
@@ -96,9 +97,17 @@ interface AssetFormData {
 
 interface UserOption {
   id: number;
+  legacy_id?: number;
   name: string;
   email: string;
-  role: string;
+  role?: string;
+}
+
+interface BranchOption {
+  id: number;
+  branch_name: string;
+  branch_code?: string;
+  is_active?: boolean;
 }
 
 // ============================================================================
@@ -144,6 +153,7 @@ const INITIAL_FORM_DATA: AssetFormData = {
   purchase_order_number: '',
   invoice_number: '',
   location_name: '',
+  branch_id: null,
   department: '',
   assigned_to_user_id: null,
   assigned_to_name: '',
@@ -475,6 +485,7 @@ export default function AssetAddForm() {
   
   const [categories, setCategories] = useState<AssetCategory[]>([]);
   const [users, setUsers] = useState<UserOption[]>([]);
+  const [branches, setBranches] = useState<BranchOption[]>([]);
   const [limits, setLimits] = useState<AssetLimits | null>(null);
   
   const [isLoading, setIsLoading] = useState(true);
@@ -494,13 +505,28 @@ export default function AssetAddForm() {
         setIsLoading(true);
         
         // Fetch in parallel
-        const [categoriesRes, limitsRes] = await Promise.all([
-          apiClient.get('/api/assets/categories'),
-          apiClient.get('/api/assets/limits'),
+        const [categoriesRes, limitsRes, branchesRes, usersRes] = await Promise.all([
+          apiClient.get('/api/assets/categories').catch(() => ({ data: [] })),
+          apiClient.get('/api/assets/limits').catch(() => ({ data: null })),
+          apiClient.get('/api/branches').catch(() => ({ branches: [] })),
+          apiClient.get('/api/users/search?limit=100&include_self=true').catch(() => ({ users: [] })),
         ]);
         
         setCategories(categoriesRes.data || []);
         setLimits(limitsRes.data || null);
+        setBranches(branchesRes.branches || []);
+        
+        // Map users to consistent format
+        const usersList = (usersRes.users || []).map((u: any) => ({
+          id: u.legacy_id || u.id,
+          legacy_id: u.legacy_id,
+          name: u.first_name && u.last_name 
+            ? `${u.first_name} ${u.last_name}`.trim() 
+            : u.username || u.email,
+          email: u.email,
+          role: u.role,
+        }));
+        setUsers(usersList);
         
         // Try to restore draft
         const saved = localStorage.getItem(AUTOSAVE_KEY);
@@ -926,12 +952,21 @@ export default function AssetAddForm() {
   const renderStep3 = () => (
     <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <InputField
-          label="Location"
-          name="location_name"
-          value={formData.location_name}
-          onChange={handleChange}
-          placeholder="e.g., Main Office, Warehouse B"
+        <SelectField
+          label="Branch"
+          name="branch_id"
+          value={formData.branch_id}
+          onChange={(e) => {
+            const branchId = e.target.value ? parseInt(e.target.value) : null;
+            const selectedBranch = branches.find(b => b.id === branchId);
+            setFormData(prev => ({
+              ...prev,
+              branch_id: branchId,
+              location_name: selectedBranch?.branch_name || prev.location_name,
+            }));
+          }}
+          options={branches.map(b => ({ value: b.id, label: b.branch_name }))}
+          placeholder="Select Branch"
           icon={MapPin}
         />
         
@@ -952,12 +987,21 @@ export default function AssetAddForm() {
         </h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <InputField
-            label="Assigned To (Name)"
-            name="assigned_to_name"
-            value={formData.assigned_to_name}
-            onChange={handleChange}
-            placeholder="Employee name"
+          <SelectField
+            label="Assigned To"
+            name="assigned_to_user_id"
+            value={formData.assigned_to_user_id}
+            onChange={(e) => {
+              const userId = e.target.value ? parseInt(e.target.value) : null;
+              const selectedUser = users.find(u => u.id === userId);
+              setFormData(prev => ({
+                ...prev,
+                assigned_to_user_id: userId,
+                assigned_to_name: selectedUser?.name || '',
+              }));
+            }}
+            options={users.map(u => ({ value: u.id, label: `${u.name} (${u.email})` }))}
+            placeholder="Select User"
             icon={User}
           />
           
@@ -1087,8 +1131,12 @@ export default function AssetAddForm() {
           </h3>
           <div className="grid grid-cols-2 gap-4 text-sm">
             <div>
-              <span className="text-gray-400">Location:</span>
-              <span className="text-white ml-2">{formData.location_name || '-'}</span>
+              <span className="text-gray-400">Branch:</span>
+              <span className="text-white ml-2">
+                {formData.branch_id 
+                  ? branches.find(b => b.id === formData.branch_id)?.branch_name || formData.location_name 
+                  : '-'}
+              </span>
             </div>
             <div>
               <span className="text-gray-400">Department:</span>
@@ -1137,8 +1185,8 @@ export default function AssetAddForm() {
   const isLimitReached = !!(limits && !limits.unlimited && limits.remaining <= 0);
   
   return (
-    <div className="min-h-screen bg-gray-900 py-8 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-4xl mx-auto">
+    <div className="min-h-screen bg-gray-900 py-8 px-4 sm:px-6 lg:px-8 overflow-x-hidden">
+      <div className="max-w-4xl mx-auto min-w-0">
         {/* Header */}
         <div className="mb-8">
           <div className="flex items-center justify-between">

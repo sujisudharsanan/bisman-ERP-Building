@@ -266,7 +266,7 @@ async function getTenantModuleAccess(tenantId) {
 }
 
 // Roles that bypass plan-based access checks (platform administrators)
-const BYPASS_ROLES = ['ENTERPRISE_ADMIN', 'SUPER_ADMIN'];
+const BYPASS_ROLES = ['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMIN', 'ADMIN', 'ADMIN_OPS'];
 
 /**
  * Middleware factory: Require access to a specific module

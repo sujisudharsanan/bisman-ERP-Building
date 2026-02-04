@@ -107,8 +107,8 @@ const checkAssetPermission = (requiredPermission) => {
       const userRole = (req.user?.role || '').toUpperCase();
       const tenantId = req.user?.tenant_id;
       
-      // Platform admins have full access
-      if (['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMIN'].includes(userRole)) {
+      // Platform admins and operations managers have full access
+      if (['ENTERPRISE_ADMIN', 'SUPER_ADMIN', 'SYSTEM_ADMIN', 'ADMIN', 'ADMIN_OPS', 'OPERATIONS_MANAGER'].includes(userRole)) {
         return next();
       }
       
@@ -581,19 +581,19 @@ router.post('/',
           id, tenant_id, asset_code, name, description, category_id, asset_type,
           serial_number, model_number, manufacturer, purchase_date, purchase_cost,
           current_value, salvage_value, warranty_expiry, vendor_name, vendor_contact,
-          purchase_order_number, invoice_number, location_name, department,
+          purchase_order_number, invoice_number, location_id, location_name, department,
           assigned_to_user_id, assigned_to_name, assigned_date, status, condition,
           requires_approval, approval_status, tags, custom_fields, notes, created_by
         ) VALUES (
           $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
-          $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32
+          $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33
         )
       `, [
         assetId, tenantId, assetCode, data.name, data.description, data.category_id,
         data.asset_type, data.serial_number, data.model_number, data.manufacturer,
         data.purchase_date, data.purchase_cost, data.purchase_cost, // current_value = purchase_cost initially
         data.salvage_value || 0, data.warranty_expiry, data.vendor_name, data.vendor_contact,
-        data.purchase_order_number, data.invoice_number, data.location_name, data.department,
+        data.purchase_order_number, data.invoice_number, data.branch_id || null, data.location_name, data.department,
         data.assigned_to_user_id, data.assigned_to_name, data.assigned_date, status, data.condition || 'good',
         requiresApproval, approvalStatus, data.tags || [], data.custom_fields || '{}', data.notes, userId
       ]);
