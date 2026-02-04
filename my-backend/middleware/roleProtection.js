@@ -159,15 +159,16 @@ const requireModuleAccess = (moduleName) => {
     // Super Admin: Check module assignments
     if (userRole === 'SUPER_ADMIN') {
       try {
-        // ✅ SECURITY FIX: Add tenant filter to module assignment check
-        const tenantId = req.user.tenant_id;
+        // ✅ SECURITY FIX: Check module assignment by module_code (case-insensitive)
         const hasAccess = await prisma.module_assignments.findFirst({
           where: {
             super_admin_id: req.user.id,
             modules: {
-              module_name: moduleName
-            },
-            ...(tenantId && { tenant_id: tenantId }) // ✅ SECURITY: Tenant isolation
+              module_code: {
+                equals: moduleName.toUpperCase(),
+                mode: 'insensitive'
+              }
+            }
           }
         });
 

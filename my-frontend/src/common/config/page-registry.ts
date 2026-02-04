@@ -1227,18 +1227,6 @@ export const PAGE_REGISTRY: PageMetadata[] = [
     order: 12,
   },
   {
-    id: 'fixed-asset-register',
-    name: 'Fixed Asset Register',
-    path: '/finance/fixed-asset-register',
-  iconKey: "Briefcase",
-    module: 'finance',
-    permissions: ['executive-dashboard'],
-    roles: ['ACCOUNTS', 'FINANCE_CONTROLLER'],
-    status: 'active',
-    description: 'Manage fixed assets',
-    order: 13,
-  },
-  {
     id: 'tax-reports',
     name: 'Tax Reports',
     path: '/finance/tax-reports',

@@ -898,22 +898,6 @@
       ]
     },
     {
-      "id": "fixed-asset-register",
-      "name": "Fixed Asset Register",
-      "path": "/finance/fixed-asset-register",
-      "module": "finance",
-      "status": "active",
-      "description": "Manage fixed assets",
-      "order": 13,
-      "permissions": [
-        "executive-dashboard"
-      ],
-      "roles": [
-        "ACCOUNTS",
-        "FINANCE CONTROLLER"
-      ]
-    },
-    {
       "id": "tax-reports",
       "name": "Tax Reports",
       "path": "/finance/tax-reports",

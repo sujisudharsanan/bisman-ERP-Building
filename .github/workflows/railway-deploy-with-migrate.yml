@@ -32,12 +32,12 @@ jobs:
       - name: Prisma migrate deploy (against Railway)
         if: ${{ env.RAILWAY_PASSWORD != '' }}
         env:
-          RAILWAY_USER: ${{ secrets.RAILWAY_USER }}
+          RAILWAY_USER: ${{ secrets.RAILWAY_USER || '' }}
           RAILWAY_PASSWORD: ${{ secrets.RAILWAY_PASSWORD }}
-          RAILWAY_HOST: ${{ secrets.RAILWAY_HOST }}
-          RAILWAY_PORT: ${{ secrets.RAILWAY_PORT }}
-          RAILWAY_DB: ${{ secrets.RAILWAY_DB }}
-          DATABASE_URL: "postgresql://${{ secrets.RAILWAY_USER }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST }}:${{ secrets.RAILWAY_PORT }}/${{ secrets.RAILWAY_DB || 'railway' }}?sslmode=require"
+          RAILWAY_HOST: ${{ secrets.RAILWAY_HOST || '' }}
+          RAILWAY_PORT: ${{ secrets.RAILWAY_PORT || '5432' }}
+          RAILWAY_DB: ${{ secrets.RAILWAY_DB || 'railway' }}
+          DATABASE_URL: "postgresql://${{ secrets.RAILWAY_USER || '' }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST || '' }}:${{ secrets.RAILWAY_PORT || '5432' }}/${{ secrets.RAILWAY_DB || 'railway' }}?sslmode=require"
         working-directory: my-backend
         run: |
           npx prisma migrate deploy || npx prisma db push
