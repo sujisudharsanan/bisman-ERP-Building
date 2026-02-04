@@ -121,6 +121,7 @@ const BYPASS_PATTERNS = [
   '/api/subscriptions/',  // Subscription APIs - role-protected at route level
   '/api/branches',  // Branches APIs - role-protected at route level
   '/api/assets',  // Asset Management APIs - has its own permission middleware (checkAssetPermission)
+  '/api/vendors-legal',  // Vendor Legal APIs - has authorize() on each endpoint
 ];
 
 const ALWAYS_ALLOWED_PAGES = new Set([
