@@ -46,6 +46,10 @@ const SIDEBAR_ROUTE_PREFIXES = {
   'SUPER_ADMIN': ['/super-admin', '/system', '/common/', '/dashboard', '/subscriptions'],
   'SYSTEM_ADMIN': ['/system', '/common/', '/dashboard'],
   'ADMIN': ['/admin', '/common/', '/dashboard'],
+  // ADMIN_OPS - Operations role sees operations, assets, tasks and common pages
+  // "My Dashboard" is at /dashboard, NOT /admin (which is Admin Dashboard)
+  'ADMIN_OPS': ['/operations', '/assets', '/tasks', '/common/', '/dashboard'],
+  'OPERATIONS_MANAGER': ['/operations', '/assets', '/tasks', '/common/', '/dashboard'],
 };
 
 // ============================================================================

@@ -45,6 +45,12 @@ const ROLE_SIDEBAR_MODULES = {
   // Regular Admin sees admin console + common
   'ADMIN': ['ADMIN', 'COMMON', 'DASHBOARD'],
   
+  // ADMIN_OPS - Operations role sees operations, assets, tasks
+  'ADMIN_OPS': ['OPERATIONS', 'ASSETS', 'TASK_MANAGEMENT', 'COMMON', 'DASHBOARD'],
+  
+  // OPERATIONS_MANAGER - Same as ADMIN_OPS
+  'OPERATIONS_MANAGER': ['OPERATIONS', 'ASSETS', 'TASK_MANAGEMENT', 'COMMON', 'DASHBOARD'],
+  
   // All other roles: null means "show all modules user has access to"
 };
 
@@ -55,6 +61,10 @@ const ROLE_ROUTE_PREFIXES = {
   'SUPER_ADMIN': ['/super-admin', '/system', '/common/', '/dashboard', '/subscriptions'],
   'SYSTEM_ADMIN': ['/system', '/common/', '/dashboard'],
   'ADMIN': ['/admin', '/common/', '/dashboard'],
+  // ADMIN_OPS - Operations role sees operations, assets, tasks and common pages
+  // "My Dashboard" is at /dashboard, NOT /admin (which is Admin Dashboard)
+  'ADMIN_OPS': ['/operations', '/assets', '/tasks', '/common/', '/dashboard'],
+  'OPERATIONS_MANAGER': ['/operations', '/assets', '/tasks', '/common/', '/dashboard'],
 };
 
 // Common pages that should ALWAYS be accessible to ALL logged-in users
