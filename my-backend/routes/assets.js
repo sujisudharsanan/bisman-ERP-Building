@@ -336,6 +336,8 @@ router.get('/', authMiddleware, checkAssetPermission('VIEW_ASSET'), async (req, 
     const total = parseInt(countResult.rows[0].total);
     
     // Data query
+    // Note: assigned_to_user_id is TEXT (can be UUID or legacy_id string)
+    // Join on both legacy_id::text or id::text to support both formats
     const dataResult = await pool.query(`
       SELECT 
         a.*,
@@ -344,7 +346,7 @@ router.get('/', authMiddleware, checkAssetPermission('VIEW_ASSET'), async (req, 
         u.first_name || ' ' || u.last_name as assigned_to_display_name
       FROM assets a
       LEFT JOIN asset_categories ac ON ac.id = a.category_id
-      LEFT JOIN users_enhanced u ON u.legacy_id = a.assigned_to_user_id
+      LEFT JOIN users_enhanced u ON u.legacy_id::text = a.assigned_to_user_id OR u.id::text = a.assigned_to_user_id
       ${whereClause}
       ORDER BY a.${sortColumn} ${sortDir}
       LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
@@ -625,8 +627,8 @@ router.get('/:id', authMiddleware, checkAssetPermission('VIEW_ASSET'), async (re
         creator.first_name || ' ' || creator.last_name as created_by_name
       FROM assets a
       LEFT JOIN asset_categories ac ON ac.id = a.category_id
-      LEFT JOIN users_enhanced u ON u.legacy_id = a.assigned_to_user_id
-      LEFT JOIN users_enhanced creator ON creator.legacy_id = a.created_by
+      LEFT JOIN users_enhanced u ON u.legacy_id::text = a.assigned_to_user_id OR u.id::text = a.assigned_to_user_id
+      LEFT JOIN users_enhanced creator ON creator.legacy_id::text = a.created_by OR creator.id::text = a.created_by
       WHERE a.id = $1 AND a.tenant_id = $2 AND a.is_deleted = false
     `, [id, tenantId]);
     
