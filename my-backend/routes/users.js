@@ -593,16 +593,19 @@ router.post('/:id/reset-password', authMiddleware, async (req, res) => {
     console.log(`[reset-password] Found user: ${user.email}, updating password with raw SQL...`);
 
     // Use raw SQL to bypass RLS for this admin operation
-    const updateResult = await prisma.$executeRaw`
-      UPDATE users_enhanced 
-      SET 
-        password_hash = ${hashedPassword},
-        password_changed_at = NOW(),
-        login_attempts = 0,
-        locked_until = NULL,
-        updated_at = NOW()
-      WHERE id = ${id}::uuid
-    `;
+    // Using $executeRawUnsafe because Prisma tagged templates don't handle UUID casting well
+    const updateResult = await prisma.$executeRawUnsafe(
+      `UPDATE users_enhanced 
+       SET 
+         password_hash = $1,
+         password_changed_at = NOW(),
+         login_attempts = 0,
+         locked_until = NULL,
+         updated_at = NOW()
+       WHERE id = $2::uuid`,
+      hashedPassword,
+      id
+    );
 
     console.log(`[reset-password] Update result: ${updateResult} rows affected`);
     console.log(`[reset-password] Password reset successful for user ${user.email} by ${req.user?.email}`);
