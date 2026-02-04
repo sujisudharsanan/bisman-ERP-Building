@@ -32,24 +32,30 @@ jobs:
       - name: Prisma migrate deploy (against Railway)
         if: ${{ env.RAILWAY_PASSWORD != '' }}
         env:
-          RAILWAY_USER: ${{ secrets.RAILWAY_USER || '' }}
+          RAILWAY_USER: ${{ secrets.RAILWAY_USER }}
           RAILWAY_PASSWORD: ${{ secrets.RAILWAY_PASSWORD }}
-          RAILWAY_HOST: ${{ secrets.RAILWAY_HOST || '' }}
-          RAILWAY_PORT: ${{ secrets.RAILWAY_PORT || '5432' }}
-          RAILWAY_DB: ${{ secrets.RAILWAY_DB || 'railway' }}
-          DATABASE_URL: "postgresql://${{ secrets.RAILWAY_USER || '' }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST || '' }}:${{ secrets.RAILWAY_PORT || '5432' }}/${{ secrets.RAILWAY_DB || 'railway' }}?sslmode=require"
+          RAILWAY_HOST: ${{ secrets.RAILWAY_HOST }}
+          RAILWAY_PORT: ${{ secrets.RAILWAY_PORT || '' }}
+          RAILWAY_DB: ${{ secrets.RAILWAY_DB || '' }}
         working-directory: my-backend
         run: |
+          export DATABASE_URL="postgresql://${RAILWAY_USER}:${RAILWAY_PASSWORD}@${RAILWAY_HOST}:${RAILWAY_PORT:-5432}/${RAILWAY_DB:-railway}?sslmode=require"
           npx prisma migrate deploy || npx prisma db push
           npm run -s deploy:post || true
 
       - name: Apply demo password/data fixes
         if: ${{ env.RAILWAY_PASSWORD != '' }}
         env:
-          DATABASE_URL: "postgresql://${{ secrets.RAILWAY_USER }}:${{ secrets.RAILWAY_PASSWORD }}@${{ secrets.RAILWAY_HOST }}:${{ secrets.RAILWAY_PORT }}/${{ secrets.RAILWAY_DB || 'railway' }}?sslmode=require"
+          RAILWAY_USER: ${{ secrets.RAILWAY_USER }}
+          RAILWAY_PASSWORD: ${{ secrets.RAILWAY_PASSWORD }}
+          RAILWAY_HOST: ${{ secrets.RAILWAY_HOST || '' }}
+          RAILWAY_PORT: ${{ secrets.RAILWAY_PORT || '' }}
+          RAILWAY_DB: ${{ secrets.RAILWAY_DB || '' }}
           PGSSLMODE: "require"
+        working-directory: my-backend
         run: |
           set -euo pipefail
+          export DATABASE_URL="postgresql://${RAILWAY_USER}:${RAILWAY_PASSWORD}@${RAILWAY_HOST}:${RAILWAY_PORT:-5432}/${RAILWAY_DB:-railway}?sslmode=require"
           echo "Applying fix-railway-passwords.sql (if present)"
           if [ -f fix-railway-passwords.sql ]; then
             psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f fix-railway-passwords.sql
@@ -67,12 +73,27 @@ jobs:
             psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f ensure-demo-users.sql
           else
             echo "ensure-demo-users.sql not found, skipping"
-      - name: Optional restart via Railway CLI
-          echo "Ensuring demo users exist (idempotent upsert)"
-          if [ -f ensure-demo-users.sql ]; then
-            psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f ensure-demo-users.sql
-          else
-            echo "ensure-demo-users.sql not found, skipping"
+          fi
+
+      - name: Apply database schema migrations
+        if: ${{ env.RAILWAY_PASSWORD != '' }}
+        env:
+          RAILWAY_USER: ${{ secrets.RAILWAY_USER }}
+          RAILWAY_PASSWORD: ${{ secrets.RAILWAY_PASSWORD }}
+          RAILWAY_HOST: ${{ secrets.RAILWAY_HOST }}
+          RAILWAY_PORT: ${{ secrets.RAILWAY_PORT }}
+          RAILWAY_DB: ${{ secrets.RAILWAY_DB }}
+          PGSSLMODE: "require"
+        run: |
+          set -euo pipefail
+          export DATABASE_URL="postgresql://${RAILWAY_USER}:${RAILWAY_PASSWORD}@${RAILWAY_HOST}:${RAILWAY_PORT:-5432}/${RAILWAY_DB:-railway}?sslmode=require"
+          echo "Applying asset management tables migration"
+          if [ -f database/migrations/050_create_assets_tables.sql ]; then
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=0 -f database/migrations/050_create_assets_tables.sql || echo "Assets tables migration completed (may already exist)"
+          fi
+          echo "Applying vendor legal master migration"
+          if [ -f database/migrations/051_create_vendor_legal_master.sql ]; then
+            psql "$DATABASE_URL" -v ON_ERROR_STOP=0 -f database/migrations/051_create_vendor_legal_master.sql || echo "Vendor legal migration completed (may already exist)"
           fi
 
       - name: Optional restart via Railway CLI

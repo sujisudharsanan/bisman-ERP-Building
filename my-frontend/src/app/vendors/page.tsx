@@ -306,7 +306,7 @@ export default function VendorLegalMasterPage() {
 
   const fetchSummary = useCallback(async () => {
     try {
-      const response = await api.get('/api/vendors/stats/summary');
+      const response = await api.get('/api/vendors-legal/stats/summary');
       if (response.data.success) {
         setSummary(response.data.data.summary);
       }
@@ -327,7 +327,7 @@ export default function VendorLegalMasterPage() {
         ...(approvalFilter && { approval_status: approvalFilter }),
       });
       
-      const response = await api.get(`/api/vendors?${params}`);
+      const response = await api.get(`/api/vendors-legal?${params}`);
       if (response.data.success) {
         setVendors(response.data.data);
         setPagination(prev => ({
@@ -365,7 +365,7 @@ export default function VendorLegalMasterPage() {
         break;
       case 'submit':
         try {
-          await api.post(`/api/vendors/${vendorId}/submit`);
+          await api.post(`/api/vendors-legal/${vendorId}/submit`);
           fetchVendors();
         } catch (error) {
           console.error('Error submitting vendor:', error);
@@ -373,7 +373,7 @@ export default function VendorLegalMasterPage() {
         break;
       case 'approve':
         try {
-          await api.post(`/api/vendors/${vendorId}/approve`, { remarks: 'Approved' });
+          await api.post(`/api/vendors-legal/${vendorId}/approve`, { remarks: 'Approved' });
           fetchVendors();
           fetchSummary();
         } catch (error) {
@@ -384,7 +384,7 @@ export default function VendorLegalMasterPage() {
         const reason = prompt('Enter suspension reason:');
         if (reason) {
           try {
-            await api.post(`/api/vendors/${vendorId}/suspend`, { reason });
+            await api.post(`/api/vendors-legal/${vendorId}/suspend`, { reason });
             fetchVendors();
             fetchSummary();
           } catch (error) {
@@ -395,7 +395,7 @@ export default function VendorLegalMasterPage() {
       case 'archive':
         if (confirm('Are you sure you want to archive this vendor?')) {
           try {
-            await api.delete(`/api/vendors/${vendorId}`);
+            await api.delete(`/api/vendors-legal/${vendorId}`);
             fetchVendors();
             fetchSummary();
           } catch (error) {
@@ -412,7 +412,7 @@ export default function VendorLegalMasterPage() {
         format: 'csv',
         ...(statusFilter && { status: statusFilter }),
       });
-      const response = await api.get(`/api/vendors/export?${params}`, {
+      const response = await api.get(`/api/vendors-legal/export?${params}`, {
         responseType: 'blob'
       });
       

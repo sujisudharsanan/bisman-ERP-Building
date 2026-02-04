@@ -477,8 +477,8 @@ export default function VendorAddPage() {
     const fetchLookups = async () => {
       try {
         const [btRes, indRes] = await Promise.all([
-          api.get('/api/vendors/lookups/business-types'),
-          api.get('/api/vendors/lookups/industries'),
+          api.get('/api/vendors-legal/lookups/business-types'),
+          api.get('/api/vendors-legal/lookups/industries'),
         ]);
         if (btRes.data.success) setBusinessTypes(btRes.data.data);
         if (indRes.data.success) setIndustries(indRes.data.data);
@@ -530,7 +530,7 @@ export default function VendorAddPage() {
   const handleSaveDraft = async () => {
     setSaving(true);
     try {
-      const response = await api.post('/api/vendors', {
+      const response = await api.post('/api/vendors-legal', {
         ...formData,
         is_draft: true,
       });
@@ -569,7 +569,7 @@ export default function VendorAddPage() {
     setLoading(true);
     try {
       // Create vendor
-      const response = await api.post('/api/vendors', {
+      const response = await api.post('/api/vendors-legal', {
         ...formData,
         is_draft: false,
       });
@@ -584,7 +584,7 @@ export default function VendorAddPage() {
           formDataUpload.append('document_type', doc.type);
           formDataUpload.append('document_name', doc.name);
           
-          await api.post(`/api/vendors/${vendorId}/documents`, formDataUpload, {
+          await api.post(`/api/vendors-legal/${vendorId}/documents`, formDataUpload, {
             headers: { 'Content-Type': 'multipart/form-data' },
           });
         }

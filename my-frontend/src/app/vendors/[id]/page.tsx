@@ -344,7 +344,7 @@ export default function VendorDetailPage() {
     
     setLoading(true);
     try {
-      const response = await api.get(`/api/vendors/${vendorId}`);
+      const response = await api.get(`/api/vendors-legal/${vendorId}`);
       if (response.data.success) {
         setVendor(response.data.data);
       }
@@ -366,7 +366,7 @@ export default function VendorDetailPage() {
   const handleApprove = async () => {
     const remarks = prompt('Add approval remarks (optional):');
     try {
-      await api.post(`/api/vendors/${vendorId}/approve`, { remarks });
+      await api.post(`/api/vendors-legal/${vendorId}/approve`, { remarks });
       fetchVendor();
     } catch (error) {
       console.error('Error approving vendor:', error);
@@ -380,7 +380,7 @@ export default function VendorDetailPage() {
       return;
     }
     try {
-      await api.post(`/api/vendors/${vendorId}/reject`, { remarks });
+      await api.post(`/api/vendors-legal/${vendorId}/reject`, { remarks });
       fetchVendor();
     } catch (error) {
       console.error('Error rejecting vendor:', error);
@@ -394,7 +394,7 @@ export default function VendorDetailPage() {
       return;
     }
     try {
-      await api.post(`/api/vendors/${vendorId}/suspend`, { reason });
+      await api.post(`/api/vendors-legal/${vendorId}/suspend`, { reason });
       fetchVendor();
     } catch (error) {
       console.error('Error suspending vendor:', error);
@@ -403,7 +403,7 @@ export default function VendorDetailPage() {
 
   const handleReactivate = async () => {
     try {
-      await api.post(`/api/vendors/${vendorId}/reactivate`, { remarks: 'Reactivated' });
+      await api.post(`/api/vendors-legal/${vendorId}/reactivate`, { remarks: 'Reactivated' });
       fetchVendor();
     } catch (error) {
       console.error('Error reactivating vendor:', error);
