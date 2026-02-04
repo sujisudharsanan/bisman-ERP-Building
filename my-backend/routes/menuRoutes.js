@@ -33,38 +33,73 @@ try {
 // Admins can still ACCESS all pages, but sidebar shows only their home modules
 // ============================================================================
 const ROLE_SIDEBAR_MODULES = {
-  // Enterprise Admin sees only EA module + essential common pages
+  // Platform Admins
   'ENTERPRISE_ADMIN': ['ENTERPRISE_ADMIN', 'COMMON', 'DASHBOARD'],
-  
-  // Super Admin sees SA module + system + common
   'SUPER_ADMIN': ['SUPER_ADMIN', 'SYSTEM', 'COMMON', 'DASHBOARD', 'SUBSCRIPTIONS'],
-  
-  // System Admin sees system module
   'SYSTEM_ADMIN': ['SYSTEM', 'COMMON', 'DASHBOARD'],
-  
-  // Regular Admin sees admin console + common
   'ADMIN': ['ADMIN', 'COMMON', 'DASHBOARD'],
   
-  // ADMIN_OPS - Operations role sees operations, assets, tasks
+  // Operations roles
   'ADMIN_OPS': ['OPERATIONS', 'ASSETS', 'TASK_MANAGEMENT', 'COMMON', 'DASHBOARD'],
-  
-  // OPERATIONS_MANAGER - Same as ADMIN_OPS
   'OPERATIONS_MANAGER': ['OPERATIONS', 'ASSETS', 'TASK_MANAGEMENT', 'COMMON', 'DASHBOARD'],
   
-  // All other roles: null means "show all modules user has access to"
+  // Finance roles
+  'CFO': ['FINANCE', 'REPORTS', 'COMMON', 'DASHBOARD'],
+  'FINANCE_CONTROLLER': ['FINANCE', 'REPORTS', 'COMMON', 'DASHBOARD'],
+  'TREASURY': ['FINANCE', 'COMMON', 'DASHBOARD'],
+  'ACCOUNTS': ['FINANCE', 'COMMON', 'DASHBOARD'],
+  'ACCOUNTS_PAYABLE': ['FINANCE', 'PROCUREMENT', 'COMMON', 'DASHBOARD'],
+  'BANKER': ['FINANCE', 'COMMON', 'DASHBOARD'],
+  
+  // Procurement roles
+  'PROCUREMENT_OFFICER': ['PROCUREMENT', 'COMMON', 'DASHBOARD'],
+  'STORE_INCHARGE': ['INVENTORY', 'PROCUREMENT', 'COMMON', 'DASHBOARD'],
+  'HUB_INCHARGE': ['OPERATIONS', 'INVENTORY', 'COMMON', 'DASHBOARD'],
+  
+  // Compliance & Legal
+  'COMPLIANCE': ['COMPLIANCE', 'COMMON', 'DASHBOARD'],
+  'LEGAL': ['COMPLIANCE', 'COMMON', 'DASHBOARD'],
+  
+  // HR roles
+  'HR_MANAGER': ['HR', 'COMMON', 'DASHBOARD'],
+  
+  // All other roles: null (not in map) means "show all modules user has access to"
 };
 
 // Route prefixes for admin roles - only show pages with these route prefixes
 // This prevents showing unrelated pages from COMMON module
 const ROLE_ROUTE_PREFIXES = {
+  // Platform Admins
   'ENTERPRISE_ADMIN': ['/enterprise-admin', '/common/calendar', '/common/user-settings'],
   'SUPER_ADMIN': ['/super-admin', '/system', '/common/', '/dashboard', '/subscriptions'],
   'SYSTEM_ADMIN': ['/system', '/common/', '/dashboard'],
   'ADMIN': ['/admin', '/common/', '/dashboard'],
-  // ADMIN_OPS - Operations role sees operations, assets, tasks and common pages
-  // "My Dashboard" is at /dashboard, NOT /admin (which is Admin Dashboard)
+  
+  // Operations roles
   'ADMIN_OPS': ['/operations', '/assets', '/tasks', '/common/', '/dashboard'],
   'OPERATIONS_MANAGER': ['/operations', '/assets', '/tasks', '/common/', '/dashboard'],
+  
+  // Finance roles - see finance, reports, dashboard
+  'CFO': ['/finance', '/reports', '/common/', '/dashboard'],
+  'FINANCE_CONTROLLER': ['/finance', '/reports', '/common/', '/dashboard'],
+  'TREASURY': ['/finance', '/common/', '/dashboard'],
+  'ACCOUNTS': ['/finance', '/common/', '/dashboard'],
+  'ACCOUNTS_PAYABLE': ['/finance', '/vendors', '/common/', '/dashboard'],
+  'BANKER': ['/finance', '/common/', '/dashboard'],
+  
+  // Procurement roles
+  'PROCUREMENT_OFFICER': ['/procurement', '/vendors', '/common/', '/dashboard'],
+  'STORE_INCHARGE': ['/inventory', '/procurement', '/common/', '/dashboard'],
+  'HUB_INCHARGE': ['/operations', '/inventory', '/common/', '/dashboard'],
+  
+  // Compliance & Legal
+  'COMPLIANCE': ['/compliance', '/audit', '/common/', '/dashboard'],
+  'LEGAL': ['/compliance', '/legal', '/common/', '/dashboard'],
+  
+  // HR roles
+  'HR_MANAGER': ['/hr', '/common/', '/dashboard'],
+  
+  // Staff and general users - no filter (null) = show all accessible pages
 };
 
 // Common pages that should ALWAYS be accessible to ALL logged-in users

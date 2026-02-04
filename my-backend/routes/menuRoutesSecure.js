@@ -42,14 +42,39 @@ const ALWAYS_ACCESSIBLE_ROUTES = [
 // Admin users may have ACCESS to many pages but sidebar shows only their home modules
 // ============================================================================
 const SIDEBAR_ROUTE_PREFIXES = {
+  // Platform Admins
   'ENTERPRISE_ADMIN': ['/enterprise-admin', '/common/calendar', '/common/user-settings', '/dashboard'],
   'SUPER_ADMIN': ['/super-admin', '/system', '/common/', '/dashboard', '/subscriptions'],
   'SYSTEM_ADMIN': ['/system', '/common/', '/dashboard'],
   'ADMIN': ['/admin', '/common/', '/dashboard'],
-  // ADMIN_OPS - Operations role sees operations, assets, tasks and common pages
-  // "My Dashboard" is at /dashboard, NOT /admin (which is Admin Dashboard)
+  
+  // Operations roles
   'ADMIN_OPS': ['/operations', '/assets', '/tasks', '/common/', '/dashboard'],
   'OPERATIONS_MANAGER': ['/operations', '/assets', '/tasks', '/common/', '/dashboard'],
+  
+  // Finance roles - see finance, reports, dashboard
+  'CFO': ['/finance', '/reports', '/common/', '/dashboard'],
+  'FINANCE_CONTROLLER': ['/finance', '/reports', '/common/', '/dashboard'],
+  'TREASURY': ['/finance', '/common/', '/dashboard'],
+  'ACCOUNTS': ['/finance', '/common/', '/dashboard'],
+  'ACCOUNTS_PAYABLE': ['/finance', '/vendors', '/common/', '/dashboard'],
+  'BANKER': ['/finance', '/common/', '/dashboard'],
+  
+  // Procurement roles
+  'PROCUREMENT_OFFICER': ['/procurement', '/vendors', '/common/', '/dashboard'],
+  'STORE_INCHARGE': ['/inventory', '/procurement', '/common/', '/dashboard'],
+  'HUB_INCHARGE': ['/operations', '/inventory', '/common/', '/dashboard'],
+  
+  // Compliance & Legal
+  'COMPLIANCE': ['/compliance', '/audit', '/common/', '/dashboard'],
+  'LEGAL': ['/compliance', '/legal', '/common/', '/dashboard'],
+  
+  // HR roles
+  'HR_MANAGER': ['/hr', '/common/', '/dashboard'],
+  
+  // Staff and general users - show all they have access to (no filter)
+  // 'STAFF': null,  // No filter = show all accessible pages
+  // 'MANAGER': null,
 };
 
 // ============================================================================
