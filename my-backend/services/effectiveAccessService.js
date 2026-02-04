@@ -828,11 +828,13 @@ async function computeEffectiveRoles({
   userId,
   tenantId,
   planId,
-  superadminId = null
+  superadminId = null,
+  role = null
 }) {
   const prisma = getPrisma();
+  const normalizedRole = (role || '').toUpperCase();
   
-  console.log(`[EffectiveAccess] Computing roles for user=${userId}, tenant=${tenantId}, plan=${planId}`);
+  console.log(`[EffectiveAccess] Computing roles for user=${userId}, tenant=${tenantId}, plan=${planId}, role=${normalizedRole}`);
   
   const result = {
     effectiveRoles: [],
@@ -859,11 +861,12 @@ async function computeEffectiveRoles({
     const numericSuperadminId = parseInt(superadminId, 10);
     if (superadminId && !isNaN(numericSuperadminId) && numericSuperadminId > 0) {
       const enterpriseRoleAssignments = await prisma.$queryRaw`
-        SELECT role_id, role_name
-        FROM admin_role_assignments
-        WHERE assignee_id = ${numericSuperadminId}
-          AND assigner_type = 'ENTERPRISE_ADMIN'
-          AND is_active = true
+        SELECT ara.role_id, r.name as role_name
+        FROM admin_role_assignments ara
+        JOIN rbac_roles r ON r.id = ara.role_id
+        WHERE ara.assignee_id = ${numericSuperadminId}
+          AND ara.assigner_type = 'ENTERPRISE_ADMIN'
+          AND ara.is_active = true
       `;
       
       if (enterpriseRoleAssignments.length > 0) {
@@ -879,11 +882,12 @@ async function computeEffectiveRoles({
     const numericUserId = parseInt(userId, 10);
     if (!isNaN(numericUserId) && numericUserId > 0) {
       superadminRoleAssignments = await prisma.$queryRaw`
-        SELECT role_id, role_name
-        FROM admin_role_assignments
-        WHERE assignee_id = ${numericUserId}
-          AND assigner_type = 'SUPER_ADMIN'
-          AND is_active = true
+        SELECT ara.role_id, r.name as role_name
+        FROM admin_role_assignments ara
+        JOIN rbac_roles r ON r.id = ara.role_id
+        WHERE ara.assignee_id = ${numericUserId}
+          AND ara.assigner_type = 'SUPER_ADMIN'
+          AND ara.is_active = true
       `;
     }
     
@@ -894,12 +898,12 @@ async function computeEffectiveRoles({
       );
     }
     
-    // Also check user_roles junction table (skip if userId is not numeric)
+    // Also check rbac_user_roles junction table (skip if userId is not numeric)
     let userRoles = [];
     if (!isNaN(numericUserId) && numericUserId > 0) {
       userRoles = await prisma.$queryRaw`
         SELECT r.name
-        FROM user_roles ur
+        FROM rbac_user_roles ur
         JOIN rbac_roles r ON ur.role_id = r.id
         WHERE ur.user_id = ${numericUserId}
       `;
@@ -910,6 +914,23 @@ async function computeEffectiveRoles({
       for (const ur of userRoles) {
         superadminApprovedRoles.add((ur.name || '').toUpperCase());
       }
+    }
+    
+    // TENANT-SCOPED ROLE FIX: For tenant-scoped users (ADMIN, etc.),
+    // if they're logged in with a valid role from JWT, that role should be included
+    // in their effective roles. The JWT role is already verified during authentication.
+    const PLATFORM_ROLES = ['SUPER_ADMIN', 'ENTERPRISE_ADMIN'];
+    const isTenantScopedRole = normalizedRole && !PLATFORM_ROLES.includes(normalizedRole);
+    
+    if (isTenantScopedRole) {
+      // For tenant-scoped users, their authenticated role bypasses the approval chain
+      // since they already passed authentication with that role
+      if (!superadminApprovedRoles) superadminApprovedRoles = new Set();
+      superadminApprovedRoles.add(normalizedRole);
+      
+      // Also allow enterprise approval bypass for tenant-scoped roles
+      if (!enterpriseApprovedRoles) enterpriseApprovedRoles = new Set();
+      enterpriseApprovedRoles.add(normalizedRole);
     }
     
     // COMPUTE INTERSECTION
