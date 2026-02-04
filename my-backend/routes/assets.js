@@ -695,6 +695,24 @@ router.post('/',
       
       const data = req.body;
       
+      // Sanitize empty strings to null for date and numeric fields
+      const dateFields = ['purchase_date', 'warranty_expiry', 'assigned_date', 'disposal_date', 'last_maintenance_date', 'next_maintenance_date'];
+      const numericFields = ['purchase_cost', 'current_value', 'salvage_value', 'category_id', 'branch_id', 'location_id'];
+      
+      dateFields.forEach(field => {
+        if (data[field] === '' || data[field] === undefined) {
+          data[field] = null;
+        }
+      });
+      
+      numericFields.forEach(field => {
+        if (data[field] === '' || data[field] === undefined) {
+          data[field] = null;
+        } else if (data[field] !== null) {
+          data[field] = parseFloat(data[field]) || null;
+        }
+      });
+      
       // Validate
       const validationErrors = validateAssetData(data, false);
       if (validationErrors.length > 0) {
