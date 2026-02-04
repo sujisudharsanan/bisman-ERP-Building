@@ -160,8 +160,9 @@ class RBACController {
         })
       }
 
+      // UUID standardization: userId is now a UUID string, no parseInt needed
       const hasPermission = await rbacService.checkUserPermission(
-        parseInt(userId), 
+        userId, 
         routePath, 
         action
       )

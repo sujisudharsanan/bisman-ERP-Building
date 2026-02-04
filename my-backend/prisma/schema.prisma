@@ -74,44 +74,45 @@ model admin_role_assignments {
 
 /// Three-layer page access control: Enterprise Admin → Superadmin → Client
 model admin_page_assignments {
-  id            Int       @id @default(autoincrement())
+  id            Int           @id @default(autoincrement())
   assigner_id   Int
-  assigner_type String    @db.VarChar(50)
+  assigner_type String        @db.VarChar(50)
   assignee_id   Int
-  assignee_type String    @db.VarChar(50)
+  assignee_type String        @db.VarChar(50)
   page_id       Int?
-  page_key      String    @db.VarChar(255)
-  tenant_id     String?   @db.VarChar(100)
-  is_active     Boolean   @default(true)
-  granted_at    DateTime? @default(now()) @db.Timestamptz(6)
-  revoked_at    DateTime? @db.Timestamptz(6)
-  created_at    DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime? @default(now()) @db.Timestamptz(6)
+  page_key      String        @db.VarChar(255)
+  tenant_id     String?       @db.VarChar(100)
+  is_active     Boolean?      @default(true)
+  granted_at    DateTime?     @default(now()) @db.Timestamptz(6)
+  revoked_at    DateTime?     @db.Timestamptz(6)
+  created_at    DateTime?     @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime?     @default(now()) @db.Timestamptz(6)
   notes         String?
+  pages_master  pages_master? @relation(fields: [page_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([assigner_id, assigner_type, assignee_id, page_key])
   @@index([assigner_id, assigner_type], map: "idx_admin_page_assignments_assigner")
   @@index([assignee_id, assignee_type], map: "idx_admin_page_assignments_assignee")
   @@index([page_key], map: "idx_admin_page_assignments_page")
-  @@index([tenant_id], map: "idx_admin_page_assignments_tenant")
 }
 
 /// Three-layer role grants: Enterprise Admin → Superadmin → Client
 model admin_role_grants {
-  id            Int       @id @default(autoincrement())
+  id            Int         @id @default(autoincrement())
   assigner_id   Int
-  assigner_type String    @db.VarChar(50)
+  assigner_type String      @db.VarChar(50)
   assignee_id   Int
-  assignee_type String    @db.VarChar(50)
+  assignee_type String      @db.VarChar(50)
   role_id       Int?
-  role_name     String    @db.VarChar(100)
-  tenant_id     String?   @db.VarChar(100)
-  is_active     Boolean   @default(true)
-  granted_at    DateTime? @default(now()) @db.Timestamptz(6)
-  revoked_at    DateTime? @db.Timestamptz(6)
-  created_at    DateTime? @default(now()) @db.Timestamptz(6)
-  updated_at    DateTime? @default(now()) @db.Timestamptz(6)
+  role_name     String      @db.VarChar(100)
+  tenant_id     String?     @db.VarChar(100)
+  is_active     Boolean?    @default(true)
+  granted_at    DateTime?   @default(now()) @db.Timestamptz(6)
+  revoked_at    DateTime?   @db.Timestamptz(6)
+  created_at    DateTime?   @default(now()) @db.Timestamptz(6)
+  updated_at    DateTime?   @default(now()) @db.Timestamptz(6)
   notes         String?
+  rbac_roles    rbac_roles? @relation(fields: [role_id], references: [id], onDelete: Cascade, onUpdate: NoAction)
 
   @@unique([assigner_id, assigner_type, assignee_id, role_name])
   @@index([assigner_id, assigner_type], map: "idx_admin_role_grants_assigner")
@@ -120,31 +121,29 @@ model admin_role_grants {
 
 /// Audit log for subscription access changes
 model subscription_access_audit_log {
-  id             Int       @id @default(autoincrement())
-  action         String    @db.VarChar(50)
-  actor_id       Int
-  actor_type     String    @db.VarChar(50)
-  actor_email    String?   @db.VarChar(255)
-  target_id      Int?
-  target_type    String?   @db.VarChar(50)
-  target_email   String?   @db.VarChar(255)
-  resource_type  String    @db.VarChar(50)
-  resource_id    String?   @db.VarChar(255)
-  resource_name  String?   @db.VarChar(255)
-  tenant_id      String?   @db.VarChar(100)
-  plan_id        Int?
-  old_state      Json?
-  new_state      Json?
-  ip_address     String?   @db.VarChar(45)
-  user_agent     String?
-  request_id     String?   @db.VarChar(100)
-  created_at     DateTime? @default(now()) @db.Timestamptz(6)
+  id            Int       @id @default(autoincrement())
+  action        String    @db.VarChar(50)
+  actor_id      Int
+  actor_type    String    @db.VarChar(50)
+  actor_email   String?   @db.VarChar(255)
+  target_id     Int?
+  target_type   String?   @db.VarChar(50)
+  target_email  String?   @db.VarChar(255)
+  resource_type String    @db.VarChar(50)
+  resource_id   String?   @db.VarChar(255)
+  resource_name String?   @db.VarChar(255)
+  tenant_id     String?   @db.VarChar(100)
+  plan_id       Int?
+  old_state     Json?
+  new_state     Json?
+  ip_address    String?   @db.Inet
+  user_agent    String?
+  request_id    String?   @db.VarChar(100)
+  created_at    DateTime? @default(now()) @db.Timestamptz(6)
 
   @@index([actor_id, actor_type], map: "idx_subscription_audit_actor")
   @@index([target_id, target_type], map: "idx_subscription_audit_target")
   @@index([tenant_id], map: "idx_subscription_audit_tenant")
-  @@index([action], map: "idx_subscription_audit_action")
-  @@index([created_at(sort: Desc)], map: "idx_subscription_audit_created")
 }
 
 /// Cache for computed effective access (performance optimization)
@@ -156,11 +155,11 @@ model effective_access_cache {
   effective_pages String[]  @default([])
   effective_roles String[]  @default([])
   computed_at     DateTime? @default(now()) @db.Timestamptz(6)
-  expires_at      DateTime? @db.Timestamptz(6)
-  is_valid        Boolean   @default(true)
-  layer1_count    Int       @default(0)
-  layer2_count    Int       @default(0)
-  layer3_count    Int       @default(0)
+  expires_at      DateTime? @default(dbgenerated("(now() + '01:00:00'::interval)")) @db.Timestamptz(6)
+  is_valid        Boolean?  @default(true)
+  layer1_count    Int?      @default(0)
+  layer2_count    Int?      @default(0)
+  layer3_count    Int?      @default(0)
 
   @@unique([user_id, tenant_id])
   @@index([user_id], map: "idx_effective_cache_user")
@@ -2219,6 +2218,7 @@ model master_subscription_plans {
 
   @@index([code], map: "idx_master_plans_code")
   @@index([status], map: "idx_master_plans_status")
+  @@index([price_monthly, price_yearly], map: "idx_master_plans_pricing")
 }
 
 /// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
@@ -2654,7 +2654,7 @@ model plan_feature_controls {
   id                        Int                       @id @default(autoincrement())
   plan_id                   Int
   feature_code              String                    @db.VarChar(100)
-  free_limit                Int                       @default(0)
+  free_limit                Int?                      @default(0)
   limit_period              limit_period_type         @default(monthly)
   unlock_price              Decimal                   @default(0) @db.Decimal(12, 2)
   unlock_unit               String?                   @default("per month") @db.VarChar(50)
@@ -2758,6 +2758,7 @@ model tenant_module_overrides {
   @@unique([tenant_id, module_id], map: "unique_tenant_module_override")
   @@index([tenant_id], map: "idx_tenant_override_tenant")
   @@index([module_id], map: "idx_tenant_override_module")
+  @@index([tenant_id], map: "idx_tenant_overrides_tenant")
 }
 
 /// Audit log for subscription publish events (staging to production)
@@ -2810,53 +2811,66 @@ model modules_master {
 
 /// Master pages table - defines all pages/routes in the system
 model pages_master {
-  id                   Int                @id @default(autoincrement())
-  page_code            String             @unique @db.VarChar(100)
-  display_name         String             @db.VarChar(200)
-  description          String?
-  route                String             @db.VarChar(300)
-  module_id            Int?
-  icon                 String?            @db.VarChar(50)
-  sort_order           Int?               @default(0)
-  is_active            Boolean?           @default(true)
-  show_in_sidebar      Boolean?           @default(true)
-  required_roles       String[]           @default([])
-  required_permissions String[]           @default([])
-  required_features    String[]           @default([])
-  min_role_level       Int?               @default(1)
-  layout_group         String?            @default("common") @db.VarChar(50)
-  status               String?            @default("active") @db.VarChar(20)
-  created_at           DateTime?          @default(now()) @db.Timestamptz(6)
-  updated_at           DateTime?          @default(now()) @db.Timestamptz(6)
-  is_public            Boolean?           @default(false)
-  module               modules_master?    @relation(fields: [module_id], references: [id])
-  role_page_access     role_page_access[]
+  id                     Int                      @id @default(autoincrement())
+  page_code              String                   @unique @db.VarChar(100)
+  display_name           String                   @db.VarChar(200)
+  description            String?
+  route                  String                   @unique(map: "pages_master_route_unique") @db.VarChar(300)
+  module_id              Int?
+  icon                   String?                  @db.VarChar(50)
+  sort_order             Int?                     @default(0)
+  is_active              Boolean?                 @default(true)
+  show_in_sidebar        Boolean?                 @default(true)
+  required_roles         String[]                 @default([])
+  required_permissions   String[]                 @default([])
+  required_features      String[]                 @default([])
+  min_role_level         Int?                     @default(1)
+  layout_group           String?                  @default("common") @db.VarChar(50)
+  status                 String?                  @default("active") @db.VarChar(20)
+  created_at             DateTime?                @default(now()) @db.Timestamptz(6)
+  updated_at             DateTime?                @default(now()) @db.Timestamptz(6)
+  is_public              Boolean?                 @default(false)
+  is_governed            Boolean?                 @default(true)
+  is_dynamic             Boolean?                 @default(false)
+  route_pattern          String?
+  filesystem_path        String?
+  last_synced_at         DateTime?                @db.Timestamptz(6)
+  sync_status            String?                  @default("ACTIVE") @db.VarChar(20)
+  sync_source            String?                  @default("MANUAL") @db.VarChar(20)
+  admin_page_assignments admin_page_assignments[]
+  module                 modules_master?          @relation(fields: [module_id], references: [id])
+  role_page_access       role_page_access[]
 
   @@index([is_active], map: "idx_pages_master_active")
   @@index([module_id], map: "idx_pages_master_module")
   @@index([required_roles], map: "idx_pages_master_roles")
   @@index([route], map: "idx_pages_master_route")
   @@index([show_in_sidebar], map: "idx_pages_master_sidebar")
+  @@index([is_governed], map: "idx_pages_master_is_governed")
+  @@index([route_pattern], map: "idx_pages_master_route_pattern")
+  @@index([sync_status], map: "idx_pages_master_sync_status")
 }
 
 /// Role-page access mapping - controls which roles can access which pages
 model role_page_access {
-  id         Int          @id @default(autoincrement())
-  role_name  String       @db.VarChar(100)
-  page_id    Int
-  can_view   Boolean?     @default(true)
-  can_edit   Boolean?     @default(false)
-  can_delete Boolean?     @default(false)
-  can_export Boolean?     @default(false)
-  granted_at DateTime?    @default(now()) @db.Timestamptz(6)
-  granted_by Int?
-  notes      String?
-  page       pages_master @relation(fields: [page_id], references: [id], onDelete: Cascade)
+  id          Int          @id @default(autoincrement())
+  role_name   String       @db.VarChar(100)
+  page_id     Int
+  can_view    Boolean?     @default(false)
+  can_edit    Boolean?     @default(false)
+  can_delete  Boolean?     @default(false)
+  can_export  Boolean?     @default(false)
+  granted_at  DateTime?    @default(now()) @db.Timestamptz(6)
+  granted_by  Int?
+  notes       String?
+  auto_seeded Boolean?     @default(false)
+  page        pages_master @relation(fields: [page_id], references: [id], onDelete: Cascade)
 
   @@unique([role_name, page_id])
   @@index([page_id], map: "idx_role_page_access_page")
   @@index([role_name], map: "idx_role_page_access_role")
   @@index([can_view], map: "idx_role_page_access_view")
+  @@index([page_id, role_name, can_view], map: "idx_role_page_access_lookup")
 }
 
 /// Backup of modules data
@@ -3075,6 +3089,7 @@ model rbac_roles {
   is_system_role          Boolean?                  @default(false)
   system_scope            String?                   @default("BUSINESS") @db.VarChar(20)
   admin_role_assignments  admin_role_assignments[]
+  admin_role_grants       admin_role_grants[]
   client_role_assignments client_role_assignments[]
   rbac_permissions        rbac_permissions[]
   rbac_user_roles         rbac_user_roles[]
@@ -3536,12 +3551,12 @@ model subscription_audit_log {
   actor_email     String?  @db.VarChar(255)
   created_at      DateTime @default(now()) @db.Timestamptz(6)
 
-  @@index([action], map: "idx_sub_audit_log_action")
-  @@index([client_id], map: "idx_sub_audit_log_client")
-  @@index([created_at(sort: Desc)], map: "idx_sub_audit_log_created")
   @@index([action])
   @@index([client_id])
   @@index([created_at(sort: Desc)])
+  @@index([action], map: "idx_subscription_audit_action")
+  @@index([client_id], map: "idx_subscription_audit_client")
+  @@index([created_at(sort: Desc)], map: "idx_subscription_audit_created")
 }
 
 model subscription_billing_ledger {
@@ -4906,6 +4921,122 @@ model workflows {
   @@index([module], map: "idx_workflows_module")
   @@index([slug], map: "idx_workflows_slug")
   @@index([tags], map: "idx_workflows_tags", type: Gin)
+}
+
+model approval_stages {
+  id                       String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  workflow_id              String?   @db.Uuid
+  stage_number             Int       @default(1)
+  stage_name               String    @db.VarChar(100)
+  stage_type               String?   @default("sequential") @db.VarChar(50)
+  assigned_role            String?   @db.VarChar(100)
+  assigned_user_id         String?   @db.Uuid
+  min_approvers            Int?      @default(1)
+  is_optional              Boolean?  @default(false)
+  auto_approve_after_hours Int?
+  escalation_after_hours   Int?
+  created_at               DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at               DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([workflow_id], map: "idx_approval_stages_workflow")
+}
+
+model bank_reconciliation_items {
+  id                      String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id               String    @db.VarChar(100)
+  account_id              String?   @db.Uuid
+  transaction_date        DateTime  @db.Date
+  description             String?
+  debit_amount            Decimal?  @default(0) @db.Decimal(15, 2)
+  credit_amount           Decimal?  @default(0) @db.Decimal(15, 2)
+  balance                 Decimal?  @db.Decimal(15, 2)
+  reference_number        String?   @db.VarChar(100)
+  status                  String?   @default("pending") @db.VarChar(50)
+  matched_at              DateTime? @db.Timestamptz(6)
+  matched_by              String?   @db.Uuid
+  reconciliation_batch_id String?   @db.Uuid
+  created_at              DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at              DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([transaction_date], map: "idx_bank_recon_date")
+  @@index([status], map: "idx_bank_recon_status")
+  @@index([tenant_id], map: "idx_bank_recon_tenant")
+}
+
+model qa_testing_sessions {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id    String?   @db.VarChar(100)
+  test_name    String    @db.VarChar(255)
+  test_type    String    @default("functional") @db.VarChar(50)
+  status       String    @default("pending") @db.VarChar(50)
+  started_at   DateTime? @db.Timestamptz(6)
+  completed_at DateTime? @db.Timestamptz(6)
+  tester_id    String?   @db.Uuid
+  results      Json?     @default("{}")
+  notes        String?
+  created_at   DateTime? @default(now()) @db.Timestamptz(6)
+  updated_at   DateTime? @default(now()) @db.Timestamptz(6)
+
+  @@index([status], map: "idx_qa_sessions_status")
+  @@index([tenant_id], map: "idx_qa_sessions_tenant")
+}
+
+model role_deputies {
+  id                  String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  tenant_id           String    @db.Uuid
+  principal_role_id   String    @db.Uuid
+  principal_role_code String    @db.VarChar(50)
+  deputy_role_id      String    @db.Uuid
+  deputy_role_code    String    @db.VarChar(50)
+  can_approve         Boolean?  @default(true)
+  can_reject          Boolean?  @default(true)
+  can_override        Boolean?  @default(false)
+  can_force_approve   Boolean?  @default(false)
+  can_escalate        Boolean?  @default(true)
+  max_approval_amount Decimal?  @db.Decimal(15, 2)
+  is_active           Boolean?  @default(true)
+  valid_from          DateTime? @default(now()) @db.Timestamptz(6)
+  valid_until         DateTime? @db.Timestamptz(6)
+  created_at          DateTime? @default(now()) @db.Timestamptz(6)
+  created_by          String?   @db.Uuid
+
+  @@unique([tenant_id, principal_role_code, deputy_role_code])
+  @@index([principal_role_code], map: "idx_role_deputies_principal")
+  @@index([tenant_id], map: "idx_role_deputies_tenant")
+}
+
+model subscription_publish_history {
+  id              Int       @id @default(autoincrement())
+  publish_type    String    @db.VarChar(50)
+  total_changes   Int       @default(0)
+  module_changes  Int?      @default(0)
+  feature_changes Int?      @default(0)
+  notes           String?
+  published_by    Int?
+  published_at    DateTime? @default(now()) @db.Timestamptz(6)
+  rollback_data   Json?
+  is_rolled_back  Boolean?  @default(false)
+  rolled_back_at  DateTime? @db.Timestamptz(6)
+  rolled_back_by  Int?
+
+  @@index([published_at], map: "idx_publish_history_date")
+}
+
+/// This model or at least one of its fields has comments in the database, and requires an additional setup for migrations: Read more: https://pris.ly/d/database-comments
+model unregistered_route_access {
+  id          Int       @id @default(autoincrement())
+  route       String
+  user_id     Int?
+  user_role   String?   @db.VarChar(100)
+  tenant_id   Int?
+  ip_address  String?   @db.Inet
+  user_agent  String?
+  blocked     Boolean?  @default(true)
+  accessed_at DateTime? @default(now()) @db.Timestamptz(6)
+  notes       String?
+
+  @@index([accessed_at], map: "idx_unregistered_route_access_accessed_at")
+  @@index([route], map: "idx_unregistered_route_access_route")
 }
 
 enum AddressType {

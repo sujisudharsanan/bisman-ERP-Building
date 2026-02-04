@@ -194,7 +194,7 @@ async function routeAuthorizationGuardrail(req, res, next) {
   }
   
   // ENFORCE AUTHORIZATION
-  const userId = req.user.legacyId || req.user.legacy_id || req.user.id;
+  const userId = req.user.id;
   const tenantId = req.user.tenantId || req.user.tenant_id;
   let planId = req.user.planId || req.user.plan_id;
   const role = req.user.role || req.user.roleName;

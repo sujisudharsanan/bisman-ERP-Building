@@ -59,7 +59,8 @@ class SuperAdminController {
       const adminUserId = req.user.id
       const adminUsername = req.user.username
       
-      const result = await superAdminService.updateUser(parseInt(userId), userData, adminUserId, adminUsername)
+      // UUID standardization: userId is now a UUID string
+      const result = await superAdminService.updateUser(userId, userData, adminUserId, adminUsername)
       res.json({ success: true, data: result })
     } catch (error) {
       console.error('Error updating user:', error)
@@ -73,7 +74,8 @@ class SuperAdminController {
       const adminUserId = req.user.id
       const adminUsername = req.user.username
       
-      const result = await superAdminService.deleteUser(parseInt(userId), adminUserId, adminUsername)
+      // UUID standardization: userId is now a UUID string
+      const result = await superAdminService.deleteUser(userId, adminUserId, adminUsername)
       res.json({ success: true, data: result })
     } catch (error) {
       console.error('Error deleting user:', error)

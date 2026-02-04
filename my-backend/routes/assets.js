@@ -679,7 +679,7 @@ router.post('/',
       await client.query('BEGIN');
       
       const tenantId = req.user?.tenant_id;
-      const userId = req.user?.legacy_id || req.user?.id;
+      const userId = req.user?.id;
       const userName = req.user?.name || req.user?.email || 'Unknown';
       const userRole = req.user?.role || 'Unknown';
       const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
@@ -858,7 +858,7 @@ router.put('/:id', authMiddleware, checkAssetPermission('EDIT_ASSET'), async (re
     
     const { id } = req.params;
     const tenantId = req.user?.tenant_id;
-    const userId = req.user?.legacy_id || req.user?.id;
+    const userId = req.user?.id;
     const userName = req.user?.name || req.user?.email || 'Unknown';
     const userRole = req.user?.role || 'Unknown';
     const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
@@ -1026,7 +1026,7 @@ router.delete('/:id', authMiddleware, checkAssetPermission('DELETE_ASSET'), asyn
   try {
     const { id } = req.params;
     const tenantId = req.user?.tenant_id;
-    const userId = req.user?.legacy_id || req.user?.id;
+    const userId = req.user?.id;
     const userName = req.user?.name || req.user?.email || 'Unknown';
     const userRole = req.user?.role || 'Unknown';
     const ipAddress = req.ip || req.headers['x-forwarded-for'] || 'unknown';
@@ -1079,7 +1079,7 @@ router.post('/:id/approve', authMiddleware, checkAssetPermission('APPROVE_ASSET'
     const { id } = req.params;
     const { notes } = req.body;
     const tenantId = req.user?.tenant_id;
-    const userId = req.user?.legacy_id || req.user?.id;
+    const userId = req.user?.id;
     const userName = req.user?.name || req.user?.email || 'Unknown';
     const userRole = req.user?.role || 'Unknown';
     const ipAddress = req.ip || 'unknown';
@@ -1139,7 +1139,7 @@ router.post('/:id/reject', authMiddleware, checkAssetPermission('APPROVE_ASSET')
     const { id } = req.params;
     const { notes } = req.body;
     const tenantId = req.user?.tenant_id;
-    const userId = req.user?.legacy_id || req.user?.id;
+    const userId = req.user?.id;
     const userName = req.user?.name || req.user?.email || 'Unknown';
     const userRole = req.user?.role || 'Unknown';
     const ipAddress = req.ip || 'unknown';

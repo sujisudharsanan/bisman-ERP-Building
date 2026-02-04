@@ -44,11 +44,12 @@ async function setAuditContext(req, res, next) {
     const isPlatformAdmin = req.user.userType === 'ENTERPRISE_ADMIN';
 
     // Set audit context in PostgreSQL session
+    // UUID standardization: userId is now TEXT (UUID string)
     await prisma.$executeRaw`
       SELECT set_audit_context(
-        ${userId}::INTEGER,
+        ${userId}::TEXT,
         ${tenantId}::UUID,
-        ${superAdminId}::INTEGER,
+        ${superAdminId}::TEXT,
         ${SERVICE_NAME},
         ${requestId}::UUID,
         ${isPlatformAdmin}
@@ -83,11 +84,12 @@ async function auditErrorHandler(err, req, res, next) {
     try {
       const prisma = getPrisma();
       
+      // UUID standardization: userId is now TEXT (UUID string)
       await prisma.$queryRaw`
         SELECT log_security_event(
           ${err.status === 401 ? 'AUTH_FAILURE' : 'PERMISSION_DENIED'},
           'WARNING',
-          ${req.user?.id || null}::INTEGER,
+          ${req.user?.id || null}::TEXT,
           ${req.user?.email || null},
           ${req.user?.userType || null},
           ${req.ip || null}::INET,
@@ -125,11 +127,12 @@ function createAuditedPrisma(req) {
     query: {
       async $allOperations({ model, operation, args, query }) {
         // Set audit context for this operation
+        // UUID standardization: userId is now TEXT (UUID string)
         await prisma.$executeRaw`
           SELECT set_audit_context(
-            ${userId}::INTEGER,
+            ${userId}::TEXT,
             ${tenantId}::UUID,
-            ${superAdminId}::INTEGER,
+            ${superAdminId}::TEXT,
             ${serviceName},
             ${requestId}::UUID,
             ${isPlatformAdmin}

@@ -30,7 +30,7 @@ const { getPrisma } = require('../lib/prisma');
 router.get('/effective', authenticate, async (req, res) => {
   try {
     const prisma = getPrisma();
-    const userId = req.user?.legacy_id || req.user?.id;
+    const userId = req.user?.id;
     const tenantId = req.user?.tenant_id || req.user?.client_id;
     const userRole = (req.user?.role || req.user?.roleName || req.user?.userType || '').toUpperCase();
     
@@ -152,7 +152,7 @@ router.get('/effective', authenticate, async (req, res) => {
 router.get('/check/:pageKey', authenticate, async (req, res) => {
   try {
     const { pageKey } = req.params;
-    const userId = req.user?.legacy_id || req.user?.id;
+    const userId = req.user?.id;
     const tenantId = req.user?.tenant_id || req.user?.client_id;
     
     if (!userId || !tenantId) {
@@ -187,7 +187,7 @@ router.get('/check/:pageKey', authenticate, async (req, res) => {
 router.post('/refresh', authenticate, async (req, res) => {
   try {
     const prisma = getPrisma();
-    const userId = req.user?.legacy_id || req.user?.id;
+    const userId = req.user?.id;
     const tenantId = req.user?.tenant_id || req.user?.client_id;
     
     if (!userId || !tenantId) {
@@ -336,7 +336,7 @@ router.get('/check-stale', authenticate, async (req, res) => {
 router.get('/summary', authenticate, async (req, res) => {
   try {
     const prisma = getPrisma();
-    const userId = req.user?.legacy_id || req.user?.id;
+    const userId = req.user?.id;
     const tenantId = req.user?.tenant_id || req.user?.client_id;
     
     // Get subscription

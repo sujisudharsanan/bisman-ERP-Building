@@ -17,7 +17,7 @@ const { authenticate: authenticateToken } = require('../middleware/auth');
 
 // Helper to extract actor info from request
 const getActorInfo = (req) => ({
-  userId: req.user.legacyId || req.user.id,
+  userId: req.user.id,
   tenantId: req.user.tenant_id,
   ipAddress: req.ip || req.connection?.remoteAddress,
   userAgent: req.headers['user-agent'],

@@ -169,7 +169,8 @@ function authorize(pageKey, permission = 'view') {
     const startTime = Date.now();
     
     // Extract user info from JWT (set by authenticate middleware)
-    const userId = req.user?.legacyId || req.user?.legacy_id || req.user?.id;
+    // UUID standardization: use id only, legacy_id deprecated
+    const userId = req.user?.id;
     const tenantId = req.user?.tenantId || req.user?.tenant_id;
     let planId = req.user?.planId || req.user?.plan_id;
     const userRole = req.user?.role || req.user?.roleName;
@@ -295,7 +296,8 @@ function authorize(pageKey, permission = 'view') {
  */
 function authorizeAny(pageKeys, _permission = 'view') {
   return async (req, res, next) => {
-    const userId = req.user?.legacyId || req.user?.legacy_id || req.user?.id;
+    // UUID standardization: use id only
+    const userId = req.user?.id;
     const tenantId = req.user?.tenantId || req.user?.tenant_id;
     let planId = req.user?.planId || req.user?.plan_id;
     const route = req.originalUrl || req.path;
@@ -359,7 +361,8 @@ function authorizeAny(pageKeys, _permission = 'view') {
  */
 function authorizeAll(pageKeys, _permission = 'view') {
   return async (req, res, next) => {
-    const userId = req.user?.legacyId || req.user?.legacy_id || req.user?.id;
+    // UUID standardization: use id only
+    const userId = req.user?.id;
     const tenantId = req.user?.tenantId || req.user?.tenant_id;
     let planId = req.user?.planId || req.user?.plan_id;
     

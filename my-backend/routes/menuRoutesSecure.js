@@ -157,7 +157,7 @@ async function getDynamicSidebarRoutes(pool, role, _tenantId = null) {
  */
 async function getEffectivePagesForUser(user) {
   const pool = getPool();
-  const userId = user.legacyId || user.legacy_id || user.id;
+  const userId = user.id;
   const tenantId = user.tenantId || user.tenant_id;
   let planId = user.planId || user.plan_id;
   const role = user.role || user.roleName;
@@ -279,7 +279,7 @@ router.get('/menu', authenticate, async (req, res) => {
   const client = await pool.connect();
   
   const startTime = Date.now();
-  const userId = req.user?.legacyId || req.user?.legacy_id || req.user?.id;
+  const userId = req.user?.legacyId || req.user?.id;
   const userRole = req.user?.role || req.user?.roleName;
   
   try {
@@ -445,7 +445,7 @@ router.get('/menu', authenticate, async (req, res) => {
 
 router.get('/check-access', authenticate, async (req, res) => {
   const { route, pageCode } = req.query;
-  const userId = req.user?.legacyId || req.user?.legacy_id || req.user?.id;
+  const userId = req.user?.legacyId || req.user?.id;
   
   if (!route && !pageCode) {
     return res.status(400).json({
