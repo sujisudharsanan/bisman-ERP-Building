@@ -109,6 +109,8 @@ const BYPASS_PATTERNS = [
   '/api/token/',  // Token refresh endpoint
   '/api/enterprise-admin/',  // Enterprise Admin APIs - role-protected at route level
   '/api/super-admin/',  // Super Admin APIs - role-protected at route level
+  '/api/subscription-control/',  // Subscription Control APIs - role-protected at route level
+  '/api/privileges/',  // Privileges APIs - role-protected at route level
   '/api/rbac/',  // RBAC APIs - role-protected at route level
   '/api/reports/',  // Reports APIs - role-protected at route level
   '/api/governance/',  // Governance APIs - role-protected at route level

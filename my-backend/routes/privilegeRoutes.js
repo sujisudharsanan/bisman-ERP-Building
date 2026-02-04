@@ -420,7 +420,7 @@ router.get('/assignable-roles', authMiddleware.authenticate, async (req, res) =>
 });
 
 // GET /api/roles - Fetch all roles with user counts
-router.get('/roles', authMiddleware.authenticate, rbacMiddleware.requireRole(['Super Admin', 'Admin']), async (req, res) => {
+router.get('/roles', authMiddleware.authenticate, rbacMiddleware.requireRole(['Super Admin', 'Admin', 'ENTERPRISE_ADMIN']), async (req, res) => {
   try {
     let roles = [];
     let used = 'rbac';
