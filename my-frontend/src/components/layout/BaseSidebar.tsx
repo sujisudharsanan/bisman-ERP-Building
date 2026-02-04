@@ -1,12 +1,13 @@
 "use client";
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { X, Loader2, AlertCircle } from "lucide-react";
 import { getIcon } from '../../utils/iconMap';
 import { safeComponent } from '@/lib/safeComponent';
 import { useMenu } from '../../hooks/useMenu';
+import { useEffectiveAccess } from '@/hooks/useEffectiveAccess';
 
 // Export getIcon for external use
 export { getIcon };
@@ -29,18 +30,32 @@ const BaseSidebar: React.FC<BaseSidebarProps> = ({ user, collapsed, onCollapse, 
 	// Use DB-driven menu instead of hardcoded roleLayoutConfig
 	const { menu, isLoading, error} = useMenu();
 	
+	// Use effective access for additional filtering (belt and suspenders)
+	const { hasPageAccess, effectivePages } = useEffectiveAccess();
+	
 	// Flatten pages from all modules for sidebar display
-	const menuItems = menu.flatMap(module => 
-		module.pages.map(page => ({
-			id: page.code,
-			label: page.name,
-			href: page.route,
-			icon: page.icon,
-			moduleCode: module.code,
-			moduleName: module.name,
-			moduleColor: module.colorCode,
-		}))
-	);
+	// Additional safety filter: only show pages the user has effective access to
+	const menuItems = useMemo(() => {
+		return menu.flatMap(module => 
+			module.pages
+				.filter(page => {
+					// Check if user has access via effectivePages (checks route and page code)
+					const hasRouteAccess = effectivePages.includes(page.route);
+					const hasCodeAccess = effectivePages.includes(page.code);
+					const hasWildcard = effectivePages.includes('*');
+					return hasWildcard || hasRouteAccess || hasCodeAccess;
+				})
+				.map(page => ({
+					id: page.code,
+					label: page.name,
+					href: page.route,
+					icon: page.icon,
+					moduleCode: module.code,
+					moduleName: module.name,
+					moduleColor: module.colorCode,
+				}))
+		);
+	}, [menu, effectivePages]);
 
 	useEffect(() => {
 		if (isMobile) {

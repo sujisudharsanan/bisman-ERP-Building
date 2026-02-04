@@ -575,17 +575,16 @@ router.post('/:id/reset-password', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    // Hash the new password
+    // Hash the new password using bcrypt
+    // bcrypt includes the salt in the hash, so we don't need a separate salt column
     const bcrypt = require('bcryptjs');
-    const salt = await bcrypt.genSalt(12);
-    const hashedPassword = await bcrypt.hash(newPassword, salt);
+    const hashedPassword = await bcrypt.hash(newPassword, 12);
 
     // Update the password
     await prisma.users_enhanced.update({
       where: { id },
       data: {
         password_hash: hashedPassword,
-        salt: salt,
         password_changed_at: new Date(),
         login_attempts: 0,
         locked_until: null,
