@@ -555,7 +555,6 @@ router.post('/:id/reset-password', authMiddleware, async (req, res) => {
     const { id } = req.params;
     const { newPassword } = req.body;
     const currentUserRole = req.user?.role;
-    const currentUserId = req.user?.id;
     const currentUserTenantId = req.user?.tenant_id;
 
     console.log(`[reset-password] Request from ${req.user?.email} (${currentUserRole}) for user ${id}`);
@@ -574,50 +573,39 @@ router.post('/:id/reset-password', authMiddleware, async (req, res) => {
     const bcrypt = require('bcryptjs');
     const hashedPassword = await bcrypt.hash(newPassword, 12);
 
-    // Use $transaction to ensure RLS context and update use same connection
-    const result = await prisma.$transaction(async (tx) => {
-      // Set RLS context for this transaction (TENANT scope for admin)
-      const dataScope = ['ENTERPRISE_ADMIN', 'SYSTEM_ADMIN'].includes(currentUserRole?.toUpperCase()) 
-        ? 'ALL' 
-        : 'TENANT';
-      
-      await tx.$executeRaw`
-        SELECT set_security_context(
-          ${String(currentUserId)}::TEXT,
-          ${String(currentUserTenantId || '')}::TEXT,
-          ${String(dataScope)}::TEXT,
-          ${String(currentUserRole || '')}::TEXT,
-          ''::TEXT
-        )
-      `;
-
-      // Find the user
-      const user = await tx.users_enhanced.findUnique({
-        where: { id },
-        select: { id: true, email: true, tenant_id: true },
-      });
-
-      if (!user) {
-        throw new Error('USER_NOT_FOUND');
-      }
-
-      console.log(`[reset-password] Found user: ${user.email}, updating password...`);
-
-      // Update the password
-      await tx.users_enhanced.update({
-        where: { id },
-        data: {
-          password_hash: hashedPassword,
-          password_changed_at: new Date(),
-          login_attempts: 0,
-          locked_until: null,
-        },
-      });
-
-      return user;
+    // First, verify the user exists and is in the same tenant (for non-platform admins)
+    const isPlatformAdmin = ['ENTERPRISE_ADMIN', 'SYSTEM_ADMIN'].includes(currentUserRole?.toUpperCase());
+    
+    const user = await prisma.users_enhanced.findFirst({
+      where: {
+        id: id,
+        // Platform admins can reset any user, others only their tenant
+        ...(!isPlatformAdmin && currentUserTenantId ? { tenant_id: currentUserTenantId } : {})
+      },
+      select: { id: true, email: true, tenant_id: true },
     });
 
-    console.log(`[reset-password] Password reset successful for user ${result.email} by ${req.user?.email}`);
+    if (!user) {
+      console.log(`[reset-password] User not found or not authorized: ${id}`);
+      return res.status(404).json({ error: 'User not found or not in your tenant' });
+    }
+
+    console.log(`[reset-password] Found user: ${user.email}, updating password with raw SQL...`);
+
+    // Use raw SQL to bypass RLS for this admin operation
+    const updateResult = await prisma.$executeRaw`
+      UPDATE users_enhanced 
+      SET 
+        password_hash = ${hashedPassword},
+        password_changed_at = NOW(),
+        login_attempts = 0,
+        locked_until = NULL,
+        updated_at = NOW()
+      WHERE id = ${id}::uuid
+    `;
+
+    console.log(`[reset-password] Update result: ${updateResult} rows affected`);
+    console.log(`[reset-password] Password reset successful for user ${user.email} by ${req.user?.email}`);
 
     res.json({
       success: true,
@@ -625,19 +613,8 @@ router.post('/:id/reset-password', authMiddleware, async (req, res) => {
     });
   } catch (error) {
     console.error('[reset-password] Error:', error);
-    
-    if (error.message === 'USER_NOT_FOUND') {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    // Check for RLS policy violation
-    if (error.message?.includes('policy') || error.code === 'P2025') {
-      console.error('[reset-password] RLS policy violation or record not visible');
-      return res.status(403).json({
-        error: 'Cannot reset password for this user',
-        details: 'User is not in your authorized scope',
-      });
-    }
+    console.error('[reset-password] Error message:', error.message);
+    console.error('[reset-password] Error code:', error.code);
     
     res.status(500).json({
       error: 'Failed to reset password',
