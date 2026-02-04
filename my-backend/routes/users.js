@@ -590,24 +590,21 @@ router.post('/:id/reset-password', authMiddleware, async (req, res) => {
       return res.status(404).json({ error: 'User not found or not in your tenant' });
     }
 
-    console.log(`[reset-password] Found user: ${user.email}, updating password with raw SQL...`);
+    console.log(`[reset-password] Found user: ${user.email}, updating password...`);
 
-    // Use raw SQL to bypass RLS for this admin operation
-    // Using $executeRawUnsafe because Prisma tagged templates don't handle UUID casting well
-    const updateResult = await prisma.$executeRawUnsafe(
-      `UPDATE users_enhanced 
-       SET 
-         password_hash = $1,
-         password_changed_at = NOW(),
-         login_attempts = 0,
-         locked_until = NULL,
-         updated_at = NOW()
-       WHERE id = $2::uuid`,
-      hashedPassword,
-      id
-    );
+    // Use Prisma update directly - the findFirst already validated tenant access
+    // This should work because we're updating by the exact ID we just found
+    await prisma.users_enhanced.update({
+      where: { id: user.id },
+      data: {
+        password_hash: hashedPassword,
+        password_changed_at: new Date(),
+        login_attempts: 0,
+        locked_until: null,
+        updated_at: new Date(),
+      },
+    });
 
-    console.log(`[reset-password] Update result: ${updateResult} rows affected`);
     console.log(`[reset-password] Password reset successful for user ${user.email} by ${req.user?.email}`);
 
     res.json({
