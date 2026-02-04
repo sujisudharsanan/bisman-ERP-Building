@@ -1025,6 +1025,28 @@ try {
 }
 
 // ===================================================================
+// ASSET MANAGEMENT - Enterprise Asset Register 📦
+// ===================================================================
+// Full asset lifecycle management:
+// - Asset CRUD with subscription limits
+// - Category-based organization
+// - Assignment tracking and history
+// - Approval workflow for high-value assets
+// - Depreciation calculation
+// - Maintenance scheduling integration
+//
+// Base endpoint: /api/assets/*
+// Access: RBAC-based (CREATE_ASSET, VIEW_ASSET, etc.)
+// ===================================================================
+try {
+  const assetRoutes = require('./routes/assets')
+  app.use('/api/assets', authenticate, setTenantContext, requirePlanModuleAccess('operations'), assetRoutes)
+  console.log('✅ Asset Management routes loaded at /api/assets (plan-gated: operations)')
+} catch (e) {
+  console.warn('Asset Management routes not loaded:', e && e.message)
+}
+
+// ===================================================================
 // CHAT MODULE - Modular Chat System 🚀
 // ===================================================================
 // Modular architecture with organized structure:
