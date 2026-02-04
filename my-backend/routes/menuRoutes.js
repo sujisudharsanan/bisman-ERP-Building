@@ -66,9 +66,9 @@ const ROLE_SIDEBAR_MODULES = {
   // All other roles: null (not in map) means "show all modules user has access to"
 };
 
-// Route prefixes for admin roles - only show pages with these route prefixes
+// Route prefixes for admin roles - FALLBACK only (used when no DB config exists)
 // This prevents showing unrelated pages from COMMON module
-const ROLE_ROUTE_PREFIXES = {
+const FALLBACK_ROUTE_PREFIXES = {
   // Platform Admins
   'ENTERPRISE_ADMIN': ['/enterprise-admin', '/common/calendar', '/common/user-settings'],
   'SUPER_ADMIN': ['/super-admin', '/system', '/common/', '/dashboard', '/subscriptions'],
@@ -101,6 +101,57 @@ const ROLE_ROUTE_PREFIXES = {
   
   // Staff and general users - no filter (null) = show all accessible pages
 };
+
+// ============================================================================
+// DYNAMIC SIDEBAR: Get assigned pages/routes for a role from database
+// ============================================================================
+
+/**
+ * Get sidebar routes for a role dynamically from admin_page_assignments
+ * 
+ * PRIORITY ORDER:
+ * 1. DB: admin_page_assignments for this role (EA-configured)
+ * 2. Fallback: FALLBACK_ROUTE_PREFIXES (hardcoded defaults)
+ * 3. If neither exists: null (show all accessible pages)
+ */
+async function getDynamicSidebarRoutes(client, role) {
+  try {
+    const result = await client.query(`
+      SELECT DISTINCT pm.route, pm.page_code, mm.module_code
+      FROM admin_page_assignments apa
+      JOIN pages_master pm ON pm.id = apa.page_id
+      JOIN modules_master mm ON mm.id = pm.module_id
+      WHERE apa.assignee_type = $1
+        AND apa.is_active = true
+        AND pm.is_active = true
+        AND pm.show_in_sidebar = true
+      ORDER BY mm.module_code, pm.route
+    `, [role.toUpperCase()]);
+    
+    if (result.rows.length > 0) {
+      const routes = result.rows.map(r => r.route).filter(Boolean);
+      const sidebarRoutes = new Set(routes);
+      sidebarRoutes.add('/common/');
+      sidebarRoutes.add('/dashboard');
+      sidebarRoutes.add('/common/calendar');
+      sidebarRoutes.add('/common/user-settings');
+      
+      console.log(`[MenuRoutes] Dynamic sidebar for ${role}: ${routes.length} pages from DB`);
+      return Array.from(sidebarRoutes);
+    }
+    
+    const fallback = FALLBACK_ROUTE_PREFIXES[role.toUpperCase()];
+    if (fallback) {
+      console.log(`[MenuRoutes] Using fallback sidebar for ${role}`);
+      return fallback;
+    }
+    
+    return null;
+  } catch (error) {
+    console.error(`[MenuRoutes] Error getting dynamic sidebar for ${role}:`, error.message);
+    return FALLBACK_ROUTE_PREFIXES[role.toUpperCase()] || null;
+  }
+}
 
 // Common pages that should ALWAYS be accessible to ALL logged-in users
 const ALWAYS_ACCESSIBLE_ROUTES = [
@@ -137,7 +188,8 @@ router.get('/menu', authenticate, async (req, res) => {
     
     // Check if this role has a sidebar module filter
     const sidebarModules = ROLE_SIDEBAR_MODULES[userRole] || null;
-    const routePrefixes = ROLE_ROUTE_PREFIXES[userRole] || null;
+    // DYNAMIC: Get sidebar routes from DB (admin_page_assignments) or fallback to hardcoded
+    const routePrefixes = await getDynamicSidebarRoutes(client, userRole);
     
     // Build module filter clause
     const moduleFilter = sidebarModules ? `AND m.module_code = ANY($2)` : '';
@@ -149,8 +201,8 @@ router.get('/menu', authenticate, async (req, res) => {
     if (routePrefixes) {
       const prefixConditions = routePrefixes.map((_, i) => `p.route LIKE $${queryParams.length + i + 1}`).join(' OR ');
       routeFilter = `AND (${prefixConditions})`;
-      queryParams = [...queryParams, ...routePrefixes.map(prefix => prefix + '%')];
-      console.log(`[MenuRoutes] Filtering sidebar to routes: ${routePrefixes.join(', ')}`);
+      queryParams = [...queryParams, ...routePrefixes.map(prefix => prefix.endsWith('/') ? prefix + '%' : prefix + '%')];
+      console.log(`[MenuRoutes] Dynamic sidebar filter: ${routePrefixes.length} routes for ${userRole}`);
     }
     
     if (sidebarModules) {

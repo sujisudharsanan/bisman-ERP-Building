@@ -38,10 +38,10 @@ const ALWAYS_ACCESSIBLE_ROUTES = [
 ];
 
 // ============================================================================
-// SIDEBAR ROUTE PREFIXES - Filter menu display for admin roles
-// Admin users may have ACCESS to many pages but sidebar shows only their home modules
+// SIDEBAR ROUTE PREFIXES - FALLBACK filter for roles not configured in DB
+// These are used ONLY when no dynamic sidebar config exists in admin_page_assignments
 // ============================================================================
-const SIDEBAR_ROUTE_PREFIXES = {
+const FALLBACK_SIDEBAR_PREFIXES = {
   // Platform Admins
   'ENTERPRISE_ADMIN': ['/enterprise-admin', '/common/calendar', '/common/user-settings', '/dashboard'],
   'SUPER_ADMIN': ['/super-admin', '/system', '/common/', '/dashboard', '/subscriptions'],
@@ -76,6 +76,73 @@ const SIDEBAR_ROUTE_PREFIXES = {
   // 'STAFF': null,  // No filter = show all accessible pages
   // 'MANAGER': null,
 };
+
+// ============================================================================
+// DYNAMIC SIDEBAR: Get assigned pages/routes for a role from database
+// ============================================================================
+
+/**
+ * Get sidebar routes for a role dynamically from admin_page_assignments
+ * 
+ * PRIORITY ORDER:
+ * 1. DB: admin_page_assignments for this role (EA-configured)
+ * 2. Fallback: FALLBACK_SIDEBAR_PREFIXES (hardcoded defaults)
+ * 3. If neither exists: null (show all accessible pages)
+ * 
+ * @param {Object} pool - Database pool
+ * @param {string} role - User role name (e.g., 'ADMIN_OPS')
+ * @param {string} _tenantId - Tenant ID (reserved for future tenant-specific overrides)
+ * @returns {Promise<Array<string>|null>} Array of route prefixes or null (no filter)
+ */
+async function getDynamicSidebarRoutes(pool, role, _tenantId = null) {
+  // Note: _tenantId is reserved for future per-tenant sidebar customization
+  try {
+    // Query admin_page_assignments for routes assigned to this role
+    // This respects what EA has assigned to the role
+    const result = await pool.query(`
+      SELECT DISTINCT pm.route, pm.page_code, mm.module_code
+      FROM admin_page_assignments apa
+      JOIN pages_master pm ON pm.id = apa.page_id
+      JOIN modules_master mm ON mm.id = pm.module_id
+      WHERE apa.assignee_type = $1
+        AND apa.is_active = true
+        AND pm.is_active = true
+        AND pm.show_in_sidebar = true
+      ORDER BY mm.module_code, pm.route
+    `, [role.toUpperCase()]);
+    
+    if (result.rows.length > 0) {
+      // Extract unique route prefixes from assigned pages
+      const routes = result.rows.map(r => r.route).filter(Boolean);
+      
+      // Always include common pages and dashboard
+      const sidebarRoutes = new Set(routes);
+      sidebarRoutes.add('/common/');
+      sidebarRoutes.add('/dashboard');
+      sidebarRoutes.add('/common/calendar');
+      sidebarRoutes.add('/common/user-settings');
+      
+      console.log(`[MenuSecure] Dynamic sidebar for ${role}: ${routes.length} pages from DB`);
+      return Array.from(sidebarRoutes);
+    }
+    
+    // No DB config - use fallback
+    const fallback = FALLBACK_SIDEBAR_PREFIXES[role.toUpperCase()];
+    if (fallback) {
+      console.log(`[MenuSecure] Using fallback sidebar for ${role}`);
+      return fallback;
+    }
+    
+    // No config at all - show all accessible pages
+    console.log(`[MenuSecure] No sidebar filter for ${role} - showing all accessible pages`);
+    return null;
+    
+  } catch (error) {
+    console.error(`[MenuSecure] Error getting dynamic sidebar for ${role}:`, error.message);
+    // On error, use fallback
+    return FALLBACK_SIDEBAR_PREFIXES[role.toUpperCase()] || null;
+  }
+}
 
 // ============================================================================
 // HELPER: Get effective pages for user (SINGLE SOURCE OF TRUTH)
@@ -303,13 +370,15 @@ router.get('/menu', authenticate, async (req, res) => {
     
     // STEP 5: Build final menu (sorted, filtered by sidebar route prefixes)
     // Admin roles see only their home module pages in sidebar, not ALL pages they can access
-    const sidebarPrefixes = SIDEBAR_ROUTE_PREFIXES[userRole] || null;
+    // DYNAMIC: Get sidebar routes from DB (admin_page_assignments) or fallback to hardcoded
+    const tenantId = req.user?.tenantId || req.user?.tenant_id;
+    const sidebarPrefixes = await getDynamicSidebarRoutes(pool, userRole, tenantId);
     
     let filteredMenu = Array.from(moduleMap.values());
     
     // Apply sidebar route prefix filter for admin roles
     if (sidebarPrefixes) {
-      console.log(`[MenuSecure] Filtering sidebar for ${userRole} to prefixes: ${sidebarPrefixes.join(', ')}`);
+      console.log(`[MenuSecure] Filtering sidebar for ${userRole} to prefixes: ${sidebarPrefixes.length} routes`);
       
       filteredMenu = filteredMenu.map(m => ({
         ...m,
