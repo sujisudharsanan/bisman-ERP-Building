@@ -187,6 +187,12 @@ export default function ClientDashboardPage() {
         if (response.ok) {
           const data = await response.json();
           
+          console.log('[SubscriptionCheck] API Response:', {
+            hasActiveSubscription: data.hasActiveSubscription,
+            subscriptionStatus: data.subscription?.status,
+            status: data.status,
+          });
+          
           // If has active subscription or trial, don't show modal
           if (data.hasActiveSubscription || 
               data.subscription?.status === 'trial' || 
@@ -198,9 +204,17 @@ export default function ClientDashboardPage() {
             setSubscriptionChecked(true);
             // Clear any dismissal tracking since subscription is now active
             localStorage.removeItem('subscription_modal_dismissed_at');
+            // Mark first login as complete since they have subscription
+            localStorage.setItem('bisman_first_login_completed', 'true');
             setShowActivationModal(false);
             return;
           }
+        } else {
+          // API returned error - log it but don't show modal on API errors
+          console.warn('[SubscriptionCheck] API returned non-OK status:', response.status);
+          setSubscriptionChecked(true);
+          setShowActivationModal(false);
+          return;
         }
 
         // Check if this is first login after registration (show only then)
@@ -237,14 +251,11 @@ export default function ClientDashboardPage() {
         setSubscriptionChecked(true);
         
       } catch (error) {
-        console.error('Error checking subscription:', error);
+        console.error('[SubscriptionCheck] Error checking subscription:', error);
         setSubscriptionChecked(true);
-        
-        // On error, check dismissal time
-        const dismissedAt = localStorage.getItem('subscription_modal_dismissed_at');
-        if (!dismissedAt) {
-          setShowActivationModal(true);
-        }
+        // On error, DON'T show modal - assume subscription is valid
+        // This prevents false popup due to network/API errors
+        setShowActivationModal(false);
       }
     };
 
