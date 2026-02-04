@@ -1,28 +1,27 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect, useCallback } from 'react';
+import Link from 'next/link';
 import {
   HardDrive,
   Search,
-  Filter,
   Plus,
   Download,
   Eye,
   Edit,
-  Trash2,
   CheckCircle,
   XCircle,
   Clock,
   AlertTriangle,
-  Calendar,
   DollarSign,
   MapPin,
   User,
   Wrench,
-  BarChart3,
   TrendingDown,
-  FileText,
-  QrCode
+  QrCode,
+  Loader2,
+  RefreshCw,
+  Archive
 } from 'lucide-react';
 
 // ============================================================================
@@ -31,177 +30,87 @@ import {
 
 interface Asset {
   id: string;
-  assetCode: string;
+  asset_code: string;
   name: string;
-  category: string;
-  type: string;
-  status: 'active' | 'maintenance' | 'disposed' | 'transferred' | 'idle';
-  location: {
-    hub: string;
-    building: string;
-    floor?: string;
-    room?: string;
-  };
-  acquisitionDate: string;
-  acquisitionCost: number;
-  currentValue: number;
-  depreciationRate: number;
-  accumulatedDepreciation: number;
-  usefulLife: number;
-  remainingLife: number;
-  custodian: string;
-  lastMaintenanceDate?: string;
-  nextMaintenanceDate?: string;
-  warrantyExpiry?: string;
-  serialNumber?: string;
+  description?: string;
+  category_id?: number;
+  category_name?: string;
+  asset_type?: string;
+  serial_number?: string;
+  model_number?: string;
   manufacturer?: string;
-  model?: string;
+  purchase_date?: string;
+  purchase_cost?: number;
+  current_value?: number;
+  location_name?: string;
+  department?: string;
+  assigned_to_name?: string;
+  status: string;
+  condition?: string;
+  created_at: string;
+}
+
+interface AssetStats {
+  total: number;
+  totalValue: number;
+  underMaintenance: number;
+  active: number;
+}
+
+interface Category {
+  id: number;
+  code: string;
+  name: string;
 }
 
 // ============================================================================
-// Mock Data
+// API Helper
 // ============================================================================
 
-const mockAssets: Asset[] = [
-  {
-    id: 'AST001',
-    assetCode: 'IT-LAPTOP-001',
-    name: 'Dell Latitude 5520',
-    category: 'IT Equipment',
-    type: 'Laptop',
-    status: 'active',
-    location: { hub: 'Main Office', building: 'HQ Building', floor: '3rd', room: '301' },
-    acquisitionDate: '2022-06-15',
-    acquisitionCost: 1500,
-    currentValue: 900,
-    depreciationRate: 20,
-    accumulatedDepreciation: 600,
-    usefulLife: 5,
-    remainingLife: 3,
-    custodian: 'John Smith',
-    lastMaintenanceDate: '2023-12-01',
-    nextMaintenanceDate: '2024-06-01',
-    warrantyExpiry: '2025-06-15',
-    serialNumber: 'DL5520-789456',
-    manufacturer: 'Dell',
-    model: 'Latitude 5520'
+const apiClient = {
+  baseUrl: process.env.NEXT_PUBLIC_API_URL || '',
+  
+  async fetch(endpoint: string) {
+    const response = await fetch(`${this.baseUrl}${endpoint}`, {
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+    });
+    if (!response.ok) {
+      throw new Error('Request failed');
+    }
+    return response.json();
   },
-  {
-    id: 'AST002',
-    assetCode: 'OFF-FURN-015',
-    name: 'Executive Office Desk',
-    category: 'Furniture',
-    type: 'Desk',
-    status: 'active',
-    location: { hub: 'Main Office', building: 'HQ Building', floor: '5th', room: '501' },
-    acquisitionDate: '2020-03-10',
-    acquisitionCost: 2500,
-    currentValue: 1750,
-    depreciationRate: 10,
-    accumulatedDepreciation: 750,
-    usefulLife: 10,
-    remainingLife: 6,
-    custodian: 'Sarah Chen',
-    manufacturer: 'Steelcase',
-    model: 'Frame One'
-  },
-  {
-    id: 'AST003',
-    assetCode: 'MACH-CNC-003',
-    name: 'CNC Milling Machine',
-    category: 'Machinery',
-    type: 'Production Equipment',
-    status: 'maintenance',
-    location: { hub: 'Factory A', building: 'Production Hall', floor: 'Ground' },
-    acquisitionDate: '2019-08-20',
-    acquisitionCost: 125000,
-    currentValue: 87500,
-    depreciationRate: 12,
-    accumulatedDepreciation: 37500,
-    usefulLife: 15,
-    remainingLife: 10,
-    custodian: 'Production Team',
-    lastMaintenanceDate: '2024-01-15',
-    nextMaintenanceDate: '2024-04-15',
-    warrantyExpiry: '2024-08-20',
-    serialNumber: 'CNC-M-789012',
-    manufacturer: 'Haas',
-    model: 'VF-2SS'
-  },
-  {
-    id: 'AST004',
-    assetCode: 'VEH-TRUCK-002',
-    name: 'Delivery Truck - Ford Transit',
-    category: 'Vehicles',
-    type: 'Commercial Vehicle',
-    status: 'active',
-    location: { hub: 'Warehouse B', building: 'Vehicle Bay' },
-    acquisitionDate: '2021-11-01',
-    acquisitionCost: 45000,
-    currentValue: 33750,
-    depreciationRate: 15,
-    accumulatedDepreciation: 11250,
-    usefulLife: 8,
-    remainingLife: 6,
-    custodian: 'Fleet Management',
-    lastMaintenanceDate: '2024-01-05',
-    nextMaintenanceDate: '2024-04-05',
-    serialNumber: 'FT-VIN-123456',
-    manufacturer: 'Ford',
-    model: 'Transit 350'
-  },
-  {
-    id: 'AST005',
-    assetCode: 'IT-SERVER-001',
-    name: 'HP ProLiant DL380',
-    category: 'IT Equipment',
-    type: 'Server',
-    status: 'disposed',
-    location: { hub: 'Data Center', building: 'Server Room' },
-    acquisitionDate: '2018-02-15',
-    acquisitionCost: 15000,
-    currentValue: 0,
-    depreciationRate: 20,
-    accumulatedDepreciation: 15000,
-    usefulLife: 5,
-    remainingLife: 0,
-    custodian: 'IT Department',
-    serialNumber: 'HP-DL380-456789',
-    manufacturer: 'HP',
-    model: 'ProLiant DL380 Gen10'
-  }
-];
-
-const stats = {
-  totalAssets: 456,
-  totalValue: 2850000,
-  underMaintenance: 12,
-  depreciationMTD: 45000
 };
 
 // ============================================================================
 // Sub-Components
 // ============================================================================
 
-function StatusBadge({ status }: { status: Asset['status'] }) {
-  const config = {
+function StatusBadge({ status }: { status: string }) {
+  const config: Record<string, { label: string; className: string; icon: React.ElementType }> = {
     active: { label: 'Active', className: 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400', icon: CheckCircle },
+    under_maintenance: { label: 'Maintenance', className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400', icon: Wrench },
     maintenance: { label: 'Maintenance', className: 'bg-yellow-100 text-yellow-700 dark:bg-yellow-900/30 dark:text-yellow-400', icon: Wrench },
     disposed: { label: 'Disposed', className: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300', icon: XCircle },
-    transferred: { label: 'Transferred', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', icon: Clock },
+    retired: { label: 'Retired', className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', icon: Archive },
+    inactive: { label: 'Inactive', className: 'bg-gray-100 text-gray-700 dark:bg-gray-700 dark:text-gray-300', icon: XCircle },
+    pending_approval: { label: 'Pending', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400', icon: Clock },
     idle: { label: 'Idle', className: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400', icon: AlertTriangle }
-  }[status];
+  };
 
-  const Icon = config.icon;
+  const statusConfig = config[status] || config.active;
+  const Icon = statusConfig.icon;
+  
   return (
-    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${config.className}`}>
+    <span className={`inline-flex items-center gap-1 px-2 py-1 rounded-full text-xs font-medium ${statusConfig.className}`}>
       <Icon className="w-3 h-3" />
-      {config.label}
+      {statusConfig.label}
     </span>
   );
 }
 
-function formatCurrency(value: number): string {
+function formatCurrency(value: number | undefined | null): string {
+  if (value === undefined || value === null) return '$0';
   return new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD', minimumFractionDigits: 0 }).format(value);
 }
 
@@ -210,26 +119,89 @@ function formatCurrency(value: number): string {
 // ============================================================================
 
 export default function AssetRegisterHubPage() {
+  // State
+  const [assets, setAssets] = useState<Asset[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  
+  // Filters
   const [searchQuery, setSearchQuery] = useState('');
   const [categoryFilter, setCategoryFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [hubFilter, setHubFilter] = useState<string>('all');
+  const [locationFilter, setLocationFilter] = useState<string>('all');
+
+  // ============================================================================
+  // Data Fetching
+  // ============================================================================
+
+  const fetchAssets = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      setError(null);
+      
+      const params = new URLSearchParams({
+        limit: '100',
+        ...(searchQuery && { search: searchQuery }),
+        ...(statusFilter !== 'all' && { status: statusFilter }),
+        ...(categoryFilter !== 'all' && { category: categoryFilter }),
+      });
+      
+      const response = await apiClient.fetch(`/api/assets?${params}`);
+      setAssets(response.data || []);
+    } catch (err: unknown) {
+      console.error('Failed to fetch assets:', err);
+      setError('Failed to load assets');
+    } finally {
+      setIsLoading(false);
+    }
+  }, [searchQuery, statusFilter, categoryFilter]);
+
+  const fetchCategories = useCallback(async () => {
+    try {
+      const response = await apiClient.fetch('/api/assets/categories');
+      setCategories(response.data || []);
+    } catch (err) {
+      console.error('Failed to fetch categories:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAssets();
+  }, [fetchAssets]);
+
+  useEffect(() => {
+    fetchCategories();
+  }, [fetchCategories]);
+
+  // ============================================================================
+  // Computed Values
+  // ============================================================================
+
+  const stats: AssetStats = useMemo(() => {
+    const active = assets.filter(a => a.status === 'active').length;
+    const underMaintenance = assets.filter(a => a.status === 'under_maintenance' || a.status === 'maintenance').length;
+    const totalValue = assets.reduce((sum, a) => sum + (a.current_value || a.purchase_cost || 0), 0);
+    
+    return {
+      total: assets.length,
+      totalValue,
+      underMaintenance,
+      active,
+    };
+  }, [assets]);
+
+  const locations = useMemo(() => {
+    const locs = [...new Set(assets.map(a => a.location_name).filter(Boolean))];
+    return locs as string[];
+  }, [assets]);
 
   const filteredAssets = useMemo(() => {
-    return mockAssets.filter(asset => {
-      const matchesSearch =
-        asset.assetCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        asset.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        asset.serialNumber?.toLowerCase().includes(searchQuery.toLowerCase() || '');
-      const matchesCategory = categoryFilter === 'all' || asset.category === categoryFilter;
-      const matchesStatus = statusFilter === 'all' || asset.status === statusFilter;
-      const matchesHub = hubFilter === 'all' || asset.location.hub === hubFilter;
-      return matchesSearch && matchesCategory && matchesStatus && matchesHub;
+    return assets.filter(asset => {
+      const matchesLocation = locationFilter === 'all' || asset.location_name === locationFilter;
+      return matchesLocation;
     });
-  }, [searchQuery, categoryFilter, statusFilter, hubFilter]);
-
-  const categories = [...new Set(mockAssets.map(a => a.category))];
-  const hubs = [...new Set(mockAssets.map(a => a.location.hub))];
+  }, [assets, locationFilter]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -241,14 +213,24 @@ export default function AssetRegisterHubPage() {
             <p className="text-gray-500 dark:text-gray-400">Manage and track all organizational assets</p>
           </div>
           <div className="flex gap-3">
+            <button 
+              onClick={() => fetchAssets()}
+              className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300"
+            >
+              <RefreshCw className={`w-4 h-4 ${isLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
             <button className="flex items-center gap-2 px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 text-gray-700 dark:text-gray-300">
               <Download className="w-4 h-4" />
               Export
             </button>
-            <button className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
+            <Link 
+              href="/assets/add"
+              className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
               <Plus className="w-4 h-4" />
               Add Asset
-            </button>
+            </Link>
           </div>
         </div>
       </div>
@@ -262,7 +244,7 @@ export default function AssetRegisterHubPage() {
                 <HardDrive className="w-5 h-5 text-blue-600 dark:text-blue-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.totalAssets}</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.total}</p>
                 <p className="text-sm text-gray-500 dark:text-gray-400">Total Assets</p>
               </div>
             </div>
@@ -295,8 +277,8 @@ export default function AssetRegisterHubPage() {
                 <TrendingDown className="w-5 h-5 text-purple-600 dark:text-purple-400" />
               </div>
               <div>
-                <p className="text-2xl font-bold text-gray-900 dark:text-white">{formatCurrency(stats.depreciationMTD)}</p>
-                <p className="text-sm text-gray-500 dark:text-gray-400">Depreciation MTD</p>
+                <p className="text-2xl font-bold text-gray-900 dark:text-white">{stats.active}</p>
+                <p className="text-sm text-gray-500 dark:text-gray-400">Active Assets</p>
               </div>
             </div>
           </div>
@@ -321,17 +303,17 @@ export default function AssetRegisterHubPage() {
           >
             <option value="all">All Categories</option>
             {categories.map(c => (
-              <option key={c} value={c}>{c}</option>
+              <option key={c.id} value={c.id.toString()}>{c.name}</option>
             ))}
           </select>
           <select
-            value={hubFilter}
-            onChange={(e) => setHubFilter(e.target.value)}
+            value={locationFilter}
+            onChange={(e) => setLocationFilter(e.target.value)}
             className="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-white"
           >
             <option value="all">All Locations</option>
-            {hubs.map(h => (
-              <option key={h} value={h}>{h}</option>
+            {locations.map(loc => (
+              <option key={loc} value={loc}>{loc}</option>
             ))}
           </select>
           <select
@@ -341,13 +323,36 @@ export default function AssetRegisterHubPage() {
           >
             <option value="all">All Status</option>
             <option value="active">Active</option>
-            <option value="maintenance">Maintenance</option>
-            <option value="idle">Idle</option>
+            <option value="under_maintenance">Maintenance</option>
+            <option value="inactive">Inactive</option>
             <option value="disposed">Disposed</option>
+            <option value="retired">Retired</option>
           </select>
         </div>
 
+        {/* Loading State */}
+        {isLoading && (
+          <div className="flex items-center justify-center py-12">
+            <Loader2 className="w-8 h-8 text-blue-600 animate-spin" />
+          </div>
+        )}
+
+        {/* Error State */}
+        {error && !isLoading && (
+          <div className="text-center py-12">
+            <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
+            <p className="text-red-500">{error}</p>
+            <button 
+              onClick={() => fetchAssets()}
+              className="mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+            >
+              Retry
+            </button>
+          </div>
+        )}
+
         {/* Assets Table */}
+        {!isLoading && !error && (
         <div className="bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
           <table className="w-full">
             <thead className="bg-gray-50 dark:bg-gray-700">
@@ -370,32 +375,32 @@ export default function AssetRegisterHubPage() {
                         <HardDrive className="w-4 h-4 text-gray-500" />
                       </div>
                       <div>
-                        <p className="font-medium text-gray-900 dark:text-white">{asset.assetCode}</p>
+                        <p className="font-medium text-gray-900 dark:text-white">{asset.asset_code}</p>
                         <p className="text-sm text-gray-500">{asset.name}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3">
-                    <p className="text-sm text-gray-900 dark:text-white">{asset.category}</p>
-                    <p className="text-xs text-gray-500">{asset.type}</p>
+                    <p className="text-sm text-gray-900 dark:text-white">{asset.category_name || '-'}</p>
+                    <p className="text-xs text-gray-500">{asset.asset_type || ''}</p>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-start gap-1 text-sm">
                       <MapPin className="w-3 h-3 text-gray-400 mt-0.5" />
                       <div>
-                        <p className="text-gray-900 dark:text-white">{asset.location.hub}</p>
-                        <p className="text-xs text-gray-500">{asset.location.building}</p>
+                        <p className="text-gray-900 dark:text-white">{asset.location_name || '-'}</p>
+                        <p className="text-xs text-gray-500">{asset.department || ''}</p>
                       </div>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-right">
-                    <p className="font-medium text-gray-900 dark:text-white">{formatCurrency(asset.currentValue)}</p>
-                    <p className="text-xs text-gray-500">Cost: {formatCurrency(asset.acquisitionCost)}</p>
+                    <p className="font-medium text-gray-900 dark:text-white">{formatCurrency(asset.current_value)}</p>
+                    <p className="text-xs text-gray-500">Cost: {formatCurrency(asset.purchase_cost)}</p>
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex items-center gap-1">
                       <User className="w-3 h-3 text-gray-400" />
-                      <span className="text-sm text-gray-600 dark:text-gray-300">{asset.custodian}</span>
+                      <span className="text-sm text-gray-600 dark:text-gray-300">{asset.assigned_to_name || '-'}</span>
                     </div>
                   </td>
                   <td className="px-4 py-3">
@@ -403,12 +408,12 @@ export default function AssetRegisterHubPage() {
                   </td>
                   <td className="px-4 py-3">
                     <div className="flex justify-center gap-1">
-                      <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" title="View">
+                      <Link href={`/assets/${asset.id}`} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" title="View">
                         <Eye className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                      </button>
-                      <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" title="Edit">
+                      </Link>
+                      <Link href={`/assets/${asset.id}/edit`} className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" title="Edit">
                         <Edit className="w-4 h-4 text-gray-600 dark:text-gray-400" />
-                      </button>
+                      </Link>
                       <button className="p-1 hover:bg-gray-100 dark:hover:bg-gray-700 rounded" title="QR Code">
                         <QrCode className="w-4 h-4 text-gray-600 dark:text-gray-400" />
                       </button>
@@ -423,9 +428,17 @@ export default function AssetRegisterHubPage() {
             <div className="text-center py-12">
               <HardDrive className="w-12 h-12 text-gray-300 dark:text-gray-600 mx-auto mb-4" />
               <p className="text-gray-500 dark:text-gray-400">No assets found</p>
+              <Link 
+                href="/assets/add"
+                className="inline-flex items-center gap-2 mt-4 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
+              >
+                <Plus className="w-4 h-4" />
+                Add Your First Asset
+              </Link>
             </div>
           )}
         </div>
+        )}
       </div>
     </div>
   );
