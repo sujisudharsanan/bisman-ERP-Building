@@ -847,8 +847,7 @@ async function computeEffectiveRoles({
     const planRoles = await prisma.$queryRaw`
       SELECT r.id, r.name, r.display_name
       FROM rbac_roles r
-      WHERE r.is_active = true
-        AND r.status = 'active'
+      WHERE r.status = 'active'
     `;
     
     // For simplicity, all active roles are available - plans may restrict this in future
@@ -856,11 +855,13 @@ async function computeEffectiveRoles({
     
     // LAYER 2: Get Enterprise Admin approved roles for Superadmin
     let enterpriseApprovedRoles = null;
-    if (superadminId) {
+    // Only query if superadminId is a valid integer
+    const numericSuperadminId = parseInt(superadminId, 10);
+    if (superadminId && !isNaN(numericSuperadminId) && numericSuperadminId > 0) {
       const enterpriseRoleAssignments = await prisma.$queryRaw`
         SELECT role_id, role_name
         FROM admin_role_assignments
-        WHERE assignee_id = ${superadminId}
+        WHERE assignee_id = ${numericSuperadminId}
           AND assigner_type = 'ENTERPRISE_ADMIN'
           AND is_active = true
       `;
