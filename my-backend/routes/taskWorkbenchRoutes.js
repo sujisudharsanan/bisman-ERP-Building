@@ -60,18 +60,18 @@ router.get('/', authenticateUser, async (req, res) => {
       query = `
         SELECT 
           t.*,
-          c.id as creator_id, c.username as creator_name, c.first_name as creator_first_name, c.last_name as creator_last_name,
-          a.id as assignee_id, a.username as assignee_name, a.first_name as assignee_first_name, a.last_name as assignee_last_name,
+          c.id as creator_uuid, c.username as creator_name, c.first_name as creator_first_name, c.last_name as creator_last_name,
+          a.id as assignee_uuid, a.username as assignee_name, a.first_name as assignee_first_name, a.last_name as assignee_last_name,
           (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
           (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
         FROM workflow_tasks t
-        LEFT JOIN users c ON t.creator_id = c.id
-        LEFT JOIN users a ON t.assignee_id = a.id
+        LEFT JOIN users_enhanced c ON t.creator_id = c.id::text
+        LEFT JOIN users_enhanced a ON t.assignee_id = a.id::text
         WHERE (
           t.status = 'BLOCKED'
           OR (t.due_date IS NOT NULL AND t.due_date < NOW() AND t.status NOT IN ('COMPLETED', 'CANCELLED', 'ARCHIVED'))
         )
-        AND (t.creator_id = $${paramIndex} OR t.assignee_id = $${paramIndex} OR t.approver_id = $${paramIndex})
+        AND (t.creator_id = $${paramIndex}::text OR t.assignee_id = $${paramIndex}::text OR t.approver_id = $${paramIndex}::text)
         ORDER BY t.updated_at DESC
         LIMIT $${paramIndex + 1} OFFSET $${paramIndex + 2}
       `;
@@ -83,7 +83,7 @@ router.get('/', authenticateUser, async (req, res) => {
           t.status = 'BLOCKED'
           OR (t.due_date IS NOT NULL AND t.due_date < NOW() AND t.status NOT IN ('COMPLETED', 'CANCELLED', 'ARCHIVED'))
         )
-        AND (t.creator_id = $1 OR t.assignee_id = $1 OR t.approver_id = $1)
+        AND (t.creator_id = $1::text OR t.assignee_id = $1::text OR t.approver_id = $1::text)
       `;
       countParams.push(userId);
     } else {
@@ -95,15 +95,15 @@ router.get('/', authenticateUser, async (req, res) => {
       query = `
         SELECT 
           t.*,
-          c.id as creator_id, c.username as creator_name, c.first_name as creator_first_name, c.last_name as creator_last_name,
-          a.id as assignee_id, a.username as assignee_name, a.first_name as assignee_first_name, a.last_name as assignee_last_name,
+          c.id as creator_uuid, c.username as creator_name, c.first_name as creator_first_name, c.last_name as creator_last_name,
+          a.id as assignee_uuid, a.username as assignee_name, a.first_name as assignee_first_name, a.last_name as assignee_last_name,
           (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
           (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
         FROM workflow_tasks t
-        LEFT JOIN users c ON t.creator_id = c.id
-        LEFT JOIN users a ON t.assignee_id = a.id
+        LEFT JOIN users_enhanced c ON t.creator_id = c.id::text
+        LEFT JOIN users_enhanced a ON t.assignee_id = a.id::text
         WHERE t.status IN (${statusPlaceholders})
-        AND (t.creator_id = $${paramIndex} OR t.assignee_id = $${paramIndex} OR t.approver_id = $${paramIndex})
+        AND (t.creator_id = $${paramIndex}::text OR t.assignee_id = $${paramIndex}::text OR t.approver_id = $${paramIndex}::text)
         ORDER BY t.updated_at DESC
         LIMIT $${paramIndex + 1} OFFSET $${paramIndex + 2}
       `;
@@ -112,7 +112,7 @@ router.get('/', authenticateUser, async (req, res) => {
       countQuery = `
         SELECT COUNT(*) FROM workflow_tasks t
         WHERE t.status IN (${statusPlaceholders})
-        AND (t.creator_id = $${statuses.length + 1} OR t.assignee_id = $${statuses.length + 1} OR t.approver_id = $${statuses.length + 1})
+        AND (t.creator_id = $${statuses.length + 1}::text OR t.assignee_id = $${statuses.length + 1}::text OR t.approver_id = $${statuses.length + 1}::text)
       `;
       countParams.push(...statuses, userId);
     }
@@ -161,7 +161,7 @@ router.get('/counts', authenticateUser, async (req, res) => {
       pool.query(
         `SELECT COUNT(*) FROM workflow_tasks 
          WHERE status = 'DRAFT' 
-         AND (creator_id = $1 OR assignee_id = $1 OR approver_id = $1)`,
+         AND (creator_id = $1::text OR assignee_id = $1::text OR approver_id = $1::text)`,
         [userId]
       ),
       
@@ -169,7 +169,7 @@ router.get('/counts', authenticateUser, async (req, res) => {
       pool.query(
         `SELECT COUNT(*) FROM workflow_tasks 
          WHERE status IN ('OPEN', 'IN_PROGRESS', 'IN_REVIEW') 
-         AND (creator_id = $1 OR assignee_id = $1 OR approver_id = $1)`,
+         AND (creator_id = $1::text OR assignee_id = $1::text OR approver_id = $1::text)`,
         [userId]
       ),
       
@@ -180,7 +180,7 @@ router.get('/counts', authenticateUser, async (req, res) => {
            status = 'BLOCKED'
            OR (due_date IS NOT NULL AND due_date < NOW() AND status NOT IN ('COMPLETED', 'CANCELLED', 'ARCHIVED'))
          )
-         AND (creator_id = $1 OR assignee_id = $1 OR approver_id = $1)`,
+         AND (creator_id = $1::text OR assignee_id = $1::text OR approver_id = $1::text)`,
         [userId]
       ),
       
@@ -188,7 +188,7 @@ router.get('/counts', authenticateUser, async (req, res) => {
       pool.query(
         `SELECT COUNT(*) FROM workflow_tasks 
          WHERE status = 'COMPLETED' 
-         AND (creator_id = $1 OR assignee_id = $1 OR approver_id = $1)`,
+         AND (creator_id = $1::text OR assignee_id = $1::text OR approver_id = $1::text)`,
         [userId]
       ),
     ]);

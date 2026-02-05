@@ -72,21 +72,31 @@ const getDbPool = () => {
 
 /**
  * Get user's role level from database
- * Supports both legacy users table (role as string) and rbac_roles table
+ * Supports users_enhanced table (UUID) with role as string
  */
 const getUserRoleLevel = async (userId, client = null) => {
   const pool = client || getDbPool();
   
-  // Join on role NAME (not role_id) since users table stores role as string
-  const result = await pool.query(`
+  // First try users_enhanced table (primary - UUID support)
+  let result = await pool.query(`
     SELECT COALESCE(r.level, 0) as level, COALESCE(r.display_name, u.role) as role_name
-    FROM users u
-    LEFT JOIN rbac_roles r ON u.role = r.name
-    WHERE u.id = $1
+    FROM users_enhanced u
+    LEFT JOIN rbac_roles r ON UPPER(u.role) = UPPER(r.name)
+    WHERE u.id = $1::text
   `, [userId]);
   
+  // Fallback to legacy users table if not found
   if (result.rows.length === 0) {
-    throw new Error(`User ${userId} not found`);
+    result = await pool.query(`
+      SELECT COALESCE(r.level, 0) as level, COALESCE(r.display_name, u.role) as role_name
+      FROM users u
+      LEFT JOIN rbac_roles r ON UPPER(u.role) = UPPER(r.name)
+      WHERE u.id = $1::integer
+    `, [parseInt(userId)]);
+  }
+  
+  if (result.rows.length === 0) {
+    throw new Error(`User ${userId} not found in users_enhanced or users table`);
   }
   
   return {
