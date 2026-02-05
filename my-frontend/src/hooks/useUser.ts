@@ -8,7 +8,7 @@
 import { useAuth } from '@/contexts/AuthContext';
 
 export interface UserData {
-  id?: number;
+  id?: string | number;  // UUID string from users_enhanced, or integer for admins
   username?: string;
   email?: string;
   name?: string;
