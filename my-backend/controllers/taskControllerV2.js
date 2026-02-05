@@ -27,7 +27,7 @@ const getDbPool = () => {
  * Resolve user ID - now just returns the ID as-is since we've migrated to UUID/TEXT
  * Previously converted UUID to legacy integer ID, but workflow_tasks now uses TEXT columns.
  */
-const resolveUserId = async (rawId, client = null) => {
+const resolveUserId = async (rawId, _client = null) => {
   // Simply return the ID as-is - workflow_tasks now accepts TEXT/UUID
   return rawId || null;
 };
@@ -119,8 +119,8 @@ const listTasks = async (req, res) => {
         (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
         (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
       FROM workflow_tasks t
-      LEFT JOIN users creator ON t.creator_id = creator.id
-      LEFT JOIN users assignee ON t.assignee_id = assignee.id
+      LEFT JOIN users_enhanced creator ON t.creator_id = creator.id::text
+      LEFT JOIN users_enhanced assignee ON t.assignee_id = assignee.id::text
       WHERE (t.is_archived = FALSE OR t.is_archived IS NULL)
     `;
     
@@ -247,15 +247,13 @@ const getKanbanTasks = async (req, res) => {
         t.*,
         creator.username as creator_name,
         assignee.username as assignee_name,
-        creator_enh.id as creator_uuid,
-        assignee_enh.id as assignee_uuid,
+        creator.id as creator_uuid,
+        assignee.id as assignee_uuid,
         (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
         (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
       FROM workflow_tasks t
-      LEFT JOIN users creator ON t.creator_id = creator.id
-      LEFT JOIN users assignee ON t.assignee_id = assignee.id
-      LEFT JOIN users_enhanced creator_enh ON creator_enh.legacy_id = t.creator_id
-      LEFT JOIN users_enhanced assignee_enh ON assignee_enh.legacy_id = t.assignee_id
+      LEFT JOIN users_enhanced creator ON t.creator_id = creator.id::text
+      LEFT JOIN users_enhanced assignee ON t.assignee_id = assignee.id::text
       WHERE (t.is_archived = FALSE OR t.is_archived IS NULL)
         AND t.status NOT IN ('CANCELLED', 'ARCHIVED')
     `;
@@ -413,15 +411,13 @@ const getTaskById = async (req, res) => {
         creator.email as creator_email,
         assignee.username as assignee_name,
         assignee.email as assignee_email,
-        creator_enh.id as creator_uuid,
-        assignee_enh.id as assignee_uuid,
+        creator.id as creator_uuid,
+        assignee.id as assignee_uuid,
         (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
         (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
       FROM workflow_tasks t
-      LEFT JOIN users creator ON t.creator_id = creator.id
-      LEFT JOIN users assignee ON t.assignee_id = assignee.id
-      LEFT JOIN users_enhanced creator_enh ON creator_enh.legacy_id = t.creator_id
-      LEFT JOIN users_enhanced assignee_enh ON assignee_enh.legacy_id = t.assignee_id
+      LEFT JOIN users_enhanced creator ON t.creator_id = creator.id::text
+      LEFT JOIN users_enhanced assignee ON t.assignee_id = assignee.id::text
       WHERE t.id = $1
     `;
     
@@ -1168,7 +1164,7 @@ const getTaskMessages = async (req, res) => {
         u.email as sender_email,
         u.profile_pic_url as sender_avatar
       FROM task_messages m
-      JOIN users u ON m.sender_id = u.id
+      LEFT JOIN users_enhanced u ON m.sender_id = u.id::text
       WHERE m.task_id = $1
     `;
     
@@ -1301,7 +1297,7 @@ const getTaskAttachments = async (req, res) => {
         a.*,
         u.username as uploader_name
       FROM task_attachments a
-      JOIN users u ON a.uploaded_by = u.id
+      LEFT JOIN users_enhanced u ON a.uploaded_by = u.id::text
       WHERE a.task_id = $1
     `;
     
@@ -1697,7 +1693,7 @@ const getTaskAuditTrail = async (req, res) => {
         ta.*,
         u.email as actor_email
       FROM task_audit ta
-      LEFT JOIN users u ON u.id = ta.actor_id
+      LEFT JOIN users_enhanced u ON u.id::text = ta.actor_id
       WHERE ta.task_id = $1
     `;
     const params = [id];
