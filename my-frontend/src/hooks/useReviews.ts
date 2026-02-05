@@ -142,12 +142,27 @@ export function useReviewPurposes() {
 
 /**
  * Get available users and departments for review selection
+ * Returns empty arrays if user doesn't have permission (403)
  */
 export function useAvailableReviewers(query?: string) {
   return useQuery({
     queryKey: reviewKeys.availableReviewers(query),
-    queryFn: () => getAvailableReviewers(query),
+    queryFn: async () => {
+      try {
+        return await getAvailableReviewers(query);
+      } catch (error: unknown) {
+        // Gracefully handle 403 - user doesn't have access to this feature
+        // Return empty data instead of throwing
+        const err = error as { status?: number; message?: string };
+        if (err?.status === 403 || err?.message?.includes('403') || err?.message?.includes('FORBIDDEN')) {
+          console.log('[useAvailableReviewers] User lacks permission, returning empty data');
+          return { users: [], departments: [] };
+        }
+        throw error;
+      }
+    },
     staleTime: 30 * 1000, // 30 seconds
+    retry: false, // Don't retry on permission errors
   });
 }
 

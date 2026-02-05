@@ -43,6 +43,7 @@ export interface AvailableReviewersResponse {
 
 /**
  * Get available users and departments for review selection
+ * Returns empty arrays if user doesn't have permission
  */
 export async function getAvailableReviewers(
   query?: string
@@ -52,8 +53,20 @@ export async function getAvailableReviewers(
     params.set('q', query);
   }
   const url = `/api/reviews/available-reviewers${params.toString() ? `?${params.toString()}` : ''}`;
-  const response = await apiClient.get<AvailableReviewersResponse>(url);
-  return response.data;
+  
+  try {
+    const response = await apiClient.get<AvailableReviewersResponse>(url);
+    return response.data;
+  } catch (error: unknown) {
+    // Handle 403 gracefully - user doesn't have REVIEWS_AVAILABLE_REVIEWERS permission
+    const err = error as { response?: { status?: number }; status?: number };
+    if (err?.response?.status === 403 || err?.status === 403) {
+      console.log('[getAvailableReviewers] Permission denied, returning empty data');
+      return { success: true, users: [], departments: [] };
+    }
+    // Re-throw with status for hook to catch
+    throw { ...err, status: err?.response?.status };
+  }
 }
 
 // ============================================
