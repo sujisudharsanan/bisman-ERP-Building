@@ -166,26 +166,26 @@ async function flushUsageBuffer() {
       return { flushed: 0 };
     }
     
-    // Prepare upsert operations
+    // Prepare upsert operations - use snake_case for Prisma schema columns
     const operations = entries.map(entry => {
-      return prisma.tenantUsage.upsert({
+      return prisma.tenant_usage.upsert({
         where: {
           tenant_usage_tenant_date_unique: {
-            tenantId: entry.tenantId,
+            tenant_id: entry.tenantId,
             date: new Date(entry.date),
           },
         },
         update: {
-          apiCalls: { increment: entry.apiCalls },
-          activeUsers: entry.activeUsers.size,
-          featureUsage: entry.featureUsage,
+          api_calls: { increment: entry.apiCalls },
+          active_users: entry.activeUsers.size,
+          feature_usage: entry.featureUsage,
         },
         create: {
-          tenantId: entry.tenantId,
+          tenant_id: entry.tenantId,
           date: new Date(entry.date),
-          apiCalls: entry.apiCalls,
-          activeUsers: entry.activeUsers.size,
-          featureUsage: entry.featureUsage,
+          api_calls: entry.apiCalls,
+          active_users: entry.activeUsers.size,
+          feature_usage: entry.featureUsage,
         },
       });
     });

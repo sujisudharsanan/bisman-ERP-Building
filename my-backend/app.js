@@ -433,7 +433,7 @@ setInterval(async () => {
     if (!prisma || reqStats.count === 0) return;
     const avgLatency = Math.round(reqStats.totalLatency / reqStats.count);
     const errorRatePct = reqStats.errorCount ? parseFloat(((reqStats.errorCount / reqStats.count) * 100).toFixed(2)) : 0;
-    await prisma.systemMetricSample.create({ data: { latencyMs: avgLatency, errorRatePct, reqCount: reqStats.count, errCount: reqStats.errorCount } });
+    await prisma.system_metric_samples.create({ data: { latencyMs: avgLatency, errorRatePct, reqCount: reqStats.count, errCount: reqStats.errorCount } });
   } catch (e) {
     console.warn('[metrics] flush failed:', e.message);
   } finally {
@@ -447,7 +447,7 @@ setInterval(async () => {
   try {
     const { prisma } = app.locals;
     if (!prisma) return;
-    const config = await prisma.systemHealthConfig.findFirst({ where: { id: 1 } });
+    const config = await prisma.system_health_config.findFirst({ where: { id: 1 } });
     const metricsRetentionDays = config?.metricsRetentionDays ?? 7;
     const aggregateRetentionDays = config?.aggregateRetentionDays ?? 365;
 
@@ -455,7 +455,7 @@ setInterval(async () => {
     const now = new Date();
     const start = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() - 1, 0, 0, 0));
     const end = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 0, 0, 0));
-    const samples = await prisma.systemMetricSample.findMany({
+    const samples = await prisma.system_metric_samples.findMany({
       where: { collected_at: { gte: start, lt: end } },
     });
     if (samples.length) {
@@ -464,7 +464,7 @@ setInterval(async () => {
       const sumErr = samples.reduce((a, s) => a + (s.errCount || 0), 0);
       const avgLatency = Math.round(sumLatency / sumReq);
       const avgErrPct = sumReq ? parseFloat(((sumErr / sumReq) * 100).toFixed(2)) : 0;
-      await prisma.systemMetricDailyAggregate.upsert({
+      await prisma.system_metric_daily.upsert({
         where: { day: start },
         update: { avgLatencyMs: avgLatency, avgErrorRatePct: avgErrPct, reqCount: sumReq, errCount: sumErr },
         create: { day: start, avgLatencyMs: avgLatency, avgErrorRatePct: avgErrPct, reqCount: sumReq, errCount: sumErr },
@@ -473,11 +473,11 @@ setInterval(async () => {
 
     // Retention: purge old fine-grained samples
     const cutoffSamples = new Date(Date.now() - metricsRetentionDays * DAY_MS);
-    await prisma.systemMetricSample.deleteMany({ where: { collected_at: { lt: cutoffSamples } } });
+    await prisma.system_metric_samples.deleteMany({ where: { collected_at: { lt: cutoffSamples } } });
 
     // Retention: purge old aggregates
     const cutoffAgg = new Date(Date.now() - aggregateRetentionDays * DAY_MS);
-    await prisma.systemMetricDailyAggregate.deleteMany({ where: { day: { lt: cutoffAgg } } });
+    await prisma.system_metric_daily.deleteMany({ where: { day: { lt: cutoffAgg } } });
   } catch (e) {
     console.warn('[metrics] aggregation/retention failed:', e.message);
   }
@@ -4981,12 +4981,12 @@ app.get('/api/users/search', authenticate, async (req, res) => {
       orderBy: { username: 'asc' }
     });
 
-    // Fetch branch assignments for users that have legacy_id (UserBranch uses integer userId)
+    // Fetch branch assignments for users that have legacy_id (user_branches uses integer userId)
     const legacyIds = users.map(u => u.legacy_id).filter(Boolean);
     let userBranchMap = {};
     if (legacyIds.length > 0) {
       try {
-        const userBranches = await prisma.userBranch.findMany({
+        const userBranches = await prisma.user_branches.findMany({
           where: { userId: { in: legacyIds } },
           select: {
             userId: true,
