@@ -14,9 +14,6 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     environment: production
-    env:
-      RAILWAY_PASSWORD: ${{ secrets.RAILWAY_PASSWORD }}
-      RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
     steps:
       - uses: actions/checkout@v4
 
@@ -30,33 +27,30 @@ jobs:
         run: npm ci
 
       - name: Prisma migrate deploy (against Railway)
-        if: ${{ env.RAILWAY_PASSWORD != '' }}
+        if: ${{ secrets.RAILWAY_PASSWORD != '' }}
         env:
           RAILWAY_USER: ${{ secrets.RAILWAY_USER }}
           RAILWAY_PASSWORD: ${{ secrets.RAILWAY_PASSWORD }}
           RAILWAY_HOST: ${{ secrets.RAILWAY_HOST }}
-          RAILWAY_PORT: ${{ secrets.RAILWAY_PORT || '' }}
-          RAILWAY_DB: ${{ secrets.RAILWAY_DB || '' }}
+          RAILWAY_PORT: ${{ secrets.RAILWAY_PORT || '5432' }}
+          RAILWAY_DB: ${{ secrets.RAILWAY_DB || 'railway' }}
         working-directory: my-backend
         run: |
-          export DATABASE_URL="postgresql://${RAILWAY_USER}:${RAILWAY_PASSWORD}@${RAILWAY_HOST}:${RAILWAY_PORT:-5432}/${RAILWAY_DB:-railway}?sslmode=require"
-          npx prisma migrate deploy || npx prisma db push
-          npm run -s deploy:post || true
+          export DATABASE_URL="postgresql://${RAILWAY_USER}:${RAILWAY_PASSWORD}@${RAILWAY_HOST}:${RAILWAY_PORT}/${RAILWAY_DB}?sslmode=require"
+          npx prisma migrate deploy
 
       - name: Apply demo password/data fixes
-        if: ${{ env.RAILWAY_PASSWORD != '' }}
+        if: ${{ secrets.RAILWAY_PASSWORD != '' }}
         env:
           RAILWAY_USER: ${{ secrets.RAILWAY_USER }}
           RAILWAY_PASSWORD: ${{ secrets.RAILWAY_PASSWORD }}
-          RAILWAY_HOST: ${{ secrets.RAILWAY_HOST || '' }}
-          RAILWAY_PORT: ${{ secrets.RAILWAY_PORT || '' }}
-          RAILWAY_DB: ${{ secrets.RAILWAY_DB || '' }}
+          RAILWAY_HOST: ${{ secrets.RAILWAY_HOST }}
+          RAILWAY_PORT: ${{ secrets.RAILWAY_PORT }}
+          RAILWAY_DB: ${{ secrets.RAILWAY_DB }}
           PGSSLMODE: "require"
         working-directory: my-backend
         run: |
-          set -euo pipefail
           export DATABASE_URL="postgresql://${RAILWAY_USER}:${RAILWAY_PASSWORD}@${RAILWAY_HOST}:${RAILWAY_PORT:-5432}/${RAILWAY_DB:-railway}?sslmode=require"
-          echo "Applying fix-railway-passwords.sql (if present)"
           if [ -f fix-railway-passwords.sql ]; then
             psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f fix-railway-passwords.sql
           else
@@ -71,12 +65,10 @@ jobs:
           echo "Ensuring demo users exist (idempotent upsert)"
           if [ -f ensure-demo-users.sql ]; then
             psql "$DATABASE_URL" -v ON_ERROR_STOP=1 -f ensure-demo-users.sql
-          else
-            echo "ensure-demo-users.sql not found, skipping"
           fi
 
       - name: Apply database schema migrations
-        if: ${{ env.RAILWAY_PASSWORD != '' }}
+        if: ${{ secrets.RAILWAY_PASSWORD != '' }}
         env:
           RAILWAY_USER: ${{ secrets.RAILWAY_USER }}
           RAILWAY_PASSWORD: ${{ secrets.RAILWAY_PASSWORD }}
@@ -85,22 +77,14 @@ jobs:
           RAILWAY_DB: ${{ secrets.RAILWAY_DB }}
           PGSSLMODE: "require"
         run: |
-          set -euo pipefail
           export DATABASE_URL="postgresql://${RAILWAY_USER}:${RAILWAY_PASSWORD}@${RAILWAY_HOST}:${RAILWAY_PORT:-5432}/${RAILWAY_DB:-railway}?sslmode=require"
-          echo "Applying asset management tables migration"
-          if [ -f database/migrations/050_create_assets_tables.sql ]; then
-            psql "$DATABASE_URL" -v ON_ERROR_STOP=0 -f database/migrations/050_create_assets_tables.sql || echo "Assets tables migration completed (may already exist)"
-          fi
           echo "Applying vendor legal master migration"
           if [ -f database/migrations/051_create_vendor_legal_master.sql ]; then
             psql "$DATABASE_URL" -v ON_ERROR_STOP=0 -f database/migrations/051_create_vendor_legal_master.sql || echo "Vendor legal migration completed (may already exist)"
           fi
 
       - name: Optional restart via Railway CLI
-        if: ${{ env.RAILWAY_TOKEN != '' }}
+        if: ${{ secrets.RAILWAY_TOKEN != '' }}
         env:
           RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
-        run: |
-          npm i -g @railway/cli
-          railway login --token $RAILWAY_TOKEN
-          railway up || true
+        run: railway up || true
