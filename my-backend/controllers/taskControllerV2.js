@@ -24,12 +24,41 @@ const getDbPool = () => {
 };
 
 /**
- * Resolve user ID - now just returns the ID as-is since we've migrated to UUID/TEXT
- * Previously converted UUID to legacy integer ID, but workflow_tasks now uses TEXT columns.
+ * Resolve user ID - returns the ID as-is since we've migrated to UUID/TEXT
+ * workflow_tasks now uses TEXT columns.
  */
 const resolveUserId = async (rawId, _client = null) => {
   // Simply return the ID as-is - workflow_tasks now accepts TEXT/UUID
   return rawId || null;
+};
+
+/**
+ * Resolve UUID to legacy integer ID for tables that still use integer foreign keys.
+ * This is needed for task_messages.sender_id which is INT type.
+ */
+const resolveUserIdToLegacy = async (rawId) => {
+  if (!rawId) return null;
+  
+  // If it's already an integer, return it
+  if (!isNaN(parseInt(rawId)) && String(parseInt(rawId)) === String(rawId)) {
+    return parseInt(rawId);
+  }
+  
+  // Look up legacy_id from users_enhanced table
+  try {
+    const result = await getDbPool().query(
+      'SELECT legacy_id FROM users_enhanced WHERE id = $1::uuid',
+      [rawId]
+    );
+    if (result.rows.length > 0 && result.rows[0].legacy_id) {
+      return result.rows[0].legacy_id;
+    }
+    console.warn(`[resolveUserIdToLegacy] UUID ${rawId} has no legacy_id mapping`);
+    return null;
+  } catch (error) {
+    console.error('[resolveUserIdToLegacy] Error:', error.message);
+    return null;
+  }
 };
 
 // Task Status enum
@@ -343,7 +372,9 @@ const getKanbanTasks = async (req, res) => {
         canComplete: isCreator && task.status === 'IN_REVIEW',
         canReject: isCreator && task.status === 'IN_REVIEW',
         canSubmitForReview: isAssignee && task.status === 'IN_PROGRESS',
-        canStartWork: isAssignee && ['ASSIGNED', 'OPEN', 'DRAFT'].includes(task.status)
+        canStartWork: isAssignee && ['ASSIGNED', 'OPEN', 'DRAFT'].includes(task.status),
+        canCancel: isCreator && !['COMPLETED', 'DONE', 'CANCELLED'].includes(task.status),
+        canEdit: isCreator && ['ASSIGNED', 'OPEN', 'DRAFT'].includes(task.status)
       };
       
       // Transform for Kanban display
@@ -487,11 +518,17 @@ const getTaskById = async (req, res) => {
     task.creator_id = userCreatorUuid || task.creator_id;
     task.assignee_id = userAssigneeUuid || task.assignee_id;
     
+    const status = task.status?.toUpperCase() || '';
+    
     task.statusInfo = {
       isCreator,
       isAssignee,
-      canComplete: isAssignee && !['COMPLETED', 'DONE', 'CANCELLED'].includes(task.status),
-      canCancel: isCreator && !['COMPLETED', 'DONE', 'CANCELLED'].includes(task.status)
+      canComplete: isCreator && status === 'IN_REVIEW',
+      canReject: isCreator && status === 'IN_REVIEW',
+      canSubmitForReview: isAssignee && status === 'IN_PROGRESS',
+      canStartWork: isAssignee && ['ASSIGNED', 'OPEN', 'DRAFT'].includes(status),
+      canCancel: isCreator && !['COMPLETED', 'DONE', 'CANCELLED'].includes(status),
+      canEdit: isCreator && ['ASSIGNED', 'OPEN', 'DRAFT'].includes(status)
     };
     
     res.json({
@@ -1230,11 +1267,19 @@ const getTaskMessages = async (req, res) => {
 const createTaskMessage = async (req, res) => {
   try {
     const { id } = req.params;
-    // Resolve UUID to legacy integer ID for database operations
+    // Resolve UUID to legacy integer ID for task_messages.sender_id (INT column)
     const rawUserId = req.user.id;
-    const userId = await resolveUserId(rawUserId) || rawUserId;
+    const userId = await resolveUserIdToLegacy(rawUserId);
     const tenantId = req.user.tenant_id;
     const { content, replyToId } = req.body;
+    
+    if (!userId) {
+      console.error('[createTaskMessage] Could not resolve user ID:', rawUserId);
+      return res.status(400).json({
+        success: false,
+        error: 'Could not resolve user ID'
+      });
+    }
     
     if (!content || !content.trim()) {
       return res.status(400).json({
@@ -1259,10 +1304,10 @@ const createTaskMessage = async (req, res) => {
     
     const message = result.rows[0];
     
-    // Get sender info
+    // Get sender info - use users_enhanced for UUID support
     const senderResult = await getDbPool().query(
-      'SELECT username, email, profile_pic_url FROM users WHERE id = $1',
-      [userId]
+      'SELECT username, email, profile_pic_url FROM users_enhanced WHERE id = $1::uuid OR id::text = $1',
+      [rawUserId]
     );
     
     message.sender_name = senderResult.rows[0]?.username;

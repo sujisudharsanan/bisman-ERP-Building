@@ -27,7 +27,7 @@ const COMMON_MODULE_PATHS = [
 ];
 
 interface User {
-  id?: number;
+  id?: string | number;  // UUID string from users_enhanced, or integer for admins
   username?: string;
   email?: string;
   roleName?: string;

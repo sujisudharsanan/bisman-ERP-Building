@@ -245,6 +245,17 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
         }
       }
 
+      console.log('[TaskDetailView] Task data loaded:', {
+        taskId,
+        taskInfo,
+        assignee: taskInfo?.assignee,
+        assigneeId: taskInfo?.assigneeId,
+        assignee_id: taskInfo?.assignee_id,
+        creator: taskInfo?.creator,
+        creatorId: taskInfo?.creatorId,
+        creator_id: taskInfo?.creator_id,
+      });
+
       setTask({
         ...taskInfo,
         messages: messages,
@@ -910,7 +921,8 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
         {/* Action Buttons Row */}
         <div className="flex items-center gap-2">
           {/* Start Work Button - For assignee when status is OPEN */}
-          {isTaskAssignee && isOpen && (
+          {/* Use statusInfo.canStartWork from API if available, otherwise fall back to local check */}
+          {((task as any)?.statusInfo?.canStartWork || (isTaskAssignee && isOpen)) && (
             <button
               onClick={handleStartWork}
               disabled={startingWork}
@@ -926,7 +938,8 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
           )}
 
           {/* Send for Review Button - For assignee when IN_PROGRESS */}
-          {isTaskAssignee && isInProgress && (
+          {/* Use statusInfo.canSubmitForReview from API if available, otherwise fall back to local check */}
+          {((task as any)?.statusInfo?.canSubmitForReview || (isTaskAssignee && isInProgress)) && (
             <button
               onClick={handleSendForReview}
               disabled={sendingForReview}
@@ -942,7 +955,8 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
           )}
 
           {/* Complete Button - For creator when IN_REVIEW */}
-          {isTaskCreator && isInReview && (
+          {/* Use statusInfo.canComplete from API if available, otherwise fall back to local check */}
+          {((task as any)?.statusInfo?.canComplete || (isTaskCreator && isInReview)) && (
             <button
               onClick={handleMarkComplete}
               disabled={completing}
@@ -958,7 +972,8 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
           )}
 
           {/* Cancel Button - For creator when not completed */}
-          {isTaskCreator && !isCompleted && task.status !== 'CANCELLED' && (
+          {/* Use statusInfo.canCancel from API if available, otherwise fall back to local check */}
+          {((task as any)?.statusInfo?.canCancel || (isTaskCreator && !isCompleted && task.status !== 'CANCELLED')) && (
             <button
               onClick={() => setShowCancelDialog(true)}
               disabled={cancelling}
@@ -983,7 +998,8 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
           )}
 
           {/* Edit Button - For creator when task is OPEN (before work starts) */}
-          {isTaskCreator && isOpen && (
+          {/* Use statusInfo.canEdit from API if available, otherwise fall back to local check */}
+          {((task as any)?.statusInfo?.canEdit || (isTaskCreator && isOpen)) && (
             <button
               onClick={() => setShowEditForm(true)}
               className="px-3 py-2 text-sm font-medium bg-blue-600/20 hover:bg-blue-600/30 text-blue-400 rounded-lg transition-colors flex items-center gap-1.5"
@@ -1070,7 +1086,7 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
           </div>
         )}
 
-        {/* Description Section - Only show content after task is accepted (IN_PROGRESS or beyond) */}
+        {/* Description Section - Creator always sees content, assignee sees after accepting */}
         <div className="bg-[#252836] rounded-lg overflow-hidden">
           <button
             onClick={() => toggleSection('details')}
@@ -1085,8 +1101,26 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
           </button>
           {expandedSections.details && (
             <div className="px-3 pb-3">
-              {isOpen ? (
-                <p className="text-gray-500 text-sm italic">Start work to see the description and attachments</p>
+              {/* Creator always sees description, assignee sees after starting work */}
+              {isOpen && isTaskAssignee && !isTaskCreator ? (
+                <div className="text-gray-400 text-sm">
+                  <p className="italic">Accept the task to see the full description and attachments.</p>
+                  <p className="mt-2 text-gray-500">Click "Start Work" to begin.</p>
+                </div>
+              ) : isOpen && isTaskCreator ? (
+                <div>
+                  {task.description ? (
+                    <p className="text-gray-300 text-sm whitespace-pre-wrap">{task.description}</p>
+                  ) : (
+                    <p className="text-gray-500 text-sm italic">No description provided</p>
+                  )}
+                  {/* Show task status for creator */}
+                  <div className="mt-3 pt-3 border-t border-gray-700">
+                    <p className="text-gray-400 text-xs">
+                      Waiting for <span className="text-blue-400">{task.assignee?.username || task.assignee?.firstName || 'assignee'}</span> to start work
+                    </p>
+                  </div>
+                </div>
               ) : task.description ? (
                 <p className="text-gray-300 text-sm whitespace-pre-wrap">{task.description}</p>
               ) : (
@@ -1096,8 +1130,8 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
           )}
         </div>
 
-        {/* Attachments Section - Only show after task is accepted (not OPEN/ASSIGNED/DRAFT) */}
-        {!isOpen && task.attachments && task.attachments.length > 0 && (
+        {/* Attachments Section - Creator always sees, assignee sees after accepting */}
+        {((!isOpen) || isTaskCreator) && task.attachments && task.attachments.length > 0 && (
         <div className="bg-[#252836] rounded-lg overflow-hidden">
           <button
             onClick={() => toggleSection('attachments')}
@@ -1311,10 +1345,10 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
             <div className="flex items-center gap-2">
               <Bot className="w-4 h-4 text-purple-400" />
               <span className="text-white font-medium text-sm">
-                AI Assistant
+                Bey
               </span>
               <span className="px-1.5 py-0.5 text-[10px] font-medium bg-purple-500/20 text-purple-400 rounded">
-                BEIA
+                AI
               </span>
             </div>
             {expandedSections.aiAssistant ? (

@@ -93,6 +93,13 @@ const checkForDuplicates = async (title, assigneeId, creatorId, excludeTaskId = 
  * @param {Object} client - Database client (for transactions) or null to use pool
  */
 const createSystemMessage = async (taskId, messageText, userId, client = null) => {
+  // Resolve UUID to legacy integer ID for task_messages.sender_id (INT column)
+  const legacySenderId = await resolveUserIdToLegacy(userId, client);
+  if (!legacySenderId) {
+    console.warn('[createSystemMessage] Could not resolve user ID:', userId);
+    return null;
+  }
+  
   const query = `
     INSERT INTO task_messages (task_id, sender_id, content, message_type, is_system_message)
     VALUES ($1, $2, $3, 'SYSTEM', true)
@@ -100,7 +107,7 @@ const createSystemMessage = async (taskId, messageText, userId, client = null) =
   `;
   
   const db = client || getDbPool();
-  const result = await db.query(query, [taskId, userId, messageText]);
+  const result = await db.query(query, [taskId, legacySenderId, messageText]);
   return result.rows[0];
 };
 
@@ -702,6 +709,26 @@ exports.getTaskQuickView = async (req, res) => {
     const creatorId = taskRow.creator_uuid || taskRow.creator_id;
     const assigneeId = taskRow.assignee_uuid || taskRow.assignee_id;
     
+    // Helper for ID comparison (supports both UUID and legacy integer)
+    const normalizeId = (id) => (id != null ? String(id) : '');
+    
+    // Determine user roles for this task
+    const isCreator = normalizeId(userId) === normalizeId(creatorId);
+    const isAssignee = normalizeId(userId) === normalizeId(assigneeId);
+    const status = taskRow.status?.toUpperCase() || '';
+    
+    // Calculate statusInfo for action buttons
+    const statusInfo = {
+      isCreator,
+      isAssignee,
+      canComplete: isCreator && status === 'IN_REVIEW',
+      canReject: isCreator && status === 'IN_REVIEW',
+      canSubmitForReview: isAssignee && status === 'IN_PROGRESS',
+      canStartWork: isAssignee && ['ASSIGNED', 'OPEN', 'DRAFT'].includes(status),
+      canCancel: isCreator && !['COMPLETED', 'DONE', 'CANCELLED'].includes(status),
+      canEdit: isCreator && ['ASSIGNED', 'OPEN', 'DRAFT'].includes(status)
+    };
+    
     // Get messages - use users_enhanced with TEXT comparison
     const messagesQuery = `
       SELECT 
@@ -752,6 +779,7 @@ exports.getTaskQuickView = async (req, res) => {
         firstName: taskRow.assignee_first_name,
         lastName: taskRow.assignee_last_name,
       } : null,
+      statusInfo,
     };
     
     const messages = messagesResult.rows.map(row => ({
@@ -1293,11 +1321,13 @@ exports.addTaskMessage = async (req, res) => {
     await client.query('BEGIN');
     
     const taskId = req.params.id;
-    const userId = req.user.id;
+    // Resolve UUID to legacy integer ID for task_messages.sender_id (INT column)
+    const rawUserId = req.user.id;
+    const userId = await resolveUserIdToLegacy(rawUserId, client) || rawUserId;
     const { messageText, messageType = 'TEXT' } = req.body;
     
-    // Check permissions
-    const permission = await hasTaskPermission(taskId, userId, 'comment');
+    // Check permissions - use raw UUID for permission check
+    const permission = await hasTaskPermission(taskId, rawUserId, 'comment');
     if (!permission.hasPermission) {
       return res.status(403).json({
         success: false,
@@ -1312,7 +1342,7 @@ exports.addTaskMessage = async (req, res) => {
       });
     }
     
-    // Add message
+    // Add message with legacy integer sender_id
     const query = `
       INSERT INTO task_messages (task_id, sender_id, content, message_type)
       VALUES ($1, $2, $3, $4)
@@ -1322,11 +1352,11 @@ exports.addTaskMessage = async (req, res) => {
     const result = await client.query(query, [taskId, userId, messageText, messageType]);
     const message = result.rows[0];
     
-    // Get sender details
+    // Get sender details from users_enhanced (UUID-based)
     const senderQuery = `
-      SELECT username, email FROM users WHERE id = $1
+      SELECT username, email FROM users_enhanced WHERE id = $1::uuid OR id::text = $1
     `;
-    const senderResult = await client.query(senderQuery, [userId]);
+    const senderResult = await client.query(senderQuery, [rawUserId]);
     const sender = senderResult.rows[0];
     
     await client.query('COMMIT');

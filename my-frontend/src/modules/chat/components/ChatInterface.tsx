@@ -1475,10 +1475,21 @@ Choose a subscription plan that fits your business needs:
         // Save conversation to database
         await saveConversation();
       } else {
+        // Try to get error message from response
+        let errorMessage = "Oops! Something went wrong on my end. Mind trying that again? 😅";
+        try {
+          const errorData = await response.json();
+          if (errorData.reply || errorData.response || errorData.message) {
+            errorMessage = errorData.reply || errorData.response || errorData.message;
+          }
+        } catch {
+          // Ignore JSON parse error
+        }
+        
         // Error response
         const botMessage: Message = {
           id: `bot-error-${Date.now()}`,
-          message: "Oops! Something went wrong on my end. Mind trying that again? 😅",
+          message: errorMessage,
           user_id: 'bey',
           create_at: Date.now(),
           username: 'Bey',

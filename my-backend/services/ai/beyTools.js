@@ -44,6 +44,37 @@ const SENSITIVE_FIELDS = ['password', 'password_hash', 'email', 'phone', 'salary
 const PRIVILEGED_ROLES = ['admin', 'super_admin', 'enterprise_admin', 'hub_manager'];
 
 /**
+ * Resolve UUID user id to legacy integer id for tables that require INT.
+ * Queries users_enhanced.legacy_id to find the matching integer.
+ */
+async function resolveUserIdToLegacy(rawId) {
+  if (!rawId) return null;
+  
+  // If it's already an integer, return it
+  const parsed = parseInt(rawId, 10);
+  if (!isNaN(parsed) && String(parsed) === String(rawId)) {
+    return parsed;
+  }
+  
+  // UUID - look up legacy_id
+  try {
+    const result = await pool.query(
+      'SELECT legacy_id FROM users_enhanced WHERE id::text = $1',
+      [rawId]
+    );
+    if (result.rows.length > 0 && result.rows[0].legacy_id) {
+      return result.rows[0].legacy_id;
+    }
+    // No legacy_id, return null
+    console.warn(`[BeyTools] UUID ${rawId} has no legacy_id`);
+    return null;
+  } catch (error) {
+    console.error('[BeyTools] resolveUserIdToLegacy error:', error);
+    return null;
+  }
+}
+
+/**
  * =====================================================
  * SECURITY HELPER FUNCTIONS
  * =====================================================
@@ -476,16 +507,19 @@ const toolExecutors = {
         UPDATE tasks SET status = $1, updated_at = NOW() WHERE id = $2
       `, [new_status, task.id]);
       
-      // Add system message to task
+      // Add system message to task - resolve UUID to legacy_id for sender_id (INT column)
       const now = new Date();
       const timeStr = now.toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit', hour12: true });
       const displayName = userName || 'User';
       const systemMessage = `🔄 ${displayName} changed status to ${new_status} at ${timeStr}${comment ? `. Note: ${comment}` : ''}`;
       
-      await pool.query(`
-        INSERT INTO task_messages (task_id, sender_id, content, sender_type)
-        VALUES ($1, $2, $3, 'SYSTEM')
-      `, [task.id, userId, systemMessage]);
+      const legacySenderId = await resolveUserIdToLegacy(userId);
+      if (legacySenderId) {
+        await pool.query(`
+          INSERT INTO task_messages (task_id, sender_id, content, sender_type)
+          VALUES ($1, $2, $3, 'SYSTEM')
+        `, [task.id, legacySenderId, systemMessage]);
+      }
       
       // Audit log
       await logAIAction(userId, 'update_status', task.id, { 
@@ -546,11 +580,14 @@ const toolExecutors = {
         userId
       ]);
       
-      // Add system message to task
-      await pool.query(`
-        INSERT INTO task_messages (task_id, sender_id, content, sender_type)
-        VALUES ($1, $2, $3, 'SYSTEM')
-      `, [task?.id || numericId, userId, `📬 Reminder sent to ${target_user_name || 'team member'}: "${message}"`]);
+      // Add system message to task - resolve UUID to legacy_id for sender_id (INT column)
+      const legacySenderId = await resolveUserIdToLegacy(userId);
+      if (legacySenderId) {
+        await pool.query(`
+          INSERT INTO task_messages (task_id, sender_id, content, sender_type)
+          VALUES ($1, $2, $3, 'SYSTEM')
+        `, [task?.id || numericId, legacySenderId, `📬 Reminder sent to ${target_user_name || 'team member'}: "${message}"`]);
+      }
       
       // Audit log
       await logAIAction(userId, 'send_reminder', task?.id, {
@@ -610,13 +647,16 @@ const toolExecutors = {
         UPDATE tasks SET assignee_id = $1, updated_at = NOW() WHERE id = $2
       `, [new_assignee_id, task.id]);
       
-      // Add system message
+      // Add system message - resolve UUID to legacy_id for sender_id (INT column)
       const displayName = userName || 'Manager';
       const reasonText = reason ? ` Reason: ${reason}` : '';
-      await pool.query(`
-        INSERT INTO task_messages (task_id, sender_id, content, sender_type)
-        VALUES ($1, $2, $3, 'SYSTEM')
-      `, [task.id, userId, `👤 ${displayName} reassigned task to ${new_assignee_name || 'new assignee'}.${reasonText}`]);
+      const legacySenderId = await resolveUserIdToLegacy(userId);
+      if (legacySenderId) {
+        await pool.query(`
+          INSERT INTO task_messages (task_id, sender_id, content, sender_type)
+          VALUES ($1, $2, $3, 'SYSTEM')
+        `, [task.id, legacySenderId, `👤 ${displayName} reassigned task to ${new_assignee_name || 'new assignee'}.${reasonText}`]);
+      }
       
       // Notify new assignee
       await pool.query(`
@@ -877,10 +917,16 @@ const toolExecutors = {
         };
       }
       
+      // Resolve UUID to legacy_id for sender_id (INT column)
+      const legacySenderId = await resolveUserIdToLegacy(userId);
+      if (!legacySenderId) {
+        return { success: false, error: 'Could not resolve user ID for comment' };
+      }
+      
       await pool.query(`
         INSERT INTO task_messages (task_id, sender_id, content, sender_type)
         VALUES ($1, $2, $3, $4)
-      `, [numericId, userId, message, is_system ? 'SYSTEM' : 'USER']);
+      `, [numericId, legacySenderId, message, is_system ? 'SYSTEM' : 'USER']);
       
       // Audit log
       await logAIAction(userId, 'add_comment', numericId, {

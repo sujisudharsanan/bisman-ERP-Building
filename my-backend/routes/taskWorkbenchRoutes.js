@@ -21,6 +21,38 @@ const getDbPool = () => {
   return pool;
 };
 
+/**
+ * Resolve UUID user id to legacy integer id for tables that require INT.
+ * Queries users_enhanced.legacy_id to find the matching integer.
+ */
+async function resolveUserIdToLegacy(rawId) {
+  if (!rawId) return null;
+  
+  // If it's already an integer, return it
+  const parsed = parseInt(rawId, 10);
+  if (!isNaN(parsed) && String(parsed) === String(rawId)) {
+    return parsed;
+  }
+  
+  // UUID - look up legacy_id
+  try {
+    const pool = getDbPool();
+    const result = await pool.query(
+      'SELECT legacy_id FROM users_enhanced WHERE id::text = $1',
+      [rawId]
+    );
+    if (result.rows.length > 0 && result.rows[0].legacy_id) {
+      return result.rows[0].legacy_id;
+    }
+    // No legacy_id, return null
+    console.warn(`[resolveUserIdToLegacy] UUID ${rawId} has no legacy_id`);
+    return null;
+  } catch (error) {
+    console.error('[resolveUserIdToLegacy] Error:', error);
+    return null;
+  }
+}
+
 // Middleware to check authentication (re-use from existing routes)
 function authenticateUser(req, res, next) {
   if (!req.user) {
@@ -234,7 +266,7 @@ router.get('/:id/quick-view', authenticateUser, async (req, res) => {
       WHERE t.id = $1
     `;
 
-    // Fetch messages - use users_enhanced for sender
+    // Fetch messages - join via legacy_id since sender_id is INT
     const messagesQuery = `
       SELECT 
         m.id,
@@ -244,11 +276,12 @@ router.get('/:id/quick-view', authenticateUser, async (req, res) => {
         m.message_type,
         m.is_system_message,
         m.created_at,
+        s.id as sender_uuid,
         s.username as sender_name,
         s.first_name as sender_first_name,
         s.last_name as sender_last_name
       FROM task_messages m
-      LEFT JOIN users_enhanced s ON m.sender_id = s.id::text
+      LEFT JOIN users_enhanced s ON m.sender_id = s.legacy_id
       WHERE m.task_id = $1
       ORDER BY m.created_at ASC
       LIMIT 100
@@ -301,7 +334,16 @@ router.post('/:id/messages', authenticateUser, async (req, res) => {
   try {
     const { id } = req.params;
     const { message } = req.body;
-    const { id: userId, username, firstName, lastName } = req.user;
+    const { id: rawUserId, username, firstName, lastName } = req.user;
+    
+    // Resolve UUID to legacy integer ID for task_messages.sender_id (INT column)
+    const legacySenderId = await resolveUserIdToLegacy(rawUserId);
+    if (!legacySenderId) {
+      return res.status(400).json({
+        success: false,
+        error: 'Could not resolve user ID for message sending',
+      });
+    }
 
     if (!message || !message.trim()) {
       return res.status(400).json({
@@ -312,14 +354,14 @@ router.post('/:id/messages', authenticateUser, async (req, res) => {
 
     const pool = getDbPool();
 
-    // Insert message
+    // Insert message with legacy integer sender_id
     const insertQuery = `
       INSERT INTO task_messages (task_id, sender_id, message_text, message_type, is_system_message)
       VALUES ($1, $2, $3, 'TEXT', false)
       RETURNING *
     `;
 
-    const result = await pool.query(insertQuery, [id, userId, message.trim()]);
+    const result = await pool.query(insertQuery, [id, legacySenderId, message.trim()]);
     const newMessage = result.rows[0];
 
     // Emit socket event if available
@@ -329,7 +371,7 @@ router.post('/:id/messages', authenticateUser, async (req, res) => {
         taskId: id,
         message: {
           id: newMessage.id,
-          senderId: userId,
+          senderId: rawUserId, // Return original UUID for frontend
           senderName: firstName && lastName ? `${firstName} ${lastName}` : username,
           senderType: 'user',
           content: newMessage.message_text,
@@ -342,7 +384,7 @@ router.post('/:id/messages', authenticateUser, async (req, res) => {
       success: true,
       message: {
         id: newMessage.id,
-        senderId: userId,
+        senderId: rawUserId, // Return original UUID for frontend
         senderName: firstName && lastName ? `${firstName} ${lastName}` : username,
         senderType: 'user',
         content: newMessage.message_text,

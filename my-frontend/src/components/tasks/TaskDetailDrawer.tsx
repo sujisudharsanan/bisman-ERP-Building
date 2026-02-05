@@ -899,7 +899,7 @@ export function TaskDetailDrawer({ taskId, isOpen, onClose, onTaskDeleted }: Tas
                 <div className="p-4">
                   <div className="text-center py-8">
                     <Sparkles className="w-12 h-12 text-purple-300 mx-auto mb-2" />
-                    <p className="text-gray-600 font-medium mb-1">AI Assistant</p>
+                    <p className="text-gray-600 font-medium mb-1">Bey</p>
                     <p className="text-sm text-gray-400">
                       Ask Bey for help with this task
                     </p>
