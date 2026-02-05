@@ -172,6 +172,11 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [touched, setTouched] = useState<Record<string, boolean>>({});
 
+  // Attachments state
+  const [attachments, setAttachments] = useState<File[]>([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Click outside handler
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
@@ -478,6 +483,47 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
     return Object.keys(newErrors).length === 0;
   };
 
+  // Handle file selection
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      const newFiles = Array.from(files);
+      setAttachments(prev => [...prev, ...newFiles]);
+    }
+    // Reset input to allow selecting same file again
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
+  // Handle drag and drop
+  const handleDrop = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const files = e.dataTransfer.files;
+    if (files) {
+      const newFiles = Array.from(files);
+      setAttachments(prev => [...prev, ...newFiles]);
+    }
+  };
+
+  const handleDragOver = (e: React.DragEvent<HTMLLabelElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  // Remove attachment
+  const removeAttachment = (index: number) => {
+    setAttachments(prev => prev.filter((_, i) => i !== index));
+  };
+
+  // Format file size
+  const formatFileSize = (bytes: number) => {
+    if (bytes < 1024) return bytes + ' B';
+    if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / (1024 * 1024)).toFixed(1) + ' MB';
+  };
+
   // Handle submit
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -528,6 +574,8 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
       // Payment request specific fields
       taskType: activeTab === 'payment' ? 'PAYMENT_REQUEST' : 'TASK',
       paymentRequest,
+      // Attachments - will be handled by the parent component
+      attachments: attachments.length > 0 ? attachments : undefined,
     };
 
     await onSubmit(data);
@@ -1616,14 +1664,50 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
                 Attachments
               </label>
               <div className="flex items-center justify-center w-full">
-                <label className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700">
+                <label 
+                  className="flex flex-col items-center justify-center w-full h-24 border-2 border-gray-300 border-dashed rounded-xl cursor-pointer bg-gray-50 dark:bg-gray-800 hover:bg-gray-100 dark:hover:bg-gray-700"
+                  onDrop={handleDrop}
+                  onDragOver={handleDragOver}
+                >
                   <div className="flex flex-col items-center justify-center pt-5 pb-6">
                     <Paperclip className="w-6 h-6 text-gray-400 mb-1" />
                     <p className="text-xs text-gray-500">Click to upload or drag and drop</p>
                   </div>
-                  <input type="file" className="hidden" multiple />
+                  <input 
+                    type="file" 
+                    ref={fileInputRef}
+                    className="hidden" 
+                    multiple 
+                    onChange={handleFileChange}
+                    accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv"
+                  />
                 </label>
               </div>
+              
+              {/* Selected files list */}
+              {attachments.length > 0 && (
+                <div className="mt-3 space-y-2">
+                  {attachments.map((file, index) => (
+                    <div 
+                      key={index}
+                      className="flex items-center justify-between px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700"
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <FileText className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                        <span className="text-sm text-gray-700 dark:text-gray-300 truncate">{file.name}</span>
+                        <span className="text-xs text-gray-400 flex-shrink-0">({formatFileSize(file.size)})</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => removeAttachment(index)}
+                        className="p-1 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
