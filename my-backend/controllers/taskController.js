@@ -684,7 +684,10 @@ exports.getTaskQuickView = async (req, res) => {
       LEFT JOIN users_enhanced assignee ON t.assignee_id = assignee.id::text
       WHERE t.id = $1
     `;
+    
+    console.log('[QuickView] Executing task query for ID:', taskId);
     const taskResult = await getDbPool().query(taskQuery, [taskId]);
+    console.log('[QuickView] Task query result rows:', taskResult.rows.length);
     
     if (taskResult.rows.length === 0) {
       return res.status(404).json({
@@ -769,11 +772,11 @@ exports.getTaskQuickView = async (req, res) => {
     });
     
   } catch (error) {
-    console.error('Error fetching task quick view:', error);
+    console.error('[QuickView] Error fetching task:', error.message, error.stack);
     res.status(500).json({
       success: false,
       error: 'Failed to fetch task',
-      details: error.message
+      details: process.env.NODE_ENV !== 'production' ? error.message : undefined
     });
   }
 };
