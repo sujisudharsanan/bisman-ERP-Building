@@ -45,7 +45,7 @@ import { useHierarchyCheck, HierarchyCheckResult } from '@/hooks/useHierarchyChe
 // ============================================
 
 interface UserOption {
-  id: number;
+  id: string;  // UUID string
   username: string;
   email: string;
   fullName: string;
@@ -230,7 +230,7 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
   useEffect(() => {
     if (task?.assignee) {
       setAssignees([{
-        id: task.assigneeId,
+        id: String(task.assigneeId),  // Convert to string (UUID)
         username: task.assignee.username,
         email: task.assignee.email,
         fullName: `${task.assignee.firstName || ''} ${task.assignee.lastName || ''}`.trim(),
@@ -305,7 +305,7 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
     description?: string;
     priority: string;
     suggestedDueDate?: string;
-    requestedTo: number;
+    requestedTo: string;  // UUID string
   }) => {
     try {
       const response = await fetch('/api/task-requests', {
@@ -319,7 +319,7 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
           description: requestData.description || description,
           priority: requestData.priority || priority,
           suggestedDueDate: requestData.suggestedDueDate || (dueDate ? `${dueDate}T${dueTime || '18:00'}:00` : undefined),
-          requestedToId: requestData.requestedTo,
+          requestedTo: requestData.requestedTo,
         }),
       });
       
@@ -344,7 +344,7 @@ export function TaskFormV2({ mode, task, onSubmit, onCancel, isLoading = false }
   };
 
   // Remove user from assignees
-  const removeAssignee = (userId: number) => {
+  const removeAssignee = (userId: string) => {
     setAssignees(assignees.filter(a => a.id !== userId));
   };
 

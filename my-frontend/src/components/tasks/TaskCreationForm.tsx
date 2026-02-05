@@ -12,7 +12,7 @@ import { PriorityBadge } from './PriorityBadge';
 import { Search, User, X, Loader2 } from 'lucide-react';
 
 interface UserResult {
-  id: number;
+  id: string;  // UUID string
   username: string;
   email: string;
   fullName: string;

@@ -651,7 +651,18 @@ exports.getTaskStats = async (req, res) => {
  */
 exports.getTaskQuickView = async (req, res) => {
   try {
-    const taskId = req.params.id;
+    let taskId = req.params.id;
+    
+    // Handle padded display IDs like "00010" -> convert to numeric 10
+    // Also strip "TSK-" prefix if present
+    if (taskId.startsWith('TSK-')) {
+      taskId = taskId.replace('TSK-', '');
+    }
+    // Parse numeric ID (removes leading zeros)
+    const numericId = parseInt(taskId, 10);
+    if (!isNaN(numericId)) {
+      taskId = numericId;
+    }
     
     // Get task with details - use users_enhanced with TEXT comparison for UUID support
     const taskQuery = `
@@ -767,8 +778,17 @@ exports.getTaskQuickView = async (req, res) => {
  */
 exports.getTaskById = async (req, res) => {
   try {
-    const taskId = req.params.id;
+    let taskId = req.params.id;
     const userId = req.user.id;
+    
+    // Handle padded display IDs like "00010" -> convert to numeric 10
+    if (taskId.startsWith('TSK-')) {
+      taskId = taskId.replace('TSK-', '');
+    }
+    const numericId = parseInt(taskId, 10);
+    if (!isNaN(numericId)) {
+      taskId = numericId;
+    }
     
     // Check permissions
     const permission = await hasTaskPermission(taskId, userId, 'view');
@@ -789,13 +809,13 @@ exports.getTaskById = async (req, res) => {
       });
     }
     
-    // Get messages
+    // Get messages - use users_enhanced with TEXT comparison
     const messagesQuery = `
       SELECT 
         tm.*,
         u.username as sender_name, u.email as sender_email
       FROM task_messages tm
-      LEFT JOIN users u ON tm.sender_id = u.id
+      LEFT JOIN users_enhanced u ON tm.sender_id = u.id::text
       WHERE tm.task_id = $1
       ORDER BY tm.created_at ASC
     `;

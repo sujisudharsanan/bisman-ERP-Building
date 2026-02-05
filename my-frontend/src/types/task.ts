@@ -331,9 +331,9 @@ export interface PaymentRequestData {
 export interface CreateTaskInput {
   title: string;
   description?: string;
-  assigneeId: number;
-  assigneeIds?: number[];  // Multiple assignees for collaborative tasks
-  approverId?: number;
+  assigneeId: string;  // UUID string
+  assigneeIds?: string[];  // Multiple assignees for collaborative tasks (UUID strings)
+  approverId?: string;  // UUID string
   priority?: TaskPriority;
   dueDate?: string;
   estimatedHours?: number;
@@ -354,8 +354,8 @@ export interface UpdateTaskInput {
   description?: string;
   status?: TaskStatus;
   priority?: TaskPriority;
-  assigneeId?: number;
-  approverId?: number;
+  assigneeId?: string;  // UUID string
+  approverId?: string;  // UUID string
   dueDate?: string;
   progress?: number;
   estimatedHours?: number;
@@ -372,9 +372,9 @@ export interface CreateMessageInput {
 export interface TaskFilterOptions {
   status?: TaskStatus[];
   priority?: TaskPriority[];
-  assigneeId?: number;
-  creatorId?: number;
-  approverId?: number;
+  assigneeId?: string;  // UUID string
+  creatorId?: string;  // UUID string
+  approverId?: string;  // UUID string
   dueDateFrom?: string;
   dueDateTo?: string;
   searchQuery?: string;

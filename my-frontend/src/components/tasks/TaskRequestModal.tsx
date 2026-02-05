@@ -27,7 +27,7 @@ interface TaskRequestModalProps {
     description?: string;
     priority: string;
     suggestedDueDate?: string;
-    requestedTo: number;
+    requestedTo: string;  // UUID string
   }) => Promise<void>;
   // Pre-filled data from the attempted task creation
   taskData: {
@@ -35,7 +35,7 @@ interface TaskRequestModalProps {
     description?: string;
     priority?: string;
     dueDate?: string;
-    assigneeId: number;
+    assigneeId: string;  // UUID string
     assigneeName: string;
     assigneeRoleName: string;
   };

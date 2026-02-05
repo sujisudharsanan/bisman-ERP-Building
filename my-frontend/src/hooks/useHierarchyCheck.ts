@@ -18,7 +18,7 @@ export interface HierarchyCheckResult {
 }
 
 export interface HierarchyUser {
-  id: number;
+  id: string;  // UUID string
   username?: string;
   fullName?: string;
   role?: string;
@@ -27,7 +27,7 @@ export interface HierarchyUser {
 }
 
 interface UseHierarchyCheckReturn {
-  checkHierarchy: (assigneeId: number) => Promise<HierarchyCheckResult | null>;
+  checkHierarchy: (assigneeId: string) => Promise<HierarchyCheckResult | null>;
   loading: boolean;
   error: string | null;
   lastCheck: HierarchyCheckResult | null;
@@ -39,7 +39,7 @@ export function useHierarchyCheck(): UseHierarchyCheckReturn {
   const [error, setError] = useState<string | null>(null);
   const [lastCheck, setLastCheck] = useState<HierarchyCheckResult | null>(null);
 
-  const checkHierarchy = useCallback(async (assigneeId: number): Promise<HierarchyCheckResult | null> => {
+  const checkHierarchy = useCallback(async (assigneeId: string): Promise<HierarchyCheckResult | null> => {
     setLoading(true);
     setError(null);
 
