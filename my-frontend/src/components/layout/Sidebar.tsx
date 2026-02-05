@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useAuth } from '@/hooks/useAuth';
 import BaseSidebar from './BaseSidebar';
 
@@ -12,29 +12,36 @@ interface SidebarProps {
 export default function Sidebar({ isOpen = true, onToggle }: SidebarProps) {
   const { user, refreshUser } = useAuth();
   const [isMobile, setIsMobile] = useState(false);
-  const resizeTimeout = useRef<NodeJS.Timeout | null>(null);
+  const mediaQueryRef = useRef<MediaQueryList | null>(null);
   
-  // Detect mobile viewport with debouncing to prevent flickering
+  // Use matchMedia for more stable mobile detection (no flickering)
   useEffect(() => {
-    const checkMobile = () => {
-      const mobile = window.innerWidth < 1024;
-      // Only update state if the value actually changed
-      setIsMobile(prev => prev !== mobile ? mobile : prev);
+    // Create media query for mobile breakpoint (matches Tailwind's lg: 1024px)
+    mediaQueryRef.current = window.matchMedia('(max-width: 1023px)');
+    
+    // Handler for media query changes
+    const handleMediaChange = (e: MediaQueryListEvent | MediaQueryList) => {
+      setIsMobile(e.matches);
     };
     
-    const debouncedCheckMobile = () => {
-      if (resizeTimeout.current) {
-        clearTimeout(resizeTimeout.current);
-      }
-      resizeTimeout.current = setTimeout(checkMobile, 100);
-    };
+    // Initial check
+    handleMediaChange(mediaQueryRef.current);
     
-    checkMobile(); // Initial check
-    window.addEventListener('resize', debouncedCheckMobile);
+    // Listen for changes (use addListener for older browser support)
+    if (mediaQueryRef.current.addEventListener) {
+      mediaQueryRef.current.addEventListener('change', handleMediaChange);
+    } else {
+      // Fallback for older browsers
+      mediaQueryRef.current.addListener(handleMediaChange);
+    }
+    
     return () => {
-      window.removeEventListener('resize', debouncedCheckMobile);
-      if (resizeTimeout.current) {
-        clearTimeout(resizeTimeout.current);
+      if (mediaQueryRef.current) {
+        if (mediaQueryRef.current.removeEventListener) {
+          mediaQueryRef.current.removeEventListener('change', handleMediaChange);
+        } else {
+          mediaQueryRef.current.removeListener(handleMediaChange);
+        }
       }
     };
   }, []);

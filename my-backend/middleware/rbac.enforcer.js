@@ -37,6 +37,7 @@ const PUBLIC_ROUTES = [
   '/micro-unlock/check',          // Feature access check - authenticated but no RBAC
   '/v2/tasks',                    // Task management - has planModuleAccessMiddleware
   '/tasks',                       // Legacy task routes - has own auth
+  '/task-requests',               // Task requests - has planModuleAccessMiddleware
 ];
 
 /**
