@@ -220,21 +220,21 @@ router.get('/:id/quick-view', authenticateUser, async (req, res) => {
     const { id } = req.params;
     const pool = getDbPool();
 
-    // Fetch task with user details
+    // Fetch task with user details - use users_enhanced and TEXT comparison for UUIDs
     const taskQuery = `
       SELECT 
         t.*,
-        c.id as creator_id, c.username as creator_name, c.first_name as creator_first_name, c.last_name as creator_last_name, c.email as creator_email,
-        a.id as assignee_id, a.username as assignee_name, a.first_name as assignee_first_name, a.last_name as assignee_last_name, a.email as assignee_email,
+        c.id as creator_uuid, c.username as creator_name, c.first_name as creator_first_name, c.last_name as creator_last_name, c.email as creator_email,
+        a.id as assignee_uuid, a.username as assignee_name, a.first_name as assignee_first_name, a.last_name as assignee_last_name, a.email as assignee_email,
         (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
         (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
       FROM workflow_tasks t
-      LEFT JOIN users c ON t.creator_id = c.id
-      LEFT JOIN users a ON t.assignee_id = a.id
+      LEFT JOIN users_enhanced c ON t.creator_id = c.id::text
+      LEFT JOIN users_enhanced a ON t.assignee_id = a.id::text
       WHERE t.id = $1
     `;
 
-    // Fetch messages
+    // Fetch messages - use users_enhanced for sender
     const messagesQuery = `
       SELECT 
         m.id,
@@ -248,7 +248,7 @@ router.get('/:id/quick-view', authenticateUser, async (req, res) => {
         s.first_name as sender_first_name,
         s.last_name as sender_last_name
       FROM task_messages m
-      LEFT JOIN users s ON m.sender_id = s.id
+      LEFT JOIN users_enhanced s ON m.sender_id = s.id::text
       WHERE m.task_id = $1
       ORDER BY m.created_at ASC
       LIMIT 100

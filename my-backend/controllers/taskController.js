@@ -653,23 +653,19 @@ exports.getTaskQuickView = async (req, res) => {
   try {
     const taskId = req.params.id;
     
-    // Get task with details - join to users_enhanced to get UUID for proper frontend comparison
+    // Get task with details - use users_enhanced with TEXT comparison for UUID support
     const taskQuery = `
       SELECT 
         t.*,
-        creator.id as creator_legacy_id, creator.username as creator_name, 
+        creator.id as creator_uuid, creator.username as creator_name, 
         creator.first_name as creator_first_name, creator.last_name as creator_last_name,
-        assignee.id as assignee_legacy_id, assignee.username as assignee_name,
+        assignee.id as assignee_uuid, assignee.username as assignee_name,
         assignee.first_name as assignee_first_name, assignee.last_name as assignee_last_name,
-        creator_enh.id as creator_uuid,
-        assignee_enh.id as assignee_uuid,
         (SELECT COUNT(*) FROM task_messages WHERE task_id = t.id) as message_count,
         (SELECT COUNT(*) FROM task_attachments WHERE task_id = t.id) as attachment_count
       FROM workflow_tasks t
-      LEFT JOIN users creator ON t.creator_id = creator.id
-      LEFT JOIN users assignee ON t.assignee_id = assignee.id
-      LEFT JOIN users_enhanced creator_enh ON creator_enh.legacy_id = t.creator_id
-      LEFT JOIN users_enhanced assignee_enh ON assignee_enh.legacy_id = t.assignee_id
+      LEFT JOIN users_enhanced creator ON t.creator_id = creator.id::text
+      LEFT JOIN users_enhanced assignee ON t.assignee_id = assignee.id::text
       WHERE t.id = $1
     `;
     const taskResult = await getDbPool().query(taskQuery, [taskId]);
@@ -683,17 +679,17 @@ exports.getTaskQuickView = async (req, res) => {
     
     const taskRow = taskResult.rows[0];
     
-    // Use UUID if available, fallback to legacy integer ID
-    const creatorId = taskRow.creator_uuid || taskRow.creator_legacy_id;
-    const assigneeId = taskRow.assignee_uuid || taskRow.assignee_legacy_id;
+    // Use UUID from users_enhanced
+    const creatorId = taskRow.creator_uuid || taskRow.creator_id;
+    const assigneeId = taskRow.assignee_uuid || taskRow.assignee_id;
     
-    // Get messages (limited for quick view)
+    // Get messages - use users_enhanced with TEXT comparison
     const messagesQuery = `
       SELECT 
         tm.id,
         tm.task_id,
         tm.sender_id,
-        tm.content,
+        COALESCE(tm.content, tm.message_text) as content,
         tm.message_type,
         tm.is_system_message,
         tm.created_at,
@@ -701,7 +697,7 @@ exports.getTaskQuickView = async (req, res) => {
         u.first_name as sender_first_name,
         u.last_name as sender_last_name
       FROM task_messages tm
-      LEFT JOIN users u ON tm.sender_id = u.id
+      LEFT JOIN users_enhanced u ON tm.sender_id = u.id::text
       WHERE tm.task_id = $1
       ORDER BY tm.created_at ASC
       LIMIT 100
