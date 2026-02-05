@@ -78,21 +78,26 @@ const getUserRoleLevel = async (userId, client = null) => {
   const pool = client || getDbPool();
   
   // First try users_enhanced table (primary - UUID support)
+  // Cast userId to UUID for proper comparison
   let result = await pool.query(`
     SELECT COALESCE(r.level, 0) as level, COALESCE(r.display_name, u.role) as role_name
     FROM users_enhanced u
     LEFT JOIN rbac_roles r ON UPPER(u.role) = UPPER(r.name)
-    WHERE u.id = $1::text
+    WHERE u.id = $1::uuid
   `, [userId]);
   
-  // Fallback to legacy users table if not found
+  // Fallback to legacy users table if not found or if userId is not a valid UUID
   if (result.rows.length === 0) {
-    result = await pool.query(`
-      SELECT COALESCE(r.level, 0) as level, COALESCE(r.display_name, u.role) as role_name
-      FROM users u
-      LEFT JOIN rbac_roles r ON UPPER(u.role) = UPPER(r.name)
-      WHERE u.id = $1::integer
-    `, [parseInt(userId)]);
+    // Try parsing as integer for legacy users table
+    const numericId = parseInt(userId, 10);
+    if (!isNaN(numericId)) {
+      result = await pool.query(`
+        SELECT COALESCE(r.level, 0) as level, COALESCE(r.display_name, u.role) as role_name
+        FROM users u
+        LEFT JOIN rbac_roles r ON UPPER(u.role) = UPPER(r.name)
+        WHERE u.id = $1
+      `, [numericId]);
+    }
   }
   
   if (result.rows.length === 0) {
