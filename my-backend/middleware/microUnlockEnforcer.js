@@ -54,8 +54,8 @@ function enforceUsage(featureKey, options = {}) {
     }
 
     try {
-      // Get tenant and user context
-      const tenantId = req.user?.client_id || req.user?.clientId;
+      // Get tenant and user context (support multiple field names)
+      const tenantId = req.user?.tenant_id || req.user?.client_id || req.user?.clientId;
       const userId = req.user?.id;
       const isAdmin = isAdminUser(req.user);
 

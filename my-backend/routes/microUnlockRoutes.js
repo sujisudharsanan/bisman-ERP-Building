@@ -46,7 +46,8 @@ const superAdminOnly = [
 
 // Helper to get tenant ID from request
 const getTenantId = (req) => {
-  return req.user?.client_id || req.user?.clientId || req.query.tenantId;
+  // Support multiple possible field names for tenant ID
+  return req.user?.tenant_id || req.user?.client_id || req.user?.clientId || req.query.tenantId;
 };
 
 // ============================================================================
