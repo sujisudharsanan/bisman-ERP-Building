@@ -33,6 +33,8 @@ const PUBLIC_ROUTES = [
   '/onboard/check-company',
   '/subscriptions/plans',         // Public pricing page
   '/subscription-plans',          // Alternative plans endpoint
+  '/micro-unlock/access',         // Feature access check - authenticated but no RBAC
+  '/micro-unlock/check',          // Feature access check - authenticated but no RBAC
 ];
 
 /**
