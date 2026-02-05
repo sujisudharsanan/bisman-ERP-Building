@@ -652,10 +652,13 @@ exports.getTaskStats = async (req, res) => {
 exports.getTaskQuickView = async (req, res) => {
   try {
     let taskId = req.params.id;
+    const userId = req.user?.id;
+    
+    console.log('[QuickView] Request for task:', taskId, 'by user:', userId);
     
     // Handle padded display IDs like "00010" -> convert to numeric 10
     // Also strip "TSK-" prefix if present
-    if (taskId.startsWith('TSK-')) {
+    if (typeof taskId === 'string' && taskId.startsWith('TSK-')) {
       taskId = taskId.replace('TSK-', '');
     }
     // Parse numeric ID (removes leading zeros)
@@ -663,6 +666,8 @@ exports.getTaskQuickView = async (req, res) => {
     if (!isNaN(numericId)) {
       taskId = numericId;
     }
+    
+    console.log('[QuickView] Parsed taskId:', taskId);
     
     // Get task with details - use users_enhanced with TEXT comparison for UUID support
     const taskQuery = `

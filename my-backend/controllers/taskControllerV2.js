@@ -459,13 +459,23 @@ const getTaskById = async (req, res) => {
                       normalizeId(userUuid) === normalizeId(task.approver_id);
     
     if (!hasAccess) {
-      // Check if participant
+      // Check if participant - use rawUserId (could be UUID or integer)
       const participantCheck = await getDbPool().query(
-        'SELECT 1 FROM task_participants WHERE task_id = $1 AND user_id = $2',
-        [id, task.creator_id] // Use legacy ID for participant check
+        'SELECT 1 FROM task_participants WHERE task_id = $1 AND (user_id = $2 OR user_id = $3)',
+        [id, rawUserId, String(rawUserId)]
       );
       
       if (participantCheck.rows.length === 0) {
+        // Log debug info for troubleshooting
+        console.log('[TaskController] Access denied for task', id, {
+          rawUserId,
+          creatorUuid: userCreatorUuid,
+          assigneeUuid: userAssigneeUuid,
+          taskCreatorId: task.creator_id,
+          taskAssigneeId: task.assignee_id,
+          isCreator,
+          isAssignee
+        });
         return res.status(403).json({
           success: false,
           error: 'Access denied'
