@@ -81,6 +81,7 @@ interface VendorFormData {
   state: string;
   pincode: string;
   is_msme: boolean;
+  is_unregistered: boolean;
 }
 
 // ============================================================================
@@ -97,11 +98,13 @@ async function fetchWithAuth(endpoint: string, options?: RequestInit) {
     },
     ...options,
   });
+  // Return response JSON even for errors (to get validation details)
+  const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const errorData = await response.json().catch(() => ({}));
-    throw new Error(errorData.message || errorData.error || `API error: ${response.status}`);
+    // Return error data instead of throwing, so caller can access details
+    return { success: false, ...data, _status: response.status };
   }
-  return response.json();
+  return data;
 }
 
 // ============================================================================
@@ -184,6 +187,7 @@ export default function VendorCustomerMasterLegalPage() {
     state: '',
     pincode: '',
     is_msme: false,
+    is_unregistered: false,
   };
   const [formData, setFormData] = useState<VendorFormData>(initialFormData);
 
@@ -208,24 +212,28 @@ export default function VendorCustomerMasterLegalPage() {
       if (!formData.legal_name.trim()) {
         throw new Error('Legal name is required');
       }
-      if (!formData.gst_number.trim()) {
-        throw new Error('GST number is required');
-      }
-      if (!formData.pan_number.trim()) {
-        throw new Error('PAN number is required');
+      // Only require GST/PAN if not unregistered
+      if (!formData.is_unregistered) {
+        if (!formData.gst_number.trim()) {
+          throw new Error('GST number is required (or check "Unregistered Vendor")');
+        }
+        if (!formData.pan_number.trim()) {
+          throw new Error('PAN number is required (or check "Unregistered Vendor")');
+        }
       }
 
       // Prepare payload
       const payload = {
         legal_name: formData.legal_name.trim(),
         trade_name: formData.trade_name.trim() || formData.legal_name.trim(),
-        gst_number: formData.gst_number.trim().toUpperCase(),
-        pan_number: formData.pan_number.trim().toUpperCase(),
+        gst_number: formData.is_unregistered ? null : formData.gst_number.trim().toUpperCase(),
+        pan_number: formData.is_unregistered ? null : formData.pan_number.trim().toUpperCase(),
         cin_number: formData.cin_number.trim() || null,
         registration_number: formData.registration_number.trim() || null,
         business_type: formData.business_type,
         industry: formData.industry.trim() || null,
         is_msme: formData.is_msme,
+        is_unregistered: formData.is_unregistered,
         primary_contact: {
           name: formData.contact_name.trim(),
           email: formData.contact_email.trim(),
@@ -256,7 +264,12 @@ export default function VendorCustomerMasterLegalPage() {
           fetchVendors();
         }, 1500);
       } else {
-        throw new Error(response.message || 'Failed to create vendor');
+        // Handle validation errors with details
+        if (response.details && Array.isArray(response.details)) {
+          const errorMessages = response.details.map((d: { field: string; message: string }) => `${d.field}: ${d.message}`).join(', ');
+          throw new Error(errorMessages);
+        }
+        throw new Error(response.message || response.error || 'Failed to create vendor');
       }
     } catch (err) {
       console.error('Error creating vendor:', err);
@@ -625,6 +638,25 @@ export default function VendorCustomerMasterLegalPage() {
                 </div>
               )}
 
+              {/* Unregistered Vendor Toggle */}
+              <div className="mb-4 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+                <label className="flex items-center gap-3 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    name="is_unregistered"
+                    checked={formData.is_unregistered}
+                    onChange={handleInputChange}
+                    className="w-4 h-4 text-amber-600 bg-gray-100 border-gray-300 rounded focus:ring-amber-500"
+                  />
+                  <div>
+                    <span className="font-medium text-gray-900 dark:text-white">Unregistered Vendor</span>
+                    <p className="text-xs text-gray-500 dark:text-gray-400">
+                      Check this for vendors without GST/PAN registration (individual suppliers, informal businesses)
+                    </p>
+                  </div>
+                </label>
+              </div>
+
               {/* Legal Information */}
               <div className="mb-6">
                 <h3 className="text-sm font-semibold text-gray-700 dark:text-gray-300 mb-3 flex items-center gap-2">
@@ -660,32 +692,36 @@ export default function VendorCustomerMasterLegalPage() {
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      GST Number <span className="text-red-500">*</span>
+                      GST Number {!formData.is_unregistered && <span className="text-red-500">*</span>}
+                      {formData.is_unregistered && <span className="text-gray-400 text-xs ml-1">(Optional)</span>}
                     </label>
                     <input
                       type="text"
                       name="gst_number"
                       value={formData.gst_number}
                       onChange={handleInputChange}
-                      placeholder="22AAAAA0000A1Z5"
+                      placeholder={formData.is_unregistered ? "Not required for unregistered vendors" : "22AAAAA0000A1Z5"}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white uppercase"
-                      required
+                      required={!formData.is_unregistered}
                       maxLength={15}
+                      disabled={formData.is_unregistered}
                     />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1">
-                      PAN Number <span className="text-red-500">*</span>
+                      PAN Number {!formData.is_unregistered && <span className="text-red-500">*</span>}
+                      {formData.is_unregistered && <span className="text-gray-400 text-xs ml-1">(Optional)</span>}
                     </label>
                     <input
                       type="text"
                       name="pan_number"
                       value={formData.pan_number}
                       onChange={handleInputChange}
-                      placeholder="AAAAA0000A"
+                      placeholder={formData.is_unregistered ? "Not required for unregistered vendors" : "AAAAA0000A"}
                       className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-900 text-gray-900 dark:text-white uppercase"
-                      required
+                      required={!formData.is_unregistered}
                       maxLength={10}
+                      disabled={formData.is_unregistered}
                     />
                   </div>
                   <div>

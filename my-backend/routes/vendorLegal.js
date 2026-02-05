@@ -230,19 +230,22 @@ function validateVendorData(data, isUpdate = false) {
     errors.push({ field: 'legal_name', message: 'Legal name must be less than 255 characters', code: 'TOO_LONG' });
   }
   
-  // GST validation (Indian format)
-  if (data.gst_number) {
+  // Skip GST/PAN validation for unregistered vendors
+  const skipTaxValidation = data.is_unregistered === true;
+  
+  // GST validation (Indian format) - skip if unregistered
+  if (data.gst_number && !skipTaxValidation) {
     const gstRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
     if (!gstRegex.test(data.gst_number)) {
-      errors.push({ field: 'gst_number', message: 'Invalid GST format', code: 'INVALID_FORMAT' });
+      errors.push({ field: 'gst_number', message: 'Invalid GST format (e.g., 22AAAAA0000A1Z5)', code: 'INVALID_FORMAT' });
     }
   }
   
-  // PAN validation
-  if (data.pan_number) {
+  // PAN validation - skip if unregistered
+  if (data.pan_number && !skipTaxValidation) {
     const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
     if (!panRegex.test(data.pan_number)) {
-      errors.push({ field: 'pan_number', message: 'Invalid PAN format', code: 'INVALID_FORMAT' });
+      errors.push({ field: 'pan_number', message: 'Invalid PAN format (e.g., ABCDE1234F)', code: 'INVALID_FORMAT' });
     }
   }
   
@@ -655,7 +658,7 @@ router.post('/', authorizeVendor('edit'), async (req, res) => {
         registration_number, gst_number, pan_number, cin_number, tin_number,
         incorporation_date, country, state, industry_id, services_products,
         annual_turnover, company_size, website, primary_market,
-        is_msme, msme_number, msme_category,
+        is_msme, msme_number, msme_category, is_unregistered,
         status, approval_status, risk_level,
         default_payment_terms, credit_limit, credit_days,
         tds_applicable, tds_section, tds_rate,
@@ -665,7 +668,7 @@ router.post('/', authorizeVendor('edit'), async (req, res) => {
         $1, $2, $3, $4, $5, $6, $7, $8, $9, $10,
         $11, $12, $13, $14, $15, $16, $17, $18, $19,
         $20, $21, $22, $23, $24, $25, $26, $27, $28,
-        $29, $30, $31, $32, $33, $34, $35, $36
+        $29, $30, $31, $32, $33, $34, $35, $36, $37
       )
       RETURNING id
     `, [
@@ -673,7 +676,7 @@ router.post('/', authorizeVendor('edit'), async (req, res) => {
       data.registration_number, data.gst_number, data.pan_number, data.cin_number, data.tin_number,
       data.incorporation_date, data.country || 'India', data.state, data.industry_id, data.services_products,
       data.annual_turnover, data.company_size, data.website, data.primary_market,
-      data.is_msme || false, data.msme_number, data.msme_category,
+      data.is_msme || false, data.msme_number, data.msme_category, data.is_unregistered || false,
       data.is_draft ? 'draft' : 'pending', 'pending', 'medium',
       data.default_payment_terms, data.credit_limit, data.credit_days || 30,
       data.tds_applicable || false, data.tds_section, data.tds_rate,
