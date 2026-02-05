@@ -636,9 +636,9 @@ export default function TaskDetailView({ taskId, onClose, onMarkComplete, onCanc
   };
 
   // Check if current user is the task creator (handle both creator.id and creatorId, and type coercion)
-  // Support both UUID strings and legacy integer IDs
-  const creatorId = task?.creator?.id ?? task?.creatorId;
-  const assigneeId = task?.assignee?.id ?? (task as any)?.assigneeId;
+  // Support both UUID strings and legacy integer IDs, and snake_case from API
+  const creatorId = task?.creator?.id ?? task?.creatorId ?? (task as any)?.creator_id;
+  const assigneeId = task?.assignee?.id ?? (task as any)?.assigneeId ?? (task as any)?.assignee_id;
   
   // Compare IDs as strings to handle both UUID and integer IDs
   const normalizeId = (id: any): string => (id != null ? String(id) : '');
