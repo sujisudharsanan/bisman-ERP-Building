@@ -122,6 +122,9 @@ const BYPASS_PATTERNS = [
   '/api/branches',  // Branches APIs - role-protected at route level
   '/api/assets',  // Asset Management APIs - has its own permission middleware (checkAssetPermission)
   '/api/vendors-legal',  // Vendor Legal APIs - has authorize() on each endpoint
+  '/api/v2/tasks',  // Task Management V2 APIs - has planModuleAccessMiddleware
+  '/api/tasks',  // Legacy Task APIs - has own auth
+  '/api/task-requests',  // Task Requests APIs - has planModuleAccessMiddleware
 ];
 
 const ALWAYS_ALLOWED_PAGES = new Set([
